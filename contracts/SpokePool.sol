@@ -11,8 +11,8 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * @title SpokePool
  * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to 
  * destination. Deposit orders are fulfilled by off-chain relayers who also interact with this contract. Deposited
- * tokens are burned on the source chain and relayers send the recipient the desired token currency and amount
- * on the destination chain.
+ * tokens are locked on the source chain and relayers send the recipient the desired token currency and amount
+ * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
  */
 contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
