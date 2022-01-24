@@ -17,9 +17,6 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
-    // Chain ID for this contract.
-    uint256 public chainId;
-
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint64 public deploymentTime;
 
@@ -58,12 +55,10 @@ contract SpokePool is Testable, Lockable, MultiCaller {
     );
 
     constructor(
-        uint256 _chainId,
         // address _l1Weth,
         address timerAddress
     ) Testable(timerAddress) {
         deploymentTime = uint64(getCurrentTime());
-        chainId = _chainId; 
     }
 
     /****************************************
@@ -201,5 +196,9 @@ contract SpokePool is Testable, Lockable, MultiCaller {
      */
     function isWhitelistToken(address originToken) public view returns (bool) {
         return whitelistedDestinationTokens[originToken].chainId != 0;
+    }
+
+    function chainId() public view returns (uint256) {
+        return chainId();
     }
 }
