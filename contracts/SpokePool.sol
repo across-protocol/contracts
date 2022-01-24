@@ -62,7 +62,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
      ****************************************/
 
     modifier onlyIfDepositsEnabled(address originToken, uint256 destinationId) {
-        require(whitelistedDestinationTokens[originToken][destinationId].depositsEnabled, "Deposits disabled");
+        require(whitelistedDestinationRoutes[originToken][destinationId].depositsEnabled, "Deposits disabled");
         _;
     }
 
@@ -71,19 +71,19 @@ contract SpokePool is Testable, Lockable, MultiCaller {
      **************************************/
 
     /**
-     * @notice Whitelist an origin token <-> destination token path.
+     * @notice Whitelist an origin token <-> destination token route.
      */
-    function _whitelistToken(
+    function _whitelistRoute(
         address originToken,
         address destinationToken,
         address spokePool,
         address wethContract,
         uint256 destinationChainId
     ) internal {
-        require(destinationChainId != 0, "Invalid chain ID"); // 0 is reserved ID to signal non-whitelisted tokens.
-        whitelistedDestinationTokens[originToken][destinationChainId] = DestinationToken({
+        whitelistedDestinationRoutes[originToken][destinationChainId] = DestinationToken({
             token: destinationToken,
-            spokePool: spokePool,
+            spokePool: spokePool, // Depositing to a destination chain where spoke pool is the 0 address will fail,
+            // so admin can set `spokePool` to 0 address to block deposits.
             wethContract: wethContract,
             depositsEnabled: true
         });
@@ -95,7 +95,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
      * @notice Enable/disable deposits for a whitelisted origin token.
      */
     function _setEnableDeposits(address originToken, uint256 destinationChainId, bool depositsEnabled) internal {
-        whitelistedDestinationTokens[originToken][destinationChainId].depositsEnabled = depositsEnabled;
+        whitelistedDestinationRoutes[originToken][destinationChainId].depositsEnabled = depositsEnabled;
         emit DepositsEnabled(originToken, destinationChainId, depositsEnabled);
     }
 
@@ -112,10 +112,10 @@ contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 destinationChainId,
         uint256 amount,
         address recipient,
-        uint256 relayerFeePct,
+        uint64 relayerFeePct,
         uint64 quoteTimestamp
-    ) public onlyIfDepositsEnabled(originToken) {
-        require(isWhitelistToken(originToken, destinationChainId), "deposit token not whitelisted");
+    ) public onlyIfDepositsEnabled(originToken, destinationChainId) {
+        require(isWhitelistedRoute(originToken, destinationChainId), "deposit token not whitelisted");
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore, 
@@ -148,7 +148,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
             destinationChainId,
             recipient,
             msg.sender,
-            whitelistedDestinationTokens[originToken][destinationChainId].token,
+            whitelistedDestinationRoutes[originToken][destinationChainId].token,
             amount,
             relayerFeePct,
             quoteTimestamp
@@ -189,10 +189,10 @@ contract SpokePool is Testable, Lockable, MultiCaller {
      **************************************/
 
     /**
-     * @notice Checks if a given origin token is whitelisted.
+     * @notice Checks if a given origin to destination route is whitelisted.
      */
-    function isWhitelistToken(address originToken, uint256 destinationChainId) public view returns (bool) {
-        return whitelistedDestinationTokens[originToken][destinationChainId].chainId != 0;
+    function isWhitelistedRoute(address originToken, uint256 destinationChainId) public view returns (bool) {
+        return whitelistedDestinationRoutes[originToken][destinationChainId] != address(0);
     }
 
     function chainId() public view returns (uint256) {
