@@ -7,9 +7,6 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
-interface TokenLike {
-    function balanceOf(address guy) external returns (uint256 wad);
-}
 /**
  * @title SpokePool
  * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to 
