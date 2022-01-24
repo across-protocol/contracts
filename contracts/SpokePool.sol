@@ -192,7 +192,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
      * @notice Checks if a given origin to destination route is whitelisted.
      */
     function isWhitelistedRoute(address originToken, uint256 destinationChainId) public view returns (bool) {
-        return whitelistedDestinationRoutes[originToken][destinationChainId] != address(0);
+        return whitelistedDestinationRoutes[originToken][destinationChainId].spokePool != address(0);
     }
 
     function chainId() public view returns (uint256) {
