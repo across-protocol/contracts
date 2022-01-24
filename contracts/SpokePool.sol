@@ -20,7 +20,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint64 public deploymentTime;
 
-    // Track the total number of deposits. Used as a unique identifier for relays.
+    // Track the total number of deposits. Used as a unique identifier for deposits.
     uint256 public numberOfDeposits;
 
     struct DestinationToken {
