@@ -47,14 +47,14 @@ describe("SpokePool Depositor Logic", async function () {
         currentSpokePoolTime
       )).to.emit(spokePool, "FundsDeposited").withArgs(
         0,
-        erc20.address,
         depositDestinationChainId,
-        recipient.address,
-        depositor.address,
-        destErc20.address,
         amountToDeposit,
         depositRelayerFeePct,
-        currentSpokePoolTime
+        currentSpokePoolTime,
+        erc20.address,
+        recipient.address,
+        depositor.address,
+        destErc20.address
       );
 
     // The collateral should have transferred from depositor to contract.
@@ -98,7 +98,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
   it("Depositing ETH with msg.value = 0 pulls WETH from depositor", async function() {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
-    await expect(spokePool
+    await expect(() => spokePool
       .connect(depositor)
       .deposit(
         weth.address,
@@ -108,17 +108,7 @@ describe("SpokePool Depositor Logic", async function () {
         depositRelayerFeePct,
         currentSpokePoolTime,
         { value: 0 }
-      )).to.emit(spokePool, "FundsDeposited").withArgs(
-        0,
-        weth.address,
-        depositDestinationChainId,
-        recipient.address,
-        depositor.address,
-        destWeth.address,
-        amountToDeposit,
-        depositRelayerFeePct,
-        currentSpokePoolTime
-      );
+      )).to.changeTokenBalances(weth, [depositor, spokePool], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
   });
   it("General failure cases", async function() {
     const currentSpokePoolTime = await spokePool.getCurrentTime();

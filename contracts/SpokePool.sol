@@ -45,14 +45,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     event DepositsEnabled(address originToken, uint256 destinationChainId, bool depositsEnabled);
     event FundsDeposited(
         uint256 nonce,
-        address originToken,
         uint256 destinationChainId,
-        address recipient,
-        address sender,
-        address destinationToken,
         uint256 amount,
         uint64 relayerFeePct,
-        uint64 quoteTimestamp
+        uint64 quoteTimestamp,
+        address originToken,
+        address recipient,
+        address sender,
+        address destinationToken
     );
 
     constructor(
@@ -146,9 +146,10 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             quoteTimestamp >= deploymentTime,
             "invalid quote time"
         );
+        DestinationToken memory tokenPath = whitelistedDestinationRoutes[originToken][destinationChainId];
         // If the address of the destination token is a WETH contract and there is a msg.value with the transaction 
         // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
-        if (whitelistedDestinationRoutes[originToken][destinationChainId].isWethToken && msg.value > 0) {
+        if (tokenPath.isWethToken && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
             WETH9Like(originToken).deposit{ value: msg.value }();
         } else {
@@ -160,14 +161,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
         emit FundsDeposited(
             numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
-            originToken,
             destinationChainId,
-            recipient,
-            msg.sender,
-            whitelistedDestinationRoutes[originToken][destinationChainId].token,
             amount,
             relayerFeePct,
-            quoteTimestamp
+            quoteTimestamp,
+            originToken,
+            recipient,
+            msg.sender,
+            tokenPath.token
         );
 
         numberOfDeposits += 1;
