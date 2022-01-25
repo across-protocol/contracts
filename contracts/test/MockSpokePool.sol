@@ -20,11 +20,10 @@ contract MockSpokePool is SpokePool {
     function whitelistRoute(
         address originToken,
         address destinationToken,
-        address spokePool,
         bool isWethToken,
         uint256 destinationChainId
     ) public {
-        _whitelistRoute(originToken, destinationToken, spokePool, isWethToken, destinationChainId);
+        _whitelistRoute(originToken, destinationToken, isWethToken, destinationChainId);
     }
 
     /**

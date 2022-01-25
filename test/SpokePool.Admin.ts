@@ -15,11 +15,10 @@ describe("SpokePool Admin Functions", async function () {
     ({ spokePool, erc20 } = await deploySpokePoolTestHelperContracts(admin));
   });
   it("Whitelist token path", async function() {
-    // Cannot set spoke pool to zero address.
+    // Cannot set destination token to zero address.
     await expect(spokePool
         .connect(admin)
         .whitelistRoute(
-          erc20.address,
           erc20.address,
           ZERO_ADDRESS,
           true,
@@ -31,21 +30,18 @@ describe("SpokePool Admin Functions", async function () {
       .whitelistRoute(
         erc20.address,
         erc20.address,
-        spokePool.address,
         true,
         depositDestinationChainId
       )).to.emit(spokePool, "WhitelistRoute").withArgs(
         erc20.address,
         depositDestinationChainId,
         erc20.address,
-        spokePool.address,
         true
       );
 
     // Whitelisted path should be saved in contract.
     const whitelistedDestinationRoutes = await spokePool.whitelistedDestinationRoutes(erc20.address, depositDestinationChainId)
     expect(whitelistedDestinationRoutes.token).to.equal(erc20.address)
-    expect(whitelistedDestinationRoutes.spokePool).to.equal(spokePool.address)
     expect(whitelistedDestinationRoutes.isWethToken).to.equal(true)
     expect(whitelistedDestinationRoutes.depositsEnabled).to.equal(true)
   });
@@ -62,7 +58,6 @@ describe("SpokePool Admin Functions", async function () {
     await spokePool.whitelistRoute(
         erc20.address,
         erc20.address,
-        spokePool.address,
         true,
         depositDestinationChainId
       );

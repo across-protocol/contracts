@@ -29,7 +29,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     struct DestinationToken {
         address token;
-        address spokePool;
         bool isWethToken;
         bool depositsEnabled;
     }
@@ -41,7 +40,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /****************************************
      *                EVENTS                *
      ****************************************/
-    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken, address spokePool, bool isWethToken);
+    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken, bool isWethToken);
     event DepositsEnabled(address originToken, uint256 destinationChainId, bool depositsEnabled);
     event FundsDeposited(
         uint256 nonce,
@@ -72,7 +71,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     modifier onlyWhitelistedPath(address originToken, uint256 destinationId) {
-        require(whitelistedDestinationRoutes[originToken][destinationId].spokePool != address(0), "Invalid path entry");
+        require(whitelistedDestinationRoutes[originToken][destinationId].token != address(0), "Invalid path entry");
         _;
     }
 
@@ -87,22 +86,19 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     function _whitelistRoute(
         address originToken,
         address destinationToken,
-        address spokePool,
         bool isWethToken,
         uint256 destinationChainId
     ) internal {
-        // We use a correctly set spoke pool address as the determinant of whether a token path is whitelisted or not.
-        // So, explicitly prevent the caller from unintentionally setting the spoke pool to the zero address.
-        require(spokePool != address(0), "Invalid spoke pool");
+        // We use a correctly set destination token address as the determinant of whether a token path is whitelisted 
+        // or not. So, explicitly prevent the caller from unintentionally setting this to the zero address.
+        require(destinationToken != address(0), "Invalid spoke pool");
         whitelistedDestinationRoutes[originToken][destinationChainId] = DestinationToken({
             token: destinationToken,
-            spokePool: spokePool, // Depositing to a destination chain where spoke pool is the 0 address will fail,
-            // so admin can set `spokePool` to 0 address to block deposits.
             isWethToken: isWethToken,
             depositsEnabled: true
         });
 
-        emit WhitelistRoute(originToken, destinationChainId, destinationToken, spokePool, isWethToken);
+        emit WhitelistRoute(originToken, destinationChainId, destinationToken, isWethToken);
     }
 
     /**

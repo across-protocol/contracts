@@ -24,7 +24,6 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
 export interface DepositRoute {
     originToken: string;
     destinationToken: string;
-    spokePool?: string;
     isWethToken: boolean;
     destinationChainId?: number;
 }
@@ -33,7 +32,6 @@ export async function whitelistRoutes(spokePool: Contract, routes: DepositRoute[
       await spokePool.whitelistRoute(
           route.originToken,
           route.destinationToken,
-          route.spokePool ? route.spokePool : spokePool.address,
           route.isWethToken,
           route.destinationChainId ? route.destinationChainId : depositDestinationChainId
       );
