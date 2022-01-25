@@ -115,7 +115,6 @@ contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 relayerFeePct,
         uint64 quoteTimestamp
     ) public onlyIfDepositsEnabled(originToken, destinationChainId) {
-        require(isWhitelistedRoute(originToken, destinationChainId), "deposit token not whitelisted");
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore, 
@@ -187,13 +186,6 @@ contract SpokePool is Testable, Lockable, MultiCaller {
     /**************************************
      *           VIEW FUNCTIONS           *
      **************************************/
-
-    /**
-     * @notice Checks if a given origin to destination route is whitelisted.
-     */
-    function isWhitelistedRoute(address originToken, uint256 destinationChainId) public view returns (bool) {
-        return whitelistedDestinationRoutes[originToken][destinationChainId].spokePool != address(0);
-    }
 
     function chainId() public view returns (uint256) {
         return chainId();
