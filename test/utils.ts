@@ -10,3 +10,5 @@ export async function getContractFactory(name: string, signer: any) {
   // If it does not exist then try find the contract in the UMA core package.
   return new ethers.ContractFactory(getAbi(name as any), getBytecode(name as any), signer);
 }
+
+export const toWei = (amount: string | number) => ethers.utils.parseEther(amount.toString());
