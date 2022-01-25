@@ -26,13 +26,9 @@ export async function seedWallet(
   weth: Contract | undefined,
   amountToSeedWith: number | BigNumber
 ) {
-  for (const token of tokens) {
-    await token.mint(walletToFund.address, amountToSeedWith);
-  }
+  for (const token of tokens) await token.mint(walletToFund.address, amountToSeedWith);
 
-  if (weth) {
-    await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
-  }
+  if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
 }
 
 export async function enableTokensForLiquidityProvision(owner: any, hubPool: Contract, tokens: Contract[]) {
