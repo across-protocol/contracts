@@ -46,7 +46,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         ExpandedERC20 lpToken = new ExpandedERC20(
             append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
             append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
-            18 // LP Token Decimals
+            IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );
         lpToken.addMember(1, address(this)); // Set this contract as the LP Token's minter.
         lpToken.addMember(2, address(this)); // Set this contract as the LP Token's burner.

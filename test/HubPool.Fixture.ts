@@ -15,7 +15,7 @@ export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
   await dai.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the hubPool
-  const hubPool = await (await getContractFactory("HubPool", deployerWallet)).deploy(timer.address, weth.address);
+  const hubPool = await (await getContractFactory("HubPool", deployerWallet)).deploy(weth.address, timer.address);
 
   return { timer, weth, usdc, dai, hubPool };
 }
@@ -31,6 +31,19 @@ export async function seedWallet(
   }
 
   if (weth) {
-    await weth.deposit({ value: amountToSeedWith });
+    await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
   }
+}
+
+export async function enableTokensForLiquidityProvision(owner: any, hubPool: Contract, tokens: Contract[]) {
+  let lpTokens = [];
+  for (const token of tokens) {
+    await hubPool.enableL1TokenForLiquidityProvision(token.address);
+    lpTokens.push(
+      await (
+        await getContractFactory("ExpandedERC20", owner)
+      ).attach((await hubPool.callStatic.lpTokens(token.address)).lpToken)
+    );
+  }
+  return lpTokens;
 }
