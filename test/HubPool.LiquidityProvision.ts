@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { getContractFactory, fromWei, toBN } from "./utils";
+import { getContractFactory, fromWei, toBN, SignerWithAddress } from "./utils";
 import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision, seedWallet } from "./HubPool.Fixture";
 import { amountToSeedWallets, amountToLp } from "./HubPool.constants";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, dai: Contract;
 let wethLpToken: Contract, usdcLpToken: Contract, daiLpToken: Contract;
-let owner: any, liquidityProvider: any, other: any;
+let owner: SignerWithAddress, liquidityProvider: SignerWithAddress, other: SignerWithAddress;
 
 describe("HubPool Liquidity Provision", function () {
   beforeEach(async function () {

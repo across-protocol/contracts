@@ -1,7 +1,7 @@
 import { getBytecode, getAbi } from "@uma/contracts-node";
 
 import { ethers } from "hardhat";
-import { BigNumber } from "ethers";
+import { BigNumber, Signer } from "ethers";
 
 export async function getContractFactory(name: string, signer: any) {
   try {
@@ -21,3 +21,7 @@ export const toBN = (num: string | number | BigNumber) => {
   if (num.toString().includes(".")) return BigNumber.from(parseInt(num as any));
   return BigNumber.from(num.toString());
 };
+
+export interface SignerWithAddress extends Signer {
+  address: string;
+}

@@ -2,10 +2,11 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { ZERO_ADDRESS } from "@uma/common";
-import { getContractFactory } from "./utils";
+import { getContractFactory, SignerWithAddress } from "./utils";
 import { deployHubPoolTestHelperContracts } from "./HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract, owner: any, liquidityProvider: any, other: any;
+let hubPool: Contract, weth: Contract;
+let owner: SignerWithAddress, liquidityProvider: SignerWithAddress, other: SignerWithAddress;
 
 describe("HubPool Token Whitelisting", function () {
   before(async function () {

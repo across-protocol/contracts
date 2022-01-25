@@ -1,6 +1,5 @@
 import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
 import { getContractFactory, toWei } from "./utils";
-import { ethers } from "hardhat";
 import { Contract, BigNumber } from "ethers";
 
 export async function deployHubPoolTestHelperContracts(deployerWallet: any) {

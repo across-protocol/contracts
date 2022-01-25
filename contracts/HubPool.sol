@@ -30,8 +30,18 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
 
-    event LiquidityAdded(address l1Token, uint256 amount, uint256 lpTokensMinted, address indexed liquidityProvider);
-    event LiquidityRemoved(uint256 amount, uint256 lpTokensBurnt, address indexed liquidityProvider);
+    event LiquidityAdded(
+        address indexed l1Token,
+        uint256 amount,
+        uint256 lpTokensMinted,
+        address indexed liquidityProvider
+    );
+    event LiquidityRemoved(
+        address indexed l1Token,
+        uint256 amount,
+        uint256 lpTokensBurnt,
+        address indexed liquidityProvider
+    );
 
     constructor(address _l1Weth, address _timerAddress) Testable(_timerAddress) {
         l1Weth = WETH9Like(_l1Weth);
@@ -43,6 +53,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     // TODO: the two functions below should be called by the Admin contract.
     function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
+        // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
+        // appends and permission setting.
         ExpandedERC20 lpToken = new ExpandedERC20(
             append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
             append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
@@ -101,7 +113,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
         else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
 
-        emit LiquidityRemoved(l1TokensToReturn, lpTokenAmount, msg.sender);
+        emit LiquidityRemoved(l1Token, l1TokensToReturn, lpTokenAmount, msg.sender);
     }
 
     function exchangeRateCurrent() public nonReentrant returns (uint256) {
