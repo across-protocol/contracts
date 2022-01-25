@@ -18,7 +18,7 @@ interface WETH9Like {
  * tokens are locked on the source chain and relayers send the recipient the desired token currency and amount
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
  */
-contract SpokePool is Testable, Lockable, MultiCaller {
+abstract contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
