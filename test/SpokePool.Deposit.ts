@@ -36,6 +36,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function() {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
+    const originChainId = await spokePool.chainId();
     await expect(spokePool
       .connect(depositor)
       .deposit(
@@ -48,6 +49,7 @@ describe("SpokePool Depositor Logic", async function () {
       )).to.emit(spokePool, "FundsDeposited").withArgs(
         0,
         depositDestinationChainId,
+        originChainId,
         amountToDeposit,
         depositRelayerFeePct,
         currentSpokePoolTime,

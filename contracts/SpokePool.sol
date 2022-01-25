@@ -46,6 +46,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     event FundsDeposited(
         uint256 nonce,
         uint256 destinationChainId,
+        uint256 originChainId,
         uint256 amount,
         uint64 relayerFeePct,
         uint64 quoteTimestamp,
@@ -162,6 +163,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         emit FundsDeposited(
             numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
             destinationChainId,
+            chainId(),
             amount,
             relayerFeePct,
             quoteTimestamp,
@@ -206,6 +208,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
      **************************************/
 
     function chainId() public view returns (uint256) {
-        return chainId();
+        return block.chainid;
     }
 }
