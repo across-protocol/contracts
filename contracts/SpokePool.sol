@@ -7,6 +7,10 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
+interface WETH9Like {
+    function deposit() external payable;
+}
+
 /**
  * @title SpokePool
  * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to 
@@ -26,7 +30,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
     struct DestinationToken {
         address token;
         address spokePool;
-        address wethContract;
+        bool isWethToken;
         bool depositsEnabled;
     }
 
@@ -37,7 +41,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
     /****************************************
      *                EVENTS                *
      ****************************************/
-    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken, address spokePool, address wethContract);
+    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken, address spokePool, bool isWethToken);
     event DepositsEnabled(address originToken, uint256 destinationChainId, bool depositsEnabled);
     event FundsDeposited(
         uint256 nonce,
@@ -77,18 +81,18 @@ contract SpokePool is Testable, Lockable, MultiCaller {
         address originToken,
         address destinationToken,
         address spokePool,
-        address wethContract,
+        bool isWethToken,
         uint256 destinationChainId
     ) internal {
         whitelistedDestinationRoutes[originToken][destinationChainId] = DestinationToken({
             token: destinationToken,
             spokePool: spokePool, // Depositing to a destination chain where spoke pool is the 0 address will fail,
             // so admin can set `spokePool` to 0 address to block deposits.
-            wethContract: wethContract,
+            isWethToken: isWethToken,
             depositsEnabled: true
         });
 
-        emit WhitelistRoute(originToken, destinationChainId, destinationToken, spokePool, wethContract);
+        emit WhitelistRoute(originToken, destinationChainId, destinationToken, spokePool, isWethToken);
     }
 
     /**
@@ -114,7 +118,7 @@ contract SpokePool is Testable, Lockable, MultiCaller {
         address recipient,
         uint64 relayerFeePct,
         uint64 quoteTimestamp
-    ) public onlyIfDepositsEnabled(originToken, destinationChainId) {
+    ) public payable onlyIfDepositsEnabled(originToken, destinationChainId) {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore, 
@@ -129,17 +133,17 @@ contract SpokePool is Testable, Lockable, MultiCaller {
             quoteTimestamp >= deploymentTime,
             "invalid quote time"
         );
-        // // If the address of the L1 token is the l1Weth and there is a msg.value with the transaction then the user
-        // // is sending ETH. In this case, the ETH should be deposited to WETH.
-        // if (whitelistedDestinationTokens[originToken].token == l1Weth && msg.value > 0) {
-        //     require(msg.value == amount, "msg.value must match amount");
-        //     WETH9Like(address(originToken)).deposit{ value: msg.value }();
-        // }
-
-        // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
-        // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
-        // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        // If the address of the destination token is a WETH contract and there is a msg.value with the transaction 
+        // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
+        if (whitelistedDestinationRoutes[originToken][destinationChainId].isWethToken && msg.value > 0) {
+            require(msg.value == amount, "msg.value must match amount");
+            WETH9Like(originToken).deposit{ value: msg.value }();
+        } else {
+            // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
+            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
+            // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+            IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        }
 
         emit FundsDeposited(
             numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
