@@ -31,7 +31,7 @@ describe("HubPool Liquidity Provision", function () {
     await dai.connect(liquidityProvider).approve(hubPool.address, amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, amountToLp);
 
-    //The balance of the collateral should be equal to the original amount minus the LPed amount. The balance of LP
+    // The balance of the collateral should be equal to the original amount minus the LPed amount. The balance of LP
     // tokens should be equal to the amount of LP tokens divided by the exchange rate current. This rate starts at 1e18,
     // so this should equal the amount minted.
     expect(await dai.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets.sub(amountToLp));
