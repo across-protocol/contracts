@@ -10,8 +10,8 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 library MerkleLib {
     // TODO: some of these data structures can be moved out if convenient.
     // This data structure is used in the settlement process on L1.
-    // Each PoolRepayment structure is responsible for balancing a single chain's SpokePool across all tokens.
-    struct PoolRepayment {
+    // Each PoolRebalance structure is responsible for balancing a single chain's SpokePool across all tokens.
+    struct PoolRebalance {
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
@@ -27,7 +27,7 @@ library MerkleLib {
         // SpokePool. If positive, the pool needs to pay the SpokePool. If negative the SpokePool needs to pay the
         // HubPool. There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
         // when the rules indicate that a rebalancing action should occur. This means that the DestinationDistribution
-        // associated with this PoolRepayment can indicate a balance change, but that the HubPool does not rebalance.
+        // associated with this PoolRebalance can indicate a balance change, but that the HubPool does not rebalance.
         // When a rebalance does occur, the netSendAmount is the sum of all netBalanceChange values in the
         // DestinationDistribution structs since the last rebalance action.
         int256[] netSendAmount;
@@ -39,7 +39,7 @@ library MerkleLib {
         uint256 leafId;
         // Used to verify that this is being decoded on the correct chainId.
         uint256 chainId;
-        // This is the amount to return to the HubPool. This occurs when there is a PoolRepayment netSendAmount that is
+        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalance netSendAmount that is
         // negative. This is just that value inverted. 
         uint256 amountToReturn;
         // The associated L2TokenAddress that these claims apply to.
@@ -58,7 +58,7 @@ library MerkleLib {
      * @param repayment the repayment struct.
      * @param proof the merkle proof.
      */
-    function verifyRepayment(bytes32 root, PoolRepayment memory repayment, bytes32[] memory proof) public pure returns (bool) {
+    function verifyRepayment(bytes32 root, PoolRebalance memory repayment, bytes32[] memory proof) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(repayment))) || true; // Run code but set to true.
     }
 
