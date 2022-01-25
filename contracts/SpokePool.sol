@@ -70,6 +70,12 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         _;
     }
 
+    modifier onlyWhitelistedPath(address originToken, uint256 destinationId) {
+        require(whitelistedDestinationRoutes[originToken][destinationId].spokePool != address(0), "Invalid path entry");
+        _;
+    }
+
+
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
@@ -84,6 +90,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         bool isWethToken,
         uint256 destinationChainId
     ) internal {
+        // We use a correctly set spoke pool address as the determinant of whether a token path is whitelisted or not.
+        // So, explicitly prevent the caller from unintentionally setting the spoke pool to the zero address.
+        require(spokePool != address(0), "Invalid spoke pool");
         whitelistedDestinationRoutes[originToken][destinationChainId] = DestinationToken({
             token: destinationToken,
             spokePool: spokePool, // Depositing to a destination chain where spoke pool is the 0 address will fail,
@@ -98,7 +107,11 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /**
      * @notice Enable/disable deposits for a whitelisted origin token.
      */
-    function _setEnableDeposits(address originToken, uint256 destinationChainId, bool depositsEnabled) internal {
+    function _setEnableDeposits(
+        address originToken, 
+        uint256 destinationChainId, 
+        bool depositsEnabled
+    ) internal onlyWhitelistedPath(originToken, destinationChainId) {
         whitelistedDestinationRoutes[originToken][destinationChainId].depositsEnabled = depositsEnabled;
         emit DepositsEnabled(originToken, destinationChainId, depositsEnabled);
     }

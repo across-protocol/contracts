@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { getContractFactory, fromWei, toBN, SignerWithAddress } from "./utils";
-import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision, seedWallet } from "./HubPool.Fixture";
-import { amountToSeedWallets, amountToLp } from "./HubPool.constants";
+import { getContractFactory, fromWei, toBN, SignerWithAddress, seedWallet } from "./utils";
+import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { amountToSeedWallets, amountToLp } from "./constants";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, dai: Contract;
 let wethLpToken: Contract, usdcLpToken: Contract, daiLpToken: Contract;

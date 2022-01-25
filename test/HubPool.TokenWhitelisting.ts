@@ -6,11 +6,11 @@ import { getContractFactory, SignerWithAddress } from "./utils";
 import { deployHubPoolTestHelperContracts } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract;
-let owner: SignerWithAddress, liquidityProvider: SignerWithAddress, other: SignerWithAddress;
+let owner: SignerWithAddress, other: SignerWithAddress;
 
 describe("HubPool Token Whitelisting", function () {
   before(async function () {
-    [owner, liquidityProvider, other] = await ethers.getSigners();
+    [owner, other] = await ethers.getSigners();
     ({ weth, hubPool } = await deployHubPoolTestHelperContracts(owner));
   });
 
