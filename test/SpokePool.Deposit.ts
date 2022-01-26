@@ -46,9 +46,9 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "FundsDeposited")
       .withArgs(
-        0,
         depositDestinationChainId,
         amountToDeposit,
+        0,
         depositRelayerFeePct,
         currentSpokePoolTime,
         erc20.address,
@@ -61,7 +61,7 @@ describe("SpokePool Depositor Logic", async function () {
     expect(await erc20.balanceOf(spokePool.address)).to.equal(amountToDeposit);
 
     // Deposit nonce should increment.
-    expect(await spokePool.numberOfDeposits()).to.equal(1);
+    expect(await spokePool.numberOfDepositsAndRelays()).to.equal(1);
   });
   it("Depositing ETH correctly wraps into WETH", async function () {
     const currentSpokePoolTime = await spokePool.getCurrentTime();

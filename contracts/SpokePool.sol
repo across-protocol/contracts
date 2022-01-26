@@ -3,12 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface WETH9Like {
     function deposit() external payable;
+    function withdraw(uint256 wad) external;
 }
 
 /**
@@ -21,6 +23,7 @@ interface WETH9Like {
  */
 abstract contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint64 public deploymentTime;
@@ -29,8 +32,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // caller to use an up to date realized fee.
     uint64 public depositQuoteTimeBuffer;
 
-    // Track the total number of deposits. Used as a unique identifier for deposits.
-    uint256 public numberOfDeposits;
+    // Track the total number of deposits and relays. Used as a unique identifier for deposits and relays.
+    uint64 public numberOfDepositsAndRelays;
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
@@ -39,20 +42,50 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
+    struct RelayData {
+        address recipient;
+        address relayToken;
+        uint64 realizedLpFeePct;
+        uint64 relayerFeePct;
+        uint256 relayAmount;
+        uint256 filledAmount;
+        uint256[] fills;
+    }
+
+    // Associates relay data with unique id.
+    mapping(uint64 => RelayData) public relays;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
     event EnabledDepositRoute(address originToken, uint256 destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint64 newBuffer);
     event FundsDeposited(
-        uint256 depositId,
         uint256 destinationChainId,
         uint256 amount,
+        uint64 depositId,
         uint64 relayerFeePct,
         uint64 quoteTimestamp,
         address originToken,
         address recipient,
         address sender
+    );
+    event InitiatedRelay(
+        uint256 originChainId,
+        uint256 amount,
+        uint64 depositId,
+        uint64 relayId,
+        uint64 relayerFeePct,
+        uint64 realizedLpFeePct,
+        address relayToken,
+        address sender,
+        address recipient
+    );
+    event FilledRelay(
+        uint64 relayId,
+        uint256 fillId,
+        uint256 amount,
+        uint256 repaymentChain
     );
 
     constructor(
@@ -133,9 +166,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         }
 
         emit FundsDeposited(
-            numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
             destinationChainId,
             amount,
+            numberOfDepositsAndRelays, // The total number of deposits for this contract acts as a unique ID.
             relayerFeePct,
             quoteTimestamp,
             originToken,
@@ -143,23 +176,105 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             msg.sender
         );
 
-        numberOfDeposits += 1;
+        numberOfDepositsAndRelays += 1;
     }
 
     function initiateRelay(
-        uint256 originChain,
-        address sender,
+        uint256 originChainId,
         uint256 amount,
-        address recipient,
-        uint256 relayerFee,
-        uint256 realizedLpFee
-    ) public {}
+        uint64 depositId,
+        uint64 relayerFeePct,
+        uint64 realizedLpFeePct,
+        address relayToken,
+        address sender,
+        address recipient
+    ) public {
+        // We limit the relay fees to prevent the user spending all their funds on fees.
+        require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18, "invalid fees");
+
+        uint64 relayId = numberOfDepositsAndRelays;
+        require(relays[relayId].relayAmount == 0, "Relay exists");
+
+        uint256[] memory fillIds;
+        relays[relayId] =
+            RelayData(
+                recipient,
+                relayToken,
+                relayerFeePct,
+                realizedLpFeePct,
+                amount, // total relay amount
+                0, // total amount filled
+                fillIds // unique IDs for fills
+        );
+        emit InitiatedRelay(
+            originChainId, 
+            amount,
+            depositId, 
+            relayId,  
+            relayerFeePct, 
+            realizedLpFeePct, 
+            relayToken, 
+            sender, 
+            recipient
+        );
+
+        // Questions:
+        // - do we need to store relayer (i.e. msg.sender) anywhere on-chain? Or can we assume data worker
+        //   can grab it from event data.
+        // - do we need to store a final fee amount for use in disputes? This is useful if the final
+        //   fee changes during a pending relay, which is why we store it in v1.
+
+        numberOfDepositsAndRelays += 1;
+    }
 
     function fillRelay(
-        uint256 relayId,
-        uint256 fillAmount,
+        uint64 relayId,
+        uint256 amount,
         uint256 repaymentChain
-    ) public {}
+    ) public {
+        RelayData memory relay = relays[relayId];
+        // The following check will fail if:
+        // - relay has not been instantiated and relayAmount = 0.
+        // - caller's desired amount to fill would send filledAmount over relayAmount.
+        require(
+            amount > 0 &&
+            relay.relayAmount >= relay.filledAmount + amount, 
+            "Invalid remaining relay amount"
+        );
+
+        // Add unique fill ID for this fill to relay storage. We can use the amount relayed thus far as
+        // a unique index since no other fill transactions can replicate this state.
+        uint fillId = relay.filledAmount + amount;
+
+        // Update relay storage.
+        relays[relayId].fills.push(fillId);
+        // is (+= amount) or setting equal to fillId more gas efficient?
+        relays[relayId].filledAmount = fillId;
+
+        // Pull full fill amount from caller. They will receive a relayer fee plus the fill amount back after the
+        // relayer refund is processed.
+        IERC20(relay.relayToken).safeTransferFrom(msg.sender, relay.recipient, amount);
+
+        // Deduct fees before sending to recipient.
+        uint256 amountNetFees = amount - _getAmountFromPct(
+            relay.realizedLpFeePct + relay.relayerFeePct,
+            amount
+        );
+
+        // If relay token is weth then unwrap and send eth.
+        if (relay.relayToken == wethAddress) {
+            _unwrapWETHTo(payable(relay.recipient), amountNetFees);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else IERC20(relay.relayToken).safeTransfer(relay.recipient, amountNetFees);
+
+        // Questions:
+        // - same question as above: do we need to store relayer (i.e. msg.sender) anywhere on-chain? Or can we assume data worker
+        //   can grab it from event data.
+        // - Should we re-use the same nonce that we use for deposits and relays for fills? It would
+        //   guarantee uniqueness between fills.
+
+        emit FilledRelay(relayId, fillId, amount, repaymentChain);
+    }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
 
@@ -179,5 +294,23 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     function chainId() public view returns (uint256) {
         return block.chainid;
+    }
+
+    /**************************************
+     *         INTERNAL FUNCTIONS         *
+     **************************************/
+
+    function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
+        return (percent * amount) / 1e18;
+    }
+
+    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
+    function _unwrapWETHTo(address payable to, uint256 amount) internal {
+        if (address(to).isContract()) {
+            IERC20(wethAddress).safeTransfer(to, amount);
+        } else {
+            WETH9Like(wethAddress).withdraw(amount);
+            to.transfer(amount);
+        }
     }
 }
