@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { getContractFactory, fromWei, toBN, SignerWithAddress } from "./utils";
-import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision, seedWallet } from "./HubPool.Fixture";
-import { amountToSeedWallets, amountToLp } from "./HubPool.constants";
+import { getContractFactory, fromWei, toBN, SignerWithAddress, seedWallet } from "./utils";
+import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { amountToSeedWallets, amountToLp } from "./constants";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, dai: Contract;
 let wethLpToken: Contract, usdcLpToken: Contract, daiLpToken: Contract;
@@ -31,7 +31,7 @@ describe("HubPool Liquidity Provision", function () {
     await dai.connect(liquidityProvider).approve(hubPool.address, amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, amountToLp);
 
-    //The balance of the collateral should be equal to the original amount minus the LPed amount. The balance of LP
+    // The balance of the collateral should be equal to the original amount minus the LPed amount. The balance of LP
     // tokens should be equal to the amount of LP tokens divided by the exchange rate current. This rate starts at 1e18,
     // so this should equal the amount minted.
     expect(await dai.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets.sub(amountToLp));
@@ -56,7 +56,7 @@ describe("HubPool Liquidity Provision", function () {
     // less than the total amount the wallet has left (since we removed half the amount before).
     await expect(hubPool.connect(other).removeLiquidity(dai.address, amountToLp.div(3), true)).to.be.reverted;
 
-    //Can remove the remaining LP tokens for a balance of 0.
+    // Can remove the remaining LP tokens for a balance of 0.
     await hubPool.connect(liquidityProvider).removeLiquidity(dai.address, amountToLp.div(2), false);
     expect(await dai.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets); // back to starting balance.
     expect(await daiLpToken.balanceOf(liquidityProvider.address)).to.equal(0); // All LP tokens burnt.

@@ -1,6 +1,6 @@
-import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
-import { getContractFactory, toWei } from "./utils";
-import { Contract, BigNumber } from "ethers";
+import { TokenRolesEnum } from "@uma/common";
+import { getContractFactory } from "./utils";
+import { Contract } from "ethers";
 
 export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
   // Useful contracts.
@@ -19,19 +19,8 @@ export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
   return { timer, weth, usdc, dai, hubPool };
 }
 
-export async function seedWallet(
-  walletToFund: any,
-  tokens: Contract[],
-  weth: Contract | undefined,
-  amountToSeedWith: number | BigNumber
-) {
-  for (const token of tokens) await token.mint(walletToFund.address, amountToSeedWith);
-
-  if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
-}
-
 export async function enableTokensForLiquidityProvision(owner: any, hubPool: Contract, tokens: Contract[]) {
-  let lpTokens = [];
+  const lpTokens = [];
   for (const token of tokens) {
     await hubPool.enableL1TokenForLiquidityProvision(token.address);
     lpTokens.push(

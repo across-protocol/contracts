@@ -28,6 +28,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     WETH9Like public l1Weth;
 
+    // Whitelist of origin token to destination token routings to be used by off-chain agents.
+    mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
+
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
 
     event LiquidityAdded(
@@ -42,6 +45,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokensBurnt,
         address indexed liquidityProvider
     );
+    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
     constructor(address _l1Weth, address _timerAddress) Testable(_timerAddress) {
         l1Weth = WETH9Like(_l1Weth);
@@ -50,6 +54,19 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    /**
+     * @notice Whitelist an origin token <-> destination token route.
+     */
+    function whitelistRoute(
+        address originToken,
+        address destinationToken,
+        uint256 destinationChainId
+    ) public onlyOwner {
+        whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+
+        emit WhitelistRoute(originToken, destinationChainId, destinationToken);
+    }
 
     // TODO: the two functions below should be called by the Admin contract.
     function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
