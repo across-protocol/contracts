@@ -2,7 +2,11 @@ import { getBytecode, getAbi } from "@uma/contracts-node";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract } from "ethers";
 
-export async function getContractFactory(name: string, signer: any) {
+export interface SignerWithAddress extends Signer {
+  address: string;
+}
+
+export async function getContractFactory(name: string, signer: SignerWithAddress) {
   try {
     // Try fetch from the local ethers factory from HRE. If this exists then the contract is in this package.
     return await ethers.getContractFactory(name);
@@ -21,12 +25,8 @@ export const toBN = (num: string | number | BigNumber) => {
   return BigNumber.from(num.toString());
 };
 
-export interface SignerWithAddress extends Signer {
-  address: string;
-}
-
 export async function seedWallet(
-  walletToFund: any,
+  walletToFund: SignerWithAddress,
   tokens: Contract[],
   weth: Contract | undefined,
   amountToSeedWith: number | BigNumber

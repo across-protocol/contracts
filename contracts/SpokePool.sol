@@ -17,6 +17,7 @@ interface WETH9Like {
  * destination. Deposit orders are fulfilled by off-chain relayers who also interact with this contract. Deposited
  * tokens are locked on the source chain and relayers send the recipient the desired token currency and amount
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
+ * @dev This contract is designed to be deployed to L2's, not mainnet.
  */
 abstract contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
@@ -35,13 +36,13 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // instruct this contract to wrap ETH when depositing.
     address public wethAddress;
 
-    // Whitelist of origin token to destination token routings.
-    mapping(address => mapping(uint256 => address)) public whitelistedDestinationRoutes;
+    // Origin token to destination token routings can be turned on or off.
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     /****************************************
      *                EVENTS                *
      ****************************************/
-    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
+    event EnabledDepositRoute(address originToken, uint256 destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint64 newBuffer);
     event FundsDeposited(
         uint256 depositId,
@@ -51,8 +52,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 quoteTimestamp,
         address originToken,
         address recipient,
-        address sender,
-        address destinationToken
+        address sender
     );
 
     constructor(
@@ -69,8 +69,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyWhitelistedPath(address originToken, uint256 destinationId) {
-        require(whitelistedDestinationRoutes[originToken][destinationId] != address(0), "Invalid path entry");
+    modifier onlyEnabledRoute(address originToken, uint256 destinationId) {
+        require(enabledDepositRoutes[originToken][destinationId], "Disabled route");
         _;
     }
 
@@ -78,19 +78,13 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
      *          ADMIN FUNCTIONS           *
      **************************************/
 
-    /**
-     * @notice Whitelist an origin token <-> destination token route.
-     */
-    function _whitelistRoute(
+    function _setEnableRoute(
         address originToken,
-        address destinationToken,
-        uint256 destinationChainId
+        uint256 destinationChainId,
+        bool enabled
     ) internal {
-        // Note: See `onlyWhitelistedPath` modifier. Caller can set the `destinationToken` equal to the zero address
-        // to effectively disable a path.
-        whitelistedDestinationRoutes[originToken][destinationChainId] = destinationToken;
-
-        emit WhitelistRoute(originToken, destinationChainId, destinationToken);
+        enabledDepositRoutes[originToken][destinationChainId] = enabled;
+        emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
     function _setDepositQuoteTimeBuffer(uint64 _depositQuoteTimeBuffer) internal {
@@ -113,7 +107,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address recipient,
         uint64 relayerFeePct,
         uint64 quoteTimestamp
-    ) public payable onlyWhitelistedPath(originToken, destinationChainId) {
+    ) public payable onlyEnabledRoute(originToken, destinationChainId) {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
@@ -138,7 +132,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
         }
 
-        address destinationToken = whitelistedDestinationRoutes[originToken][destinationChainId];
         emit FundsDeposited(
             numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
             destinationChainId,
@@ -147,8 +140,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             quoteTimestamp,
             originToken,
             recipient,
-            msg.sender,
-            destinationToken
+            msg.sender
         );
 
         numberOfDeposits += 1;

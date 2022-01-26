@@ -13,14 +13,12 @@ describe("SpokePool Admin Functions", async function () {
     [owner] = await ethers.getSigners();
     ({ spokePool, erc20 } = await deploySpokePoolTestHelperContracts(owner));
   });
-  it("Whitelist token path", async function () {
-    await expect(spokePool.connect(owner).whitelistRoute(erc20.address, erc20.address, depositDestinationChainId))
-      .to.emit(spokePool, "WhitelistRoute")
-      .withArgs(erc20.address, depositDestinationChainId, erc20.address);
-
-    // Whitelisted path should be saved in contract.
-    expect(await spokePool.whitelistedDestinationRoutes(erc20.address, depositDestinationChainId)).to.equal(
-      erc20.address
+  it("Enable token path", async function () {
+    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, depositDestinationChainId, true))
+      .to.emit(spokePool, "EnabledDepositRoute")
+      .withArgs(erc20.address, depositDestinationChainId, true);
+    expect(await spokePool.enabledDepositRoutes(erc20.address, depositDestinationChainId)).to.equal(
+      true
     );
   });
   it("Change deposit quote buffer", async function () {

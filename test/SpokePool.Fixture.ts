@@ -1,9 +1,9 @@
 import { TokenRolesEnum } from "@uma/common";
 import { Contract } from "ethers";
-import { getContractFactory } from "./utils";
+import { getContractFactory, SignerWithAddress } from "./utils";
 import { depositDestinationChainId, depositQuoteTimeBuffer } from "./constants";
 
-export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
+export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerWithAddress) {
   // Useful contracts.
   const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
 
@@ -11,31 +11,30 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
   const weth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
   const erc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("USD Coin", "USDC", 18);
   await erc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
-  const destWeth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
-  const destErc20 = await (
+  const unwhitelistedErc20 = await (
     await getContractFactory("ExpandedERC20", deployerWallet)
-  ).deploy("Destination USD Coin", "destUSDC", 18);
-  await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
+  await unwhitelistedErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
   ).deploy(timer.address, weth.address, depositQuoteTimeBuffer);
 
-  return { timer, weth, erc20, destWeth, destErc20, spokePool };
+  return { timer, weth, erc20, spokePool, unwhitelistedErc20 };
 }
 
 export interface DepositRoute {
   originToken: string;
-  destinationToken: string;
   destinationChainId?: number;
+  enabled?: boolean;
 }
-export async function whitelistRoutes(spokePool: Contract, routes: DepositRoute[]) {
+export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) {
   for (const route of routes) {
-    await spokePool.whitelistRoute(
+    await spokePool.setEnableRoute(
       route.originToken,
-      route.destinationToken,
-      route.destinationChainId ? route.destinationChainId : depositDestinationChainId
+      route.destinationChainId ? route.destinationChainId : depositDestinationChainId,
+      route.enabled !== undefined ? route.enabled : true
     );
   }
 }

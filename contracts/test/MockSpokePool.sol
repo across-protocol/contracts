@@ -14,12 +14,12 @@ contract MockSpokePool is SpokePool {
         uint64 _depositQuoteTimeBuffer
     ) SpokePool(timerAddress, _wethAddress, _depositQuoteTimeBuffer) {}
 
-    function whitelistRoute(
+    function setEnableRoute(
         address originToken,
-        address destinationToken,
-        uint256 destinationChainId
+        uint256 destinationChainId,
+        bool enable
     ) public {
-        _whitelistRoute(originToken, destinationToken, destinationChainId);
+        _setEnableRoute(originToken, destinationChainId, enable);
     }
 
     function setDepositQuoteTimeBuffer(uint64 buffer) public {

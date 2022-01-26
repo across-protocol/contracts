@@ -2,17 +2,16 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
-import { deploySpokePoolTestHelperContracts, whitelistRoutes } from "./SpokePool.Fixture";
+import { deploySpokePoolTestHelperContracts, enableRoutes } from "./SpokePool.Fixture";
 import { amountToSeedWallets, amountToDeposit, depositDestinationChainId, depositRelayerFeePct } from "./constants";
-import { ZERO_ADDRESS } from "@uma/common";
 
-let spokePool: Contract, weth: Contract, erc20: Contract, destWeth: Contract, destErc20: Contract;
+let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress;
 
 describe("SpokePool Depositor Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient] = await ethers.getSigners();
-    ({ weth, erc20, spokePool, destWeth, destErc20 } = await deploySpokePoolTestHelperContracts(depositor));
+    ({ weth, erc20, spokePool, unwhitelistedErc20 } = await deploySpokePoolTestHelperContracts(depositor));
 
     // mint some fresh tokens and deposit ETH for weth for the depositor.
     await seedWallet(depositor, [erc20], weth, amountToSeedWallets);
@@ -22,14 +21,12 @@ describe("SpokePool Depositor Logic", async function () {
     await weth.connect(depositor).approve(spokePool.address, amountToDeposit);
 
     // Whitelist origin => destination token routes:
-    await whitelistRoutes(spokePool, [
+    await enableRoutes(spokePool, [
       {
         originToken: erc20.address,
-        destinationToken: destErc20.address,
       },
       {
         originToken: weth.address,
-        destinationToken: destWeth.address,
       },
     ]);
   });
@@ -56,8 +53,7 @@ describe("SpokePool Depositor Logic", async function () {
         currentSpokePoolTime,
         erc20.address,
         recipient.address,
-        depositor.address,
-        destErc20.address
+        depositor.address
       );
 
     // The collateral should have transferred from depositor to contract.
@@ -140,18 +136,20 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Can only deposit whitelisted token.
     await expect(
-      spokePool.connect(depositor).deposit(
-        destErc20.address, // Note that only erc20 is whitelisted, not destErc20
-        depositDestinationChainId,
-        amountToDeposit,
-        recipient.address,
-        depositRelayerFeePct,
-        currentSpokePoolTime
-      )
+      spokePool
+        .connect(depositor)
+        .deposit(
+          unwhitelistedErc20.address,
+          depositDestinationChainId,
+          amountToDeposit,
+          recipient.address,
+          depositRelayerFeePct,
+          currentSpokePoolTime
+        )
     ).to.be.reverted;
 
-    // Cannot deposit disabled, whitelisted token.
-    await spokePool.connect(depositor).whitelistRoute(erc20.address, ZERO_ADDRESS, depositDestinationChainId);
+    // Cannot deposit disabled route.
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, depositDestinationChainId, false);
     await expect(
       spokePool
         .connect(depositor)
@@ -164,8 +162,8 @@ describe("SpokePool Depositor Logic", async function () {
           currentSpokePoolTime
         )
     ).to.be.reverted;
-    // Re-enable deposits
-    await spokePool.connect(depositor).whitelistRoute(erc20.address, destErc20.address, depositDestinationChainId);
+    // Re-enable route.
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, depositDestinationChainId, true);
 
     // Cannot deposit with invalid relayer fee.
     await expect(

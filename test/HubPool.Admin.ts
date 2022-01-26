@@ -3,15 +3,16 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { ZERO_ADDRESS } from "@uma/common";
 import { getContractFactory, SignerWithAddress } from "./utils";
+import { depositDestinationChainId } from "./constants";
 import { deployHubPoolTestHelperContracts } from "./HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract;
+let hubPool: Contract, weth: Contract, usdc: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
-describe("HubPool Token Whitelisting", function () {
+describe("HubPool Admin functions", function () {
   before(async function () {
     [owner, other] = await ethers.getSigners();
-    ({ weth, hubPool } = await deployHubPoolTestHelperContracts(owner));
+    ({ weth, hubPool, usdc } = await deployHubPoolTestHelperContracts(owner));
   });
 
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {
@@ -35,5 +36,11 @@ describe("HubPool Token Whitelisting", function () {
   });
   it("Only owner can disable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
+  });
+  it("Can whitelist route for deposits and rebalances", async function () {
+    await expect(hubPool.whitelistRoute(weth.address, usdc.address, depositDestinationChainId))
+      .to.emit(hubPool, "WhitelistRoute")
+      .withArgs(weth.address, depositDestinationChainId, usdc.address);
+    expect(await hubPool.whitelistedRoutes(weth.address, depositDestinationChainId)).to.equal(usdc.address);
   });
 });
