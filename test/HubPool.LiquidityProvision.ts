@@ -56,7 +56,7 @@ describe("HubPool Liquidity Provision", function () {
     // less than the total amount the wallet has left (since we removed half the amount before).
     await expect(hubPool.connect(other).removeLiquidity(dai.address, amountToLp.div(3), true)).to.be.reverted;
 
-    //Can remove the remaining LP tokens for a balance of 0.
+    // Can remove the remaining LP tokens for a balance of 0.
     await hubPool.connect(liquidityProvider).removeLiquidity(dai.address, amountToLp.div(2), false);
     expect(await dai.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets); // back to starting balance.
     expect(await daiLpToken.balanceOf(liquidityProvider.address)).to.equal(0); // All LP tokens burnt.

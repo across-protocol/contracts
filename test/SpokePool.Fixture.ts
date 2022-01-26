@@ -1,7 +1,7 @@
 import { TokenRolesEnum } from "@uma/common";
 import { Contract } from "ethers";
 import { getContractFactory } from "./utils";
-import { depositDestinationChainId, depositQuoteTimeBuffer } from "./constants"
+import { depositDestinationChainId, depositQuoteTimeBuffer } from "./constants";
 
 export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
   // Useful contracts.
@@ -12,27 +12,30 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
   const erc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("USD Coin", "USDC", 18);
   await erc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
   const destWeth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
-  const destErc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("Destination USD Coin", "destUSDC", 18);
+  const destErc20 = await (
+    await getContractFactory("ExpandedERC20", deployerWallet)
+  ).deploy("Destination USD Coin", "destUSDC", 18);
   await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
-  const spokePool = await (await getContractFactory("MockSpokePool", deployerWallet)).deploy(timer.address, weth.address, depositQuoteTimeBuffer);
+  const spokePool = await (
+    await getContractFactory("MockSpokePool", deployerWallet)
+  ).deploy(timer.address, weth.address, depositQuoteTimeBuffer);
 
   return { timer, weth, erc20, destWeth, destErc20, spokePool };
 }
 
 export interface DepositRoute {
-    originToken: string;
-    destinationToken: string;
-    destinationChainId?: number;
+  originToken: string;
+  destinationToken: string;
+  destinationChainId?: number;
 }
 export async function whitelistRoutes(spokePool: Contract, routes: DepositRoute[]) {
   for (const route of routes) {
-      await spokePool.whitelistRoute(
-          route.originToken,
-          route.destinationToken,
-          route.destinationChainId ? route.destinationChainId : depositDestinationChainId
-      );
-  };
+    await spokePool.whitelistRoute(
+      route.originToken,
+      route.destinationToken,
+      route.destinationChainId ? route.destinationChainId : depositDestinationChainId
+    );
+  }
 }
-

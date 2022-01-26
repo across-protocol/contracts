@@ -20,7 +20,7 @@ export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
 }
 
 export async function enableTokensForLiquidityProvision(owner: any, hubPool: Contract, tokens: Contract[]) {
-  let lpTokens = [];
+  const lpTokens = [];
   for (const token of tokens) {
     await hubPool.enableL1TokenForLiquidityProvision(token.address);
     lpTokens.push(
