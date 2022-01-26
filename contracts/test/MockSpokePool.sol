@@ -3,13 +3,11 @@ pragma solidity ^0.8.0;
 
 import "../SpokePool.sol";
 
-
 /**
  * @title MockSpokePool
  * @notice Implements admin internal methods to test internal logic.
  */
 contract MockSpokePool is SpokePool {
-
     constructor(
         address timerAddress,
         address _wethAddress,
@@ -27,5 +25,4 @@ contract MockSpokePool is SpokePool {
     function setDepositQuoteTimeBuffer(uint64 buffer) public {
         _setDepositQuoteTimeBuffer(buffer);
     }
-
 }

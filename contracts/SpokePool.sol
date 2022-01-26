@@ -13,7 +13,7 @@ interface WETH9Like {
 
 /**
  * @title SpokePool
- * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to 
+ * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to
  * destination. Deposit orders are fulfilled by off-chain relayers who also interact with this contract. Deposited
  * tokens are locked on the source chain and relayers send the recipient the desired token currency and amount
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
@@ -31,14 +31,12 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Track the total number of deposits. Used as a unique identifier for deposits.
     uint256 public numberOfDeposits;
 
-
-    // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally 
+    // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
     address public wethAddress;
 
     // Whitelist of origin token to destination token routings.
     mapping(address => mapping(uint256 => address)) public whitelistedDestinationRoutes;
-
 
     /****************************************
      *                EVENTS                *
@@ -75,7 +73,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         require(whitelistedDestinationRoutes[originToken][destinationId] != address(0), "Invalid path entry");
         _;
     }
-
 
     /**************************************
      *          ADMIN FUNCTIONS           *
@@ -119,17 +116,17 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     ) public payable onlyWhitelistedPath(originToken, destinationChainId) {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
-        // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore, 
+        // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // `block.timestamp` is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
         // buffer to allow for this variance.
         // Note also that `quoteTimestamp` cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
         require(
-            getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer && 
-            getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
+            getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer &&
+                getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
-        // If the address of the origin token is a WETH contract and there is a msg.value with the transaction 
+        // If the address of the origin token is a WETH contract and there is a msg.value with the transaction
         // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
         if (originToken == wethAddress && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
