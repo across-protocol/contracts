@@ -17,9 +17,7 @@ describe("SpokePool Admin Functions", async function () {
     await expect(spokePool.connect(owner).setEnableRoute(erc20.address, depositDestinationChainId, true))
       .to.emit(spokePool, "EnabledDepositRoute")
       .withArgs(erc20.address, depositDestinationChainId, true);
-    expect(await spokePool.enabledDepositRoutes(erc20.address, depositDestinationChainId)).to.equal(
-      true
-    );
+    expect(await spokePool.enabledDepositRoutes(erc20.address, depositDestinationChainId)).to.equal(true);
   });
   it("Change deposit quote buffer", async function () {
     await expect(spokePool.connect(owner).setDepositQuoteTimeBuffer(60))
