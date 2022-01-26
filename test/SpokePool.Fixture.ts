@@ -1,7 +1,7 @@
 import { TokenRolesEnum } from "@uma/common";
 import { Contract } from "ethers";
 import { getContractFactory } from "./utils";
-import { depositDestinationChainId } from "./constants"
+import { depositDestinationChainId, depositQuoteTimeBuffer } from "./constants"
 
 export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
   // Useful contracts.
@@ -16,7 +16,7 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
   await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
-  const spokePool = await (await getContractFactory("MockSpokePool", deployerWallet)).deploy(timer.address);
+  const spokePool = await (await getContractFactory("MockSpokePool", deployerWallet)).deploy(timer.address, weth.address, depositQuoteTimeBuffer);
 
   return { timer, weth, erc20, destWeth, destErc20, spokePool };
 }
@@ -24,7 +24,6 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: any) {
 export interface DepositRoute {
     originToken: string;
     destinationToken: string;
-    isWethToken: boolean;
     destinationChainId?: number;
 }
 export async function whitelistRoutes(spokePool: Contract, routes: DepositRoute[]) {
@@ -32,7 +31,6 @@ export async function whitelistRoutes(spokePool: Contract, routes: DepositRoute[
       await spokePool.whitelistRoute(
           route.originToken,
           route.destinationToken,
-          route.isWethToken,
           route.destinationChainId ? route.destinationChainId : depositDestinationChainId
       );
   };

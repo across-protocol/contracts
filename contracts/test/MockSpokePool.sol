@@ -11,26 +11,21 @@ import "../SpokePool.sol";
 contract MockSpokePool is SpokePool {
 
     constructor(
-        address timerAddress
-    ) SpokePool(timerAddress) {}
+        address timerAddress,
+        address _wethAddress,
+        uint64 _depositQuoteTimeBuffer
+    ) SpokePool(timerAddress, _wethAddress, _depositQuoteTimeBuffer) {}
 
-    /**
-     * @notice Whitelist an origin token <-> destination token route.
-     */
     function whitelistRoute(
         address originToken,
         address destinationToken,
-        bool isWethToken,
         uint256 destinationChainId
     ) public {
-        _whitelistRoute(originToken, destinationToken, isWethToken, destinationChainId);
+        _whitelistRoute(originToken, destinationToken, destinationChainId);
     }
 
-    /**
-     * @notice Enable/disable deposits for a whitelisted origin token.
-     */
-    function setEnableDeposits(address originToken, uint256 destinationChainId, bool depositsEnabled) public {
-        _setEnableDeposits(originToken, destinationChainId, depositsEnabled);
+    function setDepositQuoteTimeBuffer(uint64 buffer) public {
+        _setDepositQuoteTimeBuffer(buffer);
     }
 
 }

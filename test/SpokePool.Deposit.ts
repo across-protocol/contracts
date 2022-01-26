@@ -4,6 +4,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
 import { deploySpokePoolTestHelperContracts, whitelistRoutes } from "./SpokePool.Fixture";
 import { amountToSeedWallets, amountToDeposit, depositDestinationChainId, depositRelayerFeePct } from "./constants";
+import { ZERO_ADDRESS } from "@uma/common";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destWeth: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress;
@@ -25,18 +26,15 @@ describe("SpokePool Depositor Logic", async function () {
       {
         originToken: erc20.address,
         destinationToken: destErc20.address,
-        isWethToken: false,
       },
       {
         originToken: weth.address,
         destinationToken: destWeth.address,
-        isWethToken: true,
       },
     ]);
   });
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function() {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
-    const originChainId = await spokePool.chainId();
     await expect(spokePool
       .connect(depositor)
       .deposit(
@@ -49,7 +47,6 @@ describe("SpokePool Depositor Logic", async function () {
       )).to.emit(spokePool, "FundsDeposited").withArgs(
         0,
         depositDestinationChainId,
-        originChainId,
         amountToDeposit,
         depositRelayerFeePct,
         currentSpokePoolTime,
@@ -142,7 +139,7 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.reverted;
 
     // Cannot deposit disabled, whitelisted token.
-    await spokePool.connect(depositor).setEnableDeposits(erc20.address, depositDestinationChainId, false)
+    await spokePool.connect(depositor).whitelistRoute(erc20.address, ZERO_ADDRESS, depositDestinationChainId)
     await expect(
         spokePool.connect(depositor).deposit(
           erc20.address,
@@ -154,7 +151,7 @@ describe("SpokePool Depositor Logic", async function () {
       )
     ).to.be.reverted;
     // Re-enable deposits
-    await spokePool.connect(depositor).setEnableDeposits(erc20.address, depositDestinationChainId, true)
+    await spokePool.connect(depositor).whitelistRoute(erc20.address, destErc20.address, depositDestinationChainId)
 
     // Cannot deposit with invalid relayer fee.
     await expect(
@@ -189,59 +186,5 @@ describe("SpokePool Depositor Logic", async function () {
         toBN(currentSpokePoolTime).sub(toBN("700")) // > 10 mins in past
       )
     ).to.be.reverted;
-    const poolDeploymentTime = await spokePool.deploymentTime();
-    await expect(
-      spokePool.connect(depositor).deposit(
-        erc20.address,
-        depositDestinationChainId,
-        amountToDeposit,
-        recipient.address,
-        depositRelayerFeePct,
-        toBN(poolDeploymentTime).sub(toBN("1")) // Older than pool deployment time
-      )
-    ).to.be.reverted;
-    // Will work if using deployment time assuming current time is within 10 minutes of that
-    await spokePool.connect(depositor).deposit(
-      erc20.address,
-      depositDestinationChainId,
-      amountToDeposit,
-      recipient.address,
-      depositRelayerFeePct,
-      poolDeploymentTime
-    )
-  });
-  it("Reverts if whitelisted token is mapped to WETH but origin token is not", async function() {
-    await whitelistRoutes(spokePool, [
-      {
-        originToken: erc20.address, // Not a WETH contract
-        destinationToken: destWeth.address,
-        isWethToken: true, // But this flag is set to true
-      }
-    ]);
-    const currentSpokePoolTime = await spokePool.getCurrentTime();
-
-    // Deposit will revert because WETH(erc20.address).deposit() will revert
-    await expect(
-      spokePool.connect(depositor).deposit(
-        erc20.address,
-        depositDestinationChainId,
-        amountToDeposit,
-        recipient.address,
-        depositRelayerFeePct,
-        currentSpokePoolTime,
-        { value: amountToDeposit } // Set msg.value == amountToDeposit so WETH.deposit() is called
-      )
-    ).to.be.reverted;
-
-    // Will work if msg.value is 0
-    await spokePool.connect(depositor).deposit(
-      erc20.address,
-      depositDestinationChainId,
-      amountToDeposit,
-      recipient.address,
-      depositRelayerFeePct,
-      currentSpokePoolTime,
-      { value: 0 }
-    )
   });
 });

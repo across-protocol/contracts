@@ -24,28 +24,30 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint64 public deploymentTime;
 
+    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+    // caller to use an up to date realized fee.
+    uint64 public depositQuoteTimeBuffer;
+
     // Track the total number of deposits. Used as a unique identifier for deposits.
     uint256 public numberOfDeposits;
 
-    struct DestinationToken {
-        address token;
-        bool isWethToken;
-        bool depositsEnabled;
-    }
+
+    // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally 
+    // instruct this contract to wrap ETH when depositing.
+    address public wethAddress;
 
     // Whitelist of origin token to destination token routings.
-    mapping(address => mapping(uint256 => DestinationToken)) public whitelistedDestinationRoutes;
+    mapping(address => mapping(uint256 => address)) public whitelistedDestinationRoutes;
 
 
     /****************************************
      *                EVENTS                *
      ****************************************/
-    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken, bool isWethToken);
-    event DepositsEnabled(address originToken, uint256 destinationChainId, bool depositsEnabled);
+    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
+    event SetDepositQuoteTimeBuffer(uint64 newBuffer);
     event FundsDeposited(
-        uint256 nonce,
+        uint256 depositId,
         uint256 destinationChainId,
-        uint256 originChainId,
         uint256 amount,
         uint64 relayerFeePct,
         uint64 quoteTimestamp,
@@ -56,22 +58,21 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     );
 
     constructor(
-        address timerAddress
+        address timerAddress,
+        address _wethAddress,
+        uint64 _depositQuoteTimeBuffer
     ) Testable(timerAddress) {
         deploymentTime = uint64(getCurrentTime());
+        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
+        wethAddress = _wethAddress;
     }
 
     /****************************************
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyIfDepositsEnabled(address originToken, uint256 destinationId) {
-        require(whitelistedDestinationRoutes[originToken][destinationId].depositsEnabled, "Deposits disabled");
-        _;
-    }
-
     modifier onlyWhitelistedPath(address originToken, uint256 destinationId) {
-        require(whitelistedDestinationRoutes[originToken][destinationId].token != address(0), "Invalid path entry");
+        require(whitelistedDestinationRoutes[originToken][destinationId] != address(0), "Invalid path entry");
         _;
     }
 
@@ -86,31 +87,18 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     function _whitelistRoute(
         address originToken,
         address destinationToken,
-        bool isWethToken,
         uint256 destinationChainId
     ) internal {
-        // We use a correctly set destination token address as the determinant of whether a token path is whitelisted 
-        // or not. So, explicitly prevent the caller from unintentionally setting this to the zero address.
-        require(destinationToken != address(0), "Invalid spoke pool");
-        whitelistedDestinationRoutes[originToken][destinationChainId] = DestinationToken({
-            token: destinationToken,
-            isWethToken: isWethToken,
-            depositsEnabled: true
-        });
+        // Note: See `onlyWhitelistedPath` modifier. Caller can set the `destinationToken` equal to the zero address
+        // to effectively disable a path.
+        whitelistedDestinationRoutes[originToken][destinationChainId] = destinationToken;
 
-        emit WhitelistRoute(originToken, destinationChainId, destinationToken, isWethToken);
+        emit WhitelistRoute(originToken, destinationChainId, destinationToken);
     }
 
-    /**
-     * @notice Enable/disable deposits for a whitelisted origin token.
-     */
-    function _setEnableDeposits(
-        address originToken, 
-        uint256 destinationChainId, 
-        bool depositsEnabled
-    ) internal onlyWhitelistedPath(originToken, destinationChainId) {
-        whitelistedDestinationRoutes[originToken][destinationChainId].depositsEnabled = depositsEnabled;
-        emit DepositsEnabled(originToken, destinationChainId, depositsEnabled);
+    function _setDepositQuoteTimeBuffer(uint64 _depositQuoteTimeBuffer) internal {
+        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
+        emit SetDepositQuoteTimeBuffer(_depositQuoteTimeBuffer);
     }
 
     /**************************************
@@ -128,25 +116,22 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address recipient,
         uint64 relayerFeePct,
         uint64 quoteTimestamp
-    ) public payable onlyIfDepositsEnabled(originToken, destinationChainId) {
+    ) public payable onlyWhitelistedPath(originToken, destinationChainId) {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore, 
-        // `block.timestamp` is different from the L1 EVM's. Therefore, the quoteTimestamp must be within 10
-        // mins of the current time to allow for this variance.
-        // Note also that `quoteTimestamp` cannot be less than 10 minutes otherwise the following arithmetic can result
+        // `block.timestamp` is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
+        // buffer to allow for this variance.
+        // Note also that `quoteTimestamp` cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
-        // Consider requiring `quoteTimestamp >= 10 minutes`.
         require(
-            getCurrentTime() >= quoteTimestamp - 10 minutes && 
-            getCurrentTime() <= quoteTimestamp + 10 minutes &&
-            quoteTimestamp >= deploymentTime,
+            getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer && 
+            getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
-        DestinationToken memory tokenPath = whitelistedDestinationRoutes[originToken][destinationChainId];
-        // If the address of the destination token is a WETH contract and there is a msg.value with the transaction 
+        // If the address of the origin token is a WETH contract and there is a msg.value with the transaction 
         // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
-        if (tokenPath.isWethToken && msg.value > 0) {
+        if (originToken == wethAddress && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
             WETH9Like(originToken).deposit{ value: msg.value }();
         } else {
@@ -156,17 +141,17 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
         }
 
+        address destinationToken = whitelistedDestinationRoutes[originToken][destinationChainId];
         emit FundsDeposited(
             numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
             destinationChainId,
-            chainId(),
             amount,
             relayerFeePct,
             quoteTimestamp,
             originToken,
             recipient,
             msg.sender,
-            tokenPath.token
+            destinationToken
         );
 
         numberOfDeposits += 1;

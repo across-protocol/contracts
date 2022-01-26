@@ -9,3 +9,5 @@ export const amountToDeposit = toWei(100);
 export const depositDestinationChainId = 10;
 
 export const depositRelayerFeePct = toWei("0.25");
+
+export const depositQuoteTimeBuffer = 10 * 60; // 10 minutes
