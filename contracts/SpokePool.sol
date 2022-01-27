@@ -32,8 +32,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // caller to use an up to date realized fee.
     uint64 public depositQuoteTimeBuffer;
 
-    // Use the total number of deposits/relays as a unique identifier for deposits and relays.
-    uint64 public numberOfRelays;
+    // Use count of deposits as unique deposit identifier.
     uint64 public numberOfDeposits;
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
@@ -53,7 +52,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     // Associates relay data with unique id.
-    mapping(uint64 => RelayData) public relays;
+    RelayData[] public relays;
 
     /****************************************
      *                EVENTS                *
@@ -194,23 +193,22 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18, "invalid fees");
 
-        // Use relay count as unique ID for new relay.
-        require(relays[numberOfRelays].relayAmount == 0, "Relay exists");
-        relays[numberOfRelays] =
-            RelayData(
-                recipient,
-                destinationToken,
-                relayerFeePct,
-                realizedLpFeePct,
-                amount, // total relay amount
-                0 // total amount filled
-            );
+        // Use new relay count as unique ID for new relay.
+        relays.push(
+            recipient,
+            destinationToken,
+            relayerFeePct,
+            realizedLpFeePct,
+            amount, // total relay amount
+            0 // total amount filled
+        );
+        uint64 relayId = uint64(relays.length - 1);
             
         emit InitiatedRelay(
             originChainId, 
             amount,
             depositId, 
-            numberOfRelays,  
+            relayId,  
             relayerFeePct, 
             realizedLpFeePct, 
             destinationToken, 
@@ -218,8 +216,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             recipient,
             msg.sender
         );
-
-        numberOfRelays += 1;
     }
 
     function fillRelay(
