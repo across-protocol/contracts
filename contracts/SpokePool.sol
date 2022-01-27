@@ -195,12 +195,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
         // Use new relay count as unique ID for new relay.
         relays.push(
-            recipient,
-            destinationToken,
-            relayerFeePct,
-            realizedLpFeePct,
-            amount, // total relay amount
-            0 // total amount filled
+            RelayData(
+                recipient,
+                destinationToken,
+                relayerFeePct,
+                realizedLpFeePct,
+                amount, // total relay amount
+                0 // total amount filled
+            )
         );
         uint64 relayId = uint64(relays.length - 1);
             
