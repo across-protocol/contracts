@@ -10,6 +10,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface WETH9Like {
     function deposit() external payable;
+
     function withdraw(uint256 wad) external;
 }
 
@@ -205,16 +206,16 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             )
         );
         uint64 relayId = uint64(relays.length - 1);
-            
+
         emit InitiatedRelay(
-            originChainId, 
+            originChainId,
             amount,
-            depositId, 
-            relayId,  
-            relayerFeePct, 
-            realizedLpFeePct, 
-            destinationToken, 
-            sender, 
+            depositId,
+            relayId,
+            relayerFeePct,
+            realizedLpFeePct,
+            destinationToken,
+            sender,
             recipient,
             msg.sender
         );
@@ -229,22 +230,15 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // The following check will fail if:
         // - relay has not been instantiated and relayAmount = 0.
         // - caller's desired amount to fill would send filledAmount over relayAmount.
-        require(
-            amount > 0 &&
-            relay.relayAmount >= relay.filledAmount + amount, 
-            "Invalid remaining relay amount"
-        );
+        require(amount > 0 && relay.relayAmount >= relay.filledAmount + amount, "Invalid remaining relay amount");
 
         // Update total filled amount with this new fill. Each fill can be uniquely identified by the
         // total filled amount including itself, the relay ID, and the chain ID of this contract.
         relays[relayId].filledAmount += amount;
 
-        // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive 
+        // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive
         // this amount plus the relayer fee after the relayer refund is processed.
-        uint256 amountNetFees = amount - _getAmountFromPct(
-            relay.realizedLpFeePct + relay.relayerFeePct,
-            amount
-        );
+        uint256 amountNetFees = amount - _getAmountFromPct(relay.realizedLpFeePct + relay.relayerFeePct, amount);
         IERC20(relay.destinationToken).safeTransferFrom(msg.sender, relay.recipient, amountNetFees);
 
         // If relay token is weth then unwrap and send eth.
