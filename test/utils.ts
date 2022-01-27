@@ -35,3 +35,7 @@ export async function seedWallet(
 
   if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
 }
+
+export function createRandomBytes32() {
+  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
+}

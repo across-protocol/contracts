@@ -5,6 +5,9 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
+import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
+import "@uma/core/contracts/oracle/implementation/Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -26,12 +29,40 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bool isEnabled;
     }
 
-    WETH9Like public l1Weth;
+    enum RefundRequestStatus {
+        Pending,
+        Finalized,
+        Disputed
+    }
+
+    struct RelayerRefundRequest {
+        bytes32 poolRebalanceProof;
+        bytes32 destinationDistributionProof;
+        RefundRequestStatus status;
+    }
+
+    RelayerRefundRequest[] public relayerRefundRequests;
 
     // Whitelist of origin token to destination token routings to be used by off-chain agents.
     mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
+
+    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
+    WETH9Like public l1Weth;
+
+    // Token used to bond the data worker for proposing relayer refund bundles.
+    IERC20 public bondToken;
+
+    // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
+    uint256 public bondAmount;
+
+    // There should only ever be one refund proposal pending at any point in time. This bool toggles accordingly.
+    bool public currentPendingRefundProposal = false;
+
+    event BondAmountSet(uint64 newBondMultiplier);
+
+    event BondTokenSet(address newBondMultiplier);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -47,13 +78,38 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
-    constructor(address _l1Weth, address _timerAddress) Testable(_timerAddress) {
+    event RelayerRefundRequested(
+        uint64 relayerRefundId,
+        uint256[] bundleEvaluationBlockNumbers,
+        bytes32 indexed poolRebalanceProof,
+        bytes32 indexed destinationDistributionProof,
+        address proposer
+    );
+
+    constructor(
+        uint256 _bondAmount,
+        address _bondToken,
+        address _l1Weth,
+        address _timerAddress
+    ) Testable(_timerAddress) {
+        bondAmount = _bondAmount;
+        bondToken = IERC20(_bondToken);
         l1Weth = WETH9Like(_l1Weth);
     }
 
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    function setBondToken(address newBondToken) public onlyOwner {
+        bondToken = IERC20(newBondToken);
+        emit BondTokenSet(newBondToken);
+    }
+
+    function setBondTokenFinalFeeMultiplier(uint64 newBondAmount) public onlyOwner {
+        bondAmount = newBondAmount;
+        emit BondAmountSet(newBondAmount);
+    }
 
     /**
      * @notice Whitelist an origin token <-> destination token route.
@@ -139,11 +195,36 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) public returns (uint256) {}
 
+    /*************************************************
+     *             DATA WORKER FUNCTIONS             *
+     *************************************************/
+
     function initiateRelayerRefund(
-        uint256[] memory bundleEvaluationBlockNumberForChain,
-        bytes32 chainBatchRepaymentProof,
-        bytes32 relayerRepaymentDistributionProof
-    ) public {}
+        uint256[] memory bundleEvaluationBlockNumbers,
+        bytes32 poolRebalanceProof,
+        bytes32 destinationDistributionProof
+    ) public {
+        require(currentPendingRefundProposal == false, "Only one proposal at a time");
+        currentPendingRefundProposal = true;
+        relayerRefundRequests.push(
+            RelayerRefundRequest({
+                poolRebalanceProof: poolRebalanceProof,
+                destinationDistributionProof: destinationDistributionProof,
+                status: RefundRequestStatus.Pending
+            })
+        );
+
+        // Pull bondAmount of bondToken from the caller.
+        bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
+
+        emit RelayerRefundRequested(
+            uint64(relayerRefundRequests.length - 1), // Index of the relayerRefundRequest within the array.
+            bundleEvaluationBlockNumbers,
+            poolRebalanceProof,
+            destinationDistributionProof,
+            msg.sender
+        );
+    }
 
     function executeRelayerRefund(
         uint256 relayerRefundRequestId,
@@ -154,6 +235,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256[] memory netSendAmounts,
         bytes32[] memory inclusionProof
     ) public {}
+
+    function disputeRelayerRefund() public {}
+
+    /*************************************************
+     *              INTERNAL FUNCTIONS               *
+     *************************************************/
 
     function _exchangeRateCurrent() internal pure returns (uint256) {
         return 1e18;
