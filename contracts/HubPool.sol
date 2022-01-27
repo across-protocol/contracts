@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./interfaces/BridgeAdminInterface.sol";
+
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
+import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
+import "@uma/core/contracts/oracle/implementation/Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -26,12 +31,39 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bool isEnabled;
     }
 
-    WETH9Like public l1Weth;
+    enum RefundRequestStatus {
+        Pending,
+        Finalized,
+        Disputed
+    }
+
+    struct RelayerRefundRequest {
+        bytes32 poolRebalanceProof;
+        bytes32 destinationDistributionProof;
+        RefundRequestStatus status;
+    }
+
+    RelayerRefundRequest[] public relayerRefundRequests;
 
     // Whitelist of origin token to destination token routings to be used by off-chain agents.
     mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
+
+    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
+    WETH9Like public l1Weth;
+
+    // Address of the bridgeAdmin that is used to manage the hub.
+    BridgeAdminInterface public bridgeAdmin;
+
+    // Token used to bond the data worker for proposing relayer refund bundles.
+    IERC20 public bondToken;
+
+    // The bondToken's final fee from the UMA Store is scaled by this number to increase the bonding amount.
+    uint256 public bondTokenFinalFeeMultiplier;
+
+    // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
+    uint256 public bondAmount;
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -47,13 +79,38 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
-    constructor(address _l1Weth, address _timerAddress) Testable(_timerAddress) {
+    event RelayerRefundRequested(
+        uint256 relayerRefundId,
+        uint256[] bundleEvaluationBlockNumbers,
+        bytes32 indexed poolRebalanceProof,
+        bytes32 indexed destinationDistributionProof,
+        address proposer
+    );
+
+    constructor(
+        address _l1Weth,
+        address _bridgeAdmin,
+        address _bondToken,
+        uint256 _bondTokenFinalFeeMultiplier,
+        address _timerAddress
+    ) Testable(_timerAddress) {
         l1Weth = WETH9Like(_l1Weth);
+        bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
+        bondToken = IERC20(_bondToken);
+        bondTokenFinalFeeMultiplier = _bondTokenFinalFeeMultiplier;
     }
 
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    function setBondToken(address _bondToken) public onlyOwner {
+        bondToken = IERC20(_bondToken);
+    }
+
+    function setBondTokenFinalFeeMultiplier(uint256 _bondTokenFinalFeeMultiplier) public onlyOwner {
+        bondTokenFinalFeeMultiplier = _bondTokenFinalFeeMultiplier;
+    }
 
     /**
      * @notice Whitelist an origin token <-> destination token route.
@@ -139,11 +196,35 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) public returns (uint256) {}
 
+    /*************************************************
+     *             DATA WORKER FUNCTIONS             *
+     *************************************************/
+
     function initiateRelayerRefund(
-        uint256[] memory bundleEvaluationBlockNumberForChain,
-        bytes32 chainBatchRepaymentProof,
-        bytes32 relayerRepaymentDistributionProof
-    ) public {}
+        uint256[] memory bundleEvaluationBlockNumbers,
+        bytes32 poolRebalanceProof,
+        bytes32 destinationDistributionProof
+    ) public {
+        relayerRefundRequests.push(
+            RelayerRefundRequest({
+                poolRebalanceProof: poolRebalanceProof,
+                destinationDistributionProof: destinationDistributionProof,
+                status: RefundRequestStatus.Pending
+            })
+        );
+        uint256 relayerRefundId = relayerRefundRequests.length - 1;
+
+        // Pull bonds from from the caller.
+        bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
+
+        emit RelayerRefundRequested(
+            relayerRefundId,
+            bundleEvaluationBlockNumbers,
+            poolRebalanceProof,
+            destinationDistributionProof,
+            msg.sender
+        );
+    }
 
     function executeRelayerRefund(
         uint256 relayerRefundRequestId,
@@ -154,6 +235,23 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256[] memory netSendAmounts,
         bytes32[] memory inclusionProof
     ) public {}
+
+    function disputeRelayerRefund() public {}
+
+    function syncUmaEcosystemParams() public nonReentrant {
+        FinderInterface finder = FinderInterface(bridgeAdmin.finder());
+        // TODO: add this code block when we add dispute logic for the HubPool which needs the OO.
+        // optimisticOracle = SkinnyOptimisticOracleInterface(
+        //     finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
+        // );
+
+        StoreInterface store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+        bondAmount = store.computeFinalFee(address(bondToken)).rawValue * bondTokenFinalFeeMultiplier;
+    }
+
+    /*************************************************
+     *              INTERNAL FUNCTIONS               *
+     *************************************************/
 
     function _exchangeRateCurrent() internal pure returns (uint256) {
         return 1e18;
