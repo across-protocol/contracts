@@ -11,9 +11,9 @@
   "scripts": {
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
-    "prettier": "prettier './**/*.sol' './**/*.md' './**/*.ts'"
+    "prettier": "prettier './**/*.sol' './**/*.md' './**/*.ts'",
+    "test": "yarn hardhat test"
   },
-
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.2",
     "@uma/common": "^2.17.0",
