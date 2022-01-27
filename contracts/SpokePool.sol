@@ -32,8 +32,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // caller to use an up to date realized fee.
     uint64 public depositQuoteTimeBuffer;
 
-    // Track the total number of deposits and relays. Used as a unique identifier for deposits and relays.
-    uint64 public numberOfDepositsAndRelays;
+    // Use the total number of deposits/relays as a unique identifier for deposits and relays.
+    uint64 public numberOfRelays;
+    uint64 public numberOfDeposits;
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
@@ -49,7 +50,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 relayerFeePct;
         uint256 relayAmount;
         uint256 filledAmount;
-        uint256[] fills;
     }
 
     // Associates relay data with unique id.
@@ -83,8 +83,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     );
     event FilledRelay(
         uint64 relayId,
-        uint256 fillId,
-        uint256 amount,
+        uint256 newFilledAmount,
         uint256 repaymentChain
     );
 
@@ -176,7 +175,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             msg.sender
         );
 
-        numberOfDepositsAndRelays += 1;
+        numberOfDeposits += 1;
     }
 
     function initiateRelay(
@@ -195,7 +194,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 relayId = numberOfDepositsAndRelays;
         require(relays[relayId].relayAmount == 0, "Relay exists");
 
-        uint256[] memory fillIds;
         relays[relayId] =
             RelayData(
                 recipient,
@@ -203,9 +201,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
                 relayerFeePct,
                 realizedLpFeePct,
                 amount, // total relay amount
-                0, // total amount filled
-                fillIds // unique IDs for fills
-        );
+                0 // total amount filled
+            );
         emit InitiatedRelay(
             originChainId, 
             amount,
@@ -221,10 +218,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // Questions:
         // - do we need to store relayer (i.e. msg.sender) anywhere on-chain? Or can we assume data worker
         //   can grab it from event data.
-        // - do we need to store a final fee amount for use in disputes? This is useful if the final
-        //   fee changes during a pending relay, which is why we store it in v1.
 
-        numberOfDepositsAndRelays += 1;
+        numberOfRelays += 1;
     }
 
     function fillRelay(
@@ -242,24 +237,17 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             "Invalid remaining relay amount"
         );
 
-        // Add unique fill ID for this fill to relay storage. We can use the amount relayed thus far as
-        // a unique index since no other fill transactions can replicate this state.
-        uint fillId = relay.filledAmount + amount;
+        // Update total filled amount with this new fill. Each fill can be uniquely identified by the
+        // total filled amount including itself, the relay ID, and the chain ID of this contract.
+        relays[relayId].filledAmount += amount;
 
-        // Update relay storage.
-        relays[relayId].fills.push(fillId);
-        // is (+= amount) or setting equal to fillId more gas efficient?
-        relays[relayId].filledAmount = fillId;
-
-        // Pull full fill amount from caller. They will receive a relayer fee plus the fill amount back after the
-        // relayer refund is processed.
-        IERC20(relay.relayToken).safeTransferFrom(msg.sender, relay.recipient, amount);
-
-        // Deduct fees before sending to recipient.
+        // Pull fill amount net fees from caller, which is the amount owed to the recipient.  The relayer will receive 
+        // this amount plus the relayer fee after the relayer refund is processed.
         uint256 amountNetFees = amount - _getAmountFromPct(
             relay.realizedLpFeePct + relay.relayerFeePct,
             amount
         );
+        IERC20(relay.relayToken).safeTransferFrom(msg.sender, relay.recipient, amountNetFees);
 
         // If relay token is weth then unwrap and send eth.
         if (relay.relayToken == wethAddress) {
@@ -270,10 +258,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // Questions:
         // - same question as above: do we need to store relayer (i.e. msg.sender) anywhere on-chain? Or can we assume data worker
         //   can grab it from event data.
-        // - Should we re-use the same nonce that we use for deposits and relays for fills? It would
-        //   guarantee uniqueness between fills.
 
-        emit FilledRelay(relayId, fillId, amount, repaymentChain);
+        emit FilledRelay(relayId, relays[relayId].filledAmount, repaymentChain);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
