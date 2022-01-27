@@ -167,7 +167,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         emit FundsDeposited(
             destinationChainId,
             amount,
-            numberOfDepositsAndRelays, // The total number of deposits for this contract acts as a unique ID.
+            numberOfDeposits,
             relayerFeePct,
             quoteTimestamp,
             originToken,
@@ -191,10 +191,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18, "invalid fees");
 
-        uint64 relayId = numberOfDepositsAndRelays;
-        require(relays[relayId].relayAmount == 0, "Relay exists");
-
-        relays[relayId] =
+        // Use relay count as unique ID for new relay.
+        require(relays[numberOfRelays].relayAmount == 0, "Relay exists");
+        relays[numberOfRelays] =
             RelayData(
                 recipient,
                 relayToken,
@@ -203,11 +202,12 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
                 amount, // total relay amount
                 0 // total amount filled
             );
+            
         emit InitiatedRelay(
             originChainId, 
             amount,
             depositId, 
-            relayId,  
+            numberOfRelays,  
             relayerFeePct, 
             realizedLpFeePct, 
             relayToken, 
