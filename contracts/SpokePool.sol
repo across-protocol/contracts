@@ -45,7 +45,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     struct RelayData {
         address recipient;
-        address relayToken;
+        address destinationToken;
         uint64 realizedLpFeePct;
         uint64 relayerFeePct;
         uint256 relayAmount;
@@ -77,14 +77,16 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 relayId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
-        address relayToken,
+        address destinationToken,
         address sender,
-        address recipient
+        address recipient,
+        address relayer
     );
     event FilledRelay(
         uint64 relayId,
         uint256 newFilledAmount,
-        uint256 repaymentChain
+        uint256 repaymentChain,
+        address relayer
     );
 
     constructor(
@@ -184,7 +186,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 depositId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
-        address relayToken,
+        address destinationToken,
         address sender,
         address recipient
     ) public {
@@ -196,7 +198,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         relays[numberOfRelays] =
             RelayData(
                 recipient,
-                relayToken,
+                destinationToken,
                 relayerFeePct,
                 realizedLpFeePct,
                 amount, // total relay amount
@@ -210,14 +212,11 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             numberOfRelays,  
             relayerFeePct, 
             realizedLpFeePct, 
-            relayToken, 
+            destinationToken, 
             sender, 
-            recipient
+            recipient,
+            msg.sender
         );
-
-        // Questions:
-        // - do we need to store relayer (i.e. msg.sender) anywhere on-chain? Or can we assume data worker
-        //   can grab it from event data.
 
         numberOfRelays += 1;
     }
@@ -247,19 +246,15 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             relay.realizedLpFeePct + relay.relayerFeePct,
             amount
         );
-        IERC20(relay.relayToken).safeTransferFrom(msg.sender, relay.recipient, amountNetFees);
+        IERC20(relay.destinationToken).safeTransferFrom(msg.sender, relay.recipient, amountNetFees);
 
         // If relay token is weth then unwrap and send eth.
-        if (relay.relayToken == wethAddress) {
+        if (relay.destinationToken == wethAddress) {
             _unwrapWETHTo(payable(relay.recipient), amountNetFees);
             // Else, this is a normal ERC20 token. Send to recipient.
-        } else IERC20(relay.relayToken).safeTransfer(relay.recipient, amountNetFees);
+        } else IERC20(relay.destinationToken).safeTransfer(relay.recipient, amountNetFees);
 
-        // Questions:
-        // - same question as above: do we need to store relayer (i.e. msg.sender) anywhere on-chain? Or can we assume data worker
-        //   can grab it from event data.
-
-        emit FilledRelay(relayId, relays[relayId].filledAmount, repaymentChain);
+        emit FilledRelay(relayId, relays[relayId].filledAmount, repaymentChain, msg.sender);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
