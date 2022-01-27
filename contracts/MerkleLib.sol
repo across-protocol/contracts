@@ -19,9 +19,9 @@ library MerkleLib {
         // This only needs to be emitted in an event so future proposals know the most recent block number.
         uint256 endBlock;
 
-        // The following arrays are required to be the same length.
+        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `tokenAddresses` field.
         address[] tokenAddresses; // All whitelisted tokens for this chain in the order of whitelisting.
-        uint256[] bundleLpFees; // LP fee amount per token in this bundle.
+        uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
 
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool needs to pay the SpokePool. If negative the SpokePool needs to pay the
@@ -44,7 +44,7 @@ library MerkleLib {
         uint256 amountToReturn;
         // The associated L2TokenAddress that these claims apply to.
         address l2TokenAddress;
-        // These two arrays must be the same length.
+        // These two arrays must be the same length and are parallel arrays. They should be order by refundAddresses.
         // This array designates each address that must be refunded.
         address[] refundAddresses;
         // This array designates how much each of those addresses should be refunded.
