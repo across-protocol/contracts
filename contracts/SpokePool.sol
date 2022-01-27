@@ -85,6 +85,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     event FilledRelay(
         uint64 relayId,
         uint256 newFilledAmount,
+        uint256 amountNetFees,
         uint256 repaymentChain,
         address relayer
     );
@@ -240,7 +241,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // total filled amount including itself, the relay ID, and the chain ID of this contract.
         relays[relayId].filledAmount += amount;
 
-        // Pull fill amount net fees from caller, which is the amount owed to the recipient.  The relayer will receive 
+        // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive 
         // this amount plus the relayer fee after the relayer refund is processed.
         uint256 amountNetFees = amount - _getAmountFromPct(
             relay.realizedLpFeePct + relay.relayerFeePct,
@@ -254,7 +255,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             // Else, this is a normal ERC20 token. Send to recipient.
         } else IERC20(relay.destinationToken).safeTransfer(relay.recipient, amountNetFees);
 
-        emit FilledRelay(relayId, relays[relayId].filledAmount, repaymentChain, msg.sender);
+        emit FilledRelay(relayId, relays[relayId].filledAmount, amountNetFees, repaymentChain, msg.sender);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
