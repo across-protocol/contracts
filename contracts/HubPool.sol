@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./interfaces/BridgeAdminInterface.sol";
-
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
@@ -53,19 +51,16 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
     WETH9Like public l1Weth;
 
-    // Address of the bridgeAdmin that is used to manage the hub.
-    BridgeAdminInterface public bridgeAdmin;
-
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
-
-    // The bondToken's final fee from the UMA Store is scaled by this number to increase the bonding amount.
-    uint64 public bondTokenFinalFeeMultiplier;
 
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
 
-    event BondMultiplierSet(uint64 newBondMultiplier);
+    // There should only ever be one refund proposal pending at any point in time. This bool toggles accordingly.
+    bool public currentPendingRefundProposal = false;
+
+    event BondAmountSet(uint64 newBondMultiplier);
 
     event BondTokenSet(address newBondMultiplier);
 
@@ -92,16 +87,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
 
     constructor(
-        uint64 _bondTokenFinalFeeMultiplier,
-        address _l1Weth,
-        address _bridgeAdmin,
+        uint256 _bondAmount,
         address _bondToken,
+        address _l1Weth,
         address _timerAddress
     ) Testable(_timerAddress) {
-        bondTokenFinalFeeMultiplier = _bondTokenFinalFeeMultiplier;
-        l1Weth = WETH9Like(_l1Weth);
-        bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
+        bondAmount = _bondAmount;
         bondToken = IERC20(_bondToken);
+        l1Weth = WETH9Like(_l1Weth);
     }
 
     /*************************************************
@@ -113,9 +106,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit BondTokenSet(newBondToken);
     }
 
-    function setBondTokenFinalFeeMultiplier(uint64 newBondTokenFinalFeeMultiplier) public onlyOwner {
-        bondTokenFinalFeeMultiplier = newBondTokenFinalFeeMultiplier;
-        emit BondMultiplierSet(newBondTokenFinalFeeMultiplier);
+    function setBondTokenFinalFeeMultiplier(uint64 newBondAmount) public onlyOwner {
+        bondAmount = newBondAmount;
+        emit BondAmountSet(newBondAmount);
     }
 
     /**
@@ -211,6 +204,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bytes32 poolRebalanceProof,
         bytes32 destinationDistributionProof
     ) public {
+        require(currentPendingRefundProposal == false, "Only one proposal at a time");
+        currentPendingRefundProposal = true;
         relayerRefundRequests.push(
             RelayerRefundRequest({
                 poolRebalanceProof: poolRebalanceProof,
@@ -242,17 +237,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     ) public {}
 
     function disputeRelayerRefund() public {}
-
-    function syncUmaEcosystemParams() public nonReentrant {
-        FinderInterface finder = FinderInterface(bridgeAdmin.finder());
-        // TODO: add this code block when we add dispute logic for the HubPool which needs the OO.
-        // optimisticOracle = SkinnyOptimisticOracleInterface(
-        //     finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
-        // );
-
-        StoreInterface store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
-        bondAmount = store.computeFinalFee(address(bondToken)).rawValue * bondTokenFinalFeeMultiplier;
-    }
 
     /*************************************************
      *              INTERNAL FUNCTIONS               *
