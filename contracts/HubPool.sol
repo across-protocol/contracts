@@ -60,10 +60,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     IERC20 public bondToken;
 
     // The bondToken's final fee from the UMA Store is scaled by this number to increase the bonding amount.
-    uint256 public bondTokenFinalFeeMultiplier;
+    uint64 public bondTokenFinalFeeMultiplier;
 
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
+
+    event BondMultiplierSet(uint64 newBondMultiplier);
+
+    event BondTokenSet(address newBondMultiplier);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -80,7 +84,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
     event RelayerRefundRequested(
-        uint256 relayerRefundId,
+        uint64 relayerRefundId,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceProof,
         bytes32 indexed destinationDistributionProof,
@@ -88,28 +92,30 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
 
     constructor(
+        uint64 _bondTokenFinalFeeMultiplier,
         address _l1Weth,
         address _bridgeAdmin,
         address _bondToken,
-        uint256 _bondTokenFinalFeeMultiplier,
         address _timerAddress
     ) Testable(_timerAddress) {
+        bondTokenFinalFeeMultiplier = _bondTokenFinalFeeMultiplier;
         l1Weth = WETH9Like(_l1Weth);
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
         bondToken = IERC20(_bondToken);
-        bondTokenFinalFeeMultiplier = _bondTokenFinalFeeMultiplier;
     }
 
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
-    function setBondToken(address _bondToken) public onlyOwner {
-        bondToken = IERC20(_bondToken);
+    function setBondToken(address newBondToken) public onlyOwner {
+        bondToken = IERC20(newBondToken);
+        emit BondTokenSet(newBondToken);
     }
 
-    function setBondTokenFinalFeeMultiplier(uint256 _bondTokenFinalFeeMultiplier) public onlyOwner {
-        bondTokenFinalFeeMultiplier = _bondTokenFinalFeeMultiplier;
+    function setBondTokenFinalFeeMultiplier(uint64 newBondTokenFinalFeeMultiplier) public onlyOwner {
+        bondTokenFinalFeeMultiplier = newBondTokenFinalFeeMultiplier;
+        emit BondMultiplierSet(newBondTokenFinalFeeMultiplier);
     }
 
     /**
@@ -212,13 +218,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
                 status: RefundRequestStatus.Pending
             })
         );
-        uint256 relayerRefundId = relayerRefundRequests.length - 1;
 
         // Pull bonds from from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit RelayerRefundRequested(
-            relayerRefundId,
+            uint64(relayerRefundRequests.length - 1), // Index of the relayerRefundRequest within the array.
             bundleEvaluationBlockNumbers,
             poolRebalanceProof,
             destinationDistributionProof,
