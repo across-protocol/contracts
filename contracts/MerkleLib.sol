@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-
 /**
  * @notice Library to help with merkle roots, proofs, and claims.
  */
@@ -16,12 +15,10 @@ library MerkleLib {
         uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
         uint256 chainId;
-
         // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `tokenAddresses` field.
         // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
         address[] tokenAddresses;
         uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
-
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
         // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
@@ -30,7 +27,6 @@ library MerkleLib {
         // does occur, runningBalance should be set to zero for this token and the netSendAmount should be set to the
         // previous runningBalance + relays - deposits in this bundle.
         int256[] netSendAmount;
-
         // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmount
@@ -44,7 +40,7 @@ library MerkleLib {
         // Used to verify that this is being decoded on the correct chainId.
         uint256 chainId;
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalance netSendAmount that is
-        // negative. This is just that value inverted. 
+        // negative. This is just that value inverted.
         uint256 amountToReturn;
         // The associated L2TokenAddress that these claims apply to.
         address l2TokenAddress;
@@ -55,14 +51,17 @@ library MerkleLib {
         uint256[] refundAmounts;
     }
 
-
     /**
      * @notice Verifies that a repayment is contained within a merkle root.
      * @param root the merkle root.
      * @param repayment the repayment struct.
      * @param proof the merkle proof.
      */
-    function verifyRepayment(bytes32 root, PoolRebalance memory repayment, bytes32[] memory proof) public pure returns (bool) {
+    function verifyRepayment(
+        bytes32 root,
+        PoolRebalance memory repayment,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(repayment))) || true; // Run code but set to true.
     }
 
@@ -72,7 +71,11 @@ library MerkleLib {
      * @param distribution the distribution struct.
      * @param proof the merkle proof.
      */
-    function verifyDistribution(bytes32 root, DestinationDistribution memory distribution, bytes32[] memory proof) public pure returns (bool) {
+    function verifyDistribution(
+        bytes32 root,
+        DestinationDistribution memory distribution,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution))) || true; // Run code but set to true.
     }
 
