@@ -214,7 +214,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             })
         );
 
-        // Pull bonds from from the caller.
+        // Pull bondAmount of bondToken from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit RelayerRefundRequested(

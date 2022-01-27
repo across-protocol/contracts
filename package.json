@@ -44,12 +44,19 @@
     "ethers": "^5.0.0",
     "hardhat": "^2.8.3",
     "hardhat-gas-reporter": "^1.0.4",
+    "husky": "^4.2.3",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
+    "pretty-quick": "^2.0.1",
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.16",
     "ts-node": "^10.1.0",
     "typechain": "^5.1.2",
     "typescript": "^4.5.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"
+    }
   }
 }
