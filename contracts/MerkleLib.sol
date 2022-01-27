@@ -16,21 +16,25 @@ library MerkleLib {
         uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
         uint256 chainId;
-        // This only needs to be emitted in an event so future proposals know the most recent block number.
-        uint256 endBlock;
 
         // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `tokenAddresses` field.
-        address[] tokenAddresses; // All whitelisted tokens for this chain in the order of whitelisting.
+        // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
+        address[] tokenAddresses;
         uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
 
         // This array is grouped with the two above, and it represents the amount to send or request back from the
-        // SpokePool. If positive, the pool needs to pay the SpokePool. If negative the SpokePool needs to pay the
-        // HubPool. There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
-        // when the rules indicate that a rebalancing action should occur. This means that the DestinationDistribution
-        // associated with this PoolRebalance can indicate a balance change, but that the HubPool does not rebalance.
-        // When a rebalance does occur, the netSendAmount is the sum of all netBalanceChange values in the
-        // DestinationDistribution structs since the last rebalance action.
+        // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
+        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
+        // when the rules indicate that a rebalancing action should occur. When a rebalance does not occur,
+        // runningBalance for this token should change by the total relays - deposits in this bundle. When a rebalance
+        // does occur, runningBalance should be set to zero for this token and the netSendAmount should be set to the
+        // previous runningBalance + relays - deposits in this bundle.
         int256[] netSendAmount;
+
+        // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
+        // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
+        // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmount
+        int256[] runningBalance;
     }
 
     // This leaf is meant to be decoded in the SpokePool in order to pay out individual relayers for this bundle.
