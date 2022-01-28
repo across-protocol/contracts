@@ -57,7 +57,7 @@ library MerkleLib {
      * @param repayment the repayment struct.
      * @param proof the merkle proof.
      */
-    function verifyRepayment(
+    function verifyPoolRebalance(
         bytes32 root,
         PoolRebalance memory repayment,
         bytes32[] memory proof
@@ -71,7 +71,7 @@ library MerkleLib {
      * @param distribution the distribution struct.
      * @param proof the merkle proof.
      */
-    function verifyDistribution(
+    function verifyRelayerDistribution(
         bytes32 root,
         DestinationDistribution memory distribution,
         bytes32[] memory proof
