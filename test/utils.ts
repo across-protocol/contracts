@@ -7,7 +7,6 @@ export interface SignerWithAddress extends Signer {
 }
 
 export async function getContractFactory(name: string, signer: SignerWithAddress): Promise<ContractFactory> {
-  console.log("getting", name);
   try {
     // Try fetch from the local ethers factory from HRE. If this exists then the contract is in this package.
     if (name == "HubPool") {
