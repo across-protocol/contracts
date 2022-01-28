@@ -52,7 +52,12 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 filledAmount;
     }
 
-    // Each unique deposit should map to exactly one relay.
+    struct DepositData {
+        uint64 depositId;
+        uint256 originChainId;
+    }
+
+    // Each relay is associated with the hash of its unique DepositData and RelayData. 
     mapping(bytes32 => RelayData) relays;
 
     /****************************************
@@ -71,9 +76,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address sender
     );
     event InitiatedRelay(
-        bytes32 depositHash,
-        uint256 originChainId,
+        bytes32 relayHash,
         uint256 amount,
+        uint256 originChainId,
         uint64 depositId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
@@ -83,7 +88,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address relayer
     );
     event FilledRelay(
-        bytes32 depositHash,
+        bytes32 relayHash,
         uint256 newFilledAmount,
         uint256 amountNetFees,
         uint256 repaymentChain,
@@ -194,10 +199,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18, "invalid fees");
 
-        // Associate relay with unique deposit.
-        bytes32 depositHash = _getDepositHash(originChainId, depositId);
-        require(relays[depositHash].relayAmount == 0, "Pending relay exists");
-        relays[depositHash] = RelayData(
+        // Relay will be keyed to unique deposit plus relay data hash.
+        RelayData memory relayData = RelayData(
             recipient,
             destinationToken,
             relayerFeePct,
@@ -205,12 +208,15 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             amount, // total relay amount
             0 // total amount filled
         );
+        bytes32 relayHash = _getRelayHash(DepositData(depositId, originChainId), relayData);
+        require(relays[relayHash].relayAmount == 0, "Pending relay exists");
+        relays[relayHash] = relayData;
 
         emit InitiatedRelay(
-            depositHash,
-            originChainId,
+            relayHash,
             amount,
-            depositId,
+            originChainId,
+           depositId,
             relayerFeePct,
             realizedLpFeePct,
             destinationToken,
@@ -221,11 +227,11 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     function fillRelay(
-        bytes32 depositHash,
+        bytes32 relayHash,
         uint256 amount,
         uint256 repaymentChain
     ) public {
-        RelayData memory relay = relays[depositHash];
+        RelayData memory relay = relays[relayHash];
         // The following check will fail if:
         // - relay has not been instantiated and relayAmount = 0.
         // - caller's desired amount to fill would send filledAmount over relayAmount.
@@ -233,7 +239,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
         // Update total filled amount with this new fill. Each fill can be uniquely identified by the
         // total filled amount including itself, the relay ID, and the chain ID of this contract.
-        relays[depositHash].filledAmount += amount;
+        relays[relayHash].filledAmount += amount;
 
         // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive
         // this amount plus the relayer fee after the relayer refund is processed.
@@ -246,7 +252,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             // Else, this is a normal ERC20 token. Send to recipient.
         } else IERC20(relay.destinationToken).safeTransfer(relay.recipient, amountNetFees);
 
-        emit FilledRelay(depositHash, relays[depositHash].filledAmount, amountNetFees, repaymentChain, msg.sender);
+        emit FilledRelay(relayHash, relays[relayHash].filledAmount, amountNetFees, repaymentChain, msg.sender);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
@@ -273,8 +279,16 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _getDepositHash(uint256 originChainId, uint64 depositId) private pure returns (bytes32) {
-        return keccak256(abi.encode(originChainId, depositId));
+    function _getRelayHash(DepositData memory depositData, RelayData memory relayData) private view returns (bytes32) {
+        // Note: We can't just hash the entire relayData because we don't want to include the filledAmount.
+        return keccak256(abi.encode(
+            depositData, 
+            relayData.recipient, 
+            relayData.destinationToken,
+            relayData.realizedLpFeePct,
+            relayData.relayerFeePct,
+            relayData.relayAmount
+        ));
     }
 
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
