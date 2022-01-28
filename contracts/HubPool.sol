@@ -31,12 +31,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bool isEnabled;
     }
 
-    enum RefundRequestStatus {
-        Pending, // Request is in liveness and waiting
-        Finalized,
-        Disputed
-    }
-
     struct RelayerRefundRequest {
         uint64 requestExpirationTimestamp;
         uint64 unclaimedPoolRebalanceLeafs;
