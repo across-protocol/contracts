@@ -44,21 +44,20 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     struct RelayData {
+        address sender;
         address recipient;
         address destinationToken;
         uint64 realizedLpFeePct;
         uint64 relayerFeePct;
-        uint256 relayAmount;
-        uint256 filledAmount;
-    }
-
-    struct DepositData {
         uint64 depositId;
         uint256 originChainId;
+        uint256 relayAmount;
     }
 
-    // Each relay is associated with the hash of its unique DepositData and RelayData. 
-    mapping(bytes32 => RelayData) relays;
+    // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
+    // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to 
+    // relay, the fees, and the agents are all parameters included in the hash key.
+    mapping(bytes32 => uint256) relays;
 
     /****************************************
      *                EVENTS                *
@@ -75,24 +74,13 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address recipient,
         address sender
     );
-    event InitiatedRelay(
-        bytes32 relayHash,
-        uint256 amount,
-        uint256 originChainId,
-        uint64 depositId,
-        uint64 relayerFeePct,
-        uint64 realizedLpFeePct,
-        address destinationToken,
-        address sender,
-        address recipient,
-        address relayer
-    );
     event FilledRelay(
         bytes32 relayHash,
         uint256 newFilledAmount,
-        uint256 amountNetFees,
         uint256 repaymentChain,
-        address relayer
+        uint256 fillAmountNetFees,
+        address relayer,
+        RelayData relayData
     );
 
     constructor(
@@ -186,73 +174,64 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         numberOfDeposits += 1;
     }
 
-    function initiateRelay(
-        uint256 originChainId,
-        uint256 amount,
-        uint64 depositId,
-        uint64 relayerFeePct,
-        uint64 realizedLpFeePct,
-        address destinationToken,
+    function fillRelay(
         address sender,
-        address recipient
+        address recipient,
+        address destinationToken,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint64 depositId,
+        uint256 originChainId,
+        uint256 relayAmount,
+        uint256 fillAmount,
+        uint256 repaymentChain
     ) public {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18, "invalid fees");
 
-        // Relay will be keyed to unique deposit plus relay data hash.
-        RelayData memory relayData = RelayData(
-            recipient,
-            destinationToken,
-            relayerFeePct,
-            realizedLpFeePct,
-            amount, // total relay amount
-            0 // total amount filled
-        );
-        bytes32 relayHash = _getRelayHash(DepositData(depositId, originChainId), relayData);
-        require(relays[relayHash].relayAmount == 0, "Pending relay exists");
-        relays[relayHash] = relayData;
+        // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
+        // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
+        // is, which chain and currency the recipient wants to receive funds on, and the relay fees. 
+        RelayData memory relayData = RelayData({
+            sender: sender,
+            recipient: recipient,
+            destinationToken: destinationToken,
+            realizedLpFeePct: realizedLpFeePct,
+            relayerFeePct: relayerFeePct,
+            depositId: depositId,
+            originChainId: originChainId,
+            relayAmount: relayAmount
+        });
+        bytes32 relayHash = _getRelayHash(relayData);
 
-        emit InitiatedRelay(
-            relayHash,
-            amount,
-            originChainId,
-           depositId,
-            relayerFeePct,
-            realizedLpFeePct,
-            destinationToken,
-            sender,
-            recipient,
-            msg.sender
-        );
-    }
+        // Check that the caller is filling a non zero amount of the relay and that the filled amount will not
+        // send to the recipient more than they are expected to receive. Note that the `relays` mapping will point
+        // to the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each
+        // fill.
+        require(fillAmount > 0 && relayAmount >= relays[relayHash] + fillAmount, "Uninitialized or fully filled relay");
 
-    function fillRelay(
-        bytes32 relayHash,
-        uint256 amount,
-        uint256 repaymentChain
-    ) public {
-        RelayData memory relay = relays[relayHash];
-        // The following check will fail if:
-        // - relay has not been instantiated and relayAmount = 0.
-        // - caller's desired amount to fill would send filledAmount over relayAmount.
-        require(amount > 0 && relay.relayAmount >= relay.filledAmount + amount, "Invalid remaining relay amount");
-
-        // Update total filled amount with this new fill. Each fill can be uniquely identified by the
-        // total filled amount including itself, the relay ID, and the chain ID of this contract.
-        relays[relayHash].filledAmount += amount;
+        // Update total filled amount with this new fill.
+        relays[relayHash] += fillAmount;
 
         // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive
         // this amount plus the relayer fee after the relayer refund is processed.
-        uint256 amountNetFees = amount - _getAmountFromPct(relay.realizedLpFeePct + relay.relayerFeePct, amount);
-        IERC20(relay.destinationToken).safeTransferFrom(msg.sender, relay.recipient, amountNetFees);
+        uint256 amountNetFees = fillAmount - _getAmountFromPct(realizedLpFeePct + relayerFeePct, fillAmount);
+        IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountNetFees);
 
         // If relay token is weth then unwrap and send eth.
-        if (relay.destinationToken == wethAddress) {
-            _unwrapWETHTo(payable(relay.recipient), amountNetFees);
+        if (destinationToken == wethAddress) {
+            _unwrapWETHTo(payable(recipient), amountNetFees);
             // Else, this is a normal ERC20 token. Send to recipient.
-        } else IERC20(relay.destinationToken).safeTransfer(relay.recipient, amountNetFees);
+        } else IERC20(destinationToken).safeTransfer(recipient, amountNetFees);
 
-        emit FilledRelay(relayHash, relays[relayHash].filledAmount, amountNetFees, repaymentChain, msg.sender);
+        emit FilledRelay(
+            relayHash,
+            relays[relayHash],
+            repaymentChain,
+            amountNetFees,
+            msg.sender,
+            relayData
+        );
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
@@ -279,20 +258,15 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _getRelayHash(DepositData memory depositData, RelayData memory relayData) private view returns (bytes32) {
-        // Note: We can't just hash the entire relayData because we don't want to include the filledAmount.
-        return keccak256(abi.encode(
-            depositData, 
-            relayData.recipient, 
-            relayData.destinationToken,
-            relayData.realizedLpFeePct,
-            relayData.relayerFeePct,
-            relayData.relayAmount
-        ));
-    }
-
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
         return (percent * amount) / 1e18;
+    }
+
+    // Should we make this public for the relayer's convenience?
+    function _getRelayHash(RelayData memory relayData) private pure returns (bytes32) {
+        return keccak256(abi.encode(
+            relayData
+        ));
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
