@@ -37,7 +37,6 @@ describe("HubPool Relayer Refund", function () {
     )
       .to.emit(hubPool, "InitiateRefundRequested")
       .withArgs(
-        0,
         expectedRequestExpirationTimestamp,
         poolRebalanceLeafCount,
         bundleEvaluationBlockNumbers,

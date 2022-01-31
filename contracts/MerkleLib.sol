@@ -86,6 +86,7 @@ library MerkleLib {
      * @notice Tests whether a claim is contained within a claimedBitMap mapping.
      * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap.
      * @param index the index to check in the bitmap.
+     * @return bool indicating if the index within the claimedBitMap has been marked as claimed.
      */
     function isClaimed(mapping(uint256 => uint256) storage claimedBitMap, uint256 index) public view returns (bool) {
         uint256 claimedWordIndex = index / 256;
@@ -104,5 +105,24 @@ library MerkleLib {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
         claimedBitMap[claimedWordIndex] = claimedBitMap[claimedWordIndex] | (1 << claimedBitIndex);
+    }
+
+    /**
+     * @notice Tests whether a claim is contained within a 1D claimedBitMap mapping.
+     * @param claimedBitMap a simple uint256 value, encoding a 1D bitmap.
+     * @param index the index to check in the bitmap.
+     \* @return bool indicating if the index within the claimedBitMap has been marked as claimed.
+     */
+    function isClaimed1D(uint256 claimedBitMap, uint256 index) public pure returns (bool) {
+        return claimedBitMap & (1 << index) > 0;
+    }
+
+    /**
+     * @notice Marks an index in a claimedBitMap as claimed.
+     * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap.
+     * @param index the index to mark in the bitmap.
+     */
+    function setClaimed1D(uint256 claimedBitMap, uint256 index) public pure returns (uint256) {
+        return claimedBitMap | (1 << index % 256);
     }
 }
