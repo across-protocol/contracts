@@ -9,9 +9,8 @@ import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface WETH9Like {
-    function deposit() external payable;
-
     function withdraw(uint256 wad) external;
+    function deposit() external payable;
 }
 
 /**
@@ -38,7 +37,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
-    address public wethAddress;
+    WETH9Like public weth;
 
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
@@ -57,7 +56,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to 
     // relay, the fees, and the agents are all parameters included in the hash key.
-    mapping(bytes32 => uint256) relayFills;
+    mapping(bytes32 => uint256) public relayFills;
 
     /****************************************
      *                EVENTS                *
@@ -90,7 +89,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     ) Testable(timerAddress) {
         deploymentTime = uint64(getCurrentTime());
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
-        wethAddress = _wethAddress;
+        weth = WETH9Like(_wethAddress);
     }
 
     /****************************************
@@ -150,9 +149,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
         // If the address of the origin token is a WETH contract and there is a msg.value with the transaction
         // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
-        if (originToken == wethAddress && msg.value > 0) {
+        if (originToken == address(weth) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
-            WETH9Like(originToken).deposit{ value: msg.value }();
+            weth.deposit{ value: msg.value }();
         } else {
             // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
@@ -216,13 +215,13 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive
         // this amount plus the relayer fee after the relayer refund is processed.
         uint256 amountNetFees = fillAmount - _getAmountFromPct(realizedLpFeePct + relayerFeePct, fillAmount);
-        IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountNetFees);
 
         // If relay token is weth then unwrap and send eth.
-        if (destinationToken == wethAddress) {
+        if (destinationToken == address(weth)) {
+            IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountNetFees);
             _unwrapWETHTo(payable(recipient), amountNetFees);
             // Else, this is a normal ERC20 token. Send to recipient.
-        } else IERC20(destinationToken).safeTransfer(recipient, amountNetFees);
+        } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountNetFees);
 
         emit FilledRelay(
             relayHash,
@@ -272,10 +271,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(wethAddress).safeTransfer(to, amount);
+            IERC20(address(weth)).safeTransfer(to, amount);
         } else {
-            WETH9Like(wethAddress).withdraw(amount);
+            weth.withdraw(amount);
             to.transfer(amount);
         }
     }
+
+    // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
+    receive() external payable {}
+
 }

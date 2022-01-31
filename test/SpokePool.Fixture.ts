@@ -1,7 +1,15 @@
 import { TokenRolesEnum } from "@uma/common";
-import { Contract } from "ethers";
+import { Contract, utils } from "ethers";
 import { getContractFactory, SignerWithAddress } from "./utils";
-import { depositDestinationChainId, depositQuoteTimeBuffer } from "./constants";
+import {
+  depositDestinationChainId,
+  depositQuoteTimeBuffer,
+  amountToDeposit,
+  depositRelayerFeePct,
+  realizedLpFeePct,
+} from "./constants";
+
+const { defaultAbiCoder, keccak256 } = utils;
 
 export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerWithAddress) {
   // Useful contracts.
@@ -15,13 +23,15 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerW
     await getContractFactory("ExpandedERC20", deployerWallet)
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
   await unwhitelistedErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  const destErc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("L2 USD Coin", "L2 USDC", 18);
+  await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
   ).deploy(timer.address, weth.address, depositQuoteTimeBuffer);
 
-  return { timer, weth, erc20, spokePool, unwhitelistedErc20 };
+  return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 }
 
 export interface DepositRoute {
@@ -37,4 +47,54 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
       route.enabled !== undefined ? route.enabled : true
     );
   }
+}
+
+export async function deposit(
+  spokePool: Contract,
+  token: Contract,
+  recipient: SignerWithAddress,
+  depositor: SignerWithAddress
+) {
+  const currentSpokePoolTime = await spokePool.getCurrentTime();
+  await spokePool
+      .connect(depositor)
+      .deposit(
+        token.address,
+          depositDestinationChainId,
+          amountToDeposit,
+          recipient.address,
+          depositRelayerFeePct,
+          currentSpokePoolTime
+      )
+}
+export function getRelayHash(
+  sender: string,
+  recipient: string,
+  depositId: number,
+  originChainId: number,
+  destinationToken: string,
+  relayAmount?: string,
+  _realizedLpFeePct?: string,
+  relayerFeePct?: string
+): { relayHash: string; relayData: string[] } {
+  const relayData = [
+    sender,
+    recipient,
+    destinationToken,
+    _realizedLpFeePct || realizedLpFeePct.toString(),
+    relayerFeePct || depositRelayerFeePct.toString(),
+    depositId.toString(),
+    originChainId.toString(),
+    relayAmount || amountToDeposit.toString(),
+  ];
+  const relayHash = keccak256(
+    defaultAbiCoder.encode(
+      ["address", "address", "address", "uint64", "uint64", "uint64", "uint256", "uint256"],
+      relayData
+    )
+  );
+  return {
+    relayHash,
+    relayData,
+  };
 }
