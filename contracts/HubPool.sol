@@ -109,11 +109,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     function setBondToken(address newBondToken) public onlyOwner {
+        require(refundRequest.unclaimedPoolRebalanceLeafs == 0, "Cant set during active request");
         bondToken = IERC20(newBondToken);
         emit BondTokenSet(newBondToken);
     }
 
-    function setBondTokenFinalFeeMultiplier(uint64 newBondAmount) public onlyOwner {
+    function setBondAmount(uint64 newBondAmount) public onlyOwner {
+        require(refundRequest.unclaimedPoolRebalanceLeafs == 0, "Cant set during active request");
         bondAmount = newBondAmount;
         emit BondAmountSet(newBondAmount);
     }
