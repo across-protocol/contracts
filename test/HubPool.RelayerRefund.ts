@@ -35,7 +35,7 @@ describe("HubPool Relayer Refund", function () {
           destinationDistributionProof
         )
     )
-      .to.emit(hubPool, "RelayerRefundRequested")
+      .to.emit(hubPool, "InitiateRefundRequested")
       .withArgs(
         0,
         expectedRequestExpirationTimestamp,
