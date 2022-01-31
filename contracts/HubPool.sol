@@ -57,7 +57,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
 
-    // Each refund proposal must stay in liveness for at least this long until it can be considered finalized. It can
+    // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
     // be disputed only during this period of time.
     uint64 public refundProposalLiveness;
 
