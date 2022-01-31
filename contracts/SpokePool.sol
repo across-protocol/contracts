@@ -57,29 +57,29 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to 
     // relay, the fees, and the agents are all parameters included in the hash key.
-    mapping(bytes32 => uint256) relays;
+    mapping(bytes32 => uint256) relayFills;
 
     /****************************************
      *                EVENTS                *
      ****************************************/
-    event EnabledDepositRoute(address originToken, uint256 destinationChainId, bool enabled);
+    event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint64 newBuffer);
     event FundsDeposited(
         uint256 destinationChainId,
         uint256 amount,
-        uint64 depositId,
+        uint64 indexed depositId,
         uint64 relayerFeePct,
         uint64 quoteTimestamp,
-        address originToken,
+        address indexed originToken,
         address recipient,
-        address sender
+        address indexed sender
     );
     event FilledRelay(
-        bytes32 relayHash,
+        bytes32 indexed relayHash,
         uint256 newFilledAmount,
-        uint256 repaymentChain,
+        uint256 indexed repaymentChain,
         uint256 fillAmountNetFees,
-        address relayer,
+        address indexed relayer,
         RelayData relayData
     );
 
@@ -208,10 +208,10 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // send to the recipient more than they are expected to receive. Note that the `relays` mapping will point
         // to the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each
         // fill.
-        require(fillAmount > 0 && relayAmount >= relays[relayHash] + fillAmount, "Uninitialized or fully filled relay");
+        require(fillAmount > 0 && relayAmount >= relayFills[relayHash] + fillAmount, "Uninitialized or fully filled relay");
 
         // Update total filled amount with this new fill.
-        relays[relayHash] += fillAmount;
+        relayFills[relayHash] += fillAmount;
 
         // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive
         // this amount plus the relayer fee after the relayer refund is processed.
@@ -226,7 +226,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
         emit FilledRelay(
             relayHash,
-            relays[relayHash],
+            relayFills[relayHash],
             repaymentChain,
             amountNetFees,
             msg.sender,
