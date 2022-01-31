@@ -79,7 +79,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
-    event RelayerRefundRequested(
+    event InitiateRefundRequested(
         uint64 indexed relayerRefundId,
         uint64 requestExpirationTimestamp,
         uint64 poolRebalanceLeafCount,
@@ -88,12 +88,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bytes32 destinationDistributionRoot,
         address indexed proposer
     );
-    event RelayerRefundExecuted(
-        uint256 relayerRefundId,
-        MerkleLib.PoolRebalance poolRebalance,
-        bytes32[] proof,
-        address caller
-    );
+    event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
 
     event RelayerRefundDisputed(uint256 relayerRefundId, address disputer);
 
@@ -226,19 +221,19 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         );
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
-        uint256 relayerRefundId = relayerRefundRequests.length;
-        relayerRefundRequests.push();
-        relayerRefundRequests[relayerRefundId].requestExpirationTimestamp = requestExpirationTimestamp;
-        relayerRefundRequests[relayerRefundId].unclaimedPoolRebalanceLeafs = poolRebalanceLeafCount;
-        relayerRefundRequests[relayerRefundId].poolRebalanceRoot = poolRebalanceRoot;
-        relayerRefundRequests[relayerRefundId].destinationDistributionRoot = destinationDistributionRoot;
-        relayerRefundRequests[relayerRefundId].proposer = msg.sender;
+
+        RelayerRefundRequest storage relayerRefundRequest = relayerRefundRequests.push();
+        relayerRefundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
+        relayerRefundRequest.unclaimedPoolRebalanceLeafs = poolRebalanceLeafCount;
+        relayerRefundRequest.poolRebalanceRoot = poolRebalanceRoot;
+        relayerRefundRequest.destinationDistributionRoot = destinationDistributionRoot;
+        relayerRefundRequest.proposer = msg.sender;
 
         // Pull bondAmount of bondToken from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
-        emit RelayerRefundRequested(
-            uint64(relayerRefundId),
+        emit InitiateRefundRequested(
+            uint64(relayerRefundRequests.length - 1),
             requestExpirationTimestamp,
             poolRebalanceLeafCount,
             bundleEvaluationBlockNumbers,
@@ -280,7 +275,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // in a later PR.
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
-        emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, proof, msg.sender);
+        emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, msg.sender);
     }
 
     function disputeRelayerRefund(uint256 relayerRefundRequestId) public {
