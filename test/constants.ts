@@ -10,17 +10,15 @@ export const amountToRelay = toWei("25");
 
 export const depositDestinationChainId = 10;
 
-export const depositRelayerFeePct = toWei("0.25");
+export const depositRelayerFeePct = toWei("0.1");
 
-export const realizedLpFeePct = toWei("0.25");
+export const realizedLpFeePct = toWei("0.1");
 
 export const oneHundredPct = toWei("1");
 
-export const totalFeesPct = toBN(depositRelayerFeePct).add(realizedLpFeePct);
+export const totalPostFeesPct = toBN(oneHundredPct).sub(toBN(depositRelayerFeePct).add(realizedLpFeePct));
 
-export const amountToRelayPreFees = toBN(amountToRelay)
-  .div(toBN(oneHundredPct).sub(totalFeesPct))
-  .mul(toBN(oneHundredPct));
+export const amountToRelayPreFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostFeesPct);
 
 export const originChainId = 666;
 export const repaymentChainId = 777;

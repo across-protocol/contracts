@@ -8,7 +8,7 @@ import {
   amountToDeposit,
   amountToRelay,
   amountToRelayPreFees,
-  totalFeesPct,
+  totalPostFeesPct,
   originChainId,
   repaymentChainId,
   firstDepositId,
@@ -66,9 +66,9 @@ describe("SpokePool Relayer Logic", async function () {
     // Relay again with maxAmountOfTokensToSend > amount of the relay remaining and check that the contract
     // pulls exactly enough tokens to complete the relay.
     const fullRelayAmount = amountToDeposit;
-    const fullRelayAmountPostFees = fullRelayAmount.mul(totalFeesPct).div(toBN(oneHundredPct));
+    const fullRelayAmountPostFees = fullRelayAmount.mul(totalPostFeesPct).div(toBN(oneHundredPct));
     const amountRemainingInRelay = fullRelayAmount.sub(amountToRelayPreFees);
-    const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalFeesPct).div(toBN(oneHundredPct));
+    const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalPostFeesPct).div(toBN(oneHundredPct));
     await expect(spokePool.connect(relayer).fillRelay(...relayData, fullRelayAmount, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
       .withArgs(

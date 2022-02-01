@@ -271,7 +271,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     function _computeAmountPostFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
-        return (amount * feesPct) / 1e18;
+        return (amount * (1e18 - feesPct)) / 1e18;
     }
 
     // Should we make this public for the relayer's convenience?
