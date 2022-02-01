@@ -1,16 +1,18 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { SignerWithAddress, seedWallet, toWei } from "./utils";
+import { SignerWithAddress, seedWallet, toWei, toBN } from "./utils";
 import { deploySpokePoolTestHelperContracts, enableRoutes, getRelayHash } from "./SpokePool.Fixture";
 import {
   amountToSeedWallets,
   amountToDeposit,
   amountToRelay,
   amountToRelayPreFees,
+  totalFeesPct,
   originChainId,
   repaymentChainId,
   firstDepositId,
+  oneHundredPct,
 } from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
@@ -28,8 +30,8 @@ describe("SpokePool Relayer Logic", async function () {
     // Approve spokepool to spend tokens
     await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
     await weth.connect(depositor).approve(spokePool.address, amountToDeposit);
-    await destErc20.connect(relayer).approve(spokePool.address, amountToRelay);
-    await weth.connect(relayer).approve(spokePool.address, amountToRelay);
+    await destErc20.connect(relayer).approve(spokePool.address, amountToDeposit);
+    await weth.connect(relayer).approve(spokePool.address, amountToDeposit);
 
     // Whitelist origin token => destination chain ID routes:
     await enableRoutes(spokePool, [
@@ -60,6 +62,18 @@ describe("SpokePool Relayer Logic", async function () {
 
     // Fill amount should be set.
     expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelayPreFees);
+  
+    // Relay again with maxAmountOfTokensToSend > amount of the relay remaining and check that the contract
+    // pulls exactly enough tokens to complete the relay.
+    const amountRemainingInRelay = amountToDeposit.sub(amountToRelayPreFees)
+    await expect(spokePool.connect(relayer).fillRelay(...relayData, amountToDeposit, repaymentChainId))
+      .to.emit(spokePool, "FilledRelay")
+      .withArgs(relayHash, amountToDeposit, repaymentChainId, amountRemainingInRelay, relayer.address, relayData);
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay).sub(amountRemainingInRelay));
+    expect(await destErc20.balanceOf(recipient.address)).to.equal(amountToRelay.add(amountRemainingInRelay));
+
+    // Fill amount should be equal to full relay amount.
+    expect(await spokePool.relayFills(relayHash)).to.equal(amountToDeposit);
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
     const { relayHash, relayData } = getRelayHash(
@@ -151,14 +165,20 @@ describe("SpokePool Relayer Logic", async function () {
         )
     ).to.be.reverted;
 
-    // Fill amount sends over relay amount
+    // Relay already filled
+    await spokePool.connect(relayer).fillRelay(
+      ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address).relayData,
+      amountToDeposit, // Send the full relay amount
+      repaymentChainId
+    );
     await expect(
-      spokePool.connect(relayer).fillRelay(
-        ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
-          .relayData,
-        amountToDeposit, // Sending the total relay amount is invalid because this amount pre-fees would exceed
-        // the total relay amount.
-        repaymentChainId
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
+            .relayData,
+          "1",
+          repaymentChainId
       )
     ).to.be.reverted;
   });
