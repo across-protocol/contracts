@@ -1,5 +1,6 @@
 import { TokenRolesEnum } from "@uma/common";
 import { getContractFactory } from "./utils";
+import { bondAmount, refundProposalLiveness } from "./constants";
 import { Contract } from "ethers";
 
 export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
@@ -14,7 +15,9 @@ export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
   await dai.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the hubPool
-  const hubPool = await (await getContractFactory("HubPool", deployerWallet)).deploy(weth.address, timer.address);
+  const hubPool = await (
+    await getContractFactory("HubPool", deployerWallet)
+  ).deploy(bondAmount, refundProposalLiveness, weth.address, weth.address, timer.address);
 
   return { timer, weth, usdc, dai, hubPool };
 }
