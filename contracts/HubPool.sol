@@ -234,7 +234,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
 
-        delete refundRequest; // Remove the existing information relating to the relayer refund.
+        delete refundRequest; // Remove the existing information relating to the previous relayer refund request.
 
         refundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
         refundRequest.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
