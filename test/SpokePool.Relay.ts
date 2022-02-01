@@ -1,14 +1,22 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
+import { SignerWithAddress, seedWallet, toWei } from "./utils";
 import { deploySpokePoolTestHelperContracts, enableRoutes, getRelayHash } from "./SpokePool.Fixture";
-import { amountToSeedWallets, amountToDeposit, amountToRelay, amountToRelayNetFees } from "./constants";
+import {
+  amountToSeedWallets,
+  amountToDeposit,
+  amountToRelay,
+  amountToRelayPreFees,
+  originChainId,
+  repaymentChainId,
+  firstDepositId,
+} from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
 
-describe.only("SpokePool Relayer Logic", async function () {
+describe("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20 } = await deploySpokePoolTestHelperContracts(depositor));
@@ -33,12 +41,12 @@ describe.only("SpokePool Relayer Logic", async function () {
       },
     ]);
   });
-  it("Relaying ERC20 tokens correctly pulls tokens net fees and changes contract state", async function () {
+  it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
     const { relayHash, relayData } = getRelayHash(
         depositor.address,
         recipient.address,
-        0, // deposit ID
-        666, // origin chain ID
+        firstDepositId,
+        originChainId,
         destErc20.address
     )
 
@@ -54,33 +62,33 @@ describe.only("SpokePool Relayer Logic", async function () {
             relayData[5],
             relayData[6],
             relayData[7],
-            amountToRelay, // Assumed to be < amountToDeposit
-            777 // repayment chain ID
+            amountToRelay,
+            repaymentChainId
         )
     )
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
         relayHash,
+        amountToRelayPreFees,
+        repaymentChainId,
         amountToRelay,
-        777,
-        amountToRelayNetFees,
         relayer.address,
         relayData
       );
 
     // The collateral should have transferred from relayer to recipient.
-    expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelayNetFees));
-    expect(await destErc20.balanceOf(recipient.address)).to.equal(amountToRelayNetFees);
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay));
+    expect(await destErc20.balanceOf(recipient.address)).to.equal(amountToRelay);
 
     // Fill amount should be set.
-    expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelay);
+    expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelayPreFees);
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
     const { relayHash, relayData } = getRelayHash(
         depositor.address,
         recipient.address,
-        0, // deposit ID
-        666, // origin chain ID
+        firstDepositId,
+        originChainId,
         weth.address
     )
 
@@ -97,33 +105,33 @@ describe.only("SpokePool Relayer Logic", async function () {
             relayData[5],
             relayData[6],
             relayData[7],
-            amountToRelay, // Assumed to be < amountToDeposit
-            777 // repayment chain ID
+            amountToRelay,
+            repaymentChainId
         )
     )
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
         relayHash,
+        amountToRelayPreFees,
+        repaymentChainId,
         amountToRelay,
-        777,
-        amountToRelayNetFees,
         relayer.address,
         relayData
       );
 
     // The collateral should have unwrapped to ETH and then transferred to recipient.
-    expect(await weth.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelayNetFees));
-    expect(await recipient.getBalance()).to.equal(startingRecipientBalance.add(amountToRelayNetFees));
+    expect(await weth.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay));
+    expect(await recipient.getBalance()).to.equal(startingRecipientBalance.add(amountToRelay));
 
     // Fill amount should be set.
-    expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelay);
+    expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelayPreFees);
   });
   it("General failure cases", async function () {
     const { relayData } = getRelayHash(
         depositor.address,
         recipient.address,
-        0, // deposit ID
-        666, // origin chain ID
+        firstDepositId,
+        originChainId,
         destErc20.address
     )
 
@@ -141,7 +149,7 @@ describe.only("SpokePool Relayer Logic", async function () {
               relayData[6],
               relayData[7],
               amountToRelay,
-              777
+              repaymentChainId
           )
       ).to.be.reverted;
       await expect(
@@ -157,7 +165,23 @@ describe.only("SpokePool Relayer Logic", async function () {
               relayData[6],
               relayData[7],
               amountToRelay,
-              777
+              repaymentChainId
+          )
+      ).to.be.reverted;
+      await expect(
+        spokePool
+          .connect(relayer)
+          .fillRelay(
+              relayData[0],
+              relayData[1],
+              relayData[2],
+              toWei("0.5"),
+              toWei("0.5"),
+              relayData[5],
+              relayData[6],
+              relayData[7],
+              amountToRelay,
+              repaymentChainId
           )
       ).to.be.reverted;
   
@@ -175,7 +199,7 @@ describe.only("SpokePool Relayer Logic", async function () {
               relayData[6],
               "0",
               amountToRelay,
-              777
+              repaymentChainId
           )
       ).to.be.reverted;
 
@@ -192,8 +216,9 @@ describe.only("SpokePool Relayer Logic", async function () {
               relayData[5],
               relayData[6],
               relayData[7],
-              toBN(relayData[7]).mul(toBN("2")), // Fill > amount to relay
-              777
+              amountToDeposit, // Sending the total relay amount is invalid because this amount pre-fees would exceed 
+              // the total relay amount.
+              repaymentChainId
           )
       ).to.be.reverted;
   });

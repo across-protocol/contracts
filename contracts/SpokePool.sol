@@ -77,7 +77,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         bytes32 indexed relayHash,
         uint256 newFilledAmount,
         uint256 indexed repaymentChain,
-        uint256 fillAmountNetFees,
+        uint256 amountSentToRecipient,
         address indexed relayer,
         RelayData relayData
     );
@@ -181,12 +181,12 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 relayerFeePct,
         uint64 depositId,
         uint256 originChainId,
-        uint256 relayAmount,
-        uint256 fillAmount,
+        uint256 totalRelayAmount,
+        uint256 maxTokensToSend,
         uint256 repaymentChain
     ) public {
         // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18, "invalid fees");
+        require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18 && (relayerFeePct + realizedLpFeePct) < 1e18, "invalid fees");
 
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
@@ -199,35 +199,37 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             relayerFeePct: relayerFeePct,
             depositId: depositId,
             originChainId: originChainId,
-            relayAmount: relayAmount
+            relayAmount: totalRelayAmount
         });
         bytes32 relayHash = _getRelayHash(relayData);
+
+        // Compute the equivalent amount to be sent by the relayer before fees have been taken out. This is the amount
+        // that we'll add to the `relayFills` counter, and we do this math here in the contract for the user's
+        // convenience so that they don't have to do this math before calling this function. The user can simply
+        // pass in `maxTokensToSend` and assume that the contract will pull exactly that amount of tokens (or revert).
+        uint256 fillAmountPreFees = (maxTokensToSend / (1e18 - (realizedLpFeePct + relayerFeePct))) * 1e18;
 
         // Check that the caller is filling a non zero amount of the relay and that the filled amount will not
         // send to the recipient more than they are expected to receive. Note that the `relays` mapping will point
         // to the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each
         // fill.
-        require(fillAmount > 0 && relayAmount >= relayFills[relayHash] + fillAmount, "Uninitialized or fully filled relay");
+        require(maxTokensToSend > 0 && totalRelayAmount >= relayFills[relayHash] + fillAmountPreFees, "Uninitialized or fully filled relay");
 
         // Update total filled amount with this new fill.
-        relayFills[relayHash] += fillAmount;
-
-        // Pull fill amount net fees from caller, which is the amount owed to the recipient. The relayer will receive
-        // this amount plus the relayer fee after the relayer refund is processed.
-        uint256 amountNetFees = fillAmount - _getAmountFromPct(realizedLpFeePct + relayerFeePct, fillAmount);
+        relayFills[relayHash] += fillAmountPreFees;
 
         // If relay token is weth then unwrap and send eth.
         if (destinationToken == address(weth)) {
-            IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountNetFees);
-            _unwrapWETHTo(payable(recipient), amountNetFees);
+            IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), maxTokensToSend);
+            _unwrapWETHTo(payable(recipient), maxTokensToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
-        } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountNetFees);
+        } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, maxTokensToSend);
 
         emit FilledRelay(
             relayHash,
             relayFills[relayHash],
             repaymentChain,
-            amountNetFees,
+            maxTokensToSend,
             msg.sender,
             relayData
         );
@@ -256,10 +258,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
-
-    function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
-        return (percent * amount) / 1e18;
-    }
 
     // Should we make this public for the relayer's convenience?
     function _getRelayHash(RelayData memory relayData) private pure returns (bytes32) {
