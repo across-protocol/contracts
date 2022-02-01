@@ -20,7 +20,7 @@ describe("SpokePool Depositor Logic", async function () {
     await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
     await weth.connect(depositor).approve(spokePool.address, amountToDeposit);
 
-    // Whitelist origin => destination token routes:
+    // Whitelist origin token => destination chain ID routes:
     await enableRoutes(spokePool, [
       {
         originToken: erc20.address,
@@ -46,9 +46,9 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "FundsDeposited")
       .withArgs(
-        0,
         depositDestinationChainId,
         amountToDeposit,
+        0,
         depositRelayerFeePct,
         currentSpokePoolTime,
         erc20.address,
