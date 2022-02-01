@@ -36,7 +36,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     struct RefundRequest {
         uint64 requestExpirationTimestamp;
-        uint64 unclaimedPoolRebalanceLeafs;
+        uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
         uint256 claimedBitMap;
@@ -120,13 +120,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     function setBondToken(address newBondToken) public onlyOwner {
-        require(refundRequest.unclaimedPoolRebalanceLeafs == 0, "Cant set during active request");
+        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Cant set during active request");
         bondToken = IERC20(newBondToken);
         emit BondTokenSet(newBondToken);
     }
 
     function setBondAmount(uint64 newBondAmount) public onlyOwner {
-        require(refundRequest.unclaimedPoolRebalanceLeafs == 0, "Cant set during active request");
+        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Cant set during active request");
         bondAmount = newBondAmount;
         emit BondAmountSet(newBondAmount);
     }
@@ -226,14 +226,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bytes32 destinationDistributionRoot
     ) public {
         // The most recent refund proposal must be fully claimed before the next relayer refund bundle is initiated.
-        require(refundRequest.unclaimedPoolRebalanceLeafs == 0, "Last bundle has unclaimed leafs");
+        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Last bundle has unclaimed leafs");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
 
         delete refundRequest; // Remove the existing information relating to the relayer refund.
 
         refundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
-        refundRequest.unclaimedPoolRebalanceLeafs = poolRebalanceLeafCount;
+        refundRequest.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         refundRequest.poolRebalanceRoot = poolRebalanceRoot;
         refundRequest.destinationDistributionRoot = destinationDistributionRoot;
         refundRequest.proposer = msg.sender;
@@ -256,7 +256,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         MerkleLib.PoolRebalance memory poolRebalance,
         bytes32[] memory proof
     ) public {
-        require(getCurrentTime() > refundRequest.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalance has not yet been claimed.
         require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId), "Already claimed");
@@ -267,8 +267,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // Set the leafId in the claimed bitmap.
         refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId);
 
-        // Decrement the unclaimedPoolRebalanceLeafs.
-        refundRequest.unclaimedPoolRebalanceLeafs--;
+        // Decrement the unclaimedPoolRebalanceLeafCount.
+        refundRequest.unclaimedPoolRebalanceLeafCount--;
 
         // Transfer the bondAmount to back to the proposer, if this was not done before for this refund bundle.
         if (!refundRequest.proposerBondRepaid) {
@@ -286,7 +286,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     }
 
     function disputeRelayerRefund() public {
-        require(getCurrentTime() < refundRequest.requestExpirationTimestamp, "Passed liveness");
+        require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Passed liveness");
 
         // Request price from OO and dispute it.
         bondToken.safeApprove(address(_getOptimisticOracle()), bondAmount);
@@ -379,8 +379,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
         ancillaryData = AncillaryData.appendKeyValueUint(
             ancillaryData,
-            "unclaimedPoolRebalanceLeafs",
-            refundRequest.unclaimedPoolRebalanceLeafs
+            "unclaimedPoolRebalanceLeafCount",
+            refundRequest.unclaimedPoolRebalanceLeafCount
         );
         ancillaryData = AncillaryData.appendKeyValueBytes32(
             ancillaryData,
