@@ -27,8 +27,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       accounts: {
-        accountsBalance: "1000000000000000000000000" // 1mil ETH
-      }
+        accountsBalance: "1000000000000000000000000", // 1mil ETH
+      },
     },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",

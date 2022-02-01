@@ -10,6 +10,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
+
     function deposit() external payable;
 }
 
@@ -54,7 +55,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
-    // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to 
+    // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
     // relay, the fees, and the agents are all parameters included in the hash key.
     mapping(bytes32 => uint256) public relayFills;
 
@@ -186,11 +187,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 repaymentChain
     ) public {
         // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18 && (relayerFeePct + realizedLpFeePct) < 1e18, "invalid fees");
+        require(
+            relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18 && (relayerFeePct + realizedLpFeePct) < 1e18,
+            "invalid fees"
+        );
 
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
-        // is, which chain and currency the recipient wants to receive funds on, and the relay fees. 
+        // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
         RelayData memory relayData = RelayData({
             sender: sender,
             recipient: recipient,
@@ -213,7 +217,10 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // send to the recipient more than they are expected to receive. Note that the `relays` mapping will point
         // to the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each
         // fill.
-        require(maxTokensToSend > 0 && totalRelayAmount >= relayFills[relayHash] + fillAmountPreFees, "Uninitialized or fully filled relay");
+        require(
+            maxTokensToSend > 0 && totalRelayAmount >= relayFills[relayHash] + fillAmountPreFees,
+            "Uninitialized or fully filled relay"
+        );
 
         // Update total filled amount with this new fill.
         relayFills[relayHash] += fillAmountPreFees;
@@ -225,14 +232,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             // Else, this is a normal ERC20 token. Send to recipient.
         } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, maxTokensToSend);
 
-        emit FilledRelay(
-            relayHash,
-            relayFills[relayHash],
-            repaymentChain,
-            maxTokensToSend,
-            msg.sender,
-            relayData
-        );
+        emit FilledRelay(relayHash, relayFills[relayHash], repaymentChain, maxTokensToSend, msg.sender, relayData);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
@@ -261,9 +261,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // Should we make this public for the relayer's convenience?
     function _getRelayHash(RelayData memory relayData) private pure returns (bytes32) {
-        return keccak256(abi.encode(
-            relayData
-        ));
+        return keccak256(abi.encode(relayData));
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
@@ -278,5 +276,4 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
     receive() external payable {}
-
 }

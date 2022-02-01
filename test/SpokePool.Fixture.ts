@@ -23,7 +23,9 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerW
     await getContractFactory("ExpandedERC20", deployerWallet)
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
   await unwhitelistedErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
-  const destErc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("L2 USD Coin", "L2 USDC", 18);
+  const destErc20 = await (
+    await getContractFactory("ExpandedERC20", deployerWallet)
+  ).deploy("L2 USD Coin", "L2 USDC", 18);
   await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
@@ -57,15 +59,15 @@ export async function deposit(
 ) {
   const currentSpokePoolTime = await spokePool.getCurrentTime();
   await spokePool
-      .connect(depositor)
-      .deposit(
-        token.address,
-          depositDestinationChainId,
-          amountToDeposit,
-          recipient.address,
-          depositRelayerFeePct,
-          currentSpokePoolTime
-      )
+    .connect(depositor)
+    .deposit(
+      token.address,
+      depositDestinationChainId,
+      amountToDeposit,
+      recipient.address,
+      depositRelayerFeePct,
+      currentSpokePoolTime
+    );
 }
 export function getRelayHash(
   sender: string,

@@ -43,31 +43,16 @@ describe("SpokePool Relayer Logic", async function () {
   });
   it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
     const { relayHash, relayData } = getRelayHash(
-        depositor.address,
-        recipient.address,
-        firstDepositId,
-        originChainId,
-        destErc20.address
-    )
+      depositor.address,
+      recipient.address,
+      firstDepositId,
+      originChainId,
+      destErc20.address
+    );
 
-    await expect(
-      spokePool
-        .connect(relayer)
-        .fillRelay(
-            ...relayData,
-            amountToRelay,
-            repaymentChainId
-        )
-    )
+    await expect(spokePool.connect(relayer).fillRelay(...relayData, amountToRelay, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
-      .withArgs(
-        relayHash,
-        amountToRelayPreFees,
-        repaymentChainId,
-        amountToRelay,
-        relayer.address,
-        relayData
-      );
+      .withArgs(relayHash, amountToRelayPreFees, repaymentChainId, amountToRelay, relayer.address, relayData);
 
     // The collateral should have transferred from relayer to recipient.
     expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay));
@@ -78,32 +63,17 @@ describe("SpokePool Relayer Logic", async function () {
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
     const { relayHash, relayData } = getRelayHash(
-        depositor.address,
-        recipient.address,
-        firstDepositId,
-        originChainId,
-        weth.address
-    )
+      depositor.address,
+      recipient.address,
+      firstDepositId,
+      originChainId,
+      weth.address
+    );
 
-    const startingRecipientBalance = await recipient.getBalance()
-    await expect(
-      spokePool
-        .connect(relayer)
-        .fillRelay(
-          ...relayData,
-            amountToRelay,
-            repaymentChainId
-        )
-    )
+    const startingRecipientBalance = await recipient.getBalance();
+    await expect(spokePool.connect(relayer).fillRelay(...relayData, amountToRelay, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
-      .withArgs(
-        relayHash,
-        amountToRelayPreFees,
-        repaymentChainId,
-        amountToRelay,
-        relayer.address,
-        relayData
-      );
+      .withArgs(relayHash, amountToRelayPreFees, repaymentChainId, amountToRelay, relayer.address, relayData);
 
     // The collateral should have unwrapped to ETH and then transferred to recipient.
     expect(await weth.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay));
@@ -113,95 +83,83 @@ describe("SpokePool Relayer Logic", async function () {
     expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelayPreFees);
   });
   it("General failure cases", async function () {
-      // Fees set too high.
-      await expect(
-        spokePool
-          .connect(relayer)
-          .fillRelay(
-            ...getRelayHash(
-                depositor.address,
-                recipient.address,
-                firstDepositId,
-                originChainId,
-                destErc20.address,
-                amountToDeposit.toString(),
-                toWei("0.51").toString(),
-                toWei("0.5").toString()
-            ).relayData,
-            amountToRelay,
-            repaymentChainId
-          )
-      ).to.be.reverted;
-      await expect(
-        spokePool
-          .connect(relayer)
-          .fillRelay(
-            ...getRelayHash(
-              depositor.address,
-              recipient.address,
-              firstDepositId,
-              originChainId,
-              destErc20.address,
-              amountToDeposit.toString(),
-              toWei("0.5").toString(),
-              toWei("0.51").toString()
-          ).relayData,              
+    // Fees set too high.
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(
+            depositor.address,
+            recipient.address,
+            firstDepositId,
+            originChainId,
+            destErc20.address,
+            amountToDeposit.toString(),
+            toWei("0.51").toString(),
+            toWei("0.5").toString()
+          ).relayData,
           amountToRelay,
-            repaymentChainId
-          )
-      ).to.be.reverted;
-      await expect(
-        spokePool
-          .connect(relayer)
-          .fillRelay(
-            ...getRelayHash(
-              depositor.address,
-              recipient.address,
-              firstDepositId,
-              originChainId,
-              destErc20.address,
-              amountToDeposit.toString(),
-              toWei("0.5").toString(),
-              toWei("0.5").toString()
-          ).relayData,              
-              amountToRelay,
-              repaymentChainId
-          )
-      ).to.be.reverted;
-  
-      // Fill amount cannot be 0.
-      await expect(
-        spokePool
-          .connect(relayer)
-          .fillRelay(
-            ...getRelayHash(
-              depositor.address,
-              recipient.address,
-              firstDepositId,
-              originChainId,
-              destErc20.address,
-            ).relayData,              
-              "0",
-              repaymentChainId
-          )
-      ).to.be.reverted;
+          repaymentChainId
+        )
+    ).to.be.reverted;
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(
+            depositor.address,
+            recipient.address,
+            firstDepositId,
+            originChainId,
+            destErc20.address,
+            amountToDeposit.toString(),
+            toWei("0.5").toString(),
+            toWei("0.51").toString()
+          ).relayData,
+          amountToRelay,
+          repaymentChainId
+        )
+    ).to.be.reverted;
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(
+            depositor.address,
+            recipient.address,
+            firstDepositId,
+            originChainId,
+            destErc20.address,
+            amountToDeposit.toString(),
+            toWei("0.5").toString(),
+            toWei("0.5").toString()
+          ).relayData,
+          amountToRelay,
+          repaymentChainId
+        )
+    ).to.be.reverted;
 
-      // Fill amount sends over relay amount
-      await expect(
-        spokePool
-          .connect(relayer)
-          .fillRelay(
-            ...getRelayHash(
-              depositor.address,
-              recipient.address,
-              firstDepositId,
-              originChainId,
-              destErc20.address,
-            ).relayData,              
-              amountToDeposit, // Sending the total relay amount is invalid because this amount pre-fees would exceed 
-              // the total relay amount.
-              repaymentChainId
-          )
-      ).to.be.reverted;
+    // Fill amount cannot be 0.
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
+            .relayData,
+          "0",
+          repaymentChainId
+        )
+    ).to.be.reverted;
+
+    // Fill amount sends over relay amount
+    await expect(
+      spokePool.connect(relayer).fillRelay(
+        ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
+          .relayData,
+        amountToDeposit, // Sending the total relay amount is invalid because this amount pre-fees would exceed
+        // the total relay amount.
+        repaymentChainId
+      )
+    ).to.be.reverted;
   });
 });
