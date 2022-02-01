@@ -238,6 +238,15 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         refundRequest.destinationDistributionRoot = destinationDistributionRoot;
         refundRequest.proposer = msg.sender;
 
+        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
+
+        RelayerRefundRequest storage relayerRefundRequest = relayerRefundRequests.push();
+        relayerRefundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
+        relayerRefundRequest.unclaimedPoolRebalanceLeafs = poolRebalanceLeafCount;
+        relayerRefundRequest.poolRebalanceRoot = poolRebalanceRoot;
+        relayerRefundRequest.destinationDistributionRoot = destinationDistributionRoot;
+        relayerRefundRequest.proposer = msg.sender;
+
         // Pull bondAmount of bondToken from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
