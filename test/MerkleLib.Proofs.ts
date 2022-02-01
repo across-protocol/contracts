@@ -61,7 +61,7 @@ describe("MerkleLib Proofs", async function () {
       });
     }
 
-    const fragment = merkleLibTest.interface.fragments.find((fragment) => fragment.name === "verifyRebalance");
+    const fragment = merkleLibTest.interface.fragments.find((fragment) => fragment.name === "verifyPoolRebalance");
     const param = fragment!.inputs.find((input) => input.name === "rebalance");
 
     const hashFn = (input: PoolRebalance) =>
@@ -70,7 +70,7 @@ describe("MerkleLib Proofs", async function () {
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(poolRebalances[34]);
-    expect(await merkleLibTest.verifyRebalance(root, poolRebalances[34], proof)).to.equal(true);
+    expect(await merkleLibTest.verifyPoolRebalance(root, poolRebalances[34], proof)).to.equal(true);
   });
   it("DestinationDistributionProofs", async function () {
     const destinationDistributions: DestinationDistribution[] = [];
@@ -93,7 +93,9 @@ describe("MerkleLib Proofs", async function () {
       });
     }
 
-    const fragment = merkleLibTest.interface.fragments.find((fragment) => fragment.name === "verifyDistribution");
+    const fragment = merkleLibTest.interface.fragments.find(
+      (fragment) => fragment.name === "verifyRelayerDistribution"
+    );
     const param = fragment!.inputs.find((input) => input.name === "distribution");
 
     const hashFn = (input: DestinationDistribution) =>
@@ -102,6 +104,6 @@ describe("MerkleLib Proofs", async function () {
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(destinationDistributions[14]);
-    expect(await merkleLibTest.verifyDistribution(root, destinationDistributions[14], proof)).to.equal(true);
+    expect(await merkleLibTest.verifyRelayerDistribution(root, destinationDistributions[14], proof)).to.equal(true);
   });
 });

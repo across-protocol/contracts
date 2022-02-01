@@ -9,20 +9,20 @@ import "../MerkleLib.sol";
 contract MerkleLibTest {
     mapping(uint256 => uint256) public claimedBitMap;
 
-    function verifyRebalance(
+    function verifyPoolRebalance(
         bytes32 root,
         MerkleLib.PoolRebalance memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyRebalance(root, rebalance, proof);
+        return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
     }
 
-    function verifyDistribution(
+    function verifyRelayerDistribution(
         bytes32 root,
         MerkleLib.DestinationDistribution memory distribution,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyDistribution(root, distribution, proof);
+        return MerkleLib.verifyRelayerDistribution(root, distribution, proof);
     }
 
     function isClaimed(uint256 index) public view returns (bool) {
