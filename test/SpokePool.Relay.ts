@@ -54,14 +54,7 @@ describe("SpokePool Relayer Logic", async function () {
       spokePool
         .connect(relayer)
         .fillRelay(
-            relayData[0],
-            relayData[1],
-            relayData[2],
-            relayData[3],
-            relayData[4],
-            relayData[5],
-            relayData[6],
-            relayData[7],
+            ...relayData,
             amountToRelay,
             repaymentChainId
         )
@@ -97,14 +90,7 @@ describe("SpokePool Relayer Logic", async function () {
       spokePool
         .connect(relayer)
         .fillRelay(
-            relayData[0],
-            relayData[1],
-            relayData[2],
-            relayData[3],
-            relayData[4],
-            relayData[5],
-            relayData[6],
-            relayData[7],
+          ...relayData,
             amountToRelay,
             repaymentChainId
         )
@@ -127,59 +113,57 @@ describe("SpokePool Relayer Logic", async function () {
     expect(await spokePool.relayFills(relayHash)).to.equal(amountToRelayPreFees);
   });
   it("General failure cases", async function () {
-    const { relayData } = getRelayHash(
-        depositor.address,
-        recipient.address,
-        firstDepositId,
-        originChainId,
-        destErc20.address
-    )
-
       // Fees set too high.
       await expect(
         spokePool
           .connect(relayer)
           .fillRelay(
-              relayData[0],
-              relayData[1],
-              relayData[2],
-              toWei("0.51"),
-              relayData[4],
-              relayData[5],
-              relayData[6],
-              relayData[7],
-              amountToRelay,
-              repaymentChainId
+            ...getRelayHash(
+                depositor.address,
+                recipient.address,
+                firstDepositId,
+                originChainId,
+                destErc20.address,
+                amountToDeposit.toString(),
+                toWei("0.51").toString(),
+                toWei("0.5").toString()
+            ).relayData,
+            amountToRelay,
+            repaymentChainId
           )
       ).to.be.reverted;
       await expect(
         spokePool
           .connect(relayer)
           .fillRelay(
-              relayData[0],
-              relayData[1],
-              relayData[2],
-              relayData[3],
-              toWei("0.51"),
-              relayData[5],
-              relayData[6],
-              relayData[7],
-              amountToRelay,
-              repaymentChainId
+            ...getRelayHash(
+              depositor.address,
+              recipient.address,
+              firstDepositId,
+              originChainId,
+              destErc20.address,
+              amountToDeposit.toString(),
+              toWei("0.5").toString(),
+              toWei("0.51").toString()
+          ).relayData,              
+          amountToRelay,
+            repaymentChainId
           )
       ).to.be.reverted;
       await expect(
         spokePool
           .connect(relayer)
           .fillRelay(
-              relayData[0],
-              relayData[1],
-              relayData[2],
-              toWei("0.5"),
-              toWei("0.5"),
-              relayData[5],
-              relayData[6],
-              relayData[7],
+            ...getRelayHash(
+              depositor.address,
+              recipient.address,
+              firstDepositId,
+              originChainId,
+              destErc20.address,
+              amountToDeposit.toString(),
+              toWei("0.5").toString(),
+              toWei("0.5").toString()
+          ).relayData,              
               amountToRelay,
               repaymentChainId
           )
@@ -190,15 +174,14 @@ describe("SpokePool Relayer Logic", async function () {
         spokePool
           .connect(relayer)
           .fillRelay(
-              relayData[0],
-              relayData[1],
-              relayData[2],
-              relayData[3],
-              relayData[4],
-              relayData[5],
-              relayData[6],
+            ...getRelayHash(
+              depositor.address,
+              recipient.address,
+              firstDepositId,
+              originChainId,
+              destErc20.address,
+            ).relayData,              
               "0",
-              amountToRelay,
               repaymentChainId
           )
       ).to.be.reverted;
@@ -208,14 +191,13 @@ describe("SpokePool Relayer Logic", async function () {
         spokePool
           .connect(relayer)
           .fillRelay(
-              relayData[0],
-              relayData[1],
-              relayData[2],
-              relayData[3],
-              relayData[4],
-              relayData[5],
-              relayData[6],
-              relayData[7],
+            ...getRelayHash(
+              depositor.address,
+              recipient.address,
+              firstDepositId,
+              originChainId,
+              destErc20.address,
+            ).relayData,              
               amountToDeposit, // Sending the total relay amount is invalid because this amount pre-fees would exceed 
               // the total relay amount.
               repaymentChainId

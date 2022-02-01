@@ -29,7 +29,7 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerW
   // Deploy the pool
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(timer.address, weth.address, depositQuoteTimeBuffer);
+  ).deploy(weth.address, depositQuoteTimeBuffer, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 }

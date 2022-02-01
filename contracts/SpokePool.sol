@@ -83,9 +83,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     );
 
     constructor(
-        address timerAddress,
         address _wethAddress,
-        uint64 _depositQuoteTimeBuffer
+        uint64 _depositQuoteTimeBuffer,
+        address timerAddress
     ) Testable(timerAddress) {
         deploymentTime = uint64(getCurrentTime());
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
