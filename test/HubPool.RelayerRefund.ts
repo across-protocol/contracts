@@ -76,11 +76,11 @@ describe("HubPool Relayer Refund", function () {
           mockPoolRebalanceRoot,
           mockDestinationDistributionRoot
         )
-    ).to.be.revertedWith("Last bundle has unclaimed leafs");
+    ).to.be.revertedWith("Active request has unclaimed leafs");
   });
-  it.only("Dispute relayer refund correctly deletes the active request and enqueues a price request with the OO", async function () {
+  it("Dispute relayer refund correctly deletes the active request and enqueues a price request with the OO", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
-    const tx = await hubPool
+    await hubPool
       .connect(dataWorker)
       .initiateRelayerRefund(
         mockBundleEvaluationBlockNumbers,
@@ -88,10 +88,6 @@ describe("HubPool Relayer Refund", function () {
         mockPoolRebalanceRoot,
         mockDestinationDistributionRoot
       );
-
-    const wiated = await tx.wait();
-
-    console.log("tx", wiated.gasUsed.toString());
 
     const preCallAncillaryData = await hubPool._getRefundProposalAncillaryData();
 

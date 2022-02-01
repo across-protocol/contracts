@@ -68,9 +68,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // be disputed only during this period of time.
     uint64 public refundProposalLiveness;
 
-    event BondAmountSet(uint64 newBondMultiplier);
-
-    event BondTokenSet(address newBondMultiplier);
+    event BondSet(address newBondToken, uint256 newBondAmount);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -102,6 +100,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         RefundRequest refundRequest
     );
 
+    modifier onlyIfNoActiveRequest() {
+        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
+        _;
+    }
+
     constructor(
         uint256 _bondAmount,
         uint64 _refundProposalLiveness,
@@ -123,16 +126,10 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
-    function setBondToken(address newBondToken) public onlyOwner {
-        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Cant set during active request");
-        bondToken = IERC20(newBondToken);
-        emit BondTokenSet(newBondToken);
-    }
-
-    function setBondAmount(uint64 newBondAmount) public onlyOwner {
-        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Cant set during active request");
+    function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner onlyIfNoActiveRequest {
+        bondToken = newBondToken;
         bondAmount = newBondAmount;
-        emit BondAmountSet(newBondAmount);
+        emit BondSet(address(newBondToken), newBondAmount);
     }
 
     /**
@@ -228,9 +225,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot
-    ) public {
-        // The most recent refund proposal must be fully claimed before the next relayer refund bundle is initiated.
-        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Last bundle has unclaimed leafs");
+    ) public onlyIfNoActiveRequest {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);

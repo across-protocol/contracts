@@ -49,9 +49,10 @@ describe("HubPool Admin functions", function () {
   it("Can change the bond token and amount", async function () {
     expect(await hubPool.callStatic.bondToken()).to.equal(weth.address); // Default set in the fixture.
     expect(await hubPool.callStatic.bondAmount()).to.equal(bondAmount); // Default set in the fixture.
-    await hubPool.setBondToken(usdc.address);
+
+    // Set the bond token and amount to 1000 USDC
     const newBondAmount = ethers.utils.parseUnits("1000", 6); // set to 1000e6, i.e 1000 USDC.
-    await hubPool.setBondAmount(newBondAmount);
+    await hubPool.setBond(usdc.address, newBondAmount);
     expect(await hubPool.callStatic.bondToken()).to.equal(usdc.address); // New Address.
     expect(await hubPool.callStatic.bondAmount()).to.equal(newBondAmount); // New Bond amount.
   });
@@ -59,7 +60,6 @@ describe("HubPool Admin functions", function () {
     await seedWallet(owner, [], weth, bondAmount);
     await weth.approve(hubPool.address, bondAmount);
     await hubPool.initiateRelayerRefund([1, 2, 3], 5, createRandomBytes32(), createRandomBytes32());
-    await expect(hubPool.setBondToken(usdc.address)).to.be.revertedWith("Cant set during active request");
-    await expect(hubPool.setBondToken(usdc.address)).to.be.revertedWith("Cant set during active request");
+    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("Active request has unclaimed leafs");
   });
 });
