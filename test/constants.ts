@@ -13,3 +13,5 @@ export const depositRelayerFeePct = toWei("0.25");
 export const depositQuoteTimeBuffer = 10 * 60; // 10 minutes
 
 export const bondAmount = toWei("5"); // 5 ETH as the bond for proposing refund bundles.
+
+export const refundProposalLiveness = 100;

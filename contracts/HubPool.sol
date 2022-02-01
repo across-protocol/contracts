@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./MerkleLib.sol";
+
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
@@ -29,16 +31,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bool isEnabled;
     }
 
-    enum RefundRequestStatus {
-        Pending,
-        Finalized,
-        Disputed
-    }
-
     struct RelayerRefundRequest {
-        bytes32 poolRebalanceProof;
-        bytes32 destinationDistributionProof;
-        RefundRequestStatus status;
+        uint64 requestExpirationTimestamp;
+        uint64 unclaimedPoolRebalanceLeafs;
+        bytes32 poolRebalanceRoot;
+        bytes32 destinationDistributionRoot;
+        mapping(uint256 => uint256) claimedBitMap;
+        address proposer;
+        bool proposerBondRepaid;
     }
 
     RelayerRefundRequest[] public relayerRefundRequests;
@@ -57,8 +57,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
 
-    // There should only ever be one refund proposal pending at any point in time. This bool toggles accordingly.
-    bool public currentPendingRefundProposal = false;
+    // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
+    // be disputed only during this period of time.
+    uint64 public refundProposalLiveness;
 
     event BondAmountSet(uint64 newBondMultiplier);
 
@@ -78,21 +79,28 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
-    event RelayerRefundRequested(
-        uint64 relayerRefundId,
+    event InitiateRefundRequested(
+        uint64 indexed relayerRefundId,
+        uint64 requestExpirationTimestamp,
+        uint64 poolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
-        bytes32 indexed poolRebalanceProof,
-        bytes32 indexed destinationDistributionProof,
-        address proposer
+        bytes32 poolRebalanceRoot,
+        bytes32 destinationDistributionRoot,
+        address indexed proposer
     );
+    event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
+
+    event RelayerRefundDisputed(uint256 relayerRefundId, address disputer);
 
     constructor(
         uint256 _bondAmount,
+        uint64 _refundProposalLiveness,
         address _bondToken,
         address _l1Weth,
         address _timerAddress
     ) Testable(_timerAddress) {
         bondAmount = _bondAmount;
+        refundProposalLiveness = _refundProposalLiveness;
         bondToken = IERC20(_bondToken);
         l1Weth = WETH9Like(_l1Weth);
     }
@@ -201,48 +209,101 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
-        bytes32 poolRebalanceProof,
-        bytes32 destinationDistributionProof
+        uint64 poolRebalanceLeafCount,
+        bytes32 poolRebalanceRoot,
+        bytes32 destinationDistributionRoot
     ) public {
-        require(currentPendingRefundProposal == false, "Only one proposal at a time");
-        currentPendingRefundProposal = true;
-        relayerRefundRequests.push(
-            RelayerRefundRequest({
-                poolRebalanceProof: poolRebalanceProof,
-                destinationDistributionProof: destinationDistributionProof,
-                status: RefundRequestStatus.Pending
-            })
+        // The most recent refund proposal must be fully claimed before the next relayer refund bundle is initiated.
+        require(
+            relayerRefundRequests.length == 0 || // If this is the first initiated relay refund.
+                relayerRefundRequests[getNumberOfRelayRefunds()].unclaimedPoolRebalanceLeafs == 0,
+            "Last bundle has unclaimed leafs"
         );
+
+        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
+
+        RelayerRefundRequest storage relayerRefundRequest = relayerRefundRequests.push();
+        relayerRefundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
+        relayerRefundRequest.unclaimedPoolRebalanceLeafs = poolRebalanceLeafCount;
+        relayerRefundRequest.poolRebalanceRoot = poolRebalanceRoot;
+        relayerRefundRequest.destinationDistributionRoot = destinationDistributionRoot;
+        relayerRefundRequest.proposer = msg.sender;
 
         // Pull bondAmount of bondToken from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
-        emit RelayerRefundRequested(
-            uint64(relayerRefundRequests.length - 1), // Index of the relayerRefundRequest within the array.
+        emit InitiateRefundRequested(
+            uint64(relayerRefundRequests.length - 1),
+            requestExpirationTimestamp,
+            poolRebalanceLeafCount,
             bundleEvaluationBlockNumbers,
-            poolRebalanceProof,
-            destinationDistributionProof,
+            poolRebalanceRoot,
+            destinationDistributionRoot,
             msg.sender
         );
     }
 
     function executeRelayerRefund(
         uint256 relayerRefundRequestId,
-        uint256 leafId,
-        uint256 repaymentChainId,
-        address[] memory l1TokenAddress,
-        uint256[] memory accumulatedLpFees,
-        uint256[] memory netSendAmounts,
-        bytes32[] memory inclusionProof
-    ) public {}
+        MerkleLib.PoolRebalance memory poolRebalance,
+        bytes32[] memory proof
+    ) public {
+        RelayerRefundRequest storage relayerRefund = relayerRefundRequests[relayerRefundRequestId];
+        require(getCurrentTime() > relayerRefund.requestExpirationTimestamp, "Not passed liveness");
 
-    function disputeRelayerRefund() public {}
+        // Verify the leafId in the poolRebalance has not yet been claimed.
+        require(!MerkleLib.isClaimed(relayerRefund.claimedBitMap, poolRebalance.leafId), "Already claimed");
+
+        // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
+        require(MerkleLib.verifyPoolRebalance(relayerRefund.poolRebalanceRoot, poolRebalance, proof), "Bad Proof");
+
+        // Set the leafId in the claimed bitmap.
+        MerkleLib.setClaimed(relayerRefund.claimedBitMap, poolRebalance.leafId);
+
+        // Decrement the unclaimedPoolRebalanceLeafs.
+        relayerRefund.unclaimedPoolRebalanceLeafs--;
+
+        // Transfer the bondAmount to back to the proposer, if this was not done before for this refund bundle.
+        if (!relayerRefund.proposerBondRepaid) {
+            relayerRefund.proposerBondRepaid = true;
+            bondToken.safeTransfer(relayerRefund.proposer, bondAmount);
+        }
+
+        // TODO call into canonical bridge to send PoolRebalance.netSendAmount for the associated
+        // PoolRebalance.tokenAddresses, to the target PoolRebalance.chainId. this will likely happen within a
+        // x_Messenger contract for each chain. these messengers will be registered in a separate process that will follow
+        // in a later PR.
+        // TODO: modify the associated utilized and pending reserves for each token sent.
+
+        emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, msg.sender);
+    }
+
+    function disputeRelayerRefund(uint256 relayerRefundRequestId) public {
+        RelayerRefundRequest storage relayerRefund = relayerRefundRequests[relayerRefundRequestId];
+        require(
+            getCurrentTime() > relayerRefundRequests[relayerRefundRequestId].requestExpirationTimestamp,
+            "Passed liveness"
+        );
+
+        // Delete the last element in the relayerRefundRequests array. This acts to throw out the request.
+        emit RelayerRefundDisputed(relayerRefundRequestId, msg.sender);
+
+        relayerRefundRequests.pop();
+
+        // TODO: pull bonds. request price from OO.
+    }
+
+    function getNumberOfRelayRefunds() public view returns (uint256) {
+        if (relayerRefundRequests.length == 0) return 0;
+        return relayerRefundRequests.length - 1;
+    }
 
     /*************************************************
      *              INTERNAL FUNCTIONS               *
      *************************************************/
 
     function _exchangeRateCurrent() internal pure returns (uint256) {
+        // TODO: implement this method to consider utilization.
         return 1e18;
     }
 
