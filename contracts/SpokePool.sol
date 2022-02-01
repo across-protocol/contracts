@@ -3,11 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface WETH9Like {
+    function withdraw(uint256 wad) external;
+
     function deposit() external payable;
 }
 
@@ -21,6 +24,7 @@ interface WETH9Like {
  */
 abstract contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint64 public deploymentTime;
@@ -29,40 +33,64 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // caller to use an up to date realized fee.
     uint64 public depositQuoteTimeBuffer;
 
-    // Track the total number of deposits. Used as a unique identifier for deposits.
-    uint256 public numberOfDeposits;
+    // Use count of deposits as unique deposit identifier.
+    uint64 public numberOfDeposits;
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
-    address public wethAddress;
+    WETH9Like public weth;
 
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
+    struct RelayData {
+        address sender;
+        address recipient;
+        address destinationToken;
+        uint64 realizedLpFeePct;
+        uint64 relayerFeePct;
+        uint64 depositId;
+        uint256 originChainId;
+        uint256 relayAmount;
+    }
+
+    // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
+    // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
+    // relay, the fees, and the agents are all parameters included in the hash key.
+    mapping(bytes32 => uint256) public relayFills;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
-    event EnabledDepositRoute(address originToken, uint256 destinationChainId, bool enabled);
+    event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint64 newBuffer);
     event FundsDeposited(
-        uint256 depositId,
         uint256 destinationChainId,
         uint256 amount,
+        uint64 indexed depositId,
         uint64 relayerFeePct,
         uint64 quoteTimestamp,
-        address originToken,
+        address indexed originToken,
         address recipient,
-        address sender
+        address indexed sender
+    );
+    event FilledRelay(
+        bytes32 indexed relayHash,
+        uint256 newFilledAmount,
+        uint256 indexed repaymentChain,
+        uint256 amountSentToRecipient,
+        address indexed relayer,
+        RelayData relayData
     );
 
     constructor(
-        address timerAddress,
         address _wethAddress,
-        uint64 _depositQuoteTimeBuffer
+        uint64 _depositQuoteTimeBuffer,
+        address timerAddress
     ) Testable(timerAddress) {
         deploymentTime = uint64(getCurrentTime());
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
-        wethAddress = _wethAddress;
+        weth = WETH9Like(_wethAddress);
     }
 
     /****************************************
@@ -122,9 +150,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
         // If the address of the origin token is a WETH contract and there is a msg.value with the transaction
         // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
-        if (originToken == wethAddress && msg.value > 0) {
+        if (originToken == address(weth) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
-            WETH9Like(originToken).deposit{ value: msg.value }();
+            weth.deposit{ value: msg.value }();
         } else {
             // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
@@ -133,9 +161,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         }
 
         emit FundsDeposited(
-            numberOfDeposits, // The total number of deposits for this contract acts as a unique ID.
             destinationChainId,
             amount,
+            numberOfDeposits,
             relayerFeePct,
             quoteTimestamp,
             originToken,
@@ -146,20 +174,73 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         numberOfDeposits += 1;
     }
 
-    function initiateRelay(
-        uint256 originChain,
-        address sender,
-        uint256 amount,
-        address recipient,
-        uint256 relayerFee,
-        uint256 realizedLpFee
-    ) public {}
-
     function fillRelay(
-        uint256 relayId,
-        uint256 fillAmount,
+        address sender,
+        address recipient,
+        address destinationToken,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint64 depositId,
+        uint256 originChainId,
+        uint256 totalRelayAmount,
+        uint256 maxTokensToSend,
         uint256 repaymentChain
-    ) public {}
+    ) public {
+        // We limit the relay fees to prevent the user spending all their funds on fees.
+        require(
+            relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18 && (relayerFeePct + realizedLpFeePct) < 1e18,
+            "invalid fees"
+        );
+
+        // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
+        // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
+        // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
+        RelayData memory relayData = RelayData({
+            sender: sender,
+            recipient: recipient,
+            destinationToken: destinationToken,
+            realizedLpFeePct: realizedLpFeePct,
+            relayerFeePct: relayerFeePct,
+            depositId: depositId,
+            originChainId: originChainId,
+            relayAmount: totalRelayAmount
+        });
+        bytes32 relayHash = _getRelayHash(relayData);
+
+        // Check that the caller is filling a non zero amount of the relay and the relay has not already been completely
+        // filled. Note that the `relays` mapping will point to the amount filled so far for a particular `relayHash`,
+        // so this will start at 0 and increment with each fill.
+        require(maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount, "Cannot send 0, or relay filled");
+
+        // Compute the equivalent amount to be sent by the relayer before fees have been taken out. This is the amount
+        // that we'll add to the `relayFills` counter, and we do this math here in the contract for the user's
+        // convenience so that they don't have to do this math before calling this function. The user can simply
+        // pass in `maxTokensToSend` and assume that the contract will pull exactly that amount of tokens (or revert).
+        uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
+
+        // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
+        // we'll pull exactly enough tokens to complete the relay.
+        uint256 amountToSend;
+        if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
+            amountToSend = _computeAmountPostFees(
+                totalRelayAmount - relayFills[relayHash],
+                (realizedLpFeePct + relayerFeePct)
+            );
+            relayFills[relayHash] = totalRelayAmount;
+        } else {
+            amountToSend = maxTokensToSend;
+            relayFills[relayHash] += fillAmountPreFees;
+        }
+
+        // If relay token is weth then unwrap and send eth.
+        if (destinationToken == address(weth)) {
+            IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            _unwrapWETHTo(payable(recipient), amountToSend);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountToSend);
+
+        emit FilledRelay(relayHash, relayFills[relayHash], repaymentChain, amountToSend, msg.sender, relayData);
+    }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
 
@@ -180,4 +261,34 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     function chainId() public view returns (uint256) {
         return block.chainid;
     }
+
+    /**************************************
+     *         INTERNAL FUNCTIONS         *
+     **************************************/
+
+    function _computeAmountPreFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
+        return (1e18 * amount) / (1e18 - feesPct);
+    }
+
+    function _computeAmountPostFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
+        return (amount * (1e18 - feesPct)) / 1e18;
+    }
+
+    // Should we make this public for the relayer's convenience?
+    function _getRelayHash(RelayData memory relayData) private pure returns (bytes32) {
+        return keccak256(abi.encode(relayData));
+    }
+
+    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
+    function _unwrapWETHTo(address payable to, uint256 amount) internal {
+        if (address(to).isContract()) {
+            IERC20(address(weth)).safeTransfer(to, amount);
+        } else {
+            weth.withdraw(amount);
+            to.transfer(amount);
+        }
+    }
+
+    // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
+    receive() external payable {}
 }

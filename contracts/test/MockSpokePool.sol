@@ -9,10 +9,10 @@ import "../SpokePool.sol";
  */
 contract MockSpokePool is SpokePool {
     constructor(
-        address timerAddress,
         address _wethAddress,
-        uint64 _depositQuoteTimeBuffer
-    ) SpokePool(timerAddress, _wethAddress, _depositQuoteTimeBuffer) {}
+        uint64 _depositQuoteTimeBuffer,
+        address timerAddress
+    ) SpokePool(_wethAddress, _depositQuoteTimeBuffer, timerAddress) {}
 
     function setEnableRoute(
         address originToken,
