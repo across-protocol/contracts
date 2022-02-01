@@ -88,7 +88,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     event InitiateRefundRequested(
         uint64 requestExpirationTimestamp,
-        uint64 poolRebalanceLeafCount,
+        uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
@@ -170,7 +170,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable {
-        require(lpTokens[l1Token].isEnabled);
+        require(lpTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
         require((address(l1Token) == address(l1Weth) && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
@@ -289,7 +289,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Passed liveness");
 
         // Request price from OO and dispute it.
-        bondToken.safeApprove(address(_getOptimisticOracle()), bondAmount);
+        uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
+        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
+        bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
         _getOptimisticOracle().requestAndProposePriceFor(
             identifier,
             uint32(getCurrentTime()),
@@ -307,9 +309,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             int256(1e18)
         );
 
-        bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
         // Dispute the request that we just sent.
-
         SkinnyOptimisticOracleInterface.Request memory request = SkinnyOptimisticOracleInterface.Request({
             proposer: refundRequest.proposer,
             disputer: address(0),
@@ -319,7 +319,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             resolvedPrice: 0,
             expirationTime: getCurrentTime() + refundProposalLiveness,
             reward: 0,
-            finalFee: 1 ether, // fix this to pull the corect fee from the store.
+            finalFee: _getBondTokenFinalFee(),
             bond: bondAmount,
             customLiveness: refundProposalLiveness
         });
@@ -336,6 +336,32 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit RelayerRefundDisputed(msg.sender, request);
 
         delete refundRequest;
+    }
+
+    function _getRefundProposalAncillaryData() public view returns (bytes memory ancillaryData) {
+        ancillaryData = AncillaryData.appendKeyValueUint(
+            "",
+            "requestExpirationTimestamp",
+            refundRequest.requestExpirationTimestamp
+        );
+
+        ancillaryData = AncillaryData.appendKeyValueUint(
+            ancillaryData,
+            "unclaimedPoolRebalanceLeafCount",
+            refundRequest.unclaimedPoolRebalanceLeafCount
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "poolRebalanceRoot",
+            refundRequest.poolRebalanceRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "destinationDistributionRoot",
+            refundRequest.destinationDistributionRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueUint(ancillaryData, "claimedBitMap", refundRequest.claimedBitMap);
+        ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", refundRequest.proposer);
     }
 
     /*************************************************
@@ -370,30 +396,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
     }
 
-    function _getRefundProposalAncillaryData() public view returns (bytes memory) {
-        bytes memory ancillaryData = AncillaryData.appendKeyValueUint(
-            "",
-            "requestExpirationTimestamp",
-            refundRequest.requestExpirationTimestamp
-        );
-
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            ancillaryData,
-            "unclaimedPoolRebalanceLeafCount",
-            refundRequest.unclaimedPoolRebalanceLeafCount
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "poolRebalanceRoot",
-            refundRequest.poolRebalanceRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "destinationDistributionRoot",
-            refundRequest.destinationDistributionRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueUint(ancillaryData, "claimedBitMap", refundRequest.claimedBitMap);
-        ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", refundRequest.proposer);
+    function _getBondTokenFinalFee() internal view returns (uint256) {
+        return
+            StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store))
+                .computeFinalFee(address(bondToken))
+                .rawValue;
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

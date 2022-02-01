@@ -1,6 +1,6 @@
 import { TokenRolesEnum, interfaceName } from "@uma/common";
-import { getContractFactory, SignerWithAddress, utf8ToHex, toWei, toBN } from "./utils";
-import { bondAmount, refundProposalLiveness, identifier } from "./constants";
+import { getContractFactory, SignerWithAddress, utf8ToHex, fromWei, toBN } from "./utils";
+import { bondAmount, refundProposalLiveness, identifier, finalFee } from "./constants";
 import { Contract } from "ethers";
 
 export async function deployHubPoolTestHelperContracts(deployer: SignerWithAddress, finder: Contract, timer: Contract) {
@@ -23,9 +23,9 @@ export async function deployHubPoolTestHelperContracts(deployer: SignerWithAddre
   const store = await (
     await getContractFactory("Store", deployer)
   ).attach(await finder.getImplementationAddress(utf8ToHex(interfaceName.Store)));
-  await store.setFinalFee(weth.address, { rawValue: toWei("1") });
-  await store.setFinalFee(usdc.address, { rawValue: toBN("1000").mul(1e6) });
-  await store.setFinalFee(dai.address, { rawValue: toWei("1000") });
+  await store.setFinalFee(weth.address, { rawValue: finalFee });
+  await store.setFinalFee(usdc.address, { rawValue: toBN(fromWei(finalFee)).mul(1e6) });
+  await store.setFinalFee(dai.address, { rawValue: finalFee });
 
   // Deploy the hubPool.
   const hubPool = await (

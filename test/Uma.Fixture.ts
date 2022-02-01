@@ -9,6 +9,9 @@ export async function deployUmaEcosystemContracts(deployer: any) {
   const collateralWhitelist = await (await getContractFactory("AddressWhitelist", deployer)).deploy();
   const identifierWhitelist = await (await getContractFactory("IdentifierWhitelist", deployer)).deploy();
   const store = await (await getContractFactory("Store", deployer)).deploy(zeroRawValue, zeroRawValue, timer.address);
+  const mockOracle = await (
+    await getContractFactory("MockOracleAncillary", deployer)
+  ).deploy(finder.address, timer.address);
 
   // Set initial liveness to something != `refundProposalLiveness` so we can test that the custom liveness is set
   // correctly by the HubPool when making price requests.
@@ -21,6 +24,7 @@ export async function deployUmaEcosystemContracts(deployer: any) {
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), optimisticOracle.address);
+  await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
   // Set up other required UMA ecosystem components.
   await identifierWhitelist.addSupportedIdentifier(identifier);
