@@ -30,7 +30,7 @@ function randomAddress() {
   return ethers.utils.hexlify(ethers.utils.randomBytes(20));
 }
 
-describe("MerkleLib Claims", async function () {
+describe("MerkleLib Proofs", async function () {
   let merkleLibTest: Contract;
   before(async function () {
     ({ merkleLibTest } = await merkleLibFixture());
