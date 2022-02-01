@@ -6,7 +6,7 @@ export interface SignerWithAddress extends Signer {
   address: string;
 }
 
-export async function getContractFactory(name: string, signer: SignerWithAddress) {
+export async function getContractFactory(name: string, signer: Signer) {
   try {
     // Try fetch from the local ethers factory from HRE. If this exists then the contract is in this package.
     return await ethers.getContractFactory(name);
@@ -26,12 +26,12 @@ export const toBN = (num: string | number | BigNumber) => {
 };
 
 export async function seedWallet(
-  walletToFund: SignerWithAddress,
+  walletToFund: Signer,
   tokens: Contract[],
   weth: Contract | undefined,
   amountToSeedWith: number | BigNumber
 ) {
-  for (const token of tokens) await token.mint(walletToFund.address, amountToSeedWith);
+  for (const token of tokens) await token.mint(await walletToFund.getAddress(), amountToSeedWith);
 
   if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
 }

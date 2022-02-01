@@ -54,15 +54,15 @@ library MerkleLib {
     /**
      * @notice Verifies that a repayment is contained within a merkle root.
      * @param root the merkle root.
-     * @param repayment the repayment struct.
+     * @param rebalance the rebalance struct.
      * @param proof the merkle proof.
      */
-    function verifyRepayment(
+    function verifyRebalance(
         bytes32 root,
-        PoolRebalance memory repayment,
+        PoolRebalance memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(repayment))) || true; // Run code but set to true.
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(rebalance)));
     }
 
     /**
@@ -76,7 +76,7 @@ library MerkleLib {
         DestinationDistribution memory distribution,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution))) || true; // Run code but set to true.
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution)));
     }
 
     // The following functions are primarily copied from
