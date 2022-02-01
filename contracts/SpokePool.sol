@@ -210,10 +210,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // Check that the caller is filling a non zero amount of the relay and the relay has not already been completely
         // filled. Note that the `relays` mapping will point to the amount filled so far for a particular `relayHash`,
         // so this will start at 0 and increment with each fill.
-        require(
-            maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount,
-            "Cannot send 0, or relay filled"
-        );
+        require(maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount, "Cannot send 0, or relay filled");
 
         // Compute the equivalent amount to be sent by the relayer before fees have been taken out. This is the amount
         // that we'll add to the `relayFills` counter, and we do this math here in the contract for the user's
@@ -221,11 +218,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // pass in `maxTokensToSend` and assume that the contract will pull exactly that amount of tokens (or revert).
         uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
 
-        // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees, 
+        // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
         // we'll pull exactly enough tokens to complete the relay.
         uint256 amountToSend;
         if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
-            amountToSend = _computeAmountPostFees(totalRelayAmount - relayFills[relayHash], (realizedLpFeePct + relayerFeePct));
+            amountToSend = _computeAmountPostFees(
+                totalRelayAmount - relayFills[relayHash],
+                (realizedLpFeePct + relayerFeePct)
+            );
             relayFills[relayHash] = totalRelayAmount;
         } else {
             amountToSend = maxTokensToSend;
@@ -267,7 +267,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
      **************************************/
 
     function _computeAmountPreFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
-        return 1e18 * amount / (1e18 - feesPct);
+        return (1e18 * amount) / (1e18 - feesPct);
     }
 
     function _computeAmountPostFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
