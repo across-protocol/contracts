@@ -51,9 +51,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
 
-    FinderInterface finder;
+    FinderInterface public finder;
 
-    bytes32 identifier;
+    bytes32 public identifier;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
@@ -231,6 +231,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     ) public {
         // The most recent refund proposal must be fully claimed before the next relayer refund bundle is initiated.
         require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Last bundle has unclaimed leafs");
+        require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
 
