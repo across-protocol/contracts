@@ -96,7 +96,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
 
-    event RelayerRefundDisputed(address disputer, SkinnyOptimisticOracleInterface.Request request);
+    event RelayerRefundDisputed(
+        address disputer,
+        SkinnyOptimisticOracleInterface.Request ooPriceRequest,
+        RefundRequest refundRequest
+    );
 
     constructor(
         uint256 _bondAmount,
@@ -291,6 +295,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // Request price from OO and dispute it.
         uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
+        // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
         bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
         _getOptimisticOracle().requestAndProposePriceFor(
             identifier,
@@ -310,7 +315,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         );
 
         // Dispute the request that we just sent.
-        SkinnyOptimisticOracleInterface.Request memory request = SkinnyOptimisticOracleInterface.Request({
+        SkinnyOptimisticOracleInterface.Request memory ooPriceRequest = SkinnyOptimisticOracleInterface.Request({
             proposer: refundRequest.proposer,
             disputer: address(0),
             currency: bondToken,
@@ -328,13 +333,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             identifier,
             uint32(getCurrentTime()),
             _getRefundProposalAncillaryData(),
-            request,
+            ooPriceRequest,
             msg.sender,
             address(this)
         );
 
-        emit RelayerRefundDisputed(msg.sender, request);
+        emit RelayerRefundDisputed(msg.sender, ooPriceRequest, refundRequest);
 
+        // Finally, delete the state pertaining to the active refundRequest.
         delete refundRequest;
     }
 
