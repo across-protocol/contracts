@@ -2,8 +2,9 @@ import { expect } from "chai";
 import { merkleLibFixture } from "./MerkleLib.Fixture";
 import { Contract, BigNumber } from "ethers";
 
+let merkleLibTest: Contract;
+
 describe("MerkleLib Claims", async function () {
-  let merkleLibTest: Contract;
   beforeEach(async function () {
     ({ merkleLibTest } = await merkleLibFixture());
   });

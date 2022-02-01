@@ -3,6 +3,7 @@ import { merkleLibFixture } from "./MerkleLib.Fixture";
 import { Contract, BigNumber } from "ethers";
 import { MerkleTree } from "../utils/MerkleTree";
 import { ethers } from "hardhat";
+import { randomBigNumber, randomAddress } from "./utils";
 
 interface PoolRebalance {
   leafId: BigNumber;
@@ -22,23 +23,16 @@ interface DestinationDistribution {
   refundAmounts: BigNumber[];
 }
 
-function randomBigNumber() {
-  return ethers.BigNumber.from(ethers.utils.randomBytes(31));
-}
-
-function randomAddress() {
-  return ethers.utils.hexlify(ethers.utils.randomBytes(20));
-}
+let merkleLibTest: Contract;
 
 describe("MerkleLib Proofs", async function () {
-  let merkleLibTest: Contract;
   before(async function () {
     ({ merkleLibTest } = await merkleLibFixture());
   });
 
   it("PoolRebalance Proof", async function () {
     const poolRebalances: PoolRebalance[] = [];
-    const numRebalances = 100;
+    const numRebalances = 101;
     for (let i = 0; i < numRebalances; i++) {
       const numTokens = 10;
       const tokenAddresses: string[] = [];
@@ -61,6 +55,9 @@ describe("MerkleLib Proofs", async function () {
       });
     }
 
+    // Remove the last element.
+    const invalidPoolRebalance = poolRebalances.pop()!;
+
     const fragment = merkleLibTest.interface.fragments.find((fragment) => fragment.name === "verifyPoolRebalance");
     const param = fragment!.inputs.find((input) => input.name === "rebalance");
 
@@ -71,10 +68,14 @@ describe("MerkleLib Proofs", async function () {
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(poolRebalances[34]);
     expect(await merkleLibTest.verifyPoolRebalance(root, poolRebalances[34], proof)).to.equal(true);
+
+    // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
+    expect(() => merkleTree.getHexProof(invalidPoolRebalance)).to.throw();
+    expect(await merkleLibTest.verifyPoolRebalance(root, invalidPoolRebalance, proof)).to.equal(false);
   });
-  it("DestinationDistributionProofs", async function () {
+  it("DestinationDistributionProof", async function () {
     const destinationDistributions: DestinationDistribution[] = [];
-    const numDistributions = 100;
+    const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
     for (let i = 0; i < numDistributions; i++) {
       const numAddresses = 10;
       const refundAddresses: string[] = [];
@@ -93,6 +94,9 @@ describe("MerkleLib Proofs", async function () {
       });
     }
 
+    // Remove the last element.
+    const invalidDestinationDistribution = destinationDistributions.pop()!;
+
     const fragment = merkleLibTest.interface.fragments.find(
       (fragment) => fragment.name === "verifyRelayerDistribution"
     );
@@ -105,5 +109,9 @@ describe("MerkleLib Proofs", async function () {
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(destinationDistributions[14]);
     expect(await merkleLibTest.verifyRelayerDistribution(root, destinationDistributions[14], proof)).to.equal(true);
+
+    // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
+    expect(() => merkleTree.getHexProof(invalidDestinationDistribution)).to.throw();
+    expect(await merkleLibTest.verifyRelayerDistribution(root, invalidDestinationDistribution, proof)).to.equal(false);
   });
 });
