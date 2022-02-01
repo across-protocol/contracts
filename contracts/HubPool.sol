@@ -290,7 +290,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     }
 
     function disputeRelayerRefund() public {
-        require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Passed liveness");
+        require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
         uint256 totalBond = _getBondTokenFinalFee() + bondAmount;

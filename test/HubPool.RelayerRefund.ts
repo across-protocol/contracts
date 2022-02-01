@@ -119,4 +119,19 @@ describe("HubPool Relayer Refund", function () {
     expect(parsedAncillaryData?.claimedBitMap).to.equal(0);
     expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.proposer)).to.equal(dataWorker.address);
   });
+  it("Can not dispute after proposal liveness", async function () {
+    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund(
+        mockBundleEvaluationBlockNumbers,
+        mockPoolRebalanceLeafCount,
+        mockPoolRebalanceRoot,
+        mockDestinationDistributionRoot
+      );
+
+    await hubPool.setCurrentTime(Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+    await expect(hubPool.connect(dataWorker).disputeRelayerRefund()).to.be.revertedWith("Request passed liveness");
+  });
 });
