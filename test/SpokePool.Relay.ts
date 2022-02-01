@@ -65,15 +65,18 @@ describe("SpokePool Relayer Logic", async function () {
   
     // Relay again with maxAmountOfTokensToSend > amount of the relay remaining and check that the contract
     // pulls exactly enough tokens to complete the relay.
-    const amountRemainingInRelay = amountToDeposit.sub(amountToRelayPreFees)
-    await expect(spokePool.connect(relayer).fillRelay(...relayData, amountToDeposit, repaymentChainId))
+    const fullRelayAmount = amountToDeposit;
+    const fullRelayAmountPostFees = fullRelayAmount.mul(totalFeesPct).div(toBN(oneHundredPct));
+    const amountRemainingInRelay = fullRelayAmount.sub(amountToRelayPreFees)
+    const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalFeesPct).div(toBN(oneHundredPct))
+    await expect(spokePool.connect(relayer).fillRelay(...relayData, fullRelayAmount, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
-      .withArgs(relayHash, amountToDeposit, repaymentChainId, amountRemainingInRelay, relayer.address, relayData);
-    expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay).sub(amountRemainingInRelay));
-    expect(await destErc20.balanceOf(recipient.address)).to.equal(amountToRelay.add(amountRemainingInRelay));
+      .withArgs(relayHash, fullRelayAmount, repaymentChainId, amountRemainingInRelayPostFees, relayer.address, relayData);
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(fullRelayAmountPostFees));
+    expect(await destErc20.balanceOf(recipient.address)).to.equal(fullRelayAmountPostFees);
 
     // Fill amount should be equal to full relay amount.
-    expect(await spokePool.relayFills(relayHash)).to.equal(amountToDeposit);
+    expect(await spokePool.relayFills(relayHash)).to.equal(fullRelayAmount);
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
     const { relayHash, relayData } = getRelayHash(

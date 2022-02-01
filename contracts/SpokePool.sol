@@ -219,13 +219,13 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // that we'll add to the `relayFills` counter, and we do this math here in the contract for the user's
         // convenience so that they don't have to do this math before calling this function. The user can simply
         // pass in `maxTokensToSend` and assume that the contract will pull exactly that amount of tokens (or revert).
-        uint256 fillAmountPreFees = 1e18 * maxTokensToSend / (1e18 - (realizedLpFeePct + relayerFeePct));
+        uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
 
         // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees, 
         // we'll pull exactly enough tokens to complete the relay.
         uint256 amountToSend;
         if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
-            amountToSend = totalRelayAmount - relayFills[relayHash];
+            amountToSend = _computeAmountPostFees(totalRelayAmount - relayFills[relayHash], (realizedLpFeePct + relayerFeePct));
             relayFills[relayHash] = totalRelayAmount;
         } else {
             amountToSend = maxTokensToSend;
@@ -265,6 +265,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
+
+    function _computeAmountPreFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
+        return 1e18 * amount / (1e18 - feesPct);
+    }
+
+    function _computeAmountPostFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
+        return (amount * feesPct) / 1e18;
+    }
 
     // Should we make this public for the relayer's convenience?
     function _getRelayHash(RelayData memory relayData) private pure returns (bytes32) {
