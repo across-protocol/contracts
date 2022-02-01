@@ -7,9 +7,12 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "@uma/core/contracts/oracle/implementation/Constants.sol";
+import "@uma/core/contracts/common/implementation/AncillaryData.sol";
+
 import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
 import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
-import "@uma/core/contracts/oracle/implementation/Constants.sol";
+import "@uma/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -48,14 +51,18 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
 
-    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
-    WETH9Like public l1Weth;
+    FinderInterface finder;
+
+    bytes32 identifier;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
 
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
+
+    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
+    WETH9Like public l1Weth;
 
     // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
     // be disputed only during this period of time.
@@ -89,19 +96,23 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
 
-    event RelayerRefundDisputed(uint256 relayerRefundId, address disputer);
+    event RelayerRefundDisputed(address disputer, SkinnyOptimisticOracleInterface.Request request);
 
     constructor(
         uint256 _bondAmount,
         uint64 _refundProposalLiveness,
-        address _bondToken,
-        address _l1Weth,
-        address _timerAddress
-    ) Testable(_timerAddress) {
+        FinderInterface _finder,
+        bytes32 _identifier,
+        IERC20 _bondToken,
+        WETH9Like _l1Weth,
+        address _timer
+    ) Testable(_timer) {
         bondAmount = _bondAmount;
         refundProposalLiveness = _refundProposalLiveness;
-        bondToken = IERC20(_bondToken);
-        l1Weth = WETH9Like(_l1Weth);
+        bondToken = _bondToken;
+        l1Weth = _l1Weth;
+        finder = _finder;
+        identifier = _identifier;
     }
 
     /*************************************************
@@ -138,8 +149,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
         // appends and permission setting.
         ExpandedERC20 lpToken = new ExpandedERC20(
-            append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
-            append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
+            _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
+            _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
             IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );
         lpToken.addMember(1, address(this)); // Set this contract as the LP Token's minter.
@@ -274,15 +285,57 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, msg.sender);
     }
 
-    function disputeRelayerRefund(uint256 relayerRefundRequestId) public {
-        require(getCurrentTime() > refundRequest.requestExpirationTimestamp, "Passed liveness");
+    function disputeRelayerRefund() public {
+        require(getCurrentTime() < refundRequest.requestExpirationTimestamp, "Passed liveness");
 
-        // Delete the last element in the relayerRefundRequests array. This acts to throw out the request.
-        emit RelayerRefundDisputed(relayerRefundRequestId, msg.sender);
+        // Request price from OO and dispute it.
+        bondToken.safeApprove(address(_getOptimisticOracle()), bondAmount);
+        _getOptimisticOracle().requestAndProposePriceFor(
+            identifier,
+            uint32(getCurrentTime()),
+            _getRefundProposalAncillaryData(),
+            bondToken,
+            // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
+            // proposal has passed the challenge period.
+            0,
+            // Set the Optimistic oracle proposer bond for the price request.
+            bondAmount,
+            // Set the Optimistic oracle liveness for the price request.
+            refundProposalLiveness,
+            refundRequest.proposer,
+            // Canonical value representing "True"; i.e. the proposed relay is valid.
+            int256(1e18)
+        );
+
+        bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
+        // Dispute the request that we just sent.
+
+        SkinnyOptimisticOracleInterface.Request memory request = SkinnyOptimisticOracleInterface.Request({
+            proposer: refundRequest.proposer,
+            disputer: address(0),
+            currency: bondToken,
+            settled: false,
+            proposedPrice: int256(1e18),
+            resolvedPrice: 0,
+            expirationTime: getCurrentTime() + refundProposalLiveness,
+            reward: 0,
+            finalFee: 1 ether, // fix this to pull the corect fee from the store.
+            bond: bondAmount,
+            customLiveness: refundProposalLiveness
+        });
+
+        _getOptimisticOracle().disputePriceFor(
+            identifier,
+            uint32(getCurrentTime()),
+            _getRefundProposalAncillaryData(),
+            request,
+            msg.sender,
+            address(this)
+        );
+
+        emit RelayerRefundDisputed(msg.sender, request);
 
         delete refundRequest;
-
-        // TODO: pull bonds. request price from OO.
     }
 
     /*************************************************
@@ -304,12 +357,43 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         }
     }
 
-    function append(
+    function _append(
         string memory a,
         string memory b,
         string memory c
     ) internal pure returns (string memory) {
         return string(abi.encodePacked(a, b, c));
+    }
+
+    function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
+        return
+            SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
+    }
+
+    function _getRefundProposalAncillaryData() public view returns (bytes memory) {
+        bytes memory ancillaryData = AncillaryData.appendKeyValueUint(
+            "",
+            "requestExpirationTimestamp",
+            refundRequest.requestExpirationTimestamp
+        );
+
+        ancillaryData = AncillaryData.appendKeyValueUint(
+            ancillaryData,
+            "unclaimedPoolRebalanceLeafs",
+            refundRequest.unclaimedPoolRebalanceLeafs
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "poolRebalanceRoot",
+            refundRequest.poolRebalanceRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "destinationDistributionRoot",
+            refundRequest.destinationDistributionRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueUint(ancillaryData, "claimedBitMap", refundRequest.claimedBitMap);
+        ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", refundRequest.proposer);
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

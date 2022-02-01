@@ -30,6 +30,10 @@ export const toBN = (num: string | number | BigNumber) => {
   return BigNumber.from(num.toString());
 };
 
+export const utf8ToHex = (input: string) => {
+  return ethers.utils.formatBytes32String(input);
+};
+
 export async function seedWallet(
   walletToFund: SignerWithAddress,
   tokens: Contract[],
