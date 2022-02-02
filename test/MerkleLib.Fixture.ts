@@ -8,9 +8,7 @@ export const merkleLibFixture = hre.deployments.createFixture(async ({ deploymen
   const merkleLibTest = await (
     await getContractFactory("MerkleLibTest", {
       signer,
-      libraries: {
-        MerkleLib: merkleLib.address,
-      },
+      libraries: { MerkleLib: merkleLib.address },
     })
   ).deploy();
   return { merkleLibTest };
