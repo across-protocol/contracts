@@ -31,7 +31,7 @@ export const fromWei = (num: string | number | BigNumber) => ethers.utils.format
 
 export const toBN = (num: string | number | BigNumber) => {
   // If the string version of the num contains a `.` then it is a number which needs to be parsed to a string int.
-  if (num.toString().includes(".")) return BigNumber.from(parseInt(num as any));
+  if (num.toString().includes(".")) return BigNumber.from(parseInt(num.toString()));
   return BigNumber.from(num.toString());
 };
 

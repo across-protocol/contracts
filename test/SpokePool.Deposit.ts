@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
-import { deploySpokePoolTestHelperContracts, enableRoutes } from "./SpokePool.Fixture";
+import { spokePoolFixture, enableRoutes } from "./SpokePool.Fixture";
 import { amountToSeedWallets, amountToDeposit, depositDestinationChainId, depositRelayerFeePct } from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
@@ -11,7 +11,7 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress;
 describe("SpokePool Depositor Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient] = await ethers.getSigners();
-    ({ weth, erc20, spokePool, unwhitelistedErc20 } = await deploySpokePoolTestHelperContracts(depositor));
+    ({ weth, erc20, spokePool, unwhitelistedErc20 } = await spokePoolFixture());
 
     // mint some fresh tokens and deposit ETH for weth for the depositor.
     await seedWallet(depositor, [erc20], weth, amountToSeedWallets);

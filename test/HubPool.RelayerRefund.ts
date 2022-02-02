@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 import { ZERO_ADDRESS } from "@uma/common";
 import { getContractFactory, SignerWithAddress, createRandomBytes32, seedWallet } from "./utils";
 import { depositDestinationChainId, bondAmount, refundProposalLiveness } from "./constants";
-import { deployHubPoolTestHelperContracts } from "./HubPool.Fixture";
+import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress;
@@ -13,7 +13,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress;
 describe("HubPool Relayer Refund", function () {
   before(async function () {
     [owner, dataWorker] = await ethers.getSigners();
-    ({ weth, hubPool, usdc } = await deployHubPoolTestHelperContracts(owner));
+    ({ weth, hubPool, usdc } = await hubPoolFixture());
     await seedWallet(dataWorker, [], weth, bondAmount);
   });
 

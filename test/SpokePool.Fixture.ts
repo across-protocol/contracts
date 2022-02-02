@@ -8,10 +8,12 @@ import {
   depositRelayerFeePct,
   realizedLpFeePct,
 } from "./constants";
+import hre from "hardhat";
 
 const { defaultAbiCoder, keccak256 } = utils;
 
-export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerWithAddress) {
+export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
+  const [deployerWallet] = await ethers.getSigners();
   // Useful contracts.
   const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
 
@@ -34,7 +36,7 @@ export async function deploySpokePoolTestHelperContracts(deployerWallet: SignerW
   ).deploy(weth.address, depositQuoteTimeBuffer, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
-}
+});
 
 export interface DepositRoute {
   originToken: string;
