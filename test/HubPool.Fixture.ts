@@ -15,8 +15,9 @@ export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
   await dai.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the hubPool
+  const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const hubPool = await (
-    await getContractFactory("HubPool", deployerWallet)
+    await getContractFactory("HubPool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
   ).deploy(bondAmount, refundProposalLiveness, weth.address, weth.address, timer.address);
 
   return { timer, weth, usdc, dai, hubPool };
