@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import { ZERO_ADDRESS } from "@uma/common";
 import { getContractFactory, SignerWithAddress } from "./utils";
 import { depositDestinationChainId } from "./constants";
-import { deployHubPoolTestHelperContracts } from "./HubPool.Fixture";
+import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
@@ -12,7 +12,7 @@ let owner: SignerWithAddress, other: SignerWithAddress;
 describe("HubPool Admin functions", function () {
   before(async function () {
     [owner, other] = await ethers.getSigners();
-    ({ weth, hubPool, usdc } = await deployHubPoolTestHelperContracts(owner));
+    ({ weth, hubPool, usdc } = await hubPoolFixture());
   });
 
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {

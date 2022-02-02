@@ -1,9 +1,12 @@
 import { TokenRolesEnum } from "@uma/common";
 import { getContractFactory } from "./utils";
 import { bondAmount, refundProposalLiveness } from "./constants";
-import { Contract } from "ethers";
+import { Contract, Signer } from "ethers";
+import hre from "hardhat";
 
-export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
+export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
+  const [deployerWallet] = await ethers.getSigners();
+
   // Useful contracts.
   const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
 
@@ -21,9 +24,9 @@ export async function deployHubPoolTestHelperContracts(deployerWallet: any) {
   ).deploy(bondAmount, refundProposalLiveness, weth.address, weth.address, timer.address);
 
   return { timer, weth, usdc, dai, hubPool };
-}
+});
 
-export async function enableTokensForLiquidityProvision(owner: any, hubPool: Contract, tokens: Contract[]) {
+export async function enableTokensForLiquidityProvision(owner: Signer, hubPool: Contract, tokens: Contract[]) {
   const lpTokens = [];
   for (const token of tokens) {
     await hubPool.enableL1TokenForLiquidityProvision(token.address);
