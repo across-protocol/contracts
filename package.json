@@ -11,7 +11,7 @@
   "scripts": {
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
-    "prettier": "prettier './**/*.sol' './**/*.md' './**/*.ts'",
+    "prettier": "prettier .",
     "test": "yarn hardhat test"
   },
   "dependencies": {
