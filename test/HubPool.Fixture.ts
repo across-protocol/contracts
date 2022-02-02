@@ -1,19 +1,26 @@
 import { TokenRolesEnum, interfaceName } from "@uma/common";
-import { getContractFactory, SignerWithAddress, utf8ToHex, fromWei, toBN } from "./utils";
-import { bondAmount, refundProposalLiveness, identifier, finalFee } from "./constants";
-import { Contract } from "ethers";
+import { getContractFactory, utf8ToHex, toBN, fromWei } from "./utils";
+import { bondAmount, refundProposalLiveness, finalFee } from "./constants";
+import { Contract, Signer } from "ethers";
+import hre from "hardhat";
 
-export async function deployHubPoolTestHelperContracts(deployer: SignerWithAddress, finder: Contract, timer: Contract) {
+export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
+  const [deployerWallet] = await ethers.getSigners();
+
+  // Useful contracts.
+  const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
+  const finder = (await hre.deployments.get("Finder")) as any;
+
   // Create 3 tokens: WETH for wrapping unwrapping and 2 ERC20s with different decimals.
-  const weth = await (await getContractFactory("WETH9", deployer)).deploy();
-  const usdc = await (await getContractFactory("ExpandedERC20", deployer)).deploy("USD Coin", "USDC", 6);
-  await usdc.addMember(TokenRolesEnum.MINTER, deployer.address);
-  const dai = await (await getContractFactory("ExpandedERC20", deployer)).deploy("DAI Stablecoin", "DAI", 18);
-  await dai.addMember(TokenRolesEnum.MINTER, deployer.address);
+  const weth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
+  const usdc = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("USD Coin", "USDC", 6);
+  await usdc.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  const dai = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("DAI Stablecoin", "DAI", 18);
+  await dai.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Set the above currencies as approved in the UMA collateralWhitelist.
   const collateralWhitelist = await (
-    await getContractFactory("AddressWhitelist", deployer)
+    await getContractFactory("AddressWhitelist", deployerWallet)
   ).attach(await finder.getImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist)));
   await collateralWhitelist.addToWhitelist(weth.address);
   await collateralWhitelist.addToWhitelist(usdc.address);
@@ -21,22 +28,22 @@ export async function deployHubPoolTestHelperContracts(deployer: SignerWithAddre
 
   // Set the finalFee for all the new tokens.
   const store = await (
-    await getContractFactory("Store", deployer)
+    await getContractFactory("Store", deployerWallet)
   ).attach(await finder.getImplementationAddress(utf8ToHex(interfaceName.Store)));
   await store.setFinalFee(weth.address, { rawValue: finalFee });
   await store.setFinalFee(usdc.address, { rawValue: toBN(fromWei(finalFee)).mul(1e6) });
   await store.setFinalFee(dai.address, { rawValue: finalFee });
 
   // Deploy the hubPool
-  const merkleLib = await (await getContractFactory("MerkleLib", deployer)).deploy();
+  const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const hubPool = await (
-    await getContractFactory("HubPool", { signer: deployer, libraries: { MerkleLib: merkleLib.address } })
+    await getContractFactory("HubPool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
   ).deploy(bondAmount, refundProposalLiveness, weth.address, weth.address, timer.address);
 
-  return { weth, usdc, dai, hubPool };
-}
+  return { timer, weth, usdc, dai, hubPool };
+});
 
-export async function enableTokensForLiquidityProvision(owner: any, hubPool: Contract, tokens: Contract[]) {
+export async function enableTokensForLiquidityProvision(owner: Signer, hubPool: Contract, tokens: Contract[]) {
   const lpTokens = [];
   for (const token of tokens) {
     await hubPool.enableL1TokenForLiquidityProvision(token.address);

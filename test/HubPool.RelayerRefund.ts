@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { parseAncillaryData } from "@uma/common";
-import { SignerWithAddress, createRandomBytes32, seedWallet } from "./utils";
+import { ZERO_ADDRESS, parseAncillaryData } from "@uma/common";
+import { getContractFactory, SignerWithAddress, createRandomBytes32, seedWallet } from "./utils";
 import * as consts from "./constants";
-import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
-import { deployUmaEcosystemContracts } from "./Uma.Fixture";
+import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, finder: Contract, timer: Contract, optimisticOracle: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -16,17 +15,10 @@ const mockPoolRebalanceRoot = createRandomBytes32();
 const mockDestinationDistributionRoot = createRandomBytes32();
 
 describe("HubPool Relayer Refund", function () {
-  beforeEach(async function () {
-    [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ finder, timer, optimisticOracle } = await deployUmaEcosystemContracts(owner));
-    ({ weth, hubPool } = await deployHubPoolTestHelperContracts(owner, finder, timer));
-    await seedWallet(owner, [], weth, consts.bondAmount);
-    await seedWallet(dataWorker, [], weth, consts.bondAmount.add(consts.finalFee).mul(2));
-    await seedWallet(liquidityProvider, [], weth, consts.amountToLp);
-
-    await enableTokensForLiquidityProvision(owner, hubPool, [weth]);
-    await weth.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp);
-    await hubPool.connect(liquidityProvider).addLiquidity(weth.address, consts.amountToLp);
+  before(async function () {
+    [owner, dataWorker] = await ethers.getSigners();
+    ({ weth, hubPool } = await hubPoolFixture());
+    await seedWallet(dataWorker, [], weth, consts.bondAmount);
   });
 
   it("Initialization of a relay correctly stores data, emits events and pulls the bond", async function () {
