@@ -1,24 +1,29 @@
 import { getBytecode, getAbi } from "@uma/contracts-node";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
+import { FactoryOptions } from "hardhat/types";
 
 export interface SignerWithAddress extends Signer {
   address: string;
 }
 
-export const getContractFactory = async (name: string, signer: SignerWithAddress): Promise<ContractFactory> => {
+function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
+  return "signer" in signerOrFactoryOptions || "libraries" in signerOrFactoryOptions;
+}
+
+export async function getContractFactory(
+  name: string,
+  signerOrFactoryOptions: Signer | FactoryOptions
+): Promise<ContractFactory> {
   try {
-    // Try fetch from the local ethers factory from HRE. If this exists then the contract is in this package.
-    if (name == "HubPool") {
-      const merkleLib = await (await ethers.getContractFactory("MerkleLib")).deploy();
-      return await ethers.getContractFactory(name, { libraries: { MerkleLib: merkleLib.address } });
-    }
-    return await ethers.getContractFactory(name);
+    return await ethers.getContractFactory(name, signerOrFactoryOptions);
   } catch (error) {
     // If it does not exist then try find the contract in the UMA core package.
-    return new ethers.ContractFactory(getAbi(name as any), getBytecode(name as any), signer);
+    if (isFactoryOptions(signerOrFactoryOptions))
+      throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
+    return new ethers.ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
   }
-};
+}
 
 export const toWei = (num: string | number | BigNumber) => ethers.utils.parseEther(num.toString());
 
@@ -36,13 +41,21 @@ export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
-export const seedWallet = async (
-  walletToFund: SignerWithAddress,
+export async function seedWallet(
+  walletToFund: Signer,
   tokens: Contract[],
   weth: Contract | undefined,
   amountToSeedWith: number | BigNumber
-) => {
-  for (const token of tokens) await token.mint(walletToFund.address, amountToSeedWith);
+) {
+  for (const token of tokens) await token.mint(await walletToFund.getAddress(), amountToSeedWith);
 
   if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
-};
+}
+
+export function randomBigNumber() {
+  return ethers.BigNumber.from(ethers.utils.randomBytes(31));
+}
+
+export function randomAddress() {
+  return ethers.utils.hexlify(ethers.utils.randomBytes(20));
+}

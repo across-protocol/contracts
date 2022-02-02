@@ -27,10 +27,11 @@ export async function deployHubPoolTestHelperContracts(deployer: SignerWithAddre
   await store.setFinalFee(usdc.address, { rawValue: toBN(fromWei(finalFee)).mul(1e6) });
   await store.setFinalFee(dai.address, { rawValue: finalFee });
 
-  // Deploy the hubPool.
+  // Deploy the hubPool
+  const merkleLib = await (await getContractFactory("MerkleLib", deployer)).deploy();
   const hubPool = await (
-    await getContractFactory("HubPool", deployer)
-  ).deploy(bondAmount, refundProposalLiveness, finder.address, identifier, weth.address, weth.address, timer.address);
+    await getContractFactory("HubPool", { signer: deployer, libraries: { MerkleLib: merkleLib.address } })
+  ).deploy(bondAmount, refundProposalLiveness, weth.address, weth.address, timer.address);
 
   return { weth, usdc, dai, hubPool };
 }
