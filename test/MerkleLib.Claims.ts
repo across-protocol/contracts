@@ -4,7 +4,7 @@ import { Contract, BigNumber } from "ethers";
 
 let merkleLibTest: Contract;
 
-describe.only("MerkleLib Claims", async function () {
+describe("MerkleLib Claims", async function () {
   beforeEach(async function () {
     ({ merkleLibTest } = await merkleLibFixture());
   });
@@ -54,7 +54,7 @@ describe.only("MerkleLib Claims", async function () {
     const claim151 = BigNumber.from(2).pow(151);
     expect(await merkleLibTest.claimedBitMap1D()).to.equal(claim149.add(claim150).add(claim151));
   });
-  it("1D: Overflowing max set claims is handled correctly", async function () {
+  it("1D: Overflowing max index is handled correctly", async function () {
     expect(await merkleLibTest.isClaimed1D(150)).to.equal(false);
     await merkleLibTest.setClaimed1D(150);
     expect(await merkleLibTest.isClaimed1D(150)).to.equal(true);

@@ -39,7 +39,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
-        uint256 claimedBitMap;
+        uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
     }
