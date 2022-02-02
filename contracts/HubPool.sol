@@ -68,7 +68,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // be disputed only during this period of time.
     uint64 public refundProposalLiveness;
 
-    event BondSet(address newBondToken, uint256 newBondAmount);
+    event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -95,7 +95,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
 
     event RelayerRefundDisputed(
-        address disputer,
+        address indexed disputer,
         SkinnyOptimisticOracleInterface.Request ooPriceRequest,
         RefundRequest refundRequest
     );

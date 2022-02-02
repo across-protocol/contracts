@@ -114,7 +114,8 @@ library MerkleLib {
      \* @return bool indicating if the index within the claimedBitMap has been marked as claimed.
      */
     function isClaimed1D(uint256 claimedBitMap, uint256 index) public pure returns (bool) {
-        return claimedBitMap & (1 << index) > 0;
+        uint256 mask = (1 << index);
+        return claimedBitMap & mask == mask;
     }
 
     /**
@@ -123,6 +124,7 @@ library MerkleLib {
      * @param index the index to mark in the bitmap.
      */
     function setClaimed1D(uint256 claimedBitMap, uint256 index) public pure returns (uint256) {
+        require(index <= 255, "Index out of bounds");
         return claimedBitMap | (1 << index % 256);
     }
 }
