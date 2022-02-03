@@ -439,8 +439,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             // TODO: Checking the amount is greater than 0 is not sufficient. we need to build an external library that
             // makes the decision on if there should be an L1->L2 token transfer. this should come in a later PR.
             if (amount > 0) {
+                // Send the adapter all the tokens it needs to bridge. This should be refined later to remove the extra
+                // token transfer through the use of delegate call.
+                IERC20(poolRebalance.tokenAddresses[i]).safeTransfer(address(adapter), uint256(amount));
                 adapter.relayTokens(
-                    poolRebalance.tokenAddresses[i],
+                    poolRebalance.tokenAddresses[i], // l1Token
+                    whitelistedRoutes[poolRebalance.tokenAddresses[i]][poolRebalance.chainId], // l2Token
                     uint256(amount),
                     crossChainContracts[poolRebalance.chainId].spokePool
                 );

@@ -31,6 +31,8 @@ contract Optimism_Messenger is Ownable, CrossDomainEnabled, AdapterInterface {
         sendCrossDomainMessage(target, uint32(gasLimit), message);
     }
 
+    //TODO: we should look into using delegate call as this current implementation assumes the caller
+    // transfers the tokens first to this contract.
     function relayTokens(
         address l1Token,
         address l2Token,
