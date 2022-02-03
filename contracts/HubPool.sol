@@ -7,9 +7,12 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "@uma/core/contracts/oracle/implementation/Constants.sol";
+import "@uma/core/contracts/common/implementation/AncillaryData.sol";
+
 import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
 import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
-import "@uma/core/contracts/oracle/implementation/Constants.sol";
+import "@uma/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -31,25 +34,26 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bool isEnabled;
     }
 
-    struct RelayerRefundRequest {
+    struct RefundRequest {
         uint64 requestExpirationTimestamp;
-        uint64 unclaimedPoolRebalanceLeafs;
+        uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
-        mapping(uint256 => uint256) claimedBitMap;
+        uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
     }
 
-    RelayerRefundRequest[] public relayerRefundRequests;
+    RefundRequest public refundRequest;
 
     // Whitelist of origin token to destination token routings to be used by off-chain agents.
     mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
 
-    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
-    WETH9Like public l1Weth;
+    FinderInterface public finder;
+
+    bytes32 public identifier;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
@@ -57,13 +61,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
 
+    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
+    WETH9Like public l1Weth;
+
     // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
     // be disputed only during this period of time.
     uint64 public refundProposalLiveness;
 
-    event BondAmountSet(uint64 newBondMultiplier);
-
-    event BondTokenSet(address newBondMultiplier);
+    event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -80,9 +85,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
 
     event InitiateRefundRequested(
-        uint64 indexed relayerRefundId,
         uint64 requestExpirationTimestamp,
-        uint64 poolRebalanceLeafCount,
+        uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
@@ -90,33 +94,42 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     );
     event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
 
-    event RelayerRefundDisputed(uint256 relayerRefundId, address disputer);
+    event RelayerRefundDisputed(
+        address indexed disputer,
+        SkinnyOptimisticOracleInterface.Request ooPriceRequest,
+        RefundRequest refundRequest
+    );
+
+    modifier onlyIfNoActiveRequest() {
+        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
+        _;
+    }
 
     constructor(
         uint256 _bondAmount,
         uint64 _refundProposalLiveness,
-        address _bondToken,
-        address _l1Weth,
-        address _timerAddress
-    ) Testable(_timerAddress) {
+        FinderInterface _finder,
+        bytes32 _identifier,
+        IERC20 _bondToken,
+        WETH9Like _l1Weth,
+        address _timer
+    ) Testable(_timer) {
         bondAmount = _bondAmount;
         refundProposalLiveness = _refundProposalLiveness;
-        bondToken = IERC20(_bondToken);
-        l1Weth = WETH9Like(_l1Weth);
+        bondToken = _bondToken;
+        l1Weth = _l1Weth;
+        finder = _finder;
+        identifier = _identifier;
     }
 
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
-    function setBondToken(address newBondToken) public onlyOwner {
-        bondToken = IERC20(newBondToken);
-        emit BondTokenSet(newBondToken);
-    }
-
-    function setBondTokenFinalFeeMultiplier(uint64 newBondAmount) public onlyOwner {
+    function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner onlyIfNoActiveRequest {
+        bondToken = newBondToken;
         bondAmount = newBondAmount;
-        emit BondAmountSet(newBondAmount);
+        emit BondSet(address(newBondToken), newBondAmount);
     }
 
     /**
@@ -137,8 +150,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
         // appends and permission setting.
         ExpandedERC20 lpToken = new ExpandedERC20(
-            append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
-            append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
+            _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
+            _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
             IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );
         lpToken.addMember(1, address(this)); // Set this contract as the LP Token's minter.
@@ -158,7 +171,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable {
-        require(lpTokens[l1Token].isEnabled);
+        require(lpTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
         require((address(l1Token) == address(l1Weth) && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
@@ -212,28 +225,23 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot
-    ) public {
-        // The most recent refund proposal must be fully claimed before the next relayer refund bundle is initiated.
-        require(
-            relayerRefundRequests.length == 0 || // If this is the first initiated relay refund.
-                relayerRefundRequests[getNumberOfRelayRefunds()].unclaimedPoolRebalanceLeafs == 0,
-            "Last bundle has unclaimed leafs"
-        );
+    ) public onlyIfNoActiveRequest {
+        require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
 
-        RelayerRefundRequest storage relayerRefundRequest = relayerRefundRequests.push();
-        relayerRefundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
-        relayerRefundRequest.unclaimedPoolRebalanceLeafs = poolRebalanceLeafCount;
-        relayerRefundRequest.poolRebalanceRoot = poolRebalanceRoot;
-        relayerRefundRequest.destinationDistributionRoot = destinationDistributionRoot;
-        relayerRefundRequest.proposer = msg.sender;
+        delete refundRequest; // Remove the existing information relating to the previous relayer refund request.
+
+        refundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
+        refundRequest.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
+        refundRequest.poolRebalanceRoot = poolRebalanceRoot;
+        refundRequest.destinationDistributionRoot = destinationDistributionRoot;
+        refundRequest.proposer = msg.sender;
 
         // Pull bondAmount of bondToken from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit InitiateRefundRequested(
-            uint64(relayerRefundRequests.length - 1),
             requestExpirationTimestamp,
             poolRebalanceLeafCount,
             bundleEvaluationBlockNumbers,
@@ -248,25 +256,24 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         MerkleLib.PoolRebalance memory poolRebalance,
         bytes32[] memory proof
     ) public {
-        RelayerRefundRequest storage relayerRefund = relayerRefundRequests[relayerRefundRequestId];
-        require(getCurrentTime() > relayerRefund.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalance has not yet been claimed.
-        require(!MerkleLib.isClaimed(relayerRefund.claimedBitMap, poolRebalance.leafId), "Already claimed");
+        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId), "Already claimed");
 
         // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
-        require(MerkleLib.verifyPoolRebalance(relayerRefund.poolRebalanceRoot, poolRebalance, proof), "Bad Proof");
+        require(MerkleLib.verifyPoolRebalance(refundRequest.poolRebalanceRoot, poolRebalance, proof), "Bad Proof");
 
         // Set the leafId in the claimed bitmap.
-        MerkleLib.setClaimed(relayerRefund.claimedBitMap, poolRebalance.leafId);
+        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId);
 
-        // Decrement the unclaimedPoolRebalanceLeafs.
-        relayerRefund.unclaimedPoolRebalanceLeafs--;
+        // Decrement the unclaimedPoolRebalanceLeafCount.
+        refundRequest.unclaimedPoolRebalanceLeafCount--;
 
         // Transfer the bondAmount to back to the proposer, if this was not done before for this refund bundle.
-        if (!relayerRefund.proposerBondRepaid) {
-            relayerRefund.proposerBondRepaid = true;
-            bondToken.safeTransfer(relayerRefund.proposer, bondAmount);
+        if (!refundRequest.proposerBondRepaid) {
+            refundRequest.proposerBondRepaid = true;
+            bondToken.safeTransfer(refundRequest.proposer, bondAmount);
         }
 
         // TODO call into canonical bridge to send PoolRebalance.netSendAmount for the associated
@@ -278,24 +285,85 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, msg.sender);
     }
 
-    function disputeRelayerRefund(uint256 relayerRefundRequestId) public {
-        RelayerRefundRequest storage relayerRefund = relayerRefundRequests[relayerRefundRequestId];
-        require(
-            getCurrentTime() > relayerRefundRequests[relayerRefundRequestId].requestExpirationTimestamp,
-            "Passed liveness"
+    function disputeRelayerRefund() public {
+        require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Request passed liveness");
+
+        // Request price from OO and dispute it.
+        uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
+        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
+        // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
+        bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
+        _getOptimisticOracle().requestAndProposePriceFor(
+            identifier,
+            uint32(getCurrentTime()),
+            _getRefundProposalAncillaryData(),
+            bondToken,
+            // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
+            // proposal has passed the challenge period.
+            0,
+            // Set the Optimistic oracle proposer bond for the price request.
+            bondAmount,
+            // Set the Optimistic oracle liveness for the price request.
+            refundProposalLiveness,
+            refundRequest.proposer,
+            // Canonical value representing "True"; i.e. the proposed relay is valid.
+            int256(1e18)
         );
 
-        // Delete the last element in the relayerRefundRequests array. This acts to throw out the request.
-        emit RelayerRefundDisputed(relayerRefundRequestId, msg.sender);
+        // Dispute the request that we just sent.
+        SkinnyOptimisticOracleInterface.Request memory ooPriceRequest = SkinnyOptimisticOracleInterface.Request({
+            proposer: refundRequest.proposer,
+            disputer: address(0),
+            currency: bondToken,
+            settled: false,
+            proposedPrice: int256(1e18),
+            resolvedPrice: 0,
+            expirationTime: getCurrentTime() + refundProposalLiveness,
+            reward: 0,
+            finalFee: _getBondTokenFinalFee(),
+            bond: bondAmount,
+            customLiveness: refundProposalLiveness
+        });
 
-        relayerRefundRequests.pop();
+        _getOptimisticOracle().disputePriceFor(
+            identifier,
+            uint32(getCurrentTime()),
+            _getRefundProposalAncillaryData(),
+            ooPriceRequest,
+            msg.sender,
+            address(this)
+        );
 
-        // TODO: pull bonds. request price from OO.
+        emit RelayerRefundDisputed(msg.sender, ooPriceRequest, refundRequest);
+
+        // Finally, delete the state pertaining to the active refundRequest.
+        delete refundRequest;
     }
 
-    function getNumberOfRelayRefunds() public view returns (uint256) {
-        if (relayerRefundRequests.length == 0) return 0;
-        return relayerRefundRequests.length - 1;
+    function _getRefundProposalAncillaryData() public view returns (bytes memory ancillaryData) {
+        ancillaryData = AncillaryData.appendKeyValueUint(
+            "",
+            "requestExpirationTimestamp",
+            refundRequest.requestExpirationTimestamp
+        );
+
+        ancillaryData = AncillaryData.appendKeyValueUint(
+            ancillaryData,
+            "unclaimedPoolRebalanceLeafCount",
+            refundRequest.unclaimedPoolRebalanceLeafCount
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "poolRebalanceRoot",
+            refundRequest.poolRebalanceRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "destinationDistributionRoot",
+            refundRequest.destinationDistributionRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueUint(ancillaryData, "claimedBitMap", refundRequest.claimedBitMap);
+        ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", refundRequest.proposer);
     }
 
     /*************************************************
@@ -317,12 +385,24 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         }
     }
 
-    function append(
+    function _append(
         string memory a,
         string memory b,
         string memory c
     ) internal pure returns (string memory) {
         return string(abi.encodePacked(a, b, c));
+    }
+
+    function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
+        return
+            SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
+    }
+
+    function _getBondTokenFinalFee() internal view returns (uint256) {
+        return
+            StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store))
+                .computeFinalFee(address(bondToken))
+                .rawValue;
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

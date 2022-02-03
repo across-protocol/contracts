@@ -9,6 +9,8 @@ import "../MerkleLib.sol";
 contract MerkleLibTest {
     mapping(uint256 => uint256) public claimedBitMap;
 
+    uint256 public claimedBitMap1D;
+
     function verifyPoolRebalance(
         bytes32 root,
         MerkleLib.PoolRebalance memory rebalance,
@@ -31,5 +33,13 @@ contract MerkleLibTest {
 
     function setClaimed(uint256 index) public {
         MerkleLib.setClaimed(claimedBitMap, index);
+    }
+
+    function isClaimed1D(uint256 index) public view returns (bool) {
+        return MerkleLib.isClaimed1D(claimedBitMap1D, index);
+    }
+
+    function setClaimed1D(uint256 index) public {
+        claimedBitMap1D = MerkleLib.setClaimed1D(claimedBitMap1D, index);
     }
 }
