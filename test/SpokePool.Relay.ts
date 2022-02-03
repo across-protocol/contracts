@@ -18,7 +18,7 @@ import {
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
 
-describe.only("SpokePool Relayer Logic", async function () {
+describe("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20 } = await deploySpokePoolTestHelperContracts(depositor));
