@@ -31,7 +31,7 @@ contract Optimism_Messenger is Ownable, CrossDomainEnabled, AdapterInterface {
         sendCrossDomainMessage(target, uint32(gasLimit), message);
     }
 
-    //TODO: we should look into using delegate call as this current implementation assumes the caller
+    // TODO: we should look into using delegate call as this current implementation assumes the caller
     // transfers the tokens first to this contract.
     function relayTokens(
         address l1Token,
@@ -39,6 +39,7 @@ contract Optimism_Messenger is Ownable, CrossDomainEnabled, AdapterInterface {
         uint256 amount,
         address to
     ) external payable override onlyOwner {
+        //TODO: add weth support.
         l1ERC20Bridge.depositERC20To(l1Token, l2Token, to, amount, gasLimit, "0x");
     }
 }

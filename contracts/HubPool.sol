@@ -100,13 +100,18 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bytes32 destinationDistributionRoot,
         address indexed proposer
     );
-    event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
-
-    event RelayerRefundDisputed(
-        address indexed disputer,
-        SkinnyOptimisticOracleInterface.Request ooPriceRequest,
-        RefundRequest refundRequest
+    event RelayerRefundExecuted(
+        uint256 relayerRefundId,
+        uint256 leafId,
+        uint256 chainId,
+        address[] l1Token,
+        uint256[] bundleLpFees,
+        int256[] netSendAmount,
+        int256[] runningBalance,
+        address caller
     );
+
+    event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
     modifier noActiveRequests() {
         require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
@@ -293,12 +298,21 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
-        _sendTokensToTargetChain(poolRebalance, refundRequestId);
-        _executeRelayerRefundOnTargetChain(poolRebalance, refundRequestId);
+        _sendTokensToTargetChain(poolRebalance);
+        _executeRelayerRefundOnTargetChain(poolRebalance);
 
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
-        emit RelayerRefundExecuted(refundRequestId, poolRebalance, msg.sender);
+        emit RelayerRefundExecuted(
+            refundRequestId,
+            poolRebalance.leafId,
+            poolRebalance.chainId,
+            poolRebalance.l1Token,
+            poolRebalance.bundleLpFees,
+            poolRebalance.netSendAmount,
+            poolRebalance.runningBalance,
+            msg.sender
+        );
     }
 
     function disputeRelayerRefund() public {
@@ -306,13 +320,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
         // Request price from OO and dispute it.
         uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
+        bytes memory requestAncillaryData = _getRefundProposalAncillaryData();
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
         // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
         bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
         _getOptimisticOracle().requestAndProposePriceFor(
             identifier,
             uint32(getCurrentTime()),
-            _getRefundProposalAncillaryData(),
+            requestAncillaryData,
             bondToken,
             // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
             // proposal has passed the challenge period.
@@ -344,13 +359,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         _getOptimisticOracle().disputePriceFor(
             identifier,
             uint32(getCurrentTime()),
-            _getRefundProposalAncillaryData(),
+            requestAncillaryData,
             ooPriceRequest,
             msg.sender,
             address(this)
         );
 
-        emit RelayerRefundDisputed(msg.sender, ooPriceRequest, refundRequest);
+        emit RelayerRefundDisputed(msg.sender, getCurrentTime(), requestAncillaryData);
 
         // Finally, delete the state pertaining to the active refundRequest.
         delete refundRequest;
@@ -421,19 +436,15 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
                 .rawValue;
     }
 
-    function _executeRelayerRefundOnTargetChain(MerkleLib.PoolRebalance memory poolRebalance, uint256 refundRequestId)
-        internal
-    {
+    function _sendTokensToTargetChain(MerkleLib.PoolRebalance memory poolRebalance) internal {
         AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
-        adapter.relayMessage(
-            address(adapter),
-            abi.encodeWithSignature("initializeRelayerRefund(address)", refundRequest.destinationDistributionRoot)
-        );
-    }
+        require(address(adapter) != address(0), "Adapter not set for target chain");
 
-    function _sendTokensToTargetChain(MerkleLib.PoolRebalance memory poolRebalance, uint256 refundRequestId) internal {
-        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
-        for (uint32 i = 0; i < poolRebalance.tokenAddresses.length; i++) {
+        for (uint32 i = 0; i < poolRebalance.l1Token.length; i++) {
+            // Validate the output L2 token is correctly whitelisted.
+            address l2Token = whitelistedRoutes[poolRebalance.l1Token[i]][poolRebalance.chainId];
+            require(l2Token != address(0), "Route not whitelisted");
+
             int256 amount = poolRebalance.netSendAmount[i];
 
             // TODO: Checking the amount is greater than 0 is not sufficient. we need to build an external library that
@@ -441,15 +452,23 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             if (amount > 0) {
                 // Send the adapter all the tokens it needs to bridge. This should be refined later to remove the extra
                 // token transfer through the use of delegate call.
-                IERC20(poolRebalance.tokenAddresses[i]).safeTransfer(address(adapter), uint256(amount));
+                IERC20(poolRebalance.l1Token[i]).safeApprove(address(adapter), uint256(amount));
                 adapter.relayTokens(
-                    poolRebalance.tokenAddresses[i], // l1Token
-                    whitelistedRoutes[poolRebalance.tokenAddresses[i]][poolRebalance.chainId], // l2Token
-                    uint256(amount),
-                    crossChainContracts[poolRebalance.chainId].spokePool
+                    poolRebalance.l1Token[i], // l1Token
+                    l2Token, // l2Token
+                    uint256(amount), // amount
+                    crossChainContracts[poolRebalance.chainId].spokePool // to. This should be the spokePool.
                 );
             }
         }
+    }
+
+    function _executeRelayerRefundOnTargetChain(MerkleLib.PoolRebalance memory poolRebalance) internal {
+        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+        adapter.relayMessage(
+            crossChainContracts[poolRebalance.chainId].spokePool, // target. This should be the spokePool.
+            abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
+        );
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

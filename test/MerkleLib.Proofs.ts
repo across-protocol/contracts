@@ -1,27 +1,11 @@
+import { PoolRebalance, DestinationDistribution } from "./MerkleLib.utils";
 import { expect } from "chai";
 import { merkleLibFixture } from "./MerkleLib.Fixture";
 import { Contract, BigNumber } from "ethers";
 import { MerkleTree } from "../utils/MerkleTree";
 import { ethers } from "hardhat";
-import { randomBigNumber, randomAddress } from "./utils";
-
-interface PoolRebalance {
-  leafId: BigNumber;
-  chainId: BigNumber;
-  tokenAddresses: string[];
-  bundleLpFees: BigNumber[];
-  netSendAmount: BigNumber[];
-  runningBalance: BigNumber[];
-}
-
-interface DestinationDistribution {
-  leafId: BigNumber;
-  chainId: BigNumber;
-  amountToReturn: BigNumber;
-  l2TokenAddress: string;
-  refundAddresses: string[];
-  refundAmounts: BigNumber[];
-}
+const { defaultAbiCoder, keccak256 } = ethers.utils;
+import { randomBigNumber, randomAddress, getParamType } from "./utils";
 
 let merkleLibTest: Contract;
 
@@ -35,12 +19,12 @@ describe("MerkleLib Proofs", async function () {
     const numRebalances = 101;
     for (let i = 0; i < numRebalances; i++) {
       const numTokens = 10;
-      const tokenAddresses: string[] = [];
+      const l1Token: string[] = [];
       const bundleLpFees: BigNumber[] = [];
       const netSendAmount: BigNumber[] = [];
       const runningBalance: BigNumber[] = [];
       for (let j = 0; j < numTokens; j++) {
-        tokenAddresses.push(randomAddress());
+        l1Token.push(randomAddress());
         bundleLpFees.push(randomBigNumber());
         netSendAmount.push(randomBigNumber());
         runningBalance.push(randomBigNumber());
@@ -48,7 +32,7 @@ describe("MerkleLib Proofs", async function () {
       poolRebalances.push({
         leafId: BigNumber.from(i),
         chainId: randomBigNumber(),
-        tokenAddresses,
+        l1Token,
         bundleLpFees,
         netSendAmount,
         runningBalance,
@@ -58,11 +42,8 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidPoolRebalance = poolRebalances.pop()!;
 
-    const fragment = merkleLibTest.interface.fragments.find((fragment) => fragment.name === "verifyPoolRebalance");
-    const param = fragment!.inputs.find((input) => input.name === "rebalance");
-
-    const hashFn = (input: PoolRebalance) =>
-      ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([param!], [input]));
+    const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
+    const hashFn = (input: PoolRebalance) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
     const merkleTree = new MerkleTree<PoolRebalance>(poolRebalances, hashFn);
 
     const root = merkleTree.getHexRoot();
@@ -97,13 +78,8 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidDestinationDistribution = destinationDistributions.pop()!;
 
-    const fragment = merkleLibTest.interface.fragments.find(
-      (fragment) => fragment.name === "verifyRelayerDistribution"
-    );
-    const param = fragment!.inputs.find((input) => input.name === "distribution");
-
-    const hashFn = (input: DestinationDistribution) =>
-      ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([param!], [input]));
+    const paramType = await getParamType("MerkleLib", "verifyRelayerDistribution", "distribution");
+    const hashFn = (input: DestinationDistribution) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
     const merkleTree = new MerkleTree<DestinationDistribution>(destinationDistributions, hashFn);
 
     const root = merkleTree.getHexRoot();

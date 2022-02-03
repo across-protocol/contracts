@@ -1,6 +1,6 @@
 import { TokenRolesEnum, interfaceName } from "@uma/common";
-import { getContractFactory, utf8ToHex, toBN, fromWei } from "./utils";
-import { bondAmount, refundProposalLiveness, finalFee, identifier } from "./constants";
+import { getContractFactory, randomAddress, toBN, fromWei } from "./utils";
+import { bondAmount, refundProposalLiveness, finalFee, identifier, repaymentChainId } from "./constants";
 import { Contract, Signer } from "ethers";
 import hre from "hardhat";
 
@@ -30,7 +30,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await parentFixtureOutput.store.setFinalFee(usdc.address, { rawValue: toBN(fromWei(finalFee)).mul(1e6) });
   await parentFixtureOutput.store.setFinalFee(dai.address, { rawValue: finalFee });
 
-  // Deploy the hubPool
+  // Deploy the hubPool.
   const merkleLib = await (await getContractFactory("MerkleLib", signer)).deploy();
   const hubPool = await (
     await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
@@ -44,7 +44,23 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
     parentFixtureOutput.timer.address
   );
 
-  return { weth, usdc, dai, hubPool, ...parentFixtureOutput };
+  // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
+  const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
+  await mockAdapter.transferOwnership(hubPool.address);
+  const mockSpoke = await (
+    await getContractFactory("MockSpokePool", signer)
+  ).deploy(weth.address, 0, parentFixtureOutput.timer.address);
+  await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
+
+  // Deploy mock l2 tokens for each token created before and whitelist the routes.
+  const l2Weth = randomAddress();
+  const l2Dai = randomAddress();
+  const l2Usdc = randomAddress();
+  await hubPool.whitelistRoute(weth.address, l2Weth, repaymentChainId);
+  await hubPool.whitelistRoute(dai.address, l2Dai, repaymentChainId);
+  await hubPool.whitelistRoute(usdc.address, l2Usdc, repaymentChainId);
+
+  return { weth, usdc, dai, hubPool, mockAdapter, mockSpoke, l2Weth, l2Dai, l2Usdc, ...parentFixtureOutput };
 });
 
 export async function enableTokensForLiquidityProvision(owner: Signer, hubPool: Contract, tokens: Contract[]) {

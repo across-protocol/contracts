@@ -3,7 +3,7 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { ZERO_ADDRESS } from "@uma/common";
 import { getContractFactory, SignerWithAddress, createRandomBytes32, seedWallet } from "./utils";
-import { depositDestinationChainId, bondAmount } from "./constants";
+import { destinationChainId, bondAmount } from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract;
@@ -38,10 +38,10 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
   it("Can whitelist route for deposits and rebalances", async function () {
-    await expect(hubPool.whitelistRoute(weth.address, usdc.address, depositDestinationChainId))
+    await expect(hubPool.whitelistRoute(weth.address, usdc.address, destinationChainId))
       .to.emit(hubPool, "WhitelistRoute")
-      .withArgs(weth.address, depositDestinationChainId, usdc.address);
-    expect(await hubPool.whitelistedRoutes(weth.address, depositDestinationChainId)).to.equal(usdc.address);
+      .withArgs(weth.address, destinationChainId, usdc.address);
+    expect(await hubPool.whitelistedRoutes(weth.address, destinationChainId)).to.equal(usdc.address);
   });
 
   it("Can change the bond token and amount", async function () {

@@ -3,7 +3,7 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
 import { spokePoolFixture, enableRoutes } from "./SpokePool.Fixture";
-import { amountToSeedWallets, amountToDeposit, depositDestinationChainId, depositRelayerFeePct } from "./constants";
+import { amountToSeedWallets, amountToDeposit, destinationChainId, depositRelayerFeePct } from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress;
@@ -37,7 +37,7 @@ describe("SpokePool Depositor Logic", async function () {
         .connect(depositor)
         .deposit(
           erc20.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -46,7 +46,7 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "FundsDeposited")
       .withArgs(
-        depositDestinationChainId,
+        destinationChainId,
         amountToDeposit,
         0,
         depositRelayerFeePct,
@@ -72,7 +72,7 @@ describe("SpokePool Depositor Logic", async function () {
         .connect(depositor)
         .deposit(
           weth.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -86,7 +86,7 @@ describe("SpokePool Depositor Logic", async function () {
         .connect(depositor)
         .deposit(
           weth.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -106,7 +106,7 @@ describe("SpokePool Depositor Logic", async function () {
         .connect(depositor)
         .deposit(
           weth.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -125,7 +125,7 @@ describe("SpokePool Depositor Logic", async function () {
         .connect(depositor)
         .deposit(
           erc20.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -140,7 +140,7 @@ describe("SpokePool Depositor Logic", async function () {
         .connect(depositor)
         .deposit(
           unwhitelistedErc20.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -149,13 +149,13 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.reverted;
 
     // Cannot deposit disabled route.
-    await spokePool.connect(depositor).setEnableRoute(erc20.address, depositDestinationChainId, false);
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
     await expect(
       spokePool
         .connect(depositor)
         .deposit(
           erc20.address,
-          depositDestinationChainId,
+          destinationChainId,
           amountToDeposit,
           recipient.address,
           depositRelayerFeePct,
@@ -163,13 +163,13 @@ describe("SpokePool Depositor Logic", async function () {
         )
     ).to.be.reverted;
     // Re-enable route.
-    await spokePool.connect(depositor).setEnableRoute(erc20.address, depositDestinationChainId, true);
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, true);
 
     // Cannot deposit with invalid relayer fee.
     await expect(
       spokePool.connect(depositor).deposit(
         erc20.address,
-        depositDestinationChainId,
+        destinationChainId,
         amountToDeposit,
         recipient.address,
         toWei("1"), // Fee > 50%
@@ -181,7 +181,7 @@ describe("SpokePool Depositor Logic", async function () {
     await expect(
       spokePool.connect(depositor).deposit(
         erc20.address,
-        depositDestinationChainId,
+        destinationChainId,
         amountToDeposit,
         recipient.address,
         depositRelayerFeePct,
@@ -191,7 +191,7 @@ describe("SpokePool Depositor Logic", async function () {
     await expect(
       spokePool.connect(depositor).deposit(
         erc20.address,
-        depositDestinationChainId,
+        destinationChainId,
         amountToDeposit,
         recipient.address,
         depositRelayerFeePct,

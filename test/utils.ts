@@ -1,8 +1,8 @@
+import { zeroAddress } from "./constants";
 import { getBytecode, getAbi } from "@uma/contracts-node";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 import { FactoryOptions } from "hardhat/types";
-import hre from "hardhat";
 
 export interface SignerWithAddress extends Signer {
   address: string;
@@ -27,6 +27,8 @@ export async function getContractFactory(
 }
 
 export const toWei = (num: string | number | BigNumber) => ethers.utils.parseEther(num.toString());
+
+export const toBNWei = (num: string | number | BigNumber) => BigNumber.from(toWei(num));
 
 export const fromWei = (num: string | number | BigNumber) => ethers.utils.formatUnits(num.toString());
 
@@ -58,5 +60,11 @@ export function randomBigNumber() {
 }
 
 export function randomAddress() {
-  return ethers.utils.hexlify(ethers.utils.randomBytes(20));
+  return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
+}
+
+export async function getParamType(contractName: string, functionName: string, paramName: string) {
+  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(zeroAddress));
+  const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
+  return fragment!.inputs.find((input) => input.name === paramName) || "";
 }

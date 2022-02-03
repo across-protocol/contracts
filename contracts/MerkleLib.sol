@@ -15,9 +15,9 @@ library MerkleLib {
         uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
         uint256 chainId;
-        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `tokenAddresses` field.
+        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Token` field.
         // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
-        address[] tokenAddresses;
+        address[] l1Token;
         uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
