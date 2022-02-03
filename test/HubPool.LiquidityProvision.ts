@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { getContractFactory, fromWei, toBN, SignerWithAddress, seedWallet } from "./utils";
-import { deployHubPoolTestHelperContracts, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
 import { amountToSeedWallets, amountToLp } from "./constants";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, dai: Contract;
@@ -12,7 +12,7 @@ let owner: SignerWithAddress, liquidityProvider: SignerWithAddress, other: Signe
 describe("HubPool Liquidity Provision", function () {
   beforeEach(async function () {
     [owner, liquidityProvider, other] = await ethers.getSigners();
-    ({ weth, usdc, dai, hubPool } = await deployHubPoolTestHelperContracts(owner));
+    ({ weth, usdc, dai, hubPool } = await hubPoolFixture());
     [wethLpToken, usdcLpToken, daiLpToken] = await enableTokensForLiquidityProvision(owner, hubPool, [weth, usdc, dai]);
 
     // mint some fresh tokens and deposit ETH for weth for the liquidity provider.

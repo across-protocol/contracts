@@ -2,6 +2,7 @@ import { getBytecode, getAbi } from "@uma/contracts-node";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 import { FactoryOptions } from "hardhat/types";
+import hre from "hardhat";
 
 export interface SignerWithAddress extends Signer {
   address: string;
@@ -31,9 +32,15 @@ export const fromWei = (num: string | number | BigNumber) => ethers.utils.format
 
 export const toBN = (num: string | number | BigNumber) => {
   // If the string version of the num contains a `.` then it is a number which needs to be parsed to a string int.
-  if (num.toString().includes(".")) return BigNumber.from(parseInt(num as any));
+  if (num.toString().includes(".")) return BigNumber.from(parseInt(num.toString()));
   return BigNumber.from(num.toString());
 };
+
+export const utf8ToHex = (input: string) => ethers.utils.formatBytes32String(input);
+
+export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
+
+export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
 export async function seedWallet(
   walletToFund: Signer,
@@ -44,10 +51,6 @@ export async function seedWallet(
   for (const token of tokens) await token.mint(await walletToFund.getAddress(), amountToSeedWith);
 
   if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
-}
-
-export function createRandomBytes32() {
-  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
 }
 
 export function randomBigNumber() {
