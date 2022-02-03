@@ -77,6 +77,7 @@ describe("HubPool Relayer Refund", function () {
         )
     ).to.be.revertedWith("Active request has unclaimed leafs");
   });
+  it("Execute relayer refund correctly produces the refund bundle call and sends cross-chain repayment actions", async function () {});
   it("Dispute relayer refund correctly deletes the active request and enqueues a price request with the OO", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
     await hubPool

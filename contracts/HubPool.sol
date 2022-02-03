@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
+import "./chain-adapters/AdapterInterface.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
@@ -50,6 +51,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
+
+    struct CrossChainContract {
+        AdapterInterface adapter;
+        address spokePool;
+    }
+
+    mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
 
     FinderInterface public finder;
 
@@ -100,7 +108,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         RefundRequest refundRequest
     );
 
-    modifier onlyIfNoActiveRequest() {
+    modifier noActiveRequests() {
         require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
         _;
     }
@@ -126,10 +134,19 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
-    function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner onlyIfNoActiveRequest {
+    function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
         bondToken = newBondToken;
         bondAmount = newBondAmount;
         emit BondSet(address(newBondToken), newBondAmount);
+    }
+
+    function setCrossChainContracts(
+        uint256 chainId,
+        AdapterInterface adapter,
+        address spokePool
+    ) public onlyOwner noActiveRequests {
+        require(address(crossChainContracts[chainId].adapter) == address(0), "Contract already set");
+        crossChainContracts[chainId] = CrossChainContract(adapter, spokePool);
     }
 
     /**
@@ -225,7 +242,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot
-    ) public onlyIfNoActiveRequest {
+    ) public noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
@@ -252,7 +269,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     }
 
     function executeRelayerRefund(
-        uint256 relayerRefundRequestId,
+        uint256 refundRequestId,
         MerkleLib.PoolRebalance memory poolRebalance,
         bytes32[] memory proof
     ) public {
@@ -270,19 +287,17 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // Decrement the unclaimedPoolRebalanceLeafCount.
         refundRequest.unclaimedPoolRebalanceLeafCount--;
 
-        // Transfer the bondAmount to back to the proposer, if this was not done before for this refund bundle.
-        if (!refundRequest.proposerBondRepaid) {
-            refundRequest.proposerBondRepaid = true;
+        // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
+        // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
+        if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
-        }
 
-        // TODO call into canonical bridge to send PoolRebalance.netSendAmount for the associated
-        // PoolRebalance.tokenAddresses, to the target PoolRebalance.chainId. this will likely happen within a
-        // x_Messenger contract for each chain. these messengers will be registered in a separate process that will follow
-        // in a later PR.
+        _sendTokensToTargetChain(poolRebalance, refundRequestId);
+        _executeRelayerRefundOnTargetChain(poolRebalance, refundRequestId);
+
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
-        emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, msg.sender);
+        emit RelayerRefundExecuted(refundRequestId, poolRebalance, msg.sender);
     }
 
     function disputeRelayerRefund() public {
@@ -403,6 +418,30 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store))
                 .computeFinalFee(address(bondToken))
                 .rawValue;
+    }
+
+    function _executeRelayerRefundOnTargetChain(MerkleLib.PoolRebalance memory poolRebalance, uint256 refundRequestId)
+        internal
+    {
+        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+        adapter.relayMessage(
+            address(adapter),
+            abi.encodeWithSignature("initializeRelayerRefund(address)", refundRequest.destinationDistributionRoot)
+        );
+    }
+
+    function _sendTokensToTargetChain(MerkleLib.PoolRebalance memory poolRebalance, uint256 refundRequestId) internal {
+        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+        for (uint32 i = 0; i < poolRebalance.tokenAddresses.length; i++) {
+            int256 amount = poolRebalance.netSendAmount[i];
+            if (amount > 0) {
+                adapter.relayTokens(
+                    poolRebalance.tokenAddresses[i],
+                    uint256(amount),
+                    crossChainContracts[poolRebalance.chainId].spokePool
+                );
+            }
+        }
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
