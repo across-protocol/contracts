@@ -25,4 +25,8 @@ contract MockSpokePool is SpokePool {
     function setDepositQuoteTimeBuffer(uint64 buffer) public {
         _setDepositQuoteTimeBuffer(buffer);
     }
+
+    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {
+        _initializeRelayerRefund(relayerRepaymentDistributionProof);
+    }
 }

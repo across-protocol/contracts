@@ -43,6 +43,16 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
+    // Associates relayer refund distribution proofs to unique IDs.
+    mapping(uint256 => bytes32) public relayerRefundRoots;
+
+    // Count of additions to `relayerRefundRoots`.
+    uint256 public relayerRefundRootCount;
+
+    // This is a 2D bitmap tracking which leafs in the relayer refund roots have been claimed, with max size of
+    // 256 elements, limiting us to 256 relayer refund leafs per distribution proof.
+    mapping(uint256 => uint256) public relayerRefundRootClaimsBitmap;
+
     struct RelayData {
         address depositor;
         address recipient;
@@ -89,6 +99,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address depositor,
         address recipient
     );
+    event InitializedRelayerRefund(uint256 indexed relayerRefundRootCount, bytes32 relayerRepaymentDistributionProof);
 
     constructor(
         address _wethAddress,
@@ -257,7 +268,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
+    // This internal method should be called by an external "initializeRelayerRefund" function that validates the
+    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
+    // specifics are left to the implementor of this abstract contract.
+    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
+        relayerRefundRoots[relayerRefundRootCount] = relayerRepaymentDistributionProof;
+        emit InitializedRelayerRefund(relayerRefundRootCount, relayerRepaymentDistributionProof);
+        relayerRefundRootCount += 1;
+    }
 
     function distributeRelayerRefund(
         uint256 relayerRefundId,
