@@ -289,6 +289,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
+        //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
@@ -434,6 +435,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
         for (uint32 i = 0; i < poolRebalance.tokenAddresses.length; i++) {
             int256 amount = poolRebalance.netSendAmount[i];
+
+            // TODO: Checking the amount is greater than 0 is not sufficient. we need to build an external library that
+            // makes the decision on if there should be an L1->L2 token transfer. this should come in a later PR.
             if (amount > 0) {
                 adapter.relayTokens(
                     poolRebalance.tokenAddresses[i],
