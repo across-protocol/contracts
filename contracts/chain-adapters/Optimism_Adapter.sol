@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
+import "@eth-optimism/contracts/L1/messaging/IL1ERC20Bridge.sol";
 import "./AdapterInterface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -13,8 +14,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract Optimism_Messenger is Ownable, CrossDomainEnabled, AdapterInterface {
     uint32 public gasLimit;
 
-    constructor(uint32 _gasLimit, address _crossDomainMessenger) CrossDomainEnabled(_crossDomainMessenger) {
+    address l1Weth;
+
+    IL1ERC20Bridge l1ERC20Bridge;
+
+    constructor(
+        uint32 _gasLimit,
+        address _crossDomainMessenger,
+        address _IL1ERC20Bridge
+    ) CrossDomainEnabled(_crossDomainMessenger) {
         gasLimit = _gasLimit;
+        l1ERC20Bridge = IL1ERC20Bridge(_IL1ERC20Bridge);
     }
 
     function relayMessage(address target, bytes memory message) external payable override onlyOwner {
@@ -22,10 +32,11 @@ contract Optimism_Messenger is Ownable, CrossDomainEnabled, AdapterInterface {
     }
 
     function relayTokens(
-        address tokenAddress,
-        uint256 tokenSendAmount,
+        address l1Token,
+        address l2Token,
+        uint256 amount,
         address to
     ) external payable override onlyOwner {
-        // TODO: Implement
+        l1ERC20Bridge.depositERC20To(l1Token, l2Token, to, amount, gasLimit, "0x");
     }
 }

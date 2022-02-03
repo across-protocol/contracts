@@ -10,6 +10,7 @@ interface AdapterInterface {
 
     function relayTokens(
         address l1Token,
+        address l2Token,
         uint256 amount,
         address to
     ) external payable;
