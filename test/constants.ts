@@ -1,4 +1,4 @@
-import { toWei, utf8ToHex, toBN } from "./utils";
+import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "./utils";
 
 export const amountToSeedWallets = toWei("1500");
 
@@ -39,3 +39,7 @@ export const zeroBytes32 = "0x00000000000000000000000000000000000000000000000000
 export const identifier = utf8ToHex("IS_ACROSS_V2_RELAY_VALID");
 
 export const zeroRawValue = { rawValue: "0" };
+
+export const spokePoolRelayerRefundRoot = createRandomBytes32();
+
+export const spokePoolRelayerRefundRootDefaultId = 0;
