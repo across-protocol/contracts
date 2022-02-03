@@ -32,6 +32,17 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      *          ADMIN FUNCTIONS           *
      **************************************/
 
+    /**
+     * @notice Changes the L1 contract that can trigger admin functions on this contract.
+     * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
+     * is expected to be the Optimism_Adapter.
+     * @dev Only callable by the existing admin via the Optimism cross domain messenger.
+     * @param newCrossDomainAdmin address of the new L1 admin contract.
+     */
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+        _setCrossDomainAdmin(newCrossDomainAdmin);
+    }
+
     // TODO:
     function setEnableRoute(
         address originToken,
