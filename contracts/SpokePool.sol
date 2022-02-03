@@ -46,8 +46,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     struct RelayerRefund {
         // Merkle root of relayer refunds.
         bytes32 distributionRoot;
-        // This is a 2D bitmap tracking which leafs in the relayer refund roots have been claimed, with max size of
-        // 256 elements, limiting us to 256 relayer refund leafs per distribution proof.
+        // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
+        // 256x256 leaves per root.
         mapping(uint256 => uint256) claimsBitmap;
     }
     RelayerRefund[] public relayerRefunds;
