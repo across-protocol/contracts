@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /**
  * @notice Sends cross chain messages Optimism L2 network.
  * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
- * BridgeAdmin can call cross-chain administrative functions on the L2 DepositBox via this messenger.
+ * BridgeAdmin can call cross-chain administrative functions on the L2 SpokePool via this messenger.
  */
 contract Optimism_Messenger is Ownable, CrossDomainEnabled, AdapterInterface {
     uint32 public gasLimit;
