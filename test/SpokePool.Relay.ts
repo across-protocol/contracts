@@ -18,7 +18,7 @@ import {
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
 
-describe("SpokePool Relayer Logic", async function () {
+describe.only("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20 } = await deploySpokePoolTestHelperContracts(depositor));
@@ -58,7 +58,7 @@ describe("SpokePool Relayer Logic", async function () {
         relayHash,
         relayData.relayAmount,
         amountToRelayPreFees,
-        amountToRelay,
+        amountToRelayPreFees,
         repaymentChainId,
         relayData.originChainId,
         relayData.depositId,
@@ -82,14 +82,14 @@ describe("SpokePool Relayer Logic", async function () {
     const fullRelayAmount = amountToDeposit;
     const fullRelayAmountPostFees = fullRelayAmount.mul(totalPostFeesPct).div(toBN(oneHundredPct));
     const amountRemainingInRelay = fullRelayAmount.sub(amountToRelayPreFees);
-    const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalPostFeesPct).div(toBN(oneHundredPct));
+    // const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalPostFeesPct).div(toBN(oneHundredPct));
     await expect(spokePool.connect(relayer).fillRelay(...relayDataValues, fullRelayAmount, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
         relayHash,
         relayData.relayAmount,
         fullRelayAmount,
-        amountRemainingInRelayPostFees,
+        amountRemainingInRelay,
         repaymentChainId,
         relayData.originChainId,
         relayData.depositId,
@@ -122,7 +122,7 @@ describe("SpokePool Relayer Logic", async function () {
         relayHash,
         relayData.relayAmount,
         amountToRelayPreFees,
-        amountToRelay,
+        amountToRelayPreFees,
         repaymentChainId,
         relayData.originChainId,
         relayData.depositId,

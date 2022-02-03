@@ -77,8 +77,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     event FilledRelay(
         bytes32 indexed relayHash,
         uint256 totalRelayAmount,
-        uint256 newFilledAmount,
-        uint256 amountSentToRecipient,
+        uint256 totalFilledAmount,
+        uint256 fillAmount,
         uint256 indexed repaymentChain,
         uint256 originChainId,
         uint64 depositId,
@@ -219,41 +219,32 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // so this will start at 0 and increment with each fill.
         require(maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount, "Cannot send 0, or relay filled");
 
-        // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
-        // we'll pull exactly enough tokens to complete the relay.
-        uint256 amountToSend;
+        // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
+        uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
 
-        // Adding brackets around `fillAmountPreFees` to address "stack too deep" solidity error.
+        // Adding brackets "stack too deep" solidity error.
         {
-            // Compute the equivalent amount to be sent by the relayer before fees have been taken out. This is the amount
-            // that we'll add to the `relayFills` counter, and we do this math here in the contract for the user's
-            // convenience so that they don't have to do this math before calling this function. The user can simply
-            // pass in `maxTokensToSend` and assume that the contract will pull exactly that amount of tokens (or revert).
-            uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
+            // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
+            // we'll pull exactly enough tokens to complete the relay.
+            uint256 amountToSend = maxTokensToSend;
             if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
-                amountToSend = _computeAmountPostFees(
-                    totalRelayAmount - relayFills[relayHash],
-                    (realizedLpFeePct + relayerFeePct)
-                );
-                relayFills[relayHash] = totalRelayAmount;
-            } else {
-                amountToSend = maxTokensToSend;
-                relayFills[relayHash] += fillAmountPreFees;
+                fillAmountPreFees = totalRelayAmount - relayFills[relayHash];
+                amountToSend = _computeAmountPostFees(fillAmountPreFees, (realizedLpFeePct + relayerFeePct));
             }
+            relayFills[relayHash] += fillAmountPreFees;
+            // If relay token is weth then unwrap and send eth.
+            if (destinationToken == address(weth)) {
+                IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                _unwrapWETHTo(payable(recipient), amountToSend);
+                // Else, this is a normal ERC20 token. Send to recipient.
+            } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountToSend);
         }
-
-        // If relay token is weth then unwrap and send eth.
-        if (destinationToken == address(weth)) {
-            IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapWETHTo(payable(recipient), amountToSend);
-            // Else, this is a normal ERC20 token. Send to recipient.
-        } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountToSend);
 
         emit FilledRelay(
             relayHash,
             relayData.relayAmount,
             relayFills[relayHash],
-            amountToSend,
+            fillAmountPreFees,
             repaymentChain,
             relayData.originChainId,
             relayData.depositId,
