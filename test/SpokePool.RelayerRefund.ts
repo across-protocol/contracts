@@ -8,7 +8,7 @@ import { spokePoolRelayerRefundRoot, spokePoolRelayerRefundRootDefaultId } from 
 let spokePool: Contract;
 let caller: SignerWithAddress;
 
-describe.only("SpokePool Initialize Relayer Refund Logic", async function () {
+describe("SpokePool Initialize Relayer Refund Logic", async function () {
   beforeEach(async function () {
     [caller] = await ethers.getSigners();
     ({ spokePool } = await spokePoolFixture());
