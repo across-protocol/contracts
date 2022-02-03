@@ -44,7 +44,7 @@ describe("SpokePool Relayer Logic", async function () {
     ]);
   });
   it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
-    const { relayHash, relayData } = getRelayHash(
+    const { relayHash, relayData, relayDataValues } = getRelayHash(
       depositor.address,
       recipient.address,
       firstDepositId,
@@ -52,9 +52,23 @@ describe("SpokePool Relayer Logic", async function () {
       destErc20.address
     );
 
-    await expect(spokePool.connect(relayer).fillRelay(...relayData, amountToRelay, repaymentChainId))
+    await expect(spokePool.connect(relayer).fillRelay(...relayDataValues, amountToRelay, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
-      .withArgs(relayHash, amountToRelayPreFees, repaymentChainId, amountToRelay, relayer.address, relayData);
+      .withArgs(
+        relayHash,
+        relayData.relayAmount,
+        amountToRelayPreFees,
+        amountToRelayPreFees,
+        repaymentChainId,
+        relayData.originChainId,
+        relayData.depositId,
+        relayData.relayerFeePct,
+        relayData.realizedLpFeePct,
+        relayData.destinationToken,
+        relayer.address,
+        relayData.depositor,
+        relayData.recipient
+      );
 
     // The collateral should have transferred from relayer to recipient.
     expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay));
@@ -68,16 +82,23 @@ describe("SpokePool Relayer Logic", async function () {
     const fullRelayAmount = amountToDeposit;
     const fullRelayAmountPostFees = fullRelayAmount.mul(totalPostFeesPct).div(toBN(oneHundredPct));
     const amountRemainingInRelay = fullRelayAmount.sub(amountToRelayPreFees);
-    const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalPostFeesPct).div(toBN(oneHundredPct));
-    await expect(spokePool.connect(relayer).fillRelay(...relayData, fullRelayAmount, repaymentChainId))
+    // const amountRemainingInRelayPostFees = amountRemainingInRelay.mul(totalPostFeesPct).div(toBN(oneHundredPct));
+    await expect(spokePool.connect(relayer).fillRelay(...relayDataValues, fullRelayAmount, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
         relayHash,
+        relayData.relayAmount,
         fullRelayAmount,
+        amountRemainingInRelay,
         repaymentChainId,
-        amountRemainingInRelayPostFees,
+        relayData.originChainId,
+        relayData.depositId,
+        relayData.relayerFeePct,
+        relayData.realizedLpFeePct,
+        relayData.destinationToken,
         relayer.address,
-        relayData
+        relayData.depositor,
+        relayData.recipient
       );
     expect(await destErc20.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(fullRelayAmountPostFees));
     expect(await destErc20.balanceOf(recipient.address)).to.equal(fullRelayAmountPostFees);
@@ -86,7 +107,7 @@ describe("SpokePool Relayer Logic", async function () {
     expect(await spokePool.relayFills(relayHash)).to.equal(fullRelayAmount);
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
-    const { relayHash, relayData } = getRelayHash(
+    const { relayHash, relayData, relayDataValues } = getRelayHash(
       depositor.address,
       recipient.address,
       firstDepositId,
@@ -95,9 +116,23 @@ describe("SpokePool Relayer Logic", async function () {
     );
 
     const startingRecipientBalance = await recipient.getBalance();
-    await expect(spokePool.connect(relayer).fillRelay(...relayData, amountToRelay, repaymentChainId))
+    await expect(spokePool.connect(relayer).fillRelay(...relayDataValues, amountToRelay, repaymentChainId))
       .to.emit(spokePool, "FilledRelay")
-      .withArgs(relayHash, amountToRelayPreFees, repaymentChainId, amountToRelay, relayer.address, relayData);
+      .withArgs(
+        relayHash,
+        relayData.relayAmount,
+        amountToRelayPreFees,
+        amountToRelayPreFees,
+        repaymentChainId,
+        relayData.originChainId,
+        relayData.depositId,
+        relayData.relayerFeePct,
+        relayData.realizedLpFeePct,
+        relayData.destinationToken,
+        relayer.address,
+        relayData.depositor,
+        relayData.recipient
+      );
 
     // The collateral should have unwrapped to ETH and then transferred to recipient.
     expect(await weth.balanceOf(relayer.address)).to.equal(amountToSeedWallets.sub(amountToRelay));
@@ -121,7 +156,7 @@ describe("SpokePool Relayer Logic", async function () {
             amountToDeposit.toString(),
             toWei("0.51").toString(),
             toWei("0.5").toString()
-          ).relayData,
+          ).relayDataValues,
           amountToRelay,
           repaymentChainId
         )
@@ -139,7 +174,7 @@ describe("SpokePool Relayer Logic", async function () {
             amountToDeposit.toString(),
             toWei("0.5").toString(),
             toWei("0.51").toString()
-          ).relayData,
+          ).relayDataValues,
           amountToRelay,
           repaymentChainId
         )
@@ -157,7 +192,7 @@ describe("SpokePool Relayer Logic", async function () {
             amountToDeposit.toString(),
             toWei("0.5").toString(),
             toWei("0.5").toString()
-          ).relayData,
+          ).relayDataValues,
           amountToRelay,
           repaymentChainId
         )
@@ -169,7 +204,7 @@ describe("SpokePool Relayer Logic", async function () {
         .connect(relayer)
         .fillRelay(
           ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
-            .relayData,
+            .relayDataValues,
           "0",
           repaymentChainId
         )
@@ -177,7 +212,8 @@ describe("SpokePool Relayer Logic", async function () {
 
     // Relay already filled
     await spokePool.connect(relayer).fillRelay(
-      ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address).relayData,
+      ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
+        .relayDataValues,
       amountToDeposit, // Send the full relay amount
       repaymentChainId
     );
@@ -186,7 +222,7 @@ describe("SpokePool Relayer Logic", async function () {
         .connect(relayer)
         .fillRelay(
           ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
-            .relayData,
+            .relayDataValues,
           "1",
           repaymentChainId
         )

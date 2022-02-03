@@ -44,7 +44,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     struct RelayData {
-        address sender;
+        address depositor;
         address recipient;
         address destinationToken;
         uint64 realizedLpFeePct;
@@ -72,15 +72,22 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint64 quoteTimestamp,
         address indexed originToken,
         address recipient,
-        address indexed sender
+        address indexed depositor
     );
     event FilledRelay(
         bytes32 indexed relayHash,
-        uint256 newFilledAmount,
+        uint256 totalRelayAmount,
+        uint256 totalFilledAmount,
+        uint256 fillAmount,
         uint256 indexed repaymentChain,
-        uint256 amountSentToRecipient,
+        uint256 originChainId,
+        uint64 depositId,
+        uint64 relayerFeePct,
+        uint64 realizedLpFeePct,
+        address destinationToken,
         address indexed relayer,
-        RelayData relayData
+        address depositor,
+        address recipient
     );
 
     constructor(
@@ -175,7 +182,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     function fillRelay(
-        address sender,
+        address depositor,
         address recipient,
         address destinationToken,
         uint64 realizedLpFeePct,
@@ -196,7 +203,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
         RelayData memory relayData = RelayData({
-            sender: sender,
+            depositor: depositor,
             recipient: recipient,
             destinationToken: destinationToken,
             realizedLpFeePct: realizedLpFeePct,
@@ -212,34 +219,42 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // so this will start at 0 and increment with each fill.
         require(maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount, "Cannot send 0, or relay filled");
 
-        // Compute the equivalent amount to be sent by the relayer before fees have been taken out. This is the amount
-        // that we'll add to the `relayFills` counter, and we do this math here in the contract for the user's
-        // convenience so that they don't have to do this math before calling this function. The user can simply
-        // pass in `maxTokensToSend` and assume that the contract will pull exactly that amount of tokens (or revert).
+        // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
 
-        // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
-        // we'll pull exactly enough tokens to complete the relay.
-        uint256 amountToSend;
-        if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
-            amountToSend = _computeAmountPostFees(
-                totalRelayAmount - relayFills[relayHash],
-                (realizedLpFeePct + relayerFeePct)
-            );
-            relayFills[relayHash] = totalRelayAmount;
-        } else {
-            amountToSend = maxTokensToSend;
+        // Adding brackets "stack too deep" solidity error.
+        {
+            // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
+            // we'll pull exactly enough tokens to complete the relay.
+            uint256 amountToSend = maxTokensToSend;
+            if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
+                fillAmountPreFees = totalRelayAmount - relayFills[relayHash];
+                amountToSend = _computeAmountPostFees(fillAmountPreFees, (realizedLpFeePct + relayerFeePct));
+            }
             relayFills[relayHash] += fillAmountPreFees;
+            // If relay token is weth then unwrap and send eth.
+            if (destinationToken == address(weth)) {
+                IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                _unwrapWETHTo(payable(recipient), amountToSend);
+                // Else, this is a normal ERC20 token. Send to recipient.
+            } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountToSend);
         }
 
-        // If relay token is weth then unwrap and send eth.
-        if (destinationToken == address(weth)) {
-            IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapWETHTo(payable(recipient), amountToSend);
-            // Else, this is a normal ERC20 token. Send to recipient.
-        } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountToSend);
-
-        emit FilledRelay(relayHash, relayFills[relayHash], repaymentChain, amountToSend, msg.sender, relayData);
+        emit FilledRelay(
+            relayHash,
+            relayData.relayAmount,
+            relayFills[relayHash],
+            fillAmountPreFees,
+            repaymentChain,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.relayerFeePct,
+            relayData.realizedLpFeePct,
+            relayData.destinationToken,
+            msg.sender,
+            relayData.depositor,
+            relayData.recipient
+        );
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
