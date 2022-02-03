@@ -271,8 +271,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
     // specifics are left to the implementor of this abstract contract.
     function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
+        uint256 relayerRefundId = relayerRefunds.length;
         relayerRefunds.push();
-        uint256 relayerRefundId = relayerRefunds.length - 1;
         relayerRefunds[relayerRefundId].distributionRoot = relayerRepaymentDistributionProof;
         emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionProof);
     }
