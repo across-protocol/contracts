@@ -4,7 +4,7 @@ import { bondAmount, refundProposalLiveness, finalFee, identifier } from "./cons
 import { Contract, Signer } from "ethers";
 import hre from "hardhat";
 
-import { umaEcosystemFixture } from "./umaEcosystem.Fixture";
+import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
 export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   const [signer] = await ethers.getSigners();
