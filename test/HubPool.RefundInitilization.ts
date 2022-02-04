@@ -5,11 +5,11 @@ import { SignerWithAddress, seedWallet } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract, owner: SignerWithAddress, dataWorker: SignerWithAddress;
+let hubPool: Contract, weth: Contract, dataWorker: SignerWithAddress;
 
 describe("HubPool Relayer Refund Initialization", function () {
   beforeEach(async function () {
-    [owner, dataWorker] = await ethers.getSigners();
+    [dataWorker] = await ethers.getSigners();
     ({ weth, hubPool } = await hubPoolFixture());
     await seedWallet(dataWorker, [], weth, consts.bondAmount.add(consts.finalFee).mul(2));
   });
