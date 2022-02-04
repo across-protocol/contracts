@@ -4,15 +4,16 @@ pragma solidity ^0.8.0;
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "./SpokePool.sol";
+import "./SpokePoolInterface.sol";
 
 /**
  * @notice OVM specific SpokePool.
  * @dev Uses OVM cross-domain-enabled logic for access control.
  */
 
-contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
+contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool {
     // Address of the L1 contract that acts as the owner of this SpokePool.
-    address public crossDomainAdmin;
+    address public override crossDomainAdmin;
 
     event SetXDomainAdmin(address indexed newAdmin);
 
@@ -39,26 +40,29 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @dev Only callable by the existing admin via the Optimism cross domain messenger.
      * @param newCrossDomainAdmin address of the new L1 admin contract.
      */
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+    function setCrossDomainAdmin(address newCrossDomainAdmin)
+        public
+        override
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+    {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    // TODO:
     function setEnableRoute(
         address originToken,
         uint256 destinationChainId,
         bool enable
-    ) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    // TODO:
-    function setDepositQuoteTimeBuffer(uint64 buffer) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+    function setDepositQuoteTimeBuffer(uint64 buffer) public override onlyFromCrossDomainAccount(crossDomainAdmin) {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof)
         public
+        override
         onlyFromCrossDomainAccount(crossDomainAdmin)
     {
         _initializeRelayerRefund(relayerRepaymentDistributionProof);
