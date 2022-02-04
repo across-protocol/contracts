@@ -49,10 +49,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     // Mapping of L1TokenAddress to the associated Pool information.
     struct PooledToken {
-        address lpToken; // LP token associated with the pooled token.
+        address lpToken;
         bool isEnabled;
         uint256 liquidReserves;
         uint256 utilizedReserves;
+        uint256 undistributedLpFees;
         uint256 lockedBonds;
         uint32 lastLpFeeUpdate;
         bool isWeth;
@@ -221,7 +222,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // we must call it first before transferring any tokens to this contract.
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent();
         ExpandedERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
-        // liquidReserves += l1TokenAmount; //TODO: Add this when we have the liquidReserves variable implemented.
+        pooledTokens[l1Token].liquidReserves += l1TokenAmount;
 
         if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
@@ -238,11 +239,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent()) / 1e18;
 
-        // Check that there is enough liquid reserves to withdraw the requested amount.
-        // require(liquidReserves >= (pendingReserves + l1TokensToReturn), "Utilization too high to remove"); // TODO: add this when we have liquid reserves variable implemented.
-
         ExpandedERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
-        // liquidReserves -= l1TokensToReturn; // TODO: add this when we have liquid reserves variable implemented.
+        pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
         else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
@@ -291,11 +289,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(
-        uint256 refundRequestId,
-        MerkleLib.PoolRebalance memory poolRebalance,
-        bytes32[] memory proof
-    ) public {
+    function executeRelayerRefund(MerkleLib.PoolRebalance memory poolRebalance, bytes32[] memory proof) public {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalance has not yet been claimed.
@@ -322,7 +316,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
         emit RelayerRefundExecuted(
-            refundRequestId,
             poolRebalance.leafId,
             poolRebalance.chainId,
             poolRebalance.l1Token,
@@ -491,6 +484,16 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             crossChainContracts[poolRebalance.chainId].spokePool, // target. This should be the spokePool.
             abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
         );
+    }
+
+    function _updatePooledTokenForExecutedRebalance(MerkleLib.PoolRebalance memory poolRebalance) internal {
+        for (uint32 i = 0; i < poolRebalance.l1Token.length; i++) {
+            pooledTokens[poolRebalance.l1Token[i]].undistributedLpFees += poolRebalance.bundleLpFees[i];
+            if (poolRebalance.netSendAmount[i] > 0) {
+                pooledTokens[poolRebalance.l1Token[i]].liquidReserves -= uint256(poolRebalance.netSendAmount[i]);
+                pooledTokens[poolRebalance.l1Token[i]].utilizedReserves += uint256(poolRebalance.netSendAmount[i]);
+            }
+        }
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
