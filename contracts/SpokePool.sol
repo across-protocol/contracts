@@ -8,7 +8,6 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
-import "./SpokePoolInterface.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -24,7 +23,7 @@ interface WETH9Like {
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
  * @dev This contract is designed to be deployed to L2's, not mainnet.
  */
-abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
+abstract contract SpokePool is Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
