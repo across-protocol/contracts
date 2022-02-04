@@ -275,8 +275,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // can be called to execute each leaf in the root.
     function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
         uint256 relayerRefundId = relayerRefunds.length;
-        relayerRefunds.push();
-        relayerRefunds[relayerRefundId].distributionRoot = relayerRepaymentDistributionProof;
+        relayerRefunds.push().distributionRoot = relayerRepaymentDistributionProof;
         emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionProof);
     }
 
