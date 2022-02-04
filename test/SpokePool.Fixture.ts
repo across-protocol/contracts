@@ -71,34 +71,46 @@ export async function deposit(
       currentSpokePoolTime
     );
 }
+export interface RelayData {
+  depositor: string;
+  recipient: string;
+  destinationToken: string;
+  realizedLpFeePct: string;
+  relayerFeePct: string;
+  depositId: string;
+  originChainId: string;
+  relayAmount: string;
+}
 export function getRelayHash(
-  sender: string,
-  recipient: string,
-  depositId: number,
-  originChainId: number,
-  destinationToken: string,
-  relayAmount?: string,
+  _depositor: string,
+  _recipient: string,
+  _depositId: number,
+  _originChainId: number,
+  _destinationToken: string,
+  _relayAmount?: string,
   _realizedLpFeePct?: string,
-  relayerFeePct?: string
-): { relayHash: string; relayData: string[] } {
-  const relayData = [
-    sender,
-    recipient,
-    destinationToken,
-    _realizedLpFeePct || realizedLpFeePct.toString(),
-    relayerFeePct || depositRelayerFeePct.toString(),
-    depositId.toString(),
-    originChainId.toString(),
-    relayAmount || amountToDeposit.toString(),
-  ];
+  _relayerFeePct?: string
+): { relayHash: string; relayData: RelayData; relayDataValues: string[] } {
+  const relayData = {
+    depositor: _depositor,
+    recipient: _recipient,
+    destinationToken: _destinationToken,
+    realizedLpFeePct: _realizedLpFeePct || realizedLpFeePct.toString(),
+    relayerFeePct: _relayerFeePct || depositRelayerFeePct.toString(),
+    depositId: _depositId.toString(),
+    originChainId: _originChainId.toString(),
+    relayAmount: _relayAmount || amountToDeposit.toString(),
+  };
+  const relayDataValues = Object.values(relayData);
   const relayHash = keccak256(
     defaultAbiCoder.encode(
       ["address", "address", "address", "uint64", "uint64", "uint64", "uint256", "uint256"],
-      relayData
+      relayDataValues
     )
   );
   return {
     relayHash,
     relayData,
+    relayDataValues,
   };
 }

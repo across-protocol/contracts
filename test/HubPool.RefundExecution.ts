@@ -28,7 +28,7 @@ async function constructSimpleTree() {
   return { wethToSendToL2, daiToSend, leafs, tree };
 }
 
-describe.only("HubPool Relayer Refund Execution", function () {
+describe("HubPool Relayer Refund Execution", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, hubPool, mockAdapter, mockSpoke, timer, l2Weth, l2Dai } = await hubPoolFixture());

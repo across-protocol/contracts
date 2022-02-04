@@ -43,6 +43,7 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.whitelistRoute(destinationChainId, weth.address, usdc.address))
       .to.emit(hubPool, "WhitelistRoute")
       .withArgs(destinationChainId, weth.address, usdc.address);
+
     expect(await hubPool.whitelistedRoutes(weth.address, destinationChainId)).to.equal(usdc.address);
   });
 

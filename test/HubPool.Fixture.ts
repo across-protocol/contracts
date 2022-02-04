@@ -1,6 +1,7 @@
 import { TokenRolesEnum, interfaceName } from "@uma/common";
 import { getContractFactory, randomAddress, toBN, fromWei } from "./utils";
-import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId } from "./constants";
+
+import { bondAmount, refundProposalLiveness, finalFee, identifier, repaymentChainId } from "./constants";
 import { Contract, Signer } from "ethers";
 import hre from "hardhat";
 
@@ -32,9 +33,10 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
 
   // Deploy the hubPool.
   const merkleLib = await (await getContractFactory("MerkleLib", signer)).deploy();
+  const lpTokenFactory = await (await getContractFactory("LpTokenFactory", signer)).deploy();
   const hubPool = await (
     await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(parentFixtureOutput.finder.address, parentFixtureOutput.timer.address);
+  ).deploy(lpTokenFactory.address, parentFixtureOutput.finder.address, parentFixtureOutput.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
   await hubPool.setRefundProposalLiveness(refundProposalLiveness);
 
@@ -50,6 +52,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const l2Weth = randomAddress();
   const l2Dai = randomAddress();
   const l2Usdc = randomAddress();
+
   await hubPool.whitelistRoute(repaymentChainId, weth.address, l2Weth);
   await hubPool.whitelistRoute(repaymentChainId, dai.address, l2Dai);
   await hubPool.whitelistRoute(repaymentChainId, usdc.address, l2Usdc);

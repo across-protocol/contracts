@@ -3,20 +3,20 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./chain-adapters/AdapterInterface.sol";
+import "./interfaces/LpTokenFactoryInterface.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
 import "@uma/core/contracts/oracle/implementation/Constants.sol";
 import "@uma/core/contracts/common/implementation/AncillaryData.sol";
 
 import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
 import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
 import "@uma/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
+import "@uma/core/contracts/common/interfaces/ExpandedIERC20.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -52,7 +52,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         address lpToken;
         bool isEnabled;
         uint256 liquidReserves;
-        uint256 utilizedReserves;
+        int256 utilizedReserves;
         uint256 undistributedLpFees;
         uint32 lastLpFeeUpdate;
         bool isWeth;
@@ -67,10 +67,16 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
 
+    LpTokenFactoryInterface lpTokenFactory;
+
     FinderInterface public finder;
 
     // When bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
     bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
+
+    // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
+    // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
+    uint256 lpFeeRatePerSecond = 1500000000000;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
@@ -135,7 +141,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         _;
     }
 
-    constructor(FinderInterface _finder, address _timer) Testable(_timer) {
+    constructor(
+        LpTokenFactoryInterface _lpTokenFactory,
+        FinderInterface _finder,
+        address _timer
+    ) Testable(_timer) {
+        lpTokenFactory = _lpTokenFactory;
         finder = _finder;
     }
 
@@ -184,16 +195,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) public onlyOwner {
         // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
         // appends and permission setting.
-        if (pooledTokens[l1Token].lpToken == address(0)) {
-            ExpandedERC20 lpToken = new ExpandedERC20(
-                _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
-                _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
-                IERC20Metadata(l1Token).decimals() // LP Token Decimals
-            );
-            lpToken.addMember(1, address(this)); // Set this contract as the LP Token's minter.
-            lpToken.addMember(2, address(this)); // Set this contract as the LP Token's burner.
-            pooledTokens[l1Token].lpToken = address(lpToken);
-        }
+        if (pooledTokens[l1Token].lpToken == address(0))
+            pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
+
         pooledTokens[l1Token].isEnabled = true;
         pooledTokens[l1Token].isWeth = isWeth;
         pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
@@ -216,10 +220,10 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // Else, msg.value must be set to 0.
         require((pooledTokens[l1Token].isWeth && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
 
-        // Since `exchangeRateCurrent()` reads this contract's balance and updates contract state using it,
-        // we must call it first before transferring any tokens to this contract.
-        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent();
-        ExpandedERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
+        // Since _exchangeRateCurrent() reads this contract's balance and updates contract state using it, it must be
+        // first before transferring any tokens to this contract to ensure synchronization.
+        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent(l1Token);
+        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
 
         if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
@@ -235,9 +239,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     ) public nonReentrant {
         // Can only send eth on withdrawing liquidity iff this is the WETH pool.
         require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
-        uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent()) / 1e18;
+        uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
-        ExpandedERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
+        ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
@@ -246,8 +250,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit LiquidityRemoved(l1Token, l1TokensToReturn, lpTokenAmount, msg.sender);
     }
 
-    function exchangeRateCurrent() public nonReentrant returns (uint256) {
-        return _exchangeRateCurrent();
+    function exchangeRateCurrent(address l1Token) public nonReentrant returns (uint256) {
+        return _exchangeRateCurrent(l1Token);
     }
 
     function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) public returns (uint256) {}
@@ -305,9 +309,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // Decrement the unclaimedPoolRebalanceLeafCount.
         refundRequest.unclaimedPoolRebalanceLeafCount--;
 
-        _sendTokensToTargetChain(poolRebalanceLeaf);
-        _executeRelayerRefundOnTargetChain(poolRebalanceLeaf);
-        _updatePooledTokenForExecutedRebalance(poolRebalanceLeaf);
+        _sendTokensToChainAndUpdatePooledTokenTrackers(
+            poolRebalanceLeaf.chainId,
+            poolRebalanceLeaf.l1Tokens,
+            poolRebalanceLeaf.netSendAmounts,
+            poolRebalanceLeaf.bundleLpFees
+        );
+        _executeRelayerRefundOnChain(poolRebalanceLeaf.chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
@@ -318,10 +326,10 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit RelayerRefundExecuted(
             poolRebalanceLeaf.leafId,
             poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Token,
+            poolRebalanceLeaf.l1Tokens,
             poolRebalanceLeaf.bundleLpFees,
-            poolRebalanceLeaf.netSendAmount,
-            poolRebalanceLeaf.runningBalance,
+            poolRebalanceLeaf.netSendAmounts,
+            poolRebalanceLeaf.runningBalances,
             msg.sender
         );
     }
@@ -412,11 +420,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *              INTERNAL FUNCTIONS               *
      *************************************************/
 
-    function _exchangeRateCurrent() internal pure returns (uint256) {
-        // TODO: implement this method to consider utilization.
-        return 1e18;
-    }
-
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
     function _unwrapWETHTo(
         address wethAddress,
@@ -451,49 +454,88 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
                 .rawValue;
     }
 
-    function _sendTokensToTargetChain(MerkleLib.PoolRebalance memory poolRebalance) internal {
-        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+    // Note this method does a lot and wraps together the sending of tokens and updating the pooled token trackers. This
+    // is done as a gas saving so we don't need to iterate over the l1Tokens multiple times (can do both in one loop).
+    function _sendTokensToChainAndUpdatePooledTokenTrackers(
+        uint256 chainId,
+        address[] memory l1Tokens,
+        int256[] memory netSendAmounts,
+        uint256[] memory bundleLpFees
+    ) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
         require(address(adapter) != address(0), "Adapter not set for target chain");
 
-        for (uint32 i = 0; i < poolRebalance.l1Token.length; i++) {
-            // Validate the output L2 token is correctly whitelisted.
-            address l2Token = whitelistedRoutes[poolRebalance.l1Token[i]][poolRebalance.chainId];
-            require(l2Token != address(0), "L2 token not set for L1 token");
+        for (uint32 i = 0; i < l1Tokens.length; i++) {
+            // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action
+            // could send tokens to the 0x0 address on the L2.
+            require(whitelistedRoutes[l1Tokens[i]][chainId] != address(0), "Route not whitelisted");
 
-            int256 amount = poolRebalance.netSendAmount[i];
-
-            // TODO: Checking the amount is greater than 0 is not sufficient. we need to build an external library that
-            // makes the decision on if there should be an L1->L2 token transfer. this should come in a later PR.
-            if (amount > 0) {
-                // Send the adapter all the tokens it needs to bridge. This should be refined later to remove the extra
-                // token transfer through the use of delegate call.
-                IERC20(poolRebalance.l1Token[i]).safeApprove(address(adapter), uint256(amount));
+            // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
+            // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
+            if (netSendAmounts[i] > 0) {
+                IERC20(l1Tokens[i]).safeApprove(address(adapter), uint256(netSendAmounts[i]));
                 adapter.relayTokens(
-                    poolRebalance.l1Token[i], // l1Token
-                    l2Token, // l2Token
-                    uint256(amount), // amount
-                    crossChainContracts[poolRebalance.chainId].spokePool // to. This should be the spokePool.
+                    l1Tokens[i], // l1Token.
+                    whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.
+                    uint256(netSendAmounts[i]), // amount.
+                    crossChainContracts[chainId].spokePool // to. This should be the spokePool.
                 );
+
+                // Liquid reserves is decreased by the amount sent. utilizedReserves is increased by the amount sent.
+                pooledTokens[l1Tokens[i]].utilizedReserves += netSendAmounts[i];
+                pooledTokens[l1Tokens[i]].liquidReserves -= uint256(netSendAmounts[i]);
             }
+
+            // Assign any undistributed LP fees included into the bundle to the pooled token.
+            pooledTokens[l1Tokens[i]].undistributedLpFees += bundleLpFees[i];
+            pooledTokens[l1Tokens[i]].utilizedReserves += int256(bundleLpFees[i]);
         }
     }
 
-    function _executeRelayerRefundOnTargetChain(MerkleLib.PoolRebalance memory poolRebalance) internal {
-        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+    function _executeRelayerRefundOnChain(uint256 chainId) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
         adapter.relayMessage(
-            crossChainContracts[poolRebalance.chainId].spokePool, // target. This should be the spokePool.
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
             abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
         );
     }
 
-    function _updatePooledTokenForExecutedRebalance(MerkleLib.PoolRebalance memory poolRebalance) internal {
-        for (uint32 i = 0; i < poolRebalance.l1Token.length; i++) {
-            pooledTokens[poolRebalance.l1Token[i]].undistributedLpFees += poolRebalance.bundleLpFees[i];
-            if (poolRebalance.netSendAmount[i] > 0) {
-                pooledTokens[poolRebalance.l1Token[i]].liquidReserves -= uint256(poolRebalance.netSendAmount[i]);
-                pooledTokens[poolRebalance.l1Token[i]].utilizedReserves += uint256(poolRebalance.netSendAmount[i]);
-            }
-        }
+    function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
+        uint256 lpTokenTotalSupply = IERC20(pooledTokens[l1Token].lpToken).totalSupply();
+        if (lpTokenTotalSupply == 0) return 1e18; // initial rate is 1 pre any mint action.
+
+        // First, update fee counters and local accounting of finalized transfers from L2 -> L1.
+        _updateAccumulatedLpFees(l1Token); // Accumulate all allocated fees from the last time this method was called.
+        // _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
+        // Note that utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
+        // and opposite size. LiquidReserves + utilizedReserves will always be larger than undistributedLpFees so this
+        // int will always be positive so there is no risk in underflow in type casting in the return line.
+        int256 numerator = int256(pooledTokens[l1Token].liquidReserves) +
+            pooledTokens[l1Token].utilizedReserves -
+            int256(pooledTokens[l1Token].undistributedLpFees);
+        return (uint256(numerator) * 1e18) / lpTokenTotalSupply;
+    }
+
+    // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
+    function _updateAccumulatedLpFees(address l1Token) internal {
+        uint256 accumulatedFees = _getAccumulatedFees(
+            pooledTokens[l1Token].undistributedLpFees,
+            pooledTokens[l1Token].lastLpFeeUpdate
+        );
+        pooledTokens[l1Token].undistributedLpFees -= accumulatedFees;
+        pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
+    }
+
+    // Calculate the unallocated accumulatedFees from the last time the contract was called.
+    function _getAccumulatedFees(uint256 undistributedLpFees, uint256 lastLpFeeUpdate) internal view returns (uint256) {
+        // accumulatedFees := min(undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction ,undistributedLpFees)
+        // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
+        uint256 possibleUndistributedLpFees = (undistributedLpFees *
+            lpFeeRatePerSecond *
+            (getCurrentTime() - lastLpFeeUpdate)) / (1e18);
+        return possibleUndistributedLpFees < undistributedLpFees ? possibleUndistributedLpFees : undistributedLpFees;
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
