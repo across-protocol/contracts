@@ -499,31 +499,29 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     }
 
     function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
-        uint256 lpTokenTotalSupply = IERC20(pooledTokens[l1Token].lpToken).totalSupply();
+        PooledToken storage pooledToken = pooledTokens[l1Token];
+        uint256 lpTokenTotalSupply = IERC20(pooledToken.lpToken).totalSupply();
         if (lpTokenTotalSupply == 0) return 1e18; // initial rate is 1 pre any mint action.
 
         // First, update fee counters and local accounting of finalized transfers from L2 -> L1.
-        _updateAccumulatedLpFees(l1Token); // Accumulate all allocated fees from the last time this method was called.
+        _updateAccumulatedLpFees(pooledToken); // Accumulate all allocated fees from the last time this method was called.
         // _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
         // Note that utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
         // and opposite size. LiquidReserves + utilizedReserves will always be larger than undistributedLpFees so this
         // int will always be positive so there is no risk in underflow in type casting in the return line.
-        int256 numerator = int256(pooledTokens[l1Token].liquidReserves) +
-            pooledTokens[l1Token].utilizedReserves -
-            int256(pooledTokens[l1Token].undistributedLpFees);
+        int256 numerator = int256(pooledToken.liquidReserves) +
+            pooledToken.utilizedReserves -
+            int256(pooledToken.undistributedLpFees);
         return (uint256(numerator) * 1e18) / lpTokenTotalSupply;
     }
 
     // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
-    function _updateAccumulatedLpFees(address l1Token) internal {
-        uint256 accumulatedFees = _getAccumulatedFees(
-            pooledTokens[l1Token].undistributedLpFees,
-            pooledTokens[l1Token].lastLpFeeUpdate
-        );
-        pooledTokens[l1Token].undistributedLpFees -= accumulatedFees;
-        pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
+    function _updateAccumulatedLpFees(PooledToken storage pooledToken) internal {
+        uint256 accumulatedFees = _getAccumulatedFees(pooledToken.undistributedLpFees, pooledToken.lastLpFeeUpdate);
+        pooledToken.undistributedLpFees -= accumulatedFees;
+        pooledToken.lastLpFeeUpdate = uint32(getCurrentTime());
     }
 
     // Calculate the unallocated accumulatedFees from the last time the contract was called.
