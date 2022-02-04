@@ -96,19 +96,18 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 requestExpirationTimestamp,
         uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
-        bytes32 poolRebalanceRoot,
-        bytes32 destinationDistributionRoot,
+        bytes32 indexed poolRebalanceRoot,
+        bytes32 indexed destinationDistributionRoot,
         address indexed proposer
     );
     event RelayerRefundExecuted(
-        uint256 relayerRefundId,
-        uint256 leafId,
-        uint256 chainId,
+        uint256 indexed leafId,
+        uint256 indexed chainId,
         address[] l1Token,
         uint256[] bundleLpFees,
         int256[] netSendAmount,
         int256[] runningBalance,
-        address caller
+        address indexed caller
     );
 
     event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
@@ -242,6 +241,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *             DATA WORKER FUNCTIONS             *
      *************************************************/
 
+    // After initiateRelayerRefund is called, if the any props are wrong then this proposal can be challenged. Once the
+    // challenge period passes, then the roots are no longer disputable, and only executeRelayerRefund can be called and
+    // initiateRelayerRefund can't be called again until all leafs are executed.
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
         uint64 poolRebalanceLeafCount,
@@ -273,21 +275,17 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(
-        uint256 refundRequestId,
-        MerkleLib.PoolRebalance memory poolRebalance,
-        bytes32[] memory proof
-    ) public {
+    function executeRelayerRefund(MerkleLib.PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) public {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
-        // Verify the leafId in the poolRebalance has not yet been claimed.
-        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId), "Already claimed");
+        // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
+        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
 
         // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
-        require(MerkleLib.verifyPoolRebalance(refundRequest.poolRebalanceRoot, poolRebalance, proof), "Bad Proof");
+        require(MerkleLib.verifyPoolRebalance(refundRequest.poolRebalanceRoot, poolRebalanceLeaf, proof), "Bad Proof");
 
         // Set the leafId in the claimed bitmap.
-        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId);
+        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeaf.leafId);
 
         // Decrement the unclaimedPoolRebalanceLeafCount.
         refundRequest.unclaimedPoolRebalanceLeafCount--;
@@ -298,19 +296,18 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
-        _sendTokensToTargetChain(poolRebalance);
-        _executeRelayerRefundOnTargetChain(poolRebalance);
+        _sendTokensToTargetChain(poolRebalanceLeaf);
+        _executeRelayerRefundOnTargetChain(poolRebalanceLeaf);
 
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
         emit RelayerRefundExecuted(
-            refundRequestId,
-            poolRebalance.leafId,
-            poolRebalance.chainId,
-            poolRebalance.l1Token,
-            poolRebalance.bundleLpFees,
-            poolRebalance.netSendAmount,
-            poolRebalance.runningBalance,
+            poolRebalanceLeaf.leafId,
+            poolRebalanceLeaf.chainId,
+            poolRebalanceLeaf.l1Token,
+            poolRebalanceLeaf.bundleLpFees,
+            poolRebalanceLeaf.netSendAmount,
+            poolRebalanceLeaf.runningBalance,
             msg.sender
         );
     }
