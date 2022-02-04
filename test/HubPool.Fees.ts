@@ -25,7 +25,7 @@ async function constructSimpleTree() {
   return { wethSendToL2, wethAttributeToLps, leafs, tree };
 }
 
-describe.only("HubPool LP fees", function () {
+describe("HubPool LP fees", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, hubPool, mockAdapter, mockSpoke, timer } = await hubPoolFixture());
