@@ -499,7 +499,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     }
 
     function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
-        PooledToken storage pooledToken = pooledTokens[l1Token];
+        PooledToken storage pooledToken = pooledTokens[l1Token]; // Note this is storage so the state can be modified.
         uint256 lpTokenTotalSupply = IERC20(pooledToken.lpToken).totalSupply();
         if (lpTokenTotalSupply == 0) return 1e18; // initial rate is 1 pre any mint action.
 
