@@ -1,6 +1,6 @@
 import { TokenRolesEnum, interfaceName } from "@uma/common";
 import { getContractFactory, randomAddress, toBN, fromWei } from "./utils";
-import { bondAmount, refundProposalLiveness, finalFee, identifier, repaymentChainId } from "./constants";
+import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId } from "./constants";
 import { Contract, Signer } from "ethers";
 import hre from "hardhat";
 
@@ -34,15 +34,9 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const merkleLib = await (await getContractFactory("MerkleLib", signer)).deploy();
   const hubPool = await (
     await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(
-    bondAmount,
-    refundProposalLiveness,
-    parentFixtureOutput.finder.address,
-    identifier,
-    weth.address,
-    weth.address,
-    parentFixtureOutput.timer.address
-  );
+  ).deploy(parentFixtureOutput.finder.address, parentFixtureOutput.timer.address);
+  await hubPool.setBond(weth.address, bondAmount);
+  await hubPool.setRefundProposalLiveness(refundProposalLiveness);
 
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
@@ -56,21 +50,21 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const l2Weth = randomAddress();
   const l2Dai = randomAddress();
   const l2Usdc = randomAddress();
-  await hubPool.whitelistRoute(weth.address, l2Weth, repaymentChainId);
-  await hubPool.whitelistRoute(dai.address, l2Dai, repaymentChainId);
-  await hubPool.whitelistRoute(usdc.address, l2Usdc, repaymentChainId);
+  await hubPool.whitelistRoute(repaymentChainId, weth.address, l2Weth);
+  await hubPool.whitelistRoute(repaymentChainId, dai.address, l2Dai);
+  await hubPool.whitelistRoute(repaymentChainId, usdc.address, l2Usdc);
 
   return { weth, usdc, dai, hubPool, mockAdapter, mockSpoke, l2Weth, l2Dai, l2Usdc, ...parentFixtureOutput };
 });
 
-export async function enableTokensForLiquidityProvision(owner: Signer, hubPool: Contract, tokens: Contract[]) {
+export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {
   const lpTokens = [];
   for (const token of tokens) {
-    await hubPool.enableL1TokenForLiquidityProvision(token.address);
+    await hubPool.enableL1TokenForLiquidityProvision(token.address, token.address == weth.address);
     lpTokens.push(
       await (
         await getContractFactory("ExpandedERC20", owner)
-      ).attach((await hubPool.callStatic.lpTokens(token.address)).lpToken)
+      ).attach((await hubPool.callStatic.pooledTokens(token.address)).lpToken)
     );
   }
   return lpTokens;

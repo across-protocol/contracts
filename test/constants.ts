@@ -38,7 +38,7 @@ export const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 export const zeroBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-export const identifier = utf8ToHex("IS_ACROSS_V2_RELAY_VALID");
+export const identifier = utf8ToHex("IS_ACROSS_V2_BUNDLE_VALID");
 
 export const zeroRawValue = { rawValue: "0" };
 

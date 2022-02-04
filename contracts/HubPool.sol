@@ -30,10 +30,6 @@ interface WETH9Like {
 contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
-    struct LPToken {
-        ExpandedERC20 lpToken;
-        bool isEnabled;
-    }
 
     struct RefundRequest {
         uint64 requestExpirationTimestamp;
@@ -47,10 +43,22 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     RefundRequest public refundRequest;
 
-    // Whitelist of origin token to destination token routings to be used by off-chain agents.
+    // Whitelist of origin token to destination token routings to be used by off-chain agents. The notion of a route
+    // does not need to include L1; it can store L2->L2 routes i.e USDC on Arbitrum -> USDC on Optimism as a "route".
     mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
 
-    mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
+    // Mapping of L1TokenAddress to the associated Pool information.
+    struct PooledToken {
+        address lpToken; // LP token associated with the pooled token.
+        bool isEnabled;
+        uint256 liquidReserves;
+        uint256 utilizedReserves;
+        uint256 lockedBonds;
+        uint32 lastLpFeeUpdate;
+        bool isWeth;
+    }
+
+    mapping(address => PooledToken) public pooledTokens;
 
     struct CrossChainContract {
         AdapterInterface adapter;
@@ -61,7 +69,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     FinderInterface public finder;
 
-    bytes32 public identifier;
+    // When bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
+    bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
@@ -69,14 +78,23 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
 
-    // Address of L1Weth. Enable LPs to deposit/receive ETH, if they choose, when adding/removing liquidity.
-    WETH9Like public l1Weth;
-
     // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
-    // be disputed only during this period of time.
-    uint64 public refundProposalLiveness;
+    // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
+    uint64 public refundProposalLiveness = 7200;
 
     event BondSet(address indexed newBondToken, uint256 newBondAmount);
+
+    event RefundProposalLivenessSet(uint256 newRefundProposalLiveness);
+
+    event IdentifierSet(bytes32 newIdentifier);
+
+    event CrossChainContractsSet(uint256 l2ChainId, address adapter, address spokePool);
+
+    event L2TokenForPooledTokenSet(uint256 l2ChainId, address l1Token, address l2Token);
+
+    event L1TokenEnabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
+
+    event L2TokenDisabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -90,7 +108,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokensBurnt,
         address indexed liquidityProvider
     );
-    event WhitelistRoute(address originToken, uint256 destinationChainId, address destinationToken);
+    event WhitelistRoute(uint256 destinationChainId, address originToken, address destinationToken);
 
     event InitiateRefundRequested(
         uint64 requestExpirationTimestamp,
@@ -118,21 +136,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         _;
     }
 
-    constructor(
-        uint256 _bondAmount,
-        uint64 _refundProposalLiveness,
-        FinderInterface _finder,
-        bytes32 _identifier,
-        IERC20 _bondToken,
-        WETH9Like _l1Weth,
-        address _timer
-    ) Testable(_timer) {
-        bondAmount = _bondAmount;
-        refundProposalLiveness = _refundProposalLiveness;
-        bondToken = _bondToken;
-        l1Weth = _l1Weth;
+    constructor(FinderInterface _finder, address _timer) Testable(_timer) {
         finder = _finder;
-        identifier = _identifier;
     }
 
     /*************************************************
@@ -145,67 +150,80 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         emit BondSet(address(newBondToken), newBondAmount);
     }
 
+    function setRefundProposalLiveness(uint64 newRefundProposalLiveness) public onlyOwner {
+        refundProposalLiveness = newRefundProposalLiveness;
+        emit RefundProposalLivenessSet(newRefundProposalLiveness);
+    }
+
+    function setIdentifier(bytes32 newIdentifier) public onlyOwner {
+        identifier = newIdentifier;
+        emit IdentifierSet(newIdentifier);
+    }
+
     function setCrossChainContracts(
-        uint256 chainId,
-        AdapterInterface adapter,
+        uint256 l2ChainId,
+        address adapter,
         address spokePool
     ) public onlyOwner noActiveRequests {
-        require(address(crossChainContracts[chainId].adapter) == address(0), "Contract already set");
-        crossChainContracts[chainId] = CrossChainContract(adapter, spokePool);
+        require(address(crossChainContracts[l2ChainId].adapter) == address(0), "Contract already set");
+        crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
+        emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
 
     /**
      * @notice Whitelist an origin token <-> destination token route.
      */
     function whitelistRoute(
+        uint256 destinationChainId,
         address originToken,
-        address destinationToken,
-        uint256 destinationChainId
+        address destinationToken
     ) public onlyOwner {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
-
-        emit WhitelistRoute(originToken, destinationChainId, destinationToken);
+        emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
 
-    // TODO: the two functions below should be called by the Admin contract.
-    function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
+    function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) public onlyOwner {
         // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
         // appends and permission setting.
-        ExpandedERC20 lpToken = new ExpandedERC20(
-            _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
-            _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
-            IERC20Metadata(l1Token).decimals() // LP Token Decimals
-        );
-        lpToken.addMember(1, address(this)); // Set this contract as the LP Token's minter.
-        lpToken.addMember(2, address(this)); // Set this contract as the LP Token's burner.
-        lpTokens[l1Token] = LPToken({ lpToken: lpToken, isEnabled: true });
+        if (pooledTokens[l1Token].lpToken == address(0)) {
+            ExpandedERC20 lpToken = new ExpandedERC20(
+                _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
+                _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
+                IERC20Metadata(l1Token).decimals() // LP Token Decimals
+            );
+            lpToken.addMember(1, address(this)); // Set this contract as the LP Token's minter.
+            lpToken.addMember(2, address(this)); // Set this contract as the LP Token's burner.
+            pooledTokens[l1Token].lpToken = address(lpToken);
+        }
+        pooledTokens[l1Token].isEnabled = true;
+        pooledTokens[l1Token].isWeth = isWeth;
+        pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
+
+        emit L1TokenEnabledForLiquidityProvision(l1Token, isWeth, pooledTokens[l1Token].lpToken);
     }
 
     function disableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
-        lpTokens[l1Token].isEnabled = false;
+        pooledTokens[l1Token].isEnabled = false;
+        emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].isWeth, pooledTokens[l1Token].lpToken);
     }
-
-    // TODO: implement this. this will likely go into a separate Admin contract that contains all the L1->L2 Admin logic.
-    // function setTokenToAcceptDeposits(address token) public {}
 
     /*************************************************
      *          LIQUIDITY PROVIDER FUNCTIONS         *
      *************************************************/
 
     function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable {
-        require(lpTokens[l1Token].isEnabled, "Token not enabled");
+        require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
-        require((address(l1Token) == address(l1Weth) && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
+        require((pooledTokens[l1Token].isWeth && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
 
         // Since `exchangeRateCurrent()` reads this contract's balance and updates contract state using it,
         // we must call it first before transferring any tokens to this contract.
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent();
-        ExpandedERC20(lpTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
+        ExpandedERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         // liquidReserves += l1TokenAmount; //TODO: Add this when we have the liquidReserves variable implemented.
 
-        if (address(l1Token) == address(l1Weth) && msg.value > 0)
-            WETH9Like(address(l1Token)).deposit{ value: msg.value }();
+        if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         emit LiquidityAdded(l1Token, l1TokenAmount, lpTokensToMint, msg.sender);
@@ -217,16 +235,16 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         bool sendEth
     ) public nonReentrant {
         // Can only send eth on withdrawing liquidity iff this is the WETH pool.
-        require(l1Token == address(l1Weth) || !sendEth, "Cant send eth");
+        require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
         // require(liquidReserves >= (pendingReserves + l1TokensToReturn), "Utilization too high to remove"); // TODO: add this when we have liquid reserves variable implemented.
 
-        ExpandedERC20(lpTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
+        ExpandedERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
         // liquidReserves -= l1TokensToReturn; // TODO: add this when we have liquid reserves variable implemented.
 
-        if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
+        if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
         else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
 
         emit LiquidityRemoved(l1Token, l1TokensToReturn, lpTokenAmount, msg.sender);
@@ -407,11 +425,15 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
-    function _unwrapWETHTo(address payable to, uint256 amount) internal {
+    function _unwrapWETHTo(
+        address wethAddress,
+        address payable to,
+        uint256 amount
+    ) internal {
         if (address(to).isContract()) {
-            IERC20(address(l1Weth)).safeTransfer(to, amount);
+            IERC20(address(wethAddress)).safeTransfer(to, amount);
         } else {
-            l1Weth.withdraw(amount);
+            WETH9Like(wethAddress).withdraw(amount);
             to.transfer(amount);
         }
     }
@@ -443,7 +465,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         for (uint32 i = 0; i < poolRebalance.l1Token.length; i++) {
             // Validate the output L2 token is correctly whitelisted.
             address l2Token = whitelistedRoutes[poolRebalance.l1Token[i]][poolRebalance.chainId];
-            require(l2Token != address(0), "Route not whitelisted");
+            require(l2Token != address(0), "L2 token not set for L1 token");
 
             int256 amount = poolRebalance.netSendAmount[i];
 

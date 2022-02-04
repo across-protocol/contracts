@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 
 import { SignerWithAddress, toBNWei, seedWallet } from "./utils";
 import * as consts from "./constants";
-import { hubPoolFixture, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { buildPoolRebalanceTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
 
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
@@ -18,7 +18,7 @@ describe("HubPool Relayer Refund Execution", function () {
     await seedWallet(dataWorker, [dai], weth, consts.bondAmount.add(consts.finalFee).mul(2));
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
 
-    await enableTokensForLiquidityProvision(owner, hubPool, [weth, dai]);
+    await enableTokensForLP(owner, hubPool, weth, [weth, dai]);
     await weth.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, consts.amountToLp);
     await dai.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp.mul(10)); // LP with 10000 DAI.

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { getContractFactory, fromWei, toBN, SignerWithAddress, seedWallet } from "./utils";
-import { hubPoolFixture, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { amountToSeedWallets, amountToLp } from "./constants";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, dai: Contract;
@@ -13,7 +13,7 @@ describe("HubPool Liquidity Provision", function () {
   beforeEach(async function () {
     [owner, liquidityProvider, other] = await ethers.getSigners();
     ({ weth, usdc, dai, hubPool } = await hubPoolFixture());
-    [wethLpToken, usdcLpToken, daiLpToken] = await enableTokensForLiquidityProvision(owner, hubPool, [weth, usdc, dai]);
+    [wethLpToken, usdcLpToken, daiLpToken] = await enableTokensForLP(owner, hubPool, weth, [weth, usdc, dai]);
 
     // mint some fresh tokens and deposit ETH for weth for the liquidity provider.
     await seedWallet(liquidityProvider, [usdc, dai], weth, amountToSeedWallets);
@@ -22,7 +22,7 @@ describe("HubPool Liquidity Provision", function () {
   it("Adding ER20 liquidity correctly pulls tokens and mints LP tokens", async function () {
     const daiLpToken = await (
       await getContractFactory("ExpandedERC20", owner)
-    ).attach((await hubPool.callStatic.lpTokens(dai.address)).lpToken);
+    ).attach((await hubPool.callStatic.pooledTokens(dai.address)).lpToken);
 
     // Balances of collateral before should equal the seed amount and there should be 0 outstanding LP tokens.
     expect(await dai.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets);

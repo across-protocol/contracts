@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import { parseAncillaryData } from "@uma/common";
 import { SignerWithAddress, seedWallet } from "./utils";
 import * as consts from "./constants";
-import { hubPoolFixture, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, optimisticOracle: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -13,7 +13,7 @@ describe("HubPool Relayer Refund Dispute", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, hubPool, optimisticOracle } = await hubPoolFixture());
-    await enableTokensForLiquidityProvision(owner, hubPool, [weth]);
+    await enableTokensForLP(owner, hubPool, weth, [weth]);
 
     await seedWallet(dataWorker, [], weth, consts.bondAmount.add(consts.finalFee).mul(2));
     await seedWallet(liquidityProvider, [], weth, consts.amountToLp);
