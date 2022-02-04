@@ -3,7 +3,7 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "./utils";
 import { spokePoolFixture } from "./SpokePool.Fixture";
-import { depositDestinationChainId } from "./constants";
+import { destinationChainId } from "./constants";
 
 let spokePool: Contract, erc20: Contract;
 let owner: SignerWithAddress;
@@ -14,10 +14,10 @@ describe("SpokePool Admin Functions", async function () {
     ({ spokePool, erc20 } = await spokePoolFixture());
   });
   it("Enable token path", async function () {
-    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, depositDestinationChainId, true))
+    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
       .to.emit(spokePool, "EnabledDepositRoute")
-      .withArgs(erc20.address, depositDestinationChainId, true);
-    expect(await spokePool.enabledDepositRoutes(erc20.address, depositDestinationChainId)).to.equal(true);
+      .withArgs(erc20.address, destinationChainId, true);
+    expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
   });
   it("Change deposit quote buffer", async function () {
     await expect(spokePool.connect(owner).setDepositQuoteTimeBuffer(60))

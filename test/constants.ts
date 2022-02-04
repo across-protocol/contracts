@@ -8,8 +8,6 @@ export const amountToDeposit = toWei("100");
 
 export const amountToRelay = toWei("25");
 
-export const depositDestinationChainId = 10;
-
 export const depositRelayerFeePct = toWei("0.1");
 
 export const realizedLpFeePct = toWei("0.1");
@@ -20,8 +18,12 @@ export const totalPostFeesPct = toBN(oneHundredPct).sub(toBN(depositRelayerFeePc
 
 export const amountToRelayPreFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostFeesPct);
 
+export const destinationChainId = 1337;
+
 export const originChainId = 666;
+
 export const repaymentChainId = 777;
+
 export const firstDepositId = 0;
 
 export const depositQuoteTimeBuffer = 10 * 60; // 10 minutes
@@ -40,6 +42,10 @@ export const identifier = utf8ToHex("IS_ACROSS_V2_RELAY_VALID");
 
 export const zeroRawValue = { rawValue: "0" };
 
-export const spokePoolRelayerRefundRoot = createRandomBytes32();
+export const mockBundleEvaluationBlockNumbers = [1, 2, 3];
 
-export const spokePoolRelayerRefundRootDefaultId = 0;
+export const mockPoolRebalanceLeafCount = 5;
+
+export const mockPoolRebalanceRoot = createRandomBytes32();
+
+export const mockDestinationDistributionRoot = createRandomBytes32();

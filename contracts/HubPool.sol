@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
+import "./chain-adapters/AdapterInterface.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
@@ -51,6 +52,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     mapping(address => LPToken) public lpTokens; // Mapping of L1TokenAddress to the associated LPToken.
 
+    struct CrossChainContract {
+        AdapterInterface adapter;
+        address spokePool;
+    }
+
+    mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
+
     FinderInterface public finder;
 
     bytes32 public identifier;
@@ -88,19 +96,23 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 requestExpirationTimestamp,
         uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
-        bytes32 poolRebalanceRoot,
-        bytes32 destinationDistributionRoot,
+        bytes32 indexed poolRebalanceRoot,
+        bytes32 indexed destinationDistributionRoot,
         address indexed proposer
     );
-    event RelayerRefundExecuted(uint256 relayerRefundId, MerkleLib.PoolRebalance poolRebalance, address caller);
-
-    event RelayerRefundDisputed(
-        address indexed disputer,
-        SkinnyOptimisticOracleInterface.Request ooPriceRequest,
-        RefundRequest refundRequest
+    event RelayerRefundExecuted(
+        uint256 indexed leafId,
+        uint256 indexed chainId,
+        address[] l1Token,
+        uint256[] bundleLpFees,
+        int256[] netSendAmount,
+        int256[] runningBalance,
+        address indexed caller
     );
 
-    modifier onlyIfNoActiveRequest() {
+    event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+
+    modifier noActiveRequests() {
         require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
         _;
     }
@@ -126,10 +138,19 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
-    function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner onlyIfNoActiveRequest {
+    function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
         bondToken = newBondToken;
         bondAmount = newBondAmount;
         emit BondSet(address(newBondToken), newBondAmount);
+    }
+
+    function setCrossChainContracts(
+        uint256 chainId,
+        AdapterInterface adapter,
+        address spokePool
+    ) public onlyOwner noActiveRequests {
+        require(address(crossChainContracts[chainId].adapter) == address(0), "Contract already set");
+        crossChainContracts[chainId] = CrossChainContract(adapter, spokePool);
     }
 
     /**
@@ -220,12 +241,15 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
      *             DATA WORKER FUNCTIONS             *
      *************************************************/
 
+    // After initiateRelayerRefund is called, if the any props are wrong then this proposal can be challenged. Once the
+    // challenge period passes, then the roots are no longer disputable, and only executeRelayerRefund can be called and
+    // initiateRelayerRefund can't be called again until all leafs are executed.
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot
-    ) public onlyIfNoActiveRequest {
+    ) public noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
@@ -251,38 +275,41 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(
-        uint256 relayerRefundRequestId,
-        MerkleLib.PoolRebalance memory poolRebalance,
-        bytes32[] memory proof
-    ) public {
+    function executeRelayerRefund(MerkleLib.PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) public {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
-        // Verify the leafId in the poolRebalance has not yet been claimed.
-        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId), "Already claimed");
+        // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
+        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
 
         // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
-        require(MerkleLib.verifyPoolRebalance(refundRequest.poolRebalanceRoot, poolRebalance, proof), "Bad Proof");
+        require(MerkleLib.verifyPoolRebalance(refundRequest.poolRebalanceRoot, poolRebalanceLeaf, proof), "Bad Proof");
 
         // Set the leafId in the claimed bitmap.
-        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalance.leafId);
+        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeaf.leafId);
 
         // Decrement the unclaimedPoolRebalanceLeafCount.
         refundRequest.unclaimedPoolRebalanceLeafCount--;
 
-        // Transfer the bondAmount to back to the proposer, if this was not done before for this refund bundle.
-        if (!refundRequest.proposerBondRepaid) {
-            refundRequest.proposerBondRepaid = true;
+        // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
+        // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
+        //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
+        if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
-        }
 
-        // TODO call into canonical bridge to send PoolRebalance.netSendAmount for the associated
-        // PoolRebalance.tokenAddresses, to the target PoolRebalance.chainId. this will likely happen within a
-        // x_Messenger contract for each chain. these messengers will be registered in a separate process that will follow
-        // in a later PR.
+        _sendTokensToChain(poolRebalanceLeaf.chainId, poolRebalanceLeaf.l1Tokens, poolRebalanceLeaf.netSendAmounts);
+        _executeRelayerRefundOnChain(poolRebalanceLeaf.chainId);
+
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
-        emit RelayerRefundExecuted(relayerRefundRequestId, poolRebalance, msg.sender);
+        emit RelayerRefundExecuted(
+            poolRebalanceLeaf.leafId,
+            poolRebalanceLeaf.chainId,
+            poolRebalanceLeaf.l1Tokens,
+            poolRebalanceLeaf.bundleLpFees,
+            poolRebalanceLeaf.netSendAmounts,
+            poolRebalanceLeaf.runningBalances,
+            msg.sender
+        );
     }
 
     function disputeRelayerRefund() public {
@@ -290,13 +317,14 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
         // Request price from OO and dispute it.
         uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
+        bytes memory requestAncillaryData = _getRefundProposalAncillaryData();
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
         // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
         bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
         _getOptimisticOracle().requestAndProposePriceFor(
             identifier,
             uint32(getCurrentTime()),
-            _getRefundProposalAncillaryData(),
+            requestAncillaryData,
             bondToken,
             // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
             // proposal has passed the challenge period.
@@ -328,13 +356,13 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         _getOptimisticOracle().disputePriceFor(
             identifier,
             uint32(getCurrentTime()),
-            _getRefundProposalAncillaryData(),
+            requestAncillaryData,
             ooPriceRequest,
             msg.sender,
             address(this)
         );
 
-        emit RelayerRefundDisputed(msg.sender, ooPriceRequest, refundRequest);
+        emit RelayerRefundDisputed(msg.sender, getCurrentTime(), requestAncillaryData);
 
         // Finally, delete the state pertaining to the active refundRequest.
         delete refundRequest;
@@ -403,6 +431,45 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store))
                 .computeFinalFee(address(bondToken))
                 .rawValue;
+    }
+
+    function _sendTokensToChain(
+        uint256 chainId,
+        address[] memory l1Tokens,
+        int256[] memory netSendAmounts
+    ) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
+        require(address(adapter) != address(0), "Adapter not set for target chain");
+
+        for (uint32 i = 0; i < l1Tokens.length; i++) {
+            // Validate the output L2 token is correctly whitelisted.
+            address l2Token = whitelistedRoutes[l1Tokens[i]][chainId];
+            require(l2Token != address(0), "Route not whitelisted");
+
+            int256 amount = netSendAmounts[i];
+
+            // TODO: Checking the amount is greater than 0 is not sufficient. we need to build an external library that
+            // makes the decision on if there should be an L1->L2 token transfer. this should come in a later PR.
+            if (amount > 0) {
+                // Send the adapter all the tokens it needs to bridge. This should be refined later to remove the extra
+                // token transfer through the use of delegate call.
+                IERC20(l1Tokens[i]).safeApprove(address(adapter), uint256(amount));
+                adapter.relayTokens(
+                    l1Tokens[i], // l1Token
+                    l2Token, // l2Token
+                    uint256(amount), // amount
+                    crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                );
+            }
+        }
+    }
+
+    function _executeRelayerRefundOnChain(uint256 chainId) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
+        adapter.relayMessage(
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+            abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
+        );
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
