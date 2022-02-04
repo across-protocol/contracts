@@ -3,7 +3,7 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "./utils";
 import { spokePoolFixture } from "./SpokePool.Fixture";
-import { spokePoolRelayerRefundRoot, spokePoolRelayerRefundRootDefaultId } from "./constants";
+import { mockDestinationDistributionRoot } from "./constants";
 
 let spokePool: Contract;
 let caller: SignerWithAddress;
@@ -14,9 +14,9 @@ describe("SpokePool Initialize Relayer Refund Logic", async function () {
     ({ spokePool } = await spokePoolFixture());
   });
   it("Initializing root stores root and emits event", async function () {
-    await expect(spokePool.connect(caller).initializeRelayerRefund(spokePoolRelayerRefundRoot))
+    await expect(spokePool.connect(caller).initializeRelayerRefund(mockDestinationDistributionRoot))
       .to.emit(spokePool, "InitializedRelayerRefund")
-      .withArgs(spokePoolRelayerRefundRootDefaultId, spokePoolRelayerRefundRoot);
-    expect(await spokePool.relayerRefunds(spokePoolRelayerRefundRootDefaultId)).to.equal(spokePoolRelayerRefundRoot);
+      .withArgs(0, mockDestinationDistributionRoot);
+    expect(await spokePool.relayerRefunds(0)).to.equal(mockDestinationDistributionRoot);
   });
 });
