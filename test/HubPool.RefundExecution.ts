@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import { SignerWithAddress, toBNWei, seedWallet } from "./utils";
+import { SignerWithAddress, toBNWei, seedWallet, createRandomBytes32 } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { buildPoolRebalanceTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
@@ -10,6 +10,23 @@ import { buildPoolRebalanceTree, buildPoolRebalanceLeafs } from "./MerkleLib.uti
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let l2Weth: string, l2Dai: string;
+
+// Construct the leafs that will go into the merkle tree. For this function create a simple set of leafs that will
+// repay two token to one chain Id with simple lpFee, netSend and running balance amounts.
+async function constructSimpleTree() {
+  const wethToSend = toBNWei(100);
+  const daiToSend = toBNWei(1000);
+  const leafs = buildPoolRebalanceLeafs(
+    [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
+    [weth, dai], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
+    [[toBNWei(1), toBNWei(10)]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
+    [[wethToSend, daiToSend]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
+    [[wethToSend, daiToSend]] // runningBalances. Set to 100 ETH and 1000 DAI.
+  );
+  const tree = await buildPoolRebalanceTree(leafs);
+
+  return { wethToSend, daiToSend, leafs, tree };
+}
 
 describe("HubPool Relayer Refund Execution", function () {
   beforeEach(async function () {
@@ -23,35 +40,23 @@ describe("HubPool Relayer Refund Execution", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, consts.amountToLp);
     await dai.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp.mul(10)); // LP with 10000 DAI.
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, consts.amountToLp.mul(10));
+
+    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
   });
 
   it("Execute relayer refund correctly produces the refund bundle call and sends cross-chain repayment actions", async function () {
-    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
-
-    // Construct the leafs that will go into the merkle tree. For this test create a simple set of leafs that will repay
-    // two token to one chain Id with simple lpFee, netSend and running balance amounts.
-    const wethToSend = toBNWei(100);
-    const daiToSend = toBNWei(1000);
-    const leafs = buildPoolRebalanceLeafs(
-      [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
-      [weth, dai], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
-      [[toBNWei(1), toBNWei(10)]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
-      [[wethToSend, daiToSend]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
-      [[wethToSend, daiToSend]] // runningBalances. Set to 100 ETH and 1000 DAI.
-    );
-
-    const poolRebalanceTree = await buildPoolRebalanceTree(leafs);
+    const { wethToSend, daiToSend, leafs, tree } = await constructSimpleTree();
 
     await hubPool.connect(dataWorker).initiateRelayerRefund(
       [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
       1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
-      poolRebalanceTree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
       consts.mockDestinationDistributionRoot // destinationDistributionRoot. Not relevant for this test.
     );
 
     // Advance time so the request can be executed and execute the request.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(0, leafs[0], poolRebalanceTree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
 
     // Balances should have updated as expected.
     expect(await weth.balanceOf(hubPool.address)).to.equal(consts.amountToLp.sub(wethToSend));
@@ -77,5 +82,25 @@ describe("HubPool Relayer Refund Execution", function () {
     expect(relayTokensEvents[1].args?.l2Token).to.equal(l2Dai);
     expect(relayTokensEvents[1].args?.amount).to.equal(daiToSend);
     expect(relayTokensEvents[1].args?.to).to.equal(mockSpoke.address);
+  });
+  it("Execution rejects invalid leafs", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+
+    // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
+    // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
+    const badLeaf = { ...leafs[0], chainId: 13371 };
+    await expect(hubPool.connect(dataWorker).executeRelayerRefund(badLeaf, tree.getHexProof(leafs[0]))).to.be.reverted;
+  });
+
+  it("Execution rejects double claimed leafs", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+
+    // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
+    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await expect(hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]))).to.be.reverted;
   });
 });
