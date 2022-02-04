@@ -9,7 +9,7 @@ import { hubPoolFixture } from "./HubPool.Fixture";
 let hubPool: Contract, weth: Contract, usdc: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
-describe("HubPool Admin functions", function () {
+describe.only("HubPool Admin functions", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
     ({ weth, hubPool, usdc } = await hubPoolFixture());

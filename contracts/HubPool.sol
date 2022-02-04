@@ -120,7 +120,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         address indexed proposer
     );
     event RelayerRefundExecuted(
-        uint256 relayerRefundId,
         uint256 leafId,
         uint256 chainId,
         address[] l1Token,
