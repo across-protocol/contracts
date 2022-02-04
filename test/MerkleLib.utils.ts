@@ -9,10 +9,10 @@ import { BigNumber, Signer, Contract } from "ethers";
 export interface PoolRebalance {
   leafId: BigNumber;
   chainId: BigNumber;
-  l1Token: string[];
+  l1Tokens: string[];
   bundleLpFees: BigNumber[];
-  netSendAmount: BigNumber[];
-  runningBalance: BigNumber[];
+  netSendAmounts: BigNumber[];
+  runningBalances: BigNumber[];
 }
 
 export interface DestinationDistribution {
@@ -27,10 +27,10 @@ export interface DestinationDistribution {
 export async function buildPoolRebalanceTree(poolRebalances: PoolRebalance[]) {
   for (let i = 0; i < poolRebalances.length; i++) {
     // The 4 provided parallel arrays must be of equal length.
-    expect(poolRebalances[i].l1Token.length)
+    expect(poolRebalances[i].l1Tokens.length)
       .to.equal(poolRebalances[i].bundleLpFees.length)
-      .to.equal(poolRebalances[i].netSendAmount.length)
-      .to.equal(poolRebalances[i].runningBalance.length);
+      .to.equal(poolRebalances[i].netSendAmounts.length)
+      .to.equal(poolRebalances[i].runningBalances.length);
   }
 
   const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
@@ -51,10 +51,10 @@ export function buildPoolRebalanceLeafs(
       return {
         leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
-        l1Token: l1Tokens.map((token: Contract) => token.address),
+        l1Tokens: l1Tokens.map((token: Contract) => token.address),
         bundleLpFees: bundleLpFees[i],
-        netSendAmount: netSendAmounts[i],
-        runningBalance: runningBalances[i],
+        netSendAmounts: netSendAmounts[i],
+        runningBalances: runningBalances[i],
       };
     });
 }

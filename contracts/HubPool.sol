@@ -296,18 +296,18 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
-        _sendTokensToTargetChain(poolRebalanceLeaf);
-        _executeRelayerRefundOnTargetChain(poolRebalanceLeaf);
+        _sendTokensToChain(poolRebalanceLeaf.chainId, poolRebalanceLeaf.l1Tokens, poolRebalanceLeaf.netSendAmounts);
+        _executeRelayerRefundOnChain(poolRebalanceLeaf.chainId);
 
         // TODO: modify the associated utilized and pending reserves for each token sent.
 
         emit RelayerRefundExecuted(
             poolRebalanceLeaf.leafId,
             poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Token,
+            poolRebalanceLeaf.l1Tokens,
             poolRebalanceLeaf.bundleLpFees,
-            poolRebalanceLeaf.netSendAmount,
-            poolRebalanceLeaf.runningBalance,
+            poolRebalanceLeaf.netSendAmounts,
+            poolRebalanceLeaf.runningBalances,
             msg.sender
         );
     }
@@ -433,37 +433,41 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
                 .rawValue;
     }
 
-    function _sendTokensToTargetChain(MerkleLib.PoolRebalance memory poolRebalance) internal {
-        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+    function _sendTokensToChain(
+        uint256 chainId,
+        address[] memory l1Tokens,
+        int256[] memory netSendAmounts
+    ) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
         require(address(adapter) != address(0), "Adapter not set for target chain");
 
-        for (uint32 i = 0; i < poolRebalance.l1Token.length; i++) {
+        for (uint32 i = 0; i < l1Tokens.length; i++) {
             // Validate the output L2 token is correctly whitelisted.
-            address l2Token = whitelistedRoutes[poolRebalance.l1Token[i]][poolRebalance.chainId];
+            address l2Token = whitelistedRoutes[l1Tokens[i]][chainId];
             require(l2Token != address(0), "Route not whitelisted");
 
-            int256 amount = poolRebalance.netSendAmount[i];
+            int256 amount = netSendAmounts[i];
 
             // TODO: Checking the amount is greater than 0 is not sufficient. we need to build an external library that
             // makes the decision on if there should be an L1->L2 token transfer. this should come in a later PR.
             if (amount > 0) {
                 // Send the adapter all the tokens it needs to bridge. This should be refined later to remove the extra
                 // token transfer through the use of delegate call.
-                IERC20(poolRebalance.l1Token[i]).safeApprove(address(adapter), uint256(amount));
+                IERC20(l1Tokens[i]).safeApprove(address(adapter), uint256(amount));
                 adapter.relayTokens(
-                    poolRebalance.l1Token[i], // l1Token
+                    l1Tokens[i], // l1Token
                     l2Token, // l2Token
                     uint256(amount), // amount
-                    crossChainContracts[poolRebalance.chainId].spokePool // to. This should be the spokePool.
+                    crossChainContracts[chainId].spokePool // to. This should be the spokePool.
                 );
             }
         }
     }
 
-    function _executeRelayerRefundOnTargetChain(MerkleLib.PoolRebalance memory poolRebalance) internal {
-        AdapterInterface adapter = crossChainContracts[poolRebalance.chainId].adapter;
+    function _executeRelayerRefundOnChain(uint256 chainId) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
         adapter.relayMessage(
-            crossChainContracts[poolRebalance.chainId].spokePool, // target. This should be the spokePool.
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
             abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
         );
     }

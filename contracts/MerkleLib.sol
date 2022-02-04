@@ -15,22 +15,22 @@ library MerkleLib {
         uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
         uint256 chainId;
-        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Token` field.
+        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Tokens` field.
         // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
-        address[] l1Token;
+        address[] l1Tokens;
         uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
         // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
         // when the rules indicate that a rebalancing action should occur. When a rebalance does not occur,
-        // runningBalance for this token should change by the total relays - deposits in this bundle. When a rebalance
-        // does occur, runningBalance should be set to zero for this token and the netSendAmount should be set to the
-        // previous runningBalance + relays - deposits in this bundle.
-        int256[] netSendAmount;
+        // runningBalances for this token should change by the total relays - deposits in this bundle. When a rebalance
+        // does occur, runningBalances should be set to zero for this token and the netSendAmounts should be set to the
+        // previous runningBalances + relays - deposits in this bundle.
+        int256[] netSendAmounts;
         // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
-        // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmount
-        int256[] runningBalance;
+        // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
+        int256[] runningBalances;
     }
 
     // This leaf is meant to be decoded in the SpokePool in order to pay out individual relayers for this bundle.

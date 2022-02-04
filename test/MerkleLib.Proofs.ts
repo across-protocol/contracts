@@ -19,23 +19,23 @@ describe("MerkleLib Proofs", async function () {
     const numRebalances = 101;
     for (let i = 0; i < numRebalances; i++) {
       const numTokens = 10;
-      const l1Token: string[] = [];
+      const l1Tokens: string[] = [];
       const bundleLpFees: BigNumber[] = [];
-      const netSendAmount: BigNumber[] = [];
-      const runningBalance: BigNumber[] = [];
+      const netSendAmounts: BigNumber[] = [];
+      const runningBalances: BigNumber[] = [];
       for (let j = 0; j < numTokens; j++) {
-        l1Token.push(randomAddress());
+        l1Tokens.push(randomAddress());
         bundleLpFees.push(randomBigNumber());
-        netSendAmount.push(randomBigNumber());
-        runningBalance.push(randomBigNumber());
+        netSendAmounts.push(randomBigNumber());
+        runningBalances.push(randomBigNumber());
       }
       poolRebalances.push({
         leafId: BigNumber.from(i),
         chainId: randomBigNumber(),
-        l1Token,
+        l1Tokens,
         bundleLpFees,
-        netSendAmount,
-        runningBalance,
+        netSendAmounts,
+        runningBalances,
       });
     }
 
