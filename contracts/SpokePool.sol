@@ -257,7 +257,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public {}
+    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public virtual {
+        return;
+    }
 
     function distributeRelayerRefund(
         uint256 relayerRefundId,

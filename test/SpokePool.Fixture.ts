@@ -2,7 +2,7 @@ import { TokenRolesEnum } from "@uma/common";
 import { Contract, utils } from "ethers";
 import { getContractFactory, SignerWithAddress } from "./utils";
 import {
-  depositDestinationChainId,
+  destinationChainId,
   depositQuoteTimeBuffer,
   amountToDeposit,
   depositRelayerFeePct,
@@ -47,7 +47,7 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   for (const route of routes) {
     await spokePool.setEnableRoute(
       route.originToken,
-      route.destinationChainId ? route.destinationChainId : depositDestinationChainId,
+      route.destinationChainId ? route.destinationChainId : destinationChainId,
       route.enabled !== undefined ? route.enabled : true
     );
   }
@@ -64,7 +64,7 @@ export async function deposit(
     .connect(depositor)
     .deposit(
       token.address,
-      depositDestinationChainId,
+      destinationChainId,
       amountToDeposit,
       recipient.address,
       depositRelayerFeePct,
