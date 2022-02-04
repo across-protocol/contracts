@@ -49,3 +49,5 @@ export const mockPoolRebalanceLeafCount = 5;
 export const mockPoolRebalanceRoot = createRandomBytes32();
 
 export const mockDestinationDistributionRoot = createRandomBytes32();
+
+export const mockTreeRoot = createRandomBytes32();

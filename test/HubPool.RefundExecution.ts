@@ -14,21 +14,21 @@ let l2Weth: string, l2Dai: string;
 // Construct the leafs that will go into the merkle tree. For this function create a simple set of leafs that will
 // repay two token to one chain Id with simple lpFee, netSend and running balance amounts.
 async function constructSimpleTree() {
-  const wethToSend = toBNWei(100);
+  const wethToSendToL2 = toBNWei(100);
   const daiToSend = toBNWei(1000);
   const leafs = buildPoolRebalanceLeafs(
     [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
     [weth, dai], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[toBNWei(1), toBNWei(10)]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
-    [[wethToSend, daiToSend]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
-    [[wethToSend, daiToSend]] // runningBalances. Set to 100 ETH and 1000 DAI.
+    [[wethToSendToL2, daiToSend]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
+    [[wethToSendToL2, daiToSend]] // runningBalances. Set to 100 ETH and 1000 DAI.
   );
   const tree = await buildPoolRebalanceTree(leafs);
 
-  return { wethToSend, daiToSend, leafs, tree };
+  return { wethToSendToL2, daiToSend, leafs, tree };
 }
 
-describe("HubPool Relayer Refund Execution", function () {
+describe.only("HubPool Relayer Refund Execution", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, hubPool, mockAdapter, mockSpoke, timer, l2Weth, l2Dai } = await hubPoolFixture());
@@ -45,7 +45,7 @@ describe("HubPool Relayer Refund Execution", function () {
   });
 
   it("Execute relayer refund correctly produces the refund bundle call and sends cross-chain repayment actions", async function () {
-    const { wethToSend, daiToSend, leafs, tree } = await constructSimpleTree();
+    const { wethToSendToL2, daiToSend, leafs, tree } = await constructSimpleTree();
 
     await hubPool.connect(dataWorker).initiateRelayerRefund(
       [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
@@ -59,8 +59,8 @@ describe("HubPool Relayer Refund Execution", function () {
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
 
     // Balances should have updated as expected.
-    expect(await weth.balanceOf(hubPool.address)).to.equal(consts.amountToLp.sub(wethToSend));
-    expect(await weth.balanceOf(mockAdapter.address)).to.equal(wethToSend);
+    expect(await weth.balanceOf(hubPool.address)).to.equal(consts.amountToLp.sub(wethToSendToL2));
+    expect(await weth.balanceOf(mockAdapter.address)).to.equal(wethToSendToL2);
     expect(await dai.balanceOf(hubPool.address)).to.equal(consts.amountToLp.mul(10).sub(daiToSend));
     expect(await dai.balanceOf(mockAdapter.address)).to.equal(daiToSend);
 
@@ -76,13 +76,32 @@ describe("HubPool Relayer Refund Execution", function () {
     expect(relayTokensEvents.length).to.equal(2); // Exactly two token transfers from L1->L2.
     expect(relayTokensEvents[0].args?.l1Token).to.equal(weth.address);
     expect(relayTokensEvents[0].args?.l2Token).to.equal(l2Weth);
-    expect(relayTokensEvents[0].args?.amount).to.equal(wethToSend);
+    expect(relayTokensEvents[0].args?.amount).to.equal(wethToSendToL2);
     expect(relayTokensEvents[0].args?.to).to.equal(mockSpoke.address);
     expect(relayTokensEvents[1].args?.l1Token).to.equal(dai.address);
     expect(relayTokensEvents[1].args?.l2Token).to.equal(l2Dai);
     expect(relayTokensEvents[1].args?.amount).to.equal(daiToSend);
     expect(relayTokensEvents[1].args?.to).to.equal(mockSpoke.address);
+
+    // Check the leaf count was decremented correctly.
+    expect((await hubPool.refundRequest()).unclaimedPoolRebalanceLeafCount).to.equal(0);
   });
+  it("Execution rejects leaf claim before liveness passed", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
+
+    // Set time 10 seconds before expiration. Should revert.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness - 10);
+
+    await expect(
+      hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Not passed liveness");
+
+    // Set time after expiration. Should no longer revert.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10);
+    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+  });
+
   it("Execution rejects invalid leafs", async function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
@@ -91,7 +110,9 @@ describe("HubPool Relayer Refund Execution", function () {
     // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
     // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
     const badLeaf = { ...leafs[0], chainId: 13371 };
-    await expect(hubPool.connect(dataWorker).executeRelayerRefund(badLeaf, tree.getHexProof(leafs[0]))).to.be.reverted;
+    await expect(
+      hubPool.connect(dataWorker).executeRelayerRefund(badLeaf, tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Bad Proof");
   });
 
   it("Execution rejects double claimed leafs", async function () {
@@ -101,6 +122,8 @@ describe("HubPool Relayer Refund Execution", function () {
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
-    await expect(hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]))).to.be.reverted;
+    await expect(
+      hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Already claimed");
   });
 });

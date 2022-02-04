@@ -54,7 +54,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256 liquidReserves;
         uint256 utilizedReserves;
         uint256 undistributedLpFees;
-        uint256 lockedBonds;
         uint32 lastLpFeeUpdate;
         bool isWeth;
     }
@@ -306,16 +305,15 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // Decrement the unclaimedPoolRebalanceLeafCount.
         refundRequest.unclaimedPoolRebalanceLeafCount--;
 
+        _sendTokensToTargetChain(poolRebalanceLeaf);
+        _executeRelayerRefundOnTargetChain(poolRebalanceLeaf);
+        _updatePooledTokenForExecutedRebalance(poolRebalanceLeaf);
+
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
         //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
-
-        _sendTokensToTargetChain(poolRebalanceLeaf);
-        _executeRelayerRefundOnTargetChain(poolRebalanceLeaf);
-
-        // TODO: modify the associated utilized and pending reserves for each token sent.
 
         emit RelayerRefundExecuted(
             poolRebalanceLeaf.leafId,
