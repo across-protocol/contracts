@@ -484,7 +484,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
                 pooledTokens[l1Tokens[i]].liquidReserves -= uint256(netSendAmounts[i]);
             }
 
-            // Assign any undistributed LP fees included into the bundle to the pooled token.
+            // Assign any undistributed LP fees included into the bundle to the pooled token. Adding to the utilized reserves acts to track the fees while they are in transit and are not yet fully asigned during the smear.
             pooledTokens[l1Tokens[i]].undistributedLpFees += bundleLpFees[i];
             pooledTokens[l1Tokens[i]].utilizedReserves += int256(bundleLpFees[i]);
         }
@@ -530,10 +530,9 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     function _getAccumulatedFees(uint256 undistributedLpFees, uint256 lastLpFeeUpdate) internal view returns (uint256) {
         // accumulatedFees := min(undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction ,undistributedLpFees)
         // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
-        uint256 possibleUndistributedLpFees = (undistributedLpFees *
-            lpFeeRatePerSecond *
-            (getCurrentTime() - lastLpFeeUpdate)) / (1e18);
-        return possibleUndistributedLpFees < undistributedLpFees ? possibleUndistributedLpFees : undistributedLpFees;
+        uint256 timeFromLastInteraction = getCurrentTime() - lastLpFeeUpdate;
+        uint256 maxUndistributedLpFees = (undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction) / (1e18);
+        return maxUndistributedLpFees < undistributedLpFees ? maxUndistributedLpFees : undistributedLpFees;
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
