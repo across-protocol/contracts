@@ -96,8 +96,6 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
 
     event CrossChainContractsSet(uint256 l2ChainId, address adapter, address spokePool);
 
-    event L2TokenForPooledTokenSet(uint256 l2ChainId, address l1Token, address l2Token);
-
     event L1TokenEnabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
 
     event L2TokenDisabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
