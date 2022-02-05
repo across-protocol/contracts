@@ -7,7 +7,7 @@ import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { buildPoolRebalanceTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
 
-let hubPool: Contract, mockAdapter: Contract, weth: Contract, mockSpoke: Contract, timer: Contract;
+let hubPool: Contract, weth: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 
 async function constructSimpleTree() {
@@ -28,7 +28,7 @@ async function constructSimpleTree() {
 describe("HubPool LP fees", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, hubPool, mockAdapter, mockSpoke, timer } = await hubPoolFixture());
+    ({ weth, hubPool, timer } = await hubPoolFixture());
     await seedWallet(dataWorker, [], weth, consts.bondAmount.add(consts.finalFee).mul(2));
     await seedWallet(liquidityProvider, [], weth, consts.amountToLp.mul(10));
 
