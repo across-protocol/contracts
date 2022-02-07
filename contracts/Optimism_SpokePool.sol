@@ -81,16 +81,15 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     ) public override nonReentrant {
         _distributeRelayerRefund(relayerRefundId, distributionLeaf, inclusionProof);
 
-        // If `distributionLeaf.amountToReturn` is negative, then send L2 --> L1 message to bridge tokens back.
+        // If `distributionLeaf.amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back.
         // Note: This might not be an issue at all, but should this call go before or after the above internal method
         // that sends tokens from this contract to relayers on the same network?
-        if (distributionLeaf.amountToReturn < 0) {
+        if (distributionLeaf.amountToReturn > 0) {
             // Do we need to perform any check about the last time that funds were bridged from L2 to L1?
             IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
                 distributionLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                // Note: Should we first multiply the int256 by -1 before casting to uint256 to be safer?
-                uint256(distributionLeaf.amountToReturn), // _amount. Send the full balance of the deposit box to bridge.
+                distributionLeaf.amountToReturn, // _amount. Send the full balance of the deposit box to bridge.
                 6_000_000, // _l1Gas. Unused, but included for potential forward compatibility considerations
                 "" // _data. We don't need to send any data for the bridging action.
             );
@@ -99,7 +98,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         emit TokensBridged(
             distributionLeaf.l2TokenAddress,
             hubPool,
-            uint256(distributionLeaf.amountToReturn),
+            distributionLeaf.amountToReturn,
             6_000_000,
             msg.sender
         );

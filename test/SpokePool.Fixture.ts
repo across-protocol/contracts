@@ -13,7 +13,7 @@ import hre from "hardhat";
 const { defaultAbiCoder, keccak256 } = utils;
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
-  const [deployerWallet] = await ethers.getSigners();
+  const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
   // Useful contracts.
   const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
 
@@ -31,9 +31,10 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
+  const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const spokePool = await (
-    await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(weth.address, depositQuoteTimeBuffer, timer.address);
+    await getContractFactory("MockSpokePool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, depositQuoteTimeBuffer, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 });
