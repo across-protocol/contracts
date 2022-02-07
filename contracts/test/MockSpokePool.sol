@@ -9,13 +9,21 @@ import "../SpokePoolInterface.sol";
  * @notice Implements admin internal methods to test internal logic.
  */
 contract MockSpokePool is SpokePoolInterface, SpokePool {
-    address public override crossDomainAdmin;
-
     constructor(
+        address _crossDomainAdmin,
+        address _hubPool,
         address _wethAddress,
         uint64 _depositQuoteTimeBuffer,
         address timerAddress
-    ) SpokePool(_wethAddress, _depositQuoteTimeBuffer, timerAddress) {}
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, _depositQuoteTimeBuffer, timerAddress) {}
+
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override {
+        _setCrossDomainAdmin(newCrossDomainAdmin);
+    }
+
+    function setHubPool(address newHubPool) public override {
+        _setHubPool(newHubPool);
+    }
 
     function setEnableRoute(
         address originToken,
@@ -33,7 +41,13 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         _initializeRelayerRefund(relayerRepaymentDistributionProof);
     }
 
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override {
-        crossDomainAdmin = newCrossDomainAdmin;
+    function distributeRelayerRefund(
+        uint256 relayerRefundId,
+        MerkleLib.DestinationDistribution memory distributionLeaf,
+        bytes32[] memory inclusionProof
+    ) public override {
+        _distributeRelayerRefund(relayerRefundId, distributionLeaf, inclusionProof);
+
+        // TODO: Test bridging
     }
 }
