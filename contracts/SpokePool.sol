@@ -225,16 +225,16 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         });
         bytes32 relayHash = _getRelayHash(relayData);
 
-        // Check that the caller is filling a non zero amount of the relay and the relay has not already been completely
-        // filled. Note that the `relays` mapping will point to the amount filled so far for a particular `relayHash`,
-        // so this will start at 0 and increment with each fill.
-        require(maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount, "Cannot send 0, or relay filled");
+        // Check that the relay has not already been completely filled. Note that the `relays` mapping will point to
+        // the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each fill.
+        require(relayFills[relayHash] < totalRelayAmount, "relay filled");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
-        uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
+        uint256 fillAmountPreFees = 0;
 
         // Adding brackets "stack too deep" solidity error.
-        {
+        if (maxTokensToSend > 0) {
+            fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
             // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
             // we'll pull exactly enough tokens to complete the relay.
             uint256 amountToSend = maxTokensToSend;
