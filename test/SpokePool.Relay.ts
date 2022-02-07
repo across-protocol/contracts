@@ -198,18 +198,6 @@ describe("SpokePool Relayer Logic", async function () {
         )
     ).to.be.reverted;
 
-    // Fill amount cannot be 0.
-    await expect(
-      spokePool
-        .connect(relayer)
-        .fillRelay(
-          ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
-            .relayDataValues,
-          "0",
-          repaymentChainId
-        )
-    ).to.be.reverted;
-
     // Relay already filled
     await spokePool.connect(relayer).fillRelay(
       ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
