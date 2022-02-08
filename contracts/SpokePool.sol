@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
@@ -99,6 +102,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address depositor,
         address recipient
     );
+    event ModifiedRelay(bytes32 indexed relayHash, uint64 newRelayerFeePct);
     event InitializedRelayerRefund(uint256 indexed relayerRefundId, bytes32 relayerRepaymentDistributionProof);
 
     constructor(
@@ -266,6 +270,61 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             relayData.depositor,
             relayData.recipient
         );
+    }
+
+    function modifyRelay(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint64 newRelayerFeePct,
+        uint64 depositId,
+        uint256 originChainId,
+        uint256 totalRelayAmount,
+        bytes32 depositorMessageHash,
+        bytes memory depositorSignature
+    ) public nonReentrant {
+        RelayData memory relayData = RelayData({
+            depositor: depositor,
+            recipient: recipient,
+            destinationToken: destinationToken,
+            realizedLpFeePct: realizedLpFeePct,
+            relayerFeePct: relayerFeePct,
+            depositId: depositId,
+            originChainId: originChainId,
+            relayAmount: totalRelayAmount
+        });
+        bytes32 relayHash = _getRelayHash(relayData);
+
+        // By requiring that the new fee is higher, we remove the possibility that the depositor signs a message and
+        // calls this method with a lower fee, dropping the relay fee at the last second unbeknownst to the relayer.
+        require(newRelayerFeePct >= relayerFeePct, "new fee cannot be lower");
+
+        // Check if relay is not yet fully filled.
+        // Note: we cannot easily check that this relay is actually pending, as the relay hash above can point to an
+        // uninitialized relay, and this function will not revert as long as the signed message and signature correspond
+        // to the depositor's address, and the updated relayer fee is contained in the message. This is not a problem
+        // because relayers who store relay data for deposits that don't exist will not get rewarded. They are instead
+        // just wasting gas to submit this transaction.
+        require(relayFills[relayHash] < totalRelayAmount, "filled relay");
+
+        // Depositor should have signed a hash of the relayer fee % to update to.
+        bytes32 expectedDepositorMessageHash = keccak256(abi.encode(newRelayerFeePct));
+        // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
+        // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
+        require(expectedDepositorMessageHash == depositorMessageHash, "incorrect new fee");
+
+        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
+        // JSON-RPC method as part of EIP-191. We use OZ's signature checker library with adds support for
+        // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
+        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
+        require(
+            SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
+            "invalid signature"
+        );
+
+        emit ModifiedRelay(relayHash, newRelayerFeePct);
     }
 
     // This internal method should be called by an external "initializeRelayerRefund" function that validates the

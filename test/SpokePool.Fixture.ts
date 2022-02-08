@@ -1,5 +1,5 @@
 import { TokenRolesEnum } from "@uma/common";
-import { Contract, utils } from "ethers";
+import { BigNumber, Contract, utils } from "ethers";
 import { getContractFactory, SignerWithAddress } from "./utils";
 import {
   destinationChainId,
@@ -10,7 +10,7 @@ import {
 } from "./constants";
 import hre from "hardhat";
 
-const { defaultAbiCoder, keccak256 } = utils;
+const { defaultAbiCoder, keccak256, arrayify } = utils;
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   const [deployerWallet] = await ethers.getSigners();
@@ -112,5 +112,18 @@ export function getRelayHash(
     relayHash,
     relayData,
     relayDataValues,
+  };
+}
+
+export async function modifyRelayHelper(
+  modifiedRelayerFeePct: BigNumber,
+  depositor: SignerWithAddress
+): Promise<{ messageHash: string; signature: string }> {
+  const messageHash = keccak256(defaultAbiCoder.encode(["uint64"], [modifiedRelayerFeePct]));
+  const signature = await depositor.signMessage(arrayify(messageHash));
+
+  return {
+    messageHash,
+    signature,
   };
 }
