@@ -571,11 +571,10 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
         // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
         // contract. In this case, ignore it as it is captured in liquid reserves and has no meaning in the numerator.
-        uint256 flooredUtilizedReserves = pooledTokens[l1Token].utilizedReserves > 0
-            ? uint256(pooledTokens[l1Token].utilizedReserves)
-            : 0;
+        PooledToken memory pooledToken = pooledTokens[l1Token]; // Note this is storage so the state can be modified.
+        uint256 flooredUtilizedReserves = pooledToken.utilizedReserves > 0 ? uint256(pooledToken.utilizedReserves) : 0;
         uint256 numerator = relayedAmount + flooredUtilizedReserves;
-        uint256 denominator = pooledTokens[l1Token].liquidReserves + flooredUtilizedReserves;
+        uint256 denominator = pooledToken.liquidReserves + flooredUtilizedReserves;
 
         // If the denominator equals zero, return 1e18 (max utilization).
         if (denominator == 0) return 1e18;
