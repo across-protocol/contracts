@@ -40,6 +40,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
+        bytes32 slowRelayDataRoot;
         uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
@@ -470,7 +471,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
         adapter.relayMessage(
             crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
-            abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
+            abi.encodeWithSignature(
+                "initializeRelayerRefund(bytes32,bytes32)",
+                refundRequest.destinationDistributionRoot,
+                refundRequest.slowRelayDataRoot
+            ) // message
         );
     }
 

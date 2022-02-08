@@ -14,5 +14,5 @@ interface SpokePoolInterface {
 
     function setDepositQuoteTimeBuffer(uint64 buffer) external;
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) external;
+    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot) external;
 }

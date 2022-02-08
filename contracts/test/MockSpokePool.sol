@@ -29,8 +29,8 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public override {
-        _initializeRelayerRefund(relayerRepaymentDistributionProof);
+    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 relayDataRoot) public override {
+        _initializeRelayerRefund(relayerRepaymentDistributionRoot, relayDataRoot);
     }
 
     function setCrossDomainAdmin(address newCrossDomainAdmin) public override {

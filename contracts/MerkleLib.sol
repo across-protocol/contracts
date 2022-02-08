@@ -51,6 +51,18 @@ library MerkleLib {
         uint256[] refundAmounts;
     }
 
+    // TODO: should these structs be in this file?
+    struct RelayData {
+        address depositor;
+        address recipient;
+        address destinationToken;
+        uint64 realizedLpFeePct;
+        uint64 relayerFeePct;
+        uint64 depositId;
+        uint256 originChainId;
+        uint256 relayAmount;
+    }
+
     /**
      * @notice Verifies that a repayment is contained within a merkle root.
      * @param root the merkle root.
@@ -77,6 +89,22 @@ library MerkleLib {
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution)));
+    }
+
+    // TODO: imported RelayData for expedience. These structs should either all go in their source files or all go in this lib.
+    // It seems like them all going in their source files makes sense?
+    /**
+     * @notice Verifies that a distribution is contained within a merkle root.
+     * @param root the merkle root.
+     * @param relayData the relayData struct.
+     * @param proof the merkle proof.
+     */
+    function verifyRelayData(
+        bytes32 root,
+        RelayData memory relayData,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(relayData)));
     }
 
     // The following functions are primarily copied from

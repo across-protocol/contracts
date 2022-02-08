@@ -60,12 +60,12 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof)
+    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
         public
         override
         onlyFromCrossDomainAccount(crossDomainAdmin)
     {
-        _initializeRelayerRefund(relayerRepaymentDistributionProof);
+        _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);
     }
 
     /**************************************

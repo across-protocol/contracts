@@ -45,6 +45,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     struct RelayerRefund {
+        // Merkle root of slow relays
+        bytes32 slowRelayRoot;
         // Merkle root of relayer refunds.
         bytes32 distributionRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
@@ -52,17 +54,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         mapping(uint256 => uint256) claimsBitmap;
     }
     RelayerRefund[] public relayerRefunds;
-
-    struct RelayData {
-        address depositor;
-        address recipient;
-        address destinationToken;
-        uint64 realizedLpFeePct;
-        uint64 relayerFeePct;
-        uint64 depositId;
-        uint256 originChainId;
-        uint256 relayAmount;
-    }
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -213,7 +204,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
-        RelayData memory relayData = RelayData({
+        MerkleLib.RelayData memory relayData = MerkleLib.RelayData({
             depositor: depositor,
             recipient: recipient,
             destinationToken: destinationToken,
@@ -268,15 +259,32 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
     }
 
+    function fillRelaySlow(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint64 depositId,
+        uint256 originChainId,
+        uint256 totalRelayAmount,
+        uint256 maxTokensToSend,
+        uint256 repaymentChain,
+        uint256 relayerRefundId,
+        bytes32[] memory inclusionProof
+    ) public {}
+
     // This internal method should be called by an external "initializeRelayerRefund" function that validates the
     // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
     // specifics are left to the implementor of this abstract contract.
     // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
     // can be called to execute each leaf in the root.
-    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
+    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot) internal {
         uint256 relayerRefundId = relayerRefunds.length;
-        relayerRefunds.push().distributionRoot = relayerRepaymentDistributionProof;
-        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionProof);
+        RelayerRefund storage relayerRefund = relayerRefunds.push();
+        relayerRefund.distributionRoot = relayerRepaymentDistributionRoot;
+        relayerRefund.slowRelayRoot = slowRelayRoot;
+        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionRoot);
     }
 
     // Call this method to execute a leaf within the `distributionRoot` stored on this contract. Caller must include a
@@ -309,7 +317,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     // Should we make this public for the relayer's convenience?
-    function _getRelayHash(RelayData memory relayData) private pure returns (bytes32) {
+    function _getRelayHash(MerkleLib.RelayData memory relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(relayData));
     }
 
