@@ -127,4 +127,20 @@ library MerkleLib {
         require(index <= 255, "Index out of bounds");
         return claimedBitMap | (1 << index % 256);
     }
+
+    function verifyNeighborhood(
+        bytes32 root,
+        bytes32[] memory leaves,
+        bytes32[] calldata proof
+    ) internal returns (bool) {
+        for (uint256 i = 0; i < leaves.length; i++) {
+            if (i % 2 == 0) {
+                if (i == leaves.length - 1) {
+                    leaves[i / 2] = leaves[i];
+                } else {
+                    leaves[i / 2] = keccak256(abi.encode(leaves[i], leaves[i + 1]));
+                }
+            }
+        }
+    }
 }
