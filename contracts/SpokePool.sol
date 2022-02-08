@@ -8,6 +8,7 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
+import "./SpokePoolInterface.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -23,7 +24,7 @@ interface WETH9Like {
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
  * @dev This contract is designed to be deployed to L2's, not mainnet.
  */
-abstract contract SpokePool is Testable, Lockable, MultiCaller {
+abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -116,13 +117,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256[] refundAmounts,
         address l2TokenAddress,
         address[] refundAddresses,
-        address indexed caller
-    );
-    event TokensBridged(
-        address indexed l2Token,
-        address target,
-        uint256 numberOfTokensBridged,
-        uint256 l1Gas,
         address indexed caller
     );
 
@@ -323,13 +317,11 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // Call this method to execute a leaf within the `distributionRoot` stored on this contract. Caller must include a
     // valid `inclusionProof` to verify that the leaf is contained within the root. The `relayerRefundId` is the index
     // of the specific distribution root containing the passed in leaf.
-    // This method is internal because the implementing method must check the `distributionLeaf.amountToReturn` to see
-    // if this contract should send funds to L1, a process that is different for each L2.
-    function _distributeRelayerRefund(
+    function distributeRelayerRefund(
         uint256 relayerRefundId,
         MerkleLib.DestinationDistribution memory distributionLeaf,
         bytes32[] memory inclusionProof
-    ) public {
+    ) public override {
         require(distributionLeaf.chainId == chainId(), "Invalid chainId");
 
         // Grab distribution root stored at `relayerRefundId`.
@@ -365,6 +357,13 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             }
         }
 
+        // If `distributionLeaf.amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back via
+        // chain-specific bridging method.
+        if (distributionLeaf.amountToReturn > 0) {
+            // Do we need to perform any check about the last time that funds were bridged from L2 to L1?
+            _bridgeTokensToHubPool(distributionLeaf);
+        }
+
         emit DistributedRelayerRefund(
             relayerRefundId,
             distributionLeaf.leafId,
@@ -388,6 +387,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
+
+    function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal virtual;
 
     function _computeAmountPreFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
         return (1e18 * amount) / (1e18 - feesPct);

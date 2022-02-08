@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import { SignerWithAddress, seedContract } from "./utils";
+import { SignerWithAddress, seedContract, toBN } from "./utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./SpokePool.Fixture";
 import { buildDestinationDistributionLeafs, buildDestinationDistributionTree } from "./MerkleLib.utils";
@@ -14,15 +14,15 @@ let destinationChainId: number;
 
 async function constructSimpleTree(l2Token: Contract, destinationChainId: number) {
   const leafs = buildDestinationDistributionLeafs(
-    [destinationChainId], // Destination chain ID.
-    [consts.amountToReturn], // amountToReturn.
-    [l2Token], // l2Token.
-    [[relayer.address, rando.address]], // refundAddresses.
-    [[consts.amountToRelay, consts.amountToRelay]] // refundAmounts.
+    [destinationChainId, destinationChainId], // Destination chain ID.
+    [consts.amountToReturn, toBN(0)], // amountToReturn.
+    [l2Token, l2Token], // l2Token.
+    [[relayer.address, rando.address], []], // refundAddresses.
+    [[consts.amountToRelay, consts.amountToRelay], []] // refundAmounts.
   );
   const leafsRefundAmount = leafs
-    .map((leaf) => leaf.refundAmounts.reduce((bn1, bn2) => bn1.add(bn2)))
-    .reduce((bn1, bn2) => bn1.add(bn2));
+    .map((leaf) => leaf.refundAmounts.reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
+    .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
   const tree = await buildDestinationDistributionTree(leafs);
 
   return {
@@ -31,7 +31,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
     tree,
   };
 }
-describe.only("SpokePool Relayer Refund Execution", function () {
+describe("SpokePool Relayer Refund Execution", function () {
   beforeEach(async function () {
     [dataWorker, relayer, rando] = await ethers.getSigners();
     ({ destErc20, spokePool, weth } = await spokePoolFixture());
@@ -60,7 +60,7 @@ describe.only("SpokePool Relayer Refund Execution", function () {
     // TODO: Test token bridging logic.
 
     // Check events.
-    const relayTokensEvents = await spokePool.queryFilter(spokePool.filters.DistributedRelayerRefund());
+    let relayTokensEvents = await spokePool.queryFilter(spokePool.filters.DistributedRelayerRefund());
     expect(relayTokensEvents[0].args?.l2TokenAddress).to.equal(destErc20.address);
     expect(relayTokensEvents[0].args?.leafId).to.equal(0);
     expect(relayTokensEvents[0].args?.chainId).to.equal(destinationChainId);
@@ -68,6 +68,18 @@ describe.only("SpokePool Relayer Refund Execution", function () {
     expect(relayTokensEvents[0].args?.refundAmounts).to.deep.equal([consts.amountToRelay, consts.amountToRelay]);
     expect(relayTokensEvents[0].args?.refundAddresses).to.deep.equal([relayer.address, rando.address]);
     expect(relayTokensEvents[0].args?.caller).to.equal(dataWorker.address);
+
+    // Should emit TokensBridged event if amountToReturn is positive.
+    let tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
+    expect(tokensBridgedEvents.length).to.equal(1);
+
+    // Does not attempt to bridge tokens if amountToReturn is 0. Execute a leaf where amountToReturn is 0.
+    await spokePool.connect(dataWorker).distributeRelayerRefund(0, leafs[1], tree.getHexProof(leafs[1]));
+    // Show that a second DistributedRelayRefund event was emitted but not a second TokensBridged event.
+    relayTokensEvents = await spokePool.queryFilter(spokePool.filters.DistributedRelayerRefund());
+    expect(relayTokensEvents.length).to.equal(2);
+    tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
+    expect(tokensBridgedEvents.length).to.equal(1);
   });
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
