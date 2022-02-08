@@ -102,7 +102,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address depositor,
         address recipient
     );
-    event IncreasedRelayFee(bytes32 indexed relayHash, uint64 newRelayerFeePct);
     event InitializedRelayerRefund(uint256 indexed relayerRefundId, bytes32 relayerRepaymentDistributionProof);
 
     constructor(
@@ -208,12 +207,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 maxTokensToSend,
         uint256 repaymentChain
     ) public {
-        // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(
-            relayerFeePct <= 0.5e18 && realizedLpFeePct <= 0.5e18 && (relayerFeePct + realizedLpFeePct) < 1e18,
-            "invalid fees"
-        );
-
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
@@ -229,62 +222,116 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         });
         bytes32 relayHash = _getRelayHash(relayData);
 
+        _fillRelay(relayHash, relayData, relayerFeePct, maxTokensToSend, repaymentChain);
+    }
+
+    function _fillRelay(
+        bytes32 relayHash,
+        RelayData memory relayData,
+        uint64 updatableRelayerFeePct,
+        uint256 maxTokensToSend,
+        uint256 repaymentChain
+    ) internal {
+        // We limit the relay fees to prevent the user spending all their funds on fees.
+        require(
+            updatableRelayerFeePct <= 0.5e18 &&
+                relayData.realizedLpFeePct <= 0.5e18 &&
+                (updatableRelayerFeePct + relayData.realizedLpFeePct) < 1e18,
+            "invalid fees"
+        );
+
         // Check that the caller is filling a non zero amount of the relay and the relay has not already been completely
         // filled. Note that the `relays` mapping will point to the amount filled so far for a particular `relayHash`,
         // so this will start at 0 and increment with each fill.
-        require(maxTokensToSend > 0 && relayFills[relayHash] < totalRelayAmount, "Cannot send 0, or relay filled");
+        require(maxTokensToSend > 0 && relayFills[relayHash] < relayData.relayAmount, "Cannot send 0, or relay filled");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
-        uint256 fillAmountPreFees = _computeAmountPreFees(maxTokensToSend, (realizedLpFeePct + relayerFeePct));
+        uint256 fillAmountPreFees = _computeAmountPreFees(
+            maxTokensToSend,
+            (relayData.realizedLpFeePct + updatableRelayerFeePct)
+        );
 
         // Adding brackets "stack too deep" solidity error.
         {
             // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
             // we'll pull exactly enough tokens to complete the relay.
             uint256 amountToSend = maxTokensToSend;
-            if (totalRelayAmount - relayFills[relayHash] < fillAmountPreFees) {
-                fillAmountPreFees = totalRelayAmount - relayFills[relayHash];
-                amountToSend = _computeAmountPostFees(fillAmountPreFees, (realizedLpFeePct + relayerFeePct));
+            if (relayData.relayAmount - relayFills[relayHash] < fillAmountPreFees) {
+                fillAmountPreFees = relayData.relayAmount - relayFills[relayHash];
+                amountToSend = _computeAmountPostFees(
+                    fillAmountPreFees,
+                    relayData.realizedLpFeePct + updatableRelayerFeePct
+                );
             }
             relayFills[relayHash] += fillAmountPreFees;
             // If relay token is weth then unwrap and send eth.
-            if (destinationToken == address(weth)) {
-                IERC20(destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-                _unwrapWETHTo(payable(recipient), amountToSend);
+            if (relayData.destinationToken == address(weth)) {
+                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                _unwrapWETHTo(payable(relayData.recipient), amountToSend);
                 // Else, this is a normal ERC20 token. Send to recipient.
-            } else IERC20(destinationToken).safeTransferFrom(msg.sender, recipient, amountToSend);
+            } else IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
         }
 
-        emit FilledRelay(
-            relayHash,
-            relayData.relayAmount,
-            relayFills[relayHash],
-            fillAmountPreFees,
-            repaymentChain,
-            relayData.originChainId,
-            relayData.depositId,
-            relayData.relayerFeePct,
-            relayData.realizedLpFeePct,
-            relayData.destinationToken,
-            msg.sender,
-            relayData.depositor,
-            relayData.recipient
+        // Needed to resolve stack too deep compile-time error
+        _emitFillRelay(
+            FillRelayEventData(relayHash, relayData, updatableRelayerFeePct, fillAmountPreFees, repaymentChain)
         );
     }
 
-    function increaseRelayFee(
+    // We overload `fillRelay` logic to allow the relayer to optionally pass in an updated `relayerFeePct` and a signature
+    // proving that the depositor agreed to the updated fee.
+    struct UpdatedRelayerFeeData {
+        // Note: This struct is used to make sure that the following overloaded `fillRelay` does not create a stack
+        // too deep compile-time error.
+        uint64 newRelayerFeePct;
+        bytes32 depositorMessageHash;
+        bytes depositorSignature;
+    }
+
+    function fillRelayUpdatedFee(
         address depositor,
         address recipient,
         address destinationToken,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
-        uint64 newRelayerFeePct,
         uint64 depositId,
         uint256 originChainId,
         uint256 totalRelayAmount,
-        bytes32 depositorMessageHash,
-        bytes memory depositorSignature
-    ) public nonReentrant {
+        uint256 maxTokensToSend,
+        uint256 repaymentChain,
+        UpdatedRelayerFeeData memory updatedRelayerFeeData // Note: Ideally we don't pass in any complex objects to
+    )
+        public
+        // public methods but I couldn't figure out a way to pass this in without encounering a stack too deep error.
+        nonReentrant
+    {
+        // Grouping the signature validation logic into brackets to address stack too deep error.
+        {
+            // Depositor should have signed a hash of the relayer fee % to update to and information uniquely identifying
+            // the deposit to relay. This ensures that this signature cannot be re-used for other deposits. The version
+            // string is included as a precaution in case this contract is upgraded.
+            // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
+            // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
+            bytes32 expectedDepositorMessageHash = keccak256(
+                abi.encode("ACROSS-V2-FEE-1.0", updatedRelayerFeeData.newRelayerFeePct, depositId, originChainId)
+            );
+            require(expectedDepositorMessageHash == updatedRelayerFeeData.depositorMessageHash, "incorrect new fee");
+
+            // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
+            // JSON-RPC method as part of EIP-191. We use OZ's signature checker library with adds support for
+            // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
+            bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
+            require(
+                SignatureChecker.isValidSignatureNow(
+                    depositor,
+                    ethSignedMessageHash,
+                    updatedRelayerFeeData.depositorSignature
+                ),
+                "invalid signature"
+            );
+        }
+
+        // Now follow the default `fillRelay` flow with the updated fee and the original relay hash.
         RelayData memory relayData = RelayData({
             depositor: depositor,
             recipient: recipient,
@@ -296,35 +343,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             relayAmount: totalRelayAmount
         });
         bytes32 relayHash = _getRelayHash(relayData);
-
-        // By requiring that the new fee is higher, we remove the possibility that the depositor signs a message and
-        // calls this method with a lower fee, dropping the relay fee at the last second unbeknownst to the relayer.
-        require(newRelayerFeePct >= relayerFeePct, "new fee cannot be lower");
-
-        // Check if relay is not yet fully filled.
-        // Note: we cannot easily check that this relay is actually pending, as the relay hash above can point to an
-        // uninitialized relay, and this function will not revert as long as the signed message and signature correspond
-        // to the depositor's address, and the updated relayer fee is contained in the message. This is not a problem
-        // because relayers who store relay data for deposits that don't exist will not get rewarded. They are instead
-        // just wasting gas to submit this transaction.
-        require(relayFills[relayHash] < totalRelayAmount, "filled relay");
-
-        // Depositor should have signed a hash of the relayer fee % to update to.
-        bytes32 expectedDepositorMessageHash = keccak256(abi.encode(newRelayerFeePct));
-        // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
-        // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
-        require(expectedDepositorMessageHash == depositorMessageHash, "incorrect new fee");
-
-        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
-        // JSON-RPC method as part of EIP-191. We use OZ's signature checker library with adds support for
-        // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
-        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
-        require(
-            SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
-            "invalid signature"
-        );
-
-        emit IncreasedRelayFee(relayHash, newRelayerFeePct);
+        _fillRelay(relayHash, relayData, updatedRelayerFeeData.newRelayerFeePct, maxTokensToSend, repaymentChain);
     }
 
     // This internal method should be called by an external "initializeRelayerRefund" function that validates the
@@ -380,6 +399,32 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             weth.withdraw(amount);
             to.transfer(amount);
         }
+    }
+
+    struct FillRelayEventData {
+        bytes32 relayHash;
+        RelayData relayData;
+        uint64 updatableRelayerFeePct;
+        uint256 fillAmountPreFees;
+        uint256 repaymentChain;
+    }
+
+    function _emitFillRelay(FillRelayEventData memory eventData) internal {
+        emit FilledRelay(
+            eventData.relayHash,
+            eventData.relayData.relayAmount,
+            relayFills[eventData.relayHash],
+            eventData.fillAmountPreFees,
+            eventData.repaymentChain,
+            eventData.relayData.originChainId,
+            eventData.relayData.depositId,
+            eventData.updatableRelayerFeePct,
+            eventData.relayData.realizedLpFeePct,
+            eventData.relayData.destinationToken,
+            msg.sender,
+            eventData.relayData.depositor,
+            eventData.relayData.recipient
+        );
     }
 
     // Added to enable the this contract to receive ETH. Used when unwrapping Weth.

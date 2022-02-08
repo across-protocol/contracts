@@ -115,15 +115,32 @@ export function getRelayHash(
   };
 }
 
+export interface UpdatedRelayerFeeData {
+  newRelayerFeePct: string;
+  depositorMessageHash: string;
+  depositorSignature: string;
+}
 export async function modifyRelayHelper(
   modifiedRelayerFeePct: BigNumber,
+  depositId: string,
+  originChainId: string,
   depositor: SignerWithAddress
-): Promise<{ messageHash: string; signature: string }> {
-  const messageHash = keccak256(defaultAbiCoder.encode(["uint64"], [modifiedRelayerFeePct]));
+): Promise<{ messageHash: string; signature: string; updatedRelayerFeeData: UpdatedRelayerFeeData }> {
+  const messageHash = keccak256(
+    defaultAbiCoder.encode(
+      ["string", "uint64", "uint64", "uint256"],
+      ["ACROSS-V2-FEE-1.0", modifiedRelayerFeePct, depositId, originChainId]
+    )
+  );
   const signature = await depositor.signMessage(arrayify(messageHash));
 
   return {
     messageHash,
     signature,
+    updatedRelayerFeeData: {
+      newRelayerFeePct: modifiedRelayerFeePct.toString(),
+      depositorMessageHash: messageHash,
+      depositorSignature: signature,
+    },
   };
 }
