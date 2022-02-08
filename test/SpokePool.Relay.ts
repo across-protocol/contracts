@@ -160,7 +160,7 @@ describe("SpokePool Relayer Logic", async function () {
           amountToRelay,
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith("invalid fees");
     await expect(
       spokePool
         .connect(relayer)
@@ -178,7 +178,7 @@ describe("SpokePool Relayer Logic", async function () {
           amountToRelay,
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith("invalid fees");
     await expect(
       spokePool
         .connect(relayer)
@@ -196,7 +196,7 @@ describe("SpokePool Relayer Logic", async function () {
           amountToRelay,
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.reverted("invalid fees");
 
     // Relay already filled
     await spokePool.connect(relayer).fillRelay(
@@ -214,6 +214,6 @@ describe("SpokePool Relayer Logic", async function () {
           "1",
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.reverted("relay filled");
   });
 });
