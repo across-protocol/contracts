@@ -258,7 +258,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         return _liquidityUtilizationPostRelay(l1Token, 0);
     }
 
-    function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount) public returns (uint256) {
+    function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
+        public
+        nonReentrant
+        returns (uint256)
+    {
         return _liquidityUtilizationPostRelay(l1Token, relayedAmount);
     }
 
