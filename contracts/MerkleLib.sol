@@ -29,6 +29,7 @@ library MerkleLib {
         int256[] netSendAmounts;
         // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
+
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
         int256[] runningBalances;
     }

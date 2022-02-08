@@ -162,7 +162,7 @@ describe("SpokePool Relayer Logic", async function () {
           amountToRelay,
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith("invalid fees");
     await expect(
       spokePool
         .connect(relayer)
@@ -180,7 +180,7 @@ describe("SpokePool Relayer Logic", async function () {
           amountToRelay,
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith("invalid fees");
     await expect(
       spokePool
         .connect(relayer)
@@ -198,19 +198,7 @@ describe("SpokePool Relayer Logic", async function () {
           amountToRelay,
           repaymentChainId
         )
-    ).to.be.reverted;
-
-    // Fill amount cannot be 0.
-    await expect(
-      spokePool
-        .connect(relayer)
-        .fillRelay(
-          ...getRelayHash(depositor.address, recipient.address, firstDepositId, originChainId, destErc20.address)
-            .relayDataValues,
-          "0",
-          repaymentChainId
-        )
-    ).to.be.reverted;
+    ).to.be.revertedWith("invalid fees");
 
     // Relay already filled
     await spokePool.connect(relayer).fillRelay(
@@ -228,7 +216,7 @@ describe("SpokePool Relayer Logic", async function () {
           "1",
           repaymentChainId
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith("relay filled");
   });
   it("Can fill relay with updated fee by including proof of depositor's agreement", async function () {
     // The relay should succeed just like before with the same amount of tokens pulled from the relayer's wallet,
