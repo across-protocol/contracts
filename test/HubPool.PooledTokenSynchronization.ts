@@ -179,7 +179,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     // the utilizedReserves / (liquidReserves + utilizedReserves) = 110 / (900 + 110) = 0.108910891089108910
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(toBNWei(0.10891089108910891));
   });
-  it.only("High liquidity utilization blocks LPs from withdrawing", async function () {
+  it("High liquidity utilization blocks LPs from withdrawing", async function () {
     // Execute a relayer refund bundle. Set the scalingSize to 5. This will use 500 ETH from the hubPool.
     const { leafs, tree } = await constructSimple1ChainTree(weth, 5);
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
