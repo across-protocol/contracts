@@ -188,7 +188,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     ) public onlyOwner {
         //TODO In the future this should call cross-chain adapters to setEnableRoute.
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
+
+        // TODO: Should relay message to L2 for destinationChainId and call setEnableRoute(originToken, destinationChainId, true)
+
+        emit WhitelistRoute(originToken, destinationChainId, destinationToken);
     }
 
     function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) public onlyOwner {

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "./MerkleLib.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -42,6 +43,15 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
+
+    struct RelayerRefund {
+        // Merkle root of relayer refunds.
+        bytes32 distributionRoot;
+        // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
+        // 256x256 leaves per root.
+        mapping(uint256 => uint256) claimsBitmap;
+    }
+    RelayerRefund[] public relayerRefunds;
 
     struct RelayData {
         address depositor;
@@ -89,6 +99,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address depositor,
         address recipient
     );
+    event InitializedRelayerRefund(uint256 indexed relayerRefundId, bytes32 relayerRepaymentDistributionProof);
 
     constructor(
         address _wethAddress,
@@ -257,17 +268,23 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) public virtual {
-        return;
+    // This internal method should be called by an external "initializeRelayerRefund" function that validates the
+    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
+    // specifics are left to the implementor of this abstract contract.
+    // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
+    // can be called to execute each leaf in the root.
+    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
+        uint256 relayerRefundId = relayerRefunds.length;
+        relayerRefunds.push().distributionRoot = relayerRepaymentDistributionProof;
+        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionProof);
     }
 
+    // Call this method to execute a leaf within the `distributionRoot` stored on this contract. Caller must include a
+    // valid `inclusionProof` to verify that the leaf is contained within the root. The `relayerRefundId` is the index
+    // of the specific distribution root containing the passed in leaf.
     function distributeRelayerRefund(
         uint256 relayerRefundId,
-        uint256 leafId,
-        address l2TokenAddress,
-        uint256 netSendAmount,
-        address[] memory relayerRefundAddresses,
-        uint256[] memory relayerRefundAmounts,
+        MerkleLib.DestinationDistribution memory distributionLeaf,
         bytes32[] memory inclusionProof
     ) public {}
 
