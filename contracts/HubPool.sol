@@ -235,10 +235,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokenAmount,
         bool sendEth
     ) public nonReentrant {
-        require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth"); // Can only get ETH on withdrawing iff this is the WETH pool.
+        require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
+        // Note this method does not make any liquidity utilization checks before letting the LP redeem their LP tokens.
+        // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
