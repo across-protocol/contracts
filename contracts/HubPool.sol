@@ -566,8 +566,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     function _liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount) internal returns (uint256) {
         _sync(l1Token); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // liquidityUtilizationRatio :=
-        // (relayedAmount + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
+        // liquidityUtilizationRatio := (relayedAmount + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
         // UtilizedReserves has a dual meaning: if it's greater than zero then it represents funds pending in the bridge
         // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
         // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
