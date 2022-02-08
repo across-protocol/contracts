@@ -210,7 +210,7 @@ describe.only("HubPool Pooled Token Synchronization", function () {
     // Trying to remove even 1 wei should fail.
     await expect(hubPool.connect(liquidityProvider).removeLiquidity(weth.address, 1, false)).to.be.reverted;
   });
-  it("Reverting back to 0 LP tokens is handled correctly and historic fees are not lost", async function () {
+  it("Redeeming all LP tokens, after accruing fees, is handled correctly", async function () {
     const { leafs, tree, tokensSendToL2, realizedLpFees } = await constructSimple1ChainTree(weth);
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
