@@ -322,7 +322,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         MerkleLib.DestinationDistribution memory distributionLeaf,
         bytes32[] memory inclusionProof
     ) public override {
+        // Check integrity of leaf structure:
         require(distributionLeaf.chainId == chainId(), "Invalid chainId");
+        require(distributionLeaf.refundAddresses.length == distributionLeaf.refundAmounts.length, "invalid leaf");
 
         // Grab distribution root stored at `relayerRefundId`.
         RelayerRefund storage refund = relayerRefunds[relayerRefundId];
@@ -339,14 +341,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Set leaf as claimed in bitmap.
         MerkleLib.setClaimed(refund.claimedBitmap, distributionLeaf.leafId);
-
-        // TODO: Should we be checking that distributionLeaf.refundAddresses.length == distributionLeaf.refundAmounts.length
-        // or can we assume that the `initiateRelayerRefund` on the HubPool would have been disputed on L1?
-        require(distributionLeaf.refundAddresses.length == distributionLeaf.refundAmounts.length, "invalid leaf");
-
-        // TODO: Similar question to above: should we assume that the L2 token is not address(0) or any other address
-        // that would have been disputed on L1?
-        require(distributionLeaf.l2TokenAddress != address(0), "invalid leaf");
 
         // For each relayerRefundAddress in relayerRefundAddresses, send the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
