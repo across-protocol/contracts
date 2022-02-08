@@ -195,6 +195,10 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         numberOfDeposits += 1;
     }
 
+    /**************************************
+     *         RELAYER FUNCTIONS          *
+     **************************************/
+
     function fillRelay(
         address depositor,
         address recipient,
@@ -223,59 +227,6 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         bytes32 relayHash = _getRelayHash(relayData);
 
         _fillRelay(relayHash, relayData, relayerFeePct, maxTokensToSend, repaymentChain);
-    }
-
-    function _fillRelay(
-        bytes32 relayHash,
-        RelayData memory relayData,
-        uint64 updatableRelayerFeePct,
-        uint256 maxTokensToSend,
-        uint256 repaymentChain
-    ) internal {
-        // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(
-            updatableRelayerFeePct <= 0.5e18 &&
-                relayData.realizedLpFeePct <= 0.5e18 &&
-                (updatableRelayerFeePct + relayData.realizedLpFeePct) < 1e18,
-            "invalid fees"
-        );
-
-        // Check that the relay has not already been completely filled. Note that the `relays` mapping will point to
-        // the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each fill.
-        require(relayFills[relayHash] < relayData.relayAmount, "relay filled");
-
-        // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
-        uint256 fillAmountPreFees = 0;
-
-        // Adding brackets "stack too deep" solidity error.
-        if (maxTokensToSend > 0) {
-            fillAmountPreFees = _computeAmountPreFees(
-                maxTokensToSend,
-                (relayData.realizedLpFeePct + updatableRelayerFeePct)
-            );
-            // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
-            // we'll pull exactly enough tokens to complete the relay.
-            uint256 amountToSend = maxTokensToSend;
-            if (relayData.relayAmount - relayFills[relayHash] < fillAmountPreFees) {
-                fillAmountPreFees = relayData.relayAmount - relayFills[relayHash];
-                amountToSend = _computeAmountPostFees(
-                    fillAmountPreFees,
-                    relayData.realizedLpFeePct + updatableRelayerFeePct
-                );
-            }
-            relayFills[relayHash] += fillAmountPreFees;
-            // If relay token is weth then unwrap and send eth.
-            if (relayData.destinationToken == address(weth)) {
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-                _unwrapWETHTo(payable(relayData.recipient), amountToSend);
-                // Else, this is a normal ERC20 token. Send to recipient.
-            } else IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
-        }
-
-        // Needed to resolve stack too deep compile-time error
-        _emitFillRelay(
-            FillRelayEventData(relayHash, relayData, updatableRelayerFeePct, fillAmountPreFees, repaymentChain)
-        );
     }
 
     // We overload `fillRelay` logic to allow the relayer to optionally pass in an updated `relayerFeePct` and a signature
@@ -346,16 +297,9 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         _fillRelay(relayHash, relayData, updatedRelayerFeeData.newRelayerFeePct, maxTokensToSend, repaymentChain);
     }
 
-    // This internal method should be called by an external "initializeRelayerRefund" function that validates the
-    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
-    // specifics are left to the implementor of this abstract contract.
-    // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
-    // can be called to execute each leaf in the root.
-    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
-        uint256 relayerRefundId = relayerRefunds.length;
-        relayerRefunds.push().distributionRoot = relayerRepaymentDistributionProof;
-        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionProof);
-    }
+    /**************************************
+     *         DATA WORKER FUNCTIONS      *
+     **************************************/
 
     // Call this method to execute a leaf within the `distributionRoot` stored on this contract. Caller must include a
     // valid `inclusionProof` to verify that the leaf is contained within the root. The `relayerRefundId` is the index
@@ -399,6 +343,70 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             weth.withdraw(amount);
             to.transfer(amount);
         }
+    }
+
+    // This internal method should be called by an external "initializeRelayerRefund" function that validates the
+    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
+    // specifics are left to the implementor of this abstract contract.
+    // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
+    // can be called to execute each leaf in the root.
+    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) internal {
+        uint256 relayerRefundId = relayerRefunds.length;
+        relayerRefunds.push().distributionRoot = relayerRepaymentDistributionProof;
+        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionProof);
+    }
+
+    function _fillRelay(
+        bytes32 relayHash,
+        RelayData memory relayData,
+        uint64 updatableRelayerFeePct,
+        uint256 maxTokensToSend,
+        uint256 repaymentChain
+    ) internal {
+        // We limit the relay fees to prevent the user spending all their funds on fees.
+        require(
+            updatableRelayerFeePct <= 0.5e18 &&
+                relayData.realizedLpFeePct <= 0.5e18 &&
+                (updatableRelayerFeePct + relayData.realizedLpFeePct) < 1e18,
+            "invalid fees"
+        );
+
+        // Check that the relay has not already been completely filled. Note that the `relays` mapping will point to
+        // the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each fill.
+        require(relayFills[relayHash] < relayData.relayAmount, "relay filled");
+
+        // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
+        uint256 fillAmountPreFees = 0;
+
+        // Adding brackets "stack too deep" solidity error.
+        if (maxTokensToSend > 0) {
+            fillAmountPreFees = _computeAmountPreFees(
+                maxTokensToSend,
+                (relayData.realizedLpFeePct + updatableRelayerFeePct)
+            );
+            // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
+            // we'll pull exactly enough tokens to complete the relay.
+            uint256 amountToSend = maxTokensToSend;
+            if (relayData.relayAmount - relayFills[relayHash] < fillAmountPreFees) {
+                fillAmountPreFees = relayData.relayAmount - relayFills[relayHash];
+                amountToSend = _computeAmountPostFees(
+                    fillAmountPreFees,
+                    relayData.realizedLpFeePct + updatableRelayerFeePct
+                );
+            }
+            relayFills[relayHash] += fillAmountPreFees;
+            // If relay token is weth then unwrap and send eth.
+            if (relayData.destinationToken == address(weth)) {
+                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                _unwrapWETHTo(payable(relayData.recipient), amountToSend);
+                // Else, this is a normal ERC20 token. Send to recipient.
+            } else IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
+        }
+
+        // Needed to resolve stack too deep compile-time error
+        _emitFillRelay(
+            FillRelayEventData(relayHash, relayData, updatableRelayerFeePct, fillAmountPreFees, repaymentChain)
+        );
     }
 
     struct FillRelayEventData {
