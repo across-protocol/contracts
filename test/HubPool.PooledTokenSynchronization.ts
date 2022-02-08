@@ -9,7 +9,7 @@ import { constructSimple1ChainTree } from "./MerkleLib.utils";
 let hubPool: Contract, weth: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 
-describe("HubPool Pooled Token Synchronization", function () {
+describe.only("HubPool Pooled Token Synchronization", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, hubPool, timer } = await hubPoolFixture());
@@ -60,8 +60,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     // executed on L2 constituted a relayer repayment of 100 tokens. The LPs should now have received 100 tokens + the
     // realizedLp fees of 10 tokens. i.e there should be a transfer of 110 tokens from L2->L1. This is represented by
     // simply send the tokens to the hubPool. The sync method should correctly attribute this to the trackers
-    const l2ToL1Amount = toBNWei(110);
-    await weth.connect(dataWorker).transfer(hubPool.address, l2ToL1Amount);
+    await weth.connect(dataWorker).transfer(hubPool.address, tokensSendToL2.add(realizedLpFees));
 
     await hubPool.exchangeRateCurrent(weth.address); // force state sync (calls sync internally).
 
@@ -69,7 +68,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     // LPed minus the amount sent to L2, plus the amount sent back to L1 (they are equivalent).
     expect((await hubPool.pooledTokens(weth.address)).liquidReserves)
       .to.equal(consts.amountToLp.add(realizedLpFees))
-      .to.equal(consts.amountToLp.sub(tokensSendToL2).add(l2ToL1Amount));
+      .to.equal(consts.amountToLp.sub(tokensSendToL2).add(tokensSendToL2).add(realizedLpFees));
 
     // All funds have returned to L1. As a result, the utilizedReserves should now be 0.
     expect((await hubPool.pooledTokens(weth.address)).utilizedReserves).to.equal(toBNWei(0));
@@ -185,7 +184,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Most to accumulate all fees.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
     // Liquidity utilization should now be (550) / (500 + 550) = 0.523809523809523809. I.e utilization is over 50%.
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal("523809523809523809");
@@ -210,5 +209,46 @@ describe("HubPool Pooled Token Synchronization", function () {
 
     // Trying to remove even 1 wei should fail.
     await expect(hubPool.connect(liquidityProvider).removeLiquidity(weth.address, 1, false)).to.be.reverted;
+  });
+  it("Reverting back to 0 LP tokens is handled correctly and historic fees are not lost", async function () {
+    const { leafs, tree, tokensSendToL2, realizedLpFees } = await constructSimple1ChainTree(weth);
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
+
+    // Send back to L1 the tokensSendToL2 + realizedLpFees, i.e to mimic the finalization of the relay.
+    await weth.connect(dataWorker).transfer(hubPool.address, tokensSendToL2.add(realizedLpFees));
+
+    // Exchange rate should be 1.01 (accumulated 10 WETH on 1000 WETH worth of liquidity). Utilization should be 0.
+    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.01));
+    expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(toBNWei(0));
+
+    // Now, trying to all liquidity.
+    await hubPool.connect(liquidityProvider).removeLiquidity(weth.address, consts.amountToLp, false);
+
+    // Exchange rate is now set to 1.0 as all fees have been withdrawn.
+    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));
+    await hubPool.exchangeRateCurrent(weth.address); // force state sync.
+    const pooledTokenInfoPreExecution = await hubPool.pooledTokens(weth.address);
+    expect(pooledTokenInfoPreExecution.liquidReserves).to.equal(0);
+    expect(pooledTokenInfoPreExecution.utilizedReserves).to.equal(0);
+    expect(pooledTokenInfoPreExecution.undistributedLpFees).to.equal(0);
+
+    // Now, mint LP tokens again. The exchange rate should be re-set to 0 and have no memory of the previous deposits.
+    await weth.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp);
+    await hubPool.connect(liquidityProvider).addLiquidity(weth.address, consts.amountToLp);
+
+    // Exchange rate should be 1.0 as all fees have been withdrawn.
+    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));
+
+    // Going through a full refund lifecycle does returns to where we were before, with no memory of previous fees.
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
+
+    // Exchange rate should be 1.01, with 1% accumulated on the back of refunds with no memory of the previous fees.
+    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.01));
   });
 });
