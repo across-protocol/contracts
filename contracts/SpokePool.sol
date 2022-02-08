@@ -102,7 +102,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address depositor,
         address recipient
     );
-    event ModifiedRelay(bytes32 indexed relayHash, uint64 newRelayerFeePct);
+    event IncreasedRelayFee(bytes32 indexed relayHash, uint64 newRelayerFeePct);
     event InitializedRelayerRefund(uint256 indexed relayerRefundId, bytes32 relayerRepaymentDistributionProof);
 
     constructor(
@@ -272,7 +272,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
     }
 
-    function modifyRelay(
+    function increaseRelayFee(
         address depositor,
         address recipient,
         address destinationToken,
@@ -324,7 +324,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             "invalid signature"
         );
 
-        emit ModifiedRelay(relayHash, newRelayerFeePct);
+        emit IncreasedRelayFee(relayHash, newRelayerFeePct);
     }
 
     // This internal method should be called by an external "initializeRelayerRefund" function that validates the

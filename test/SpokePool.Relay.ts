@@ -230,7 +230,7 @@ describe("SpokePool Relayer Logic", async function () {
         )
     ).to.be.reverted;
   });
-  it("Modifying relayer fee emits event", async function () {
+  it("Increasing relayer fee emits event", async function () {
     // Submit relay:
     const { relayHash, relayDataValues } = getRelayHash(
       depositor.address,
@@ -246,11 +246,11 @@ describe("SpokePool Relayer Logic", async function () {
     // Note: modifiedRelayFeePct is inserted in-place into middle of the same params passed to fillRelay
     relayDataValues.splice(5, 0, modifiedRelayerFeePct.toString());
 
-    await expect(spokePool.connect(relayer).modifyRelay(...relayDataValues, messageHash, signature))
-      .to.emit(spokePool, "ModifiedRelay")
+    await expect(spokePool.connect(relayer).increaseRelayFee(...relayDataValues, messageHash, signature))
+      .to.emit(spokePool, "IncreasedRelayFee")
       .withArgs(relayHash, modifiedRelayerFeePct);
   });
-  it("Modifying relayer fee failure cases", async function () {
+  it("Increasing relayer fee failure cases", async function () {
     // Submit relay:
     const { relayDataValues } = getRelayHash(
       depositor.address,
@@ -269,7 +269,11 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .modifyRelay(...relayDataValues, invalidModifiedRelayParams.messageHash, invalidModifiedRelayParams.signature)
+        .increaseRelayFee(
+          ...relayDataValues,
+          invalidModifiedRelayParams.messageHash,
+          invalidModifiedRelayParams.signature
+        )
     ).to.be.revertedWith("new fee cannot be lower");
 
     // Replace the invalid modified fee % with a valid, higher one.
@@ -279,7 +283,11 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .modifyRelay(...relayDataValues, invalidModifiedRelayParams.messageHash, invalidModifiedRelayParams.signature)
+        .increaseRelayFee(
+          ...relayDataValues,
+          invalidModifiedRelayParams.messageHash,
+          invalidModifiedRelayParams.signature
+        )
     ).to.be.revertedWith("incorrect new fee");
 
     // Message hash must be signed by depositor passed in function params.
@@ -287,7 +295,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .modifyRelay(...relayDataValues, incorrectSignerParams.messageHash, incorrectSignerParams.signature)
+        .increaseRelayFee(...relayDataValues, incorrectSignerParams.messageHash, incorrectSignerParams.signature)
     ).to.be.revertedWith("invalid signature");
 
     // Cannot modify the relay after filling the remainder of the relay.
@@ -297,7 +305,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .modifyRelay(...relayDataValues, validModifiedRelayParams.messageHash, validModifiedRelayParams.signature)
+        .increaseRelayFee(...relayDataValues, validModifiedRelayParams.messageHash, validModifiedRelayParams.signature)
     ).to.be.revertedWith("filled relay");
   });
 });
