@@ -231,26 +231,19 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // We overload `fillRelay` logic to allow the relayer to optionally pass in an updated `relayerFeePct` and a signature
     // proving that the depositor agreed to the updated fee.
-    struct UpdatedRelayerFeeData {
-        // Note: This struct is used to make sure that the following overloaded `fillRelay` does not create a stack
-        // too deep compile-time error.
-        uint64 newRelayerFeePct;
-        bytes32 depositorMessageHash;
-        bytes depositorSignature;
-    }
-
     function fillRelayUpdatedFee(
         address depositor,
         address recipient,
         address destinationToken,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
+        uint64 newRelayerFeePct,
         uint64 depositId,
         uint256 originChainId,
         uint256 totalRelayAmount,
         uint256 maxTokensToSend,
         uint256 repaymentChain,
-        UpdatedRelayerFeeData memory updatedRelayerFeeData // Note: Ideally we don't pass in any complex objects to
+        bytes memory depositorSignature
     )
         public
         // public methods but I couldn't figure out a way to pass this in without encounering a stack too deep error.
@@ -264,20 +257,17 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
             // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
             bytes32 expectedDepositorMessageHash = keccak256(
-                abi.encode("ACROSS-V2-FEE-1.0", updatedRelayerFeeData.newRelayerFeePct, depositId, originChainId)
+                abi.encode("ACROSS-V2-FEE-1.0", newRelayerFeePct, depositId, originChainId)
             );
-            require(expectedDepositorMessageHash == updatedRelayerFeeData.depositorMessageHash, "incorrect new fee");
 
             // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
             // JSON-RPC method as part of EIP-191. We use OZ's signature checker library with adds support for
             // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
+            // If the depositor signed a message with a different updated fee (or any other param included in the
+            // above keccak156 hash), then this will revert.
             bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
             require(
-                SignatureChecker.isValidSignatureNow(
-                    depositor,
-                    ethSignedMessageHash,
-                    updatedRelayerFeeData.depositorSignature
-                ),
+                SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
                 "invalid signature"
             );
         }
@@ -294,7 +284,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             relayAmount: totalRelayAmount
         });
         bytes32 relayHash = _getRelayHash(relayData);
-        _fillRelay(relayHash, relayData, updatedRelayerFeeData.newRelayerFeePct, maxTokensToSend, repaymentChain);
+        _fillRelay(relayHash, relayData, newRelayerFeePct, maxTokensToSend, repaymentChain);
     }
 
     /**************************************

@@ -125,7 +125,7 @@ export async function modifyRelayHelper(
   depositId: string,
   originChainId: string,
   depositor: SignerWithAddress
-): Promise<{ messageHash: string; signature: string; updatedRelayerFeeData: UpdatedRelayerFeeData }> {
+): Promise<{ messageHash: string; signature: string }> {
   const messageHash = keccak256(
     defaultAbiCoder.encode(
       ["string", "uint64", "uint64", "uint256"],
@@ -137,10 +137,5 @@ export async function modifyRelayHelper(
   return {
     messageHash,
     signature,
-    updatedRelayerFeeData: {
-      newRelayerFeePct: modifiedRelayerFeePct.toString(),
-      depositorMessageHash: messageHash,
-      depositorSignature: signature,
-    },
   };
 }

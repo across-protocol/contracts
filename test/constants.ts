@@ -12,6 +12,8 @@ export const depositRelayerFeePct = toWei("0.1");
 
 export const modifiedRelayerFeePct = toBN(depositRelayerFeePct).add(toBN(toWei("0.1")));
 
+export const incorrectModifiedRelayerFeePct = toBN(modifiedRelayerFeePct).add(toBN(toWei("0.01")));
+
 export const realizedLpFeePct = toWei("0.1");
 
 export const oneHundredPct = toWei("1");

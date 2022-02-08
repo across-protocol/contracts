@@ -14,13 +14,14 @@ import {
   firstDepositId,
   oneHundredPct,
   modifiedRelayerFeePct,
+  incorrectModifiedRelayerFeePct,
   amountToRelayPreModifiedFees,
 } from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
 
-describe("SpokePool Relayer Logic", async function () {
+describe.only("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20 } = await spokePoolFixture());
@@ -229,16 +230,16 @@ describe("SpokePool Relayer Logic", async function () {
       originChainId,
       destErc20.address
     );
-    const { updatedRelayerFeeData } = await modifyRelayHelper(
+    const { signature } = await modifyRelayHelper(
       modifiedRelayerFeePct,
       relayData.depositId,
       relayData.originChainId,
       depositor
     );
+    // Note: modifiedRelayFeePct is inserted in-place into middle of the same params passed to fillRelay
+    relayDataValues.splice(5, 0, modifiedRelayerFeePct.toString());
     await expect(
-      spokePool
-        .connect(relayer)
-        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, updatedRelayerFeeData)
+      spokePool.connect(relayer).fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, signature)
     )
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
@@ -249,7 +250,7 @@ describe("SpokePool Relayer Logic", async function () {
         repaymentChainId,
         relayData.originChainId,
         relayData.depositId,
-        updatedRelayerFeeData.newRelayerFeePct, // The relayer fee % emitted in event should change
+        modifiedRelayerFeePct, // The relayer fee % emitted in event should change
         relayData.realizedLpFeePct,
         relayData.destinationToken,
         relayer.address,
@@ -272,23 +273,48 @@ describe("SpokePool Relayer Logic", async function () {
       originChainId,
       destErc20.address
     );
-    const { updatedRelayerFeeData } = await modifyRelayHelper(
-      modifiedRelayerFeePct,
+    // Note: modifiedRelayFeePct is inserted in-place into middle of the same params passed to fillRelay
+    relayDataValues.splice(5, 0, modifiedRelayerFeePct.toString());
+
+    // Message hash doesn't contain the modified fee passed as a function param.
+    const { signature: incorrectFeeSignature } = await modifyRelayHelper(
+      incorrectModifiedRelayerFeePct,
       relayData.depositId,
       relayData.originChainId,
       depositor
     );
-
-    // Message hash doesn't contain the modified fee passed as a function param:
     await expect(
-      spokePool.connect(relayer).fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, {
-        ...updatedRelayerFeeData,
-        newRelayerFeePct: "0", // This fee passed as a function param doesn't match the one signed by depositor.
-      })
-    ).to.be.revertedWith("incorrect new fee");
+      spokePool
+        .connect(relayer)
+        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectFeeSignature)
+    ).to.be.revertedWith("invalid signature");
+
+    // Relay data depositID and originChainID don't match data included in relay hash
+    const { signature: incorrectDepositIdSignature } = await modifyRelayHelper(
+      incorrectModifiedRelayerFeePct,
+      relayData.depositId + "1",
+      relayData.originChainId,
+      depositor
+    );
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectDepositIdSignature)
+    ).to.be.revertedWith("invalid signature");
+    const { signature: incorrectChainIdSignature } = await modifyRelayHelper(
+      incorrectModifiedRelayerFeePct,
+      relayData.depositId,
+      relayData.originChainId + "1",
+      depositor
+    );
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectChainIdSignature)
+    ).to.be.revertedWith("invalid signature");
 
     // Message hash must be signed by depositor passed in function params.
-    const { updatedRelayerFeeData: incorrectSigner } = await modifyRelayHelper(
+    const { signature: incorrectSignerSignature } = await modifyRelayHelper(
       modifiedRelayerFeePct,
       relayData.depositId,
       relayData.originChainId,
@@ -297,7 +323,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectSigner)
+        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectSignerSignature)
     ).to.be.revertedWith("invalid signature");
   });
 });
