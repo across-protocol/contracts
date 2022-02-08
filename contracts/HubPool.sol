@@ -186,6 +186,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
+        //TODO In the future this should call cross-chain adapters to setEnableRoute.
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
