@@ -246,7 +246,7 @@ describe.only("HubPool Pooled Token Synchronization", function () {
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
+    // await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
     // Exchange rate should be 1.01, with 1% accumulated on the back of refunds with no memory of the previous fees.
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.01));
