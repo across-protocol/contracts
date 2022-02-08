@@ -46,7 +46,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     struct RelayerRefund {
         // Merkle root of slow relays
-        bytes32 slowRelayRoot;
+        bytes32 slowRelayFulfilmentRoot;
         // Merkle root of relayer refunds.
         bytes32 distributionRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
@@ -90,7 +90,11 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address depositor,
         address recipient
     );
-    event InitializedRelayerRefund(uint256 indexed relayerRefundId, bytes32 relayerRepaymentDistributionProof);
+    event InitializedRelayerRefund(
+        uint256 indexed relayerRefundId,
+        bytes32 relayerRepaymentDistributionRoot,
+        bytes32 slowRelayFulfilmentRoot
+    );
 
     constructor(
         address _wethAddress,
@@ -279,12 +283,14 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // specifics are left to the implementor of this abstract contract.
     // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
     // can be called to execute each leaf in the root.
-    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot) internal {
+    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayFulfilmentRoot)
+        internal
+    {
         uint256 relayerRefundId = relayerRefunds.length;
         RelayerRefund storage relayerRefund = relayerRefunds.push();
         relayerRefund.distributionRoot = relayerRepaymentDistributionRoot;
-        relayerRefund.slowRelayRoot = slowRelayRoot;
-        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionRoot);
+        relayerRefund.slowRelayFulfilmentRoot = slowRelayFulfilmentRoot;
+        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionRoot, slowRelayFulfilmentRoot);
     }
 
     // Call this method to execute a leaf within the `distributionRoot` stored on this contract. Caller must include a
