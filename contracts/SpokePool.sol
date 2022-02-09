@@ -266,6 +266,11 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
             // If the depositor signed a message with a different updated fee (or any other param included in the
             // above keccak156 hash), then this will revert.
             bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
+
+            // Note: no need to worry about reentrancy from contract deployed at `depositor` address since
+            // `SignatureChecker.isValidSignatureNow` is a non state-modifying STATICCALL:
+            // - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/63b466901fb015538913f811c5112a2775042177/contracts/utils/cryptography/SignatureChecker.sol#L35
+            // - https://github.com/ethereum/EIPs/pull/214
             require(
                 SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
                 "invalid signature"
@@ -353,13 +358,10 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 maxTokensToSend,
         uint256 repaymentChain
     ) internal {
-        // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(
-            updatableRelayerFeePct <= 0.5e18 &&
-                relayData.realizedLpFeePct <= 0.5e18 &&
-                (updatableRelayerFeePct + relayData.realizedLpFeePct) < 1e18,
-            "invalid fees"
-        );
+        // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
+        // fees are just magic numbers. The important point is to prevent the total fee from being 100%, otherwise
+        // computing the amount pre fees runs into divide-by-0 issues.
+        require(updatableRelayerFeePct < 0.5e18 && relayData.realizedLpFeePct < 0.5e18, "invalid fees");
 
         // Check that the relay has not already been completely filled. Note that the `relays` mapping will point to
         // the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each fill.

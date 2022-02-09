@@ -16,6 +16,8 @@ import {
   modifiedRelayerFeePct,
   incorrectModifiedRelayerFeePct,
   amountToRelayPreModifiedFees,
+  realizedLpFeePct,
+  depositRelayerFeePct,
 } from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
@@ -157,8 +159,8 @@ describe("SpokePool Relayer Logic", async function () {
             originChainId,
             destErc20.address,
             amountToDeposit.toString(),
-            toWei("0.51").toString(),
-            toWei("0.5").toString()
+            toWei("0.5").toString(),
+            depositRelayerFeePct.toString()
           ).relayDataValues,
           amountToRelay,
           repaymentChainId
@@ -175,25 +177,7 @@ describe("SpokePool Relayer Logic", async function () {
             originChainId,
             destErc20.address,
             amountToDeposit.toString(),
-            toWei("0.5").toString(),
-            toWei("0.51").toString()
-          ).relayDataValues,
-          amountToRelay,
-          repaymentChainId
-        )
-    ).to.be.revertedWith("invalid fees");
-    await expect(
-      spokePool
-        .connect(relayer)
-        .fillRelay(
-          ...getRelayHash(
-            depositor.address,
-            recipient.address,
-            firstDepositId,
-            originChainId,
-            destErc20.address,
-            amountToDeposit.toString(),
-            toWei("0.5").toString(),
+            realizedLpFeePct.toString(),
             toWei("0.5").toString()
           ).relayDataValues,
           amountToRelay,
