@@ -137,39 +137,40 @@ describe("SpokePool Relayer Logic", async function () {
   it("General failure cases", async function () {
     // Fees set too high.
     await expect(
-      spokePool.connect(relayer).fillRelay(
-        ...getRelayHash(
-          depositor.address,
-          recipient.address,
-          consts.firstDepositId,
-          consts.originChainId,
-          destErc20.address,
-
-          consts.amountToDeposit.toString(),
-          toWei("0.5").toString(),
-          consts.depositRelayerFeePct.toString()
-        ).relayDataValues,
-        consts.amountToRelay,
-        consts.repaymentChainId
-      )
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(
+            depositor.address,
+            recipient.address,
+            consts.firstDepositId,
+            consts.originChainId,
+            destErc20.address,
+            consts.amountToDeposit.toString(),
+            toWei("0.5").toString(),
+            consts.depositRelayerFeePct.toString()
+          ).relayDataValues,
+          consts.amountToRelay,
+          consts.repaymentChainId
+        )
     ).to.be.revertedWith("invalid fees");
     await expect(
-      spokePool.connect(relayer).fillRelay(
-        ...getRelayHash(
-          depositor.address,
-          recipient.address,
-          consts.firstDepositId,
-          consts.originChainId,
-          destErc20.address,
-
-          consts.amountToDeposit.toString(),
-          consts.realizedLpFeePct.toString(),
-
-          toWei("0.5").toString()
-        ).relayDataValues,
-        consts.amountToRelay,
-        consts.repaymentChainId
-      )
+      spokePool
+        .connect(relayer)
+        .fillRelay(
+          ...getRelayHash(
+            depositor.address,
+            recipient.address,
+            consts.firstDepositId,
+            consts.originChainId,
+            destErc20.address,
+            consts.amountToDeposit.toString(),
+            consts.realizedLpFeePct.toString(),
+            toWei("0.5").toString()
+          ).relayDataValues,
+          consts.amountToRelay,
+          consts.repaymentChainId
+        )
     ).to.be.revertedWith("invalid fees");
 
     // Relay already filled
