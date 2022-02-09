@@ -1,4 +1,5 @@
-import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256 } from "./utils";
+import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "./utils";
+import { repaymentChainId } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
 
 export interface PoolRebalance {
@@ -17,6 +18,40 @@ export interface DestinationDistribution {
   l2TokenAddress: string;
   refundAddresses: string[];
   refundAmounts: BigNumber[];
+}
+
+export async function buildDestinationDistributionTree(destinationDistributions: DestinationDistribution[]) {
+  for (let i = 0; i < destinationDistributions.length; i++) {
+    // The 2 provided parallel arrays must be of equal length.
+    expect(destinationDistributions[i].refundAddresses.length).to.equal(
+      destinationDistributions[i].refundAmounts.length
+    );
+  }
+
+  const paramType = await getParamType("MerkleLib", "verifyRelayerDistribution", "distribution");
+  const hashFn = (input: DestinationDistribution) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  return new MerkleTree<DestinationDistribution>(destinationDistributions, hashFn);
+}
+
+export function buildDestinationDistributionLeafs(
+  destinationChainIds: number[],
+  amountsToReturn: BigNumber[],
+  l2Tokens: Contract[],
+  refundAddresses: string[][],
+  refundAmounts: BigNumber[][]
+): DestinationDistribution[] {
+  return Array(destinationChainIds.length)
+    .fill(0)
+    .map((_, i) => {
+      return {
+        leafId: BigNumber.from(i),
+        chainId: BigNumber.from(destinationChainIds[i]),
+        amountToReturn: amountsToReturn[i],
+        l2TokenAddress: l2Tokens[i].address,
+        refundAddresses: refundAddresses[i],
+        refundAmounts: refundAmounts[i],
+      };
+    });
 }
 
 export async function buildPoolRebalanceTree(poolRebalances: PoolRebalance[]) {
@@ -52,4 +87,19 @@ export function buildPoolRebalanceLeafs(
         runningBalances: runningBalances[i],
       };
     });
+}
+
+export async function constructSimple1ChainTree(token: Contract, scalingSize = 1) {
+  const tokensSendToL2 = toBNWei(100 * scalingSize);
+  const realizedLpFees = toBNWei(10 * scalingSize);
+  const leafs = buildPoolRebalanceLeafs(
+    [repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
+    [token], // l1Token. We will only be sending 1 token to one chain.
+    [[realizedLpFees]], // bundleLpFees.
+    [[tokensSendToL2]], // netSendAmounts.
+    [[tokensSendToL2]] // runningBalances.
+  );
+  const tree = await buildPoolRebalanceTree(leafs);
+
+  return { tokensSendToL2, realizedLpFees, leafs, tree };
 }

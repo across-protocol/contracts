@@ -1,4 +1,4 @@
-import { TokenRolesEnum, interfaceName } from "@uma/common";
+import { TokenRolesEnum } from "@uma/common";
 import { getContractFactory, randomAddress, toBN, fromWei } from "./utils";
 
 import { bondAmount, refundProposalLiveness, finalFee, identifier, repaymentChainId } from "./constants";
@@ -8,7 +8,7 @@ import hre from "hardhat";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
 export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
-  const [signer] = await ethers.getSigners();
+  const [signer, crossChainAdmin] = await ethers.getSigners();
 
   // This fixture is dependent on the UMA ecosystem fixture. Run it first and grab the output. This is used in the
   // deployments that follows. The output is spread when returning contract instances from this fixture.
@@ -43,8 +43,8 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
   const mockSpoke = await (
-    await getContractFactory("MockSpokePool", signer)
-  ).deploy(weth.address, 0, parentFixtureOutput.timer.address);
+    await getContractFactory("MockSpokePool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, 0, parentFixtureOutput.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
 
   // Deploy mock l2 tokens for each token created before and whitelist the routes.

@@ -9,7 +9,7 @@ let l1CrossDomainMessenger: FakeContract, l1StandardBridge: FakeContract;
 
 const sampleL2Gas = 5_000_000;
 
-describe.only("Optimism Chain Adapter", function () {
+describe("Optimism Chain Adapter", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
     ({ weth, hubPool } = await hubPoolFixture());

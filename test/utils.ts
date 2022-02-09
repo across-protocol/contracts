@@ -68,6 +68,18 @@ export async function seedWallet(
   if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
 }
 
+export async function seedContract(
+  contract: Contract,
+  walletToFund: Signer,
+  tokens: Contract[],
+  weth: Contract | undefined,
+  amountToSeedWith: number | BigNumber
+) {
+  await seedWallet(walletToFund, tokens, weth, amountToSeedWith);
+  for (const token of tokens) await token.connect(walletToFund).transfer(contract.address, amountToSeedWith);
+  if (weth) await weth.connect(walletToFund).transfer(contract.address, amountToSeedWith);
+}
+
 export function randomBigNumber() {
   return ethers.BigNumber.from(ethers.utils.randomBytes(31));
 }
