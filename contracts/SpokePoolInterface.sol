@@ -43,9 +43,9 @@ interface SpokePoolInterface {
         uint256 relayAmount;
     }
 
-    function crossDomainAdmin() external returns (address);
-
     function setCrossDomainAdmin(address newCrossDomainAdmin) external;
+
+    function setHubPool(address newHubPool) external;
 
     function setEnableRoute(
         address originToken,
@@ -56,4 +56,10 @@ interface SpokePoolInterface {
     function setDepositQuoteTimeBuffer(uint64 buffer) external;
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot) external;
+
+    function distributeRelayerRefund(
+        uint256 relayerRefundId,
+        DestinationDistribution memory distributionLeaf,
+        bytes32[] memory inclusionProof
+    ) external;
 }

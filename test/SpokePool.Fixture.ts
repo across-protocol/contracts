@@ -1,5 +1,5 @@
 import { TokenRolesEnum } from "@uma/common";
-import { Contract, utils } from "ethers";
+import { BigNumber, Contract, utils } from "ethers";
 import { getContractFactory, SignerWithAddress } from "./utils";
 import {
   destinationChainId,
@@ -10,10 +10,10 @@ import {
 } from "./constants";
 import hre from "hardhat";
 
-const { defaultAbiCoder, keccak256 } = utils;
+const { defaultAbiCoder, keccak256, arrayify } = utils;
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
-  const [deployerWallet] = await ethers.getSigners();
+  const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
   // Useful contracts.
   const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
 
@@ -31,9 +31,10 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
+  const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const spokePool = await (
-    await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(weth.address, depositQuoteTimeBuffer, timer.address);
+    await getContractFactory("MockSpokePool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, depositQuoteTimeBuffer, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 });
@@ -112,5 +113,30 @@ export function getRelayHash(
     relayHash,
     relayData,
     relayDataValues,
+  };
+}
+
+export interface UpdatedRelayerFeeData {
+  newRelayerFeePct: string;
+  depositorMessageHash: string;
+  depositorSignature: string;
+}
+export async function modifyRelayHelper(
+  modifiedRelayerFeePct: BigNumber,
+  depositId: string,
+  originChainId: string,
+  depositor: SignerWithAddress
+): Promise<{ messageHash: string; signature: string }> {
+  const messageHash = keccak256(
+    defaultAbiCoder.encode(
+      ["string", "uint64", "uint64", "uint256"],
+      ["ACROSS-V2-FEE-1.0", modifiedRelayerFeePct, depositId, originChainId]
+    )
+  );
+  const signature = await depositor.signMessage(arrayify(messageHash));
+
+  return {
+    messageHash,
+    signature,
   };
 }
