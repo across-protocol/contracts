@@ -1,6 +1,7 @@
 import { expect } from "chai";
-import { getParamType } from "./utils";
+import { getParamType, toBNWei } from "./utils";
 import { MerkleTree } from "../utils/MerkleTree";
+import { repaymentChainId } from "./constants";
 import { ethers } from "hardhat";
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 import { BigNumber, Contract } from "ethers";
@@ -90,4 +91,19 @@ export function buildPoolRebalanceLeafs(
         runningBalances: runningBalances[i],
       };
     });
+}
+
+export async function constructSimple1ChainTree(token: Contract, scalingSize = 1) {
+  const tokensSendToL2 = toBNWei(100 * scalingSize);
+  const realizedLpFees = toBNWei(10 * scalingSize);
+  const leafs = buildPoolRebalanceLeafs(
+    [repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
+    [token], // l1Token. We will only be sending 1 token to one chain.
+    [[realizedLpFees]], // bundleLpFees.
+    [[tokensSendToL2]], // netSendAmounts.
+    [[tokensSendToL2]] // runningBalances.
+  );
+  const tree = await buildPoolRebalanceTree(leafs);
+
+  return { tokensSendToL2, realizedLpFees, leafs, tree };
 }

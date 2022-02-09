@@ -51,11 +51,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     struct PooledToken {
         address lpToken;
         bool isEnabled;
-        uint256 liquidReserves;
-        int256 utilizedReserves;
-        uint256 undistributedLpFees;
-        uint32 lastLpFeeUpdate;
         bool isWeth;
+        uint32 lastLpFeeUpdate;
+        int256 utilizedReserves;
+        uint256 liquidReserves;
+        uint256 undistributedLpFees;
     }
 
     mapping(address => PooledToken) public pooledTokens;
@@ -186,13 +186,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
-        //TODO In the future this should call cross-chain adapters to setEnableRoute.
-        whitelistedRoutes[originToken][destinationChainId] = destinationToken;
-
-        emit WhitelistRoute(destinationChainId, originToken, destinationToken);
-
         // TODO: Should relay message to L2 for destinationChainId and call setEnableRoute(originToken, destinationChainId, true)
-
+        whitelistedRoutes[originToken][destinationChainId] = destinationToken;
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
 
@@ -241,11 +236,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokenAmount,
         bool sendEth
     ) public nonReentrant {
-        // Can only send eth on withdrawing liquidity iff this is the WETH pool.
         require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
+        // Note this method does not make any liquidity utilization checks before letting the LP redeem their LP tokens.
+        // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
@@ -258,7 +254,21 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         return _exchangeRateCurrent(l1Token);
     }
 
-    function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) public returns (uint256) {}
+    function liquidityUtilizationCurrent(address l1Token) public nonReentrant returns (uint256) {
+        return _liquidityUtilizationPostRelay(l1Token, 0);
+    }
+
+    function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
+        public
+        nonReentrant
+        returns (uint256)
+    {
+        return _liquidityUtilizationPostRelay(l1Token, relayedAmount);
+    }
+
+    function sync(address l1Token) public nonReentrant {
+        _sync(l1Token);
+    }
 
     /*************************************************
      *             DATA WORKER FUNCTIONS             *
@@ -490,7 +500,10 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
                 pooledTokens[l1Tokens[i]].liquidReserves -= uint256(netSendAmounts[i]);
             }
 
-            // Assign any undistributed LP fees included into the bundle to the pooled token. Adding to the utilized reserves acts to track the fees while they are in transit and are not yet fully asigned during the smear.
+            // Assign any LP fees included into the bundle to the pooled token. These LP fees are tracked in the
+            // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
+            // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
+            // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
             pooledTokens[l1Tokens[i]].undistributedLpFees += bundleLpFees[i];
             pooledTokens[l1Tokens[i]].utilizedReserves += int256(bundleLpFees[i]);
         }
@@ -507,14 +520,17 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
     function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
         PooledToken storage pooledToken = pooledTokens[l1Token]; // Note this is storage so the state can be modified.
         uint256 lpTokenTotalSupply = IERC20(pooledToken.lpToken).totalSupply();
-        if (lpTokenTotalSupply == 0) return 1e18; // initial rate is 1 pre any mint action.
+        if (lpTokenTotalSupply == 0) return 1e18; // initial rate is 1:1 between LP tokens and collateral.
 
         // First, update fee counters and local accounting of finalized transfers from L2 -> L1.
         _updateAccumulatedLpFees(pooledToken); // Accumulate all allocated fees from the last time this method was called.
-        // _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+        _sync(l1Token); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
-        // Note that utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
+        // Both utilizedReserves and undistributedLpFees contain assigned LP fees. UndistributedLpFees is gradually
+        // decreased over the smear duration using _updateAccumulatedLpFees. This means that the exchange rate will
+        // gradually increase over time as undistributedLpFees goes to zero.
+        // utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
         // and opposite size. LiquidReserves + utilizedReserves will always be larger than undistributedLpFees so this
         // int will always be positive so there is no risk in underflow in type casting in the return line.
         int256 numerator = int256(pooledToken.liquidReserves) +
@@ -539,6 +555,38 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         return maxUndistributedLpFees < undistributedLpFees ? maxUndistributedLpFees : undistributedLpFees;
     }
 
-    // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
+    function _sync(address l1Token) internal {
+        // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
+        // action from L2 -> L1 has concluded and the local accounting can be updated.
+        uint256 l1TokenBalance = IERC20(l1Token).balanceOf(address(this));
+        if (l1TokenBalance > pooledTokens[l1Token].liquidReserves) {
+            // Note the numerical operation below can send utilizedReserves to negative. This can occur when tokens are
+            // dropped onto the contract, exceeding the liquidReserves.
+            pooledTokens[l1Token].utilizedReserves -= int256(l1TokenBalance - pooledTokens[l1Token].liquidReserves);
+            pooledTokens[l1Token].liquidReserves = l1TokenBalance;
+        }
+    }
+
+    function _liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount) internal returns (uint256) {
+        _sync(l1Token); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // liquidityUtilizationRatio := (relayedAmount + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
+        // UtilizedReserves has a dual meaning: if it's greater than zero then it represents funds pending in the bridge
+        // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
+        // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
+        // contract. In this case, ignore it as it is captured in liquid reserves and has no meaning in the numerator.
+        PooledToken memory pooledToken = pooledTokens[l1Token]; // Note this is storage so the state can be modified.
+        uint256 flooredUtilizedReserves = pooledToken.utilizedReserves > 0 ? uint256(pooledToken.utilizedReserves) : 0;
+        uint256 numerator = relayedAmount + flooredUtilizedReserves;
+        uint256 denominator = pooledToken.liquidReserves + flooredUtilizedReserves;
+
+        // If the denominator equals zero, return 1e18 (max utilization).
+        if (denominator == 0) return 1e18;
+
+        // In all other cases, return the utilization ratio.
+        return (numerator * 1e18) / denominator;
+    }
+
+    // Added to enable the SpokePool to receive ETH. used when unwrapping WETH.
     receive() external payable {}
 }
