@@ -350,9 +350,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
         for (uint32 i = 0; i < distributionLeaf.refundAmounts.length; i++) {
             uint256 amount = distributionLeaf.refundAmounts[i];
-            if (amount > 0) {
-                IERC20(distributionLeaf.l2TokenAddress).safeTransfer(distributionLeaf.refundAddresses[i], amount);
-            }
+            if (amount > 0) IERC20(distributionLeaf.l2TokenAddress).safeTransfer(distributionLeaf.refundAddresses[i], amount);            
         }
 
         // If `distributionLeaf.amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back via
