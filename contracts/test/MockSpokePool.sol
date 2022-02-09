@@ -9,8 +9,6 @@ import "../SpokePoolInterface.sol";
  * @notice Implements admin internal methods to test internal logic.
  */
 contract MockSpokePool is SpokePoolInterface, SpokePool {
-    event TokensBridged();
-
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
@@ -43,7 +41,5 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         _initializeRelayerRefund(relayerRepaymentDistributionProof);
     }
 
-    function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal override {
-        emit TokensBridged();
-    }
+    function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal override {}
 }

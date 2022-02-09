@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 
@@ -12,14 +13,11 @@ import "./SpokePoolInterface.sol";
  * @dev Uses OVM cross-domain-enabled logic for access control.
  */
 
-contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool {
-    event TokensBridged(
-        address indexed l2Token,
-        address target,
-        uint256 numberOfTokensBridged,
-        uint256 l1Gas,
-        address indexed caller
-    );
+contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool, Ownable {
+    // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`.
+    uint32 l1Gas = 6_000_000;
+
+    event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
 
     constructor(
         address _crossDomainAdmin,
@@ -34,6 +32,13 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
 
     /**************************************
      *          ADMIN FUNCTIONS           *
+     **************************************/
+    function setL1GasLimit(uint32 newl1Gas) public onlyOwner nonReentrant {
+        l1Gas = newl1Gas;
+    }
+
+    /**************************************
+     *    CROSS-CHAIN ADMIN FUNCTIONS     *
      **************************************/
 
     /**
@@ -88,15 +93,9 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
             distributionLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
             distributionLeaf.amountToReturn, // _amount. Send the full balance of the deposit box to bridge.
-            6_000_000, // _l1Gas. Unused, but included for potential forward compatibility considerations
+            l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "" // _data. We don't need to send any data for the bridging action.
         );
-        emit TokensBridged(
-            distributionLeaf.l2TokenAddress,
-            hubPool,
-            distributionLeaf.amountToReturn,
-            6_000_000,
-            msg.sender
-        );
+        emit OptimismTokensBridged(distributionLeaf.l2TokenAddress, hubPool, distributionLeaf.amountToReturn, l1Gas);
     }
 }

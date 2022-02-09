@@ -119,6 +119,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address[] refundAddresses,
         address indexed caller
     );
+    event TokensBridged(
+        uint256 indexed leafId,
+        uint256 indexed chainId,
+        uint256 amountToReturn,
+        address indexed l2TokenAddress,
+        address caller
+    );
 
     constructor(
         address _crossDomainAdmin,
@@ -354,7 +361,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // Do we need to perform any check about the last time that funds were bridged from L2 to L1?
             _bridgeTokensToHubPool(distributionLeaf);
 
-            // TODO: Consider emitting an event standard to all implementations of this contract.
+            emit TokensBridged(
+                distributionLeaf.leafId,
+                distributionLeaf.chainId,
+                distributionLeaf.amountToReturn,
+                distributionLeaf.l2TokenAddress,
+                msg.sender
+            );
         }
 
         emit DistributedRelayerRefund(
