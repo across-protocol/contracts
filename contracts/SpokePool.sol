@@ -264,7 +264,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         );
     }
 
-    function fillRelaySlow(
+    function distributeRelaySlow(
         address depositor,
         address recipient,
         address destinationToken,
