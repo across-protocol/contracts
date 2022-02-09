@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./chain-adapters/AdapterInterface.sol";
+import "./HubPoolInterface.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
@@ -27,7 +28,7 @@ interface WETH9Like {
     function deposit() external payable;
 }
 
-contract HubPool is Testable, Lockable, MultiCaller, Ownable {
+contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
     struct LPToken {
@@ -282,7 +283,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(MerkleLib.PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) public {
+    function executeRelayerRefund(PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) public {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.

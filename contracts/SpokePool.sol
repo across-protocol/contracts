@@ -8,6 +8,7 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
+import "./SpokePoolInterface.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -208,7 +209,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
-        MerkleLib.RelayData memory relayData = MerkleLib.RelayData({
+        SpokePoolInterface.RelayData memory relayData = SpokePoolInterface.RelayData({
             depositor: depositor,
             recipient: recipient,
             destinationToken: destinationToken,
@@ -298,7 +299,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     // of the specific distribution root containing the passed in leaf.
     function distributeRelayerRefund(
         uint256 relayerRefundId,
-        MerkleLib.DestinationDistribution memory distributionLeaf,
+        SpokePoolInterface.DestinationDistribution memory distributionLeaf,
         bytes32[] memory inclusionProof
     ) public {}
 
@@ -323,7 +324,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     }
 
     // Should we make this public for the relayer's convenience?
-    function _getRelayHash(MerkleLib.RelayData memory relayData) private pure returns (bytes32) {
+    function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(relayData));
     }
 
