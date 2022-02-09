@@ -239,7 +239,7 @@ describe("SpokePool Relayer Logic", async function () {
     // Note: modifiedRelayFeePct is inserted in-place into middle of the same params passed to fillRelay
     relayDataValues.splice(5, 0, modifiedRelayerFeePct.toString());
     await expect(
-      spokePool.connect(relayer).fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, signature)
+      spokePool.connect(relayer).fillRelayWithUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, signature)
     )
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
@@ -286,7 +286,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectFeeSignature)
+        .fillRelayWithUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectFeeSignature)
     ).to.be.revertedWith("invalid signature");
 
     // Relay data depositID and originChainID don't match data included in relay hash
@@ -299,7 +299,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectDepositIdSignature)
+        .fillRelayWithUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectDepositIdSignature)
     ).to.be.revertedWith("invalid signature");
     const { signature: incorrectChainIdSignature } = await modifyRelayHelper(
       incorrectModifiedRelayerFeePct,
@@ -310,7 +310,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectChainIdSignature)
+        .fillRelayWithUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectChainIdSignature)
     ).to.be.revertedWith("invalid signature");
 
     // Message hash must be signed by depositor passed in function params.
@@ -323,7 +323,7 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .fillRelayUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectSignerSignature)
+        .fillRelayWithUpdatedFee(...relayDataValues, amountToRelay, repaymentChainId, incorrectSignerSignature)
     ).to.be.revertedWith("invalid signature");
   });
 });

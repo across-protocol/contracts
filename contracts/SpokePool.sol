@@ -231,7 +231,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // We overload `fillRelay` logic to allow the relayer to optionally pass in an updated `relayerFeePct` and a signature
     // proving that the depositor agreed to the updated fee.
-    function fillRelayUpdatedFee(
+    function fillRelayWithUpdatedFee(
         address depositor,
         address recipient,
         address destinationToken,
