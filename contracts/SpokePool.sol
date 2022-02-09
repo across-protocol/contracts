@@ -11,6 +11,7 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
+import "./SpokePoolInterface.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -26,9 +27,15 @@ interface WETH9Like {
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
  * @dev This contract is designed to be deployed to L2's, not mainnet.
  */
-abstract contract SpokePool is Testable, Lockable, MultiCaller {
+abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
+
+    // Address of the L1 contract that acts as the owner of this SpokePool.
+    address public crossDomainAdmin;
+
+    // Address of the L1 contract that will send tokens to and receive tokens from this contract.
+    address public hubPool;
 
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint64 public deploymentTime;
@@ -52,7 +59,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         bytes32 distributionRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
         // 256x256 leaves per root.
-        mapping(uint256 => uint256) claimsBitmap;
+        mapping(uint256 => uint256) claimedBitmap;
     }
     RelayerRefund[] public relayerRefunds;
 
@@ -75,6 +82,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /****************************************
      *                EVENTS                *
      ****************************************/
+    event SetXDomainAdmin(address indexed newAdmin);
+    event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint64 newBuffer);
     event FundsDeposited(
@@ -103,12 +112,33 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address recipient
     );
     event InitializedRelayerRefund(uint256 indexed relayerRefundId, bytes32 relayerRepaymentDistributionProof);
+    event DistributedRelayerRefund(
+        uint256 indexed relayerRefundId,
+        uint256 indexed leafId,
+        uint256 chainId,
+        uint256 amountToReturn,
+        uint256[] refundAmounts,
+        address l2TokenAddress,
+        address[] refundAddresses,
+        address indexed caller
+    );
+    event TokensBridged(
+        uint256 indexed leafId,
+        uint256 indexed chainId,
+        uint256 amountToReturn,
+        address indexed l2TokenAddress,
+        address caller
+    );
 
     constructor(
+        address _crossDomainAdmin,
+        address _hubPool,
         address _wethAddress,
         uint64 _depositQuoteTimeBuffer,
         address timerAddress
     ) Testable(timerAddress) {
+        _setCrossDomainAdmin(_crossDomainAdmin);
+        _setHubPool(_hubPool);
         deploymentTime = uint64(getCurrentTime());
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         weth = WETH9Like(_wethAddress);
@@ -126,6 +156,18 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
+
+    function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
+        require(newCrossDomainAdmin != address(0), "Bad bridge router address");
+        crossDomainAdmin = newCrossDomainAdmin;
+        emit SetXDomainAdmin(crossDomainAdmin);
+    }
+
+    function _setHubPool(address newHubPool) internal {
+        require(newHubPool != address(0), "Bad hub pool address");
+        hubPool = newHubPool;
+        emit SetHubPool(hubPool);
+    }
 
     function _setEnableRoute(
         address originToken,
@@ -156,7 +198,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         address recipient,
         uint64 relayerFeePct,
         uint64 quoteTimestamp
-    ) public payable onlyEnabledRoute(originToken, destinationChainId) {
+    ) public payable onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct <= 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
@@ -210,7 +252,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 totalRelayAmount,
         uint256 maxTokensToSend,
         uint256 repaymentChain
-    ) public {
+    ) public nonReentrant {
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
@@ -244,11 +286,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
         uint256 maxTokensToSend,
         uint256 repaymentChain,
         bytes memory depositorSignature
-    )
-        public
-        // public methods but I couldn't figure out a way to pass this in without encounering a stack too deep error.
-        nonReentrant
-    {
+    ) public nonReentrant {
         // Grouping the signature validation logic into brackets to address stack too deep error.
         {
             // Depositor should have signed a hash of the relayer fee % to update to and information uniquely identifying
@@ -302,8 +340,59 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     function distributeRelayerRefund(
         uint256 relayerRefundId,
         MerkleLib.DestinationDistribution memory distributionLeaf,
-        bytes32[] memory inclusionProof
-    ) public {}
+        bytes32[] memory proof
+    ) public override nonReentrant {
+        // Check integrity of leaf structure:
+        require(distributionLeaf.chainId == chainId(), "Invalid chainId");
+        require(distributionLeaf.refundAddresses.length == distributionLeaf.refundAmounts.length, "invalid leaf");
+
+        // Grab distribution root stored at `relayerRefundId`.
+        RelayerRefund storage refund = relayerRefunds[relayerRefundId];
+
+        // Check that `inclusionProof` proves that `distributionLeaf` is contained within the distribution root.
+        // Note: This should revert if the `distributionRoot` is uninitialized.
+        require(MerkleLib.verifyRelayerDistribution(refund.distributionRoot, distributionLeaf, proof), "Bad Proof");
+
+        // Verify the leafId in the leaf has not yet been claimed.
+        require(!MerkleLib.isClaimed(refund.claimedBitmap, distributionLeaf.leafId), "Already claimed");
+
+        // Set leaf as claimed in bitmap.
+        MerkleLib.setClaimed(refund.claimedBitmap, distributionLeaf.leafId);
+
+        // For each relayerRefundAddress in relayerRefundAddresses, send the associated refundAmount for the L2 token address.
+        // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
+        for (uint32 i = 0; i < distributionLeaf.refundAmounts.length; i++) {
+            uint256 amount = distributionLeaf.refundAmounts[i];
+            if (amount > 0)
+                IERC20(distributionLeaf.l2TokenAddress).safeTransfer(distributionLeaf.refundAddresses[i], amount);
+        }
+
+        // If `distributionLeaf.amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back via
+        // chain-specific bridging method.
+        if (distributionLeaf.amountToReturn > 0) {
+            // Do we need to perform any check about the last time that funds were bridged from L2 to L1?
+            _bridgeTokensToHubPool(distributionLeaf);
+
+            emit TokensBridged(
+                distributionLeaf.leafId,
+                distributionLeaf.chainId,
+                distributionLeaf.amountToReturn,
+                distributionLeaf.l2TokenAddress,
+                msg.sender
+            );
+        }
+
+        emit DistributedRelayerRefund(
+            relayerRefundId,
+            distributionLeaf.leafId,
+            distributionLeaf.chainId,
+            distributionLeaf.amountToReturn,
+            distributionLeaf.refundAmounts,
+            distributionLeaf.l2TokenAddress,
+            distributionLeaf.refundAddresses,
+            msg.sender
+        );
+    }
 
     /**************************************
      *           VIEW FUNCTIONS           *
@@ -316,6 +405,8 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
+
+    function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal virtual;
 
     function _computeAmountPreFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
         return (1e18 * amount) / (1e18 - feesPct);

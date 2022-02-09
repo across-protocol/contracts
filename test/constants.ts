@@ -58,4 +58,10 @@ export const mockPoolRebalanceRoot = createRandomBytes32();
 
 export const mockDestinationDistributionRoot = createRandomBytes32();
 
+// Amount of tokens to seed SpokePool with at beginning of relayer refund distribution tests
+export const amountHeldByPool = amountToRelay.mul(4);
+
+// Amount of tokens to bridge back to L1 from SpokePool in relayer refund distribution tests
+export const amountToReturn = toWei("1");
+
 export const mockTreeRoot = createRandomBytes32();

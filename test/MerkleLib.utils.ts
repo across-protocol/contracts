@@ -1,10 +1,9 @@
 import { expect } from "chai";
 import { getParamType } from "./utils";
-import { merkleLibFixture } from "./MerkleLib.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import { ethers } from "hardhat";
 const { defaultAbiCoder, keccak256 } = ethers.utils;
-import { BigNumber, Signer, Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 
 export interface PoolRebalance {
   leafId: BigNumber;
@@ -22,6 +21,40 @@ export interface DestinationDistribution {
   l2TokenAddress: string;
   refundAddresses: string[];
   refundAmounts: BigNumber[];
+}
+
+export async function buildDestinationDistributionTree(destinationDistributions: DestinationDistribution[]) {
+  for (let i = 0; i < destinationDistributions.length; i++) {
+    // The 2 provided parallel arrays must be of equal length.
+    expect(destinationDistributions[i].refundAddresses.length).to.equal(
+      destinationDistributions[i].refundAmounts.length
+    );
+  }
+
+  const paramType = await getParamType("MerkleLib", "verifyRelayerDistribution", "distribution");
+  const hashFn = (input: DestinationDistribution) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  return new MerkleTree<DestinationDistribution>(destinationDistributions, hashFn);
+}
+
+export function buildDestinationDistributionLeafs(
+  destinationChainIds: number[],
+  amountsToReturn: BigNumber[],
+  l2Tokens: Contract[],
+  refundAddresses: string[][],
+  refundAmounts: BigNumber[][]
+): DestinationDistribution[] {
+  return Array(destinationChainIds.length)
+    .fill(0)
+    .map((_, i) => {
+      return {
+        leafId: BigNumber.from(i),
+        chainId: BigNumber.from(destinationChainIds[i]),
+        amountToReturn: amountsToReturn[i],
+        l2TokenAddress: l2Tokens[i].address,
+        refundAddresses: refundAddresses[i],
+        refundAmounts: refundAmounts[i],
+      };
+    });
 }
 
 export async function buildPoolRebalanceTree(poolRebalances: PoolRebalance[]) {

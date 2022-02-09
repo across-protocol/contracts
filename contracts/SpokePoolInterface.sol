@@ -1,10 +1,12 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-interface SpokePoolInterface {
-    function crossDomainAdmin() external returns (address);
+import "./MerkleLib.sol";
 
+interface SpokePoolInterface {
     function setCrossDomainAdmin(address newCrossDomainAdmin) external;
+
+    function setHubPool(address newHubPool) external;
 
     function setEnableRoute(
         address originToken,
@@ -15,4 +17,10 @@ interface SpokePoolInterface {
     function setDepositQuoteTimeBuffer(uint64 buffer) external;
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionProof) external;
+
+    function distributeRelayerRefund(
+        uint256 relayerRefundId,
+        MerkleLib.DestinationDistribution memory distributionLeaf,
+        bytes32[] memory inclusionProof
+    ) external;
 }
