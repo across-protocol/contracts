@@ -320,7 +320,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     function distributeRelayerRefund(
         uint256 relayerRefundId,
         MerkleLib.DestinationDistribution memory distributionLeaf,
-        bytes32[] memory inclusionProof
+        bytes32[] memory proof
     ) public override {
         // Check integrity of leaf structure:
         require(distributionLeaf.chainId == chainId(), "Invalid chainId");
@@ -331,10 +331,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Check that `inclusionProof` proves that `distributionLeaf` is contained within the distribution root.
         // Note: This should revert if the `distributionRoot` is uninitialized.
-        require(
-            MerkleLib.verifyRelayerDistribution(refund.distributionRoot, distributionLeaf, inclusionProof),
-            "Bad Proof"
-        );
+        require(MerkleLib.verifyRelayerDistribution(refund.distributionRoot, distributionLeaf, proof), "Bad Proof");
 
         // Verify the leafId in the leaf has not yet been claimed.
         require(!MerkleLib.isClaimed(refund.claimedBitmap, distributionLeaf.leafId), "Already claimed");
