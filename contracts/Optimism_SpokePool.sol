@@ -83,6 +83,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     }
 
     function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal override {
+        // TODO: Handle WETH token unwrapping
         IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
             distributionLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.

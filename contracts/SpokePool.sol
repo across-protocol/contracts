@@ -356,6 +356,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         if (distributionLeaf.amountToReturn > 0) {
             // Do we need to perform any check about the last time that funds were bridged from L2 to L1?
             _bridgeTokensToHubPool(distributionLeaf);
+
+            // TODO: Consider emitting an event standard to all implementations of this contract.
         }
 
         emit DistributedRelayerRefund(
