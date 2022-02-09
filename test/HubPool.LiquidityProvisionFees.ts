@@ -1,10 +1,7 @@
-import { expect } from "chai";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
-import { SignerWithAddress, seedWallet, toWei } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, seedWallet, toWei } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
-import { constructSimple1ChainTree } from "./MerkleLib.utils";
+import { constructSingleChainTree } from "./MerkleLib.utils";
 
 let hubPool: Contract, weth: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -31,7 +28,7 @@ describe("HubPool Liquidity Provision", function () {
     expect(pooledTokenInfoPreExecution.lastLpFeeUpdate).to.equal(await timer.getCurrentTime());
     expect(pooledTokenInfoPreExecution.isWeth).to.equal(true);
 
-    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSimple1ChainTree(weth);
+    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
 
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
@@ -51,7 +48,7 @@ describe("HubPool Liquidity Provision", function () {
     // Fees are designed to be attributed over a period of time so they dont all arrive on L1 as soon as the bundle is
     // executed. We can validate that fees are correctly smeared by attributing some and then moving time forward and
     // validating that key variable shift as a function of time.
-    const { leafs, tree } = await constructSimple1ChainTree(weth);
+    const { leafs, tree } = await constructSingleChainTree(weth);
 
     // Exchange rate current before any fees are attributed execution should be 1.
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));

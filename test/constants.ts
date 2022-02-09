@@ -1,8 +1,6 @@
 import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "./utils";
 
-console.log("A");
 export const amountToSeedWallets = toWei("1500");
-console.log("B");
 
 export const amountToLp = toWei("1000");
 
@@ -67,3 +65,5 @@ export const amountHeldByPool = amountToRelay.mul(4);
 export const amountToReturn = toWei("1");
 
 export const mockTreeRoot = createRandomBytes32();
+
+export const sampleL2Gas = 5000000;

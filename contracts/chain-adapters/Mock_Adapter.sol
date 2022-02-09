@@ -27,7 +27,5 @@ contract Mock_Adapter is Base_Adapter {
         address to
     ) external payable override onlyHubPool {
         emit RelayTokensCalled(l1Token, l2Token, amount, to, msg.sender);
-        // Pull the tokens from the caller to mock the actions of an L1 bridge pulling tokens.
-        IERC20(l1Token).transferFrom(msg.sender, address(this), amount);
     }
 }

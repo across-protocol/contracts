@@ -482,7 +482,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                IERC20(l1Tokens[i]).safeApprove(address(adapter), uint256(netSendAmounts[i]));
+                IERC20(l1Tokens[i]).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
                 adapter.relayTokens(
                     l1Tokens[i], // l1Token.
                     whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.

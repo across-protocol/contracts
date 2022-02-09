@@ -51,10 +51,13 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
-            l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "0x");
+            l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
             IERC20(l1Token).approve(address(l1StandardBridge), amount);
-            l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "0x");
+            l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
     }
+
+    // Added to enable the Optimism_Adapter to receive ETH. used when unwrapping WETH.
+    receive() external payable {}
 }
