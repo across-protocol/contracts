@@ -348,7 +348,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // of the specific distribution root containing the passed in leaf.
     function distributeRelayerRefund(
         uint256 relayerRefundId,
-        MerkleLib.DestinationDistribution memory distributionLeaf,
+        SpokePoolInterface.DestinationDistribution memory distributionLeaf,
         bytes32[] memory proof
     ) public override nonReentrant {
         // Check integrity of leaf structure:
@@ -415,7 +415,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal virtual;
+    function _bridgeTokensToHubPool(SpokePoolInterface.DestinationDistribution memory distributionLeaf)
+        internal
+        virtual;
 
     function _computeAmountPreFees(uint256 amount, uint256 feesPct) private pure returns (uint256) {
         return (1e18 * amount) / (1e18 - feesPct);

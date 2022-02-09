@@ -31,18 +31,18 @@ interface HubPoolInterface {
     function setBond(IERC20 newBondToken, uint256 newBondAmount) external;
 
     function setCrossChainContracts(
-        uint256 chainId,
-        AdapterInterface adapter,
+        uint256 l2ChainId,
+        address adapter,
         address spokePool
     ) external;
 
     function whitelistRoute(
+        uint256 destinationChainId,
         address originToken,
-        address destinationToken,
-        uint256 destinationChainId
+        address destinationToken
     ) external;
 
-    function enableL1TokenForLiquidityProvision(address l1Token) external;
+    function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) external;
 
     function disableL1TokenForLiquidityProvision(address l1Token) external;
 
@@ -54,7 +54,7 @@ interface HubPoolInterface {
         bool sendEth
     ) external;
 
-    function exchangeRateCurrent() external returns (uint256);
+    function exchangeRateCurrent(address l1Token) external returns (uint256);
 
     function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) external returns (uint256);
 

@@ -41,5 +41,5 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         _initializeRelayerRefund(relayerRepaymentDistributionRoot, relayDataRoot);
     }
 
-    function _bridgeTokensToHubPool(MerkleLib.DestinationDistribution memory distributionLeaf) internal override {}
+    function _bridgeTokensToHubPool(DestinationDistribution memory distributionLeaf) internal override {}
 }
