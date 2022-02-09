@@ -28,11 +28,7 @@ export async function getContractFactory(
     if (isFactoryOptions(signerOrFactoryOptions))
       throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
     try {
-      return new ethers.ContractFactory(
-        getAbi(name as any),
-        getBytecode(name as any),
-        signerOrFactoryOptions as Signer
-      );
+      return new ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
     } catch (_) {
       return await optimismContracts.getContractFactory(name, signerOrFactoryOptions);
     }
