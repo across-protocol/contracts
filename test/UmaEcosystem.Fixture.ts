@@ -1,7 +1,6 @@
-import { getContractFactory, utf8ToHex } from "./utils";
+import { getContractFactory, utf8ToHex, hre } from "./utils";
 import { refundProposalLiveness, zeroRawValue, identifier } from "./constants";
 import { interfaceName } from "@uma/common";
-import hre from "hardhat";
 
 export const umaEcosystemFixture = hre.deployments.createFixture(async ({ ethers }) => {
   const [signer] = await ethers.getSigners();

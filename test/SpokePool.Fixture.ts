@@ -1,16 +1,6 @@
 import { TokenRolesEnum } from "@uma/common";
-import { Contract, utils } from "ethers";
-import { getContractFactory, SignerWithAddress } from "./utils";
-import {
-  destinationChainId,
-  depositQuoteTimeBuffer,
-  amountToDeposit,
-  depositRelayerFeePct,
-  realizedLpFeePct,
-} from "./constants";
-import hre from "hardhat";
-
-const { defaultAbiCoder, keccak256 } = utils;
+import { getContractFactory, SignerWithAddress, Contract, hre, defaultAbiCoder, keccak256 } from "./utils";
+import * as consts from "./constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   const [deployerWallet] = await ethers.getSigners();
@@ -33,7 +23,7 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   // Deploy the pool
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(weth.address, depositQuoteTimeBuffer, timer.address);
+  ).deploy(weth.address, consts.depositQuoteTimeBuffer, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 });
@@ -47,7 +37,7 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   for (const route of routes) {
     await spokePool.setEnableRoute(
       route.originToken,
-      route.destinationChainId ? route.destinationChainId : destinationChainId,
+      route.destinationChainId ? route.destinationChainId : consts.destinationChainId,
       route.enabled !== undefined ? route.enabled : true
     );
   }
@@ -64,10 +54,10 @@ export async function deposit(
     .connect(depositor)
     .deposit(
       token.address,
-      destinationChainId,
-      amountToDeposit,
+      consts.destinationChainId,
+      consts.amountToDeposit,
       recipient.address,
-      depositRelayerFeePct,
+      consts.depositRelayerFeePct,
       currentSpokePoolTime
     );
 }
@@ -95,11 +85,11 @@ export function getRelayHash(
     depositor: _depositor,
     recipient: _recipient,
     destinationToken: _destinationToken,
-    realizedLpFeePct: _realizedLpFeePct || realizedLpFeePct.toString(),
-    relayerFeePct: _relayerFeePct || depositRelayerFeePct.toString(),
+    realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
+    relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
     originChainId: _originChainId.toString(),
-    relayAmount: _relayAmount || amountToDeposit.toString(),
+    relayAmount: _relayAmount || consts.amountToDeposit.toString(),
   };
   const relayDataValues = Object.values(relayData);
   const relayHash = keccak256(

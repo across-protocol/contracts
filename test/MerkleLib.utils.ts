@@ -1,10 +1,5 @@
-import { expect } from "chai";
-import { getParamType } from "./utils";
-import { merkleLibFixture } from "./MerkleLib.Fixture";
+import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256 } from "./utils";
 import { MerkleTree } from "../utils/MerkleTree";
-import { ethers } from "hardhat";
-const { defaultAbiCoder, keccak256 } = ethers.utils;
-import { BigNumber, Signer, Contract } from "ethers";
 
 export interface PoolRebalance {
   leafId: BigNumber;

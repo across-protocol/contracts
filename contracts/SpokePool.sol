@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "./MerkleLib.sol";
+import "./interfaces/WETH9.sol";
+
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "./MerkleLib.sol";
 
-interface WETH9Like {
-    function withdraw(uint256 wad) external;
-
-    function deposit() external payable;
-}
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title SpokePool
@@ -39,7 +36,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
-    WETH9Like public weth;
+    WETH9 public weth;
 
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
@@ -108,7 +105,7 @@ abstract contract SpokePool is Testable, Lockable, MultiCaller {
     ) Testable(timerAddress) {
         deploymentTime = uint64(getCurrentTime());
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
-        weth = WETH9Like(_wethAddress);
+        weth = WETH9(_wethAddress);
     }
 
     /****************************************

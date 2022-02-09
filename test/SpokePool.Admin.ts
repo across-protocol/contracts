@@ -1,7 +1,4 @@
-import { expect } from "chai";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
-import { SignerWithAddress } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress } from "./utils";
 import { spokePoolFixture } from "./SpokePool.Fixture";
 import { destinationChainId } from "./constants";
 

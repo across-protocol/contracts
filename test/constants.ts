@@ -1,6 +1,8 @@
 import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "./utils";
 
+console.log("A");
 export const amountToSeedWallets = toWei("1500");
+console.log("B");
 
 export const amountToLp = toWei("1000");
 

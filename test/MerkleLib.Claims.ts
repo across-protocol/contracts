@@ -1,6 +1,5 @@
-import { expect } from "chai";
 import { merkleLibFixture } from "./MerkleLib.Fixture";
-import { Contract, BigNumber } from "ethers";
+import { BigNumber, expect, Contract } from "./utils";
 
 let merkleLibTest: Contract;
 
