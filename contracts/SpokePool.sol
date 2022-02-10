@@ -102,6 +102,20 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient
     );
+    event DistributeRelaySlow(
+        bytes32 indexed relayHash,
+        uint256 totalRelayAmount,
+        uint256 totalFilledAmount,
+        uint256 fillAmount,
+        uint256 originChainId,
+        uint64 depositId,
+        uint64 relayerFeePct,
+        uint64 realizedLpFeePct,
+        address destinationToken,
+        address indexed caller,
+        address depositor,
+        address recipient
+    );
     event InitializedRelayerRefund(
         uint256 indexed relayerRefundId,
         bytes32 relayerRepaymentDistributionRoot,
@@ -263,7 +277,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         });
         bytes32 relayHash = _getRelayHash(relayData);
 
-        _fillRelay(relayHash, relayData, relayerFeePct, maxTokensToSend, repaymentChain);
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayerFeePct, maxTokensToSend, false);
+
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, relayerFeePct, relayData);
     }
 
     // We overload `fillRelay` logic to allow the relayer to optionally pass in an updated `relayerFeePct` and a signature
@@ -322,7 +338,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayAmount: totalRelayAmount
         });
         bytes32 relayHash = _getRelayHash(relayData);
-        _fillRelay(relayHash, relayData, newRelayerFeePct, maxTokensToSend, repaymentChain);
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, newRelayerFeePct, maxTokensToSend, false);
+
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, relayerFeePct, relayData);
     }
 
     function distributeRelaySlow(
@@ -334,11 +352,30 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 depositId,
         uint256 originChainId,
         uint256 totalRelayAmount,
-        uint256 maxTokensToSend,
-        uint256 repaymentChain,
         uint256 relayerRefundId,
-        bytes32[] memory inclusionProof
-    ) public {}
+        bytes32[] memory proof
+    ) public nonReentrant {
+        RelayData memory relayData = RelayData({
+            depositor: depositor,
+            recipient: recipient,
+            destinationToken: destinationToken,
+            realizedLpFeePct: realizedLpFeePct,
+            relayerFeePct: relayerFeePct,
+            depositId: depositId,
+            originChainId: originChainId,
+            relayAmount: totalRelayAmount
+        });
+
+        require(
+            MerkleLib.verifyRelayData(relayerRefunds[relayerRefundId].slowRelayFulfilmentRoot, relayData, proof),
+            "Invalid proof"
+        );
+
+        bytes32 relayHash = _getRelayHash(relayData);
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayerFeePct, type(uint256).max / 1e18, true);
+
+        _emitDistributeRelaySlow(relayHash, fillAmountPreFees, relayData);
+    }
 
     /**************************************
      *         DATA WORKER FUNCTIONS      *
@@ -462,8 +499,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         RelayData memory relayData,
         uint64 updatableRelayerFeePct,
         uint256 maxTokensToSend,
-        uint256 repaymentChain
-    ) internal {
+        bool isSlowRelay
+    ) internal returns (uint256 fillAmountPreFees) {
         // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
         // fees are just magic numbers. The important point is to prevent the total fee from being 100%, otherwise
         // computing the amount pre fees runs into divide-by-0 issues.
@@ -474,7 +511,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         require(relayFills[relayHash] < relayData.relayAmount, "relay filled");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
-        uint256 fillAmountPreFees = 0;
+        fillAmountPreFees = 0;
 
         // Adding brackets "stack too deep" solidity error.
         if (maxTokensToSend > 0) {
@@ -495,41 +532,60 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayFills[relayHash] += fillAmountPreFees;
             // If relay token is weth then unwrap and send eth.
             if (relayData.destinationToken == address(weth)) {
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                if (!isSlowRelay)
+                    IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
                 _unwrapWETHTo(payable(relayData.recipient), amountToSend);
                 // Else, this is a normal ERC20 token. Send to recipient.
-            } else IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
+            } else {
+                if (!isSlowRelay)
+                    IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
+                else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
+            }
         }
+    }
 
-        // Needed to resolve stack too deep compile-time error
-        _emitFillRelay(
-            FillRelayEventData(relayHash, relayData, updatableRelayerFeePct, fillAmountPreFees, repaymentChain)
+    function _emitFillRelay(
+        bytes32 relayHash,
+        uint256 fillAmount,
+        uint256 repaymentChain,
+        uint64 relayerFeePct,
+        RelayData memory relayData
+    ) internal {
+        emit FilledRelay(
+            relayHash,
+            relayData.relayAmount,
+            relayFills[relayHash],
+            fillAmount,
+            repaymentChain,
+            relayData.originChainId,
+            relayData.depositId,
+            relayerFeePct,
+            relayData.realizedLpFeePct,
+            relayData.destinationToken,
+            msg.sender,
+            relayData.depositor,
+            relayData.recipient
         );
     }
 
-    struct FillRelayEventData {
-        bytes32 relayHash;
-        RelayData relayData;
-        uint64 updatableRelayerFeePct;
-        uint256 fillAmountPreFees;
-        uint256 repaymentChain;
-    }
-
-    function _emitFillRelay(FillRelayEventData memory eventData) internal {
-        emit FilledRelay(
-            eventData.relayHash,
-            eventData.relayData.relayAmount,
-            relayFills[eventData.relayHash],
-            eventData.fillAmountPreFees,
-            eventData.repaymentChain,
-            eventData.relayData.originChainId,
-            eventData.relayData.depositId,
-            eventData.updatableRelayerFeePct,
-            eventData.relayData.realizedLpFeePct,
-            eventData.relayData.destinationToken,
+    function _emitDistributeRelaySlow(
+        bytes32 relayHash,
+        uint256 fillAmount,
+        RelayData memory relayData
+    ) internal {
+        emit DistributeRelaySlow(
+            relayHash,
+            relayData.relayAmount,
+            relayFills[relayHash],
+            fillAmount,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.relayerFeePct,
+            relayData.realizedLpFeePct,
+            relayData.destinationToken,
             msg.sender,
-            eventData.relayData.depositor,
-            eventData.relayData.recipient
+            relayData.depositor,
+            relayData.recipient
         );
     }
 
