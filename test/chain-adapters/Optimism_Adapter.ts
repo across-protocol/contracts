@@ -1,5 +1,5 @@
 import { sampleL2Gas, amountToLp, mockTreeRoot, refundProposalLiveness, bondAmount } from "./../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress, createMock } from "../utils";
+import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake } from "../utils";
 import { getContractFactory, seedWallet } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
@@ -26,8 +26,8 @@ describe("Optimism Chain Adapter", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, amountToLp);
     await dai.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
 
-    l1StandardBridge = await createMock("L1StandardBridge");
-    l1CrossDomainMessenger = await createMock("L1CrossDomainMessenger");
+    l1StandardBridge = await createFake("L1StandardBridge");
+    l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
 
     optimismAdapter = await (
       await getContractFactory("Optimism_Adapter", owner)
@@ -54,7 +54,6 @@ describe("Optimism Chain Adapter", function () {
 
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositERC20To).to.have.been.calledOnce; // One token transfer over the bridge.
-
     expect(l1StandardBridge.depositETHTo).to.have.callCount(0); // No ETH transfers over the bridge.
     const expectedErc20L1ToL2BridgeParams = [dai.address, l2Dai, mockSpoke.address, tokensSendToL2, sampleL2Gas, "0x"];
     expect(l1StandardBridge.depositERC20To).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
