@@ -90,7 +90,7 @@ export async function getParamType(contractName: string, functionName: string, p
   return fragment!.inputs.find((input) => input.name === paramName) || "";
 }
 
-export async function createMock(contractName: string) {
+export async function createFake(contractName: string) {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
   return await smock.fake(contractFactory);
 }

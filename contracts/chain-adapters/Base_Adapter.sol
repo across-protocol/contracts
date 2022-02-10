@@ -18,5 +18,6 @@ abstract contract Base_Adapter is Ownable, AdapterInterface {
 
     function setHubPool(address _hubPool) public onlyOwner {
         hubPool = _hubPool;
+        emit HubPoolChanged(_hubPool);
     }
 }

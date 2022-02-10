@@ -18,9 +18,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
     uint32 public l2GasLimit = 5_000_000;
 
-    WETH9 l1Weth;
+    WETH9 public l1Weth;
 
-    IL1StandardBridge l1StandardBridge;
+    IL1StandardBridge public l1StandardBridge;
 
     constructor(
         WETH9 _l1Weth,
@@ -38,6 +38,7 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
 
     function relayMessage(address target, bytes memory message) external payable override onlyHubPool {
         sendCrossDomainMessage(target, uint32(l2GasLimit), message);
+        emit MessageRelayed(target, message);
     }
 
     // TODO: we should look into using delegate call as this current implementation assumes the caller transfers the
@@ -56,6 +57,7 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
             IERC20(l1Token).approve(address(l1StandardBridge), amount);
             l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
+        emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
     // Added to enable the Optimism_Adapter to receive ETH. used when unwrapping WETH.
