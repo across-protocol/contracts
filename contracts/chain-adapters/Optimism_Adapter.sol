@@ -12,8 +12,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @notice Sends cross chain messages Optimism L2 network.
- * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
- * BridgeAdmin can call cross-chain administrative functions on the L2 SpokePool via this messenger.
+ * @dev This contract's owner should be set to the some multisig or admin contract. The Owner can simply set the L2 gas
+ * and the HubPool. The HubPool is the only contract that can relay tokens and messages over the bridge.
  */
 contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
     uint32 public l2GasLimit = 5_000_000;
