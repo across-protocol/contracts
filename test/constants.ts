@@ -65,3 +65,5 @@ export const amountHeldByPool = amountToRelay.mul(4);
 export const amountToReturn = toWei("1");
 
 export const mockTreeRoot = createRandomBytes32();
+
+export const sampleL2Gas = 5000000;

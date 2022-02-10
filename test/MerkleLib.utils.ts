@@ -1,10 +1,6 @@
-import { expect } from "chai";
-import { getParamType, toBNWei } from "./utils";
-import { MerkleTree } from "../utils/MerkleTree";
+import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "./utils";
 import { repaymentChainId } from "./constants";
-import { ethers } from "hardhat";
-const { defaultAbiCoder, keccak256 } = ethers.utils;
-import { BigNumber, Contract } from "ethers";
+import { MerkleTree } from "../utils/MerkleTree";
 
 export interface PoolRebalance {
   leafId: BigNumber;
@@ -93,11 +89,11 @@ export function buildPoolRebalanceLeafs(
     });
 }
 
-export async function constructSimple1ChainTree(token: Contract, scalingSize = 1) {
+export async function constructSingleChainTree(token: Contract, scalingSize = 1, _repaymentChainId = repaymentChainId) {
   const tokensSendToL2 = toBNWei(100 * scalingSize);
   const realizedLpFees = toBNWei(10 * scalingSize);
   const leafs = buildPoolRebalanceLeafs(
-    [repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
+    [_repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
     [token], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.
     [[tokensSendToL2]], // netSendAmounts.

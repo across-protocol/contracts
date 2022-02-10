@@ -1,8 +1,4 @@
-import { expect } from "chai";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
-
-import { SignerWithAddress, toBNWei, seedWallet, createRandomBytes32 } from "./utils";
+import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { buildPoolRebalanceTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
@@ -88,7 +84,7 @@ describe("HubPool Relayer Refund Execution", function () {
   });
   it("Execution rejects leaf claim before liveness passed", async function () {
     const { leafs, tree } = await constructSimpleTree();
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
 
     // Set time 10 seconds before expiration. Should revert.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness - 10);
@@ -104,7 +100,7 @@ describe("HubPool Relayer Refund Execution", function () {
 
   it("Execution rejects invalid leafs", async function () {
     const { leafs, tree } = await constructSimpleTree();
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
 
     // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
@@ -117,7 +113,7 @@ describe("HubPool Relayer Refund Execution", function () {
 
   it("Execution rejects double claimed leafs", async function () {
     const { leafs, tree } = await constructSimpleTree();
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), createRandomBytes32());
+    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.

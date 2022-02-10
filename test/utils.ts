@@ -1,8 +1,13 @@
-import { zeroAddress } from "./constants";
+import { expect } from "chai";
+import * as chai from "chai";
 import { getBytecode, getAbi } from "@uma/contracts-node";
+import * as optimismContracts from "@eth-optimism/contracts";
+import hre from "hardhat";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 import { FactoryOptions } from "hardhat/types";
+import { smock, FakeContract } from "@defi-wonderland/smock";
+chai.use(smock.matchers);
 
 export interface SignerWithAddress extends Signer {
   address: string;
@@ -18,11 +23,15 @@ export async function getContractFactory(
 ): Promise<ContractFactory> {
   try {
     return await ethers.getContractFactory(name, signerOrFactoryOptions);
-  } catch (error) {
+  } catch (_) {
     // If it does not exist then try find the contract in the UMA core package.
     if (isFactoryOptions(signerOrFactoryOptions))
       throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
-    return new ethers.ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
+    try {
+      return new ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
+    } catch (_) {
+      return await optimismContracts.getContractFactory(name, signerOrFactoryOptions);
+    }
   }
 }
 
@@ -76,7 +85,16 @@ export function randomAddress() {
 }
 
 export async function getParamType(contractName: string, functionName: string, paramName: string) {
-  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(zeroAddress));
+  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
   const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
   return fragment!.inputs.find((input) => input.name === paramName) || "";
 }
+
+export async function createFake(contractName: string) {
+  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
+  return await smock.fake(contractFactory);
+}
+
+const { defaultAbiCoder, keccak256 } = ethers.utils;
+
+export { expect, Contract, ethers, hre, BigNumber, defaultAbiCoder, keccak256, FakeContract };
