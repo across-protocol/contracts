@@ -55,7 +55,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     struct RelayerRefund {
-        // Merkle root of slow relays
+        // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
         bytes32 slowRelayFulfilmentRoot;
         // Merkle root of relayer refunds.
         bytes32 distributionRoot;

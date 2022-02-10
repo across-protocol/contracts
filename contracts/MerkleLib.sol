@@ -37,8 +37,6 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution)));
     }
 
-    // TODO: imported RelayData for expedience. These structs should either all go in their source files or all go in this lib.
-    // It seems like them all going in their source files makes sense?
     /**
      * @notice Verifies that a distribution is contained within a merkle root.
      * @param root the merkle root.
