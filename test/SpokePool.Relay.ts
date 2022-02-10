@@ -21,14 +21,7 @@ describe("SpokePool Relayer Logic", async function () {
     await weth.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
 
     // Whitelist origin token => destination chain ID routes:
-    await enableRoutes(spokePool, [
-      {
-        originToken: erc20.address,
-      },
-      {
-        originToken: weth.address,
-      },
-    ]);
+    await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
   });
   it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
     const { relayHash, relayData, relayDataValues } = getRelayHash(
