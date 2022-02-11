@@ -8,19 +8,23 @@ import "../interfaces/WETH9.sol";
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
+import "@uma/core/contracts/common/implementation/Lockable.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @notice Sends cross chain messages Optimism L2 network.
- * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
- * BridgeAdmin can call cross-chain administrative functions on the L2 SpokePool via this messenger.
+ * @dev This contract's owner should be set to the some multisig or admin contract. The Owner can simply set the L2 gas
+ * and the HubPool. The HubPool is the only contract that can relay tokens and messages over the bridge.
  */
-contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
+contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled, Lockable {
     uint32 public l2GasLimit = 5_000_000;
 
     WETH9 public l1Weth;
 
     IL1StandardBridge public l1StandardBridge;
+
+    event L2GasLimitSet(uint32 newGasLimit);
 
     constructor(
         WETH9 _l1Weth,
@@ -34,21 +38,20 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
 
     function setL2GasLimit(uint32 _l2GasLimit) public onlyOwner {
         l2GasLimit = _l2GasLimit;
+        emit L2GasLimitSet(l2GasLimit);
     }
 
-    function relayMessage(address target, bytes memory message) external payable override onlyHubPool {
+    function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
         sendCrossDomainMessage(target, uint32(l2GasLimit), message);
         emit MessageRelayed(target, message);
     }
 
-    // TODO: we should look into using delegate call as this current implementation assumes the caller transfers the
-    // tokens first to this contract. This will work with eth based transfers and for now we'll ignore it.
     function relayTokens(
         address l1Token,
         address l2Token,
         uint256 amount,
         address to
-    ) external payable override onlyHubPool {
+    ) external payable override nonReentrant onlyHubPool {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
