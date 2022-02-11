@@ -26,7 +26,8 @@ describe("HubPool Relayer Refund Dispute", function () {
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
-        consts.mockDestinationDistributionRoot
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot
       );
 
     const preCallAncillaryData = await hubPool._getRefundProposalAncillaryData();
@@ -67,7 +68,8 @@ describe("HubPool Relayer Refund Dispute", function () {
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
-        consts.mockDestinationDistributionRoot
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot
       );
 
     await hubPool.setCurrentTime(Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness + 1);

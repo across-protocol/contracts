@@ -1,4 +1,4 @@
-import { PoolRebalance, DestinationDistribution } from "./MerkleLib.utils";
+import { PoolRebalanceLeaf, DestinationDistributionLeaf } from "./MerkleLib.utils";
 import { merkleLibFixture } from "./MerkleLib.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import { expect, randomBigNumber, randomAddress, getParamType, defaultAbiCoder } from "./utils";
@@ -11,8 +11,8 @@ describe("MerkleLib Proofs", async function () {
     ({ merkleLibTest } = await merkleLibFixture());
   });
 
-  it("PoolRebalance Proof", async function () {
-    const poolRebalances: PoolRebalance[] = [];
+  it("PoolRebalanceLeaf Proof", async function () {
+    const poolRebalanceLeafs: PoolRebalanceLeaf[] = [];
     const numRebalances = 101;
     for (let i = 0; i < numRebalances; i++) {
       const numTokens = 10;
@@ -26,7 +26,7 @@ describe("MerkleLib Proofs", async function () {
         netSendAmounts.push(randomBigNumber());
         runningBalances.push(randomBigNumber());
       }
-      poolRebalances.push({
+      poolRebalanceLeafs.push({
         leafId: BigNumber.from(i),
         chainId: randomBigNumber(),
         l1Tokens,
@@ -37,22 +37,22 @@ describe("MerkleLib Proofs", async function () {
     }
 
     // Remove the last element.
-    const invalidPoolRebalance = poolRebalances.pop()!;
+    const invalidPoolRebalanceLeaf = poolRebalanceLeafs.pop()!;
 
     const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
-    const hashFn = (input: PoolRebalance) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const merkleTree = new MerkleTree<PoolRebalance>(poolRebalances, hashFn);
+    const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const merkleTree = new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
 
     const root = merkleTree.getHexRoot();
-    const proof = merkleTree.getHexProof(poolRebalances[34]);
-    expect(await merkleLibTest.verifyPoolRebalance(root, poolRebalances[34], proof)).to.equal(true);
+    const proof = merkleTree.getHexProof(poolRebalanceLeafs[34]);
+    expect(await merkleLibTest.verifyPoolRebalance(root, poolRebalanceLeafs[34], proof)).to.equal(true);
 
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
-    expect(() => merkleTree.getHexProof(invalidPoolRebalance)).to.throw();
-    expect(await merkleLibTest.verifyPoolRebalance(root, invalidPoolRebalance, proof)).to.equal(false);
+    expect(() => merkleTree.getHexProof(invalidPoolRebalanceLeaf)).to.throw();
+    expect(await merkleLibTest.verifyPoolRebalance(root, invalidPoolRebalanceLeaf, proof)).to.equal(false);
   });
-  it("DestinationDistributionProof", async function () {
-    const destinationDistributions: DestinationDistribution[] = [];
+  it("DestinationDistributionLeafProof", async function () {
+    const destinationDistributionLeafs: DestinationDistributionLeaf[] = [];
     const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
     for (let i = 0; i < numDistributions; i++) {
       const numAddresses = 10;
@@ -62,7 +62,7 @@ describe("MerkleLib Proofs", async function () {
         refundAddresses.push(randomAddress());
         refundAmounts.push(randomBigNumber());
       }
-      destinationDistributions.push({
+      destinationDistributionLeafs.push({
         leafId: BigNumber.from(i),
         chainId: randomBigNumber(),
         amountToReturn: randomBigNumber(),
@@ -73,18 +73,20 @@ describe("MerkleLib Proofs", async function () {
     }
 
     // Remove the last element.
-    const invalidDestinationDistribution = destinationDistributions.pop()!;
+    const invalidDestinationDistributionLeaf = destinationDistributionLeafs.pop()!;
 
     const paramType = await getParamType("MerkleLib", "verifyRelayerDistribution", "distribution");
-    const hashFn = (input: DestinationDistribution) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const merkleTree = new MerkleTree<DestinationDistribution>(destinationDistributions, hashFn);
+    const hashFn = (input: DestinationDistributionLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const merkleTree = new MerkleTree<DestinationDistributionLeaf>(destinationDistributionLeafs, hashFn);
 
     const root = merkleTree.getHexRoot();
-    const proof = merkleTree.getHexProof(destinationDistributions[14]);
-    expect(await merkleLibTest.verifyRelayerDistribution(root, destinationDistributions[14], proof)).to.equal(true);
+    const proof = merkleTree.getHexProof(destinationDistributionLeafs[14]);
+    expect(await merkleLibTest.verifyRelayerDistribution(root, destinationDistributionLeafs[14], proof)).to.equal(true);
 
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
-    expect(() => merkleTree.getHexProof(invalidDestinationDistribution)).to.throw();
-    expect(await merkleLibTest.verifyRelayerDistribution(root, invalidDestinationDistribution, proof)).to.equal(false);
+    expect(() => merkleTree.getHexProof(invalidDestinationDistributionLeaf)).to.throw();
+    expect(await merkleLibTest.verifyRelayerDistribution(root, invalidDestinationDistributionLeaf, proof)).to.equal(
+      false
+    );
   });
 });

@@ -1,9 +1,7 @@
 import { TokenRolesEnum } from "@uma/common";
-import { getContractFactory, randomAddress, toBN, fromWei } from "./utils";
+import { getContractFactory, randomAddress, toBN, fromWei, hre, Contract, Signer } from "./utils";
 
-import { bondAmount, refundProposalLiveness, finalFee, identifier, repaymentChainId } from "./constants";
-import { Contract, Signer } from "ethers";
-import hre from "hardhat";
+import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId } from "./constants";
 
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 

@@ -23,7 +23,8 @@ describe("HubPool Relayer Refund Initialization", function () {
           consts.mockBundleEvaluationBlockNumbers,
           consts.mockPoolRebalanceLeafCount,
           consts.mockPoolRebalanceRoot,
-          consts.mockDestinationDistributionRoot
+          consts.mockDestinationDistributionRoot,
+          consts.mockSlowRelayFulfillmentRoot
         )
     )
       .to.emit(hubPool, "InitiateRefundRequested")
@@ -33,6 +34,7 @@ describe("HubPool Relayer Refund Initialization", function () {
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceRoot,
         consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot,
         dataWorker.address
       );
     // Balances of the hubPool should have incremented by the bond and the dataWorker should have decremented by the bond.
@@ -56,7 +58,8 @@ describe("HubPool Relayer Refund Initialization", function () {
           consts.mockBundleEvaluationBlockNumbers,
           consts.mockPoolRebalanceLeafCount,
           consts.mockPoolRebalanceRoot,
-          consts.mockDestinationDistributionRoot
+          consts.mockDestinationDistributionRoot,
+          consts.mockSlowRelayFulfillmentRoot
         )
     ).to.be.revertedWith("Active request has unclaimed leafs");
   });

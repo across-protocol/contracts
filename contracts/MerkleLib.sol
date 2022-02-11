@@ -2,56 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "./SpokePoolInterface.sol";
+import "./HubPoolInterface.sol";
 
 /**
  * @notice Library to help with merkle roots, proofs, and claims.
  */
 library MerkleLib {
-    // TODO: some of these data structures can be moved out if convenient.
-    // This data structure is used in the settlement process on L1.
-    // Each PoolRebalance structure is responsible for balancing a single chain's SpokePool across all tokens.
-    struct PoolRebalance {
-        // Used as the index in the bitmap to track whether this leaf has been executed or not.
-        uint256 leafId;
-        // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
-        uint256 chainId;
-        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Tokens` field.
-        // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
-        address[] l1Tokens;
-        uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
-        // This array is grouped with the two above, and it represents the amount to send or request back from the
-        // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
-        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
-        // when the rules indicate that a rebalancing action should occur. When a rebalance does not occur,
-        // runningBalances for this token should change by the total relays - deposits in this bundle. When a rebalance
-        // does occur, runningBalances should be set to zero for this token and the netSendAmounts should be set to the
-        // previous runningBalances + relays - deposits in this bundle.
-        int256[] netSendAmounts;
-        // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
-        // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
-
-        // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
-        int256[] runningBalances;
-    }
-
-    // This leaf is meant to be decoded in the SpokePool in order to pay out individual relayers for this bundle.
-    struct DestinationDistribution {
-        // Used as the index in the bitmap to track whether this leaf has been executed or not.
-        uint256 leafId;
-        // Used to verify that this is being decoded on the correct chainId.
-        uint256 chainId;
-        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalance netSendAmount that is
-        // negative. This is just that value inverted.
-        uint256 amountToReturn;
-        // The associated L2TokenAddress that these claims apply to.
-        address l2TokenAddress;
-        // These two arrays must be the same length and are parallel arrays. They should be order by refundAddresses.
-        // This array designates each address that must be refunded.
-        address[] refundAddresses;
-        // This array designates how much each of those addresses should be refunded.
-        uint256[] refundAmounts;
-    }
-
     /**
      * @notice Verifies that a repayment is contained within a merkle root.
      * @param root the merkle root.
@@ -60,7 +17,7 @@ library MerkleLib {
      */
     function verifyPoolRebalance(
         bytes32 root,
-        PoolRebalance memory rebalance,
+        HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(rebalance)));
@@ -74,10 +31,24 @@ library MerkleLib {
      */
     function verifyRelayerDistribution(
         bytes32 root,
-        DestinationDistribution memory distribution,
+        SpokePoolInterface.DestinationDistributionLeaf memory distribution,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution)));
+    }
+
+    /**
+     * @notice Verifies that a distribution is contained within a merkle root.
+     * @param root the merkle root.
+     * @param slowRelayFulfillment the relayData fulfullment struct.
+     * @param proof the merkle proof.
+     */
+    function verifySlowRelayFulfillment(
+        bytes32 root,
+        SpokePoolInterface.RelayData memory slowRelayFulfillment,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
     // The following functions are primarily copied from

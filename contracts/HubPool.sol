@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
+import "./HubPoolInterface.sol";
 import "./interfaces/AdapterInterface.sol";
 import "./interfaces/LpTokenFactoryInterface.sol";
 import "./interfaces/WETH9.sol";
@@ -22,7 +23,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-contract HubPool is Testable, Lockable, MultiCaller, Ownable {
+contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -31,6 +32,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
+        bytes32 slowRelayFulfillmentRoot;
         uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
@@ -115,6 +117,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed destinationDistributionRoot,
+        bytes32 slowRelayFulfillmentRoot,
         address indexed proposer
     );
     event RelayerRefundExecuted(
@@ -276,7 +279,8 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         uint256[] memory bundleEvaluationBlockNumbers,
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
-        bytes32 destinationDistributionRoot
+        bytes32 destinationDistributionRoot,
+        bytes32 slowRelayFulfillmentRoot
     ) public noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
@@ -288,6 +292,7 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         refundRequest.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         refundRequest.poolRebalanceRoot = poolRebalanceRoot;
         refundRequest.destinationDistributionRoot = destinationDistributionRoot;
+        refundRequest.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
         refundRequest.proposer = msg.sender;
 
         // Pull bondAmount of bondToken from the caller.
@@ -299,11 +304,12 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
             destinationDistributionRoot,
+            slowRelayFulfillmentRoot,
             msg.sender
         );
     }
 
-    function executeRelayerRefund(MerkleLib.PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) public {
+    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
@@ -508,7 +514,11 @@ contract HubPool is Testable, Lockable, MultiCaller, Ownable {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
         adapter.relayMessage(
             crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
-            abi.encodeWithSignature("initializeRelayerRefund(bytes32)", refundRequest.destinationDistributionRoot) // message
+            abi.encodeWithSignature(
+                "initializeRelayerRefund(bytes32,bytes32)",
+                refundRequest.destinationDistributionRoot,
+                refundRequest.slowRelayFulfillmentRoot
+            ) // message
         );
     }
 

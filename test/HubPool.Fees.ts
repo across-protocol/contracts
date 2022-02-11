@@ -1,7 +1,7 @@
 import { toWei, toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
-import { buildPoolRebalanceTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
 
 let hubPool: Contract, weth: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -16,7 +16,7 @@ async function constructSimpleTree() {
     [[wethSendToL2]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
     [[wethSendToL2]] // runningBalances. Set to 100 ETH and 1000 DAI.
   );
-  const tree = await buildPoolRebalanceTree(leafs);
+  const tree = await buildPoolRebalanceLeafTree(leafs);
 
   return { wethSendToL2, wethAttributeToLps, leafs, tree };
 }
@@ -45,7 +45,9 @@ describe("HubPool LP fees", function () {
 
     const { wethSendToL2, wethAttributeToLps, leafs, tree } = await constructSimpleTree();
 
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
 
@@ -68,7 +70,9 @@ describe("HubPool LP fees", function () {
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.eq(toWei(1));
     await hubPool.exchangeRateCurrent(weth.address);
 
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
 

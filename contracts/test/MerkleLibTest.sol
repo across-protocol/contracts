@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "../MerkleLib.sol";
+import "../HubPoolInterface.sol";
+import "../SpokePoolInterface.sol";
 
 /**
  * @notice Contract to test the MerkleLib.
@@ -13,7 +15,7 @@ contract MerkleLibTest {
 
     function verifyPoolRebalance(
         bytes32 root,
-        MerkleLib.PoolRebalance memory rebalance,
+        HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
@@ -21,10 +23,18 @@ contract MerkleLibTest {
 
     function verifyRelayerDistribution(
         bytes32 root,
-        MerkleLib.DestinationDistribution memory distribution,
+        SpokePoolInterface.DestinationDistributionLeaf memory distribution,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleLib.verifyRelayerDistribution(root, distribution, proof);
+    }
+
+    function verifySlowRelayFulfillment(
+        bytes32 root,
+        SpokePoolInterface.RelayData memory slowRelayFulfillment,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
+        return MerkleLib.verifySlowRelayFulfillment(root, slowRelayFulfillment, proof);
     }
 
     function isClaimed(uint256 index) public view returns (bool) {
