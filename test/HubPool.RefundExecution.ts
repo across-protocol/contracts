@@ -1,7 +1,7 @@
 import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafLeafs } from "./MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
 
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -12,7 +12,7 @@ let l2Weth: string, l2Dai: string;
 async function constructSimpleTree() {
   const wethToSendToL2 = toBNWei(100);
   const daiToSend = toBNWei(1000);
-  const leafs = buildPoolRebalanceLeafLeafs(
+  const leafs = buildPoolRebalanceLeafs(
     [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
     [weth, dai], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[toBNWei(1), toBNWei(10)]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
@@ -45,7 +45,7 @@ describe("HubPool Relayer Refund Execution", function () {
 
     await hubPool.connect(dataWorker).initiateRelayerRefund(
       [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
-      1, // poolRebalanceLeafLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
+      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
       tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
       consts.mockDestinationDistributionRoot, // destinationDistributionRoot. Not relevant for this test.
       consts.mockSlowRelayFulfillmentRoot // Mock root because this isn't relevant for this test.
@@ -84,7 +84,7 @@ describe("HubPool Relayer Refund Execution", function () {
     expect(relayTokensEvents[1].args?.to).to.equal(mockSpoke.address);
 
     // Check the leaf count was decremented correctly.
-    expect((await hubPool.refundRequest()).unclaimedPoolRebalanceLeafLeafCount).to.equal(0);
+    expect((await hubPool.refundRequest()).unclaimedPoolRebalanceLeafCount).to.equal(0);
   });
   it("Execution rejects leaf claim before liveness passed", async function () {
     const { leafs, tree } = await constructSimpleTree();

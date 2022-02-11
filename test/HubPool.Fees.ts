@@ -1,7 +1,7 @@
 import { toWei, toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafLeafs } from "./MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
 
 let hubPool: Contract, weth: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -9,7 +9,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 async function constructSimpleTree() {
   const wethSendToL2 = toBNWei(100);
   const wethAttributeToLps = toBNWei(10);
-  const leafs = buildPoolRebalanceLeafLeafs(
+  const leafs = buildPoolRebalanceLeafs(
     [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
     [weth], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[wethAttributeToLps]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.

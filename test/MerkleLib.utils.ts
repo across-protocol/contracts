@@ -35,7 +35,7 @@ export async function buildDestinationDistributionLeafTree(
   return new MerkleTree<DestinationDistributionLeaf>(destinationDistributionLeafs, hashFn);
 }
 
-export function buildDestinationDistributionLeafLeafs(
+export function buildDestinationDistributionLeafs(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
   l2Tokens: Contract[],
@@ -70,7 +70,7 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalan
   return new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
 }
 
-export function buildPoolRebalanceLeafLeafs(
+export function buildPoolRebalanceLeafs(
   destinationChainIds: number[],
   l1Tokens: Contract[],
   bundleLpFees: BigNumber[][],
@@ -94,7 +94,7 @@ export function buildPoolRebalanceLeafLeafs(
 export async function constructSingleChainTree(token: Contract, scalingSize = 1, _repaymentChainId = repaymentChainId) {
   const tokensSendToL2 = toBNWei(100 * scalingSize);
   const realizedLpFees = toBNWei(10 * scalingSize);
-  const leafs = buildPoolRebalanceLeafLeafs(
+  const leafs = buildPoolRebalanceLeafs(
     [_repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
     [token], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.

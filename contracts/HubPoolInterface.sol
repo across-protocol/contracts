@@ -60,13 +60,13 @@ interface HubPoolInterface {
 
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
-        uint64 poolRebalanceLeafLeafCount,
+        uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot
     ) external;
 
-    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeafLeaf, bytes32[] memory proof) external;
+    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
 
     function disputeRelayerRefund() external;
 }

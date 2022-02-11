@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress, seedContract, toBN } from "./utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./SpokePool.Fixture";
-import { buildDestinationDistributionLeafLeafs, buildDestinationDistributionLeafTree } from "./MerkleLib.utils";
+import { buildDestinationDistributionLeafs, buildDestinationDistributionLeafTree } from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -13,7 +13,7 @@ let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWith
 let destinationChainId: number;
 
 async function constructSimpleTree(l2Token: Contract, destinationChainId: number) {
-  const leafs = buildDestinationDistributionLeafLeafs(
+  const leafs = buildDestinationDistributionLeafs(
     [destinationChainId, destinationChainId], // Destination chain ID.
     [consts.amountToReturn, toBN(0)], // amountToReturn.
     [l2Token, l2Token], // l2Token.
