@@ -13,17 +13,17 @@ contract MerkleLibTest {
 
     uint256 public claimedBitMap1D;
 
-    function verifyPoolRebalance(
+    function verifyPoolRebalanceLeaf(
         bytes32 root,
-        HubPoolInterface.PoolRebalance memory rebalance,
+        HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
+        return MerkleLib.verifyPoolRebalanceLeaf(root, rebalance, proof);
     }
 
     function verifyRelayerDistribution(
         bytes32 root,
-        SpokePoolInterface.DestinationDistribution memory distribution,
+        SpokePoolInterface.DestinationDistributionLeaf memory distribution,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleLib.verifyRelayerDistribution(root, distribution, proof);

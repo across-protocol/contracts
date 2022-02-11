@@ -29,7 +29,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     struct RefundRequest {
         uint64 requestExpirationTimestamp;
-        uint64 unclaimedPoolRebalanceLeafCount;
+        uint64 unclaimedPoolRebalanceLeafLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
         bytes32 slowRelayFulfillmentRoot;
@@ -113,7 +113,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     event InitiateRefundRequested(
         uint64 requestExpirationTimestamp,
-        uint64 unclaimedPoolRebalanceLeafCount,
+        uint64 unclaimedPoolRebalanceLeafLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed destinationDistributionRoot,
@@ -133,7 +133,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
     modifier noActiveRequests() {
-        require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
+        require(refundRequest.unclaimedPoolRebalanceLeafLeafCount == 0, "Active request has unclaimed leafs");
         _;
     }
 
@@ -277,19 +277,19 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // initiateRelayerRefund can't be called again until all leafs are executed.
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
-        uint64 poolRebalanceLeafCount,
+        uint64 poolRebalanceLeafLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot
     ) public noActiveRequests {
-        require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
+        require(poolRebalanceLeafLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
 
         delete refundRequest; // Remove the existing information relating to the previous relayer refund request.
 
         refundRequest.requestExpirationTimestamp = requestExpirationTimestamp;
-        refundRequest.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
+        refundRequest.unclaimedPoolRebalanceLeafLeafCount = poolRebalanceLeafLeafCount;
         refundRequest.poolRebalanceRoot = poolRebalanceRoot;
         refundRequest.destinationDistributionRoot = destinationDistributionRoot;
         refundRequest.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
@@ -300,7 +300,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         emit InitiateRefundRequested(
             requestExpirationTimestamp,
-            poolRebalanceLeafCount,
+            poolRebalanceLeafLeafCount,
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
             destinationDistributionRoot,
@@ -309,42 +309,45 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) public {
+    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeafLeaf, bytes32[] memory proof) public {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
-        // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
-        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
+        // Verify the leafId in the poolRebalanceLeafLeaf has not yet been claimed.
+        require(!MerkleLib.isClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeafLeaf.leafId), "Already claimed");
 
         // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
-        require(MerkleLib.verifyPoolRebalance(refundRequest.poolRebalanceRoot, poolRebalanceLeaf, proof), "Bad Proof");
+        require(
+            MerkleLib.verifyPoolRebalanceLeaf(refundRequest.poolRebalanceRoot, poolRebalanceLeafLeaf, proof),
+            "Bad Proof"
+        );
 
         // Set the leafId in the claimed bitmap.
-        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeaf.leafId);
+        refundRequest.claimedBitMap = MerkleLib.setClaimed1D(refundRequest.claimedBitMap, poolRebalanceLeafLeaf.leafId);
 
-        // Decrement the unclaimedPoolRebalanceLeafCount.
-        refundRequest.unclaimedPoolRebalanceLeafCount--;
+        // Decrement the unclaimedPoolRebalanceLeafLeafCount.
+        refundRequest.unclaimedPoolRebalanceLeafLeafCount--;
 
         _sendTokensToChainAndUpdatePooledTokenTrackers(
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.bundleLpFees
+            poolRebalanceLeafLeaf.chainId,
+            poolRebalanceLeafLeaf.l1Tokens,
+            poolRebalanceLeafLeaf.netSendAmounts,
+            poolRebalanceLeafLeaf.bundleLpFees
         );
-        _executeRelayerRefundOnChain(poolRebalanceLeaf.chainId);
+        _executeRelayerRefundOnChain(poolRebalanceLeafLeaf.chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
         //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
-        if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
+        if (refundRequest.unclaimedPoolRebalanceLeafLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
         emit RelayerRefundExecuted(
-            poolRebalanceLeaf.leafId,
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.bundleLpFees,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.runningBalances,
+            poolRebalanceLeafLeaf.leafId,
+            poolRebalanceLeafLeaf.chainId,
+            poolRebalanceLeafLeaf.l1Tokens,
+            poolRebalanceLeafLeaf.bundleLpFees,
+            poolRebalanceLeafLeaf.netSendAmounts,
+            poolRebalanceLeafLeaf.runningBalances,
             msg.sender
         );
     }
@@ -414,8 +417,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         ancillaryData = AncillaryData.appendKeyValueUint(
             ancillaryData,
-            "unclaimedPoolRebalanceLeafCount",
-            refundRequest.unclaimedPoolRebalanceLeafCount
+            "unclaimedPoolRebalanceLeafLeafCount",
+            refundRequest.unclaimedPoolRebalanceLeafLeafCount
         );
         ancillaryData = AncillaryData.appendKeyValueBytes32(
             ancillaryData,

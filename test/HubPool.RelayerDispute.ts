@@ -24,7 +24,7 @@ describe("HubPool Relayer Refund Dispute", function () {
       .connect(dataWorker)
       .initiateRelayerRefund(
         consts.mockBundleEvaluationBlockNumbers,
-        consts.mockPoolRebalanceLeafCount,
+        consts.mockPoolRebalanceLeafLeafCount,
         consts.mockPoolRebalanceRoot,
         consts.mockDestinationDistributionRoot,
         consts.mockSlowRelayFulfillmentRoot
@@ -37,7 +37,7 @@ describe("HubPool Relayer Refund Dispute", function () {
     // Data should be deleted from the contracts refundRequest struct.
     const refundRequest = await hubPool.refundRequest();
     expect(refundRequest.requestExpirationTimestamp).to.equal(0);
-    expect(refundRequest.unclaimedPoolRebalanceLeafCount).to.equal(0);
+    expect(refundRequest.unclaimedPoolRebalanceLeafLeafCount).to.equal(0);
     expect(refundRequest.poolRebalanceRoot).to.equal(consts.zeroBytes32);
     expect(refundRequest.destinationDistributionRoot).to.equal(consts.zeroBytes32);
     expect(refundRequest.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
@@ -54,7 +54,7 @@ describe("HubPool Relayer Refund Dispute", function () {
     expect(parsedAncillaryData?.requestExpirationTimestamp).to.equal(
       Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness
     );
-    expect(parsedAncillaryData?.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
+    expect(parsedAncillaryData?.unclaimedPoolRebalanceLeafLeafCount).to.equal(consts.mockPoolRebalanceLeafLeafCount);
     expect("0x" + parsedAncillaryData?.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
     expect("0x" + parsedAncillaryData?.destinationDistributionRoot).to.equal(consts.mockDestinationDistributionRoot);
     expect(parsedAncillaryData?.claimedBitMap).to.equal(0);
@@ -66,7 +66,7 @@ describe("HubPool Relayer Refund Dispute", function () {
       .connect(dataWorker)
       .initiateRelayerRefund(
         consts.mockBundleEvaluationBlockNumbers,
-        consts.mockPoolRebalanceLeafCount,
+        consts.mockPoolRebalanceLeafLeafCount,
         consts.mockPoolRebalanceRoot,
         consts.mockDestinationDistributionRoot,
         consts.mockSlowRelayFulfillmentRoot

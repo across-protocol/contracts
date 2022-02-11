@@ -3,12 +3,12 @@ pragma solidity ^0.8.0;
 
 interface SpokePoolInterface {
     // This leaf is meant to be decoded in the SpokePool in order to pay out individual relayers for this bundle.
-    struct DestinationDistribution {
+    struct DestinationDistributionLeaf {
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint256 leafId;
         // Used to verify that this is being decoded on the correct chainId.
         uint256 chainId;
-        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalance netSendAmount that is
+        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
         // negative. This is just that value inverted.
         uint256 amountToReturn;
         // The associated L2TokenAddress that these claims apply to.
@@ -59,7 +59,7 @@ interface SpokePoolInterface {
 
     function distributeRelayerRefund(
         uint256 relayerRefundId,
-        DestinationDistribution memory distributionLeaf,
+        DestinationDistributionLeaf memory distributionLeaf,
         bytes32[] memory inclusionProof
     ) external;
 }

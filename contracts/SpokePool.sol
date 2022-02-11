@@ -389,7 +389,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // of the specific distribution root containing the passed in leaf.
     function distributeRelayerRefund(
         uint256 relayerRefundId,
-        SpokePoolInterface.DestinationDistribution memory distributionLeaf,
+        SpokePoolInterface.DestinationDistributionLeaf memory distributionLeaf,
         bytes32[] memory proof
     ) public override nonReentrant {
         // Check integrity of leaf structure:
@@ -456,7 +456,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _bridgeTokensToHubPool(SpokePoolInterface.DestinationDistribution memory distributionLeaf)
+    function _bridgeTokensToHubPool(SpokePoolInterface.DestinationDistributionLeaf memory distributionLeaf)
         internal
         virtual;
 

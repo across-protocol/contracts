@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress, seedContract, toBN } from "./utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./SpokePool.Fixture";
-import { buildDestinationDistributionLeafs, buildDestinationDistributionTree } from "./MerkleLib.utils";
+import { buildDestinationDistributionLeafLeafs, buildDestinationDistributionLeafTree } from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -13,7 +13,7 @@ let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWith
 let destinationChainId: number;
 
 async function constructSimpleTree(l2Token: Contract, destinationChainId: number) {
-  const leafs = buildDestinationDistributionLeafs(
+  const leafs = buildDestinationDistributionLeafLeafs(
     [destinationChainId, destinationChainId], // Destination chain ID.
     [consts.amountToReturn, toBN(0)], // amountToReturn.
     [l2Token, l2Token], // l2Token.
@@ -23,7 +23,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
   const leafsRefundAmount = leafs
     .map((leaf) => leaf.refundAmounts.reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
     .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
-  const tree = await buildDestinationDistributionTree(leafs);
+  const tree = await buildDestinationDistributionLeafTree(leafs);
 
   return {
     leafs,

@@ -21,7 +21,7 @@ describe("HubPool Relayer Refund Initialization", function () {
         .connect(dataWorker)
         .initiateRelayerRefund(
           consts.mockBundleEvaluationBlockNumbers,
-          consts.mockPoolRebalanceLeafCount,
+          consts.mockPoolRebalanceLeafLeafCount,
           consts.mockPoolRebalanceRoot,
           consts.mockDestinationDistributionRoot,
           consts.mockSlowRelayFulfillmentRoot
@@ -30,7 +30,7 @@ describe("HubPool Relayer Refund Initialization", function () {
       .to.emit(hubPool, "InitiateRefundRequested")
       .withArgs(
         expectedRequestExpirationTimestamp,
-        consts.mockPoolRebalanceLeafCount,
+        consts.mockPoolRebalanceLeafLeafCount,
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceRoot,
         consts.mockDestinationDistributionRoot,
@@ -43,7 +43,7 @@ describe("HubPool Relayer Refund Initialization", function () {
 
     const refundRequest = await hubPool.refundRequest();
     expect(refundRequest.requestExpirationTimestamp).to.equal(expectedRequestExpirationTimestamp);
-    expect(refundRequest.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
+    expect(refundRequest.unclaimedPoolRebalanceLeafLeafCount).to.equal(consts.mockPoolRebalanceLeafLeafCount);
     expect(refundRequest.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
     expect(refundRequest.destinationDistributionRoot).to.equal(consts.mockDestinationDistributionRoot);
     expect(refundRequest.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
@@ -56,7 +56,7 @@ describe("HubPool Relayer Refund Initialization", function () {
         .connect(dataWorker)
         .initiateRelayerRefund(
           consts.mockBundleEvaluationBlockNumbers,
-          consts.mockPoolRebalanceLeafCount,
+          consts.mockPoolRebalanceLeafLeafCount,
           consts.mockPoolRebalanceRoot,
           consts.mockDestinationDistributionRoot,
           consts.mockSlowRelayFulfillmentRoot

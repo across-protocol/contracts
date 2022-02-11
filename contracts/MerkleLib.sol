@@ -15,9 +15,9 @@ library MerkleLib {
      * @param rebalance the rebalance struct.
      * @param proof the merkle proof.
      */
-    function verifyPoolRebalance(
+    function verifyPoolRebalanceLeaf(
         bytes32 root,
-        HubPoolInterface.PoolRebalance memory rebalance,
+        HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(rebalance)));
@@ -31,7 +31,7 @@ library MerkleLib {
      */
     function verifyRelayerDistribution(
         bytes32 root,
-        SpokePoolInterface.DestinationDistribution memory distribution,
+        SpokePoolInterface.DestinationDistributionLeaf memory distribution,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution)));

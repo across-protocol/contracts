@@ -52,7 +52,7 @@ export const zeroRawValue = { rawValue: "0" };
 
 export const mockBundleEvaluationBlockNumbers = [1, 2, 3];
 
-export const mockPoolRebalanceLeafCount = 5;
+export const mockPoolRebalanceLeafLeafCount = 5;
 
 export const mockPoolRebalanceRoot = createRandomBytes32();
 

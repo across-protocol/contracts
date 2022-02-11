@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/AdapterInterface.sol";
 
 interface HubPoolInterface {
-    struct PoolRebalance {
+    struct PoolRebalanceLeaf {
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
@@ -60,13 +60,13 @@ interface HubPoolInterface {
 
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
-        uint64 poolRebalanceLeafCount,
+        uint64 poolRebalanceLeafLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot
     ) external;
 
-    function executeRelayerRefund(PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) external;
+    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeafLeaf, bytes32[] memory proof) external;
 
     function disputeRelayerRefund() external;
 }
