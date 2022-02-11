@@ -40,15 +40,15 @@ library MerkleLib {
     /**
      * @notice Verifies that a distribution is contained within a merkle root.
      * @param root the merkle root.
-     * @param relayData the relayData struct.
+     * @param slowRelayFulfillment the relayData fulfullment struct.
      * @param proof the merkle proof.
      */
-    function verifyRelayData(
+    function verifySlowRelayFulfillment(
         bytes32 root,
-        SpokePoolInterface.RelayData memory relayData,
+        SpokePoolInterface.RelayData memory slowRelayFulfillment,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(relayData)));
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
     // The following functions are primarily copied from

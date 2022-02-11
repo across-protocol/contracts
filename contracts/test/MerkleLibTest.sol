@@ -29,6 +29,14 @@ contract MerkleLibTest {
         return MerkleLib.verifyRelayerDistribution(root, distribution, proof);
     }
 
+    function verifySlowRelayFulfillment(
+        bytes32 root,
+        SpokePoolInterface.RelayData memory slowRelayFulfillment,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
+        return MerkleLib.verifySlowRelayFulfillment(root, slowRelayFulfillment, proof);
+    }
+
     function isClaimed(uint256 index) public view returns (bool) {
         return MerkleLib.isClaimed(claimedBitMap, index);
     }

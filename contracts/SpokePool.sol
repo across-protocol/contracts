@@ -16,6 +16,7 @@ import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
 import "./SpokePoolInterface.sol";
+import "hardhat/console.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -371,7 +372,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         });
 
         require(
-            MerkleLib.verifyRelayData(relayerRefunds[relayerRefundId].slowRelayFulfillmentRoot, relayData, proof),
+            MerkleLib.verifySlowRelayFulfillment(
+                relayerRefunds[relayerRefundId].slowRelayFulfillmentRoot,
+                relayData,
+                proof
+            ),
             "Invalid proof"
         );
 
