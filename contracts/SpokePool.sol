@@ -376,7 +376,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
 
         bytes32 relayHash = _getRelayHash(relayData);
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayerFeePct, type(uint256).max / 1e18, true);
+
+        // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
+        // funds in all cases.
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayerFeePct, relayData.relayAmount, true);
 
         _emitDistributeRelaySlow(relayHash, fillAmountPreFees, relayData);
     }
@@ -536,11 +539,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayFills[relayHash] += fillAmountPreFees;
             // If relay token is weth then unwrap and send eth.
             if (relayData.destinationToken == address(weth)) {
+                // Note: WETH is already in the contract in the slow relay case.
                 if (!isSlowRelay)
                     IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
                 _unwrapWETHTo(payable(relayData.recipient), amountToSend);
                 // Else, this is a normal ERC20 token. Send to recipient.
             } else {
+                // Note: send token directly from the contract to the user in the slow relay case.
                 if (!isSlowRelay)
                     IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
                 else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
