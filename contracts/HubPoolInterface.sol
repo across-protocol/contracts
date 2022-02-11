@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./chain-adapters/AdapterInterface.sol";
+import "./interfaces/AdapterInterface.sol";
 
 interface HubPoolInterface {
     struct PoolRebalance {

@@ -1,7 +1,7 @@
 import { TokenRolesEnum } from "@uma/common";
 import { getContractFactory, randomAddress, toBN, fromWei } from "./utils";
 
-import { bondAmount, refundProposalLiveness, finalFee, identifier, repaymentChainId } from "./constants";
+import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId } from "./constants";
 import { Contract, Signer } from "ethers";
 import hre from "hardhat";
 
@@ -41,8 +41,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await hubPool.setRefundProposalLiveness(refundProposalLiveness);
 
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
-  const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
-  await mockAdapter.transferOwnership(hubPool.address);
+  const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
   const mockSpoke = await (
     await getContractFactory("MockSpokePool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, 0, parentFixtureOutput.timer.address);

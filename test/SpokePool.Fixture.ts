@@ -1,16 +1,7 @@
 import { TokenRolesEnum } from "@uma/common";
-import { BigNumber, Contract, utils } from "ethers";
-import { getContractFactory, SignerWithAddress } from "./utils";
-import {
-  destinationChainId,
-  depositQuoteTimeBuffer,
-  amountToDeposit,
-  depositRelayerFeePct,
-  realizedLpFeePct,
-} from "./constants";
-import hre from "hardhat";
 
-const { defaultAbiCoder, keccak256, arrayify } = utils;
+import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "./utils";
+import * as consts from "./constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
@@ -34,7 +25,7 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const spokePool = await (
     await getContractFactory("MockSpokePool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, depositQuoteTimeBuffer, timer.address);
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, consts.depositQuoteTimeBuffer, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 });
@@ -48,7 +39,7 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   for (const route of routes) {
     await spokePool.setEnableRoute(
       route.originToken,
-      route.destinationChainId ? route.destinationChainId : destinationChainId,
+      route.destinationChainId ? route.destinationChainId : consts.destinationChainId,
       route.enabled !== undefined ? route.enabled : true
     );
   }
@@ -65,10 +56,10 @@ export async function deposit(
     .connect(depositor)
     .deposit(
       token.address,
-      destinationChainId,
-      amountToDeposit,
+      consts.destinationChainId,
+      consts.amountToDeposit,
       recipient.address,
-      depositRelayerFeePct,
+      consts.depositRelayerFeePct,
       currentSpokePoolTime
     );
 }
@@ -96,14 +87,14 @@ export function getRelayHash(
     depositor: _depositor,
     recipient: _recipient,
     destinationToken: _destinationToken,
-    realizedLpFeePct: _realizedLpFeePct || realizedLpFeePct.toString(),
-    relayerFeePct: _relayerFeePct || depositRelayerFeePct.toString(),
+    realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
+    relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
     originChainId: _originChainId.toString(),
-    relayAmount: _relayAmount || amountToDeposit.toString(),
+    relayAmount: _relayAmount || consts.amountToDeposit.toString(),
   };
   const relayDataValues = Object.values(relayData);
-  const relayHash = keccak256(
+  const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
       ["address", "address", "address", "uint64", "uint64", "uint64", "uint256", "uint256"],
       relayDataValues
@@ -127,13 +118,13 @@ export async function modifyRelayHelper(
   originChainId: string,
   depositor: SignerWithAddress
 ): Promise<{ messageHash: string; signature: string }> {
-  const messageHash = keccak256(
+  const messageHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
       ["string", "uint64", "uint64", "uint256"],
       ["ACROSS-V2-FEE-1.0", modifiedRelayerFeePct, depositId, originChainId]
     )
   );
-  const signature = await depositor.signMessage(arrayify(messageHash));
+  const signature = await depositor.signMessage(ethers.utils.arrayify(messageHash));
 
   return {
     messageHash,

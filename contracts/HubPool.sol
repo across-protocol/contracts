@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
-import "./chain-adapters/AdapterInterface.sol";
 import "./HubPoolInterface.sol";
+import "./interfaces/AdapterInterface.sol";
 import "./interfaces/LpTokenFactoryInterface.sol";
+import "./interfaces/WETH9.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
@@ -21,12 +22,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-
-interface WETH9Like {
-    function withdraw(uint256 wad) external;
-
-    function deposit() external payable;
-}
 
 contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
@@ -228,7 +223,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
 
-        if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
+        if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         emit LiquidityAdded(l1Token, l1TokenAmount, lpTokensToMint, msg.sender);
@@ -449,7 +444,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         if (address(to).isContract()) {
             IERC20(address(wethAddress)).safeTransfer(to, amount);
         } else {
-            WETH9Like(wethAddress).withdraw(amount);
+            WETH9(wethAddress).withdraw(amount);
             to.transfer(amount);
         }
     }
@@ -493,7 +488,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                IERC20(l1Tokens[i]).safeApprove(address(adapter), uint256(netSendAmounts[i]));
+                IERC20(l1Tokens[i]).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
                 adapter.relayTokens(
                     l1Tokens[i], // l1Token.
                     whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.

@@ -1,11 +1,8 @@
 import { PoolRebalance, DestinationDistribution } from "./MerkleLib.utils";
-import { expect } from "chai";
 import { merkleLibFixture } from "./MerkleLib.Fixture";
-import { Contract, BigNumber } from "ethers";
 import { MerkleTree } from "../utils/MerkleTree";
-import { ethers } from "hardhat";
-const { defaultAbiCoder, keccak256 } = ethers.utils;
-import { randomBigNumber, randomAddress, getParamType } from "./utils";
+import { expect, randomBigNumber, randomAddress, getParamType, defaultAbiCoder } from "./utils";
+import { keccak256, Contract, BigNumber } from "./utils";
 
 let merkleLibTest: Contract;
 

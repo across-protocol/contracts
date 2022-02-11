@@ -1,9 +1,5 @@
-import { expect } from "chai";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
-import { ZERO_ADDRESS } from "@uma/common";
-import { getContractFactory, SignerWithAddress, createRandomBytes32, seedWallet } from "./utils";
-import { destinationChainId, bondAmount } from "./constants";
+import { getContractFactory, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { destinationChainId, bondAmount, zeroAddress, mockTreeRoot, mockSlowRelayFulfillmentRoot } from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract;
@@ -16,11 +12,11 @@ describe("HubPool Admin functions", function () {
   });
 
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {
-    expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(ZERO_ADDRESS);
+    expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(zeroAddress);
     await hubPool.enableL1TokenForLiquidityProvision(weth.address, true);
 
     const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
-    expect(pooledTokenStruct.lpToken).to.not.equal(ZERO_ADDRESS);
+    expect(pooledTokenStruct.lpToken).to.not.equal(zeroAddress);
     expect(pooledTokenStruct.isEnabled).to.equal(true);
     expect(pooledTokenStruct.isWeth).to.equal(true);
     expect(pooledTokenStruct.lastLpFeeUpdate).to.equal(Number(await hubPool.getCurrentTime()));
@@ -60,13 +56,7 @@ describe("HubPool Admin functions", function () {
   it("Can not change the bond token and amount during a pending refund", async function () {
     await seedWallet(owner, [], weth, bondAmount);
     await weth.approve(hubPool.address, bondAmount);
-    await hubPool.initiateRelayerRefund(
-      [1, 2, 3],
-      5,
-      createRandomBytes32(),
-      createRandomBytes32(),
-      createRandomBytes32()
-    );
+    await hubPool.initiateRelayerRefund([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
     await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("Active request has unclaimed leafs");
   });
 });
