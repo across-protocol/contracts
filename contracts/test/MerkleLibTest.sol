@@ -13,12 +13,12 @@ contract MerkleLibTest {
 
     uint256 public claimedBitMap1D;
 
-    function verifyPoolRebalanceLeaf(
+    function verifyPoolRebalance(
         bytes32 root,
         HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyPoolRebalanceLeaf(root, rebalance, proof);
+        return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
     }
 
     function verifyRelayerDistribution(

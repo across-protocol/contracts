@@ -39,17 +39,17 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidPoolRebalanceLeaf = poolRebalanceLeafs.pop()!;
 
-    const paramType = await getParamType("MerkleLib", "verifyPoolRebalanceLeaf", "rebalance");
+    const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
     const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
     const merkleTree = new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(poolRebalanceLeafs[34]);
-    expect(await merkleLibTest.verifyPoolRebalanceLeaf(root, poolRebalanceLeafs[34], proof)).to.equal(true);
+    expect(await merkleLibTest.verifyPoolRebalance(root, poolRebalanceLeafs[34], proof)).to.equal(true);
 
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     expect(() => merkleTree.getHexProof(invalidPoolRebalanceLeaf)).to.throw();
-    expect(await merkleLibTest.verifyPoolRebalanceLeaf(root, invalidPoolRebalanceLeaf, proof)).to.equal(false);
+    expect(await merkleLibTest.verifyPoolRebalance(root, invalidPoolRebalanceLeaf, proof)).to.equal(false);
   });
   it("DestinationDistributionLeafProof", async function () {
     const destinationDistributionLeafs: DestinationDistributionLeaf[] = [];

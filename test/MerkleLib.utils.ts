@@ -65,7 +65,7 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalan
       .to.equal(poolRebalanceLeafs[i].runningBalances.length);
   }
 
-  const paramType = await getParamType("MerkleLib", "verifyPoolRebalanceLeaf", "rebalance");
+  const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
   const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
   return new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
 }

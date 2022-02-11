@@ -15,7 +15,7 @@ library MerkleLib {
      * @param rebalance the rebalance struct.
      * @param proof the merkle proof.
      */
-    function verifyPoolRebalanceLeaf(
+    function verifyPoolRebalance(
         bytes32 root,
         HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
