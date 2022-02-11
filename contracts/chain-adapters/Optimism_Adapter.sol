@@ -8,6 +8,8 @@ import "../interfaces/WETH9.sol";
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
+import "@uma/core/contracts/common/implementation/Lockable.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -15,7 +17,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev This contract's owner should be set to the some multisig or admin contract. The Owner can simply set the L2 gas
  * and the HubPool. The HubPool is the only contract that can relay tokens and messages over the bridge.
  */
-contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
+contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled, Lockable {
     uint32 public l2GasLimit = 5_000_000;
 
     WETH9 public l1Weth;
@@ -39,7 +41,7 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
         emit L2GasLimitSet(l2GasLimit);
     }
 
-    function relayMessage(address target, bytes memory message) external payable override onlyHubPool {
+    function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
         sendCrossDomainMessage(target, uint32(l2GasLimit), message);
         emit MessageRelayed(target, message);
     }
@@ -49,7 +51,7 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
         address l2Token,
         uint256 amount,
         address to
-    ) external payable override onlyHubPool {
+    ) external payable override nonReentrant onlyHubPool {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);

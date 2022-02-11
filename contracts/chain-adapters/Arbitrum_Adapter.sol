@@ -5,6 +5,8 @@ import "./Base_Adapter.sol";
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
 
+import "@uma/core/contracts/common/implementation/Lockable.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ArbitrumL1InboxLike {
@@ -31,7 +33,7 @@ interface ArbitrumL1ERC20GatewayLike {
     ) external payable returns (bytes memory);
 }
 
-contract Arbitrum_Adapter is Base_Adapter {
+contract Arbitrum_Adapter is Base_Adapter, Lockable {
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
     uint32 public l2GasLimit = 5_000_000;
@@ -59,7 +61,7 @@ contract Arbitrum_Adapter is Base_Adapter {
 
     event L2GasPriceSet(uint256 newL2GasPrice);
 
-    event l2RefundL2AddressSet(address newL2RefundL2Address);
+    event L2RefundL2AddressSet(address newL2RefundL2Address);
 
     constructor(
         address _hubPool,
@@ -89,11 +91,11 @@ contract Arbitrum_Adapter is Base_Adapter {
 
     function setL2RefundL2Address(address _l2RefundL2Address) public onlyOwner {
         l2RefundL2Address = _l2RefundL2Address;
-        emit l2RefundL2AddressSet(l2RefundL2Address);
+        emit L2RefundL2AddressSet(l2RefundL2Address);
     }
 
-    function relayMessage(address target, bytes memory message) external payable override onlyHubPool {
-        uint256 requiredL1CallValue = l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
+    function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
+        uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
 
         l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
@@ -115,9 +117,13 @@ contract Arbitrum_Adapter is Base_Adapter {
         address l2Token, // l2Token is unused for Arbitrum.
         uint256 amount,
         address to
-    ) external payable override onlyHubPool {
+    ) external payable override nonReentrant onlyHubPool {
         l1ERC20Gateway.outboundTransfer(l1Token, to, amount, l2GasLimit, l2GasPrice, "");
         emit TokensRelayed(l1Token, l2Token, amount, to);
+    }
+
+    function getL1CallValue() public view returns (uint256) {
+        return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
     }
 
     receive() external payable {}
