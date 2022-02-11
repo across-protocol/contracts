@@ -56,7 +56,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     struct RelayerRefund {
         // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
-        bytes32 slowRelayFulfilmentRoot;
+        bytes32 slowRelayFulfillmentRoot;
         // Merkle root of relayer refunds.
         bytes32 distributionRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
@@ -119,7 +119,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     event InitializedRelayerRefund(
         uint256 indexed relayerRefundId,
         bytes32 relayerRepaymentDistributionRoot,
-        bytes32 slowRelayFulfilmentRoot
+        bytes32 slowRelayFulfillmentRoot
     );
     event DistributedRelayerRefund(
         uint256 indexed relayerRefundId,
@@ -340,7 +340,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, newRelayerFeePct, maxTokensToSend, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, relayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, newRelayerFeePct, relayData);
     }
 
     function distributeRelaySlow(
@@ -367,7 +367,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         });
 
         require(
-            MerkleLib.verifyRelayData(relayerRefunds[relayerRefundId].slowRelayFulfilmentRoot, relayData, proof),
+            MerkleLib.verifyRelayData(relayerRefunds[relayerRefundId].slowRelayFulfillmentRoot, relayData, proof),
             "Invalid proof"
         );
 
@@ -484,14 +484,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // specifics are left to the implementor of this abstract contract.
     // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
     // can be called to execute each leaf in the root.
-    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayFulfilmentRoot)
+    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayFulfillmentRoot)
         internal
     {
         uint256 relayerRefundId = relayerRefunds.length;
         RelayerRefund storage relayerRefund = relayerRefunds.push();
         relayerRefund.distributionRoot = relayerRepaymentDistributionRoot;
-        relayerRefund.slowRelayFulfilmentRoot = slowRelayFulfilmentRoot;
-        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionRoot, slowRelayFulfilmentRoot);
+        relayerRefund.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
+        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionRoot, slowRelayFulfillmentRoot);
     }
 
     function _fillRelay(

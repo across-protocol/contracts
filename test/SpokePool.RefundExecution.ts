@@ -46,7 +46,8 @@ describe("SpokePool Relayer Refund Execution", function () {
 
     // Store new tree.
     await spokePool.connect(dataWorker).initializeRelayerRefund(
-      tree.getHexRoot() // distribution root. Generated from the merkle tree constructed before.
+      tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayFulfillmentRoot
     );
 
     // Distribute the first leaf.
@@ -84,7 +85,8 @@ describe("SpokePool Relayer Refund Execution", function () {
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).initializeRelayerRefund(
-      tree.getHexRoot() // distribution root. Generated from the merkle tree constructed before.
+      tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayFulfillmentRoot
     );
 
     // Take the valid root but change some element within it. This will change the hash of the leaf
@@ -101,7 +103,8 @@ describe("SpokePool Relayer Refund Execution", function () {
     // Create tree for another chain ID
     const { leafs, tree } = await constructSimpleTree(destErc20, 13371);
     await spokePool.connect(dataWorker).initializeRelayerRefund(
-      tree.getHexRoot() // distribution root. Generated from the merkle tree constructed before.
+      tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayFulfillmentRoot
     );
 
     // Root is valid and leaf is contained in tree, but chain ID doesn't match pool's chain ID.
@@ -111,7 +114,8 @@ describe("SpokePool Relayer Refund Execution", function () {
   it("Execution rejects double claimed leafs", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).initializeRelayerRefund(
-      tree.getHexRoot() // distribution root. Generated from the merkle tree constructed before.
+      tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayFulfillmentRoot
     );
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.

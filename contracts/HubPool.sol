@@ -37,7 +37,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
-        bytes32 slowRelayFulfilmentRoot;
+        bytes32 slowRelayFulfillmentRoot;
         uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
@@ -122,7 +122,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed destinationDistributionRoot,
-        bytes32 slowRelayFulfilmentRoot,
+        bytes32 slowRelayFulfillmentRoot,
         address indexed proposer
     );
     event RelayerRefundExecuted(
@@ -285,7 +285,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
-        bytes32 slowRelayFulfilmentRoot
+        bytes32 slowRelayFulfillmentRoot
     ) public noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
@@ -297,7 +297,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         refundRequest.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         refundRequest.poolRebalanceRoot = poolRebalanceRoot;
         refundRequest.destinationDistributionRoot = destinationDistributionRoot;
-        refundRequest.slowRelayFulfilmentRoot = slowRelayFulfilmentRoot;
+        refundRequest.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
         refundRequest.proposer = msg.sender;
 
         // Pull bondAmount of bondToken from the caller.
@@ -309,7 +309,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
             destinationDistributionRoot,
-            slowRelayFulfilmentRoot,
+            slowRelayFulfillmentRoot,
             msg.sender
         );
     }
@@ -522,7 +522,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             abi.encodeWithSignature(
                 "initializeRelayerRefund(bytes32,bytes32)",
                 refundRequest.destinationDistributionRoot,
-                refundRequest.slowRelayFulfilmentRoot
+                refundRequest.slowRelayFulfillmentRoot
             ) // message
         );
     }

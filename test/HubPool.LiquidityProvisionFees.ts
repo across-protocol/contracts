@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { SignerWithAddress, seedWallet, toWei } from "./utils";
+import { SignerWithAddress, seedWallet, toWei, createRandomBytes32 } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { constructSimple1ChainTree } from "./MerkleLib.utils";
@@ -33,7 +33,9 @@ describe("HubPool Liquidity Provision", function () {
 
     const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSimple1ChainTree(weth);
 
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
 
@@ -57,7 +59,9 @@ describe("HubPool Liquidity Provision", function () {
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));
     await hubPool.exchangeRateCurrent(weth.address);
 
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
 

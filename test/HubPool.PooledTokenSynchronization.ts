@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
-import { SignerWithAddress, toBNWei, seedWallet, toWei } from "./utils";
+import { SignerWithAddress, toBNWei, seedWallet, toWei, createRandomBytes32 } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 import { constructSimple1ChainTree } from "./MerkleLib.utils";
@@ -36,7 +36,9 @@ describe("HubPool Pooled Token Synchronization", function () {
 
     // Execute a relayer refund. Check counters move accordingly.
     const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSimple1ChainTree(weth);
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
     expect((await hubPool.pooledTokens(weth.address)).liquidReserves).to.equal(consts.amountToLp.sub(tokensSendToL2));
@@ -98,7 +100,9 @@ describe("HubPool Pooled Token Synchronization", function () {
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(0);
     // Execute a relayer refund. Check counters move accordingly.
     const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSimple1ChainTree(weth);
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
 
     // Liquidity is not used until the relayerRefund is executed(i.e "pending" reserves are not considered).
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(0);
@@ -167,7 +171,9 @@ describe("HubPool Pooled Token Synchronization", function () {
 
     // Execute a relay refund bundle to increase the liquidity utilization.
     const { leafs, tree } = await constructSimple1ChainTree(weth);
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
 
     // Liquidity is not used until the relayerRefund is executed(i.e "pending" reserves are not considered).
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(0);
@@ -181,7 +187,9 @@ describe("HubPool Pooled Token Synchronization", function () {
   it("High liquidity utilization blocks LPs from withdrawing", async function () {
     // Execute a relayer refund bundle. Set the scalingSize to 5. This will use 500 ETH from the hubPool.
     const { leafs, tree } = await constructSimple1ChainTree(weth, 5);
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
@@ -212,7 +220,9 @@ describe("HubPool Pooled Token Synchronization", function () {
   });
   it("Redeeming all LP tokens, after accruing fees, is handled correctly", async function () {
     const { leafs, tree, tokensSendToL2, realizedLpFees } = await constructSimple1ChainTree(weth);
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
@@ -243,7 +253,9 @@ describe("HubPool Pooled Token Synchronization", function () {
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));
 
     // Going through a full refund lifecycle does returns to where we were before, with no memory of previous fees.
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.

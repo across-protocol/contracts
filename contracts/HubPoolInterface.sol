@@ -63,7 +63,7 @@ interface HubPoolInterface {
         uint64 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
-        bytes32 slowRelayFulfilmentRoot
+        bytes32 slowRelayFulfillmentRoot
     ) external;
 
     function executeRelayerRefund(PoolRebalance memory poolRebalanceLeaf, bytes32[] memory proof) external;
