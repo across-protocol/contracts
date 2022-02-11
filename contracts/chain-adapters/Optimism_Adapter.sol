@@ -22,6 +22,8 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
 
     IL1StandardBridge public l1StandardBridge;
 
+    event L2GasLimitSet(uint32 newGasLimit);
+
     constructor(
         WETH9 _l1Weth,
         address _hubPool,
@@ -34,6 +36,7 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
 
     function setL2GasLimit(uint32 _l2GasLimit) public onlyOwner {
         l2GasLimit = _l2GasLimit;
+        emit L2GasLimitSet(l2GasLimit);
     }
 
     function relayMessage(address target, bytes memory message) external payable override onlyHubPool {
@@ -41,8 +44,6 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled {
         emit MessageRelayed(target, message);
     }
 
-    // TODO: we should look into using delegate call as this current implementation assumes the caller transfers the
-    // tokens first to this contract. This will work with eth based transfers and for now we'll ignore it.
     function relayTokens(
         address l1Token,
         address l2Token,

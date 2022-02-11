@@ -67,3 +67,7 @@ export const amountToReturn = toWei("1");
 export const mockTreeRoot = createRandomBytes32();
 
 export const sampleL2Gas = 5000000;
+
+export const sampleL2MaxSubmissionCost = toWei("0.1");
+
+export const sampleL2GasPrice = 10e9; // 10 gWei
