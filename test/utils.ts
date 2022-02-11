@@ -97,4 +97,4 @@ export async function createFake(contractName: string) {
 
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
-export { expect, Contract, ethers, hre, BigNumber, defaultAbiCoder, keccak256, FakeContract };
+export { expect, Contract, ethers, hre, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
