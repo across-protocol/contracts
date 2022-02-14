@@ -41,8 +41,8 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
-    modifier onlyFromCrossDomainAccount(address l1Counterpart) {
-        require(msg.sender == _applyL1ToL2Alias(l1Counterpart), "ONLY_COUNTERPART_GATEWAY");
+    modifier onlyFromCrossDomainAdmin() {
+        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
@@ -50,32 +50,19 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
      *    CROSS-CHAIN ADMIN FUNCTIONS     *
      **************************************/
 
-    function setL2GatewayRouter(address newL2GatewayRouter)
-        public
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setL2GatewayRouter(address newL2GatewayRouter) public onlyFromCrossDomainAdmin nonReentrant {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
-    function whitelistToken(address l2Token, address l1Token)
-        public
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function whitelistToken(address l2Token, address l1Token) public onlyFromCrossDomainAdmin nonReentrant {
         _whitelistToken(l2Token, l1Token);
     }
 
-    function setCrossDomainAdmin(address newCrossDomainAdmin)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyFromCrossDomainAdmin nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
+    function setHubPool(address newHubPool) public override onlyFromCrossDomainAdmin nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -83,23 +70,18 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         address originToken,
         uint32 destinationChainId,
         bool enable
-    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
+    ) public override onlyFromCrossDomainAdmin nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 buffer)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyFromCrossDomainAdmin nonReentrant {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
         public
         override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
+        onlyFromCrossDomainAdmin
         nonReentrant
     {
         _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);

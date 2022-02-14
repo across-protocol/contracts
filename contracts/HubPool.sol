@@ -151,6 +151,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
+    // This function has permission to call onlyFromCrossChainAdmin functions on the SpokePool, so its imperative
+    // that this contract only allows the owner to call this method directly or indirectly.
     function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) public onlyOwner nonReentrant {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
         adapter.relayMessage(
