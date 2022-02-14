@@ -38,27 +38,11 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         _setL1GasLimit(newl1Gas);
     }
 
-    /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
-     **************************************/
-
-    /**
-     * @notice Changes the L1 contract that can trigger admin functions on this contract.
-     * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
-     * is expected to be the Optimism_Adapter.
-     * @dev Only callable by the existing admin via the Optimism cross domain messenger.
-     * @param newCrossDomainAdmin address of the new L1 admin contract.
-     */
-    function setCrossDomainAdmin(address newCrossDomainAdmin)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyOwner nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
+    function setHubPool(address newHubPool) public override onlyOwner nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -66,18 +50,17 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         address originToken,
         uint32 destinationChainId,
         bool enable
-    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
+    ) public override onlyOwner nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 buffer)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyOwner nonReentrant {
         _setDepositQuoteTimeBuffer(buffer);
     }
+
+    /**************************************
+     *    CROSS-CHAIN ADMIN FUNCTIONS     *
+     **************************************/
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
         public
@@ -87,6 +70,10 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     {
         _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);
     }
+
+    /**************************************
+     *        INTERNAL FUNCTIONS          *
+     **************************************/
 
     function _setL1GasLimit(uint32 _l1Gas) internal {
         l1Gas = _l1Gas;

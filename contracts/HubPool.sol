@@ -184,7 +184,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
-        // TODO: Should relay message to L2 for destinationChainId and call setEnableRoute(originToken, destinationChainId, true)
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }

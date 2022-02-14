@@ -23,8 +23,13 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     // Address of the Arbitrum L2 token gateway.
     address public l2GatewayRouter;
 
+    // Admin controlled mapping of arbitrum tokens to L1 counterpart. L1 counterpart addresses
+    // are neccessary to bridge tokens to L1.
+    mapping(address => address) public whitelistedTokens;
+
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
+    event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
 
     constructor(
         address _l2GatewayRouter,
@@ -49,27 +54,15 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
-    /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
-     **************************************/
+    function whitelistToken(address l2Token, address l1Token) public onlyOwner nonReentrant {
+        _whitelistToken(l2Token, l1Token);
+    }
 
-    /**
-     * @notice Changes the L1 contract that can trigger admin functions on this contract.
-     * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
-     * is expected to be the Optimism_Adapter.
-     * @dev Only callable by the existing admin via the Optimism cross domain messenger.
-     * @param newCrossDomainAdmin address of the new L1 admin contract.
-     */
-    function setCrossDomainAdmin(address newCrossDomainAdmin)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyOwner nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
+    function setHubPool(address newHubPool) public override onlyOwner nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -77,18 +70,17 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
         address originToken,
         uint32 destinationChainId,
         bool enable
-    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
+    ) public override onlyOwner nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 buffer)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
+    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyOwner nonReentrant {
         _setDepositQuoteTimeBuffer(buffer);
     }
+
+    /**************************************
+     *    CROSS-CHAIN ADMIN FUNCTIONS     *
+     **************************************/
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
         public
@@ -99,10 +91,13 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
         _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);
     }
 
+    /**************************************
+     *        INTERNAL FUNCTIONS          *
+     **************************************/
+
     function _bridgeTokensToHubPool(DestinationDistributionLeaf memory distributionLeaf) internal override {
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            // THIS IS A PROBLEM!!, we need the L1 token address not the L2 token address
-            address(0), // _l1Token. Address of the L1 token to bridge over.
+            whitelistedTokens[distributionLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
             distributionLeaf.amountToReturn, // _amount.
             "" // _data. We don't need to send any data for the bridging action.
@@ -113,6 +108,11 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {
         l2GatewayRouter = _l2GatewayRouter;
         emit SetL2GatewayRouter(l2GatewayRouter);
+    }
+
+    function _whitelistToken(address _l2Token, address _l1Token) internal {
+        whitelistedTokens[_l2Token][_l1Token];
+        emit WhitelistedTokens(_l2Token, _l1Token);
     }
 
     // l1 addresses are transformed during l1->l2 calls. See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
