@@ -111,7 +111,7 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     }
 
     function _whitelistToken(address _l2Token, address _l1Token) internal {
-        whitelistedTokens[_l2Token][_l1Token];
+        whitelistedTokens[_l2Token] = _l1Token;
         emit WhitelistedTokens(_l2Token, _l1Token);
     }
 
