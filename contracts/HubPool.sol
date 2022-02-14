@@ -93,9 +93,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
     uint64 public refundProposalLiveness = 7200;
 
-    event ProtocolFeeCaptureAddressSet(address indexed newProtocolFeeCaptureAddress);
-
-    event ProtocolFeeCapturePctSet(uint256 indexed newProtocolFeeCapturePct);
+    event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
 
     event ProtocolFeesCapturedClaimed(address indexed l1Token, uint256 indexed accumulatedFees);
 
@@ -165,14 +163,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *                ADMIN FUNCTIONS                *
      *************************************************/
 
-    function setProtocolFeeCaptureAddress(address newProtocolFeeCaptureAddress) public onlyOwner {
+    function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
+        public
+        onlyOwner
+    {
         protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
-        emit ProtocolFeeCaptureAddressSet(newProtocolFeeCaptureAddress);
-    }
-
-    function setProtocolFeeCapturePct(uint256 newProtocolFeeCapturePct) public onlyOwner {
         protocolFeeCapturePct = newProtocolFeeCapturePct;
-        emit ProtocolFeeCapturePctSet(newProtocolFeeCapturePct);
+        emit ProtocolFeeCaptureSet(newProtocolFeeCaptureAddress, newProtocolFeeCapturePct);
     }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
@@ -434,11 +431,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function claimProtocolFeesCaptured(address l1Token) public nonReentrant {
-        if (unclaimedAccumulatedProtocolFees[l1Token] > 0) {
-            IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
-            emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
-            unclaimedAccumulatedProtocolFees[l1Token] = 0;
-        }
+        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
+        emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
+        unclaimedAccumulatedProtocolFees[l1Token] = 0;
     }
 
     function _getRefundProposalAncillaryData() public view returns (bytes memory ancillaryData) {

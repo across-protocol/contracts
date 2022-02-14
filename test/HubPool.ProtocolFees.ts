@@ -20,25 +20,19 @@ describe("HubPool Protocol fees", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, amountToLp);
     await weth.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
 
-    await hubPool.setProtocolFeeCapturePct(initialProtocolFeeCapturePct);
+    await hubPool.setProtocolFeeCapture(owner.address, initialProtocolFeeCapturePct);
   });
 
-  it("Only owner can set protocol fee capture address", async function () {
-    await expect(hubPool.connect(liquidityProvider).setProtocolFeeCaptureAddress(liquidityProvider.address)).to.be
-      .reverted;
+  it("Only owner can set protocol fee capture", async function () {
+    await expect(hubPool.connect(liquidityProvider).setProtocolFeeCapture(liquidityProvider.address, toWei("0.1"))).to
+      .be.reverted;
   });
-  it("Can change protocol fee capture address", async function () {
+  it("Can change protocol fee capture settings", async function () {
     expect(await hubPool.callStatic.protocolFeeCaptureAddress()).to.equal(owner.address);
-    await hubPool.connect(owner).setProtocolFeeCaptureAddress(liquidityProvider.address);
-    expect(await hubPool.callStatic.protocolFeeCaptureAddress()).to.equal(liquidityProvider.address);
-  });
-  it("Only owner can set protocol fee capture pct", async function () {
-    await expect(hubPool.connect(liquidityProvider).setProtocolFeeCapturePct(liquidityProvider.address)).to.be.reverted;
-  });
-  it("Can change protocol fee capture pct", async function () {
     expect(await hubPool.callStatic.protocolFeeCapturePct()).to.equal(initialProtocolFeeCapturePct);
     const newPct = toWei("0.1");
-    await hubPool.connect(owner).setProtocolFeeCapturePct(newPct);
+    await hubPool.connect(owner).setProtocolFeeCapture(liquidityProvider.address, newPct);
+    expect(await hubPool.callStatic.protocolFeeCaptureAddress()).to.equal(liquidityProvider.address);
     expect(await hubPool.callStatic.protocolFeeCapturePct()).to.equal(newPct);
   });
   it("When fee capture pct is not set to zero fees correctly attribute between LPs and the protocol", async function () {
@@ -72,7 +66,7 @@ describe("HubPool Protocol fees", function () {
     expect((await hubPool.pooledTokens(weth.address)).undistributedLpFees).to.equal(0);
   });
   it("When fee capture pct is set to zero all fees accumulate to the LPs", async function () {
-    await hubPool.setProtocolFeeCapturePct("0");
+    await hubPool.setProtocolFeeCapture(owner.address, "0");
     const { leafs, tree, realizedLpFees } = await constructSingleChainTree(weth);
     await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness);
