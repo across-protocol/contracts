@@ -25,7 +25,7 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const spokePool = await (
     await getContractFactory("MockSpokePool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, consts.depositQuoteTimeBuffer, timer.address);
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address, consts.depositQuoteTimeBuffer);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 });
@@ -55,11 +55,11 @@ export async function deposit(
   await spokePool
     .connect(depositor)
     .deposit(
-      token.address,
-      consts.destinationChainId,
-      consts.amountToDeposit,
       recipient.address,
+      token.address,
+      consts.amountToDeposit,
       consts.depositRelayerFeePct,
+      consts.destinationChainId,
       currentSpokePoolTime
     );
 }
@@ -67,11 +67,11 @@ export interface RelayData {
   depositor: string;
   recipient: string;
   destinationToken: string;
+  relayAmount: string;
   realizedLpFeePct: string;
   relayerFeePct: string;
   depositId: string;
   originChainId: string;
-  relayAmount: string;
 }
 export function getRelayHash(
   _depositor: string,
@@ -82,29 +82,69 @@ export function getRelayHash(
   _relayAmount?: string,
   _realizedLpFeePct?: string,
   _relayerFeePct?: string
-): { relayHash: string; relayData: RelayData; relayDataValues: string[] } {
+): { relayHash: string; relayData: RelayData } {
   const relayData = {
     depositor: _depositor,
     recipient: _recipient,
     destinationToken: _destinationToken,
+    relayAmount: _relayAmount || consts.amountToDeposit.toString(),
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
     originChainId: _originChainId.toString(),
-    relayAmount: _relayAmount || consts.amountToDeposit.toString(),
   };
-  const relayDataValues = Object.values(relayData);
   const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["address", "address", "address", "uint64", "uint64", "uint64", "uint256", "uint256"],
-      relayDataValues
+      ["address", "address", "address", "uint256", "uint64", "uint64", "uint32", "uint32"],
+      Object.values(relayData)
     )
   );
   return {
     relayHash,
     relayData,
-    relayDataValues,
   };
+}
+
+export function getFillRelayParams(
+  _relayData: RelayData,
+  _maxTokensToSend: BigNumber,
+  _repaymentChain?: number
+): string[] {
+  return [
+    _relayData.depositor,
+    _relayData.recipient,
+    _relayData.destinationToken,
+    _relayData.relayAmount,
+    _maxTokensToSend.toString(),
+    _relayData.realizedLpFeePct,
+    _relayData.relayerFeePct,
+    _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
+    _relayData.depositId,
+    _relayData.originChainId,
+  ];
+}
+
+export function getFillRelayUpdatedFeeParams(
+  _relayData: RelayData,
+  _maxTokensToSend: BigNumber,
+  _updatedFee: BigNumber,
+  _signature: string,
+  _repaymentChain?: number
+): string[] {
+  return [
+    _relayData.depositor,
+    _relayData.recipient,
+    _relayData.destinationToken,
+    _relayData.relayAmount,
+    _maxTokensToSend.toString(),
+    _relayData.realizedLpFeePct,
+    _relayData.relayerFeePct,
+    _updatedFee.toString(),
+    _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
+    _relayData.depositId,
+    _relayData.originChainId,
+    _signature,
+  ];
 }
 
 export interface UpdatedRelayerFeeData {
@@ -120,7 +160,7 @@ export async function modifyRelayHelper(
 ): Promise<{ messageHash: string; signature: string }> {
   const messageHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["string", "uint64", "uint64", "uint256"],
+      ["string", "uint64", "uint32", "uint32"],
       ["ACROSS-V2-FEE-1.0", modifiedRelayerFeePct, depositId, originChainId]
     )
   );
