@@ -45,8 +45,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     uint32 public deploymentTime;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an up to date realized fee.
-    uint32 public depositQuoteTimeBuffer;
+    // caller to use an up to date realized fee. Defaults to 10 minutes.
+    uint32 public depositQuoteTimeBuffer = 600;
 
     // Use count of deposits as unique deposit identifier.
     uint32 public numberOfDeposits;
@@ -147,13 +147,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress,
-        uint32 _depositQuoteTimeBuffer
+        address timerAddress
     ) Testable(timerAddress) {
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         deploymentTime = uint32(getCurrentTime());
-        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         weth = WETH9(_wethAddress);
     }
 
