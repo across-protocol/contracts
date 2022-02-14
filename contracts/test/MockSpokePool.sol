@@ -13,9 +13,9 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        uint64 _depositQuoteTimeBuffer,
-        address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, _depositQuoteTimeBuffer, timerAddress) {}
+        address timerAddress,
+        uint32 _depositQuoteTimeBuffer
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer) {}
 
     function setCrossDomainAdmin(address newCrossDomainAdmin) public override {
         _setCrossDomainAdmin(newCrossDomainAdmin);
@@ -27,13 +27,13 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
 
     function setEnableRoute(
         address originToken,
-        uint256 destinationChainId,
+        uint32 destinationChainId,
         bool enable
     ) public override {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint64 buffer) public override {
+    function setDepositQuoteTimeBuffer(uint32 buffer) public override {
         _setDepositQuoteTimeBuffer(buffer);
     }
 

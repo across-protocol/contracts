@@ -23,11 +23,11 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        uint64 _depositQuoteTimeBuffer,
-        address timerAddress
+        address timerAddress,
+        uint32 _depositQuoteTimeBuffer
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, _depositQuoteTimeBuffer, timerAddress)
+        SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer)
     {}
 
     /**************************************
@@ -63,13 +63,13 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
 
     function setEnableRoute(
         address originToken,
-        uint256 destinationChainId,
+        uint32 destinationChainId,
         bool enable
     ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint64 buffer)
+    function setDepositQuoteTimeBuffer(uint32 buffer)
         public
         override
         onlyFromCrossDomainAccount(crossDomainAdmin)
