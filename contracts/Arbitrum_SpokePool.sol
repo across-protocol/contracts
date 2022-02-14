@@ -1,41 +1,52 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
-import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
-import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 
+interface StandardBridgeLike {
+    function outboundTransfer(
+        address _l1Token,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
+}
+
 /**
- * @notice OVM specific SpokePool.
- * @dev Uses OVM cross-domain-enabled logic for access control.
+ * @notice AVM specific SpokePool.
+ * @dev Uses AVM cross-domain-enabled logic for access control.
  */
 
-contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool, Ownable {
-    // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`.
-    uint32 l1Gas = 6_000_000;
+contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
+    // Address of the Arbitrum L2 token gateway.
+    address public l2GatewayRouter;
 
-    event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
-    event SetL1Gas(uint32 indexed newL1Gas);
+    event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
+    event SetL2GatewayRouter(address indexed newL2GatewayRouter);
 
     constructor(
+        address _l2GatewayRouter,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address timerAddress,
         uint32 _depositQuoteTimeBuffer
-    )
-        CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer)
-    {}
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer) {
+        _setL2GatewayRouter(_l2GatewayRouter);
+    }
+
+    modifier onlyFromCrossDomainAccount(address l1Counterpart) {
+        require(msg.sender == _applyL1ToL2Alias(l1Counterpart), "ONLY_COUNTERPART_GATEWAY");
+        _;
+    }
 
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
-    function setL1GasLimit(uint32 newl1Gas) public onlyOwner {
-        _setL1GasLimit(newl1Gas);
+    function setL2GatewayRouter(address newL2GatewayRouter) public onlyOwner nonReentrant {
+        _setL2GatewayRouter(newL2GatewayRouter);
     }
 
     /**************************************
@@ -88,20 +99,24 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);
     }
 
-    function _setL1GasLimit(uint32 _l1Gas) internal {
-        l1Gas = _l1Gas;
-        emit SetL1Gas(l1Gas);
-    }
-
     function _bridgeTokensToHubPool(DestinationDistributionLeaf memory distributionLeaf) internal override {
-        // TODO: Handle WETH token unwrapping
-        IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
-            distributionLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+        StandardBridgeLike(l2GatewayRouter).outboundTransfer(
+            // THIS IS A PROBLEM!!, we need the L1 token address not the L2 token address
+            address(0), // _l1Token. Address of the L1 token to bridge over.
+            hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
             distributionLeaf.amountToReturn, // _amount.
-            l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "" // _data. We don't need to send any data for the bridging action.
         );
-        emit OptimismTokensBridged(distributionLeaf.l2TokenAddress, hubPool, distributionLeaf.amountToReturn, l1Gas);
+        emit ArbitrumTokensBridged(address(0), hubPool, distributionLeaf.amountToReturn);
+    }
+
+    function _setL2GatewayRouter(address _l2GatewayRouter) internal {
+        l2GatewayRouter = _l2GatewayRouter;
+        emit SetL2GatewayRouter(l2GatewayRouter);
+    }
+
+    // l1 addresses are transformed during l1->l2 calls. See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
+    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
+        l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
     }
 }
