@@ -129,6 +129,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] runningBalance,
         address indexed caller
     );
+    event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
     event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
@@ -149,6 +150,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) public onlyOwner nonReentrant {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
+        adapter.relayMessage(
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+            functionData
+        );
+        emit SpokePoolAdminFunctionTriggered(chainId, functionData);
+    }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
         bondToken = newBondToken;
@@ -185,6 +195,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address destinationToken
     ) public onlyOwner {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+        relaySpokePoolAdminFunction(
+            destinationChainId,
+            abi.encodeWithSignature(
+                "setEnableRoute(address,uint32,bool)",
+                originToken,
+                uint32(destinationChainId),
+                true
+            )
+        );
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
 

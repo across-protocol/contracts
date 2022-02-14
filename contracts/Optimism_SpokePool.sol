@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 
@@ -13,7 +12,7 @@ import "./SpokePoolInterface.sol";
  * @dev Uses OVM cross-domain-enabled logic for access control.
  */
 
-contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool, Ownable {
+contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`.
     uint32 l1Gas = 6_000_000;
 
@@ -32,17 +31,23 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     {}
 
     /**************************************
-     *          ADMIN FUNCTIONS           *
+     *    CROSS-CHAIN ADMIN FUNCTIONS     *
      **************************************/
-    function setL1GasLimit(uint32 newl1Gas) public onlyOwner {
+
+    function setL1GasLimit(uint32 newl1Gas) public onlyFromCrossDomainAccount(crossDomainAdmin) {
         _setL1GasLimit(newl1Gas);
     }
 
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyOwner nonReentrant {
+    function setCrossDomainAdmin(address newCrossDomainAdmin)
+        public
+        override
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+        nonReentrant
+    {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    function setHubPool(address newHubPool) public override onlyOwner nonReentrant {
+    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -50,17 +55,18 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         address originToken,
         uint32 destinationChainId,
         bool enable
-    ) public override onlyOwner nonReentrant {
+    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyOwner nonReentrant {
+    function setDepositQuoteTimeBuffer(uint32 buffer)
+        public
+        override
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+        nonReentrant
+    {
         _setDepositQuoteTimeBuffer(buffer);
     }
-
-    /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
-     **************************************/
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
         public

@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 
@@ -19,7 +18,7 @@ interface StandardBridgeLike {
  * @dev Uses AVM cross-domain-enabled logic for access control.
  */
 
-contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
+contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
     // Address of the Arbitrum L2 token gateway.
     address public l2GatewayRouter;
 
@@ -48,21 +47,35 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     }
 
     /**************************************
-     *          ADMIN FUNCTIONS           *
+     *    CROSS-CHAIN ADMIN FUNCTIONS     *
      **************************************/
-    function setL2GatewayRouter(address newL2GatewayRouter) public onlyOwner nonReentrant {
+
+    function setL2GatewayRouter(address newL2GatewayRouter)
+        public
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+        nonReentrant
+    {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
-    function whitelistToken(address l2Token, address l1Token) public onlyOwner nonReentrant {
+    function whitelistToken(address l2Token, address l1Token)
+        public
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+        nonReentrant
+    {
         _whitelistToken(l2Token, l1Token);
     }
 
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyOwner nonReentrant {
+    function setCrossDomainAdmin(address newCrossDomainAdmin)
+        public
+        override
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+        nonReentrant
+    {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    function setHubPool(address newHubPool) public override onlyOwner nonReentrant {
+    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -70,17 +83,18 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
         address originToken,
         uint32 destinationChainId,
         bool enable
-    ) public override onlyOwner nonReentrant {
+    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyOwner nonReentrant {
+    function setDepositQuoteTimeBuffer(uint32 buffer)
+        public
+        override
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+        nonReentrant
+    {
         _setDepositQuoteTimeBuffer(buffer);
     }
-
-    /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
-     **************************************/
 
     function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
         public
