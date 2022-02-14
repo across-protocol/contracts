@@ -100,7 +100,7 @@ describe("Arbitrum Chain Adapter", function () {
       owner.address,
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
-      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [consts.mockTreeRoot, consts.mockTreeRoot])
+      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [consts.mockDestinationDistributionRoot, consts.mockSlowRelayFulfillmentRoot])
     );
   });
 });
