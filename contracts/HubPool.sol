@@ -167,6 +167,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         public
         onlyOwner
     {
+        require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
         protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
         protocolFeeCapturePct = newProtocolFeeCapturePct;
         emit ProtocolFeeCaptureSet(newProtocolFeeCaptureAddress, newProtocolFeeCapturePct);
@@ -628,8 +629,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
         // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
         // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
-        pooledTokens[l1Token].undistributedLpFees += lpFeesCaptured;
-        pooledTokens[l1Token].utilizedReserves += int256(lpFeesCaptured);
+        if (lpFeesCaptured > 0) {
+            pooledTokens[l1Token].undistributedLpFees += lpFeesCaptured;
+            pooledTokens[l1Token].utilizedReserves += int256(lpFeesCaptured);
+        }
 
         // If there are any protocol fees, allocate them to the unclaimed protocol tracker amount.
         if (protocolFeesCaptured > 0) unclaimedAccumulatedProtocolFees[l1Token] += protocolFeesCaptured;
