@@ -12,7 +12,8 @@
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",
-    "test": "REPORT_GAS=true yarn hardhat test"
+    "test": "REPORT_GAS=true yarn hardhat test",
+    "gas-test": "GAS_TEST_ENABLED=true yarn hardhat test ./test/gas-analytics/*"
   },
   "dependencies": {
     "@defi-wonderland/smock": "^2.0.7",

@@ -11,7 +11,7 @@ async function constructSimpleTree() {
   const wethAttributeToLps = toBNWei(10);
   const leafs = buildPoolRebalanceLeafs(
     [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
-    [weth], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
+    [[weth]], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[wethAttributeToLps]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
     [[wethSendToL2]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
     [[wethSendToL2]] // runningBalances. Set to 100 ETH and 1000 DAI.

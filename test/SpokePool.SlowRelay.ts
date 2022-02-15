@@ -4,7 +4,6 @@ import {
   ethers,
   SignerWithAddress,
   seedWallet,
-  toWei,
   toBN,
   randomAddress,
   randomBigNumber,

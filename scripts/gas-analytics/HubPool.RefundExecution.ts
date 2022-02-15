@@ -8,13 +8,11 @@ import {
   getContractFactory,
   BigNumber,
   randomAddress,
-} from "../utils";
-import * as consts from "../constants";
+} from "../../test/utils";
+import * as consts from "../../test/constants";
 import { TokenRolesEnum } from "@uma/common";
-import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "../MerkleLib.utils";
-
-require("dotenv").config();
+import { hubPoolFixture, enableTokensForLP } from "../../test/HubPool.Fixture";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "../../test/MerkleLib.utils";
 
 let hubPool: Contract, timer: Contract, weth: Contract, mockAdapter: Contract, mockSpoke: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -67,10 +65,6 @@ async function constructSimpleTree() {
 }
 
 describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
-  before(async function () {
-    if (!process.env.GAS_TEST_ENABLED) this.skip();
-  });
-
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ hubPool, timer, weth, mockSpoke, mockAdapter } = await hubPoolFixture());
