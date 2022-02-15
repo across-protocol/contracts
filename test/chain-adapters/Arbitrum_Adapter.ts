@@ -116,7 +116,8 @@ describe("Arbitrum Chain Adapter", function () {
       consts.sampleL2GasPrice,
       "0x"
     );
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice; // only 1 L1->L2 message sent.
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice; // only 1 L1->L2 message sent. Note that the two
+    // whitelist transactions already sent two messages.
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,
