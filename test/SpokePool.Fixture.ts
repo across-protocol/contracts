@@ -25,7 +25,7 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const spokePool = await (
     await getContractFactory("MockSpokePool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address, consts.depositQuoteTimeBuffer);
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 });
