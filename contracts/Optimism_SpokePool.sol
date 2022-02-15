@@ -1,10 +1,14 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import "./interfaces/WETH9.sol";
+
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
+
 import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 
@@ -15,11 +19,17 @@ import "./SpokePoolInterface.sol";
 
 contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool, Ownable {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`.
-    uint32 l1Gas = 6_000_000;
+    uint32 public l1Gas = 1_900_000;
+
+    address public l1EthWrapper;
+
+    address public l2Eth;
 
     event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
 
     constructor(
+        address _l1EthWrapper,
+        address _l2Eth,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
@@ -28,7 +38,10 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
         SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, _depositQuoteTimeBuffer, timerAddress)
-    {}
+    {
+        l1EthWrapper = _l1EthWrapper;
+        l2Eth = _l2Eth;
+    }
 
     /**************************************
      *          ADMIN FUNCTIONS           *
@@ -88,15 +101,24 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     }
 
     function _bridgeTokensToHubPool(DestinationDistributionLeaf memory distributionLeaf) internal override {
-        if (distributionLeaf.l2TokenAddress == address(weth)) {}
+        address l2Token = distributionLeaf.l2TokenAddress;
+        address l1Destination = hubPool;
+        // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
+        // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
+        if (distributionLeaf.l2TokenAddress == address(weth)) {
+            WETH9(l2Token).withdraw(distributionLeaf.amountToReturn); // Unwrap ETH.
+            l2Token = l2Eth; // Set the bridged token to the Optimism ETH address.
+            l1Destination = l1EthWrapper; // Set the destination to the L1 ETH wrapper.
+        }
 
         IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
-            distributionLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+            l2Token, // _l2Token. Address of the L2 token to bridge over.
+            l1Destination, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             distributionLeaf.amountToReturn, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "" // _data. We don't need to send any data for the bridging action.
         );
+
         emit OptimismTokensBridged(distributionLeaf.l2TokenAddress, hubPool, distributionLeaf.amountToReturn, l1Gas);
     }
 }
