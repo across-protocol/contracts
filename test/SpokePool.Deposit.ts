@@ -33,20 +33,20 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          erc20.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          erc20.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime
         )
     )
       .to.emit(spokePool, "FundsDeposited")
       .withArgs(
-        destinationChainId,
         amountToDeposit,
-        0,
         depositRelayerFeePct,
+        destinationChainId,
+        0,
         currentSpokePoolTime,
         erc20.address,
         recipient.address,
@@ -68,11 +68,11 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          weth.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          weth.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime,
           { value: 1 }
         )
@@ -82,11 +82,11 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          weth.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          weth.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime,
           { value: amountToDeposit }
         )
@@ -102,11 +102,11 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          weth.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          weth.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime,
           { value: 0 }
         )
@@ -121,11 +121,11 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          erc20.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          erc20.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime
         )
     ).to.be.reverted;
@@ -136,11 +136,11 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          unwhitelistedErc20.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          unwhitelistedErc20.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime
         )
     ).to.be.reverted;
@@ -151,11 +151,11 @@ describe("SpokePool Depositor Logic", async function () {
       spokePool
         .connect(depositor)
         .deposit(
-          erc20.address,
-          destinationChainId,
-          amountToDeposit,
           recipient.address,
+          erc20.address,
+          amountToDeposit,
           depositRelayerFeePct,
+          destinationChainId,
           currentSpokePoolTime
         )
     ).to.be.reverted;
@@ -165,11 +165,11 @@ describe("SpokePool Depositor Logic", async function () {
     // Cannot deposit with invalid relayer fee.
     await expect(
       spokePool.connect(depositor).deposit(
-        erc20.address,
-        destinationChainId,
-        amountToDeposit,
         recipient.address,
+        erc20.address,
+        amountToDeposit,
         toWei("1"), // Fee > 50%
+        destinationChainId,
         currentSpokePoolTime
       )
     ).to.be.reverted;
@@ -177,21 +177,21 @@ describe("SpokePool Depositor Logic", async function () {
     // Cannot deposit invalid quote fee.
     await expect(
       spokePool.connect(depositor).deposit(
-        erc20.address,
-        destinationChainId,
-        amountToDeposit,
         recipient.address,
+        erc20.address,
+        amountToDeposit,
         depositRelayerFeePct,
+        destinationChainId,
         toBN(currentSpokePoolTime).add(toBN("700")) // > 10 mins in future
       )
     ).to.be.reverted;
     await expect(
       spokePool.connect(depositor).deposit(
-        erc20.address,
-        destinationChainId,
-        amountToDeposit,
         recipient.address,
+        erc20.address,
+        amountToDeposit,
         depositRelayerFeePct,
+        destinationChainId,
         toBN(currentSpokePoolTime).sub(toBN("700")) // > 10 mins in past
       )
     ).to.be.reverted;

@@ -78,7 +78,13 @@ describe("Arbitrum Chain Adapter", function () {
     const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, arbitrumChainId);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockDestinationDistributionRoot, consts.mockSlowRelayFulfillmentRoot);
+      .initiateRelayerRefund(
+        [3117],
+        1,
+        tree.getHexRoot(),
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot
+      );
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
     // The correct functions should have been called on the arbitrum contracts.
@@ -100,7 +106,10 @@ describe("Arbitrum Chain Adapter", function () {
       owner.address,
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
-      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [consts.mockDestinationDistributionRoot, consts.mockSlowRelayFulfillmentRoot])
+      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot,
+      ])
     );
   });
 });

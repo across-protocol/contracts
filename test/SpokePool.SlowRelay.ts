@@ -12,15 +12,12 @@ import {
   defaultAbiCoder,
   keccak256,
 } from "./utils";
-import { spokePoolFixture, enableRoutes, getRelayHash, modifyRelayHelper, RelayData } from "./SpokePool.Fixture";
+import { spokePoolFixture, enableRoutes, RelayData } from "./SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import * as consts from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
-let depositor: SignerWithAddress,
-  recipient: SignerWithAddress,
-  relayer: SignerWithAddress,
-  slowRelayer: SignerWithAddress;
+let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
 let relays: RelayData[];
 let tree: MerkleTree<RelayData>;
 
@@ -28,7 +25,7 @@ const fullRelayAmountPostFees = consts.amountToRelay.mul(consts.totalPostFeesPct
 
 describe("SpokePool Slow Relay Logic", async function () {
   beforeEach(async function () {
-    [depositor, recipient, relayer, slowRelayer] = await ethers.getSigners();
+    [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20 } = await spokePoolFixture());
 
     // mint some fresh tokens and deposit ETH for weth for depositor and relayer.
@@ -54,11 +51,11 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor: randomAddress(),
         recipient: randomAddress(),
         destinationToken: randomAddress(),
+        relayAmount: randomBigNumber().toString(),
         realizedLpFeePct: randomBigNumber(8).toString(),
         relayerFeePct: randomBigNumber(8).toString(),
-        depositId: randomBigNumber(8).toString(),
-        originChainId: randomBigNumber().toString(),
-        relayAmount: randomBigNumber().toString(),
+        depositId: randomBigNumber(2).toString(),
+        originChainId: randomBigNumber(2).toString(),
       });
     }
 
@@ -67,11 +64,11 @@ describe("SpokePool Slow Relay Logic", async function () {
       depositor: depositor.address,
       recipient: recipient.address,
       destinationToken: destErc20.address,
+      relayAmount: consts.amountToRelay.toString(),
       realizedLpFeePct: consts.realizedLpFeePct.toString(),
       relayerFeePct: consts.depositRelayerFeePct.toString(),
       depositId: consts.firstDepositId.toString(),
       originChainId: consts.originChainId.toString(),
-      relayAmount: consts.amountToRelay.toString(),
     });
 
     // WETH
@@ -79,11 +76,11 @@ describe("SpokePool Slow Relay Logic", async function () {
       depositor: depositor.address,
       recipient: recipient.address,
       destinationToken: weth.address,
+      relayAmount: consts.amountToRelay.toString(),
       realizedLpFeePct: consts.realizedLpFeePct.toString(),
       relayerFeePct: consts.depositRelayerFeePct.toString(),
       depositId: consts.firstDepositId.toString(),
       originChainId: consts.originChainId.toString(),
-      relayAmount: consts.amountToRelay.toString(),
     });
 
     const paramType = await getParamType("MerkleLib", "verifySlowRelayFulfillment", "slowRelayFulfillment");
@@ -102,11 +99,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           destErc20.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
         )
@@ -127,11 +124,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           destErc20.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
         )
@@ -142,10 +139,10 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         consts.amountToRelay,
         consts.amountToRelay,
-        consts.originChainId,
-        consts.firstDepositId,
         consts.depositRelayerFeePct,
         consts.realizedLpFeePct,
+        consts.originChainId,
+        consts.firstDepositId,
         destErc20.address,
         relayer.address,
         depositor.address,
@@ -161,11 +158,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           weth.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
@@ -180,11 +177,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           weth.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
@@ -201,11 +198,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           weth.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
@@ -216,10 +213,10 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         consts.amountToRelay,
         consts.amountToRelay,
-        consts.originChainId,
-        consts.firstDepositId,
         consts.depositRelayerFeePct,
         consts.realizedLpFeePct,
+        consts.originChainId,
+        consts.firstDepositId,
         weth.address,
         relayer.address,
         depositor.address,
@@ -237,13 +234,13 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor.address,
         recipient.address,
         destErc20.address,
-        consts.realizedLpFeePct,
-        consts.depositRelayerFeePct,
-        consts.firstDepositId,
-        consts.originChainId,
         consts.amountToRelay,
         partialAmountPostFees,
-        consts.repaymentChainId
+        consts.realizedLpFeePct,
+        consts.depositRelayerFeePct,
+        consts.repaymentChainId,
+        consts.firstDepositId,
+        consts.originChainId
       );
     await expect(() =>
       spokePool
@@ -252,11 +249,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           destErc20.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
         )
@@ -274,13 +271,13 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor.address,
         recipient.address,
         destErc20.address,
-        consts.realizedLpFeePct,
-        consts.depositRelayerFeePct,
-        consts.firstDepositId,
-        consts.originChainId,
         consts.amountToRelay,
         partialAmountPostFees,
-        consts.repaymentChainId
+        consts.realizedLpFeePct,
+        consts.depositRelayerFeePct,
+        consts.repaymentChainId,
+        consts.firstDepositId,
+        consts.originChainId
       );
 
     await expect(
@@ -290,11 +287,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           destErc20.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
         )
@@ -305,10 +302,10 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         consts.amountToRelay,
         leftoverPreFees,
-        consts.originChainId,
-        consts.firstDepositId,
         consts.depositRelayerFeePct,
         consts.realizedLpFeePct,
+        consts.originChainId,
+        consts.firstDepositId,
         destErc20.address,
         relayer.address,
         depositor.address,
@@ -326,13 +323,13 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor.address,
         recipient.address,
         weth.address,
-        consts.realizedLpFeePct,
-        consts.depositRelayerFeePct,
-        consts.firstDepositId,
-        consts.originChainId,
         consts.amountToRelay,
         partialAmountPostFees,
-        consts.repaymentChainId
+        consts.realizedLpFeePct,
+        consts.depositRelayerFeePct,
+        consts.repaymentChainId,
+        consts.firstDepositId,
+        consts.originChainId
       );
 
     await expect(() =>
@@ -342,11 +339,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           weth.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
@@ -363,13 +360,13 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor.address,
         recipient.address,
         weth.address,
-        consts.realizedLpFeePct,
-        consts.depositRelayerFeePct,
-        consts.firstDepositId,
-        consts.originChainId,
         consts.amountToRelay,
         partialAmountPostFees,
-        consts.repaymentChainId
+        consts.realizedLpFeePct,
+        consts.depositRelayerFeePct,
+        consts.repaymentChainId,
+        consts.firstDepositId,
+        consts.originChainId
       );
 
     await expect(() =>
@@ -379,11 +376,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           weth.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
@@ -401,13 +398,13 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor.address,
         recipient.address,
         weth.address,
-        consts.realizedLpFeePct,
-        consts.depositRelayerFeePct,
-        consts.firstDepositId,
-        consts.originChainId,
         consts.amountToRelay,
         partialAmountPostFees,
-        consts.repaymentChainId
+        consts.realizedLpFeePct,
+        consts.depositRelayerFeePct,
+        consts.repaymentChainId,
+        consts.firstDepositId,
+        consts.originChainId
       );
 
     await expect(
@@ -417,11 +414,11 @@ describe("SpokePool Slow Relay Logic", async function () {
           depositor.address,
           recipient.address,
           weth.address,
+          consts.amountToRelay,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
           consts.originChainId,
-          consts.amountToRelay,
           0,
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
@@ -432,10 +429,10 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         consts.amountToRelay,
         leftoverPreFees,
-        consts.originChainId,
-        consts.firstDepositId,
         consts.depositRelayerFeePct,
         consts.realizedLpFeePct,
+        consts.originChainId,
+        consts.firstDepositId,
         weth.address,
         relayer.address,
         depositor.address,
@@ -449,11 +446,11 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor.address,
         recipient.address,
         weth.address,
+        consts.amountToRelay.sub(1), // Slightly modify the relay data from the expected set.
         consts.realizedLpFeePct,
         consts.depositRelayerFeePct,
         consts.firstDepositId,
         consts.originChainId,
-        consts.amountToRelay.sub(1), // Slightly modify the relay data from the expected set.
         0,
         tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
       )
