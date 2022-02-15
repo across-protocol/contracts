@@ -8,7 +8,7 @@ export class MerkleTree<T> {
   private readonly bufferElementPositionIndex: { [hexElement: string]: number };
   private readonly layers: Buffer[][];
 
-  constructor(leaves: T[], private readonly hashFn: (element: T) => string) {
+  constructor(leaves: T[], public readonly hashFn: (element: T) => string) {
     this.elements = leaves.map((leaf) => this.leafToBuf(leaf));
     // Sort elements
     this.elements.sort(Buffer.compare);

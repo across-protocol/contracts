@@ -1,10 +1,7 @@
-import { expect } from "chai";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
 import { parseAncillaryData } from "@uma/common";
-import { SignerWithAddress, seedWallet } from "./utils";
+import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
-import { hubPoolFixture, enableTokensForLiquidityProvision } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, optimisticOracle: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -13,7 +10,7 @@ describe("HubPool Relayer Refund Dispute", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, hubPool, optimisticOracle } = await hubPoolFixture());
-    await enableTokensForLiquidityProvision(owner, hubPool, [weth]);
+    await enableTokensForLP(owner, hubPool, weth, [weth]);
 
     await seedWallet(dataWorker, [], weth, consts.bondAmount.add(consts.finalFee).mul(2));
     await seedWallet(liquidityProvider, [], weth, consts.amountToLp);
@@ -29,7 +26,8 @@ describe("HubPool Relayer Refund Dispute", function () {
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
-        consts.mockDestinationDistributionRoot
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot
       );
 
     const preCallAncillaryData = await hubPool._getRefundProposalAncillaryData();
@@ -70,7 +68,8 @@ describe("HubPool Relayer Refund Dispute", function () {
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
-        consts.mockDestinationDistributionRoot
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot
       );
 
     await hubPool.setCurrentTime(Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness + 1);

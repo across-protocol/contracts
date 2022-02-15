@@ -10,13 +10,21 @@ export const amountToRelay = toWei("25");
 
 export const depositRelayerFeePct = toWei("0.1");
 
+export const modifiedRelayerFeePct = toBN(depositRelayerFeePct).add(toBN(toWei("0.1")));
+
+export const incorrectModifiedRelayerFeePct = toBN(modifiedRelayerFeePct).add(toBN(toWei("0.01")));
+
 export const realizedLpFeePct = toWei("0.1");
 
 export const oneHundredPct = toWei("1");
 
 export const totalPostFeesPct = toBN(oneHundredPct).sub(toBN(depositRelayerFeePct).add(realizedLpFeePct));
 
+export const totalPostModifiedFeesPct = toBN(oneHundredPct).sub(toBN(modifiedRelayerFeePct).add(realizedLpFeePct));
+
 export const amountToRelayPreFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostFeesPct);
+
+export const amountToRelayPreModifiedFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostModifiedFeesPct);
 
 export const destinationChainId = 1337;
 
@@ -38,7 +46,7 @@ export const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 export const zeroBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-export const identifier = utf8ToHex("IS_ACROSS_V2_RELAY_VALID");
+export const identifier = utf8ToHex("IS_ACROSS_V2_BUNDLE_VALID");
 
 export const zeroRawValue = { rawValue: "0" };
 
@@ -49,3 +57,19 @@ export const mockPoolRebalanceLeafCount = 5;
 export const mockPoolRebalanceRoot = createRandomBytes32();
 
 export const mockDestinationDistributionRoot = createRandomBytes32();
+
+export const mockSlowRelayFulfillmentRoot = createRandomBytes32();
+
+// Amount of tokens to seed SpokePool with at beginning of relayer refund distribution tests
+export const amountHeldByPool = amountToRelay.mul(4);
+
+// Amount of tokens to bridge back to L1 from SpokePool in relayer refund distribution tests
+export const amountToReturn = toWei("1");
+
+export const mockTreeRoot = createRandomBytes32();
+
+export const sampleL2Gas = 5000000;
+
+export const sampleL2MaxSubmissionCost = toWei("0.1");
+
+export const sampleL2GasPrice = 10e9; // 10 gWei
