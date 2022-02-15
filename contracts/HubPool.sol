@@ -206,7 +206,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
-        // TODO: Should relay message to L2 for destinationChainId and call setEnableRoute(originToken, destinationChainId, true)
+        // Note that this method makes no L1->L1 call to whitelist the route. The assumption is that the origin chain's
+        // SpokePool Owner will call setEnableRoute to enable the route. This removes the need for an L1->L2 call.
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
@@ -359,7 +360,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
-        //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 

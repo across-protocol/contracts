@@ -17,12 +17,6 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
 import "./SpokePoolInterface.sol";
 
-interface WETH9Like {
-    function withdraw(uint256 wad) external;
-
-    function deposit() external payable;
-}
-
 /**
  * @title SpokePool
  * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to
