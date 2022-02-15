@@ -7,7 +7,7 @@ import {
   mockSlowRelayFulfillmentRoot,
 } from "./../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake } from "../utils";
-import { getContractFactory, seedWallet } from "../utils";
+import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
@@ -50,6 +50,18 @@ describe("Optimism Chain Adapter", function () {
     await expect(optimismAdapter.connect(liquidityProvider).setL2GasLimit(sampleL2Gas + 1)).to.be.reverted;
     await optimismAdapter.connect(owner).setL2GasLimit(sampleL2Gas + 1);
     expect(await optimismAdapter.callStatic.l2GasLimit()).to.equal(sampleL2Gas + 1);
+  });
+  it("relayMessage calls spoke pool functions", async function () {
+    const newAdmin = randomAddress();
+    const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
+    expect(await hubPool.relaySpokePoolAdminFunction(optimismChainId, functionCallData))
+      .to.emit(optimismAdapter, "MessageRelayed")
+      .withArgs(mockSpoke.address, functionCallData);
+    expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(
+      mockSpoke.address,
+      functionCallData,
+      sampleL2Gas
+    );
   });
   it("Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle

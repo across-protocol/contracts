@@ -498,7 +498,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256[] memory bundleLpFees
     ) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        require(address(adapter) != address(0), "Adapter not set for target chain");
 
         for (uint32 i = 0; i < l1Tokens.length; i++) {
             // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action

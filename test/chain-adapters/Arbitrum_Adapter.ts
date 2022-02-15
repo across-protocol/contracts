@@ -1,6 +1,6 @@
 import * as consts from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
-import { getContractFactory, seedWallet } from "../utils";
+import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
@@ -71,6 +71,24 @@ describe("Arbitrum Chain Adapter", function () {
       .reverted;
     await arbitrumAdapter.connect(owner).setL2RefundL2Address(liquidityProvider.address);
     expect(await arbitrumAdapter.callStatic.l2RefundL2Address()).to.equal(liquidityProvider.address);
+  });
+  it("relayMessage calls spoke pool functions", async function () {
+    const newAdmin = randomAddress();
+    const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
+    expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
+      .to.emit(arbitrumAdapter, "MessageRelayed")
+      .withArgs(mockSpoke.address, functionCallData);
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice;
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
+      mockSpoke.address,
+      0,
+      consts.sampleL2MaxSubmissionCost,
+      owner.address,
+      owner.address,
+      consts.sampleL2Gas,
+      consts.sampleL2GasPrice,
+      functionCallData
+    );
   });
   it("Correctly calls appropriate arbitrum bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
