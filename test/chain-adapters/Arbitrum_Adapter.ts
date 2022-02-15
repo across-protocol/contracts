@@ -76,7 +76,15 @@ describe("Arbitrum Chain Adapter", function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
     const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, arbitrumChainId);
-    await hubPool.connect(dataWorker).initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot);
+    await hubPool
+      .connect(dataWorker)
+      .initiateRelayerRefund(
+        [3117],
+        1,
+        tree.getHexRoot(),
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot
+      );
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
     await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
     // The correct functions should have been called on the arbitrum contracts.
@@ -99,7 +107,10 @@ describe("Arbitrum Chain Adapter", function () {
       owner.address,
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
-      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [consts.mockTreeRoot])
+      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [
+        consts.mockDestinationDistributionRoot,
+        consts.mockSlowRelayFulfillmentRoot,
+      ])
     );
   });
 });

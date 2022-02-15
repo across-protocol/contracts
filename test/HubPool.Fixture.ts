@@ -42,7 +42,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
   const mockSpoke = await (
     await getContractFactory("MockSpokePool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, 0, parentFixtureOutput.timer.address);
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixtureOutput.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
 
   // Deploy mock l2 tokens for each token created before and whitelist the routes.
