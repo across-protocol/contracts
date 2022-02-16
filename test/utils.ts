@@ -26,7 +26,7 @@ export async function getContractFactory(
   try {
     // First, try get the artifact from this repo.
     return await ethers.getContractFactory(name, signerOrFactoryOptions);
-  } catch (e) {
+  } catch (_) {
     // If it does not exist then try find the contract in the UMA core package.
     if (isFactoryOptions(signerOrFactoryOptions))
       throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
