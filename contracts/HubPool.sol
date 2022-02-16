@@ -3,12 +3,13 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./HubPoolInterface.sol";
+import "./Lockable.sol";
+
 import "./interfaces/AdapterInterface.sol";
 import "./interfaces/LpTokenFactoryInterface.sol";
 import "./interfaces/WETH9.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/oracle/implementation/Constants.sol";
 import "@uma/core/contracts/common/implementation/AncillaryData.sol";
@@ -48,7 +49,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     struct PooledToken {
         address lpToken;
         bool isEnabled;
-        bool isWeth;
         uint32 lastLpFeeUpdate;
         int256 utilizedReserves;
         uint256 liquidReserves;
@@ -63,6 +63,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
+
+    WETH9 public weth;
 
     LpTokenFactoryInterface public lpTokenFactory;
 
@@ -105,9 +107,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     event CrossChainContractsSet(uint256 l2ChainId, address adapter, address spokePool);
 
-    event L1TokenEnabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
+    event L1TokenEnabledForLiquidityProvision(address l1Token, address lpToken);
 
-    event L2TokenDisabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
+    event L2TokenDisabledForLiquidityProvision(address l1Token, address lpToken);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -153,10 +155,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     constructor(
         LpTokenFactoryInterface _lpTokenFactory,
         FinderInterface _finder,
+        WETH9 _weth,
         address _timer
     ) Testable(_timer) {
         lpTokenFactory = _lpTokenFactory;
         finder = _finder;
+        weth = _weth;
         protocolFeeCaptureAddress = owner();
     }
 
@@ -217,32 +221,26 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
         relaySpokePoolAdminFunction(
             destinationChainId,
-            abi.encodeWithSignature(
-                "setEnableRoute(address,uint32,bool)",
-                originToken,
-                uint32(destinationChainId),
-                true
-            )
+            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
 
-    function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) public onlyOwner {
+    function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
         // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
         // appends and permission setting.
         if (pooledTokens[l1Token].lpToken == address(0))
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
         pooledTokens[l1Token].isEnabled = true;
-        pooledTokens[l1Token].isWeth = isWeth;
         pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
 
-        emit L1TokenEnabledForLiquidityProvision(l1Token, isWeth, pooledTokens[l1Token].lpToken);
+        emit L1TokenEnabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
 
     function disableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
         pooledTokens[l1Token].isEnabled = false;
-        emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].isWeth, pooledTokens[l1Token].lpToken);
+        emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
 
     /*************************************************
@@ -253,7 +251,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
-        require((pooledTokens[l1Token].isWeth && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
+        require(((address(weth) == l1Token) && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
 
         // Since _exchangeRateCurrent() reads this contract's balance and updates contract state using it, it must be
         // first before transferring any tokens to this contract to ensure synchronization.
@@ -261,7 +259,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
 
-        if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
+        if (address(weth) == l1Token && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         emit LiquidityAdded(l1Token, l1TokenAmount, lpTokensToMint, msg.sender);
@@ -272,7 +270,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokenAmount,
         bool sendEth
     ) public nonReentrant {
-        require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
+        require(address(weth) == l1Token || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
@@ -280,7 +278,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
-        if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
+        if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
         else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
 
         emit LiquidityRemoved(l1Token, l1TokensToReturn, lpTokenAmount, msg.sender);
@@ -375,7 +373,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
-        //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
@@ -483,15 +480,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
-    function _unwrapWETHTo(
-        address wethAddress,
-        address payable to,
-        uint256 amount
-    ) internal {
+    function _unwrapWETHTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(address(wethAddress)).safeTransfer(to, amount);
+            IERC20(address(weth)).safeTransfer(to, amount);
         } else {
-            WETH9(wethAddress).withdraw(amount);
+            weth.withdraw(amount);
             to.transfer(amount);
         }
     }
@@ -661,6 +654,21 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit SpokePoolAdminFunctionTriggered(chainId, functionData);
     }
 
-    // Added to enable the SpokePool to receive ETH. used when unwrapping WETH.
-    receive() external payable {}
+    // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the callback function
+    // by dropping ETH onto the contract. In this case, deposit the ETH into WETH. This would happen if ETH was sent
+    // over the optimism bridge, for example. If false then this was set as a result of unwinding LP tokens, with the
+    // intention of sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
+    function depositEthToWeth() public payable {
+        if (functionCallStackOriginatesFromOutsideThisContract()) weth.deposit{ value: address(this).balance }();
+    }
+
+    // Added to enable the HubPool to receive ETH. This will occur both when the HubPool unwraps WETH to send to LPs and
+    // when ETH is send over the canonical Optimism bridge, which sends ETH.
+    fallback() external payable {
+        depositEthToWeth();
+    }
+
+    receive() external payable {
+        depositEthToWeth();
+    }
 }

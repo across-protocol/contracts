@@ -67,7 +67,7 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override onlyFromCrossDomainAdmin nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
@@ -112,8 +112,6 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
 
     // l1 addresses are transformed during l1->l2 calls. See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        unchecked {
-            return address((uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111)));
-        }
+        l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
     }
 }

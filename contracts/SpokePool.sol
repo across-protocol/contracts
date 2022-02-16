@@ -17,12 +17,6 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "./MerkleLib.sol";
 import "./SpokePoolInterface.sol";
 
-interface WETH9Like {
-    function withdraw(uint256 wad) external;
-
-    function deposit() external payable;
-}
-
 /**
  * @title SpokePool
  * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to
@@ -56,7 +50,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     uint32 public numberOfDeposits;
 
     // Origin token to destination token routings can be turned on or off.
-    mapping(address => mapping(uint32 => bool)) public enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     struct RelayerRefund {
         // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
@@ -79,12 +73,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      ****************************************/
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
-    event EnabledDepositRoute(address indexed originToken, uint32 indexed destinationChainId, bool enabled);
+    event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
+        uint256 destinationChainId,
         uint64 relayerFeePct,
-        uint32 destinationChainId,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         address indexed originToken,
@@ -96,10 +90,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 totalRelayAmount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
+        uint256 indexed repaymentChain,
+        uint256 originChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
-        uint32 indexed repaymentChain,
-        uint32 originChainId,
         uint32 depositId,
         address destinationToken,
         address indexed relayer,
@@ -111,9 +105,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 totalRelayAmount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
+        uint256 originChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
-        uint32 originChainId,
         uint32 depositId,
         address destinationToken,
         address indexed caller,
@@ -127,18 +121,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     );
     event DistributedRelayerRefund(
         uint256 amountToReturn,
+        uint256 chainId,
         uint256[] refundAmounts,
         uint32 indexed relayerRefundId,
         uint32 indexed leafId,
-        uint32 chainId,
         address l2TokenAddress,
         address[] refundAddresses,
         address indexed caller
     );
     event TokensBridged(
         uint256 amountToReturn,
+        uint256 indexed chainId,
         uint32 indexed leafId,
-        uint32 indexed chainId,
         address indexed l2TokenAddress,
         address caller
     );
@@ -159,7 +153,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyEnabledRoute(address originToken, uint32 destinationId) {
+    modifier onlyEnabledRoute(address originToken, uint256 destinationId) {
         require(enabledDepositRoutes[originToken][destinationId], "Disabled route");
         _;
     }
@@ -182,7 +176,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     function _setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enabled
     ) internal {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
@@ -206,8 +200,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address recipient,
         address originToken,
         uint256 amount,
+        uint256 destinationChainId,
         uint64 relayerFeePct,
-        uint32 destinationChainId,
         uint32 quoteTimestamp
     ) public payable onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
@@ -236,8 +230,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         emit FundsDeposited(
             amount,
-            relayerFeePct,
             destinationChainId,
+            relayerFeePct,
             numberOfDeposits,
             quoteTimestamp,
             originToken,
@@ -258,11 +252,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         uint256 totalRelayAmount,
         uint256 maxTokensToSend,
+        uint256 repaymentChain,
+        uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
-        uint32 repaymentChain,
-        uint32 depositId,
-        uint32 originChainId
+        uint32 depositId
     ) public nonReentrant {
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
@@ -281,7 +275,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, relayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, relayerFeePct, repaymentChain, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, relayerFeePct, relayData);
     }
 
     function fillRelayWithUpdatedFee(
@@ -290,12 +284,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         uint256 totalRelayAmount,
         uint256 maxTokensToSend,
+        uint256 repaymentChain,
+        uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint64 newRelayerFeePct,
-        uint32 repaymentChain,
         uint32 depositId,
-        uint32 originChainId,
         bytes memory depositorSignature
     ) public nonReentrant {
         // Grouping the signature validation logic into brackets to address stack too deep error.
@@ -340,7 +334,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, newRelayerFeePct, repaymentChain, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, newRelayerFeePct, relayData);
     }
 
     function distributeRelaySlow(
@@ -348,10 +342,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address recipient,
         address destinationToken,
         uint256 totalRelayAmount,
+        uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint32 originChainId,
         uint32 relayerRefundId,
         bytes32[] memory proof
     ) public nonReentrant {
@@ -360,10 +354,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             recipient: recipient,
             destinationToken: destinationToken,
             relayAmount: totalRelayAmount,
+            originChainId: originChainId,
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
-            depositId: depositId,
-            originChainId: originChainId
+            depositId: depositId
         });
 
         require(
@@ -427,8 +421,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
             emit TokensBridged(
                 distributionLeaf.amountToReturn,
-                distributionLeaf.leafId,
                 distributionLeaf.chainId,
+                distributionLeaf.leafId,
                 distributionLeaf.l2TokenAddress,
                 msg.sender
             );
@@ -436,10 +430,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         emit DistributedRelayerRefund(
             distributionLeaf.amountToReturn,
+            distributionLeaf.chainId,
             distributionLeaf.refundAmounts,
             relayerRefundId,
             distributionLeaf.leafId,
-            distributionLeaf.chainId,
             distributionLeaf.l2TokenAddress,
             distributionLeaf.refundAddresses,
             msg.sender
@@ -555,8 +549,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     function _emitFillRelay(
         bytes32 relayHash,
         uint256 fillAmount,
+        uint256 repaymentChain,
         uint64 relayerFeePct,
-        uint32 repaymentChain,
         RelayData memory relayData
     ) internal {
         emit FilledRelay(
@@ -564,10 +558,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayData.relayAmount,
             relayFills[relayHash],
             fillAmount,
-            relayerFeePct,
-            relayData.realizedLpFeePct,
             repaymentChain,
             relayData.originChainId,
+            relayerFeePct,
+            relayData.realizedLpFeePct,
             relayData.depositId,
             relayData.destinationToken,
             msg.sender,
@@ -586,9 +580,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayData.relayAmount,
             relayFills[relayHash],
             fillAmount,
+            relayData.originChainId,
             relayData.relayerFeePct,
             relayData.realizedLpFeePct,
-            relayData.originChainId,
             relayData.depositId,
             relayData.destinationToken,
             msg.sender,
