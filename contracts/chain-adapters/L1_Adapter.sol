@@ -16,7 +16,7 @@ contract L1_Adapter is Base_Adapter, Lockable {
     constructor(address _hubPool) Base_Adapter(_hubPool) {}
 
     function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
-        _executeCall(target, message);
+        require(_executeCall(target, message), "tx execution failed");
         emit MessageRelayed(target, message);
     }
 
