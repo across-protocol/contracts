@@ -105,6 +105,24 @@ export function getRelayHash(
   };
 }
 
+export function getDepositParams(
+  _recipient: string,
+  _originToken: string,
+  _amount: BigNumber,
+  _destinationChainId: number,
+  _relayerFeePct: BigNumber,
+  _quoteTime: BigNumber
+): string[] {
+  return [
+    _recipient,
+    _originToken,
+    _amount.toString(),
+    _destinationChainId.toString(),
+    _relayerFeePct.toString(),
+    _quoteTime.toString(),
+  ];
+}
+
 export function getFillRelayParams(
   _relayData: RelayData,
   _maxTokensToSend: BigNumber,
@@ -144,6 +162,32 @@ export function getFillRelayUpdatedFeeParams(
     _updatedFee.toString(),
     _relayData.depositId,
     _signature,
+  ];
+}
+
+export function getDistributeRelaySlowParams(
+  _depositor: string,
+  _recipient: string,
+  _destToken: string,
+  _amountToRelay: BigNumber,
+  _originChainId: number,
+  _realizedLpFeePct: BigNumber,
+  _relayerFeePct: BigNumber,
+  _depositId: number,
+  _relayerRefundId: number,
+  _proof: string[]
+): (string | string[])[] {
+  return [
+    _depositor,
+    _recipient,
+    _destToken,
+    _amountToRelay.toString(),
+    _originChainId.toString(),
+    _realizedLpFeePct.toString(),
+    _relayerFeePct.toString(),
+    _depositId.toString(),
+    _relayerRefundId.toString(),
+    _proof,
   ];
 }
 
