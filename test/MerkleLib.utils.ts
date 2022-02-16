@@ -38,7 +38,7 @@ export async function buildDestinationDistributionLeafTree(
 export function buildDestinationDistributionLeafs(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
-  l2Tokens: Contract[],
+  l2Tokens: Contract[] | string[],
   refundAddresses: string[][],
   refundAmounts: BigNumber[][]
 ): DestinationDistributionLeaf[] {
@@ -49,7 +49,7 @@ export function buildDestinationDistributionLeafs(
         leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
         amountToReturn: amountsToReturn[i],
-        l2TokenAddress: l2Tokens[i].address,
+        l2TokenAddress: (l2Tokens[i] as Contract).address ?? (l2Tokens[i] as string),
         refundAddresses: refundAddresses[i],
         refundAmounts: refundAmounts[i],
       };
