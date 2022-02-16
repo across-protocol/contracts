@@ -143,6 +143,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] runningBalance,
         address indexed caller
     );
+    event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
     event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
@@ -166,6 +167,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    // This function has permission to call onlyFromCrossChainAdmin functions on the SpokePool, so its imperative
+    // that this contract only allows the owner to call this method directly or indirectly.
+    function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) public onlyOwner nonReentrant {
+        _relaySpokePoolAdminFunction(chainId, functionData);
+    }
 
     function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
         public
@@ -211,9 +218,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
-        // Note that this method makes no L1->L1 call to whitelist the route. The assumption is that the origin chain's
-        // SpokePool Owner will call setEnableRoute to enable the route. This removes the need for an L1->L2 call.
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+        relaySpokePoolAdminFunction(
+            destinationChainId,
+            abi.encodeWithSignature(
+                "setEnableRoute(address,uint32,bool)",
+                originToken,
+                uint32(destinationChainId),
+                true
+            )
+        );
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
 
@@ -509,7 +523,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256[] memory bundleLpFees
     ) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        require(address(adapter) != address(0), "Adapter not set for target chain");
 
         for (uint32 i = 0; i < l1Tokens.length; i++) {
             // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action
@@ -635,6 +648,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // If there are any protocol fees, allocate them to the unclaimed protocol tracker amount.
         if (protocolFeesCaptured > 0) unclaimedAccumulatedProtocolFees[l1Token] += protocolFeesCaptured;
+    }
+
+    function _relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
+        adapter.relayMessage(
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+            functionData
+        );
+        emit SpokePoolAdminFunctionTriggered(chainId, functionData);
     }
 
     // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the callback function
