@@ -13,9 +13,8 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress,
-        uint32 _depositQuoteTimeBuffer
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer) {}
+        address timerAddress
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {}
 
     function setCrossDomainAdmin(address newCrossDomainAdmin) public override {
         _setCrossDomainAdmin(newCrossDomainAdmin);

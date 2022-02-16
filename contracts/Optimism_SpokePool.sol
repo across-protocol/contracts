@@ -24,11 +24,10 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress,
-        uint32 _depositQuoteTimeBuffer
+        address timerAddress
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer)
+        SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress)
     {}
 
     /**************************************

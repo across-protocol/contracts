@@ -41,19 +41,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Address of the L1 contract that will send tokens to and receive tokens from this contract.
     address public hubPool;
 
+    // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
+    // instruct this contract to wrap ETH when depositing.
+    WETH9 public weth;
+
     // Timestamp when contract was constructed. Relays cannot have a quote time before this.
     uint32 public deploymentTime;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an up to date realized fee.
-    uint32 public depositQuoteTimeBuffer;
+    // caller to use an up to date realized fee. Defaults to 10 minutes.
+    uint32 public depositQuoteTimeBuffer = 600;
 
     // Use count of deposits as unique deposit identifier.
     uint32 public numberOfDeposits;
-
-    // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
-    // instruct this contract to wrap ETH when depositing.
-    WETH9 public weth;
 
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint32 => bool)) public enabledDepositRoutes;
@@ -147,13 +147,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress,
-        uint32 _depositQuoteTimeBuffer
+        address timerAddress
     ) Testable(timerAddress) {
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         deploymentTime = uint32(getCurrentTime());
-        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         weth = WETH9(_wethAddress);
     }
 
