@@ -64,7 +64,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
 
-    LpTokenFactoryInterface lpTokenFactory;
+    LpTokenFactoryInterface public lpTokenFactory;
 
     FinderInterface public finder;
 
@@ -73,7 +73,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
     // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
-    uint256 lpFeeRatePerSecond = 1500000000000;
+    uint256 public lpFeeRatePerSecond = 1500000000000;
+
+    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
+
+    // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
+    address public protocolFeeCaptureAddress;
+
+    // Percentage of lpFees that are captured by the protocol and claimable by the protocolFeeCaptureAddress.
+    uint256 public protocolFeeCapturePct;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
@@ -84,6 +92,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
     // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
     uint64 public refundProposalLiveness = 7200;
+
+    event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
+
+    event ProtocolFeesCapturedClaimed(address indexed l1Token, uint256 indexed accumulatedFees);
 
     event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
@@ -145,6 +157,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) Testable(_timer) {
         lpTokenFactory = _lpTokenFactory;
         finder = _finder;
+        protocolFeeCaptureAddress = owner();
     }
 
     /*************************************************
@@ -160,6 +173,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             functionData
         );
         emit SpokePoolAdminFunctionTriggered(chainId, functionData);
+    }
+
+    function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
+        public
+        onlyOwner
+    {
+        require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
+        protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
+        protocolFeeCapturePct = newProtocolFeeCapturePct;
+        emit ProtocolFeeCaptureSet(newProtocolFeeCaptureAddress, newProtocolFeeCapturePct);
     }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
@@ -301,7 +324,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot
-    ) public noActiveRequests {
+    ) public nonReentrant noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
@@ -329,7 +352,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public {
+    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof)
+        public
+        nonReentrant
+    {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
@@ -369,7 +395,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function disputeRelayerRefund() public {
+    function disputeRelayerRefund() public nonReentrant {
         require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
@@ -423,6 +449,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // Finally, delete the state pertaining to the active refundRequest.
         delete refundRequest;
+    }
+
+    function claimProtocolFeesCaptured(address l1Token) public nonReentrant {
+        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
+        emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
+        unclaimedAccumulatedProtocolFees[l1Token] = 0;
     }
 
     function _getRefundProposalAncillaryData() public view returns (bytes memory ancillaryData) {
@@ -520,12 +552,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 pooledTokens[l1Tokens[i]].liquidReserves -= uint256(netSendAmounts[i]);
             }
 
-            // Assign any LP fees included into the bundle to the pooled token. These LP fees are tracked in the
-            // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
-            // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
-            // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
-            pooledTokens[l1Tokens[i]].undistributedLpFees += bundleLpFees[i];
-            pooledTokens[l1Tokens[i]].utilizedReserves += int256(bundleLpFees[i]);
+            // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
+            _allocateLpAndProtocolFees(l1Tokens[i], bundleLpFees[i]);
         }
     }
 
@@ -609,6 +637,24 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // In all other cases, return the utilization ratio.
         return (numerator * 1e18) / denominator;
+    }
+
+    function _allocateLpAndProtocolFees(address l1Token, uint256 bundleLpFees) internal {
+        // Calculate the fraction of bundledLpFees that are allocated to the protocol and to the LPs.
+        uint256 protocolFeesCaptured = (bundleLpFees * protocolFeeCapturePct) / 1e18;
+        uint256 lpFeesCaptured = bundleLpFees - protocolFeesCaptured;
+
+        // Assign any LP fees included into the bundle to the pooled token. These LP fees are tracked in the
+        // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
+        // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
+        // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
+        if (lpFeesCaptured > 0) {
+            pooledTokens[l1Token].undistributedLpFees += lpFeesCaptured;
+            pooledTokens[l1Token].utilizedReserves += int256(lpFeesCaptured);
+        }
+
+        // If there are any protocol fees, allocate them to the unclaimed protocol tracker amount.
+        if (protocolFeesCaptured > 0) unclaimedAccumulatedProtocolFees[l1Token] += protocolFeesCaptured;
     }
 
     // Added to enable the SpokePool to receive ETH. used when unwrapping WETH.
