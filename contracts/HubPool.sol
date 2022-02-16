@@ -29,17 +29,34 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using Address for address;
 
     struct RefundRequest {
-        uint64 requestExpirationTimestamp;
-        uint64 unclaimedPoolRebalanceLeafCount;
+        uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
+        uint32 requestExpirationTimestamp;
+        uint8 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
         bytes32 slowRelayFulfillmentRoot;
-        uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
     }
 
     RefundRequest public refundRequest;
+
+    // When bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
+    bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
+
+    // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
+    uint256 public bondAmount;
+
+    // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
+    // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
+    uint32 public refundProposalLiveness = 7200;
+
+    // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
+    // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
+    uint64 public lpFeeRatePerSecond = 1500000000000;
+
+    // Percentage of lpFees that are captured by the protocol and claimable by the protocolFeeCaptureAddress.
+    uint64 public protocolFeeCapturePct;
 
     // Whitelist of origin token to destination token routings to be used by off-chain agents. The notion of a route
     // does not need to include L1; it can store L2->L2 routes i.e USDC on Arbitrum -> USDC on Optimism as a "route".
@@ -47,12 +64,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Mapping of L1TokenAddress to the associated Pool information.
     struct PooledToken {
-        address lpToken;
-        bool isEnabled;
-        uint32 lastLpFeeUpdate;
         int256 utilizedReserves;
         uint256 liquidReserves;
         uint256 undistributedLpFees;
+        uint32 lastLpFeeUpdate;
+        address lpToken;
+        bool isEnabled;
     }
 
     mapping(address => PooledToken) public pooledTokens;
@@ -64,44 +81,27 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
 
+    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
+
     WETH9 public weth;
 
     LpTokenFactoryInterface public lpTokenFactory;
 
     FinderInterface public finder;
 
-    // When bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
-    bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
-
-    // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
-    // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
-    uint256 public lpFeeRatePerSecond = 1500000000000;
-
-    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
-
     // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
     address public protocolFeeCaptureAddress;
-
-    // Percentage of lpFees that are captured by the protocol and claimable by the protocolFeeCaptureAddress.
-    uint256 public protocolFeeCapturePct;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
 
-    // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
-    uint256 public bondAmount;
-
-    // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
-    // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint64 public refundProposalLiveness = 7200;
-
-    event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
+    event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint64 indexed newProtocolFeeCapturePct);
 
     event ProtocolFeesCapturedClaimed(address indexed l1Token, uint256 indexed accumulatedFees);
 
     event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
-    event RefundProposalLivenessSet(uint256 newRefundProposalLiveness);
+    event RefundProposalLivenessSet(uint32 newRefundProposalLiveness);
 
     event IdentifierSet(bytes32 newIdentifier);
 
@@ -126,26 +126,26 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event WhitelistRoute(uint256 destinationChainId, address originToken, address destinationToken);
 
     event InitiateRefundRequested(
-        uint64 requestExpirationTimestamp,
-        uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
+        uint32 requestExpirationTimestamp,
+        uint8 unclaimedPoolRebalanceLeafCount,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot,
         address indexed proposer
     );
     event RelayerRefundExecuted(
-        uint256 indexed leafId,
         uint256 indexed chainId,
-        address[] l1Token,
         uint256[] bundleLpFees,
         int256[] netSendAmount,
         int256[] runningBalance,
+        uint32 indexed leafId,
+        address[] l1Token,
         address indexed caller
     );
     event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
-    event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RelayerRefundDisputed(address indexed disputer, uint32 requestTime, bytes disputedAncillaryData);
 
     modifier noActiveRequests() {
         require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
@@ -174,7 +174,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _relaySpokePoolAdminFunction(chainId, functionData);
     }
 
-    function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
+    function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint64 newProtocolFeeCapturePct)
         public
         onlyOwner
     {
@@ -190,7 +190,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit BondSet(address(newBondToken), newBondAmount);
     }
 
-    function setRefundProposalLiveness(uint64 newRefundProposalLiveness) public onlyOwner {
+    function setRefundProposalLiveness(uint32 newRefundProposalLiveness) public onlyOwner {
         refundProposalLiveness = newRefundProposalLiveness;
         emit RefundProposalLivenessSet(newRefundProposalLiveness);
     }
@@ -318,14 +318,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // initiateRelayerRefund can't be called again until all leafs are executed.
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
-        uint64 poolRebalanceLeafCount,
+        uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot
     ) public nonReentrant noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
+        uint32 requestExpirationTimestamp = uint32(getCurrentTime() + refundProposalLiveness);
 
         delete refundRequest; // Remove the existing information relating to the previous relayer refund request.
 
@@ -340,9 +340,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit InitiateRefundRequested(
+            bundleEvaluationBlockNumbers,
             requestExpirationTimestamp,
             poolRebalanceLeafCount,
-            bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
             destinationDistributionRoot,
             slowRelayFulfillmentRoot,
@@ -382,12 +382,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
         emit RelayerRefundExecuted(
-            poolRebalanceLeaf.leafId,
             poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
             poolRebalanceLeaf.bundleLpFees,
             poolRebalanceLeaf.netSendAmounts,
             poolRebalanceLeaf.runningBalances,
+            poolRebalanceLeaf.leafId,
+            poolRebalanceLeaf.l1Tokens,
             msg.sender
         );
     }
@@ -442,7 +442,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             address(this)
         );
 
-        emit RelayerRefundDisputed(msg.sender, getCurrentTime(), requestAncillaryData);
+        emit RelayerRefundDisputed(msg.sender, uint32(getCurrentTime()), requestAncillaryData);
 
         // Finally, delete the state pertaining to the active refundRequest.
         delete refundRequest;
