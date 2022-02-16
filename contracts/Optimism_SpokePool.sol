@@ -110,5 +110,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "" // _data. We don't need to send any data for the bridging action.
         );
+
+        emit OptimismTokensBridged(distributionLeaf.l2TokenAddress, hubPool, distributionLeaf.amountToReturn, l1Gas);
     }
 }
