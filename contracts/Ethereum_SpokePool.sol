@@ -9,6 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 
+/**
+ * @notice Ethereum L1 specific SpokePool.
+ * @dev Used on Ethereum L1 to facilitate L2->L1 transfers.
+ */
+
 contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     constructor(
         address _l1EthWrapper,
