@@ -26,7 +26,7 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override {
         _setEnableRoute(originToken, destinationChainId, enable);
