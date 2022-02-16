@@ -35,9 +35,8 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress,
-        uint32 _depositQuoteTimeBuffer
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress, _depositQuoteTimeBuffer) {
+        address timerAddress
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
@@ -68,7 +67,7 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override onlyFromCrossDomainAdmin nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);

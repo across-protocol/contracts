@@ -36,16 +36,16 @@ describe("SpokePool Depositor Logic", async function () {
           recipient.address,
           erc20.address,
           amountToDeposit,
-          depositRelayerFeePct,
           destinationChainId,
+          depositRelayerFeePct,
           currentSpokePoolTime
         )
     )
       .to.emit(spokePool, "FundsDeposited")
       .withArgs(
         amountToDeposit,
-        depositRelayerFeePct,
         destinationChainId,
+        depositRelayerFeePct,
         0,
         currentSpokePoolTime,
         erc20.address,
@@ -85,8 +85,8 @@ describe("SpokePool Depositor Logic", async function () {
           recipient.address,
           weth.address,
           amountToDeposit,
-          depositRelayerFeePct,
           destinationChainId,
+          depositRelayerFeePct,
           currentSpokePoolTime,
           { value: amountToDeposit }
         )
@@ -105,8 +105,8 @@ describe("SpokePool Depositor Logic", async function () {
           recipient.address,
           weth.address,
           amountToDeposit,
-          depositRelayerFeePct,
           destinationChainId,
+          depositRelayerFeePct,
           currentSpokePoolTime,
           { value: 0 }
         )
@@ -124,8 +124,8 @@ describe("SpokePool Depositor Logic", async function () {
           recipient.address,
           erc20.address,
           amountToDeposit,
-          depositRelayerFeePct,
           destinationChainId,
+          depositRelayerFeePct,
           currentSpokePoolTime
         )
     ).to.be.reverted;
@@ -139,8 +139,8 @@ describe("SpokePool Depositor Logic", async function () {
           recipient.address,
           unwhitelistedErc20.address,
           amountToDeposit,
-          depositRelayerFeePct,
           destinationChainId,
+          depositRelayerFeePct,
           currentSpokePoolTime
         )
     ).to.be.reverted;
@@ -154,8 +154,8 @@ describe("SpokePool Depositor Logic", async function () {
           recipient.address,
           erc20.address,
           amountToDeposit,
-          depositRelayerFeePct,
           destinationChainId,
+          depositRelayerFeePct,
           currentSpokePoolTime
         )
     ).to.be.reverted;
@@ -168,8 +168,8 @@ describe("SpokePool Depositor Logic", async function () {
         recipient.address,
         erc20.address,
         amountToDeposit,
-        toWei("1"), // Fee > 50%
         destinationChainId,
+        toWei("1"), // Fee > 50%
         currentSpokePoolTime
       )
     ).to.be.reverted;
@@ -180,8 +180,8 @@ describe("SpokePool Depositor Logic", async function () {
         recipient.address,
         erc20.address,
         amountToDeposit,
-        depositRelayerFeePct,
         destinationChainId,
+        depositRelayerFeePct,
         toBN(currentSpokePoolTime).add(toBN("700")) // > 10 mins in future
       )
     ).to.be.reverted;
@@ -190,8 +190,8 @@ describe("SpokePool Depositor Logic", async function () {
         recipient.address,
         erc20.address,
         amountToDeposit,
-        depositRelayerFeePct,
         destinationChainId,
+        depositRelayerFeePct,
         toBN(currentSpokePoolTime).sub(toBN("700")) // > 10 mins in past
       )
     ).to.be.reverted;

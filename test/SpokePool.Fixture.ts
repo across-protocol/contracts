@@ -88,14 +88,14 @@ export function getRelayHash(
     recipient: _recipient,
     destinationToken: _destinationToken,
     relayAmount: _relayAmount || consts.amountToDeposit.toString(),
+    originChainId: _originChainId.toString(),
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
-    originChainId: _originChainId.toString(),
   };
   const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["address", "address", "address", "uint256", "uint64", "uint64", "uint32", "uint32"],
+      ["address", "address", "address", "uint256", "uint256", "uint64", "uint64", "uint32"],
       Object.values(relayData)
     )
   );
@@ -116,11 +116,11 @@ export function getFillRelayParams(
     _relayData.destinationToken,
     _relayData.relayAmount,
     _maxTokensToSend.toString(),
+    _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
+    _relayData.originChainId,
     _relayData.realizedLpFeePct,
     _relayData.relayerFeePct,
-    _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.depositId,
-    _relayData.originChainId,
   ];
 }
 
@@ -137,12 +137,12 @@ export function getFillRelayUpdatedFeeParams(
     _relayData.destinationToken,
     _relayData.relayAmount,
     _maxTokensToSend.toString(),
+    _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
+    _relayData.originChainId,
     _relayData.realizedLpFeePct,
     _relayData.relayerFeePct,
     _updatedFee.toString(),
-    _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.depositId,
-    _relayData.originChainId,
     _signature,
   ];
 }
