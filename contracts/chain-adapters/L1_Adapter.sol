@@ -31,7 +31,7 @@ contract L1_Adapter is Base_Adapter, Lockable {
     }
 
     // Note: this snippet of code is copied from Governor.sol.
-    function _executeCall(address to, bytes memory data) private returns (bool) {
+    function _executeCall(address to, bytes memory data) private {
         // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
         // solhint-disable-next-line no-inline-assembly
 
@@ -43,10 +43,7 @@ contract L1_Adapter is Base_Adapter, Lockable {
             // value cross-chain.
             success := call(gas(), to, 0, inputData, inputDataSize, 0, 0)
         }
-        // TODO: Can't figure out why but this `require` statement reverts even though the call() does seem to work in
-        // the L1_Adapter test.
-        // require(success, "execute call failed");
-        return success;
+        require(success, "execute call failed");
     }
 
     receive() external payable {}

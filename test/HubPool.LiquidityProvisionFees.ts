@@ -26,7 +26,6 @@ describe("HubPool Liquidity Provision", function () {
     expect(pooledTokenInfoPreExecution.utilizedReserves).to.equal(0);
     expect(pooledTokenInfoPreExecution.undistributedLpFees).to.equal(0);
     expect(pooledTokenInfoPreExecution.lastLpFeeUpdate).to.equal(await timer.getCurrentTime());
-    expect(pooledTokenInfoPreExecution.isWeth).to.equal(true);
 
     const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
 

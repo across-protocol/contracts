@@ -13,12 +13,11 @@ describe("HubPool Admin functions", function () {
 
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {
     expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(zeroAddress);
-    await hubPool.enableL1TokenForLiquidityProvision(weth.address, true);
+    await hubPool.enableL1TokenForLiquidityProvision(weth.address);
 
     const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
     expect(pooledTokenStruct.lpToken).to.not.equal(zeroAddress);
     expect(pooledTokenStruct.isEnabled).to.equal(true);
-    expect(pooledTokenStruct.isWeth).to.equal(true);
     expect(pooledTokenStruct.lastLpFeeUpdate).to.equal(Number(await hubPool.getCurrentTime()));
 
     const lpToken = await (await getContractFactory("ExpandedERC20", owner)).attach(pooledTokenStruct.lpToken);
@@ -26,7 +25,7 @@ describe("HubPool Admin functions", function () {
     expect(await lpToken.callStatic.name()).to.equal("Across Wrapped Ether LP Token");
   });
   it("Only owner can enable L1 Tokens for liquidity provision", async function () {
-    await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address, true)).to.be.reverted;
+    await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
   it("Can disable L1 Tokens for liquidity provision", async function () {
     await hubPool.disableL1TokenForLiquidityProvision(weth.address);
