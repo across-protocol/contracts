@@ -42,7 +42,7 @@ interface HubPoolInterface {
         address destinationToken
     ) external;
 
-    function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) external;
+    function enableL1TokenForLiquidityProvision(address l1Token) external;
 
     function disableL1TokenForLiquidityProvision(address l1Token) external;
 
