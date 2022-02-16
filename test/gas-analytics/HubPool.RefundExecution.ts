@@ -8,6 +8,7 @@ import {
   getContractFactory,
   BigNumber,
   randomAddress,
+  expect,
 } from "../utils";
 import * as consts from "../constants";
 import { TokenRolesEnum } from "@uma/common";
@@ -30,6 +31,8 @@ const REFUND_TOKEN_COUNT = 10;
 const REFUND_CHAIN_COUNT = 10;
 const REFUND_SEND_COUNT = 10; // Send amount per destination chain + token combo
 const SEND_AMOUNT = toBNWei("10");
+const STARTING_LP_AMOUNT = SEND_AMOUNT; // This should be >= `SEND_AMOUNT` otherwise some relays will revert because
+// the pool balance won't be sufficient to cover the relay.
 const LP_FEE = SEND_AMOUNT.div(toBN(10));
 
 async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSymbol: string) {
@@ -79,7 +82,7 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
     await seedWallet(dataWorker, [], weth, consts.bondAmount.mul(10));
     await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
 
-    // Deploy all test tokens for each chain ID
+    // Deploy test tokens for each chain ID
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       destinationChainIds.push(i);
       l1Tokens[i] = [];
@@ -92,16 +95,17 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         await _l1Token.connect(dataWorker).approve(hubPool.address, consts.bondAmount);
 
         // Mint LP amount of tokens needed to cover relay
-        await seedWallet(liquidityProvider, [_l1Token], undefined, SEND_AMOUNT);
+        await seedWallet(liquidityProvider, [_l1Token], undefined, STARTING_LP_AMOUNT);
         await enableTokensForLP(owner, hubPool, weth, [_l1Token]);
-        await _l1Token.connect(liquidityProvider).approve(hubPool.address, SEND_AMOUNT);
-        await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, SEND_AMOUNT);
+        await _l1Token.connect(liquidityProvider).approve(hubPool.address, STARTING_LP_AMOUNT);
+        await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, STARTING_LP_AMOUNT);
       }
     }
   });
 
   it(`Tree with 1 Leaf: ${REFUND_SEND_COUNT} total transfers, ${REFUND_TOKEN_COUNT} different tokens`, async function () {
     const { leafs, tree } = await constructSimpleTree();
+    const leafIndexToExecute = 0;
 
     await hubPool.connect(dataWorker).initiateRelayerRefund(
       [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
@@ -113,37 +117,20 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
 
     // Advance time so the request can be executed and execute the request.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    const txn = await hubPool
+      .connect(dataWorker)
+      .executeRelayerRefund(leafs[leafIndexToExecute], tree.getHexProof(leafs[leafIndexToExecute]));
 
-    // // Balances should have updated as expected.
-    // expect(await weth.balanceOf(hubPool.address)).to.equal(consts.amountToLp.sub(wethToSendToL2));
-    // expect(await weth.balanceOf(mockAdapter.address)).to.equal(wethToSendToL2);
-    // expect(await dai.balanceOf(hubPool.address)).to.equal(consts.amountToLp.mul(10).sub(daiToSend));
-    // expect(await dai.balanceOf(mockAdapter.address)).to.equal(daiToSend);
+    // Balances should have updated as expected for tokens contained in the first leaf.
+    for (let i = 0; i < REFUND_TOKEN_COUNT; i++) {
+      expect(await l1Tokens[leafIndexToExecute][i].balanceOf(hubPool.address)).to.equal(
+        STARTING_LP_AMOUNT.sub(SEND_AMOUNT)
+      );
+      expect(await l1Tokens[leafIndexToExecute][i].balanceOf(mockAdapter.address)).to.equal(SEND_AMOUNT);
+    }
 
-    // // Check the mockAdapter was called with the correct arguments for each method.
-    // const relayMessageEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayMessageCalled());
-    // expect(relayMessageEvents.length).to.equal(1); // Exactly one message send from L1->L2.
-    // expect(relayMessageEvents[0].args?.target).to.equal(mockSpoke.address);
-    // expect(relayMessageEvents[0].args?.message).to.equal(
-    //   mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [
-    //     consts.mockDestinationDistributionRoot,
-    //     consts.mockSlowRelayFulfillmentRoot,
-    //   ])
-    // );
-
-    // const relayTokensEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayTokensCalled());
-    // expect(relayTokensEvents.length).to.equal(2); // Exactly two token transfers from L1->L2.
-    // expect(relayTokensEvents[0].args?.l1Token).to.equal(weth.address);
-    // expect(relayTokensEvents[0].args?.l2Token).to.equal(l2Weth);
-    // expect(relayTokensEvents[0].args?.amount).to.equal(wethToSendToL2);
-    // expect(relayTokensEvents[0].args?.to).to.equal(mockSpoke.address);
-    // expect(relayTokensEvents[1].args?.l1Token).to.equal(dai.address);
-    // expect(relayTokensEvents[1].args?.l2Token).to.equal(l2Dai);
-    // expect(relayTokensEvents[1].args?.amount).to.equal(daiToSend);
-    // expect(relayTokensEvents[1].args?.to).to.equal(mockSpoke.address);
-
-    // // Check the leaf count was decremented correctly.
-    // expect((await hubPool.refundRequest()).unclaimedPoolRebalanceLeafCount).to.equal(0);
+    // Now that we've verified that the transaction succeeded, let's compute average gas costs.
+    const receipt = await txn.wait();
+    console.log(receipt.cumulativeGasUsed);
   });
 });
