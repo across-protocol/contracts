@@ -97,19 +97,15 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     }
 
     function _bridgeTokensToHubPool(DestinationDistributionLeaf memory distributionLeaf) internal override {
-        address l2Token = distributionLeaf.l2TokenAddress;
-        address l1Destination = hubPool;
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
         if (distributionLeaf.l2TokenAddress == address(weth)) {
-            WETH9(l2Token).withdraw(distributionLeaf.amountToReturn); // Unwrap ETH.
-            l2Token = l2Eth; // Set the bridged token to the Optimism ETH address.
-            l1Destination = l1EthWrapper; // Set the destination to the L1 ETH wrapper.
+            WETH9(distributionLeaf.l2TokenAddress).withdraw(distributionLeaf.amountToReturn); // Unwrap ETH.
+            distributionLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
         }
-
         IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
-            l2Token, // _l2Token. Address of the L2 token to bridge over.
-            l1Destination, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
+            distributionLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+            hubPool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             distributionLeaf.amountToReturn, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "" // _data. We don't need to send any data for the bridging action.
