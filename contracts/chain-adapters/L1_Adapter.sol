@@ -16,7 +16,7 @@ contract L1_Adapter is Base_Adapter, Lockable {
     constructor(address _hubPool) Base_Adapter(_hubPool) {}
 
     function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
-        _executeCall(target, message);
+        require(_executeCall(target, message), "execute call failed");
         emit MessageRelayed(target, message);
     }
 
@@ -43,7 +43,6 @@ contract L1_Adapter is Base_Adapter, Lockable {
             // value cross-chain.
             success := call(gas(), to, 0, inputData, inputDataSize, 0, 0)
         }
-        require(success, "execute call failed");
         return success;
     }
 
