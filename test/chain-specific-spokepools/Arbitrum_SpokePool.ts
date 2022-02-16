@@ -87,13 +87,9 @@ describe("Arbitrum Spoke Pool", function () {
     await arbitrumSpokePool.connect(relayer).distributeRelayerRefund(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
-    expect(l2GatewayRouter["outboundTransfer(address,address,uint256,uint256,uint256,bytes)"]).to.callCount(0);
-    expect(l2GatewayRouter["outboundTransfer(address,address,uint256,bytes)"]).to.callCount(1);
-    expect(l2GatewayRouter["outboundTransfer(address,address,uint256,bytes)"]).to.have.been.calledWith(
-      dai.address,
-      hubPool.address,
-      amountToReturn,
-      "0x"
-    );
+    // outboundTransfer is overloaded in the arbitrum gateway. Define the interface to check the method is called.
+    const functionKey = "outboundTransfer(address,address,uint256,bytes)";
+    expect(l2GatewayRouter[functionKey]).to.have.been.calledOnce;
+    expect(l2GatewayRouter[functionKey]).to.have.been.calledWith(dai.address, hubPool.address, amountToReturn, "0x");
   });
 });
