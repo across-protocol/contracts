@@ -34,7 +34,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const lpTokenFactory = await (await getContractFactory("LpTokenFactory", signer)).deploy();
   const hubPool = await (
     await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
-  ).deploy(lpTokenFactory.address, parentFixtureOutput.finder.address, parentFixtureOutput.timer.address);
+  ).deploy(lpTokenFactory.address, parentFixtureOutput.finder.address, weth.address, parentFixtureOutput.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
   await hubPool.setRefundProposalLiveness(refundProposalLiveness);
 
@@ -54,13 +54,25 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await hubPool.whitelistRoute(repaymentChainId, dai.address, l2Dai);
   await hubPool.whitelistRoute(repaymentChainId, usdc.address, l2Usdc);
 
-  return { weth, usdc, dai, hubPool, mockAdapter, mockSpoke, l2Weth, l2Dai, l2Usdc, ...parentFixtureOutput };
+  return {
+    weth,
+    usdc,
+    dai,
+    hubPool,
+    mockAdapter,
+    mockSpoke,
+    l2Weth,
+    l2Dai,
+    l2Usdc,
+    crossChainAdmin,
+    ...parentFixtureOutput,
+  };
 });
 
 export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {
   const lpTokens = [];
   for (const token of tokens) {
-    await hubPool.enableL1TokenForLiquidityProvision(token.address, token.address == weth.address);
+    await hubPool.enableL1TokenForLiquidityProvision(token.address);
     lpTokens.push(
       await (
         await getContractFactory("ExpandedERC20", owner)

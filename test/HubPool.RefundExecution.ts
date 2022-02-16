@@ -63,9 +63,10 @@ describe("HubPool Relayer Refund Execution", function () {
 
     // Check the mockAdapter was called with the correct arguments for each method.
     const relayMessageEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayMessageCalled());
-    expect(relayMessageEvents.length).to.equal(1); // Exactly one message send from L1->L2.
-    expect(relayMessageEvents[0].args?.target).to.equal(mockSpoke.address);
-    expect(relayMessageEvents[0].args?.message).to.equal(
+    expect(relayMessageEvents.length).to.equal(4); // Exactly four message send from L1->L2. 3 for each whitelist route
+    // and 1 for the initiateRelayerRefund.
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [
         consts.mockDestinationDistributionRoot,
         consts.mockSlowRelayFulfillmentRoot,

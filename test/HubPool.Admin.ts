@@ -2,23 +2,22 @@ import { getContractFactory, SignerWithAddress, seedWallet, expect, Contract, et
 import { destinationChainId, bondAmount, zeroAddress, mockTreeRoot, mockSlowRelayFulfillmentRoot } from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract, usdc: Contract;
+let hubPool: Contract, weth: Contract, usdc: Contract, mockSpoke: Contract, mockAdapter: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
 describe("HubPool Admin functions", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
-    ({ weth, hubPool, usdc } = await hubPoolFixture());
+    ({ weth, hubPool, usdc, mockAdapter, mockSpoke } = await hubPoolFixture());
   });
 
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {
     expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(zeroAddress);
-    await hubPool.enableL1TokenForLiquidityProvision(weth.address, true);
+    await hubPool.enableL1TokenForLiquidityProvision(weth.address);
 
     const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
     expect(pooledTokenStruct.lpToken).to.not.equal(zeroAddress);
     expect(pooledTokenStruct.isEnabled).to.equal(true);
-    expect(pooledTokenStruct.isWeth).to.equal(true);
     expect(pooledTokenStruct.lastLpFeeUpdate).to.equal(Number(await hubPool.getCurrentTime()));
 
     const lpToken = await (await getContractFactory("ExpandedERC20", owner)).attach(pooledTokenStruct.lpToken);
@@ -26,7 +25,7 @@ describe("HubPool Admin functions", function () {
     expect(await lpToken.callStatic.name()).to.equal("Across Wrapped Ether LP Token");
   });
   it("Only owner can enable L1 Tokens for liquidity provision", async function () {
-    await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address, true)).to.be.reverted;
+    await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
   it("Can disable L1 Tokens for liquidity provision", async function () {
     await hubPool.disableL1TokenForLiquidityProvision(weth.address);
@@ -36,6 +35,7 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
   it("Can whitelist route for deposits and rebalances", async function () {
+    await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
     await expect(hubPool.whitelistRoute(destinationChainId, weth.address, usdc.address))
       .to.emit(hubPool, "WhitelistRoute")
       .withArgs(destinationChainId, weth.address, usdc.address);
