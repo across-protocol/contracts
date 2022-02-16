@@ -639,7 +639,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the callback function
     // by dropping ETH onto the contract. In this case, deposit the ETH into WETH. This would happen if ETH was sent
-    // over the optimism bridge, for example. If true then this was set as a result of unwinding LP tokens, with the
+    // over the optimism bridge, for example. If false then this was set as a result of unwinding LP tokens, with the
     // intention of sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
     function depositEthToWeth() public payable {
         if (functionCallStackOriginatesFromOutsideThisContract()) weth.deposit{ value: address(this).balance }();
