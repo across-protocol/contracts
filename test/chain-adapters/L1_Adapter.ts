@@ -5,14 +5,17 @@ import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, l1Adapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
-let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
+let owner: SignerWithAddress,
+  dataWorker: SignerWithAddress,
+  liquidityProvider: SignerWithAddress,
+  crossChainAdmin: SignerWithAddress;
 
 const l1ChainId = 1;
 
 describe("L1 Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
+    ({ weth, dai, hubPool, mockSpoke, timer, crossChainAdmin } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, consts.amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
 
@@ -34,14 +37,14 @@ describe("L1 Chain Adapter", function () {
   });
 
   it("relayMessage calls spoke pool functions", async function () {
+    expect(await mockSpoke.crossDomainAdmin()).to.equal(crossChainAdmin.address);
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
     expect(await hubPool.relaySpokePoolAdminFunction(l1ChainId, functionCallData))
       .to.emit(l1Adapter, "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
 
-    const admin = await mockSpoke.crossDomainAdmin();
-    expect(admin).to.equal(newAdmin);
+    expect(await mockSpoke.crossDomainAdmin()).to.equal(newAdmin);
   });
   it("Correctly transfers tokens when executing pool rebalance", async function () {
     const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, l1ChainId);

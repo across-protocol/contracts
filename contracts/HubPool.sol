@@ -167,12 +167,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // This function has permission to call onlyFromCrossChainAdmin functions on the SpokePool, so its imperative
     // that this contract only allows the owner to call this method directly or indirectly.
     function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) public onlyOwner nonReentrant {
-        AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        adapter.relayMessage(
-            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
-            functionData
-        );
-        emit SpokePoolAdminFunctionTriggered(chainId, functionData);
+        _relaySpokePoolAdminFunction(chainId, functionData);
     }
 
     function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
@@ -655,6 +650,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // If there are any protocol fees, allocate them to the unclaimed protocol tracker amount.
         if (protocolFeesCaptured > 0) unclaimedAccumulatedProtocolFees[l1Token] += protocolFeesCaptured;
+    }
+
+    function _relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
+        adapter.relayMessage(
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+            functionData
+        );
+        emit SpokePoolAdminFunctionTriggered(chainId, functionData);
     }
 
     // Added to enable the SpokePool to receive ETH. used when unwrapping WETH.

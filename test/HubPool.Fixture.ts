@@ -54,7 +54,19 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await hubPool.whitelistRoute(repaymentChainId, dai.address, l2Dai);
   await hubPool.whitelistRoute(repaymentChainId, usdc.address, l2Usdc);
 
-  return { weth, usdc, dai, hubPool, mockAdapter, mockSpoke, l2Weth, l2Dai, l2Usdc, ...parentFixtureOutput };
+  return {
+    weth,
+    usdc,
+    dai,
+    hubPool,
+    mockAdapter,
+    mockSpoke,
+    l2Weth,
+    l2Dai,
+    l2Usdc,
+    crossChainAdmin,
+    ...parentFixtureOutput,
+  };
 });
 
 export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {
