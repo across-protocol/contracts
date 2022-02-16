@@ -637,11 +637,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         if (protocolFeesCaptured > 0) unclaimedAccumulatedProtocolFees[l1Token] += protocolFeesCaptured;
     }
 
-    // If _notEntered is false then this method has been called by the callback function by dropping ETH onto the
-    // contract. In this case, deposit the ETH into WETH. If true then this was set as a result of unwinding LP tokens,
-    // with the intention of sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
+    // If functionCallStackOriginatesFromOutsideThisContract is false then this method has been called by the callback function
+    // by dropping ETH onto the contract. In this case, deposit the ETH into WETH. This would happen if ETH was sent
+    // over the optimism bridge. If true then this was set as a result of unwinding LP tokens, with the intention of
+    // sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
     function depositEthToWeth() public payable {
-        if (_notEntered) weth.deposit{ value: address(this).balance }();
+        if (functionCallStackOriginatesFromOutsideThisContract()) weth.deposit{ value: address(this).balance }();
     }
 
     // Added to enable the HubPool to receive ETH. This will occur both when the HubPool unwraps WETH to send to LPs and

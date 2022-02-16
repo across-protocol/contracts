@@ -19,7 +19,7 @@ import "./SpokePoolInterface.sol";
 
 contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool, Ownable {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`.
-    uint32 public l1Gas = 1_900_000;
+    uint32 public l1Gas = 5_000_000;
 
     address public l1EthWrapper;
 

@@ -38,6 +38,16 @@ contract Lockable {
         _;
     }
 
+    /**
+     * @dev Returns true if the contract is currently in a non-entered state, meaning that the origination of the call
+     * came from outside the contract. This is relevant with fallback/receive methods to see if the call came from ETH
+     * being dropped onto the contract externally or due to ETH dropped on the the contract from within a method in this
+     * contract, such as unwrapping WETH to ETH within the contract.
+     */
+    function functionCallStackOriginatesFromOutsideThisContract() internal view returns (bool) {
+        return _notEntered;
+    }
+
     // Internal methods are used to avoid copying the require statement's bytecode to every `nonReentrant()` method.
     // On entry into a function, `_preEntranceCheck()` should always be called to check if the function is being
     // re-entered. Then, if the function modifies state, it should call `_postEntranceSet()`, perform its logic, and
