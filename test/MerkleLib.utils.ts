@@ -34,7 +34,7 @@ export async function buildRelayerRefundTree(relayerRefundLeafs: RelayerRefundLe
 export function buildRelayerRefundLeafs(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
-  l2Tokens: Contract[],
+  l2Tokens: Contract[] | string[],
   refundAddresses: string[][],
   refundAmounts: BigNumber[][]
 ): RelayerRefundLeaf[] {
@@ -45,7 +45,7 @@ export function buildRelayerRefundLeafs(
         leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
         amountToReturn: amountsToReturn[i],
-        l2TokenAddress: l2Tokens[i].address,
+        l2TokenAddress: (l2Tokens[i] as Contract).address ?? (l2Tokens[i] as string),
         refundAddresses: refundAddresses[i],
         refundAmounts: refundAmounts[i],
       };

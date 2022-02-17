@@ -7,12 +7,12 @@ interface SpokePoolInterface {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
         // negative. This is just that value inverted.
         uint256 amountToReturn;
+        // Used to verify that this is being decoded on the correct chainId.
+        uint256 chainId;
         // This array designates how much each of those addresses should be refunded.
         uint256[] refundAmounts;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint32 leafId;
-        // Used to verify that this is being decoded on the correct chainId.
-        uint32 chainId;
         // The associated L2TokenAddress that these claims apply to.
         address l2TokenAddress;
         // These two arrays must be the same length and are parallel arrays. They should be order by refundAddresses.
@@ -32,6 +32,8 @@ interface SpokePoolInterface {
         address destinationToken;
         // The total relay amount before fees are taken out.
         uint256 relayAmount;
+        // Origin chain id.
+        uint256 originChainId;
         // The LP Fee percentage computed by the relayer based on the deposit's quote timestamp
         // and the HubPool's utilization.
         uint64 realizedLpFeePct;
@@ -39,8 +41,6 @@ interface SpokePoolInterface {
         uint64 relayerFeePct;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
-        // Origin chain id.
-        uint32 originChainId;
     }
 
     function setCrossDomainAdmin(address newCrossDomainAdmin) external;

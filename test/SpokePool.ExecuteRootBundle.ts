@@ -25,11 +25,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
     .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
   const tree = await buildRelayerRefundTree(leafs);
 
-  return {
-    leafs,
-    leafsRefundAmount,
-    tree,
-  };
+  return { leafs, leafsRefundAmount, tree };
 }
 describe("SpokePool Root Bundle Execution", function () {
   beforeEach(async function () {
