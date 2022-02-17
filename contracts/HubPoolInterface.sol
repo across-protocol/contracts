@@ -58,15 +58,15 @@ interface HubPoolInterface {
 
     function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) external returns (uint256);
 
-    function initiateRelayerRefund(
+    function proposeRootBundle(
         uint256[] memory bundleEvaluationBlockNumbers,
         uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
-        bytes32 destinationDistributionRoot,
+        bytes32 relayerRefundRoot,
         bytes32 slowRelayFulfillmentRoot
     ) external;
 
-    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
+    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
 
-    function disputeRelayerRefund() external;
+    function disputeRootBundle() external;
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 interface SpokePoolInterface {
     // This leaf is meant to be decoded in the SpokePool in order to pay out individual relayers for this bundle.
-    struct DestinationDistributionLeaf {
+    struct RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
         // negative. This is just that value inverted.
         uint256 amountToReturn;
@@ -55,11 +55,5 @@ interface SpokePoolInterface {
 
     function setDepositQuoteTimeBuffer(uint32 buffer) external;
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot) external;
-
-    function distributeRelayerRefund(
-        uint32 relayerRefundId,
-        DestinationDistributionLeaf memory distributionLeaf,
-        bytes32[] memory inclusionProof
-    ) external;
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) external;
 }
