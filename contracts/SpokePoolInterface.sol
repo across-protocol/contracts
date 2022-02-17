@@ -49,7 +49,7 @@ interface SpokePoolInterface {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) external;
 

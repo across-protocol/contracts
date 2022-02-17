@@ -50,7 +50,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     uint32 public numberOfDeposits;
 
     // Origin token to destination token routings can be turned on or off.
-    mapping(address => mapping(uint32 => bool)) public enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     struct RootBundle {
         // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
@@ -73,7 +73,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      ****************************************/
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
-    event EnabledDepositRoute(address indexed originToken, uint32 indexed destinationChainId, bool enabled);
+    event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
@@ -172,7 +172,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     function _setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enabled
     ) internal {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;

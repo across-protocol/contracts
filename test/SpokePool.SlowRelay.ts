@@ -4,7 +4,6 @@ import {
   ethers,
   SignerWithAddress,
   seedWallet,
-  toWei,
   toBN,
   randomAddress,
   randomBigNumber,
@@ -89,13 +88,13 @@ describe("SpokePool Slow Relay Logic", async function () {
     };
     tree = new MerkleTree(relays, hashFn);
 
-    await spokePool.connect(depositor).initializeRelayerRefund(consts.mockTreeRoot, tree.getHexRoot());
+    await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
   });
   it("Simple SlowRelay ERC20 balances", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           destErc20.address,
@@ -120,7 +119,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           destErc20.address,
@@ -133,7 +132,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
         )
     )
-      .to.emit(spokePool, "DistributeRelaySlow")
+      .to.emit(spokePool, "ExecutedSlowRelayFulfillmentRoot")
       .withArgs(
         tree.hashFn(relay),
         consts.amountToRelay,
@@ -154,7 +153,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           weth.address,
@@ -173,7 +172,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           weth.address,
@@ -194,7 +193,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           weth.address,
@@ -207,7 +206,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
     )
-      .to.emit(spokePool, "DistributeRelaySlow")
+      .to.emit(spokePool, "ExecutedSlowRelayFulfillmentRoot")
       .withArgs(
         tree.hashFn(relay),
         consts.amountToRelay,
@@ -245,7 +244,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           destErc20.address,
@@ -283,7 +282,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           destErc20.address,
@@ -296,7 +295,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
         )
     )
-      .to.emit(spokePool, "DistributeRelaySlow")
+      .to.emit(spokePool, "ExecutedSlowRelayFulfillmentRoot")
       .withArgs(
         tree.hashFn(relay),
         consts.amountToRelay,
@@ -335,7 +334,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           weth.address,
@@ -372,7 +371,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           weth.address,
@@ -410,7 +409,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .distributeRelaySlow(
+        .executeSlowRelayFulfillmentRoot(
           depositor.address,
           recipient.address,
           weth.address,
@@ -423,7 +422,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
         )
     )
-      .to.emit(spokePool, "DistributeRelaySlow")
+      .to.emit(spokePool, "ExecutedSlowRelayFulfillmentRoot")
       .withArgs(
         tree.hashFn(relay),
         consts.amountToRelay,
@@ -442,7 +441,7 @@ describe("SpokePool Slow Relay Logic", async function () {
 
   it("Bad proof", async function () {
     await expect(
-      spokePool.connect(relayer).distributeRelaySlow(
+      spokePool.connect(relayer).executeSlowRelayFulfillmentRoot(
         depositor.address,
         recipient.address,
         weth.address,

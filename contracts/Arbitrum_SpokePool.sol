@@ -67,7 +67,7 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override onlyFromCrossDomainAdmin nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);

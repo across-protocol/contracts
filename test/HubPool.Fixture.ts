@@ -36,7 +36,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
     await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
   ).deploy(lpTokenFactory.address, parentFixtureOutput.finder.address, weth.address, parentFixtureOutput.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
-  await hubPool.setRefundProposalLiveness(refundProposalLiveness);
+  await hubPool.setRootBundleProposalLiveness(refundProposalLiveness);
 
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);

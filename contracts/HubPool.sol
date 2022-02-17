@@ -159,7 +159,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event RootBundleDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
     modifier noActiveRequests() {
-        require(rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0, "Proposal has unclaimed leafs");
+        require(rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0, "proposal has unclaimed leafs");
         _;
     }
 
@@ -230,7 +230,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address destinationToken
     ) public onlyOwner {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
-        relaySpokePoolAdminFunction(
+        _relaySpokePoolAdminFunction(
             destinationChainId,
             abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
@@ -406,7 +406,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // Request price from OO and dispute it.
         uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
-        bytes memory requestAncillaryData = _getRootBundleProposalAncillaryData();
+        bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
         // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
         bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
@@ -464,7 +464,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         unclaimedAccumulatedProtocolFees[l1Token] = 0;
     }
 
-    function _getRootBundleProposalAncillaryData() public view returns (bytes memory ancillaryData) {
+    function getRootBundleProposalAncillaryData() public view returns (bytes memory ancillaryData) {
         ancillaryData = AncillaryData.appendKeyValueUint(
             "",
             "requestExpirationTimestamp",
@@ -485,6 +485,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             ancillaryData,
             "relayerRefundRoot",
             rootBundleProposal.relayerRefundRoot
+        );
+        ancillaryData = AncillaryData.appendKeyValueBytes32(
+            ancillaryData,
+            "slowRelayFulfillmentRoot",
+            rootBundleProposal.slowRelayFulfillmentRoot
         );
         ancillaryData = AncillaryData.appendKeyValueUint(
             ancillaryData,

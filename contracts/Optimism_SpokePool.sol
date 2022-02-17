@@ -60,7 +60,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
