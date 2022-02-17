@@ -13,23 +13,26 @@ import {
 import * as consts from "../constants";
 import { TokenRolesEnum } from "@uma/common";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "../MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs, PoolRebalanceLeaf } from "../MerkleLib.utils";
+import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
 
 let hubPool: Contract, timer: Contract, weth: Contract, mockAdapter: Contract, mockSpoke: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 
-// Data structure to create pool rebalance leafs:
-const l1Tokens: { [key: number]: Contract[] } = {};
-const destinationChainIds: number[] = [];
-const _bundleLpFeeAmounts: BigNumber[][] = [];
-const _netSendAmounts: BigNumber[][] = [];
+// Associates an array of L1 tokens to sends refunds for to each chain ID.
+interface L1_TOKENS_MAPPING {
+  [key: number]: Contract[];
+}
+let l1Tokens: L1_TOKENS_MAPPING;
+let destinationChainIds: number[];
+let leaves: PoolRebalanceLeaf[];
+let tree: MerkleTree<PoolRebalanceLeaf>;
 
 // Constants caller can tune to modify gas tests
 const REFUND_TOKEN_COUNT = 10;
 const REFUND_CHAIN_COUNT = 10;
-const REFUND_SEND_COUNT = 10; // Send amount per destination chain + token combo
 const SEND_AMOUNT = toBNWei("10");
 const STARTING_LP_AMOUNT = SEND_AMOUNT; // This should be >= `SEND_AMOUNT` otherwise some relays will revert because
 // the pool balance won't be sufficient to cover the relay.
@@ -42,31 +45,32 @@ async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSy
 }
 
 // Construct tree with REFUND_CHAIN_COUNT leaves, each containing REFUND_TOKEN_COUNT sends
-async function constructSimpleTree() {
+async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: L1_TOKENS_MAPPING) {
+  const _bundleLpFeeAmounts: BigNumber[][] = [];
+  const _netSendAmounts: BigNumber[][] = [];
   for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
     _bundleLpFeeAmounts[i] = [];
     _netSendAmounts[i] = [];
+    // Set adapter for destination chain ID:
+    await hubPool.setCrossChainContracts(_destinationChainIds[i], mockAdapter.address, mockSpoke.address);
     for (let j = 0; j < REFUND_TOKEN_COUNT; j++) {
       _bundleLpFeeAmounts[i].push(LP_FEE);
       _netSendAmounts[i].push(SEND_AMOUNT);
 
       // Whitelist route
-      await hubPool.whitelistRoute(destinationChainIds[i], l1Tokens[i][j].address, randomAddress());
+      await hubPool.whitelistRoute(_destinationChainIds[i], _l1Tokens[i][j].address, randomAddress());
     }
-
-    // Set adapter for destination chain ID:
-    await hubPool.setCrossChainContracts(destinationChainIds[i], mockAdapter.address, mockSpoke.address);
   }
-  const leafs = buildPoolRebalanceLeafs(
-    destinationChainIds,
-    Object.values(l1Tokens),
+  const leaves = buildPoolRebalanceLeafs(
+    _destinationChainIds,
+    Object.values(_l1Tokens),
     _bundleLpFeeAmounts,
     _netSendAmounts, // netSendAmounts.
     _netSendAmounts // runningBalances.
   );
-  const tree = await buildPoolRebalanceLeafTree(leafs);
+  const tree = await buildPoolRebalanceLeafTree(leaves);
 
-  return { leafs, tree };
+  return { leaves, tree };
 }
 
 describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
@@ -75,6 +79,10 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
   });
 
   beforeEach(async function () {
+    // Clear state for each test
+    l1Tokens = {};
+    destinationChainIds = [];
+
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ hubPool, timer, weth, mockSpoke, mockAdapter } = await hubPoolFixture());
 
@@ -103,34 +111,70 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
     }
   });
 
-  it(`Tree with 1 Leaf: ${REFUND_SEND_COUNT} total transfers, ${REFUND_TOKEN_COUNT} different tokens`, async function () {
-    const { leafs, tree } = await constructSimpleTree();
-    const leafIndexToExecute = 0;
+  describe(`Tree with ${REFUND_CHAIN_COUNT} Leaves, each containing refunds for ${REFUND_TOKEN_COUNT} different tokens`, function () {
+    beforeEach(async function () {
+      const simpleTree = await constructSimpleTree(destinationChainIds, l1Tokens);
+      leaves = simpleTree.leaves;
+      tree = simpleTree.tree;
+    });
+    it("Executing 1 leaf", async function () {
+      const leafIndexToExecute = 0;
 
-    await hubPool.connect(dataWorker).initiateRelayerRefund(
-      [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
-      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
-      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
-      consts.mockDestinationDistributionRoot, // destinationDistributionRoot. Not relevant for this test.
-      consts.mockSlowRelayFulfillmentRoot // Mock root because this isn't relevant for this test.
-    );
-
-    // Advance time so the request can be executed and execute the request.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    const txn = await hubPool
-      .connect(dataWorker)
-      .executeRelayerRefund(leafs[leafIndexToExecute], tree.getHexProof(leafs[leafIndexToExecute]));
-
-    // Balances should have updated as expected for tokens contained in the first leaf.
-    for (let i = 0; i < REFUND_TOKEN_COUNT; i++) {
-      expect(await l1Tokens[leafIndexToExecute][i].balanceOf(hubPool.address)).to.equal(
-        STARTING_LP_AMOUNT.sub(SEND_AMOUNT)
+      const initiateTxn = await hubPool.connect(dataWorker).initiateRelayerRefund(
+        [consts.mockBundleEvaluationBlockNumbers[0]], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
+        tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+        consts.mockDestinationDistributionRoot, // destinationDistributionRoot. Not relevant for this test.
+        consts.mockSlowRelayFulfillmentRoot // Mock root because this isn't relevant for this test.
       );
-      expect(await l1Tokens[leafIndexToExecute][i].balanceOf(mockAdapter.address)).to.equal(SEND_AMOUNT);
-    }
+      console.log(`initiateRelayerRefund-cumulativeGasUsed: ${(await initiateTxn.wait()).cumulativeGasUsed}`);
 
-    // Now that we've verified that the transaction succeeded, let's compute average gas costs.
-    const receipt = await txn.wait();
-    console.log(receipt.cumulativeGasUsed);
+      // Advance time so the request can be executed and execute the request.
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      const txn = await hubPool
+        .connect(dataWorker)
+        .executeRelayerRefund(leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+
+      // Balances should have updated as expected for tokens contained in the first leaf.
+      for (let i = 0; i < REFUND_TOKEN_COUNT; i++) {
+        expect(await l1Tokens[leafIndexToExecute][i].balanceOf(hubPool.address)).to.equal(
+          STARTING_LP_AMOUNT.sub(SEND_AMOUNT)
+        );
+        expect(await l1Tokens[leafIndexToExecute][i].balanceOf(mockAdapter.address)).to.equal(SEND_AMOUNT);
+      }
+
+      const receipt = await txn.wait();
+      console.log(`executeRelayerRefund-cumulativeGasUsed: ${receipt.cumulativeGasUsed}`);
+    });
+    it("Executing all leaves", async function () {
+      const initiateTxn = await hubPool.connect(dataWorker).initiateRelayerRefund(
+        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
+        tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+        consts.mockDestinationDistributionRoot, // destinationDistributionRoot. Not relevant for this test.
+        consts.mockSlowRelayFulfillmentRoot // Mock root because this isn't relevant for this test.
+      );
+      console.log(`initiateRelayerRefund-cumulativeGasUsed: ${(await initiateTxn.wait()).cumulativeGasUsed}`);
+
+      // Advance time so the request can be executed and execute the request.
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      const txns = [];
+      for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
+        txns.push(await hubPool.connect(dataWorker).executeRelayerRefund(leaves[i], tree.getHexProof(leaves[i])));
+      }
+
+      // Balances should have updated as expected for tokens contained in the first leaf.
+      for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
+        for (let j = 0; j < REFUND_TOKEN_COUNT; j++) {
+          expect(await l1Tokens[i][j].balanceOf(hubPool.address)).to.equal(STARTING_LP_AMOUNT.sub(SEND_AMOUNT));
+          expect(await l1Tokens[i][j].balanceOf(mockAdapter.address)).to.equal(SEND_AMOUNT);
+        }
+      }
+
+      // Now that we've verified that the transaction succeeded, let's compute average gas costs.
+      const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
+      const cumulativeGasUsed = receipts.map((_receipt) => _receipt.cumulativeGasUsed).reduce((x, y) => x.add(y));
+      console.log(`(average) executeRelayerRefund-cumulativeGasUsed: ${cumulativeGasUsed.div(REFUND_CHAIN_COUNT)}`);
+    });
   });
 });
