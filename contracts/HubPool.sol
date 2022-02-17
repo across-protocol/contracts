@@ -31,12 +31,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     struct RefundRequest {
         uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         uint32 requestExpirationTimestamp;
-        uint8 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
         bytes32 slowRelayFulfillmentRoot;
         address proposer;
         bool proposerBondRepaid;
+        uint8 unclaimedPoolRebalanceLeafCount;
     }
 
     RefundRequest public refundRequest;

@@ -22,7 +22,7 @@ interface HubPoolInterface {
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
         int256[] runningBalances;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
-        uint32 leafId;
+        uint8 leafId;
         // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Tokens` field.
         // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
         address[] l1Tokens;
