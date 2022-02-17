@@ -29,9 +29,9 @@ describe("HubPool Relayer Refund Initialization", function () {
     )
       .to.emit(hubPool, "InitiateRefundRequested")
       .withArgs(
+        consts.mockBundleEvaluationBlockNumbers,
         expectedRequestExpirationTimestamp,
         consts.mockPoolRebalanceLeafCount,
-        consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceRoot,
         consts.mockDestinationDistributionRoot,
         consts.mockSlowRelayFulfillmentRoot,
