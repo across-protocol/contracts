@@ -20,14 +20,12 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
 
     address public l1EthWrapper;
 
-    address public l2Eth;
+    address public l2Eth = 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000;
 
     event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
     event SetL1Gas(uint32 indexed newL1Gas);
 
     constructor(
-        address _l1EthWrapper,
-        address _l2Eth,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
