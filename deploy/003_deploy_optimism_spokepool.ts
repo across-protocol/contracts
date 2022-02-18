@@ -4,6 +4,8 @@ const func = async function (hre: any) {
 
   const { deployer } = await getNamedAccounts();
 
+  // TODO: This part is not quite working, throwing:
+  // "HardhatError: HH101: Hardhat was set to use chain id 42, but connected to a chain with id 69."
   // Grab L1 addresses:
   const { deployments: l1Deployments } = companionNetworks.l1;
   const adapter = await l1Deployments.get("Optimism_Adapter");
