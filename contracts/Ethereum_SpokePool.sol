@@ -38,7 +38,7 @@ contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override onlyOwner nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
