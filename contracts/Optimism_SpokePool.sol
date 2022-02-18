@@ -18,22 +18,18 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`.
     uint32 public l1Gas = 5_000_000;
 
-    address public l1EthWrapper;
-
-    address public l2Eth;
+    address public l2Eth = address(Lib_PredeployAddresses.OVM_ETH);
 
     event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
     event SetL1Gas(uint32 indexed newL1Gas);
 
     constructor(
-        address _l2Eth,
         address _crossDomainAdmin,
         address _hubPool,
-        address _wethAddress,
         address timerAddress
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress)
+        SpokePool(_crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006, timerAddress)
     {}
 
     /**************************************

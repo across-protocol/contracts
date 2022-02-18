@@ -10,8 +10,6 @@ import "hardhat-deploy";
 
 dotenv.config();
 
-console.log("process.env.CUSTOM_NODE_URL", process.env.CUSTOM_NODE_URL);
-
 const config: HardhatUserConfig = {
   solidity: { compilers: [{ version: "0.8.11", settings: { optimizer: { enabled: true, runs: 200 } } }] },
   networks: {
@@ -27,12 +25,14 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic: process.env.MNEMONIC },
       saveDeployments: true,
       chainId: 69,
+      companionNetworks: { l1: "kovan" },
     },
     optimism: {
       url: process.env.CUSTOM_NODE_URL,
       accounts: { mnemonic: process.env.MNEMONIC },
       saveDeployments: true,
       chainId: 10,
+      companionNetworks: { l1: "mainnet" },
     },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },

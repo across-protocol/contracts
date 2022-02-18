@@ -54,8 +54,6 @@ describe("SpokePool Relayer Refund Execution", function () {
     expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToRelay);
     expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
 
-    // TODO: Test token bridging logic.
-
     // Check events.
     let relayTokensEvents = await spokePool.queryFilter(spokePool.filters.DistributedRelayerRefund());
     expect(relayTokensEvents[0].args?.l2TokenAddress).to.equal(destErc20.address);
