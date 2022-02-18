@@ -87,6 +87,17 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+    function _chainId() internal view override returns (uint256) {
+        return block.chainid;
+    }
+
+    function _verifyDepositorUpdateFeeMessage(
+        address depositor,
+        bytes32 ethSignedMessageHash,
+        bytes memory depositorSignature
+    ) internal view override {
+        _defaultVerifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
+    }
 
     function _setL1GasLimit(uint32 _l1Gas) internal {
         l1Gas = _l1Gas;

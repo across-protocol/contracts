@@ -28,6 +28,18 @@ contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
      *          ADMIN FUNCTIONS           *
      **************************************/
 
+    function _chainId() internal view override returns (uint256) {
+        return block.chainid;
+    }
+
+    function _verifyDepositorUpdateFeeMessage(
+        address depositor,
+        bytes32 ethSignedMessageHash,
+        bytes memory depositorSignature
+    ) internal view override {
+        _defaultVerifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
+    }
+
     function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyOwner nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
@@ -38,7 +50,7 @@ contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
 
     function setEnableRoute(
         address originToken,
-        uint32 destinationChainId,
+        uint256 destinationChainId,
         bool enable
     ) public override onlyOwner nonReentrant {
         _setEnableRoute(originToken, destinationChainId, enable);
