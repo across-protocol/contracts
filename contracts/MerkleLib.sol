@@ -105,24 +105,51 @@ library MerkleLib {
         bytes32[] memory leaves,
         bytes32[] calldata proof
     ) internal pure returns (bool) {
+        // If the length is 1 (or 0) just skip the loop, since the node should just be verified directly.
         if (leaves.length > 1) {
+            // The algorithm below successively reduces the merkle data (via hashing) to the earlier indexes.
+            // As it goes, it replaces the indices that are no longer used with bytes32(0) so future iterations know
+            // where the end of the usable data is.
             while (leaves[1] != bytes32(0)) {
+                // Just increments. Relies on the break statement to terminate the loop.
                 for (uint256 i = 0; ; i++) {
+                    // Store this variable since this is needed twice.
                     bool isEven = i % 2 == 0;
+
+                    // This just detects if this index is the end of the current data. That could be the end of the
+                    // allocated array or the end of the nonzero data.
                     if (i == leaves.length - 1 || leaves[i + 1] == bytes32(0)) {
+                        // If it's an even index, we need to just move up the data with no other modifications since
+                        // there's no data to hash this node with.
                         if (isEven) {
-                            leaves[i / 2] = leaves[i];
+                            // Note: this ordering is done specifically to avoid the case where i == i / 2. Deleting
+                            // old data before setting new data avoids us accidentally removing the data we're trying
+                            // to write.
+                            bytes32 inode = leaves[i];
+                            leaves[i] = bytes32(0);
+                            leaves[i / 2] = inode;
                         }
+
+                        // Note: do nothing if odd since the data has already been hashed with another node.
+                        // Always break at the end of the usable data.
                         break;
                     } else {
+                        // If even and not at the end, we combine the data with the next node to create the new inode.
                         if (isEven) {
-                            leaves[i / 2] = keccak256(abi.encode(leaves[i], leaves[i + 1]));
+                            // Note: this ordering is done specifically to avoid the case where i == i / 2. Deleting
+                            // old data before setting new data avoids us accidentally removing the data we're trying
+                            // to write.
+                            bytes32 inode = keccak256(abi.encode(leaves[i], leaves[i + 1]));
+                            leaves[i] = bytes32(0);
+                            leaves[i + 1] = bytes32(0);
+                            leaves[i / 2] = inode;
                         }
                     }
                 }
             }
         }
 
+        // Take leaves[0], which should be the only nonzero data point and verify it using the provided proof.
         return MerkleProof.verify(proof, root, leaves[0]);
     }
 }
