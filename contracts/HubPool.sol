@@ -3,12 +3,13 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./HubPoolInterface.sol";
+import "./Lockable.sol";
+
 import "./interfaces/AdapterInterface.sol";
 import "./interfaces/LpTokenFactoryInterface.sol";
 import "./interfaces/WETH9.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/oracle/implementation/Constants.sol";
 import "@uma/core/contracts/common/implementation/AncillaryData.sol";
@@ -28,17 +29,34 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using Address for address;
 
     struct RefundRequest {
-        uint64 requestExpirationTimestamp;
-        uint64 unclaimedPoolRebalanceLeafCount;
+        uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
+        uint32 requestExpirationTimestamp;
         bytes32 poolRebalanceRoot;
         bytes32 destinationDistributionRoot;
         bytes32 slowRelayFulfillmentRoot;
-        uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
+        uint8 unclaimedPoolRebalanceLeafCount;
     }
 
     RefundRequest public refundRequest;
+
+    // When bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
+    bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
+
+    // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
+    uint256 public bondAmount;
+
+    // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
+    // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
+    uint32 public refundProposalLiveness = 7200;
+
+    // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
+    // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
+    uint64 public lpFeeRatePerSecond = 1500000000000;
+
+    // Percentage of lpFees that are captured by the protocol and claimable by the protocolFeeCaptureAddress.
+    uint64 public protocolFeeCapturePct;
 
     // Whitelist of origin token to destination token routings to be used by off-chain agents. The notion of a route
     // does not need to include L1; it can store L2->L2 routes i.e USDC on Arbitrum -> USDC on Optimism as a "route".
@@ -46,13 +64,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Mapping of L1TokenAddress to the associated Pool information.
     struct PooledToken {
-        address lpToken;
-        bool isEnabled;
-        bool isWeth;
-        uint32 lastLpFeeUpdate;
         int256 utilizedReserves;
         uint256 liquidReserves;
         uint256 undistributedLpFees;
+        uint32 lastLpFeeUpdate;
+        address lpToken;
+        bool isEnabled;
     }
 
     mapping(address => PooledToken) public pooledTokens;
@@ -64,38 +81,35 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     mapping(uint256 => CrossChainContract) public crossChainContracts; // Mapping of chainId to the associated adapter and spokePool contracts.
 
-    LpTokenFactoryInterface lpTokenFactory;
+    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
+
+    WETH9 public weth;
+
+    LpTokenFactoryInterface public lpTokenFactory;
 
     FinderInterface public finder;
 
-    // When bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
-    bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
-
-    // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
-    // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
-    uint256 lpFeeRatePerSecond = 1500000000000;
+    // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
+    address public protocolFeeCaptureAddress;
 
     // Token used to bond the data worker for proposing relayer refund bundles.
     IERC20 public bondToken;
 
-    // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
-    uint256 public bondAmount;
+    event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint64 indexed newProtocolFeeCapturePct);
 
-    // Each refund proposal must stay in liveness for this period of time before it can be considered finalized. It can
-    // be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint64 public refundProposalLiveness = 7200;
+    event ProtocolFeesCapturedClaimed(address indexed l1Token, uint256 indexed accumulatedFees);
 
     event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
-    event RefundProposalLivenessSet(uint256 newRefundProposalLiveness);
+    event RefundProposalLivenessSet(uint32 newRefundProposalLiveness);
 
     event IdentifierSet(bytes32 newIdentifier);
 
     event CrossChainContractsSet(uint256 l2ChainId, address adapter, address spokePool);
 
-    event L1TokenEnabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
+    event L1TokenEnabledForLiquidityProvision(address l1Token, address lpToken);
 
-    event L2TokenDisabledForLiquidityProvision(address l1Token, bool isWeth, address lpToken);
+    event L2TokenDisabledForLiquidityProvision(address l1Token, address lpToken);
 
     event LiquidityAdded(
         address indexed l1Token,
@@ -112,25 +126,26 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event WhitelistRoute(uint256 destinationChainId, address originToken, address destinationToken);
 
     event InitiateRefundRequested(
-        uint64 requestExpirationTimestamp,
-        uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
+        uint32 requestExpirationTimestamp,
+        uint8 unclaimedPoolRebalanceLeafCount,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot,
         address indexed proposer
     );
     event RelayerRefundExecuted(
-        uint256 indexed leafId,
         uint256 indexed chainId,
-        address[] l1Token,
         uint256[] bundleLpFees,
         int256[] netSendAmount,
         int256[] runningBalance,
+        uint32 indexed leafId,
+        address[] l1Token,
         address indexed caller
     );
+    event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
-    event RelayerRefundDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RelayerRefundDisputed(address indexed disputer, uint32 requestTime, bytes disputedAncillaryData);
 
     modifier noActiveRequests() {
         require(refundRequest.unclaimedPoolRebalanceLeafCount == 0, "Active request has unclaimed leafs");
@@ -140,15 +155,34 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     constructor(
         LpTokenFactoryInterface _lpTokenFactory,
         FinderInterface _finder,
+        WETH9 _weth,
         address _timer
     ) Testable(_timer) {
         lpTokenFactory = _lpTokenFactory;
         finder = _finder;
+        weth = _weth;
+        protocolFeeCaptureAddress = owner();
     }
 
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    // This function has permission to call onlyFromCrossChainAdmin functions on the SpokePool, so its imperative
+    // that this contract only allows the owner to call this method directly or indirectly.
+    function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) public onlyOwner nonReentrant {
+        _relaySpokePoolAdminFunction(chainId, functionData);
+    }
+
+    function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint64 newProtocolFeeCapturePct)
+        public
+        onlyOwner
+    {
+        require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
+        protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
+        protocolFeeCapturePct = newProtocolFeeCapturePct;
+        emit ProtocolFeeCaptureSet(newProtocolFeeCaptureAddress, newProtocolFeeCapturePct);
+    }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
         bondToken = newBondToken;
@@ -156,7 +190,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit BondSet(address(newBondToken), newBondAmount);
     }
 
-    function setRefundProposalLiveness(uint64 newRefundProposalLiveness) public onlyOwner {
+    function setRefundProposalLiveness(uint32 newRefundProposalLiveness) public onlyOwner {
         refundProposalLiveness = newRefundProposalLiveness;
         emit RefundProposalLivenessSet(newRefundProposalLiveness);
     }
@@ -184,27 +218,29 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
-        // TODO: Should relay message to L2 for destinationChainId and call setEnableRoute(originToken, destinationChainId, true)
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+        relaySpokePoolAdminFunction(
+            destinationChainId,
+            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
+        );
         emit WhitelistRoute(destinationChainId, originToken, destinationToken);
     }
 
-    function enableL1TokenForLiquidityProvision(address l1Token, bool isWeth) public onlyOwner {
+    function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
         // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
         // appends and permission setting.
         if (pooledTokens[l1Token].lpToken == address(0))
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
         pooledTokens[l1Token].isEnabled = true;
-        pooledTokens[l1Token].isWeth = isWeth;
         pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
 
-        emit L1TokenEnabledForLiquidityProvision(l1Token, isWeth, pooledTokens[l1Token].lpToken);
+        emit L1TokenEnabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
 
     function disableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
         pooledTokens[l1Token].isEnabled = false;
-        emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].isWeth, pooledTokens[l1Token].lpToken);
+        emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
 
     /*************************************************
@@ -215,7 +251,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
-        require((pooledTokens[l1Token].isWeth && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
+        require(((address(weth) == l1Token) && msg.value == l1TokenAmount) || msg.value == 0, "Bad msg.value");
 
         // Since _exchangeRateCurrent() reads this contract's balance and updates contract state using it, it must be
         // first before transferring any tokens to this contract to ensure synchronization.
@@ -223,7 +259,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
 
-        if (pooledTokens[l1Token].isWeth && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
+        if (address(weth) == l1Token && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         emit LiquidityAdded(l1Token, l1TokenAmount, lpTokensToMint, msg.sender);
@@ -234,7 +270,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokenAmount,
         bool sendEth
     ) public nonReentrant {
-        require(pooledTokens[l1Token].isWeth || !sendEth, "Cant send eth");
+        require(address(weth) == l1Token || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
@@ -242,7 +278,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
-        if (sendEth) _unwrapWETHTo(l1Token, payable(msg.sender), l1TokensToReturn);
+        if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
         else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
 
         emit LiquidityRemoved(l1Token, l1TokensToReturn, lpTokenAmount, msg.sender);
@@ -277,14 +313,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // initiateRelayerRefund can't be called again until all leafs are executed.
     function initiateRelayerRefund(
         uint256[] memory bundleEvaluationBlockNumbers,
-        uint64 poolRebalanceLeafCount,
+        uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 destinationDistributionRoot,
         bytes32 slowRelayFulfillmentRoot
-    ) public noActiveRequests {
+    ) public nonReentrant noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + refundProposalLiveness);
+        uint32 requestExpirationTimestamp = uint32(getCurrentTime() + refundProposalLiveness);
 
         delete refundRequest; // Remove the existing information relating to the previous relayer refund request.
 
@@ -299,9 +335,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit InitiateRefundRequested(
+            bundleEvaluationBlockNumbers,
             requestExpirationTimestamp,
             poolRebalanceLeafCount,
-            bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
             destinationDistributionRoot,
             slowRelayFulfillmentRoot,
@@ -309,7 +345,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public {
+    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof)
+        public
+        nonReentrant
+    {
         require(getCurrentTime() >= refundRequest.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
@@ -334,22 +373,21 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
-        //TODO: consider if we want to reward the proposer. if so, this is where we should do it.
         if (refundRequest.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(refundRequest.proposer, bondAmount);
 
         emit RelayerRefundExecuted(
-            poolRebalanceLeaf.leafId,
             poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
             poolRebalanceLeaf.bundleLpFees,
             poolRebalanceLeaf.netSendAmounts,
             poolRebalanceLeaf.runningBalances,
+            poolRebalanceLeaf.leafId,
+            poolRebalanceLeaf.l1Tokens,
             msg.sender
         );
     }
 
-    function disputeRelayerRefund() public {
+    function disputeRelayerRefund() public nonReentrant {
         require(getCurrentTime() <= refundRequest.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
@@ -399,10 +437,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             address(this)
         );
 
-        emit RelayerRefundDisputed(msg.sender, getCurrentTime(), requestAncillaryData);
+        emit RelayerRefundDisputed(msg.sender, uint32(getCurrentTime()), requestAncillaryData);
 
         // Finally, delete the state pertaining to the active refundRequest.
         delete refundRequest;
+    }
+
+    function claimProtocolFeesCaptured(address l1Token) public nonReentrant {
+        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
+        emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
+        unclaimedAccumulatedProtocolFees[l1Token] = 0;
     }
 
     function _getRefundProposalAncillaryData() public view returns (bytes memory ancillaryData) {
@@ -436,15 +480,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
-    function _unwrapWETHTo(
-        address wethAddress,
-        address payable to,
-        uint256 amount
-    ) internal {
+    function _unwrapWETHTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(address(wethAddress)).safeTransfer(to, amount);
+            IERC20(address(weth)).safeTransfer(to, amount);
         } else {
-            WETH9(wethAddress).withdraw(amount);
+            weth.withdraw(amount);
             to.transfer(amount);
         }
     }
@@ -478,7 +518,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256[] memory bundleLpFees
     ) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        require(address(adapter) != address(0), "Adapter not set for target chain");
 
         for (uint32 i = 0; i < l1Tokens.length; i++) {
             // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action
@@ -501,12 +540,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 pooledTokens[l1Tokens[i]].liquidReserves -= uint256(netSendAmounts[i]);
             }
 
-            // Assign any LP fees included into the bundle to the pooled token. These LP fees are tracked in the
-            // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
-            // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
-            // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
-            pooledTokens[l1Tokens[i]].undistributedLpFees += bundleLpFees[i];
-            pooledTokens[l1Tokens[i]].utilizedReserves += int256(bundleLpFees[i]);
+            // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
+            _allocateLpAndProtocolFees(l1Tokens[i], bundleLpFees[i]);
         }
     }
 
@@ -592,6 +627,48 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         return (numerator * 1e18) / denominator;
     }
 
-    // Added to enable the SpokePool to receive ETH. used when unwrapping WETH.
-    receive() external payable {}
+    function _allocateLpAndProtocolFees(address l1Token, uint256 bundleLpFees) internal {
+        // Calculate the fraction of bundledLpFees that are allocated to the protocol and to the LPs.
+        uint256 protocolFeesCaptured = (bundleLpFees * protocolFeeCapturePct) / 1e18;
+        uint256 lpFeesCaptured = bundleLpFees - protocolFeesCaptured;
+
+        // Assign any LP fees included into the bundle to the pooled token. These LP fees are tracked in the
+        // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
+        // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
+        // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
+        if (lpFeesCaptured > 0) {
+            pooledTokens[l1Token].undistributedLpFees += lpFeesCaptured;
+            pooledTokens[l1Token].utilizedReserves += int256(lpFeesCaptured);
+        }
+
+        // If there are any protocol fees, allocate them to the unclaimed protocol tracker amount.
+        if (protocolFeesCaptured > 0) unclaimedAccumulatedProtocolFees[l1Token] += protocolFeesCaptured;
+    }
+
+    function _relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) internal {
+        AdapterInterface adapter = crossChainContracts[chainId].adapter;
+        adapter.relayMessage(
+            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+            functionData
+        );
+        emit SpokePoolAdminFunctionTriggered(chainId, functionData);
+    }
+
+    // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the callback function
+    // by dropping ETH onto the contract. In this case, deposit the ETH into WETH. This would happen if ETH was sent
+    // over the optimism bridge, for example. If false then this was set as a result of unwinding LP tokens, with the
+    // intention of sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
+    function depositEthToWeth() public payable {
+        if (functionCallStackOriginatesFromOutsideThisContract()) weth.deposit{ value: address(this).balance }();
+    }
+
+    // Added to enable the HubPool to receive ETH. This will occur both when the HubPool unwraps WETH to send to LPs and
+    // when ETH is send over the canonical Optimism bridge, which sends ETH.
+    fallback() external payable {
+        depositEthToWeth();
+    }
+
+    receive() external payable {
+        depositEthToWeth();
+    }
 }

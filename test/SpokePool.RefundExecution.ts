@@ -25,11 +25,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
     .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
   const tree = await buildDestinationDistributionLeafTree(leafs);
 
-  return {
-    leafs,
-    leafsRefundAmount,
-    tree,
-  };
+  return { leafs, leafsRefundAmount, tree };
 }
 describe("SpokePool Relayer Refund Execution", function () {
   beforeEach(async function () {

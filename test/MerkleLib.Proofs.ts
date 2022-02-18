@@ -64,7 +64,7 @@ describe("MerkleLib Proofs", async function () {
       }
       destinationDistributionLeafs.push({
         leafId: BigNumber.from(i),
-        chainId: randomBigNumber(),
+        chainId: randomBigNumber(2),
         amountToReturn: randomBigNumber(),
         l2TokenAddress: randomAddress(),
         refundAddresses,
