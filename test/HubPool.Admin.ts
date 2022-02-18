@@ -56,7 +56,7 @@ describe("HubPool Admin functions", function () {
   it("Can not change the bond token and amount during a pending refund", async function () {
     await seedWallet(owner, [], weth, bondAmount);
     await weth.approve(hubPool.address, bondAmount);
-    await hubPool.initiateRelayerRefund([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
-    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("Active request has unclaimed leafs");
+    await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
+    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
   });
 });

@@ -24,17 +24,17 @@ library MerkleLib {
     }
 
     /**
-     * @notice Verifies that a distribution is contained within a merkle root.
+     * @notice Verifies that a relayer refund is contained within a merkle root.
      * @param root the merkle root.
-     * @param distribution the distribution struct.
+     * @param refund the refund struct.
      * @param proof the merkle proof.
      */
-    function verifyRelayerDistribution(
+    function verifyRelayerRefund(
         bytes32 root,
-        SpokePoolInterface.DestinationDistributionLeaf memory distribution,
+        SpokePoolInterface.RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(distribution)));
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
     }
 
     /**
