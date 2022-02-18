@@ -104,15 +104,25 @@ library MerkleLib {
         bytes32 root,
         bytes32[] memory leaves,
         bytes32[] calldata proof
-    ) internal returns (bool) {
-        for (uint256 i = 0; i < leaves.length; i++) {
-            if (i % 2 == 0) {
-                if (i == leaves.length - 1) {
-                    leaves[i / 2] = leaves[i];
-                } else {
-                    leaves[i / 2] = keccak256(abi.encode(leaves[i], leaves[i + 1]));
+    ) internal pure returns (bool) {
+        if (leaves.length > 1) {
+            while (leaves[1] != bytes32(0)) {
+                for (uint256 i = 0; ; i++) {
+                    bool isEven = i % 2 == 0;
+                    if (i == leaves.length - 1 || leaves[i + 1] == bytes32(0)) {
+                        if (isEven) {
+                            leaves[i / 2] = leaves[i];
+                        }
+                        break;
+                    } else {
+                        if (isEven) {
+                            leaves[i / 2] = keccak256(abi.encode(leaves[i], leaves[i + 1]));
+                        }
+                    }
                 }
             }
         }
+
+        return MerkleProof.verify(proof, root, leaves[0]);
     }
 }
