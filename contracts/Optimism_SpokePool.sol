@@ -26,7 +26,6 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     event SetL1Gas(uint32 indexed newL1Gas);
 
     constructor(
-        address _l1EthWrapper,
         address _l2Eth,
         address _crossDomainAdmin,
         address _hubPool,
