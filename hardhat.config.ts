@@ -1,6 +1,8 @@
 import * as dotenv from "dotenv";
 
 import { HardhatUserConfig } from "hardhat/config";
+import { getNodeUrl } from "@uma/common";
+
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
@@ -29,20 +31,20 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" } },
     kovan: {
-      url: process.env.CUSTOM_NODE_URL,
+      url: getNodeUrl("kovan", true, 42),
       accounts: { mnemonic: process.env.MNEMONIC },
       saveDeployments: true,
       chainId: 42,
     },
     "optimism-kovan": {
-      url: process.env.CUSTOM_NODE_URL,
+      url: getNodeUrl("optimism-kovan", true, 69),
       accounts: { mnemonic: process.env.MNEMONIC },
       saveDeployments: true,
       chainId: 69,
       companionNetworks: { l1: "kovan" },
     },
     optimism: {
-      url: process.env.CUSTOM_NODE_URL,
+      url: getNodeUrl("optimism", true, 10),
       accounts: { mnemonic: process.env.MNEMONIC },
       saveDeployments: true,
       chainId: 10,

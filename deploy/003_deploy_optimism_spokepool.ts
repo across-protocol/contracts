@@ -11,9 +11,9 @@ const func = async function (hre: any) {
   const adapter = await l1Deployments.get("Optimism_Adapter");
   console.log(`Using l1 adapter @ ${adapter.address}`);
   const hubPool = await l1Deployments.get("HubPool");
-  console.log(`Using l1 adapter @ ${hubPool.address}`);
+  console.log(`Using l1 hub pool @ ${hubPool.address}`);
 
-  await deploy("SpokePool", {
+  await deploy("Optimism_SpokePool", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
