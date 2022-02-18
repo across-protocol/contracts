@@ -33,9 +33,9 @@ describe.only("Arbitrum Spoke Pool", function () {
     ({ weth, l2Weth, dai, l2Dai, hubPool, merkleLib, timer } = await hubPoolFixture());
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
-    crossDomainMessengerAddress = "0x4200000000000000000000000000000000000007";
-    // await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [crossDomainMessengerAddress] });
-    // crossDomainMessengerPreDeploy = await ethers.getSigner(crossDomainMessengerAddress);
+    crossDomainMessengerAddress = "0x4361d0F75A0186C05f971c566dC6bEa5957483fD";
+    await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [crossDomainMessengerAddress] });
+    crossDomainMessengerPreDeploy = await ethers.getSigner(crossDomainMessengerAddress);
     await owner.sendTransaction({ to: crossDomainMessengerAddress, value: toWei("1") });
 
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", crossDomainMessengerAddress);
@@ -51,9 +51,10 @@ describe.only("Arbitrum Spoke Pool", function () {
     crossDomainMessenger.xDomainMessageSender.returns(rando.address);
     await expect(optimismSpokePool.setL1GasLimit(1337)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    console.log("A", crossDomainMessenger.wallet);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
-    // await optimismSpokePool.connect(crossDomainMessengerPreDeploy).setL1GasLimit(1337);
+    console.log("owner", owner.address);
+    console.log("A", await optimismSpokePool.crossDomainAdmin());
+    // await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
+    await optimismSpokePool.setL1GasLimit(1337);
     console.log("B");
     expect(await optimismSpokePool.crossDomainMessenger()).to.equal(rando.address);
   });
