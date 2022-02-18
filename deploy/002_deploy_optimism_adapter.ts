@@ -27,4 +27,5 @@ const func = async function (hre: any) {
 };
 
 module.exports = func;
+func.dependencies = ["HubPool"];
 func.tags = ["optimism-adapter"];

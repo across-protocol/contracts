@@ -10,8 +10,22 @@ import "hardhat-deploy";
 
 dotenv.config();
 
+const solcVersion = "0.8.11";
+
+// Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
+// limit.
+const LARGE_CONTRACT_COMPILER_SETTINGS = {
+  version: solcVersion,
+  settings: { optimizer: { enabled: true, runs: 200 } },
+};
+
 const config: HardhatUserConfig = {
-  solidity: { compilers: [{ version: "0.8.11", settings: { optimizer: { enabled: true, runs: 200 } } }] },
+  solidity: {
+    compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
+    overrides: {
+      "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+    },
+  },
   networks: {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" } },
     kovan: {
