@@ -19,6 +19,7 @@ const func = async function (hre: any) {
       "0xd0A1E359811322d97991E03f863a0C30C2cF029C", // weth
       "0x0000000000000000000000000000000000000000",
     ],
+    libraries: { MerkleLib: lpTokenFactory.address },
   });
 };
 module.exports = func;
