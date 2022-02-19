@@ -52,16 +52,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Origin token to destination token routings can be turned on or off.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
-    struct RelayerRefund {
+    struct RootBundle {
         // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
         bytes32 slowRelayFulfillmentRoot;
         // Merkle root of relayer refunds.
-        bytes32 distributionRoot;
+        bytes32 relayerRefundRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
         // 256x256 leaves per root.
         mapping(uint256 => uint256) claimedBitmap;
     }
-    RelayerRefund[] public relayerRefunds;
+    RootBundle[] public rootBundles;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -100,7 +100,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient
     );
-    event DistributeRelaySlow(
+    event ExecutedSlowRelayFulfillmentRoot(
         bytes32 indexed relayHash,
         uint256 totalRelayAmount,
         uint256 totalFilledAmount,
@@ -114,16 +114,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient
     );
-    event InitializedRelayerRefund(
-        uint32 indexed relayerRefundId,
-        bytes32 relayerRepaymentDistributionRoot,
-        bytes32 slowRelayFulfillmentRoot
-    );
-    event DistributedRelayerRefund(
+    event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot);
+    event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 chainId,
         uint256[] refundAmounts,
-        uint32 indexed relayerRefundId,
+        uint32 indexed rootBundleId,
         uint32 indexed leafId,
         address l2TokenAddress,
         address[] refundAddresses,
@@ -337,7 +333,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, newRelayerFeePct, relayData);
     }
 
-    function distributeRelaySlow(
+    /**************************************
+     *         DATA WORKER FUNCTIONS      *
+     **************************************/
+    function executeSlowRelayFulfillmentRoot(
         address depositor,
         address recipient,
         address destinationToken,
@@ -346,7 +345,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint32 relayerRefundId,
+        uint32 rootBundleId,
         bytes32[] memory proof
     ) public nonReentrant {
         RelayData memory relayData = RelayData({
@@ -361,11 +360,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         });
 
         require(
-            MerkleLib.verifySlowRelayFulfillment(
-                relayerRefunds[relayerRefundId].slowRelayFulfillmentRoot,
-                relayData,
-                proof
-            ),
+            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayFulfillmentRoot, relayData, proof),
             "Invalid proof"
         );
 
@@ -375,67 +370,60 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // funds in all cases.
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.relayAmount, relayerFeePct, true);
 
-        _emitDistributeRelaySlow(relayHash, fillAmountPreFees, relayData);
+        _emitExecutedSlowRelayFulfillmentRoot(relayHash, fillAmountPreFees, relayData);
     }
 
-    /**************************************
-     *         DATA WORKER FUNCTIONS      *
-     **************************************/
-    // Call this method to execute a leaf within the `distributionRoot` stored on this contract. Caller must include a
-    // valid `inclusionProof` to verify that the leaf is contained within the root. The `relayerRefundId` is the index
-    // of the specific distribution root containing the passed in leaf.
-    function distributeRelayerRefund(
-        uint32 relayerRefundId,
-        SpokePoolInterface.DestinationDistributionLeaf memory distributionLeaf,
+    function executeRelayerRefundRoot(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public nonReentrant {
         // Check integrity of leaf structure:
-        require(distributionLeaf.chainId == chainId(), "Invalid chainId");
-        require(distributionLeaf.refundAddresses.length == distributionLeaf.refundAmounts.length, "invalid leaf");
+        require(relayerRefundLeaf.chainId == chainId(), "Invalid chainId");
+        require(relayerRefundLeaf.refundAddresses.length == relayerRefundLeaf.refundAmounts.length, "invalid leaf");
 
-        // Grab distribution root stored at `relayerRefundId`.
-        RelayerRefund storage refund = relayerRefunds[relayerRefundId];
+        RootBundle storage rootBundle = rootBundles[rootBundleId];
 
-        // Check that `inclusionProof` proves that `distributionLeaf` is contained within the distribution root.
-        // Note: This should revert if the `distributionRoot` is uninitialized.
-        require(MerkleLib.verifyRelayerDistribution(refund.distributionRoot, distributionLeaf, proof), "Bad Proof");
+        // Check that `inclusionProof` proves that `relayerRefundLeaf` is contained within the relayer refund root.
+        // Note: This should revert if the `relayerRefundRoot` is uninitialized.
+        require(MerkleLib.verifyRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
 
         // Verify the leafId in the leaf has not yet been claimed.
-        require(!MerkleLib.isClaimed(refund.claimedBitmap, distributionLeaf.leafId), "Already claimed");
+        require(!MerkleLib.isClaimed(rootBundle.claimedBitmap, relayerRefundLeaf.leafId), "Already claimed");
 
         // Set leaf as claimed in bitmap.
-        MerkleLib.setClaimed(refund.claimedBitmap, distributionLeaf.leafId);
+        MerkleLib.setClaimed(rootBundle.claimedBitmap, relayerRefundLeaf.leafId);
 
-        // For each relayerRefundAddress in relayerRefundAddresses, send the associated refundAmount for the L2 token address.
+        // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        for (uint32 i = 0; i < distributionLeaf.refundAmounts.length; i++) {
-            uint256 amount = distributionLeaf.refundAmounts[i];
+        for (uint32 i = 0; i < relayerRefundLeaf.refundAmounts.length; i++) {
+            uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
-                IERC20(distributionLeaf.l2TokenAddress).safeTransfer(distributionLeaf.refundAddresses[i], amount);
+                IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
         }
 
-        // If `distributionLeaf.amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back via
+        // If leaf's `amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
-        if (distributionLeaf.amountToReturn > 0) {
-            _bridgeTokensToHubPool(distributionLeaf);
+        if (relayerRefundLeaf.amountToReturn > 0) {
+            _bridgeTokensToHubPool(relayerRefundLeaf);
 
             emit TokensBridged(
-                distributionLeaf.amountToReturn,
-                distributionLeaf.chainId,
-                distributionLeaf.leafId,
-                distributionLeaf.l2TokenAddress,
+                relayerRefundLeaf.amountToReturn,
+                relayerRefundLeaf.chainId,
+                relayerRefundLeaf.leafId,
+                relayerRefundLeaf.l2TokenAddress,
                 msg.sender
             );
         }
 
-        emit DistributedRelayerRefund(
-            distributionLeaf.amountToReturn,
-            distributionLeaf.chainId,
-            distributionLeaf.refundAmounts,
-            relayerRefundId,
-            distributionLeaf.leafId,
-            distributionLeaf.l2TokenAddress,
-            distributionLeaf.refundAddresses,
+        emit ExecutedRelayerRefundRoot(
+            relayerRefundLeaf.amountToReturn,
+            relayerRefundLeaf.chainId,
+            relayerRefundLeaf.refundAmounts,
+            rootBundleId,
+            relayerRefundLeaf.leafId,
+            relayerRefundLeaf.l2TokenAddress,
+            relayerRefundLeaf.refundAddresses,
             msg.sender
         );
     }
@@ -452,9 +440,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _bridgeTokensToHubPool(SpokePoolInterface.DestinationDistributionLeaf memory distributionLeaf)
-        internal
-        virtual;
+    function _bridgeTokensToHubPool(SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf) internal virtual;
 
     function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
         return (1e18 * amount) / (1e18 - feesPct);
@@ -479,19 +465,17 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         }
     }
 
-    // This internal method should be called by an external "initializeRelayerRefund" function that validates the
+    // This internal method should be called by an external "relayRootBundle" function that validates the
     // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
     // specifics are left to the implementor of this abstract contract.
-    // Once this method is executed and a distribution root is stored in this contract, then `distributeRelayerRefund`
+    // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
     // can be called to execute each leaf in the root.
-    function _initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayFulfillmentRoot)
-        internal
-    {
-        uint32 relayerRefundId = uint32(relayerRefunds.length);
-        RelayerRefund storage relayerRefund = relayerRefunds.push();
-        relayerRefund.distributionRoot = relayerRepaymentDistributionRoot;
-        relayerRefund.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
-        emit InitializedRelayerRefund(relayerRefundId, relayerRepaymentDistributionRoot, slowRelayFulfillmentRoot);
+    function _relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot) internal {
+        uint32 rootBundleId = uint32(rootBundles.length);
+        RootBundle storage rootBundle = rootBundles.push();
+        rootBundle.relayerRefundRoot = relayerRefundRoot;
+        rootBundle.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
+        emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayFulfillmentRoot);
     }
 
     function _fillRelay(
@@ -570,12 +554,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
     }
 
-    function _emitDistributeRelaySlow(
+    function _emitExecutedSlowRelayFulfillmentRoot(
         bytes32 relayHash,
         uint256 fillAmount,
         RelayData memory relayData
     ) internal {
-        emit DistributeRelaySlow(
+        emit ExecutedSlowRelayFulfillmentRoot(
             relayHash,
             relayData.relayAmount,
             relayFills[relayHash],

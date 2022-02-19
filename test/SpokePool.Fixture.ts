@@ -165,7 +165,7 @@ export function getFillRelayUpdatedFeeParams(
   ];
 }
 
-export function getDistributeRelaySlowParams(
+export function getExecuteSlowRelayParams(
   _depositor: string,
   _recipient: string,
   _destToken: string,
