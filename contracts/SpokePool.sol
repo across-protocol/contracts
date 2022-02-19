@@ -432,7 +432,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *           VIEW FUNCTIONS           *
      **************************************/
 
-    // test
     function chainId() public view returns (uint256) {
         return block.chainid;
     }
