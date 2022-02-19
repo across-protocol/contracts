@@ -11,7 +11,7 @@ export interface PoolRebalanceLeaf {
   runningBalances: BigNumber[];
 }
 
-export interface DestinationDistributionLeaf {
+export interface RelayerRefundLeaf {
   leafId: BigNumber;
   chainId: BigNumber;
   amountToReturn: BigNumber;
@@ -20,28 +20,24 @@ export interface DestinationDistributionLeaf {
   refundAmounts: BigNumber[];
 }
 
-export async function buildDestinationDistributionLeafTree(
-  destinationDistributionLeafs: DestinationDistributionLeaf[]
-) {
-  for (let i = 0; i < destinationDistributionLeafs.length; i++) {
+export async function buildRelayerRefundTree(relayerRefundLeafs: RelayerRefundLeaf[]) {
+  for (let i = 0; i < relayerRefundLeafs.length; i++) {
     // The 2 provided parallel arrays must be of equal length.
-    expect(destinationDistributionLeafs[i].refundAddresses.length).to.equal(
-      destinationDistributionLeafs[i].refundAmounts.length
-    );
+    expect(relayerRefundLeafs[i].refundAddresses.length).to.equal(relayerRefundLeafs[i].refundAmounts.length);
   }
 
-  const paramType = await getParamType("MerkleLib", "verifyRelayerDistribution", "distribution");
-  const hashFn = (input: DestinationDistributionLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  return new MerkleTree<DestinationDistributionLeaf>(destinationDistributionLeafs, hashFn);
+  const paramType = await getParamType("MerkleLib", "verifyRelayerRefund", "refund");
+  const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeafs, hashFn);
 }
 
-export function buildDestinationDistributionLeafs(
+export function buildRelayerRefundLeafs(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
   l2Tokens: Contract[] | string[],
   refundAddresses: string[][],
   refundAmounts: BigNumber[][]
-): DestinationDistributionLeaf[] {
+): RelayerRefundLeaf[] {
   return Array(destinationChainIds.length)
     .fill(0)
     .map((_, i) => {

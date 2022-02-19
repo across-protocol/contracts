@@ -77,13 +77,13 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot)
         public
         override
         onlyFromCrossDomainAdmin
         nonReentrant
     {
-        _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);
+        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
     }
 
     /**************************************
@@ -102,14 +102,14 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         _defaultVerifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
     }
 
-    function _bridgeTokensToHubPool(DestinationDistributionLeaf memory distributionLeaf) internal override {
+    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            whitelistedTokens[distributionLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
+            whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            distributionLeaf.amountToReturn, // _amount.
+            relayerRefundLeaf.amountToReturn, // _amount.
             "" // _data. We don't need to send any data for the bridging action.
         );
-        emit ArbitrumTokensBridged(address(0), hubPool, distributionLeaf.amountToReturn);
+        emit ArbitrumTokensBridged(address(0), hubPool, relayerRefundLeaf.amountToReturn);
     }
 
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {

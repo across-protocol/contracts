@@ -69,9 +69,9 @@ describe("Optimism Chain Adapter", function () {
     const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, optimismChainId);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositERC20To).to.have.been.calledOnce; // One token transfer over the bridge.
@@ -80,7 +80,7 @@ describe("Optimism Chain Adapter", function () {
     expect(l1StandardBridge.depositERC20To).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
     const expectedL2ToL1FunctionCallParams = [
       mockSpoke.address,
-      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [mockTreeRoot, mockSlowRelayFulfillmentRoot]),
+      mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockSlowRelayFulfillmentRoot]),
       sampleL2Gas,
     ];
     expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
@@ -90,9 +90,9 @@ describe("Optimism Chain Adapter", function () {
     const { leafs, tree } = await constructSingleChainTree(weth, 1, optimismChainId);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositETHTo).to.have.been.calledOnce; // One eth transfer over the bridge.
@@ -100,7 +100,7 @@ describe("Optimism Chain Adapter", function () {
     expect(l1StandardBridge.depositETHTo).to.have.been.calledWith(mockSpoke.address, sampleL2Gas, "0x");
     const expectedL2ToL1FunctionCallParams = [
       mockSpoke.address,
-      mockSpoke.interface.encodeFunctionData("initializeRelayerRefund", [mockTreeRoot, mockSlowRelayFulfillmentRoot]),
+      mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockSlowRelayFulfillmentRoot]),
       sampleL2Gas,
     ];
     expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);

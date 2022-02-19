@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress, seedContract, toBN } from "./utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./SpokePool.Fixture";
-import { buildDestinationDistributionLeafs, buildDestinationDistributionLeafTree } from "./MerkleLib.utils";
+import { buildRelayerRefundTree, buildRelayerRefundLeafs } from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -13,7 +13,7 @@ let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWith
 let destinationChainId: number;
 
 async function constructSimpleTree(l2Token: Contract, destinationChainId: number) {
-  const leafs = buildDestinationDistributionLeafs(
+  const leafs = buildRelayerRefundLeafs(
     [destinationChainId, destinationChainId], // Destination chain ID.
     [consts.amountToReturn, toBN(0)], // amountToReturn.
     [l2Token, l2Token], // l2Token.
@@ -23,11 +23,11 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
   const leafsRefundAmount = leafs
     .map((leaf) => leaf.refundAmounts.reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
     .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
-  const tree = await buildDestinationDistributionLeafTree(leafs);
+  const tree = await buildRelayerRefundTree(leafs);
 
   return { leafs, leafsRefundAmount, tree };
 }
-describe("SpokePool Relayer Refund Execution", function () {
+describe("SpokePool Root Bundle Execution", function () {
   beforeEach(async function () {
     [dataWorker, relayer, rando] = await ethers.getSigners();
     ({ destErc20, spokePool, weth } = await spokePoolFixture());
@@ -37,17 +37,17 @@ describe("SpokePool Relayer Refund Execution", function () {
     await seedContract(spokePool, dataWorker, [destErc20], weth, consts.amountHeldByPool);
   });
 
-  it("Execute relayer refund correctly sends tokens to recipients", async function () {
+  it("Execute relayer root correctly sends tokens to recipients", async function () {
     const { leafs, leafsRefundAmount, tree } = await constructSimpleTree(destErc20, destinationChainId);
 
     // Store new tree.
-    await spokePool.connect(dataWorker).initializeRelayerRefund(
-      tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+    await spokePool.connect(dataWorker).relayRootBundle(
+      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
       consts.mockSlowRelayFulfillmentRoot
     );
 
     // Distribute the first leaf.
-    await spokePool.connect(dataWorker).distributeRelayerRefund(0, leafs[0], tree.getHexProof(leafs[0]));
+    await spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // Relayers should be refunded
     expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(leafsRefundAmount));
@@ -57,7 +57,7 @@ describe("SpokePool Relayer Refund Execution", function () {
     // TODO: Test token bridging logic.
 
     // Check events.
-    let relayTokensEvents = await spokePool.queryFilter(spokePool.filters.DistributedRelayerRefund());
+    let relayTokensEvents = await spokePool.queryFilter(spokePool.filters.ExecutedRelayerRefundRoot());
     expect(relayTokensEvents[0].args?.l2TokenAddress).to.equal(destErc20.address);
     expect(relayTokensEvents[0].args?.leafId).to.equal(0);
     expect(relayTokensEvents[0].args?.chainId).to.equal(destinationChainId);
@@ -71,16 +71,16 @@ describe("SpokePool Relayer Refund Execution", function () {
     expect(tokensBridgedEvents.length).to.equal(1);
 
     // Does not attempt to bridge tokens if amountToReturn is 0. Execute a leaf where amountToReturn is 0.
-    await spokePool.connect(dataWorker).distributeRelayerRefund(0, leafs[1], tree.getHexProof(leafs[1]));
+    await spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[1], tree.getHexProof(leafs[1]));
     // Show that a second DistributedRelayRefund event was emitted but not a second TokensBridged event.
-    relayTokensEvents = await spokePool.queryFilter(spokePool.filters.DistributedRelayerRefund());
+    relayTokensEvents = await spokePool.queryFilter(spokePool.filters.ExecutedRelayerRefundRoot());
     expect(relayTokensEvents.length).to.equal(2);
     tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
     expect(tokensBridgedEvents.length).to.equal(1);
   });
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
-    await spokePool.connect(dataWorker).initializeRelayerRefund(
+    await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
       consts.mockSlowRelayFulfillmentRoot
     );
@@ -88,35 +88,35 @@ describe("SpokePool Relayer Refund Execution", function () {
     // Take the valid root but change some element within it. This will change the hash of the leaf
     // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
     const badLeaf = { ...leafs[0], chainId: 13371 };
-    await expect(spokePool.connect(dataWorker).distributeRelayerRefund(0, badLeaf, tree.getHexProof(leafs[0]))).to.be
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(0, badLeaf, tree.getHexProof(leafs[0]))).to.be
       .reverted;
 
     // Reverts if the distribution root index is incorrect.
-    await expect(spokePool.connect(dataWorker).distributeRelayerRefund(1, leafs[0], tree.getHexProof(leafs[0]))).to.be
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(1, leafs[0], tree.getHexProof(leafs[0]))).to.be
       .reverted;
   });
   it("Cannot refund leaf with chain ID for another network", async function () {
     // Create tree for another chain ID
     const { leafs, tree } = await constructSimpleTree(destErc20, 13371);
-    await spokePool.connect(dataWorker).initializeRelayerRefund(
+    await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
       consts.mockSlowRelayFulfillmentRoot
     );
 
     // Root is valid and leaf is contained in tree, but chain ID doesn't match pool's chain ID.
-    await expect(spokePool.connect(dataWorker).distributeRelayerRefund(0, leafs[0], tree.getHexProof(leafs[0]))).to.be
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))).to.be
       .reverted;
   });
   it("Execution rejects double claimed leafs", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
-    await spokePool.connect(dataWorker).initializeRelayerRefund(
+    await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
       consts.mockSlowRelayFulfillmentRoot
     );
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
-    await spokePool.connect(dataWorker).distributeRelayerRefund(0, leafs[0], tree.getHexProof(leafs[0]));
-    await expect(spokePool.connect(dataWorker).distributeRelayerRefund(0, leafs[0], tree.getHexProof(leafs[0]))).to.be
+    await spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))).to.be
       .reverted;
   });
 });

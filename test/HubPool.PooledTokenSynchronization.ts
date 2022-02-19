@@ -35,9 +35,9 @@ describe("HubPool Pooled Token Synchronization", function () {
     const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     expect((await hubPool.pooledTokens(weth.address)).liquidReserves).to.equal(consts.amountToLp.sub(tokensSendToL2));
     expect((await hubPool.pooledTokens(weth.address)).utilizedReserves).to.equal(tokensSendToL2.add(realizedLpFees));
 
@@ -99,12 +99,12 @@ describe("HubPool Pooled Token Synchronization", function () {
     const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
 
     // Liquidity is not used until the relayerRefund is executed(i.e "pending" reserves are not considered).
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(0);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // Now that the liquidity is used (sent to L2) we should be able to find the utilization. This should simply be
     // the utilizedReserves / (liquidReserves + utilizedReserves) = 110 / (900 + 110) = 0.108910891089108910
@@ -170,12 +170,12 @@ describe("HubPool Pooled Token Synchronization", function () {
     const { leafs, tree } = await constructSingleChainTree(weth);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
 
     // Liquidity is not used until the relayerRefund is executed(i.e "pending" reserves are not considered).
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(0);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // Now that the liquidity is used (sent to L2) we should be able to find the utilization. This should simply be
     // the utilizedReserves / (liquidReserves + utilizedReserves) = 110 / (900 + 110) = 0.108910891089108910
@@ -186,9 +186,9 @@ describe("HubPool Pooled Token Synchronization", function () {
     const { leafs, tree } = await constructSingleChainTree(weth, 5);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
     // Liquidity utilization should now be (550) / (500 + 550) = 0.523809523809523809. I.e utilization is over 50%.
@@ -219,9 +219,9 @@ describe("HubPool Pooled Token Synchronization", function () {
     const { leafs, tree, tokensSendToL2, realizedLpFees } = await constructSingleChainTree(weth);
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
     // Send back to L1 the tokensSendToL2 + realizedLpFees, i.e to mimic the finalization of the relay.
@@ -252,9 +252,9 @@ describe("HubPool Pooled Token Synchronization", function () {
     // Going through a full refund lifecycle does returns to where we were before, with no memory of previous fees.
     await hubPool
       .connect(dataWorker)
-      .initiateRelayerRefund([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
-    await hubPool.connect(dataWorker).executeRelayerRefund(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
     // Exchange rate should be 1.01, with 1% accumulated on the back of refunds with no memory of the previous fees.
