@@ -90,18 +90,6 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    function _chainId() internal view override returns (uint256) {
-        return block.chainid;
-    }
-
-    function _verifyDepositorUpdateFeeMessage(
-        address depositor,
-        bytes32 ethSignedMessageHash,
-        bytes memory depositorSignature
-    ) internal view override {
-        _defaultVerifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
-    }
-
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
             whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
