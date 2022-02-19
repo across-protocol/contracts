@@ -27,7 +27,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
-
     // A data worker can optimistically store several merkle roots on this contract by staking a bond and calling
     // proposeRootBundle. By staking a bond, the data worker is alleging that the merkle roots all
     // contain valid leaves that can be executed later to:
@@ -112,7 +111,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
-    event RootBundleProposalLivenessSet(uint256 newProposalLiveness);
+    event RootBundleProposalLivenessSet(uint256 newRootBundleProposalLiveness);
 
     event IdentifierSet(bytes32 newIdentifier);
 
@@ -181,6 +180,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // This function has permission to call onlyFromCrossChainAdmin functions on the SpokePool, so its imperative
     // that this contract only allows the owner to call this method directly or indirectly.
+    // todo: think about removing this function and add all required L1->L2 admin calls directly to the x_chain adapter.
     function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) public onlyOwner nonReentrant {
         _relaySpokePoolAdminFunction(chainId, functionData);
     }
@@ -196,17 +196,21 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
+        // todo: check that the bond token is an approved collateral currency.
+        // todo: add the final fee to the bond amount by grabbing from the store.
         bondToken = newBondToken;
         bondAmount = newBondAmount;
         emit BondSet(address(newBondToken), newBondAmount);
     }
 
-    function setRootBundleProposalLiveness(uint64 newProposalLiveness) public onlyOwner {
-        rootBundleProposalLiveness = newProposalLiveness;
-        emit RootBundleProposalLivenessSet(newProposalLiveness);
+    function setRootBundleProposalLiveness(uint64 newRootBundleProposalLiveness) public onlyOwner {
+        require(newRootBundleProposalLiveness > 10 minutes, "Too short liveness");
+        rootBundleProposalLiveness = newRootBundleProposalLiveness;
+        emit RootBundleProposalLivenessSet(newRootBundleProposalLiveness);
     }
 
     function setIdentifier(bytes32 newIdentifier) public onlyOwner {
+        // todo: check there is no pending dispute. `noActiveRequests` think about saving these during liveness.
         identifier = newIdentifier;
         emit IdentifierSet(newIdentifier);
     }
@@ -216,6 +220,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address adapter,
         address spokePool
     ) public onlyOwner noActiveRequests {
+        //todo: should we remove this so we can change this?
         require(address(crossChainContracts[l2ChainId].adapter) == address(0), "Contract already set");
         crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
@@ -323,14 +328,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be called and
     // this can't be called again until all leafs are executed.
     function proposeRootBundle(
-        uint256[] memory bundleEvaluationBlockNumbers,
+        uint256[] memory bundleEvaluationBlockNumbers, // todo: add comments that this must contain all chainID's block numbers, despite the poolRebalanceLeafeCount potentially being less than the total whitelisted trees.
         uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
-        bytes32 slowRelayFulfillmentRoot
+        bytes32 slowRelayFulfillmentRoot //todo: rename to `slowRelayRoot` or something else
     ) public override nonReentrant noActiveRequests {
+        // todo: add a comment why this is here to prevent spam
+        // todo: think more about general spamming prevention and how tyou can slow down the bundles
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
+        // todo: remove this typecast by changing input types to uint64
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + rootBundleProposalLiveness);
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
@@ -342,9 +350,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
         rootBundleProposal.proposer = msg.sender;
 
-        // Pull bondAmount of bondToken from the caller.
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
+        // todo: think about how to give the bundler flexibility in when to increment the bundleEvaluationBlockNumber.
+        // Ideally, this is only done when significant value transfer is happening.
         emit ProposeRootBundle(
             requestExpirationTimestamp,
             poolRebalanceLeafCount,
@@ -357,7 +366,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public nonReentrant {
-        require(getCurrentTime() >= rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
         require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
@@ -407,6 +416,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Request price from OO and dispute it.
         uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
+        // todo: there's a bug here where the final fee can change while the proposal is in progress. This needs to be
+        // fixed.
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
         // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
         bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
@@ -513,14 +524,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         }
     }
 
-    function _append(
-        string memory a,
-        string memory b,
-        string memory c
-    ) internal pure returns (string memory) {
-        return string(abi.encodePacked(a, b, c));
-    }
-
     function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
         return
             SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
@@ -546,11 +549,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         for (uint32 i = 0; i < l1Tokens.length; i++) {
             // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action
             // could send tokens to the 0x0 address on the L2.
+            // todo: double check this is needed and think through the whitelisting and un-whitelisting process.
             require(whitelistedRoutes[l1Tokens[i]][chainId] != address(0), "Route not whitelisted");
 
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
+                // todo: determine whether delegatecall will work here and how much cheaper it would be.
                 IERC20(l1Tokens[i]).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
                 adapter.relayTokens(
                     l1Tokens[i], // l1Token.
@@ -570,9 +575,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function _relayRootBundleToSpokePool(uint256 chainId) internal {
+        // todo: do we need to check if this is nonzero here and elsewhere.
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
         adapter.relayMessage(
             crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+            // todo: import function interface and use it directly to
+            // generate this data so we can get typechecking.
             abi.encodeWithSignature(
                 "relayRootBundle(bytes32,bytes32)",
                 rootBundleProposal.relayerRefundRoot,

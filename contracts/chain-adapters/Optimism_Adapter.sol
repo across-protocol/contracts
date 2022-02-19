@@ -46,6 +46,7 @@ contract Optimism_Adapter is Base_Adapter, CrossDomainEnabled, Lockable {
         emit MessageRelayed(target, message);
     }
 
+    // todo: try making this delegate call
     function relayTokens(
         address l1Token,
         address l2Token,

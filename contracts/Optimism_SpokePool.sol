@@ -41,6 +41,8 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
      *    CROSS-CHAIN ADMIN FUNCTIONS     *
      **************************************/
 
+    // todo: pull the notion of ownership into the spokepool and overide the internal modifier method within each
+    // derived class for the particular chain definition. "isAdmin"
     function setL1GasLimit(uint32 newl1Gas) public onlyFromCrossDomainAccount(crossDomainAdmin) {
         _setL1GasLimit(newl1Gas);
     }

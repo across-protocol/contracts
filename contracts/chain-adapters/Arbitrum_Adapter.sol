@@ -94,6 +94,7 @@ contract Arbitrum_Adapter is Base_Adapter, Lockable {
         emit L2RefundL2AddressSet(l2RefundL2Address);
     }
 
+    // todo: try making this delegate call
     function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
         uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");

@@ -6,7 +6,7 @@ interface SpokePoolInterface {
     struct RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
         // negative. This is just that value inverted.
-        uint256 amountToReturn;
+        uint256 amountToReturn; // todo: think if this should be changed to some other structure, to overload refundaddress to 0x0 or if we should split this to be multiple leafs.
         // Used to verify that this is being decoded on the correct chainId.
         uint256 chainId;
         // This array designates how much each of those addresses should be refunded.
