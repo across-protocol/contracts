@@ -31,10 +31,9 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await parentFixture.store.setFinalFee(dai.address, { rawValue: finalFee });
 
   // Deploy the hubPool.
-  const merkleLib = await (await getContractFactory("MerkleLib", signer)).deploy();
   const lpTokenFactory = await (await getContractFactory("LpTokenFactory", signer)).deploy();
   const hubPool = await (
-    await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
+    await getContractFactory("HubPool", { signer: signer })
   ).deploy(lpTokenFactory.address, parentFixture.finder.address, weth.address, parentFixture.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
   await hubPool.setRootBundleProposalLiveness(refundProposalLiveness);
@@ -42,7 +41,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
   const mockSpoke = await (
-    await getContractFactory("MockSpokePool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
+    await getContractFactory("MockSpokePool", { signer: signer })
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
 
@@ -53,7 +52,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await hubPool.whitelistRoute(repaymentChainId, dai.address, mockTokens.l2Dai);
   await hubPool.whitelistRoute(repaymentChainId, usdc.address, mockTokens.l2Usdc);
 
-  return { ...tokens, ...mockTokens, hubPool, merkleLib, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
+  return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
 });
 
 export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {

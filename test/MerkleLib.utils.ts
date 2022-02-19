@@ -26,7 +26,7 @@ export async function buildRelayerRefundTree(relayerRefundLeafs: RelayerRefundLe
     expect(relayerRefundLeafs[i].refundAddresses.length).to.equal(relayerRefundLeafs[i].refundAmounts.length);
   }
 
-  const paramType = await getParamType("MerkleLib", "verifyRelayerRefund", "refund");
+  const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
   const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
   return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeafs, hashFn);
 }
@@ -61,7 +61,7 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalan
       .to.equal(poolRebalanceLeafs[i].runningBalances.length);
   }
 
-  const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
+  const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
   const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
   return new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
 }

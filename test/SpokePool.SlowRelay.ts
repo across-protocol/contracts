@@ -89,7 +89,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       depositId: consts.firstDepositId.toString(),
     });
 
-    const paramType = await getParamType("MerkleLib", "verifySlowRelayFulfillment", "slowRelayFulfillment");
+    const paramType = await getParamType("MerkleLibTest", "verifySlowRelayFulfillment", "slowRelayFulfillment");
     const hashFn = (input: RelayData) => {
       return keccak256(defaultAbiCoder.encode([paramType!], [input]));
     };
