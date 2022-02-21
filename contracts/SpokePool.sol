@@ -306,14 +306,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // above keccak156 hash), then this will revert.
             bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
 
-            // Note: no need to worry about reentrancy from contract deployed at `depositor` address since
-            // `SignatureChecker.isValidSignatureNow` is a non state-modifying STATICCALL:
-            // - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/63b466901fb015538913f811c5112a2775042177/contracts/utils/cryptography/SignatureChecker.sol#L35
-            // - https://github.com/ethereum/EIPs/pull/214
-            require(
-                SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
-                "invalid signature"
-            );
+            _verifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
         }
 
         // Now follow the default `fillRelay` flow with the updated fee and the original relay hash.
@@ -432,8 +425,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *           VIEW FUNCTIONS           *
      **************************************/
 
-    // test
-    function chainId() public view returns (uint256) {
+    // Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the caller to manually set this.
+    function chainId() public view virtual returns (uint256) {
         return block.chainid;
     }
 
@@ -442,6 +435,23 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      **************************************/
 
     function _bridgeTokensToHubPool(SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf) internal virtual;
+
+    // Allow L2 to implement chain specific recovering of signers from signatures because some L2s might not support
+    // ecrecover, such as those with account abstraction like ZKSync.
+    function _verifyDepositorUpdateFeeMessage(
+        address depositor,
+        bytes32 ethSignedMessageHash,
+        bytes memory depositorSignature
+    ) internal view virtual {
+        // Note: no need to worry about reentrancy from contract deployed at `depositor` address since
+        // `SignatureChecker.isValidSignatureNow` is a non state-modifying STATICCALL:
+        // - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/63b466901fb015538913f811c5112a2775042177/contracts/utils/cryptography/SignatureChecker.sol#L35
+        // - https://github.com/ethereum/EIPs/pull/214
+        require(
+            SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
+            "invalid signature"
+        );
+    }
 
     function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
         return (1e18 * amount) / (1e18 - feesPct);
