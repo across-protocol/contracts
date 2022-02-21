@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 
 import { HardhatUserConfig } from "hardhat/config";
-import { getNodeUrl } from "@uma/common";
+import { getNodeUrl, getMnemonic } from "@uma/common";
 
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
@@ -13,6 +13,7 @@ import "hardhat-deploy";
 dotenv.config();
 
 const solcVersion = "0.8.11";
+const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -32,20 +33,20 @@ const config: HardhatUserConfig = {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" } },
     kovan: {
       url: getNodeUrl("kovan", true, 42),
-      accounts: { mnemonic: process.env.MNEMONIC },
+      accounts: { mnemonic },
       saveDeployments: true,
       chainId: 42,
     },
     "optimism-kovan": {
       url: getNodeUrl("optimism-kovan", true, 69),
-      accounts: { mnemonic: process.env.MNEMONIC },
+      accounts: { mnemonic },
       saveDeployments: true,
       chainId: 69,
       companionNetworks: { l1: "kovan" },
     },
     optimism: {
       url: getNodeUrl("optimism", true, 10),
-      accounts: { mnemonic: process.env.MNEMONIC },
+      accounts: { mnemonic },
       saveDeployments: true,
       chainId: 10,
       companionNetworks: { l1: "mainnet" },
