@@ -4,7 +4,7 @@ import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } 
 import { hubPoolFixture } from "../HubPool.Fixture";
 import { buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, arbitrumSpokePool: Contract, merkleLib: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, arbitrumSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
@@ -26,7 +26,7 @@ async function constructSimpleTree(l2Token: Contract | string, destinationChainI
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, l2Weth, dai, l2Dai, hubPool, merkleLib, timer } = await hubPoolFixture());
+    ({ weth, l2Weth, dai, l2Dai, hubPool, timer } = await hubPoolFixture());
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
     crossDomainAliasAddress = avmL1ToL2Alias(owner.address);
@@ -37,7 +37,7 @@ describe("Arbitrum Spoke Pool", function () {
     l2GatewayRouter = await createFake("L2GatewayRouter");
 
     arbitrumSpokePool = await (
-      await getContractFactory("Arbitrum_SpokePool", { signer: owner, libraries: { MerkleLib: merkleLib.address } })
+      await getContractFactory("Arbitrum_SpokePool", { signer: owner })
     ).deploy(l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);

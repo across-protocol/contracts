@@ -39,7 +39,7 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidPoolRebalanceLeaf = poolRebalanceLeafs.pop()!;
 
-    const paramType = await getParamType("MerkleLib", "verifyPoolRebalance", "rebalance");
+    const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
     const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
     const merkleTree = new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
 
@@ -75,7 +75,7 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidRelayerRefundLeaf = relayerRefundLeafs.pop()!;
 
-    const paramType = await getParamType("MerkleLib", "verifyRelayerRefund", "refund");
+    const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
     const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
     const merkleTree = new MerkleTree<RelayerRefundLeaf>(relayerRefundLeafs, hashFn);
 

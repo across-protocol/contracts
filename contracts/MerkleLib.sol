@@ -19,7 +19,7 @@ library MerkleLib {
         bytes32 root,
         HubPoolInterface.PoolRebalanceLeaf memory rebalance,
         bytes32[] memory proof
-    ) public pure returns (bool) {
+    ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(rebalance)));
     }
 
@@ -33,7 +33,7 @@ library MerkleLib {
         bytes32 root,
         SpokePoolInterface.RelayerRefundLeaf memory refund,
         bytes32[] memory proof
-    ) public pure returns (bool) {
+    ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
     }
 
@@ -47,7 +47,7 @@ library MerkleLib {
         bytes32 root,
         SpokePoolInterface.RelayData memory slowRelayFulfillment,
         bytes32[] memory proof
-    ) public pure returns (bool) {
+    ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
@@ -60,7 +60,7 @@ library MerkleLib {
      * @param index the index to check in the bitmap.
      * @return bool indicating if the index within the claimedBitMap has been marked as claimed.
      */
-    function isClaimed(mapping(uint256 => uint256) storage claimedBitMap, uint256 index) public view returns (bool) {
+    function isClaimed(mapping(uint256 => uint256) storage claimedBitMap, uint256 index) internal view returns (bool) {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
         uint256 claimedWord = claimedBitMap[claimedWordIndex];
@@ -73,7 +73,7 @@ library MerkleLib {
      * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap.
      * @param index the index to mark in the bitmap.
      */
-    function setClaimed(mapping(uint256 => uint256) storage claimedBitMap, uint256 index) public {
+    function setClaimed(mapping(uint256 => uint256) storage claimedBitMap, uint256 index) internal {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
         claimedBitMap[claimedWordIndex] = claimedBitMap[claimedWordIndex] | (1 << claimedBitIndex);
@@ -85,7 +85,7 @@ library MerkleLib {
      * @param index the index to check in the bitmap.
      \* @return bool indicating if the index within the claimedBitMap has been marked as claimed.
      */
-    function isClaimed1D(uint256 claimedBitMap, uint256 index) public pure returns (bool) {
+    function isClaimed1D(uint256 claimedBitMap, uint256 index) internal pure returns (bool) {
         uint256 mask = (1 << index);
         return claimedBitMap & mask == mask;
     }
@@ -95,7 +95,7 @@ library MerkleLib {
      * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap.
      * @param index the index to mark in the bitmap.
      */
-    function setClaimed1D(uint256 claimedBitMap, uint256 index) public pure returns (uint256) {
+    function setClaimed1D(uint256 claimedBitMap, uint256 index) internal pure returns (uint256) {
         require(index <= 255, "Index out of bounds");
         return claimedBitMap | (1 << index % 256);
     }
