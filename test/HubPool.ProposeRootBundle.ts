@@ -24,7 +24,7 @@ describe("HubPool Root Bundle Proposal", function () {
           consts.mockPoolRebalanceLeafCount,
           consts.mockPoolRebalanceRoot,
           consts.mockRelayerRefundRoot,
-          consts.mockSlowRelayRoot
+          consts.mockSlowRelayFulfillmentRoot
         )
     )
       .to.emit(hubPool, "ProposeRootBundle")
@@ -34,7 +34,7 @@ describe("HubPool Root Bundle Proposal", function () {
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceRoot,
         consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayRoot,
+        consts.mockSlowRelayFulfillmentRoot,
         dataWorker.address
       );
     // Balances of the hubPool should have incremented by the bond and the dataWorker should have decremented by the bond.
@@ -59,7 +59,7 @@ describe("HubPool Root Bundle Proposal", function () {
           consts.mockPoolRebalanceLeafCount,
           consts.mockPoolRebalanceRoot,
           consts.mockRelayerRefundRoot,
-          consts.mockSlowRelayRoot
+          consts.mockSlowRelayFulfillmentRoot
         )
     ).to.be.revertedWith("proposal has unclaimed leafs");
   });

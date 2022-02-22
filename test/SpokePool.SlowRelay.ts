@@ -101,7 +101,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -128,7 +128,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -143,7 +143,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           )
         )
     )
-      .to.emit(spokePool, "ExecutedSlowRelayRoot")
+      .to.emit(spokePool, "ExecutedSlowRelayFulfillmentRoot")
       .withArgs(
         tree.hashFn(relay),
         consts.amountToRelay,
@@ -164,7 +164,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -185,7 +185,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -224,7 +224,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -264,7 +264,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -304,7 +304,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayRoot(
+        .executeSlowRelayFulfillmentRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,
@@ -323,7 +323,7 @@ describe("SpokePool Slow Relay Logic", async function () {
 
   it("Bad proof", async function () {
     await expect(
-      spokePool.connect(relayer).executeSlowRelayRoot(
+      spokePool.connect(relayer).executeSlowRelayFulfillmentRoot(
         ...getExecuteSlowRelayParams(
           depositor.address,
           recipient.address,

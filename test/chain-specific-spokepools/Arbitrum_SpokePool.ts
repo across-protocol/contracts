@@ -77,7 +77,7 @@ describe("Arbitrum Spoke Pool", function () {
   it("Only cross domain owner can initialize a relayer refund", async function () {
     await expect(arbitrumSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(mockTreeRoot, mockTreeRoot);
-    expect((await arbitrumSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
+    expect((await arbitrumSpokePool.rootBundles(0)).slowRelayFulfillmentRoot).to.equal(mockTreeRoot);
     expect((await arbitrumSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 

@@ -1,6 +1,6 @@
 import { expect, Contract, ethers, SignerWithAddress } from "./utils";
 import { spokePoolFixture } from "./SpokePool.Fixture";
-import { mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
+import { mockRelayerRefundRoot, mockSlowRelayFulfillmentRoot } from "./constants";
 
 let spokePool: Contract;
 let dataWorker: SignerWithAddress;
@@ -11,11 +11,11 @@ describe("SpokePool Relay Bundle Logic", async function () {
     ({ spokePool } = await spokePoolFixture());
   });
   it("Relaying root stores root and emits event", async function () {
-    await expect(spokePool.connect(dataWorker).relayRootBundle(mockRelayerRefundRoot, mockSlowRelayRoot))
+    await expect(spokePool.connect(dataWorker).relayRootBundle(mockRelayerRefundRoot, mockSlowRelayFulfillmentRoot))
       .to.emit(spokePool, "RelayedRootBundle")
-      .withArgs(0, mockRelayerRefundRoot, mockSlowRelayRoot);
+      .withArgs(0, mockRelayerRefundRoot, mockSlowRelayFulfillmentRoot);
 
-    expect(await spokePool.rootBundles(0)).has.property("slowRelayRoot", mockSlowRelayRoot);
+    expect(await spokePool.rootBundles(0)).has.property("slowRelayFulfillmentRoot", mockSlowRelayFulfillmentRoot);
     expect(await spokePool.rootBundles(0)).has.property("relayerRefundRoot", mockRelayerRefundRoot);
   });
 });

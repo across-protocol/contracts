@@ -1,5 +1,5 @@
 import { getContractFactory, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
-import { destinationChainId, bondAmount, zeroAddress, mockTreeRoot, mockSlowRelayRoot } from "./constants";
+import { destinationChainId, bondAmount, zeroAddress, mockTreeRoot, mockSlowRelayFulfillmentRoot } from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, mockSpoke: Contract, mockAdapter: Contract;
@@ -56,7 +56,7 @@ describe("HubPool Admin functions", function () {
   it("Can not change the bond token and amount during a pending refund", async function () {
     await seedWallet(owner, [], weth, bondAmount);
     await weth.approve(hubPool.address, bondAmount);
-    await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot);
+    await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
     await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
   });
 });
