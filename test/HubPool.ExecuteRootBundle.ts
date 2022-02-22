@@ -48,7 +48,7 @@ describe("HubPool Root Bundle Execution", function () {
       1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
       tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
       consts.mockRelayerRefundRoot, // Not relevant for this test.
-      consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
     );
 
     // Advance time so the request can be executed and execute the request.
@@ -69,7 +69,7 @@ describe("HubPool Root Bundle Execution", function () {
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
         consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot,
+        consts.mockSlowRelayRoot,
       ])
     );
 
@@ -91,13 +91,7 @@ describe("HubPool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
 
     // Set time 10 seconds before expiration. Should revert.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness - 10);
@@ -115,13 +109,7 @@ describe("HubPool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
 
     // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
@@ -136,13 +124,7 @@ describe("HubPool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.

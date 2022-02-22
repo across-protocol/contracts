@@ -27,7 +27,7 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
         consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
+        consts.mockSlowRelayRoot
       );
 
     const preCallAncillaryData = await hubPool.getRootBundleProposalAncillaryData();
@@ -40,7 +40,7 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.unclaimedPoolRebalanceLeafCount).to.equal(0);
     expect(rootBundle.poolRebalanceRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.relayerRefundRoot).to.equal(consts.zeroBytes32);
-    expect(rootBundle.slowRelayFulfillmentRoot).to.equal(consts.zeroBytes32);
+    expect(rootBundle.slowRelayRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
     expect(rootBundle.proposerBondRepaid).to.equal(false);
@@ -58,7 +58,7 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(parsedAncillaryData?.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
     expect("0x" + parsedAncillaryData?.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
     expect("0x" + parsedAncillaryData?.relayerRefundRoot).to.equal(consts.mockRelayerRefundRoot);
-    expect("0x" + parsedAncillaryData?.slowRelayFulfillmentRoot).to.equal(consts.mockSlowRelayFulfillmentRoot);
+    expect("0x" + parsedAncillaryData?.slowRelayRoot).to.equal(consts.mockSlowRelayRoot);
     expect(parsedAncillaryData?.claimedBitMap).to.equal(0);
     expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.proposer)).to.equal(dataWorker.address);
   });
@@ -71,7 +71,7 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
         consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
+        consts.mockSlowRelayRoot
       );
 
     await hubPool.setCurrentTime(Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness + 1);
