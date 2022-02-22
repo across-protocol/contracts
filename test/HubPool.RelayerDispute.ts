@@ -6,7 +6,7 @@ import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
 let hubPool: Contract, weth: Contract, optimisticOracle: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 
-describe("HubPool Root Bundle Dispute", function () {
+describe("HubPool Relayer Refund Dispute", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, hubPool, optimisticOracle } = await hubPoolFixture());
@@ -18,32 +18,31 @@ describe("HubPool Root Bundle Dispute", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, consts.amountToLp);
   });
 
-  it("Dispute root bundle correctly deletes the active proposal and enqueues a price request with the OO", async function () {
+  it("Dispute relayer refund correctly deletes the active request and enqueues a price request with the OO", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
+      .initiateRelayerRefund(
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
-        consts.mockRelayerRefundRoot,
+        consts.mockDestinationDistributionRoot,
         consts.mockSlowRelayRoot
       );
 
-    const preCallAncillaryData = await hubPool.getRootBundleProposalAncillaryData();
+    const preCallAncillaryData = await hubPool._getRefundProposalAncillaryData();
 
-    await hubPool.connect(dataWorker).disputeRootBundle();
+    await hubPool.connect(dataWorker).disputeRelayerRefund();
 
     // Data should be deleted from the contracts refundRequest struct.
-    const rootBundle = await hubPool.rootBundleProposal();
-    expect(rootBundle.requestExpirationTimestamp).to.equal(0);
-    expect(rootBundle.unclaimedPoolRebalanceLeafCount).to.equal(0);
-    expect(rootBundle.poolRebalanceRoot).to.equal(consts.zeroBytes32);
-    expect(rootBundle.relayerRefundRoot).to.equal(consts.zeroBytes32);
-    expect(rootBundle.slowRelayRoot).to.equal(consts.zeroBytes32);
-    expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
-    expect(rootBundle.proposer).to.equal(consts.zeroAddress);
-    expect(rootBundle.proposerBondRepaid).to.equal(false);
+    const refundRequest = await hubPool.refundRequest();
+    expect(refundRequest.requestExpirationTimestamp).to.equal(0);
+    expect(refundRequest.unclaimedPoolRebalanceLeafCount).to.equal(0);
+    expect(refundRequest.poolRebalanceRoot).to.equal(consts.zeroBytes32);
+    expect(refundRequest.destinationDistributionRoot).to.equal(consts.zeroBytes32);
+    expect(refundRequest.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
+    expect(refundRequest.proposer).to.equal(consts.zeroAddress);
+    expect(refundRequest.proposerBondRepaid).to.equal(false);
 
     const priceProposalEvent = (await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice()))[0].args;
 
@@ -57,8 +56,7 @@ describe("HubPool Root Bundle Dispute", function () {
     );
     expect(parsedAncillaryData?.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
     expect("0x" + parsedAncillaryData?.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
-    expect("0x" + parsedAncillaryData?.relayerRefundRoot).to.equal(consts.mockRelayerRefundRoot);
-    expect("0x" + parsedAncillaryData?.slowRelayRoot).to.equal(consts.mockSlowRelayRoot);
+    expect("0x" + parsedAncillaryData?.destinationDistributionRoot).to.equal(consts.mockDestinationDistributionRoot);
     expect(parsedAncillaryData?.claimedBitMap).to.equal(0);
     expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.proposer)).to.equal(dataWorker.address);
   });
@@ -66,16 +64,16 @@ describe("HubPool Root Bundle Dispute", function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
+      .initiateRelayerRefund(
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceLeafCount,
         consts.mockPoolRebalanceRoot,
-        consts.mockRelayerRefundRoot,
+        consts.mockDestinationDistributionRoot,
         consts.mockSlowRelayRoot
       );
 
     await hubPool.setCurrentTime(Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
-    await expect(hubPool.connect(dataWorker).disputeRootBundle()).to.be.revertedWith("Request passed liveness");
+    await expect(hubPool.connect(dataWorker).disputeRelayerRefund()).to.be.revertedWith("Request passed liveness");
   });
 });

@@ -36,8 +36,8 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot) public override {
-        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override {
+        _relayRootBundle(relayerRefundRoot, slowRelayRoot);
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}
