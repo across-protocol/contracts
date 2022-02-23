@@ -68,7 +68,7 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalan
 
 export function buildPoolRebalanceLeafs(
   destinationChainIds: number[],
-  l1Tokens: Contract[],
+  l1Tokens: string[],
   bundleLpFees: BigNumber[][],
   netSendAmounts: BigNumber[][],
   runningBalances: BigNumber[][]
@@ -79,7 +79,7 @@ export function buildPoolRebalanceLeafs(
       return {
         leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
-        l1Tokens: l1Tokens.map((token: Contract) => token.address),
+        l1Tokens: l1Tokens,
         bundleLpFees: bundleLpFees[i],
         netSendAmounts: netSendAmounts[i],
         runningBalances: runningBalances[i],
@@ -87,7 +87,7 @@ export function buildPoolRebalanceLeafs(
     });
 }
 
-export async function constructSingleChainTree(token: Contract, scalingSize = 1, repaymentChain = repaymentChainId) {
+export async function constructSingleChainTree(token: string, scalingSize = 1, repaymentChain = repaymentChainId) {
   const tokensSendToL2 = toBNWei(100 * scalingSize);
   const realizedLpFees = toBNWei(10 * scalingSize);
   const leafs = buildPoolRebalanceLeafs(

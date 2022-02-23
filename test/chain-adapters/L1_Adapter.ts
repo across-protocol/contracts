@@ -47,7 +47,7 @@ describe("L1 Chain Adapter", function () {
     expect(await mockSpoke.crossDomainAdmin()).to.equal(newAdmin);
   });
   it("Correctly transfers tokens when executing pool rebalance", async function () {
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, l1ChainId);
+    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, l1ChainId);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle(
