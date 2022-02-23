@@ -10,7 +10,7 @@ import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract L1_Adapter is Base_Adapter, Lockable {
+contract Ethereum_Adapter is Base_Adapter, Lockable {
     using SafeERC20 for IERC20;
 
     constructor(address _hubPool) Base_Adapter(_hubPool) {}
@@ -22,7 +22,8 @@ contract L1_Adapter is Base_Adapter, Lockable {
 
     function relayTokens(
         address l1Token,
-        address l2Token, // l2Token is unused for L1.
+        address l2Token, // l2Token is unused for ethereum since we are assuming that the HubPool is only deployed
+        // on this network.
         uint256 amount,
         address to
     ) external payable override nonReentrant onlyHubPool {
