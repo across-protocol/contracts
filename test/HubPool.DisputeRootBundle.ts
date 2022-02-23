@@ -109,10 +109,11 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
     expect(rootBundle.proposerBondRepaid).to.equal(false);
 
+    // No proposal should have been made.
     expect((await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice())).length).to.equal(0);
   });
 
-  it("Decrease in final fee triggers proposer refund", async function () {
+  it("Decrease in final fee just reallocates some of final fee to bond", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond.mul(2));
     await hubPool
       .connect(dataWorker)
@@ -124,17 +125,21 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockSlowRelayRoot
       );
 
-    await store.setFinalFee(weth.address, { rawValue: consts.finalFee.div(2) });
+    const newFinalFee = consts.finalFee.div(2);
+    const newBond = consts.totalBond.sub(newFinalFee);
 
-    console.log(consts.totalBond.toString());
-    console.log(consts.finalFee.toString());
-    console.log(consts.bondAmount.toString());
+    await store.setFinalFee(weth.address, { rawValue: newFinalFee });
 
     // Note: because the final fee is being halved, it just works out that the net transfer is bondAmount.
     await expect(() => hubPool.connect(dataWorker).disputeRootBundle()).to.changeTokenBalances(
       weth,
       [dataWorker, hubPool, optimisticOracle, store],
-      [consts.bondAmount.mul(-1), consts.totalBond.mul(-1), consts.bondAmount.mul(2), consts.finalFee]
+      [
+        consts.totalBond.mul(-1),
+        consts.totalBond.mul(-1),
+        consts.totalBond.add(newBond.div(2)),
+        newFinalFee.add(newBond.div(2)),
+      ]
     );
 
     // Data should be deleted from the contracts refundRequest struct.
@@ -148,6 +153,7 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
     expect(rootBundle.proposerBondRepaid).to.equal(false);
 
-    expect((await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice())).length).to.equal(0);
+    // Proposal/DVM request should have been made.
+    expect((await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice())).length).to.equal(1);
   });
 });

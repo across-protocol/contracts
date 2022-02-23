@@ -427,9 +427,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(getCurrentTime() <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
-        uint256 totalBond = bondAmount;
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         uint256 finalFee = _getBondTokenFinalFee();
+        uint32 currentTime = uint32(getCurrentTime());
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
         // through. Cancel to avoid a revert.
@@ -441,7 +441,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // Only approve enough tokens for the approval to avoid more tokens than expected being pulled into the OptimisticOracle.
-        bondToken.safeIncreaseAllowance(address(optimisticOracle), totalBond);
+        bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         try
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
@@ -459,16 +459,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 // Canonical value representing "True"; i.e. the proposed relay is valid.
                 int256(1e18)
             )
-        returns (uint256 amountPulled) {
-            if (amountPulled < totalBond) {
-                // Refund extra bond paid.
-                uint256 amountToReturn = totalBond - amountPulled;
-                bondToken.transfer(rootBundleProposal.proposer, amountToReturn);
-                totalBond = amountPulled;
-            }
-
-            // Since all tokens may have not been pulled, zero out the approval to avoid sending
-            // more tokens than expected later in this method.
+        returns (uint256) {
+            // Ensure that approval == 0 after the call so the increaseAllowance call below doesn't allow more tokens
+            // to transfer than intended.
             bondToken.safeApprove(address(optimisticOracle), 0);
         } catch {
             // Cancel the bundle since the proposal failed.
@@ -484,18 +477,18 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             settled: false,
             proposedPrice: int256(1e18),
             resolvedPrice: 0,
-            expirationTime: getCurrentTime() + liveness,
+            expirationTime: currentTime + liveness,
             reward: 0,
             finalFee: finalFee,
             bond: bondAmount - finalFee,
             customLiveness: liveness
         });
 
-        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
-        bondToken.safeIncreaseAllowance(address(optimisticOracle), totalBond);
+        bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
+        bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         optimisticOracle.disputePriceFor(
             identifier,
-            uint32(getCurrentTime()),
+            currentTime,
             requestAncillaryData,
             ooPriceRequest,
             msg.sender,
