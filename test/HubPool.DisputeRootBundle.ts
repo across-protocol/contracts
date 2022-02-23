@@ -12,14 +12,14 @@ describe("HubPool Root Bundle Dispute", function () {
     ({ weth, hubPool, optimisticOracle } = await hubPoolFixture());
     await enableTokensForLP(owner, hubPool, weth, [weth]);
 
-    await seedWallet(dataWorker, [], weth, consts.bondAmount.add(consts.finalFee).mul(2));
+    await seedWallet(dataWorker, [], weth, consts.totalBond.mul(2));
     await seedWallet(liquidityProvider, [], weth, consts.amountToLp);
     await weth.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, consts.amountToLp);
   });
 
   it("Dispute root bundle correctly deletes the active proposal and enqueues a price request with the OO", async function () {
-    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
+    await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond.mul(2));
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle(
@@ -32,7 +32,9 @@ describe("HubPool Root Bundle Dispute", function () {
 
     const preCallAncillaryData = await hubPool.getRootBundleProposalAncillaryData();
 
+    console.log((await weth.connect(dataWorker).callStatic.balanceOf(dataWorker.address)).toString());
     await hubPool.connect(dataWorker).disputeRootBundle();
+    console.log((await weth.connect(dataWorker).callStatic.balanceOf(dataWorker.address)).toString());
 
     // Data should be deleted from the contracts refundRequest struct.
     const rootBundle = await hubPool.rootBundleProposal();
@@ -63,7 +65,7 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.proposer)).to.equal(dataWorker.address);
   });
   it("Can not dispute after proposal liveness", async function () {
-    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
+    await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond.mul(2));
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle(
