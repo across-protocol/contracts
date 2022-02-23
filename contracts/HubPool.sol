@@ -165,6 +165,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _;
     }
 
+    modifier zeroOptimisticOracleApproval() {
+        _;
+        bondToken.safeApprove(address(_getOptimisticOracle()), 0);
+    }
+
     constructor(
         LpTokenFactoryInterface _lpTokenFactory,
         FinderInterface _finder,
@@ -405,14 +410,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function disputeRootBundle() public nonReentrant returns (uint256 totalBond) {
+    function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval returns (uint256 totalBond) {
         require(getCurrentTime() <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
         totalBond = bondAmount;
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
-        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
-
         uint256 finalFee = _getBondTokenFinalFee();
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
@@ -422,10 +425,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             return totalBond;
         }
 
-        // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
-        bondToken.safeIncreaseAllowance(address(_getOptimisticOracle()), totalBond * 2);
+        SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+
+        // Only approve enough tokens for the approval to avoid more tokens than expected being pulled into the OptimisticOracle.
+        bondToken.safeIncreaseAllowance(address(optimisticOracle), totalBond);
         try
-            _getOptimisticOracle().requestAndProposePriceFor(
+            optimisticOracle.requestAndProposePriceFor(
                 identifier,
                 uint32(getCurrentTime()),
                 requestAncillaryData,
@@ -449,9 +454,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 bondToken.transfer(rootBundleProposal.proposer, amountToReturn);
                 totalBond = amountPulled;
             }
+
+            // Since all tokens may have not been pulled, zero out the approval to avoid sending
+            // more tokens than expected later in this method.
+            bondToken.safeApprove(address(optimisticOracle), 0);
         } catch {
+            // Cancel the bundle since the proposal failed.
             _cancelBundle(requestAncillaryData);
-            return totalBond;
+            return bondAmount;
         }
 
         // Dispute the request that we just sent.
@@ -469,7 +479,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             customLiveness: rootBundleProposalLiveness
         });
 
-        _getOptimisticOracle().disputePriceFor(
+        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
+        bondToken.safeIncreaseAllowance(address(optimisticOracle), totalBond);
+        optimisticOracle.disputePriceFor(
             identifier,
             uint32(getCurrentTime()),
             requestAncillaryData,
