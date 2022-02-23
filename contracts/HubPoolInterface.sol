@@ -6,13 +6,8 @@ import "./interfaces/AdapterInterface.sol";
 
 interface HubPoolInterface {
     struct PoolRebalanceLeaf {
-        // Used as the index in the bitmap to track whether this leaf has been executed or not.
-        uint256 leafId;
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
         uint256 chainId;
-        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Tokens` field.
-        // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
-        address[] l1Tokens;
         uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
@@ -26,6 +21,11 @@ interface HubPoolInterface {
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
         int256[] runningBalances;
+        // Used as the index in the bitmap to track whether this leaf has been executed or not.
+        uint8 leafId;
+        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Tokens` field.
+        // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
+        address[] l1Tokens;
     }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) external;
@@ -58,15 +58,15 @@ interface HubPoolInterface {
 
     function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) external returns (uint256);
 
-    function initiateRelayerRefund(
+    function proposeRootBundle(
         uint256[] memory bundleEvaluationBlockNumbers,
-        uint64 poolRebalanceLeafCount,
+        uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
-        bytes32 destinationDistributionRoot,
+        bytes32 relayerRefundRoot,
         bytes32 slowRelayFulfillmentRoot
     ) external;
 
-    function executeRelayerRefund(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
+    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
 
-    function disputeRelayerRefund() external;
+    function disputeRootBundle() external;
 }

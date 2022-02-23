@@ -77,27 +77,27 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function initializeRelayerRefund(bytes32 relayerRepaymentDistributionRoot, bytes32 slowRelayRoot)
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot)
         public
         override
         onlyFromCrossDomainAdmin
         nonReentrant
     {
-        _initializeRelayerRefund(relayerRepaymentDistributionRoot, slowRelayRoot);
+        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
     }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    function _bridgeTokensToHubPool(DestinationDistributionLeaf memory distributionLeaf) internal override {
+    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            whitelistedTokens[distributionLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
+            whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            distributionLeaf.amountToReturn, // _amount.
+            relayerRefundLeaf.amountToReturn, // _amount.
             "" // _data. We don't need to send any data for the bridging action.
         );
-        emit ArbitrumTokensBridged(address(0), hubPool, distributionLeaf.amountToReturn);
+        emit ArbitrumTokensBridged(address(0), hubPool, relayerRefundLeaf.amountToReturn);
     }
 
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {
@@ -112,6 +112,8 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
 
     // l1 addresses are transformed during l1->l2 calls. See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
+        unchecked {
+            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
+        }
     }
 }
