@@ -250,10 +250,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) public onlyOwner {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
 
-        // Whitelist the inverse route, from the L2 destinationToken to this chainID, on the L2 spoke pool.
+        // Whitelist the same route on the origin chain.
         _relaySpokePoolAdminFunction(
-            destinationChainId,
-            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", destinationToken, originChainId, true)
+            originChainId,
+            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
         emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken);
     }
