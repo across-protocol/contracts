@@ -423,11 +423,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval returns (uint256 totalBond) {
+    function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         require(getCurrentTime() <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
-        totalBond = bondAmount;
+        uint256 totalBond = bondAmount;
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         uint256 finalFee = _getBondTokenFinalFee();
 
@@ -435,7 +435,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // through. Cancel to avoid a revert.
         if (finalFee > bondAmount) {
             _cancelBundle(requestAncillaryData);
-            return totalBond;
+            return;
         }
 
         SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
@@ -463,7 +463,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             if (amountPulled < totalBond) {
                 // Refund extra bond paid.
                 uint256 amountToReturn = totalBond - amountPulled;
-                bondToken.transfer(msg.sender, amountToReturn);
                 bondToken.transfer(rootBundleProposal.proposer, amountToReturn);
                 totalBond = amountPulled;
             }
@@ -474,7 +473,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         } catch {
             // Cancel the bundle since the proposal failed.
             _cancelBundle(requestAncillaryData);
-            return bondAmount;
+            return;
         }
 
         // Dispute the request that we just sent.
@@ -558,7 +557,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Called when a dispute fails due to parameter changes. This effectively resets the state and cancels the request
     // with no loss of funds.
     function _cancelBundle(bytes memory ancillaryData) internal {
-        bondToken.transfer(msg.sender, bondAmount);
         bondToken.transfer(rootBundleProposal.proposer, bondAmount);
         delete rootBundleProposal;
         emit RootBundleCanceled(msg.sender, getCurrentTime(), ancillaryData);

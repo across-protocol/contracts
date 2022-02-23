@@ -68,5 +68,5 @@ interface HubPoolInterface {
 
     function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
 
-    function disputeRootBundle() external returns (uint256 totalBond);
+    function disputeRootBundle() external;
 }
