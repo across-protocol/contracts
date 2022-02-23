@@ -17,6 +17,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let l1CrossDomainMessenger: FakeContract, l1StandardBridge: FakeContract;
 
 const optimismChainId = 10;
+const l1ChainId = 1;
 
 describe("Optimism Chain Adapter", function () {
   beforeEach(async function () {
@@ -41,8 +42,8 @@ describe("Optimism Chain Adapter", function () {
     ).deploy(weth.address, hubPool.address, l1CrossDomainMessenger.address, l1StandardBridge.address);
 
     await hubPool.setCrossChainContracts(optimismChainId, optimismAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(optimismChainId, weth.address, l2Weth);
-    await hubPool.whitelistRoute(optimismChainId, dai.address, l2Dai);
+    await hubPool.whitelistRoute(l1ChainId, optimismChainId, weth.address, l2Weth);
+    await hubPool.whitelistRoute(l1ChainId, optimismChainId, dai.address, l2Dai);
   });
 
   it("Only owner can set l2GasValues", async function () {

@@ -31,9 +31,9 @@ describe("L1 Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(l1ChainId, l1Adapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(l1ChainId, weth.address, weth.address);
+    await hubPool.whitelistRoute(l1ChainId, l1ChainId, weth.address, weth.address);
 
-    await hubPool.whitelistRoute(l1ChainId, dai.address, dai.address);
+    await hubPool.whitelistRoute(l1ChainId, l1ChainId, dai.address, dai.address);
   });
 
   it("relayMessage calls spoke pool functions", async function () {

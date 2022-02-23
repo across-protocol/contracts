@@ -10,6 +10,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let l1ERC20Gateway: FakeContract, l1Inbox: FakeContract;
 
 const arbitrumChainId = 42161;
+const l1ChainId = 1;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
@@ -38,9 +39,9 @@ describe("Arbitrum Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(arbitrumChainId, arbitrumAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(arbitrumChainId, weth.address, l2Weth);
+    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth);
 
-    await hubPool.whitelistRoute(arbitrumChainId, dai.address, l2Dai);
+    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, dai.address, l2Dai);
   });
 
   it("Only owner can set l2GasValues", async function () {
