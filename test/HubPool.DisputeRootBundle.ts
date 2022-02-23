@@ -30,6 +30,10 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockSlowRelayRoot
       );
 
+    // Increment time to avoid any weirdness with the dispute occuring at the same time as the proposal.
+    const proposalTime = await hubPool.getCurrentTime();
+    await hubPool.connect(dataWorker).setCurrentTime(proposalTime.add(15));
+
     const preCallAncillaryData = await hubPool.getRootBundleProposalAncillaryData();
 
     await hubPool.connect(dataWorker).disputeRootBundle();
@@ -53,7 +57,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     const parsedAncillaryData = parseAncillaryData(priceProposalEvent?.ancillaryData);
     expect(parsedAncillaryData?.requestExpirationTimestamp).to.equal(
-      Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness
+      proposalTime.add(consts.refundProposalLiveness).toNumber()
     );
     expect(parsedAncillaryData?.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
     expect("0x" + parsedAncillaryData?.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
