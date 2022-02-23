@@ -13,7 +13,7 @@ import {
   bondAmount,
   zeroAddress,
   mockTreeRoot,
-  mockSlowRelayFulfillmentRoot,
+  mockSlowRelayRoot,
   finalFeeUsdc,
   finalFee,
   totalBond,
@@ -80,7 +80,7 @@ describe("HubPool Admin functions", function () {
   it("Can not change the bond token and amount during a pending refund", async function () {
     await seedWallet(owner, [], weth, totalBond);
     await weth.approve(hubPool.address, totalBond);
-    await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
+    await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot);
     await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
   });
   it("Cannot change bond token to unwhitelisted token", async function () {

@@ -39,14 +39,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Anyone can dispute this struct if the merkle roots contain invalid leaves before the
     // `requestExpirationTimestamp`. Once the expiration timestamp is passed, `executeRootBundle` to execute a leaf
     // from the `poolRebalanceRoot` on this contract and it will simultaneously publish the `relayerRefundRoot` and
-    // `slowRelayFulfillmentRoot` to a SpokePool. The latter two roots, once published to the SpokePool, contain
+    // `slowRelayRoot` to a SpokePool. The latter two roots, once published to the SpokePool, contain
     // leaves that can be executed on the SpokePool to pay relayers or recipients.
     struct RootBundle {
         uint64 requestExpirationTimestamp;
         uint64 unclaimedPoolRebalanceLeafCount;
         bytes32 poolRebalanceRoot;
         bytes32 relayerRefundRoot;
-        bytes32 slowRelayFulfillmentRoot;
+        bytes32 slowRelayRoot;
         uint256 claimedBitMap; // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         address proposer;
         bool proposerBondRepaid;
@@ -144,7 +144,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed relayerRefundRoot,
-        bytes32 slowRelayFulfillmentRoot,
+        bytes32 slowRelayRoot,
         address indexed proposer
     );
     event RootBundleExecuted(
@@ -160,9 +160,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     event RootBundleDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
+    event RootBundleCanceled(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+
     modifier noActiveRequests() {
         require(rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0, "proposal has unclaimed leafs");
         _;
+    }
+
+    modifier zeroOptimisticOracleApproval() {
+        _;
+        bondToken.safeApprove(address(_getOptimisticOracle()), 0);
     }
 
     constructor(
@@ -335,12 +342,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // After proposeRootBundle is called, if the any props are wrong then this proposal can be challenged. Once the
     // challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be called and
     // this can't be called again until all leafs are executed.
+    // Note: bundleEvaluationBlockNumbers must contain the latest block number for _all_ chains, even if there are no
+    // relays contained on some of them.
     function proposeRootBundle(
         uint256[] memory bundleEvaluationBlockNumbers,
         uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
-        bytes32 slowRelayFulfillmentRoot
+        bytes32 slowRelayRoot
     ) public override nonReentrant noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
@@ -352,7 +361,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         rootBundleProposal.poolRebalanceRoot = poolRebalanceRoot;
         rootBundleProposal.relayerRefundRoot = relayerRefundRoot;
-        rootBundleProposal.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
+        rootBundleProposal.slowRelayRoot = slowRelayRoot;
         rootBundleProposal.proposer = msg.sender;
 
         // Pull bondAmount of bondToken from the caller.
@@ -364,13 +373,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
             relayerRefundRoot,
-            slowRelayFulfillmentRoot,
+            slowRelayRoot,
             msg.sender
         );
     }
 
     function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public nonReentrant {
-        require(getCurrentTime() >= rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
         require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
@@ -414,31 +423,51 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    function disputeRootBundle() public nonReentrant {
-        require(getCurrentTime() <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
+    function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
+        uint32 currentTime = uint32(getCurrentTime());
+        require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
-        uint256 totalBond = bondAmount;
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
-        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
-        // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
-        bondToken.safeApprove(address(_getOptimisticOracle()), totalBond * 2);
-        _getOptimisticOracle().requestAndProposePriceFor(
-            identifier,
-            uint32(getCurrentTime()),
-            requestAncillaryData,
-            bondToken,
-            // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
-            // proposal has passed the challenge period.
-            0,
-            // Set the Optimistic oracle proposer bond for the price request.
-            bondAmount - _getBondTokenFinalFee(),
-            // Set the Optimistic oracle liveness for the price request.
-            liveness,
-            rootBundleProposal.proposer,
-            // Canonical value representing "True"; i.e. the proposed relay is valid.
-            int256(1e18)
-        );
+        uint256 finalFee = _getBondTokenFinalFee();
+
+        // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
+        // through. Cancel to avoid a revert.
+        if (finalFee > bondAmount) {
+            _cancelBundle(requestAncillaryData);
+            return;
+        }
+
+        SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+
+        // Only approve enough tokens for the approval to avoid more tokens than expected being pulled into the OptimisticOracle.
+        bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
+        try
+            optimisticOracle.requestAndProposePriceFor(
+                identifier,
+                currentTime,
+                requestAncillaryData,
+                bondToken,
+                // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
+                // proposal has passed the challenge period.
+                0,
+                // Set the Optimistic oracle proposer bond for the price request.
+                bondAmount - finalFee,
+                // Set the Optimistic oracle liveness for the price request.
+                liveness,
+                rootBundleProposal.proposer,
+                // Canonical value representing "True"; i.e. the proposed relay is valid.
+                int256(1e18)
+            )
+        returns (uint256) {
+            // Ensure that approval == 0 after the call so the increaseAllowance call below doesn't allow more tokens
+            // to transfer than intended.
+            bondToken.safeApprove(address(optimisticOracle), 0);
+        } catch {
+            // Cancel the bundle since the proposal failed.
+            _cancelBundle(requestAncillaryData);
+            return;
+        }
 
         // Dispute the request that we just sent.
         SkinnyOptimisticOracleInterface.Request memory ooPriceRequest = SkinnyOptimisticOracleInterface.Request({
@@ -448,23 +477,25 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             settled: false,
             proposedPrice: int256(1e18),
             resolvedPrice: 0,
-            expirationTime: getCurrentTime() + liveness,
+            expirationTime: currentTime + liveness,
             reward: 0,
-            finalFee: _getBondTokenFinalFee(),
-            bond: bondAmount - _getBondTokenFinalFee(),
+            finalFee: finalFee,
+            bond: bondAmount - finalFee,
             customLiveness: liveness
         });
 
-        _getOptimisticOracle().disputePriceFor(
+        bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
+        bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
+        optimisticOracle.disputePriceFor(
             identifier,
-            uint32(getCurrentTime()),
+            currentTime,
             requestAncillaryData,
             ooPriceRequest,
             msg.sender,
             address(this)
         );
 
-        emit RootBundleDisputed(msg.sender, getCurrentTime(), requestAncillaryData);
+        emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
 
         // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new
         // bundle of roots.
@@ -501,8 +532,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
         ancillaryData = AncillaryData.appendKeyValueBytes32(
             ancillaryData,
-            "slowRelayFulfillmentRoot",
-            rootBundleProposal.slowRelayFulfillmentRoot
+            "slowRelayRoot",
+            rootBundleProposal.slowRelayRoot
         );
         ancillaryData = AncillaryData.appendKeyValueUint(
             ancillaryData,
@@ -516,6 +547,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *              INTERNAL FUNCTIONS               *
      *************************************************/
 
+    // Called when a dispute fails due to parameter changes. This effectively resets the state and cancels the request
+    // with no loss of funds.
+    function _cancelBundle(bytes memory ancillaryData) internal {
+        bondToken.transfer(rootBundleProposal.proposer, bondAmount);
+        delete rootBundleProposal;
+        emit RootBundleCanceled(msg.sender, getCurrentTime(), ancillaryData);
+    }
+
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
@@ -524,14 +563,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             weth.withdraw(amount);
             to.transfer(amount);
         }
-    }
-
-    function _append(
-        string memory a,
-        string memory b,
-        string memory c
-    ) internal pure returns (string memory) {
-        return string(abi.encodePacked(a, b, c));
     }
 
     function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
@@ -589,7 +620,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             abi.encodeWithSignature(
                 "relayRootBundle(bytes32,bytes32)",
                 rootBundleProposal.relayerRefundRoot,
-                rootBundleProposal.slowRelayFulfillmentRoot
+                rootBundleProposal.slowRelayRoot
             ) // message
         );
     }

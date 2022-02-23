@@ -63,7 +63,7 @@ interface HubPoolInterface {
         uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
-        bytes32 slowRelayFulfillmentRoot
+        bytes32 slowRelayRoot
     ) external;
 
     function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
