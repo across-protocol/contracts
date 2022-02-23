@@ -31,8 +31,8 @@ describe("HubPool Liquidity Provision Fees", function () {
 
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // Validate the post execution values have updated as expected. Liquid reserves should be the original LPed amount
@@ -57,31 +57,31 @@ describe("HubPool Liquidity Provision Fees", function () {
 
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayFulfillmentRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // Exchange rate current right after the refund execution should be the amount deposited, grown by the 100 second
-    // liveness period. Of the 10 ETH attributed to LPs, a total of 10*0.0000015*7200=0.108 was attributed to LPs.
-    // The exchange rate is therefore (1000+0.108)/1000=1.000108.
-    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.000108));
+    // liveness period. Of the 10 ETH attributed to LPs, a total of 10*0.0000015*7201=0.108015 was attributed to LPs.
+    // The exchange rate is therefore (1000+0.108015)/1000=1.000108015.
+    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.000108015));
 
     // Validate the state variables are updated accordingly. In particular, undistributedLpFees should have decremented
-    // by the amount allocated in the previous computation. This should be 10-0.108=9.892.
+    // by the amount allocated in the previous computation. This should be 10-0.108015=9.891985.
     await hubPool.exchangeRateCurrent(weth.address); // force state sync.
-    expect((await hubPool.pooledTokens(weth.address)).undistributedLpFees).to.equal(toWei(9.892));
+    expect((await hubPool.pooledTokens(weth.address)).undistributedLpFees).to.equal(toWei(9.891985));
 
     // Next, advance time 2 days. Compute the ETH attributed to LPs by multiplying the original amount allocated(10),
     // minus the previous computation amount(0.108) by the smear rate, by the duration to get the second periods
-    // allocation of(10 - 0.108) * 0.0000015 * (172800)=2.5640064.The exchange rate should be The sum of the
-    // liquidity provided and the fees added in both periods as (1000+0.108+2.5640064)/1000=1.0026720064.
+    // allocation of(10 - 0.108015) * 0.0000015 * (172800)=2.564002512.The exchange rate should be The sum of the
+    // liquidity provided and the fees added in both periods as (1000+0.108015+2.564002512)/1000=1.002672017512.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 2 * 24 * 60 * 60);
-    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.0026720064));
+    expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1.002672017512));
 
     // Again, we can validate that the undistributedLpFees have been updated accordingly. This should be set to the
-    // original amount (10) minus the two sets of attributed LP fees as 10-0.108-2.5640064=7.3279936.
+    // original amount (10) minus the two sets of attributed LP fees as 10-0.108015-2.564002512=7.327982488.
     await hubPool.exchangeRateCurrent(weth.address); // force state sync.
-    expect((await hubPool.pooledTokens(weth.address)).undistributedLpFees).to.equal(toWei(7.3279936));
+    expect((await hubPool.pooledTokens(weth.address)).undistributedLpFees).to.equal(toWei(7.327982488));
 
     // Finally, advance time past the end of the smear period by moving forward 10 days. At this point all LP fees
     // should be attributed such that undistributedLpFees=0 and the exchange rate should simply be (1000+10)/1000=1.01.

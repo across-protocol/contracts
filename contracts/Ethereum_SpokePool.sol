@@ -48,13 +48,8 @@ contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot)
-        public
-        override
-        onlyOwner
-        nonReentrant
-    {
-        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyOwner nonReentrant {
+        _relayRootBundle(relayerRefundRoot, slowRelayRoot);
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {

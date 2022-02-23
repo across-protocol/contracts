@@ -54,7 +54,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     struct RootBundle {
         // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
-        bytes32 slowRelayFulfillmentRoot;
+        bytes32 slowRelayRoot;
         // Merkle root of relayer refunds.
         bytes32 relayerRefundRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
@@ -100,7 +100,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient
     );
-    event ExecutedSlowRelayFulfillmentRoot(
+    event ExecutedSlowRelayRoot(
         bytes32 indexed relayHash,
         uint256 totalRelayAmount,
         uint256 totalFilledAmount,
@@ -114,7 +114,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient
     );
-    event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot);
+    event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 chainId,
@@ -329,7 +329,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**************************************
      *         DATA WORKER FUNCTIONS      *
      **************************************/
-    function executeSlowRelayFulfillmentRoot(
+    function executeSlowRelayRoot(
         address depositor,
         address recipient,
         address destinationToken,
@@ -353,7 +353,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         });
 
         require(
-            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayFulfillmentRoot, relayData, proof),
+            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, relayData, proof),
             "Invalid proof"
         );
 
@@ -363,7 +363,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // funds in all cases.
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.relayAmount, relayerFeePct, true);
 
-        _emitExecutedSlowRelayFulfillmentRoot(relayHash, fillAmountPreFees, relayData);
+        _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
     }
 
     function executeRelayerRefundRoot(
@@ -481,12 +481,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // specifics are left to the implementor of this abstract contract.
     // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
     // can be called to execute each leaf in the root.
-    function _relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot) internal {
+    function _relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) internal {
         uint32 rootBundleId = uint32(rootBundles.length);
         RootBundle storage rootBundle = rootBundles.push();
         rootBundle.relayerRefundRoot = relayerRefundRoot;
-        rootBundle.slowRelayFulfillmentRoot = slowRelayFulfillmentRoot;
-        emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayFulfillmentRoot);
+        rootBundle.slowRelayRoot = slowRelayRoot;
+        emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayRoot);
     }
 
     function _fillRelay(
@@ -565,12 +565,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
     }
 
-    function _emitExecutedSlowRelayFulfillmentRoot(
+    function _emitExecutedSlowRelayRoot(
         bytes32 relayHash,
         uint256 fillAmount,
         RelayData memory relayData
     ) internal {
-        emit ExecutedSlowRelayFulfillmentRoot(
+        emit ExecutedSlowRelayRoot(
             relayHash,
             relayData.relayAmount,
             relayFills[relayHash],
