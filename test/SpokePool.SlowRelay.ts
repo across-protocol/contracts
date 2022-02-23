@@ -21,8 +21,8 @@ import {
   getRelayHash,
 } from "./SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
+import { buildSlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";
-import { Signer } from "ethers";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -91,11 +91,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       depositId: consts.firstDepositId.toString(),
     });
 
-    const paramType = await getParamType("MerkleLibTest", "verifySlowRelayFulfillment", "slowRelayFulfillment");
-    const hashFn = (input: RelayData) => {
-      return keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    };
-    tree = new MerkleTree(relays, hashFn);
+    tree = await buildSlowRelayTree(relays);
 
     await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
   });
