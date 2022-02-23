@@ -10,6 +10,7 @@ import {
   getParamType,
   defaultAbiCoder,
   keccak256,
+  toWei,
 } from "./utils";
 import {
   spokePoolFixture,
@@ -21,6 +22,7 @@ import {
 } from "./SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import * as consts from "./constants";
+import { Signer } from "ethers";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -120,6 +122,34 @@ describe("SpokePool Slow Relay Logic", async function () {
       [spokePool, recipient],
       [fullRelayAmountPostFees.mul(-1), fullRelayAmountPostFees]
     );
+  });
+
+  it("Execute root wraps any ETH owned by contract", async function () {
+    const amountOfEthToWrap = toWei("1");
+    await relayer.sendTransaction({
+      to: spokePool.address,
+      value: amountOfEthToWrap,
+    });
+
+    // Pool should have wrapped all ETH
+    await expect(() =>
+      spokePool
+        .connect(relayer)
+        .executeSlowRelayFulfillmentRoot(
+          ...getExecuteSlowRelayParams(
+            depositor.address,
+            recipient.address,
+            weth.address,
+            consts.amountToRelay,
+            consts.originChainId,
+            consts.realizedLpFeePct,
+            consts.depositRelayerFeePct,
+            consts.firstDepositId,
+            0,
+            tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
+          )
+        )
+    ).to.changeEtherBalance(spokePool, amountOfEthToWrap.mul(-1));
   });
 
   it("Simple SlowRelay ERC20 event", async function () {

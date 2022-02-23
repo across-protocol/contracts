@@ -3,21 +3,21 @@ import { repaymentChainId } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
 
 export interface PoolRebalanceLeaf {
-  leafId: BigNumber;
   chainId: BigNumber;
-  l1Tokens: string[];
   bundleLpFees: BigNumber[];
   netSendAmounts: BigNumber[];
   runningBalances: BigNumber[];
+  leafId: BigNumber;
+  l1Tokens: string[];
 }
 
 export interface RelayerRefundLeaf {
-  leafId: BigNumber;
-  chainId: BigNumber;
   amountToReturn: BigNumber;
+  chainId: BigNumber;
+  refundAmounts: BigNumber[];
+  leafId: BigNumber;
   l2TokenAddress: string;
   refundAddresses: string[];
-  refundAmounts: BigNumber[];
 }
 
 export async function buildRelayerRefundTree(relayerRefundLeafs: RelayerRefundLeaf[]) {
@@ -34,7 +34,7 @@ export async function buildRelayerRefundTree(relayerRefundLeafs: RelayerRefundLe
 export function buildRelayerRefundLeafs(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
-  l2Tokens: Contract[] | string[],
+  l2Tokens: string[],
   refundAddresses: string[][],
   refundAmounts: BigNumber[][]
 ): RelayerRefundLeaf[] {
@@ -45,7 +45,7 @@ export function buildRelayerRefundLeafs(
         leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
         amountToReturn: amountsToReturn[i],
-        l2TokenAddress: (l2Tokens[i] as Contract).address ?? (l2Tokens[i] as string),
+        l2TokenAddress: l2Tokens[i],
         refundAddresses: refundAddresses[i],
         refundAmounts: refundAmounts[i],
       };
@@ -68,7 +68,7 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalan
 
 export function buildPoolRebalanceLeafs(
   destinationChainIds: number[],
-  l1Tokens: Contract[],
+  l1Tokens: string[],
   bundleLpFees: BigNumber[][],
   netSendAmounts: BigNumber[][],
   runningBalances: BigNumber[][]
@@ -77,12 +77,12 @@ export function buildPoolRebalanceLeafs(
     .fill(0)
     .map((_, i) => {
       return {
-        leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
-        l1Tokens: l1Tokens.map((token: Contract) => token.address),
         bundleLpFees: bundleLpFees[i],
         netSendAmounts: netSendAmounts[i],
         runningBalances: runningBalances[i],
+        leafId: BigNumber.from(i),
+        l1Tokens: l1Tokens,
       };
     });
 }
@@ -92,7 +92,7 @@ export async function constructSingleChainTree(token: Contract, scalingSize = 1,
   const realizedLpFees = toBNWei(10 * scalingSize);
   const leafs = buildPoolRebalanceLeafs(
     [repaymentChain], // repayment chain. In this test we only want to send one token to one chain.
-    [token], // l1Token. We will only be sending 1 token to one chain.
+    [token.address], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.
     [[tokensSendToL2]], // netSendAmounts.
     [[tokensSendToL2]] // runningBalances.
