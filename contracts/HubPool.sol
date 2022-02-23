@@ -205,8 +205,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(addressWhitelist.isOnWhitelist(address(newBondToken)), "Not on whitelist");
 
         // The bond should be the passed in bondAmount + the final fee.
-        bondAmount = newBondAmount + _getBondTokenFinalFee();
         bondToken = newBondToken;
+        bondAmount = newBondAmount + _getBondTokenFinalFee();
         emit BondSet(address(newBondToken), bondAmount);
     }
 
@@ -344,7 +344,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) public override nonReentrant noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + rootBundleProposalLiveness);
+        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + liveness);
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
 
@@ -418,7 +418,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(getCurrentTime() <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
-        uint256 totalBond = _getBondTokenFinalFee() + bondAmount;
+        uint256 totalBond = bondAmount;
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
         // This contract needs to approve totalBond*2 against the OO contract. (for the price request and dispute).
@@ -432,9 +432,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // proposal has passed the challenge period.
             0,
             // Set the Optimistic oracle proposer bond for the price request.
-            bondAmount,
+            bondAmount - _getBondTokenFinalFee(),
             // Set the Optimistic oracle liveness for the price request.
-            rootBundleProposalLiveness,
+            liveness,
             rootBundleProposal.proposer,
             // Canonical value representing "True"; i.e. the proposed relay is valid.
             int256(1e18)
@@ -448,11 +448,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             settled: false,
             proposedPrice: int256(1e18),
             resolvedPrice: 0,
-            expirationTime: getCurrentTime() + rootBundleProposalLiveness,
+            expirationTime: getCurrentTime() + liveness,
             reward: 0,
             finalFee: _getBondTokenFinalFee(),
-            bond: bondAmount,
-            customLiveness: rootBundleProposalLiveness
+            bond: bondAmount - _getBondTokenFinalFee(),
+            customLiveness: liveness
         });
 
         _getOptimisticOracle().disputePriceFor(

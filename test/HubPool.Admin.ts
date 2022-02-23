@@ -1,5 +1,14 @@
-import { getContractFactory, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
-import { destinationChainId, bondAmount, zeroAddress, mockTreeRoot, mockSlowRelayFulfillmentRoot } from "./constants";
+import { getContractFactory, SignerWithAddress, seedWallet, expect, Contract, ethers, toBN, fromWei } from "./utils";
+import {
+  destinationChainId,
+  bondAmount,
+  zeroAddress,
+  mockTreeRoot,
+  mockSlowRelayFulfillmentRoot,
+  finalFeeUsdc,
+  finalFee,
+  totalBond,
+} from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, mockSpoke: Contract, mockAdapter: Contract;
@@ -45,17 +54,18 @@ describe("HubPool Admin functions", function () {
 
   it("Can change the bond token and amount", async function () {
     expect(await hubPool.callStatic.bondToken()).to.equal(weth.address); // Default set in the fixture.
-    expect(await hubPool.callStatic.bondAmount()).to.equal(bondAmount); // Default set in the fixture.
+    expect(await hubPool.callStatic.bondAmount()).to.equal(bondAmount.add(finalFee)); // Default set in the fixture.
 
     // Set the bond token and amount to 1000 USDC
     const newBondAmount = ethers.utils.parseUnits("1000", 6); // set to 1000e6, i.e 1000 USDC.
     await hubPool.setBond(usdc.address, newBondAmount);
+
     expect(await hubPool.callStatic.bondToken()).to.equal(usdc.address); // New Address.
-    expect(await hubPool.callStatic.bondAmount()).to.equal(newBondAmount); // New Bond amount.
+    expect(await hubPool.callStatic.bondAmount()).to.equal(newBondAmount.add(finalFeeUsdc)); // New Bond amount.
   });
   it("Can not change the bond token and amount during a pending refund", async function () {
-    await seedWallet(owner, [], weth, bondAmount);
-    await weth.approve(hubPool.address, bondAmount);
+    await seedWallet(owner, [], weth, totalBond);
+    await weth.approve(hubPool.address, totalBond);
     await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
     await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
   });
