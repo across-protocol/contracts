@@ -125,7 +125,7 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
-        consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
+        consts.mockSlowRelayRoot // Not relevant for this test.
       );
       console.log(`proposeRootBundle-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
@@ -152,7 +152,7 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
-        consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
+        consts.mockSlowRelayRoot // Not relevant for this test.
       );
       console.log(`proposeRootBundle-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
