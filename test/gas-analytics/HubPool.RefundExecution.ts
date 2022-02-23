@@ -120,20 +120,20 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      const initiateTxn = await hubPool.connect(dataWorker).initiateRelayerRefund(
+      const initiateTxn = await hubPool.connect(dataWorker).proposeRootBundle(
         [consts.mockBundleEvaluationBlockNumbers[0]], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
         1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
         consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
       );
-      console.log(`initiateRelayerRefund-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
+      console.log(`proposeRootBundle-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
       const txn = await hubPool
         .connect(dataWorker)
-        .executeRelayerRefund(leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRootBundle(leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
 
       // Balances should have updated as expected for tokens contained in the first leaf.
       for (let i = 0; i < REFUND_TOKEN_COUNT; i++) {
@@ -144,23 +144,23 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
       }
 
       const receipt = await txn.wait();
-      console.log(`executeRelayerRefund-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeRootBundle-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
-      const initiateTxn = await hubPool.connect(dataWorker).initiateRelayerRefund(
+      const initiateTxn = await hubPool.connect(dataWorker).proposeRootBundle(
         destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
         consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
       );
-      console.log(`initiateRelayerRefund-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
+      console.log(`proposeRootBundle-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
       const txns = [];
       for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
-        txns.push(await hubPool.connect(dataWorker).executeRelayerRefund(leaves[i], tree.getHexProof(leaves[i])));
+        txns.push(await hubPool.connect(dataWorker).executeRootBundle(leaves[i], tree.getHexProof(leaves[i])));
       }
 
       // Balances should have updated as expected for tokens contained in the first leaf.
@@ -174,7 +174,7 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
       // Now that we've verified that the transaction succeeded, let's compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
-      console.log(`(average) executeRelayerRefund-gasUsed: ${gasUsed.div(REFUND_CHAIN_COUNT)}`);
+      console.log(`(average) executeRootBundle-gasUsed: ${gasUsed.div(REFUND_CHAIN_COUNT)}`);
     });
   });
 });
