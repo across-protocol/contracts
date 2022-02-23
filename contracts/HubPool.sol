@@ -13,6 +13,8 @@ import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/oracle/implementation/Constants.sol";
 import "@uma/core/contracts/common/implementation/AncillaryData.sol";
+import "@uma/core/contracts/common/interfaces/AddressWhitelistInterface.sol";
+import "@uma/core/contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 
 import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
 import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
@@ -104,7 +106,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
     // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint64 public rootBundleProposalLiveness = 7200;
+    uint64 public liveness = 7200;
 
     event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
 
@@ -112,7 +114,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     event BondSet(address indexed newBondToken, uint256 newBondAmount);
 
-    event RootBundleProposalLivenessSet(uint256 newProposalLiveness);
+    event LivenessSet(uint256 newLiveness);
 
     event IdentifierSet(bytes32 newIdentifier);
 
@@ -203,17 +205,29 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) public onlyOwner noActiveRequests {
+        // Check that this token is on the whitelist.
+        AddressWhitelistInterface addressWhitelist = AddressWhitelistInterface(
+            finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist)
+        );
+        require(addressWhitelist.isOnWhitelist(address(newBondToken)), "Not on whitelist");
+
+        // The bond should be the passed in bondAmount + the final fee.
         bondToken = newBondToken;
-        bondAmount = newBondAmount;
-        emit BondSet(address(newBondToken), newBondAmount);
+        bondAmount = newBondAmount + _getBondTokenFinalFee();
+        emit BondSet(address(newBondToken), bondAmount);
     }
 
-    function setRootBundleProposalLiveness(uint64 newProposalLiveness) public onlyOwner {
-        rootBundleProposalLiveness = newProposalLiveness;
-        emit RootBundleProposalLivenessSet(newProposalLiveness);
+    function setLiveness(uint64 newLiveness) public onlyOwner {
+        require(newLiveness > 10 minutes, "Liveness too short");
+        liveness = newLiveness;
+        emit LivenessSet(newLiveness);
     }
 
-    function setIdentifier(bytes32 newIdentifier) public onlyOwner {
+    function setIdentifier(bytes32 newIdentifier) public onlyOwner noActiveRequests {
+        IdentifierWhitelistInterface identifierWhitelist = IdentifierWhitelistInterface(
+            finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist)
+        );
+        require(identifierWhitelist.isIdentifierSupported(newIdentifier), "Identifier not supported");
         identifier = newIdentifier;
         emit IdentifierSet(newIdentifier);
     }
@@ -223,7 +237,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address adapter,
         address spokePool
     ) public onlyOwner noActiveRequests {
-        require(address(crossChainContracts[l2ChainId].adapter) == address(0), "Contract already set");
         crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -340,7 +353,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) public override nonReentrant noActiveRequests {
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + rootBundleProposalLiveness);
+        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + liveness);
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
 
@@ -441,7 +454,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 // Set the Optimistic oracle proposer bond for the price request.
                 bondAmount - finalFee,
                 // Set the Optimistic oracle liveness for the price request.
-                rootBundleProposalLiveness,
+                liveness,
                 rootBundleProposal.proposer,
                 // Canonical value representing "True"; i.e. the proposed relay is valid.
                 int256(1e18)
@@ -472,11 +485,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             settled: false,
             proposedPrice: int256(1e18),
             resolvedPrice: 0,
-            expirationTime: getCurrentTime() + rootBundleProposalLiveness,
+            expirationTime: getCurrentTime() + liveness,
             reward: 0,
-            finalFee: _getBondTokenFinalFee(),
-            bond: bondAmount,
-            customLiveness: rootBundleProposalLiveness
+            finalFee: finalFee,
+            bond: bondAmount - finalFee,
+            customLiveness: liveness
         });
 
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);

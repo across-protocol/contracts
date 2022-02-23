@@ -1,7 +1,7 @@
 import { TokenRolesEnum } from "@uma/common";
-import { getContractFactory, randomAddress, toBN, fromWei, hre, Contract, Signer } from "./utils";
+import { getContractFactory, randomAddress, hre, Contract, Signer } from "./utils";
 
-import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId } from "./constants";
+import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId, finalFeeUsdc } from "./constants";
 
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
@@ -27,7 +27,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
 
   // Set the finalFee for all the new tokens.
   await parentFixture.store.setFinalFee(weth.address, { rawValue: finalFee });
-  await parentFixture.store.setFinalFee(usdc.address, { rawValue: toBN(fromWei(finalFee)).mul(1e6) });
+  await parentFixture.store.setFinalFee(usdc.address, { rawValue: finalFeeUsdc });
   await parentFixture.store.setFinalFee(dai.address, { rawValue: finalFee });
 
   // Deploy the hubPool.
@@ -36,7 +36,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
     await getContractFactory("HubPool", { signer: signer })
   ).deploy(lpTokenFactory.address, parentFixture.finder.address, weth.address, parentFixture.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
-  await hubPool.setRootBundleProposalLiveness(refundProposalLiveness);
+  await hubPool.setLiveness(refundProposalLiveness);
 
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
