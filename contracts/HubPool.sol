@@ -424,12 +424,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
-        require(getCurrentTime() <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
+        uint32 currentTime = uint32(getCurrentTime());
+        require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         uint256 finalFee = _getBondTokenFinalFee();
-        uint32 currentTime = uint32(getCurrentTime());
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
         // through. Cancel to avoid a revert.
@@ -445,7 +445,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         try
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
-                uint32(getCurrentTime()),
+                currentTime,
                 requestAncillaryData,
                 bondToken,
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
@@ -495,7 +495,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             address(this)
         );
 
-        emit RootBundleDisputed(msg.sender, getCurrentTime(), requestAncillaryData);
+        emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
 
         // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new
         // bundle of roots.
