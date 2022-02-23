@@ -51,7 +51,7 @@ describe("L1 Chain Adapter", function () {
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     expect(await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0])))
       .to.emit(l1Adapter, "TokensRelayed")
       .withArgs(dai.address, dai.address, tokensSendToL2, mockSpoke.address);

@@ -32,9 +32,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     const preCallAncillaryData = await hubPool.getRootBundleProposalAncillaryData();
 
-    console.log((await weth.connect(dataWorker).callStatic.balanceOf(dataWorker.address)).toString());
     await hubPool.connect(dataWorker).disputeRootBundle();
-    console.log((await weth.connect(dataWorker).callStatic.balanceOf(dataWorker.address)).toString());
 
     // Data should be deleted from the contracts refundRequest struct.
     const rootBundle = await hubPool.rootBundleProposal();

@@ -38,7 +38,7 @@ describe("HubPool Protocol fees", function () {
   it("When fee capture pct is not set to zero fees correctly attribute between LPs and the protocol", async function () {
     const { leafs, tree, realizedLpFees } = await constructSingleChainTree(weth);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // 90% of the fees should be attributed to the LPs.
@@ -69,7 +69,7 @@ describe("HubPool Protocol fees", function () {
     await hubPool.setProtocolFeeCapture(owner.address, "0");
     const { leafs, tree, realizedLpFees } = await constructSingleChainTree(weth);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     expect((await hubPool.pooledTokens(weth.address)).undistributedLpFees).to.equal(realizedLpFees);
 

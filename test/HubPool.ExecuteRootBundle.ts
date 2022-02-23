@@ -52,7 +52,7 @@ describe("HubPool Root Bundle Execution", function () {
     );
 
     // Advance time so the request can be executed and execute the request.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // Balances should have updated as expected.
@@ -101,7 +101,7 @@ describe("HubPool Root Bundle Execution", function () {
     ).to.be.revertedWith("Not passed liveness");
 
     // Set time after expiration. Should no longer revert.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 11);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
   });
 
@@ -110,7 +110,7 @@ describe("HubPool Root Bundle Execution", function () {
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
     // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
@@ -125,7 +125,7 @@ describe("HubPool Root Bundle Execution", function () {
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
