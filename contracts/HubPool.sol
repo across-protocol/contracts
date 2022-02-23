@@ -211,7 +211,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function setLiveness(uint64 newLiveness) public onlyOwner {
-        require(newLiveness > 10 minutes, "Too short liveness");
+        require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
     }

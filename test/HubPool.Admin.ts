@@ -1,4 +1,13 @@
-import { getContractFactory, SignerWithAddress, seedWallet, expect, Contract, ethers, toBN, fromWei } from "./utils";
+import {
+  getContractFactory,
+  SignerWithAddress,
+  seedWallet,
+  expect,
+  Contract,
+  ethers,
+  randomAddress,
+  utf8ToHex,
+} from "./utils";
 import {
   destinationChainId,
   bondAmount,
@@ -11,13 +20,18 @@ import {
 } from "./constants";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract, usdc: Contract, mockSpoke: Contract, mockAdapter: Contract;
+let hubPool: Contract,
+  weth: Contract,
+  usdc: Contract,
+  mockSpoke: Contract,
+  mockAdapter: Contract,
+  identifierWhitelist: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
 describe("HubPool Admin functions", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
-    ({ weth, hubPool, usdc, mockAdapter, mockSpoke } = await hubPoolFixture());
+    ({ weth, hubPool, usdc, mockAdapter, mockSpoke, identifierWhitelist } = await hubPoolFixture());
   });
 
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {
@@ -68,5 +82,37 @@ describe("HubPool Admin functions", function () {
     await weth.approve(hubPool.address, totalBond);
     await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayFulfillmentRoot);
     await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
+  });
+  it("Cannot change bond token to unwhitelisted token", async function () {
+    await expect(hubPool.setBond(randomAddress(), "1")).to.be.revertedWith("Not on whitelist");
+  });
+  it("Only owner can set bond", async function () {
+    await expect(hubPool.connect(other).setBond(usdc.address, "1")).to.be.reverted;
+  });
+  it("Set identifier", async function () {
+    const identifier = utf8ToHex("TEST_ID");
+    await identifierWhitelist.addSupportedIdentifier(identifier);
+    await hubPool.connect(owner).setIdentifier(identifier);
+    expect(await hubPool.identifier()).to.equal(identifier);
+  });
+  it("Only owner can set identifier", async function () {
+    const identifier = utf8ToHex("TEST_ID");
+    await identifierWhitelist.addSupportedIdentifier(identifier);
+    await expect(hubPool.connect(other).setIdentifier(identifier)).to.be.reverted;
+  });
+  it("Only whitelisted identifiers allowed", async function () {
+    const identifier = utf8ToHex("TEST_ID");
+    await expect(hubPool.connect(owner).setIdentifier(identifier)).to.be.revertedWith("Identifier not supported");
+  });
+  it("Set liveness", async function () {
+    const newLiveness = "1000000";
+    await hubPool.connect(owner).setLiveness(newLiveness);
+    await expect(await hubPool.liveness()).to.equal(newLiveness);
+  });
+  it("Liveness too short", async function () {
+    await expect(hubPool.connect(owner).setLiveness(599)).to.be.revertedWith("Liveness too short");
+  });
+  it("Only owner can set liveness", async function () {
+    await expect(hubPool.connect(other).setLiveness("1000000")).to.be.reverted;
   });
 });
