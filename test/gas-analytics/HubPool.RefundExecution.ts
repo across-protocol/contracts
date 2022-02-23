@@ -124,10 +124,10 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         [consts.mockBundleEvaluationBlockNumbers[0]], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
         1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
-        consts.mockDestinationDistributionRoot, // destinationDistributionRoot. Not relevant for this test.
-        consts.mockSlowRelayFulfillmentRoot // Mock root because this isn't relevant for this test.
+        consts.mockRelayerRefundRoot, // Not relevant for this test.
+        consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
       );
-      console.log(`initiateRelayerRefund-cumulativeGasUsed: ${(await initiateTxn.wait()).cumulativeGasUsed}`);
+      console.log(`initiateRelayerRefund-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
@@ -144,17 +144,17 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
       }
 
       const receipt = await txn.wait();
-      console.log(`executeRelayerRefund-cumulativeGasUsed: ${receipt.cumulativeGasUsed}`);
+      console.log(`executeRelayerRefund-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
       const initiateTxn = await hubPool.connect(dataWorker).initiateRelayerRefund(
         destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
-        consts.mockDestinationDistributionRoot, // destinationDistributionRoot. Not relevant for this test.
-        consts.mockSlowRelayFulfillmentRoot // Mock root because this isn't relevant for this test.
+        consts.mockRelayerRefundRoot, // Not relevant for this test.
+        consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
       );
-      console.log(`initiateRelayerRefund-cumulativeGasUsed: ${(await initiateTxn.wait()).cumulativeGasUsed}`);
+      console.log(`initiateRelayerRefund-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
@@ -173,8 +173,8 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
 
       // Now that we've verified that the transaction succeeded, let's compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
-      const cumulativeGasUsed = receipts.map((_receipt) => _receipt.cumulativeGasUsed).reduce((x, y) => x.add(y));
-      console.log(`(average) executeRelayerRefund-cumulativeGasUsed: ${cumulativeGasUsed.div(REFUND_CHAIN_COUNT)}`);
+      const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
+      console.log(`(average) executeRelayerRefund-gasUsed: ${gasUsed.div(REFUND_CHAIN_COUNT)}`);
     });
   });
 });
