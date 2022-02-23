@@ -205,8 +205,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(addressWhitelist.isOnWhitelist(address(newBondToken)), "Not on whitelist");
 
         // The bond should be the passed in bondAmount + the final fee.
-        StoreInterface store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
-        bondAmount = newBondAmount + store.computeFinalFee(address(bondToken)).rawValue;
+        bondAmount = newBondAmount + _getBondTokenFinalFee();
         bondToken = newBondToken;
         emit BondSet(address(newBondToken), bondAmount);
     }
