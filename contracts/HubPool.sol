@@ -136,7 +136,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokensBurnt,
         address indexed liquidityProvider
     );
-    event WhitelistRoute(uint256 destinationChainId, address originToken, address destinationToken);
+    event WhitelistRoute(
+        uint256 originChainId,
+        uint256 destinationChainId,
+        address originToken,
+        address destinationToken
+    );
 
     event ProposeRootBundle(
         uint64 requestExpirationTimestamp,
@@ -245,16 +250,19 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Whitelist an origin token <-> destination token route.
      */
     function whitelistRoute(
+        uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
         address destinationToken
     ) public onlyOwner {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+
+        // Whitelist the same route on the origin network.
         _relaySpokePoolAdminFunction(
-            destinationChainId,
+            originChainId,
             abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
-        emit WhitelistRoute(destinationChainId, originToken, destinationToken);
+        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken);
     }
 
     function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {

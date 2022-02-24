@@ -32,7 +32,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));
 
     // Execute a relayer refund. Check counters move accordingly.
-    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
+    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth.address);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
@@ -102,7 +102,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     // Liquidity utilization starts off at 0 before any actions are done.
     expect(await hubPool.callStatic.liquidityUtilizationCurrent(weth.address)).to.equal(0);
     // Execute a relayer refund. Check counters move accordingly.
-    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
+    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth.address);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
@@ -173,7 +173,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     expect(await hubPool.callStatic.liquidityUtilizationPostRelay(weth.address, toBNWei(100))).to.equal(toBNWei(0.1));
 
     // Execute a relay refund bundle to increase the liquidity utilization.
-    const { leafs, tree } = await constructSingleChainTree(weth);
+    const { leafs, tree } = await constructSingleChainTree(weth.address);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
@@ -189,7 +189,7 @@ describe("HubPool Pooled Token Synchronization", function () {
   });
   it("High liquidity utilization blocks LPs from withdrawing", async function () {
     // Execute a relayer refund bundle. Set the scalingSize to 5. This will use 500 ETH from the hubPool.
-    const { leafs, tree } = await constructSingleChainTree(weth, 5);
+    const { leafs, tree } = await constructSingleChainTree(weth.address, 5);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
@@ -222,7 +222,7 @@ describe("HubPool Pooled Token Synchronization", function () {
     await expect(hubPool.connect(liquidityProvider).removeLiquidity(weth.address, 1, false)).to.be.reverted;
   });
   it("Redeeming all LP tokens, after accruing fees, is handled correctly", async function () {
-    const { leafs, tree, tokensSendToL2, realizedLpFees } = await constructSingleChainTree(weth);
+    const { leafs, tree, tokensSendToL2, realizedLpFees } = await constructSingleChainTree(weth.address);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);

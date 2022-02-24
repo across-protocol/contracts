@@ -27,7 +27,7 @@ describe("HubPool Liquidity Provision Fees", function () {
     expect(pooledTokenInfoPreExecution.undistributedLpFees).to.equal(0);
     expect(pooledTokenInfoPreExecution.lastLpFeeUpdate).to.equal(await timer.getCurrentTime());
 
-    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth);
+    const { tokensSendToL2, realizedLpFees, leafs, tree } = await constructSingleChainTree(weth.address);
 
     await hubPool
       .connect(dataWorker)
@@ -49,7 +49,7 @@ describe("HubPool Liquidity Provision Fees", function () {
     // Fees are designed to be attributed over a period of time so they dont all arrive on L1 as soon as the bundle is
     // executed. We can validate that fees are correctly smeared by attributing some and then moving time forward and
     // validating that key variable shift as a function of time.
-    const { leafs, tree } = await constructSingleChainTree(weth);
+    const { leafs, tree } = await constructSingleChainTree(weth.address);
 
     // Exchange rate current before any fees are attributed execution should be 1.
     expect(await hubPool.callStatic.exchangeRateCurrent(weth.address)).to.equal(toWei(1));

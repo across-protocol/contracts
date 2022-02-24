@@ -1,7 +1,14 @@
 import { TokenRolesEnum } from "@uma/common";
 import { getContractFactory, randomAddress, hre, Contract, Signer } from "./utils";
 
-import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId, finalFeeUsdc } from "./constants";
+import {
+  originChainId,
+  bondAmount,
+  refundProposalLiveness,
+  finalFee,
+  repaymentChainId,
+  finalFeeUsdc,
+} from "./constants";
 
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
@@ -44,13 +51,14 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
     await getContractFactory("MockSpokePool", { signer: signer })
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
+  await hubPool.setCrossChainContracts(originChainId, mockAdapter.address, mockSpoke.address);
 
   // Deploy mock l2 tokens for each token created before and whitelist the routes.
   const mockTokens = { l2Weth: randomAddress(), l2Dai: randomAddress(), l2Usdc: randomAddress() };
 
-  await hubPool.whitelistRoute(repaymentChainId, weth.address, mockTokens.l2Weth);
-  await hubPool.whitelistRoute(repaymentChainId, dai.address, mockTokens.l2Dai);
-  await hubPool.whitelistRoute(repaymentChainId, usdc.address, mockTokens.l2Usdc);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, weth.address, mockTokens.l2Weth);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, dai.address, mockTokens.l2Dai);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc);
 
   return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
 });

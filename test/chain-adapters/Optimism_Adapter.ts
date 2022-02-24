@@ -11,17 +11,24 @@ import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, optimismAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
+let hubPool: Contract,
+  optimismAdapter: Contract,
+  mockAdapter: Contract,
+  weth: Contract,
+  dai: Contract,
+  timer: Contract,
+  mockSpoke: Contract;
 let l2Weth: string, l2Dai: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let l1CrossDomainMessenger: FakeContract, l1StandardBridge: FakeContract;
 
 const optimismChainId = 10;
+const l1ChainId = 1;
 
 describe("Optimism Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
+    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, amountToLp.mul(10));
 
@@ -41,8 +48,12 @@ describe("Optimism Chain Adapter", function () {
     ).deploy(weth.address, hubPool.address, l1CrossDomainMessenger.address, l1StandardBridge.address);
 
     await hubPool.setCrossChainContracts(optimismChainId, optimismAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(optimismChainId, weth.address, l2Weth);
-    await hubPool.whitelistRoute(optimismChainId, dai.address, l2Dai);
+    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Weth, weth.address);
+    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Dai, dai.address);
+
+    await hubPool.setCrossChainContracts(l1ChainId, mockAdapter.address, mockSpoke.address);
+    await hubPool.whitelistRoute(l1ChainId, optimismChainId, weth.address, l2Weth);
+    await hubPool.whitelistRoute(l1ChainId, optimismChainId, dai.address, l2Dai);
   });
 
   it("Only owner can set l2GasValues", async function () {
@@ -66,7 +77,7 @@ describe("Optimism Chain Adapter", function () {
   it("Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, optimismChainId);
+    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, optimismChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
@@ -85,7 +96,7 @@ describe("Optimism Chain Adapter", function () {
   });
   it("Correctly unwraps WETH and bridges ETH", async function () {
     // Cant bridge WETH on optimism. Rather, unwrap WETH to ETH then bridge it. Validate the adapter does this.
-    const { leafs, tree } = await constructSingleChainTree(weth, 1, optimismChainId);
+    const { leafs, tree } = await constructSingleChainTree(weth.address, 1, optimismChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
