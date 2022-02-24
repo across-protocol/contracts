@@ -44,7 +44,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // Distribute the first leaf.
@@ -102,7 +102,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // Take the valid root but change some element within it. This will change the hash of the leaf
@@ -120,7 +120,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, 13371);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // Root is valid and leaf is contained in tree, but chain ID doesn't match pool's chain ID.
@@ -131,7 +131,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.

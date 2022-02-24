@@ -77,13 +77,13 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         _setDepositQuoteTimeBuffer(buffer);
     }
 
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot)
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)
         public
         override
         onlyFromCrossDomainAdmin
         nonReentrant
     {
-        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
+        _relayRootBundle(relayerRefundRoot, slowRelayRoot);
     }
 
     /**************************************
