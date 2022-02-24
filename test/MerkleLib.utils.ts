@@ -68,7 +68,7 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalan
 
 export function buildPoolRebalanceLeafs(
   destinationChainIds: number[],
-  l1Tokens: string[],
+  l1Tokens: string[][],
   bundleLpFees: BigNumber[][],
   netSendAmounts: BigNumber[][],
   runningBalances: BigNumber[][]
@@ -79,7 +79,7 @@ export function buildPoolRebalanceLeafs(
       return {
         leafId: BigNumber.from(i),
         chainId: BigNumber.from(destinationChainIds[i]),
-        l1Tokens: l1Tokens,
+        l1Tokens: l1Tokens[i],
         bundleLpFees: bundleLpFees[i],
         netSendAmounts: netSendAmounts[i],
         runningBalances: runningBalances[i],
@@ -92,7 +92,7 @@ export async function constructSingleChainTree(token: string, scalingSize = 1, r
   const realizedLpFees = toBNWei(10 * scalingSize);
   const leafs = buildPoolRebalanceLeafs(
     [repaymentChain], // repayment chain. In this test we only want to send one token to one chain.
-    [token], // l1Token. We will only be sending 1 token to one chain.
+    [[token]], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.
     [[tokensSendToL2]], // netSendAmounts.
     [[tokensSendToL2]] // runningBalances.
