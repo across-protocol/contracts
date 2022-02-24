@@ -55,4 +55,6 @@ contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         IERC20(relayerRefundLeaf.l2TokenAddress).transfer(hubPool, relayerRefundLeaf.amountToReturn);
     }
+
+    function _requireAdminSender() internal override onlyOwner {}
 }

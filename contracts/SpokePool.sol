@@ -158,30 +158,48 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *          ADMIN FUNCTIONS           *
      **************************************/
 
-    function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override nonReentrant {
+        _requireAdminSender();
         require(newCrossDomainAdmin != address(0), "Bad bridge router address");
         crossDomainAdmin = newCrossDomainAdmin;
         emit SetXDomainAdmin(crossDomainAdmin);
     }
 
-    function _setHubPool(address newHubPool) internal {
+    function setHubPool(address newHubPool) public override nonReentrant {
+        _requireAdminSender();
         require(newHubPool != address(0), "Bad hub pool address");
         hubPool = newHubPool;
         emit SetHubPool(hubPool);
     }
 
-    function _setEnableRoute(
+    function setEnableRoute(
         address originToken,
         uint256 destinationChainId,
         bool enabled
-    ) internal {
+    ) public override nonReentrant {
+        _requireAdminSender();
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
-    function _setDepositQuoteTimeBuffer(uint32 _depositQuoteTimeBuffer) internal {
+    function setDepositQuoteTimeBuffer(uint32 _depositQuoteTimeBuffer) public override nonReentrant {
+        _requireAdminSender();
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         emit SetDepositQuoteTimeBuffer(_depositQuoteTimeBuffer);
+    }
+
+    // This internal method should be called by an external "relayRootBundle" function that validates the
+    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
+    // specifics are left to the implementor of this abstract contract.
+    // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
+    // can be called to execute each leaf in the root.
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override nonReentrant {
+        _requireAdminSender();
+        uint32 rootBundleId = uint32(rootBundles.length);
+        RootBundle storage rootBundle = rootBundles.push();
+        rootBundle.relayerRefundRoot = relayerRefundRoot;
+        rootBundle.slowRelayRoot = slowRelayRoot;
+        emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayRoot);
     }
 
     /**************************************
@@ -476,19 +494,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         }
     }
 
-    // This internal method should be called by an external "relayRootBundle" function that validates the
-    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
-    // specifics are left to the implementor of this abstract contract.
-    // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
-    // can be called to execute each leaf in the root.
-    function _relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) internal {
-        uint32 rootBundleId = uint32(rootBundles.length);
-        RootBundle storage rootBundle = rootBundles.push();
-        rootBundle.relayerRefundRoot = relayerRefundRoot;
-        rootBundle.slowRelayRoot = slowRelayRoot;
-        emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayRoot);
-    }
-
     function _fillRelay(
         bytes32 relayHash,
         RelayData memory relayData,
@@ -585,6 +590,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayData.recipient
         );
     }
+
+    function _requireAdminSender() internal virtual;
 
     // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
     receive() external payable {}

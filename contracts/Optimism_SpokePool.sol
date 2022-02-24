@@ -32,61 +32,18 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         SpokePool(_crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006, timerAddress)
     {}
 
-    /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
-     **************************************/
+    /*******************************************
+     *    OPTIMISM SPECIFIC ADMIN FUNCTIONS    *
+     *******************************************/
 
     function setL1GasLimit(uint32 newl1Gas) public onlyFromCrossDomainAccount(crossDomainAdmin) {
-        _setL1GasLimit(newl1Gas);
-    }
-
-    function setCrossDomainAdmin(address newCrossDomainAdmin)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
-        _setCrossDomainAdmin(newCrossDomainAdmin);
-    }
-
-    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
-        _setHubPool(newHubPool);
-    }
-
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enable
-    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
-        _setEnableRoute(originToken, destinationChainId, enable);
-    }
-
-    function setDepositQuoteTimeBuffer(uint32 buffer)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
-        _setDepositQuoteTimeBuffer(buffer);
-    }
-
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
-        _relayRootBundle(relayerRefundRoot, slowRelayRoot);
+        l1Gas = newl1Gas;
+        emit SetL1Gas(newl1Gas);
     }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
-
-    function _setL1GasLimit(uint32 _l1Gas) internal {
-        l1Gas = _l1Gas;
-        emit SetL1Gas(l1Gas);
-    }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
@@ -105,4 +62,6 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
 
         emit OptimismTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn, l1Gas);
     }
+
+    function _requireAdminSender() internal override onlyFromCrossDomainAccount(crossDomainAdmin) {}
 }

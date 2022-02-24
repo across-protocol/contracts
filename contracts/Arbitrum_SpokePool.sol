@@ -116,4 +116,6 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
             l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
         }
     }
+
+    function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
 }
