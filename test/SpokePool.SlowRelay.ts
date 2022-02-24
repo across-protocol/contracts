@@ -131,7 +131,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await expect(() =>
       spokePool
         .connect(relayer)
-        .executeSlowRelayFulfillmentRoot(
+        .executeSlowRelayRoot(
           ...getExecuteSlowRelayParams(
             depositor.address,
             recipient.address,

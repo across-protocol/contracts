@@ -84,7 +84,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     const amountOfEthToWrap = toWei("1");
