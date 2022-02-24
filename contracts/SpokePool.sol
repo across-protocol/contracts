@@ -341,6 +341,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 rootBundleId,
         bytes32[] memory proof
     ) public nonReentrant {
+        // This function potentially is expected to transfer WETH to the recipient so we should wrap all ETH.
+        _depositEthToWeth();
+
         RelayData memory relayData = RelayData({
             depositor: depositor,
             recipient: recipient,
@@ -359,11 +362,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         bytes32 relayHash = _getRelayHash(relayData);
 
-        // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
-        // some SpokePools will receive ETH from the canonical token bridge instead of WETH so this contract
-        // might have built up an ETH balance.
-        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
-
         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
         // funds in all cases.
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.relayAmount, relayerFeePct, true);
@@ -376,6 +374,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public nonReentrant {
+        // This function potentially is expected to transfer WETH to the recipient so we should wrap all ETH.
+        _depositEthToWeth();
+
         // Check integrity of leaf structure:
         require(relayerRefundLeaf.chainId == chainId(), "Invalid chainId");
         require(relayerRefundLeaf.refundAddresses.length == relayerRefundLeaf.refundAmounts.length, "invalid leaf");
@@ -391,10 +392,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Set leaf as claimed in bitmap.
         MerkleLib.setClaimed(rootBundle.claimedBitmap, relayerRefundLeaf.leafId);
-
-        // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
-        // some SpokePools will receive ETH from the canonical token bridge instead of WETH.
-        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
@@ -483,6 +480,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             weth.withdraw(amount);
             to.transfer(amount);
         }
+    }
+
+    function _depositEthToWeth() internal {
+        // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
+        // some SpokePools will receive ETH from the canonical token bridge instead of WETH.
+        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
     }
 
     // This internal method should be called by an external "relayRootBundle" function that validates the
