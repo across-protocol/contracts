@@ -36,6 +36,12 @@ describe("HubPool Pooled Token Synchronization", function () {
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockTreeRoot, consts.mockSlowRelayRoot);
+
+    // Bond being paid in should not impact liquid reserves.
+    await hubPool.exchangeRateCurrent(weth.address); // force state sync (calls sync internally).
+    expect((await hubPool.pooledTokens(weth.address)).liquidReserves).to.equal(consts.amountToLp);
+
+    // Counters should move once the root bundle is executed.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     expect((await hubPool.pooledTokens(weth.address)).liquidReserves).to.equal(consts.amountToLp.sub(tokensSendToL2));
