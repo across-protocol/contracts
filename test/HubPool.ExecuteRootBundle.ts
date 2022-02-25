@@ -57,9 +57,9 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Balances should have updated as expected.
     expect(await weth.balanceOf(hubPool.address)).to.equal(consts.amountToLp.sub(wethToSendToL2));
-    expect(await weth.balanceOf(mockAdapter.address)).to.equal(wethToSendToL2);
+    expect(await weth.balanceOf(await mockAdapter.bridge())).to.equal(wethToSendToL2);
     expect(await dai.balanceOf(hubPool.address)).to.equal(consts.amountToLp.mul(10).sub(daiToSend));
-    expect(await dai.balanceOf(mockAdapter.address)).to.equal(daiToSend);
+    expect(await dai.balanceOf(await mockAdapter.bridge())).to.equal(daiToSend);
 
     // Check the mockAdapter was called with the correct arguments for each method.
     const relayMessageEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayMessageCalled());
