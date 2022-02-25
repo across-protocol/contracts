@@ -16,13 +16,10 @@ import "./SpokePoolInterface.sol";
 
 contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     constructor(
-        address _l1EthWrapper,
-        address _l2Eth,
-        address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {}
+    ) SpokePool(msg.sender, _hubPool, _wethAddress, timerAddress) {}
 
     /**************************************
      *          ADMIN FUNCTIONS           *
