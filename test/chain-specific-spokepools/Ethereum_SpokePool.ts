@@ -1,5 +1,5 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress } from "../utils";
+import { ethers, expect, Contract, SignerWithAddress } from "../utils";
 import { getContractFactory, seedContract } from "../utils";
 import { hubPoolFixture } from "../HubPool.Fixture";
 import { buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
