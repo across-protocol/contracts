@@ -80,8 +80,55 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     }
 
     /**************************************
+     *         DATA WORKER FUNCTIONS      *
+     **************************************/
+    function executeSlowRelayRoot(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 totalRelayAmount,
+        uint256 originChainId,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) public override nonReentrant {
+        if (destinationToken == address(weth)) _depositEthToWeth();
+
+        _executeSlowRelayRoot(
+            depositor,
+            recipient,
+            destinationToken,
+            totalRelayAmount,
+            originChainId,
+            realizedLpFeePct,
+            relayerFeePct,
+            depositId,
+            rootBundleId,
+            proof
+        );
+    }
+
+    function executeRelayerRefundRoot(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) public override nonReentrant {
+        if (relayerRefundLeaf.l2TokenAddress == address(weth)) _depositEthToWeth();
+
+        _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
+    }
+
+    /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+
+    function _depositEthToWeth() internal {
+        // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
+        // this SpokePool will receive ETH from the canonical token bridge instead of WETH.
+        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
+    }
 
     function _setL1GasLimit(uint32 _l1Gas) internal {
         l1Gas = _l1Gas;
