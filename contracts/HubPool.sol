@@ -603,13 +603,23 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                IERC20(l1Tokens[i]).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
-                adapter.relayTokens(
-                    l1Tokens[i], // l1Token.
-                    whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.
-                    uint256(netSendAmounts[i]), // amount.
-                    crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                // IERC20(l1Tokens[i]).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
+                // adapter.relayTokens(
+                //     l1Tokens[i], // l1Token.
+                //     whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.
+                //     uint256(netSendAmounts[i]), // amount.
+                //     crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                // );
+                (bool success, ) = address(adapter).delegatecall(
+                    abi.encodeWithSignature(
+                        "relayTokens(address,address,uint256,address)",
+                        l1Tokens[i], // l1Token.
+                        whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.
+                        uint256(netSendAmounts[i]), // amount.
+                        crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                    )
                 );
+                require(success, "delegatecall failed");
 
                 // Liquid reserves is decreased by the amount sent. utilizedReserves is increased by the amount sent.
                 pooledTokens[l1Tokens[i]].utilizedReserves += netSendAmounts[i];
@@ -623,14 +633,26 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     function _relayRootBundleToSpokePool(uint256 chainId) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        adapter.relayMessage(
-            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+        // adapter.relayMessage(
+        //     crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+        //     abi.encodeWithSignature(
+        //         "relayRootBundle(bytes32,bytes32)",
+        //         rootBundleProposal.relayerRefundRoot,
+        //         rootBundleProposal.slowRelayRoot
+        //     ) // message
+        // );
+        (bool success, ) = address(adapter).delegatecall(
             abi.encodeWithSignature(
-                "relayRootBundle(bytes32,bytes32)",
-                rootBundleProposal.relayerRefundRoot,
-                rootBundleProposal.slowRelayRoot
-            ) // message
+                "relayMessage(address,bytes)",
+                crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+                abi.encodeWithSignature(
+                    "relayRootBundle(bytes32,bytes32)",
+                    rootBundleProposal.relayerRefundRoot,
+                    rootBundleProposal.slowRelayRoot
+                ) // message
+            )
         );
+        require(success, "delegatecall failed");
     }
 
     function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
