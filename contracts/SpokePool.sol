@@ -176,13 +176,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 destinationChainId,
         bool enabled
     ) public override onlyAdmin nonReentrant {
-        _requireAdminSender();
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
     function setDepositQuoteTimeBuffer(uint32 _depositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
-        _requireAdminSender();
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         emit SetDepositQuoteTimeBuffer(_depositQuoteTimeBuffer);
     }
@@ -193,7 +191,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
     // can be called to execute each leaf in the root.
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin nonReentrant {
-        _requireAdminSender();
         uint32 rootBundleId = uint32(rootBundles.length);
         RootBundle storage rootBundle = rootBundles.push();
         rootBundle.relayerRefundRoot = relayerRefundRoot;
