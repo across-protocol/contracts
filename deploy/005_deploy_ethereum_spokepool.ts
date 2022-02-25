@@ -8,8 +8,6 @@ const func = async function (hre: any) {
 
   const chainId = await getChainId();
 
-  const adapter = await deployments.get("Optimism_Adapter");
-  console.log(`Using l1 adapter @ ${adapter.address}`);
   const hubPool = await deployments.get("HubPool");
   console.log(`Using l1 hub pool @ ${hubPool.address}`);
 
@@ -17,12 +15,7 @@ const func = async function (hre: any) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [
-      adapter.address, // Set adapter as cross domain admin
-      hubPool.address,
-      L1_ADDRESS_MAP[chainId].weth,
-      "0x0000000000000000000000000000000000000000",
-    ],
+    args: [hubPool.address, L1_ADDRESS_MAP[chainId].weth, "0x0000000000000000000000000000000000000000"],
   });
 };
 module.exports = func;
