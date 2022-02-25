@@ -359,6 +359,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot
     ) public override nonReentrant noActiveRequests {
+        // Note: this is to prevent "empty block" style attacks where someone can make empty proposals that are
+        // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
         uint64 requestExpirationTimestamp = uint64(getCurrentTime() + liveness);
@@ -397,6 +399,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             MerkleLib.verifyPoolRebalance(rootBundleProposal.poolRebalanceRoot, poolRebalanceLeaf, proof),
             "Bad Proof"
         );
+
+        // Before interacting with a particular chain's adapter, ensure that the adapter is set.
+        require(address(crossChainContracts[poolRebalanceLeaf.chainId].adapter) != address(0), "No adapter for chain");
 
         // Set the leafId in the claimed bitmap.
         rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(

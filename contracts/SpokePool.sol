@@ -87,10 +87,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     );
     event FilledRelay(
         bytes32 indexed relayHash,
-        uint256 totalRelayAmount,
+        uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
-        uint256 indexed repaymentChain,
+        uint256 indexed repaymentChainId,
         uint256 originChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
@@ -102,7 +102,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     );
     event ExecutedSlowRelayRoot(
         bytes32 indexed relayHash,
-        uint256 totalRelayAmount,
+        uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
         uint256 originChainId,
@@ -201,7 +201,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 quoteTimestamp
     ) public payable onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(relayerFeePct <= 0.5e18, "invalid relayer fee");
+        require(relayerFeePct < 0.5e18, "invalid relayer fee");
         // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // `block.timestamp` is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
         // buffer to allow for this variance.
@@ -217,12 +217,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         if (originToken == address(weth) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
             weth.deposit{ value: msg.value }();
-        } else {
             // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
             // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-            IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
-        }
+        } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit FundsDeposited(
             amount,
@@ -246,9 +244,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient,
         address destinationToken,
-        uint256 totalRelayAmount,
+        uint256 amount,
         uint256 maxTokensToSend,
-        uint256 repaymentChain,
+        uint256 repaymentChainId,
         uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
@@ -261,7 +259,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             depositor: depositor,
             recipient: recipient,
             destinationToken: destinationToken,
-            relayAmount: totalRelayAmount,
+            amount: amount,
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
             depositId: depositId,
@@ -271,16 +269,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, relayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, relayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData);
     }
 
     function fillRelayWithUpdatedFee(
         address depositor,
         address recipient,
         address destinationToken,
-        uint256 totalRelayAmount,
+        uint256 amount,
         uint256 maxTokensToSend,
-        uint256 repaymentChain,
+        uint256 repaymentChainId,
         uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
@@ -314,7 +312,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             depositor: depositor,
             recipient: recipient,
             destinationToken: destinationToken,
-            relayAmount: totalRelayAmount,
+            amount: amount,
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
             depositId: depositId,
@@ -323,7 +321,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChain, newRelayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData);
     }
 
     /**************************************
@@ -333,7 +331,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address depositor,
         address recipient,
         address destinationToken,
-        uint256 totalRelayAmount,
+        uint256 amount,
         uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
@@ -345,7 +343,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             depositor: depositor,
             recipient: recipient,
             destinationToken: destinationToken,
-            relayAmount: totalRelayAmount,
+            amount: amount,
             originChainId: originChainId,
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
@@ -359,9 +357,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         bytes32 relayHash = _getRelayHash(relayData);
 
-        // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
+        // Note: use amount as the max amount to send, so the relay is always completely filled by the contract's
         // funds in all cases.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.relayAmount, relayerFeePct, true);
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, relayerFeePct, true);
 
         _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
     }
@@ -384,7 +382,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Verify the leafId in the leaf has not yet been claimed.
         require(!MerkleLib.isClaimed(rootBundle.claimedBitmap, relayerRefundLeaf.leafId), "Already claimed");
 
-        // Set leaf as claimed in bitmap.
+        // Set leaf as claimed in bitmap. This is passed by reference to the storage rootBundle.
         MerkleLib.setClaimed(rootBundle.claimedBitmap, relayerRefundLeaf.leafId);
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
@@ -494,7 +492,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         RelayData memory relayData,
         uint256 maxTokensToSend,
         uint64 updatableRelayerFeePct,
-        bool isSlowRelay
+        bool useContractFunds
     ) internal returns (uint256 fillAmountPreFees) {
         // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
         // fees are just magic numbers. The important point is to prevent the total fee from being 100%, otherwise
@@ -503,57 +501,56 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Check that the relay has not already been completely filled. Note that the `relays` mapping will point to
         // the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each fill.
-        require(relayFills[relayHash] < relayData.relayAmount, "relay filled");
+        require(relayFills[relayHash] < relayData.amount, "relay filled");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
-        fillAmountPreFees = 0;
+        if (maxTokensToSend == 0) return 0;
 
-        // Adding brackets "stack too deep" solidity error.
-        if (maxTokensToSend > 0) {
-            fillAmountPreFees = _computeAmountPreFees(
-                maxTokensToSend,
-                (relayData.realizedLpFeePct + updatableRelayerFeePct)
+        // todo: consider if this code block could be simplified. improve the branching comments and perhaps change the
+        // variable names.
+        fillAmountPreFees = _computeAmountPreFees(
+            maxTokensToSend,
+            (relayData.realizedLpFeePct + updatableRelayerFeePct)
+        );
+        // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
+        // we'll pull exactly enough tokens to complete the relay.
+        uint256 amountToSend = maxTokensToSend;
+        if (relayData.amount - relayFills[relayHash] < fillAmountPreFees) {
+            fillAmountPreFees = relayData.amount - relayFills[relayHash];
+            amountToSend = _computeAmountPostFees(
+                fillAmountPreFees,
+                relayData.realizedLpFeePct + updatableRelayerFeePct
             );
-            // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
-            // we'll pull exactly enough tokens to complete the relay.
-            uint256 amountToSend = maxTokensToSend;
-            if (relayData.relayAmount - relayFills[relayHash] < fillAmountPreFees) {
-                fillAmountPreFees = relayData.relayAmount - relayFills[relayHash];
-                amountToSend = _computeAmountPostFees(
-                    fillAmountPreFees,
-                    relayData.realizedLpFeePct + updatableRelayerFeePct
-                );
-            }
-            relayFills[relayHash] += fillAmountPreFees;
-            // If relay token is weth then unwrap and send eth.
-            if (relayData.destinationToken == address(weth)) {
-                // Note: WETH is already in the contract in the slow relay case.
-                if (!isSlowRelay)
-                    IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-                _unwrapWETHTo(payable(relayData.recipient), amountToSend);
-                // Else, this is a normal ERC20 token. Send to recipient.
-            } else {
-                // Note: send token directly from the contract to the user in the slow relay case.
-                if (!isSlowRelay)
-                    IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
-                else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
-            }
+        }
+        relayFills[relayHash] += fillAmountPreFees;
+        // If relay token is weth then unwrap and send eth.
+        if (relayData.destinationToken == address(weth)) {
+            // Note: WETH is already in the contract in the slow relay case.
+            if (!useContractFunds)
+                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            _unwrapWETHTo(payable(relayData.recipient), amountToSend);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else {
+            // Note: send token directly from the contract to the user in the slow relay case.
+            if (!useContractFunds)
+                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
+            else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
         }
     }
 
     function _emitFillRelay(
         bytes32 relayHash,
         uint256 fillAmount,
-        uint256 repaymentChain,
+        uint256 repaymentChainId,
         uint64 relayerFeePct,
         RelayData memory relayData
     ) internal {
         emit FilledRelay(
             relayHash,
-            relayData.relayAmount,
+            relayData.amount,
             relayFills[relayHash],
             fillAmount,
-            repaymentChain,
+            repaymentChainId,
             relayData.originChainId,
             relayerFeePct,
             relayData.realizedLpFeePct,
@@ -572,7 +569,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     ) internal {
         emit ExecutedSlowRelayRoot(
             relayHash,
-            relayData.relayAmount,
+            relayData.amount,
             relayFills[relayHash],
             fillAmount,
             relayData.originChainId,

@@ -31,7 +31,7 @@ interface SpokePoolInterface {
         // The corresponding token address on the destination chain.
         address destinationToken;
         // The total relay amount before fees are taken out.
-        uint256 relayAmount;
+        uint256 amount;
         // Origin chain id.
         uint256 originChainId;
         // The LP Fee percentage computed by the relayer based on the deposit's quote timestamp
