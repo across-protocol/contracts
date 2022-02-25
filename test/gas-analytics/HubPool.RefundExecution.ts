@@ -8,7 +8,6 @@ import {
   getContractFactory,
   BigNumber,
   randomAddress,
-  expect,
   createRandomBytes32,
 } from "../utils";
 import * as consts from "../constants";
@@ -178,14 +177,6 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         .connect(dataWorker)
         .executeRootBundle(leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
 
-      // // Balances should have updated as expected for tokens contained in the first leaf.
-      // for (let i = 0; i < REFUND_TOKEN_COUNT; i++) {
-      //   expect(await l1Tokens[i].balanceOf(hubPool.address)).to.equal(
-      //     STARTING_LP_AMOUNT.sub(SEND_AMOUNT)
-      //   );
-      //   expect(await l1Tokens[leafIndexToExecute][i].balanceOf(mockAdapter.address)).to.equal(SEND_AMOUNT);
-      // }
-
       const receipt = await txn.wait();
       console.log(`executeRootBundle-gasUsed: ${receipt.gasUsed}`);
     });
@@ -205,18 +196,29 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         txns.push(await hubPool.connect(dataWorker).executeRootBundle(leaves[i], tree.getHexProof(leaves[i])));
       }
 
-      // // Balances should have updated as expected for tokens contained in the first leaf.
-      // for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
-      //   for (let j = 0; j < REFUND_TOKEN_COUNT; j++) {
-      //     expect(await l1Tokens[i][j].balanceOf(hubPool.address)).to.equal(STARTING_LP_AMOUNT.sub(SEND_AMOUNT));
-      //     expect(await l1Tokens[i][j].balanceOf(mockAdapter.address)).to.equal(SEND_AMOUNT);
-      //   }
-      // }
-
       // Now that we've verified that the transaction succeeded, let's compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
       console.log(`(average) executeRootBundle-gasUsed: ${gasUsed.div(REFUND_CHAIN_COUNT)}`);
+    });
+
+    it("Executing all leaves using multicall", async function () {
+      await hubPool.connect(dataWorker).proposeRootBundle(
+        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
+        tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+        consts.mockRelayerRefundRoot, // Not relevant for this test.
+        consts.mockSlowRelayRoot // Not relevant for this test.
+      );
+
+      // Advance time so the request can be executed and execute the request.
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+      const multicallData = leaves.map((leaf) => {
+        return hubPool.interface.encodeFunctionData("executeRootBundle", [leaf, tree.getHexProof(leaf)]);
+      });
+
+      const receipt = await (await hubPool.connect(dataWorker).multicall(multicallData)).wait();
+      console.log(`(average) executeRootBundle-gasUsed: ${receipt.gasUsed.div(REFUND_CHAIN_COUNT)}`);
     });
   });
 });
