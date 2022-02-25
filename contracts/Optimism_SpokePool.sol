@@ -33,10 +33,10 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
     {}
 
     /*******************************************
-     *    OPTIMISM SPECIFIC ADMIN FUNCTIONS    *
+     *    OPTIMISM-SPECIFIC ADMIN FUNCTIONS    *
      *******************************************/
 
-    function setL1GasLimit(uint32 newl1Gas) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+    function setL1GasLimit(uint32 newl1Gas) public onlyAdmin {
         l1Gas = newl1Gas;
         emit SetL1Gas(newl1Gas);
     }

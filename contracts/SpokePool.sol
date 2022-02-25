@@ -154,35 +154,34 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _;
     }
 
+    modifier onlyAdmin() {
+        _requireAdminSender();
+        _;
+    }
+
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
 
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override nonReentrant {
-        _requireAdminSender();
-        require(newCrossDomainAdmin != address(0), "Bad bridge router address");
-        crossDomainAdmin = newCrossDomainAdmin;
-        emit SetXDomainAdmin(crossDomainAdmin);
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyAdmin nonReentrant {
+        _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
-    function setHubPool(address newHubPool) public override nonReentrant {
-        _requireAdminSender();
-        require(newHubPool != address(0), "Bad hub pool address");
-        hubPool = newHubPool;
-        emit SetHubPool(hubPool);
+    function setHubPool(address newHubPool) public override onlyAdmin nonReentrant {
+        _setHubPool(newHubPool);
     }
 
     function setEnableRoute(
         address originToken,
         uint256 destinationChainId,
         bool enabled
-    ) public override nonReentrant {
+    ) public override onlyAdmin nonReentrant {
         _requireAdminSender();
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 _depositQuoteTimeBuffer) public override nonReentrant {
+    function setDepositQuoteTimeBuffer(uint32 _depositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
         _requireAdminSender();
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         emit SetDepositQuoteTimeBuffer(_depositQuoteTimeBuffer);
@@ -193,7 +192,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // specifics are left to the implementor of this abstract contract.
     // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
     // can be called to execute each leaf in the root.
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override nonReentrant {
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin nonReentrant {
         _requireAdminSender();
         uint32 rootBundleId = uint32(rootBundles.length);
         RootBundle storage rootBundle = rootBundles.push();
@@ -451,6 +450,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
+
+    function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
+        require(newCrossDomainAdmin != address(0), "Bad bridge router address");
+        crossDomainAdmin = newCrossDomainAdmin;
+        emit SetXDomainAdmin(crossDomainAdmin);
+    }
+
+    function _setHubPool(address newHubPool) internal {
+        require(newHubPool != address(0), "Bad hub pool address");
+        hubPool = newHubPool;
+        emit SetHubPool(hubPool);
+    }
 
     function _bridgeTokensToHubPool(SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf) internal virtual;
 
