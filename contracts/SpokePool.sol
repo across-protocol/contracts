@@ -354,37 +354,47 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 depositId,
         uint32 rootBundleId,
         bytes32[] memory proof
-    ) public nonReentrant {
-        RelayData memory relayData = RelayData({
-            depositor: depositor,
-            recipient: recipient,
-            destinationToken: destinationToken,
-            relayAmount: totalRelayAmount,
-            originChainId: originChainId,
-            realizedLpFeePct: realizedLpFeePct,
-            relayerFeePct: relayerFeePct,
-            depositId: depositId
-        });
-
-        require(
-            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, relayData, proof),
-            "Invalid proof"
+    ) public virtual nonReentrant {
+        _executeSlowRelayRoot(
+            depositor,
+            recipient,
+            destinationToken,
+            totalRelayAmount,
+            originChainId,
+            realizedLpFeePct,
+            relayerFeePct,
+            depositId,
+            rootBundleId,
+            proof
         );
-
-        bytes32 relayHash = _getRelayHash(relayData);
-
-        // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
-        // funds in all cases.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.relayAmount, relayerFeePct, true);
-
-        _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
     }
 
     function executeRelayerRefundRoot(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public nonReentrant {
+    ) public virtual nonReentrant {
+        _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
+    }
+
+    /**************************************
+     *           VIEW FUNCTIONS           *
+     **************************************/
+
+    // Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the caller to manually set this.
+    function chainId() public view virtual returns (uint256) {
+        return block.chainid;
+    }
+
+    /**************************************
+     *         INTERNAL FUNCTIONS         *
+     **************************************/
+
+    function _executeRelayerRefundRoot(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) internal {
         // Check integrity of leaf structure:
         require(relayerRefundLeaf.chainId == chainId(), "Invalid chainId");
         require(relayerRefundLeaf.refundAddresses.length == relayerRefundLeaf.refundAmounts.length, "invalid leaf");
@@ -435,18 +445,42 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
     }
 
-    /**************************************
-     *           VIEW FUNCTIONS           *
-     **************************************/
+    function _executeSlowRelayRoot(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 totalRelayAmount,
+        uint256 originChainId,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) internal {
+        RelayData memory relayData = RelayData({
+            depositor: depositor,
+            recipient: recipient,
+            destinationToken: destinationToken,
+            relayAmount: totalRelayAmount,
+            originChainId: originChainId,
+            realizedLpFeePct: realizedLpFeePct,
+            relayerFeePct: relayerFeePct,
+            depositId: depositId
+        });
 
-    // Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the caller to manually set this.
-    function chainId() public view virtual returns (uint256) {
-        return block.chainid;
+        require(
+            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, relayData, proof),
+            "Invalid proof"
+        );
+
+        bytes32 relayHash = _getRelayHash(relayData);
+
+        // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
+        // funds in all cases.
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.relayAmount, relayerFeePct, true);
+
+        _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
     }
-
-    /**************************************
-     *         INTERNAL FUNCTIONS         *
-     **************************************/
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
         require(newCrossDomainAdmin != address(0), "Bad bridge router address");
