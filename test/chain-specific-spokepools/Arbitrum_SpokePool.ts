@@ -50,6 +50,12 @@ describe("Arbitrum Spoke Pool", function () {
     expect(await arbitrumSpokePool.l2GatewayRouter()).to.equal(rando.address);
   });
 
+  it("Only cross domain owner can enable a route", async function () {
+    await expect(arbitrumSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
+    await arbitrumSpokePool.connect(crossDomainAlias).setEnableRoute(l2Dai, 1, true);
+    expect(await arbitrumSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
+  });
+
   it("Only cross domain owner can whitelist a token pair", async function () {
     await expect(arbitrumSpokePool.whitelistToken(l2Dai, dai.address)).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
