@@ -37,6 +37,7 @@ interface HubPoolInterface {
     ) external;
 
     function whitelistRoute(
+        uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
         address destinationToken

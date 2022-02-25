@@ -136,7 +136,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokensBurnt,
         address indexed liquidityProvider
     );
-    event WhitelistRoute(uint256 destinationChainId, address originToken, address destinationToken);
+    event WhitelistRoute(
+        uint256 originChainId,
+        uint256 destinationChainId,
+        address originToken,
+        address destinationToken
+    );
 
     event ProposeRootBundle(
         uint64 requestExpirationTimestamp,
@@ -163,7 +168,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event RootBundleCanceled(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
     modifier noActiveRequests() {
-        require(rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0, "proposal has unclaimed leafs");
+        require(!_activeRequest(), "proposal has unclaimed leafs");
         _;
     }
 
@@ -245,16 +250,19 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Whitelist an origin token <-> destination token route.
      */
     function whitelistRoute(
+        uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
         address destinationToken
     ) public onlyOwner {
         whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+
+        // Whitelist the same route on the origin network.
         _relaySpokePoolAdminFunction(
-            destinationChainId,
+            originChainId,
             abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
-        emit WhitelistRoute(destinationChainId, originToken, destinationToken);
+        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken);
     }
 
     function enableL1TokenForLiquidityProvision(address l1Token) public onlyOwner {
@@ -666,12 +674,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     function _sync(address l1Token) internal {
         // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
         // action from L2 -> L1 has concluded and the local accounting can be updated.
-        uint256 l1TokenBalance = IERC20(l1Token).balanceOf(address(this));
-        if (l1TokenBalance > pooledTokens[l1Token].liquidReserves) {
+        // Note: this calculation must take into account the bond when it's acting on the bond token and there's an
+        // active request.
+        uint256 balance = IERC20(l1Token).balanceOf(address(this));
+        uint256 balanceSansBond = l1Token == address(bondToken) && _activeRequest() ? balance - bondAmount : balance;
+        if (balanceSansBond > pooledTokens[l1Token].liquidReserves) {
             // Note the numerical operation below can send utilizedReserves to negative. This can occur when tokens are
             // dropped onto the contract, exceeding the liquidReserves.
-            pooledTokens[l1Token].utilizedReserves -= int256(l1TokenBalance - pooledTokens[l1Token].liquidReserves);
-            pooledTokens[l1Token].liquidReserves = l1TokenBalance;
+            pooledTokens[l1Token].utilizedReserves -= int256(balanceSansBond - pooledTokens[l1Token].liquidReserves);
+            pooledTokens[l1Token].liquidReserves = balanceSansBond;
         }
     }
 
@@ -720,6 +731,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             functionData
         );
         emit SpokePoolAdminFunctionTriggered(chainId, functionData);
+    }
+
+    function _activeRequest() internal view returns (bool) {
+        return rootBundleProposal.unclaimedPoolRebalanceLeafCount != 0;
     }
 
     // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the callback function

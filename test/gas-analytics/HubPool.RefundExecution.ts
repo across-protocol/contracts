@@ -48,22 +48,30 @@ async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSy
 async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: L1_TOKENS_MAPPING) {
   const _bundleLpFeeAmounts: BigNumber[][] = [];
   const _netSendAmounts: BigNumber[][] = [];
+  const _l1TokenAddresses: string[][] = [];
   for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
     _bundleLpFeeAmounts[i] = [];
     _netSendAmounts[i] = [];
+    _l1TokenAddresses[i] = [];
     // Set adapter for destination chain ID:
     await hubPool.setCrossChainContracts(_destinationChainIds[i], mockAdapter.address, mockSpoke.address);
     for (let j = 0; j < REFUND_TOKEN_COUNT; j++) {
       _bundleLpFeeAmounts[i].push(LP_FEE);
       _netSendAmounts[i].push(SEND_AMOUNT);
+      _l1TokenAddresses[i].push(_l1Tokens[i][j].address);
 
       // Whitelist route
-      await hubPool.whitelistRoute(_destinationChainIds[i], _l1Tokens[i][j].address, randomAddress());
+      await hubPool.whitelistRoute(
+        _destinationChainIds[i],
+        _destinationChainIds[i],
+        _l1Tokens[i][j].address,
+        randomAddress()
+      );
     }
   }
   const leaves = buildPoolRebalanceLeafs(
     _destinationChainIds,
-    Object.values(_l1Tokens),
+    _l1TokenAddresses,
     _bundleLpFeeAmounts,
     _netSendAmounts, // netSendAmounts.
     _netSendAmounts // runningBalances.
@@ -125,12 +133,12 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
-        consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
+        consts.mockSlowRelayRoot // Not relevant for this test.
       );
       console.log(`proposeRootBundle-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
       // Advance time so the request can be executed and execute the request.
-      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
       const txn = await hubPool
         .connect(dataWorker)
         .executeRootBundle(leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
@@ -152,12 +160,12 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
-        consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
+        consts.mockSlowRelayRoot // Not relevant for this test.
       );
       console.log(`proposeRootBundle-gasUsed: ${(await initiateTxn.wait()).gasUsed}`);
 
       // Advance time so the request can be executed and execute the request.
-      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
       const txns = [];
       for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
         txns.push(await hubPool.connect(dataWorker).executeRootBundle(leaves[i], tree.getHexProof(leaves[i])));

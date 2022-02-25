@@ -9,6 +9,7 @@ import {
   utf8ToHex,
 } from "./utils";
 import {
+  originChainId,
   destinationChainId,
   bondAmount,
   zeroAddress,
@@ -59,9 +60,9 @@ describe("HubPool Admin functions", function () {
   });
   it("Can whitelist route for deposits and rebalances", async function () {
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
-    await expect(hubPool.whitelistRoute(destinationChainId, weth.address, usdc.address))
+    await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address))
       .to.emit(hubPool, "WhitelistRoute")
-      .withArgs(destinationChainId, weth.address, usdc.address);
+      .withArgs(originChainId, destinationChainId, weth.address, usdc.address);
 
     expect(await hubPool.whitelistedRoutes(weth.address, destinationChainId)).to.equal(usdc.address);
   });
