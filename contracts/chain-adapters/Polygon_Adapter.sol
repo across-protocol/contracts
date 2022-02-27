@@ -13,7 +13,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IRootChainManager {
     function depositEtherFor(address user) external payable;
-    function depositFor(address user,address rootToken,bytes calldata depositData) external;
+
+    function depositFor(
+        address user,
+        address rootToken,
+        bytes calldata depositData
+    ) external;
 }
 
 interface IFxStateSender {
@@ -31,8 +36,6 @@ contract Polygon_Adapter is Base_Adapter, Lockable {
     IFxStateSender public fxStateSender;
     WETH9 public l1Weth;
 
-    event TokensRelayedToPolygon(address indexed l1Token, address indexed l2Token, uint256 amount, address indexed to);
-
     constructor(
         address _hubPool,
         IRootChainManager _rootChainManager,
@@ -46,6 +49,7 @@ contract Polygon_Adapter is Base_Adapter, Lockable {
 
     function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
         fxStateSender.sendMessageToChild(target, message);
+        emit MessageRelayed(target, message);
     }
 
     function relayTokens(
@@ -62,7 +66,7 @@ contract Polygon_Adapter is Base_Adapter, Lockable {
             IERC20(l1Token).safeIncreaseAllowance(address(rootChainManager), amount);
             rootChainManager.depositFor(to, l1Token, abi.encode(amount));
         }
-        emit TokensRelayedToPolygon(l1Token, l2Token, amount, to);
+        emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
     // Added to enable the Optimism_Adapter to receive ETH. used when unwrapping WETH.

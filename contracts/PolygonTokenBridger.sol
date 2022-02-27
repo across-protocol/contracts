@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../Lockable.sol";
 
-
 interface PolygonIERC20 is IERC20 {
     function withdraw(uint256 amount) external;
 }
@@ -19,9 +18,8 @@ contract PolygonTokenBridger is Lockable {
     using SafeERC20 for IERC20;
 
     address public immutable destination;
-    constructor(
-        address _destination
-    ) {
+
+    constructor(address _destination) {
         destination = _destination;
     }
 
