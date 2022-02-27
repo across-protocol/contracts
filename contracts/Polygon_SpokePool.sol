@@ -43,8 +43,10 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
         polygonTokenBridger = _polygonTokenBridger;
     }
 
+    // Note: stateId value isn't used because it isn't relevant for this method. It doesn't care what state sync
+    // triggered this call.
     function processMessageFromRoot(
-        uint256,
+        uint256, /*stateId*/
         address rootMessageSender,
         bytes calldata data
     ) public {
