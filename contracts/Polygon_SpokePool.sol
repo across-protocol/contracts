@@ -37,8 +37,9 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
+        address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
         address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006, timerAddress) {
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress) {
         polygonTokenBridger = _polygonTokenBridger;
     }
 
