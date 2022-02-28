@@ -230,7 +230,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**
      * @notice This method stores a new root bundle in this contract that can be executed to refund relayers, fulfill
      * slow relays, and send funds back to the HubPool on L1. This method can only be called by the admin and is
-     * designed to be called as part of a cross-chain message from the HubPool's "executeRootBundle" method.
+     * designed to be called as part of a cross-chain message from the HubPool's executeRootBundle method.
      * @param relayerRefundRoot Merkle root containing relayer refund leaves that can be individually executed via
      * executeRelayerRefundRoot().
      * @param slowRelayRoot Merkle root containing slow relay fulfillment leaves that can be individually executed via
