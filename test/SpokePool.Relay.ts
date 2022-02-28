@@ -169,6 +169,57 @@ describe("SpokePool Relayer Logic", async function () {
       )
     ).to.be.revertedWith("relay filled");
   });
+  it("Can signal to relayer to use updated fee", async function () {
+    const spokePoolChainId = await spokePool.chainId();
+    const { signature } = await modifyRelayHelper(
+      consts.modifiedRelayerFeePct,
+      consts.firstDepositId.toString(),
+      spokePoolChainId.toString(),
+      depositor
+    );
+    await expect(
+      spokePool
+        .connect(relayer)
+        .speedUpDeposit(depositor.address, consts.modifiedRelayerFeePct, consts.firstDepositId, signature)
+    )
+      .to.emit(spokePool, "RequestedSpeedUpDeposit")
+      .withArgs(consts.modifiedRelayerFeePct, consts.firstDepositId, depositor.address, signature);
+
+    // Reverts if any param passed to function is changed.
+    await expect(
+      spokePool
+        .connect(relayer)
+        .speedUpDeposit(relayer.address, consts.modifiedRelayerFeePct, consts.firstDepositId, signature)
+    ).to.be.reverted;
+    await expect(spokePool.connect(relayer).speedUpDeposit(depositor.address, "0", consts.firstDepositId, signature)).to
+      .be.reverted;
+    await expect(
+      spokePool
+        .connect(relayer)
+        .speedUpDeposit(depositor.address, consts.modifiedRelayerFeePct, consts.firstDepositId + 1, signature)
+    ).to.be.reverted;
+    await expect(
+      spokePool
+        .connect(relayer)
+        .speedUpDeposit(depositor.address, consts.modifiedRelayerFeePct, consts.firstDepositId, "0xrandombytes")
+    ).to.be.reverted;
+    const { signature: incorrectOriginChainIdSignature } = await modifyRelayHelper(
+      consts.modifiedRelayerFeePct,
+      consts.firstDepositId.toString(),
+      consts.originChainId.toString(),
+      depositor
+    );
+    await expect(
+      spokePool
+        .connect(relayer)
+        .speedUpDeposit(
+          depositor.address,
+          consts.modifiedRelayerFeePct,
+          consts.firstDepositId,
+          incorrectOriginChainIdSignature
+        )
+    ).to.be.reverted;
+  });
   it("Can fill relay with updated fee by including proof of depositor's agreement", async function () {
     // The relay should succeed just like before with the same amount of tokens pulled from the relayer's wallet,
     // however the filled amount should have increased since the proportion of the relay filled would increase with a
