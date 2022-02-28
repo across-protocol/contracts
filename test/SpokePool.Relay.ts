@@ -43,7 +43,7 @@ describe("SpokePool Relayer Logic", async function () {
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
         relayHash,
-        relayData.relayAmount,
+        relayData.amount,
         consts.amountToRelayPreFees,
         consts.amountToRelayPreFees,
         consts.repaymentChainId,
