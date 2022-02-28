@@ -1,6 +1,6 @@
 import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, SignerWithAddress, getContractFactory, seedContract } from "../utils";
+import { ethers, expect, Contract, SignerWithAddress, getContractFactory, seedContract, toWei } from "../utils";
 import { hubPoolFixture } from "../HubPool.Fixture";
 import { buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
 
@@ -125,5 +125,21 @@ describe("Polygon Spoke Pool", function () {
     await expect(polygonSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0])))
       .to.emit(dai, "Transfer")
       .withArgs(bridger, ZERO_ADDRESS, amountToReturn);
+  });
+
+  it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {
+    const polygonTokenBridger = await (
+      await getContractFactory("PolygonTokenBridger", { signer: owner })
+    ).deploy(hubPool.address, weth.address);
+
+    await expect(() =>
+      owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })
+    ).to.changeTokenBalance(weth, polygonTokenBridger, toWei("1"));
+
+    await expect(() => polygonTokenBridger.connect(owner).retrieve(weth.address)).to.changeTokenBalances(
+      weth,
+      [polygonTokenBridger, hubPool],
+      [toWei("1").mul(-1), toWei("1")]
+    );
   });
 });
