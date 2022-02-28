@@ -350,7 +350,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
      * then relayer will not receive any refund.
      * @notice All of the deposit data can be found via on-chain events from the origin SpokePool, except for the
-     * `realizedLpFeePct` which is a function of the HubPool's utilization at the deposit quote time. This fee %
+     * realizedLpFeePct which is a function of the HubPool's utilization at the deposit quote time. This fee %
      * is deterministic based on the quote time, so the relayer should just compute it using the canonical algorithm
      * as described in a UMIP linked to the HubPool's identifier.
      * @param depositor Depositor on origin chain who set this chain as the destination chain.
