@@ -11,6 +11,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Ethereum SpokePool.
+ * @notice This contract should always be deployed on the same chain as the HubPool, as it acts as a pass-through
+ * contract between HubPool and SpokePool on the same chain. Its named "Ethereum_Adapter" because a core assumption
+ * is that the HubPool will be deployed on Ethereum, so this adapter will be used to communicate between HubPool
+ * and the Ethereum_SpokePool.
  */
 contract Ethereum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
