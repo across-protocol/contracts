@@ -27,9 +27,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @notice Contract deployed on Ethereum that houses L1 token liquidity for all SpokePools. Admin can instruct this
- * contract to send tokens to L2 SpokePools via "pool rebalances" with which to pay out relayers on those networks.
- * Admin also can publish relayer refund and slow relay merkle roots to SpokePools via this contract.
+ * @notice Contract deployed on Ethereum that houses L1 token liquidity for all SpokePools. A dataworker can interact
+ * with merkle roots stored in this contract via inclusion proofs to instruct this contract to send tokens to L2
+ * SpokePools via "pool rebalances" that can be used to pay out relayers on those networks. This contract is also
+ * responsible for publishing relayer refund and slow relay merkle roots to SpokePools.
  * @notice This contract is meant to act as the cross chain administrator and owner of all L2 spoke pools, so all
  * governance actions and pool rebalances originate from here and bridge instructions to L2s.
  */
