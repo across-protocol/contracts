@@ -209,7 +209,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Construct HubPool.
-     * @param _lpTokenFactory LP Token factory address.
+     * @param _lpTokenFactory LP Token factory address used to deploy LP tokens for new collateral types.
      * @param _finder Finder address.
      * @param _weth WETH address.
      * @param _timer Timer address.
