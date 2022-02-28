@@ -16,6 +16,7 @@ import {
   getContractFactory,
   seedWallet,
   randomAddress,
+  hre,
 } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
@@ -32,12 +33,13 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let rootChainManager: FakeContract, fxStateSender: FakeContract;
 
 const polygonChainId = 137;
-const l1ChainId = 1;
+let l1ChainId: number;
 
 describe("Polygon Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
+    l1ChainId = Number(await hre.getChainId());
     await seedWallet(dataWorker, [dai], weth, amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, amountToLp.mul(10));
 

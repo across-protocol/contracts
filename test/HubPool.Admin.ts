@@ -64,7 +64,7 @@ describe("HubPool Admin functions", function () {
       .to.emit(hubPool, "WhitelistRoute")
       .withArgs(originChainId, destinationChainId, weth.address, usdc.address);
 
-    expect(await hubPool.whitelistedRoutes(weth.address, destinationChainId)).to.equal(usdc.address);
+    expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(usdc.address);
   });
 
   it("Can change the bond token and amount", async function () {

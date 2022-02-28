@@ -56,7 +56,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Whitelist of origin token to destination token routings to be used by off-chain agents. The notion of a route
     // does not need to include L1; it can store L2->L2 routes i.e USDC on Arbitrum -> USDC on Optimism as a "route".
-    mapping(address => mapping(uint256 => address)) public whitelistedRoutes;
+    mapping(bytes32 => address) private whitelistedRoutes;
 
     // Mapping of L1TokenAddress to the associated Pool information.
     struct PooledToken {
@@ -255,7 +255,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken
     ) public onlyOwner {
-        whitelistedRoutes[originToken][destinationChainId] = destinationToken;
+        whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
 
         // Whitelist the same route on the origin network.
         _relaySpokePoolAdminFunction(
@@ -556,6 +556,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", rootBundleProposal.proposer);
     }
 
+    function whitelistedRoute(
+        uint256 originChainId,
+        address originToken,
+        uint256 destinationChainId
+    ) public view returns (address) {
+        return whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
+    }
+
     /*************************************************
      *              INTERNAL FUNCTIONS               *
      *************************************************/
@@ -601,28 +609,30 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
 
         for (uint32 i = 0; i < l1Tokens.length; i++) {
+            address l1Token = l1Tokens[i];
             // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action
             // could send tokens to the 0x0 address on the L2.
-            require(whitelistedRoutes[l1Tokens[i]][chainId] != address(0), "Route not whitelisted");
+            address l2Token = whitelistedRoutes[_whitelistedRouteKey(block.chainid, l1Token, chainId)];
+            require(l2Token != address(0), "Route not whitelisted");
 
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                IERC20(l1Tokens[i]).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
+                IERC20(l1Token).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
                 adapter.relayTokens(
-                    l1Tokens[i], // l1Token.
-                    whitelistedRoutes[l1Tokens[i]][chainId], // l2Token.
+                    l1Token, // l1Token.
+                    l2Token, // l2Token.
                     uint256(netSendAmounts[i]), // amount.
                     crossChainContracts[chainId].spokePool // to. This should be the spokePool.
                 );
 
                 // Liquid reserves is decreased by the amount sent. utilizedReserves is increased by the amount sent.
-                pooledTokens[l1Tokens[i]].utilizedReserves += netSendAmounts[i];
-                pooledTokens[l1Tokens[i]].liquidReserves -= uint256(netSendAmounts[i]);
+                pooledTokens[l1Token].utilizedReserves += netSendAmounts[i];
+                pooledTokens[l1Token].liquidReserves -= uint256(netSendAmounts[i]);
             }
 
             // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
-            _allocateLpAndProtocolFees(l1Tokens[i], bundleLpFees[i]);
+            _allocateLpAndProtocolFees(l1Token, bundleLpFees[i]);
         }
     }
 
@@ -736,6 +746,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             functionData
         );
         emit SpokePoolAdminFunctionTriggered(chainId, functionData);
+    }
+
+    function _whitelistedRouteKey(
+        uint256 originChainId,
+        address originToken,
+        uint256 destinationChainId
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(originChainId, originToken, destinationChainId));
     }
 
     function _activeRequest() internal view returns (bool) {

@@ -1,5 +1,5 @@
 import * as consts from "../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
+import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei, hre } from "../utils";
 import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
@@ -16,7 +16,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let l1ERC20Gateway: FakeContract, l1Inbox: FakeContract;
 
 const arbitrumChainId = 42161;
-const l1ChainId = 1;
+let l1ChainId: number;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
@@ -35,6 +35,7 @@ describe("Arbitrum Chain Adapter", function () {
 
     l1Inbox = await createFake("Inbox");
     l1ERC20Gateway = await createFake("TokenGateway");
+    l1ChainId = Number(await hre.getChainId());
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)

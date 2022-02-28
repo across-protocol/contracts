@@ -1,4 +1,4 @@
-import { toWei, utf8ToHex, toBN, createRandomBytes32, ethers } from "./utils";
+import { toWei, utf8ToHex, toBN, createRandomBytes32, ethers, hre } from "./utils";
 
 export const amountToSeedWallets = toWei("1500");
 
