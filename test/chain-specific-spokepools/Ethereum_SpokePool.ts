@@ -69,8 +69,8 @@ describe("Ethereum Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly sends tokens to hub pool", async function () {
     const { leafs, tree } = await constructSimpleTree(dai.address, await spokePool.callStatic.chainId());
     await spokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    expect(
-      await spokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
+    await expect(() =>
+      spokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
     ).to.changeTokenBalances(dai, [spokePool, hubPool], [amountToReturn.mul(-1), amountToReturn]);
   });
 });
