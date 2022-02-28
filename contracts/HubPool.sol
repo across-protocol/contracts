@@ -74,8 +74,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     RootBundle public rootBundleProposal;
 
     // Whitelist of origin token + ID to destination token routings to be used by off-chain agents. The notion of a
-    // route does not need to include L1; it can store L2->L2 routes i.e USDC on Arbitrum -> USDC on Optimism as a
-    // "route".
+    // route does not need to include L1; it can be L2->L2 route. i.e USDC on Arbitrum -> USDC on Optimism as a "route".
     mapping(bytes32 => address) private whitelistedRoutes;
 
     // Mapping of L1 token addresses to the associated pool information.
