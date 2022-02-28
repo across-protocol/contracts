@@ -563,7 +563,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) public view returns (address) {
         return whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
     }
-    
+
     // This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for arbitrum
     // calls, but may also be needed for others.
     function loadEthForL2Calls() public payable {}
@@ -628,7 +628,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                     abi.encodeWithSignature(
                         "relayTokens(address,address,uint256,address)",
                         l1Token, // l1Token.
-                        whitelistedRoutes[l2Token], // l2Token.
+                        l2Token, // l2Token.
                         uint256(netSendAmounts[i]), // amount.
                         crossChainContracts[chainId].spokePool // to. This should be the spokePool.
                     )

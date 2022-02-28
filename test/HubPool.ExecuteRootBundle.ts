@@ -68,7 +68,7 @@ describe("HubPool Root Bundle Execution", function () {
     const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
       mockAdapterAtHubPool.filters.RelayMessageCalled()
     );
-    expect(relayMessageEvents.length).to.equal(4); // Exactly four message send from L1->L2. 3 for each whitelist route
+    expect(relayMessageEvents.length).to.equal(7); // Exactly seven message send from L1->L2. 6 for each whitelist route
     // and 1 for the initiateRelayerRefund.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(

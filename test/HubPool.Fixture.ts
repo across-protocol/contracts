@@ -55,7 +55,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
 
   // Deploy a new set of mocks for mainnet.
   const mainnetChainId = await hre.getChainId();
-  const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
+  const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpokeMainnet = await (
     await getContractFactory("MockSpokePool", { signer: signer })
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
