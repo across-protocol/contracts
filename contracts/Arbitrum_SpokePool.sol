@@ -85,6 +85,7 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
     // This cannot be pulled directly from Arbitrum contracts because their contracts are not 0.8.X compatible and this operation takes advantage of
     // overflows, whose behavior changed in 0.8.0.
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
+        // Allows overflows as explained above.
         unchecked {
             l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
         }
