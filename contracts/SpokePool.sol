@@ -764,8 +764,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // If relay token is weth then unwrap and send eth.
         if (relayData.destinationToken == address(weth)) {
-            // Note: `useContractFunds` is True if we want to send funds to the recipient directly out of this contract,
-            // otherwise we expect the caller to send funds to the recipient. If `useContractFunds` is True and the
+            // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
+            // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants WETH, then we can assume that WETH is already in the contract, otherwise we'll need the
             // the user to send WETH to this contract. Regardless, we'll need to unwrap it before sending to the user.
             if (!useContractFunds)
