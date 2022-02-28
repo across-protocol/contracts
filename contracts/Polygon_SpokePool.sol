@@ -8,11 +8,6 @@ import "./SpokePool.sol";
 import "./SpokePoolInterface.sol";
 import "./PolygonTokenBridger.sol";
 
-// ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
-interface PolygonIERC20 is IERC20 {
-    function withdraw(uint256 amount) external;
-}
-
 // IFxMessageProcessor represents interface to process messages.
 interface IFxMessageProcessor {
     function processMessageFromRoot(
@@ -72,8 +67,11 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        PolygonIERC20(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(relayerRefundLeaf.amountToReturn);
-        polygonTokenBridger.send(relayerRefundLeaf.l2TokenAddress, relayerRefundLeaf.amountToReturn);
+        PolygonIERC20(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
+            address(polygonTokenBridger),
+            relayerRefundLeaf.amountToReturn
+        );
+        polygonTokenBridger.send(PolygonIERC20(relayerRefundLeaf.l2TokenAddress), relayerRefundLeaf.amountToReturn);
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }

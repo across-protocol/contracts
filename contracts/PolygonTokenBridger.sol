@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
 
+// ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
 interface PolygonIERC20 is IERC20 {
     function withdraw(uint256 amount) external;
 }
