@@ -472,10 +472,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     /**
-     * @notice Publish a new root bundle to this contract along with all of the block numbers that the merkle roots
-     * are relevant for. This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller
-     * must stake a bond that can be slashed if the root bundle proposal is invalid, and they will receive it back
-     * if accepted.
+     * @notice Publish a new root bundle to along with all of the block numbers that the merkle roots are relevant for. 
+     * This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller stakes a bond that can
+     * be slashed if the root bundle proposal is invalid, and they will receive it back if accepted.
      * @notice After proposeRootBundle is called, if the any props are wrong then this proposal can be challenged.
      * Once the challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be
      * called; moreover, this method can't be called again until all leafs are executed.
