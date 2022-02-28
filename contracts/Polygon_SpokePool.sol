@@ -28,6 +28,23 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
 
+    // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
+    // Put differently, just checking that msg.sender == fxChild is not sufficient.
+    // All calls that have admin priviledges must be fired from within the processMessageFromRoot method that's gone
+    // through validation where the sender is checked and the root (mainnet) sender is also validated.
+    // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
+    modifier validateInternalCalls() {
+        // This sets a variable indicating that we're now inside a validated call.
+        // Note: this is used by other methods to ensure that this call has been validated by this method and is not
+        // spoofed. See
+        callValidated = true;
+
+        _;
+
+        // Reset callValidated to false to disallow admin calls after this method exits.
+        callValidated = false;
+    }
+
     constructor(
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
@@ -46,22 +63,14 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
         uint256, /*stateId*/
         address rootMessageSender,
         bytes calldata data
-    ) public {
+    ) public validateInternalCalls {
         // Validation logic.
         require(msg.sender == fxChild, "Not from fxChild");
         require(rootMessageSender == crossDomainAdmin, "Not from mainnet admmin");
 
-        // This sets a variable indicating that we're now inside a validated call.
-        // Note: this is used by other methods to ensure that this call has been validated by this method and is not
-        // spoofed.
-        callValidated = true;
-
         // This uses delegatecall to take the information in the message and process it as a function call on this contract.
         (bool success, ) = address(this).delegatecall(data);
         require(success, "delegatecall failed");
-
-        // Reset callValidated to false to disallow admin calls after this method exits.
-        callValidated = false;
     }
 
     /**************************************
