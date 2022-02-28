@@ -612,7 +612,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                // Perform delegatecall to use the adapter's code with this contract's context.
+                // Perform delegatecall to use the adapter's code with this contract's context. We opt for delegatecall's
+                // complexity in exchange for lower gas costs.
                 (bool success, ) = address(adapter).delegatecall(
                     abi.encodeWithSignature(
                         "relayTokens(address,address,uint256,address)",
