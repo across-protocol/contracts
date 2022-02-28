@@ -7,7 +7,7 @@ import "../interfaces/WETH9.sol";
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import "@uma/core/contracts/common/implementation/Lockable.sol";
+import "../Lockable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 

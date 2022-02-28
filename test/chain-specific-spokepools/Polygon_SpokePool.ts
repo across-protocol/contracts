@@ -28,7 +28,7 @@ describe("Polygon Spoke Pool", function () {
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", { signer: owner })
-    ).deploy(hubPool.address);
+    ).deploy(hubPool.address, weth.address);
 
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);

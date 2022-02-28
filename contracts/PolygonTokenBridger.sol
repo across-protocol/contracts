@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
+import "./interfaces/WETH9.sol";
 
 // ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
 interface PolygonIERC20 is IERC20 {
@@ -29,9 +30,11 @@ contract PolygonTokenBridger is Lockable {
 
     MaticToken public constant maticToken = MaticToken(0x0000000000000000000000000000000000001010);
     address public immutable destination;
+    WETH9 public immutable l1Weth;
 
-    constructor(address _destination) {
+    constructor(address _destination, WETH9 _l1Weth) {
         destination = _destination;
+        l1Weth = _l1Weth;
     }
 
     // Polygon side.
@@ -54,6 +57,8 @@ contract PolygonTokenBridger is Lockable {
         token.safeTransfer(destination, token.balanceOf(address(this)));
     }
 
-    // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
-    receive() external payable {}
+    receive() external payable {
+        // Note: this should only happen on the mainnet side where ETH is sent to the contract directly by the bridge.
+        if (functionCallStackOriginatesFromOutsideThisContract()) l1Weth.deposit{ value: address(this).balance }();
+    }
 }
