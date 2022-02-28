@@ -33,9 +33,11 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
         address _crossDomainAdmin,
         address _hubPool,
         address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
+        address _fxChild,
         address timerAddress
     ) SpokePool(_crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress) {
         polygonTokenBridger = _polygonTokenBridger;
+        fxChild = _fxChild;
     }
 
     // Note: stateId value isn't used because it isn't relevant for this method. It doesn't care what state sync
@@ -47,7 +49,7 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
     ) public {
         // Validation logic.
         require(msg.sender == fxChild, "Not from fxChild");
-        require(rootMessageSender == hubPool, "Not from mainnet HubPool");
+        require(rootMessageSender == crossDomainAdmin, "Not from mainnet admmin");
 
         // This sets a variable indicating that we're now inside a validated call.
         // Note: this is used by other methods to ensure that this call has been validated by this method and is not
@@ -71,7 +73,13 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
             address(polygonTokenBridger),
             relayerRefundLeaf.amountToReturn
         );
-        polygonTokenBridger.send(PolygonIERC20(relayerRefundLeaf.l2TokenAddress), relayerRefundLeaf.amountToReturn);
+
+        // Note: WETH is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
+        polygonTokenBridger.send(
+            PolygonIERC20(relayerRefundLeaf.l2TokenAddress),
+            relayerRefundLeaf.amountToReturn,
+            address(weth) == relayerRefundLeaf.l2TokenAddress
+        );
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }

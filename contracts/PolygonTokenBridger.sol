@@ -10,6 +10,10 @@ interface PolygonIERC20 is IERC20 {
     function withdraw(uint256 amount) external;
 }
 
+interface MaticToken {
+    function withdraw(uint256 amount) external payable;
+}
+
 // Because Polygon only allows withdrawals from a particular address to go to that same address on mainnet, we need to
 // have some sort of contract that can guarantee identical addresses on Polygon and Ethereum.
 // Note: this contract is intended to be completely immutable, so it's guaranteed that the contract on each side is
@@ -23,6 +27,7 @@ contract PolygonTokenBridger is Lockable {
     using SafeERC20 for PolygonIERC20;
     using SafeERC20 for IERC20;
 
+    MaticToken public constant maticToken = MaticToken(0x0000000000000000000000000000000000001010);
     address public immutable destination;
 
     constructor(address _destination) {
@@ -30,13 +35,25 @@ contract PolygonTokenBridger is Lockable {
     }
 
     // Polygon side.
-    function send(PolygonIERC20 token, uint256 amount) public nonReentrant {
+    function send(
+        PolygonIERC20 token,
+        uint256 amount,
+        bool isMatic
+    ) public nonReentrant {
         token.safeTransferFrom(msg.sender, address(this), amount);
+
+        // In the wMatic case, this unwraps. For other ERC20s, this is the burn/send action.
         token.withdraw(amount);
+
+        // This takes the token that was withdrawn and calls withdraw on the "native" ERC20.
+        if (isMatic) maticToken.withdraw{ value: amount }(amount);
     }
 
     // Mainnet side.
     function retrieve(IERC20 token) public nonReentrant {
         token.safeTransfer(destination, token.balanceOf(address(this)));
     }
+
+    // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
+    receive() external payable {}
 }
