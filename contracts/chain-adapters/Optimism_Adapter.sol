@@ -10,6 +10,7 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Sends cross chain messages Optimism L2 network.
@@ -17,6 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * and the HubPool. The HubPool is the only contract that can relay tokens and messages over the bridge.
  */
 contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
+    using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 5_000_000;
 
     WETH9 public immutable l1Weth;
@@ -50,7 +52,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
-            IERC20(l1Token).approve(address(l1StandardBridge), amount);
+            IERC20(l1Token).safeIncreaseAllowance(address(l1StandardBridge), amount);
             l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
