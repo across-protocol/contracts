@@ -1,5 +1,5 @@
 import * as consts from "../constants";
-import { ethers, expect, Contract, SignerWithAddress, randomAddress } from "../utils";
+import { ethers, expect, Contract, SignerWithAddress, randomAddress, hre } from "../utils";
 import { getContractFactory, seedWallet } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
@@ -10,12 +10,13 @@ let owner: SignerWithAddress,
   liquidityProvider: SignerWithAddress,
   crossChainAdmin: SignerWithAddress;
 
-const l1ChainId = 1;
+let l1ChainId: number;
 
 describe("Ethereum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, hubPool, mockSpoke, timer, crossChainAdmin } = await hubPoolFixture());
+    l1ChainId = Number(await hre.getChainId());
     await seedWallet(dataWorker, [dai], weth, consts.amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
 
