@@ -52,7 +52,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     struct RootBundle {
         // When root bundle challenge period passes and this root bundle becomes executable.
         uint64 requestExpirationTimestamp;
-        // Number of pool rebalance leaves to execute in the `poolRebalanceRoot`. After this number
+        // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint64 unclaimedPoolRebalanceLeafCount;
         // Contains leaves instructing this contract to send funds to SpokePools.
