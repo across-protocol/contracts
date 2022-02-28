@@ -1,4 +1,6 @@
 # Across V2
+    ![Across-logo](https://raw.githubusercontent.com/across-protocol/across-frontend/65abd7772704a9ec243fd370f9e8e76322f0905b/src/assets/logo.svg)
+
 
 Contains smart contract suite to enable instant token transfers between any two networks. Relays are backstopped by
 liquidity held in a central `HubPool` on Ethereum, which also serves as the cross-chain administrator of all contracts in the
