@@ -361,7 +361,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Disables LPs from providing liquidity for L1 token. Callable only by owner.
-     * @param l1Token Token to disale liquidity provision for.
+     * @param l1Token Token to disable liquidity provision for.
      */
     function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
         pooledTokens[l1Token].isEnabled = false;
@@ -373,7 +373,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     /**
-     * @notice Deposit liquidity into this contract to earn LP fees in exchange for backstopping relays on SpokePools.
+     * @notice Deposit liquidity into this contract to earn LP fees in exchange for funding relays on SpokePools.
      * Caller is essentially loaning their funds to be sent from this contract to the SpokePool, where it will be used
      * to repay a relayer, and ultimately receives their loan back after the tokens are bridged back to this contract
      * via the canonical token bridge. Then, the caller's loans are used for again. This loan cycle repeats continuously
