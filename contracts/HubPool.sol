@@ -209,7 +209,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Construct HubPool.
-     * @param _lpTokenFactory LP Token factory address.
+     * @param _lpTokenFactory LP Token factory address used to deploy LP tokens for new collateral types.
      * @param _finder Finder address.
      * @param _weth WETH address.
      * @param _timer Timer address.
@@ -348,8 +348,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to provide liquidity for.
      */
     function enableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
-        // NOTE: if we run out of bytecode this logic could be refactored into a custom token factory that does the
-        // appends and permission setting.
         if (pooledTokens[l1Token].lpToken == address(0))
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
