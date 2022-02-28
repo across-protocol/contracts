@@ -403,7 +403,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Burns LP share to redeem for underlying l1Token original deposit amount plus fees.
      * @param l1Token Token to redeem LP share for.
      * @param lpTokenAmount Amount of LP tokens to burn. Exchange rate between L1 token and LP token can be queried
-     * via public `exchangeRateCurrent` method.
+     * via public exchangeRateCurrent method.
      * @param sendEth Set to True if L1 token is WETH and user wants to receive ETH.
      */
     function removeLiquidity(
