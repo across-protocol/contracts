@@ -52,7 +52,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     struct RootBundle {
         // When root bundle challenge period passes and this root bundle becomes executable.
         uint64 requestExpirationTimestamp;
-        // Number of pool rebalance leaves to execute in the `poolRebalanceRoot`. After this number
+        // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint64 unclaimedPoolRebalanceLeafCount;
         // Contains leaves instructing this contract to send funds to SpokePools.
@@ -74,8 +74,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     RootBundle public rootBundleProposal;
 
     // Whitelist of origin token + ID to destination token routings to be used by off-chain agents. The notion of a
-    // route does not need to include L1; it can store L2->L2 routes i.e USDC on Arbitrum -> USDC on Optimism as a
-    // "route".
+    // route does not need to include L1; it can be L2->L2 route. i.e USDC on Arbitrum -> USDC on Optimism as a "route".
     mapping(bytes32 => address) private whitelistedRoutes;
 
     struct PooledToken {
