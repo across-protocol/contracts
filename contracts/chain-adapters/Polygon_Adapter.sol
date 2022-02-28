@@ -26,9 +26,7 @@ interface IFxStateSender {
 }
 
 /**
- * @notice Sends cross chain messages Optimism L2 network.
- * @dev This contract's owner should be set to the some multisig or admin contract. The Owner can simply set the L2 gas
- * and the HubPool. The HubPool is the only contract that can relay tokens and messages over the bridge.
+ * @notice Sends cross chain messages Polygon L2 network.
  */
 contract Polygon_Adapter is Base_Adapter, Lockable {
     using SafeERC20 for IERC20;
@@ -69,6 +67,6 @@ contract Polygon_Adapter is Base_Adapter, Lockable {
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
-    // Added to enable the Optimism_Adapter to receive ETH. used when unwrapping WETH.
+    // Added to enable the Polygon_Adapter to receive ETH. used when unwrapping WETH.
     receive() external payable {}
 }

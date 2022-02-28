@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../Lockable.sol";
+import "./Lockable.sol";
 
 interface PolygonIERC20 is IERC20 {
     function withdraw(uint256 amount) external;
@@ -12,7 +12,12 @@ interface PolygonIERC20 is IERC20 {
 // Because Polygon only allows withdrawals from a particular address to go to that same address on mainnet, we need to
 // have some sort of contract that can guarantee identical addresses on Polygon and Ethereum.
 // Note: this contract is intended to be completely immutable, so it's guaranteed that the contract on each side is
-// configured identically as long as it is created via create2.
+// configured identically as long as it is created via create2. create2 is an alternative creation method that uses
+// a different address determination mechanism from normal create.
+// Normal create: address = hash(deployer_address, deployer_nonce)
+// create2:       address = hash(0xFF, sender, salt, bytecode)
+// This ultimately allows create2 to generate deterministic addresses that don't depend on the transaction count of the
+// sender.
 contract PolygonTokenBridger is Lockable {
     using SafeERC20 for PolygonIERC20;
     using SafeERC20 for IERC20;
