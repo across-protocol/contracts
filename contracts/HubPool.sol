@@ -400,10 +400,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Burns LP share to redeem for underlying `l1Token` original deposit amount plus fees.
+     * @notice Burns LP share to redeem for underlying l1Token original deposit amount plus fees.
      * @param l1Token Token to redeem LP share for.
      * @param lpTokenAmount Amount of LP tokens to burn. Exchange rate between L1 token and LP token can be queried
-     * via public `exchangeRateCurrent` method.
+     * via public exchangeRateCurrent method.
      * @param sendEth Set to True if L1 token is WETH and user wants to receive ETH.
      */
     function removeLiquidity(
@@ -426,7 +426,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Returns exchange rate of L1 token:LP token.
+     * @notice Returns exchange rate of L1 token to LP token.
      * @param l1Token L1 token redeemable by burning LP token.
      * @return Amount of L1 tokens redeemable for 1 unit LP token.
      */
@@ -445,10 +445,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Returns % of liquid reserves currently being "used" and sitting in L2 SpokePools and accounting for
-     * `relayedAmount` of tokens to be withdrawn from the pool.
+     * relayedAmount of tokens to be withdrawn from the pool.
      * @param l1Token L1 token to query utilization for.
      * @param relayedAmount The higher this amount, the higher the utilization.
-     * @return % of liquid reserves currently being "used" and sitting in L2 SpokePools plus the `relayedAmount`.
+     * @return % of liquid reserves currently being "used" and sitting in L2 SpokePools plus the relayedAmount.
      */
     function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
         public
@@ -461,7 +461,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This should be done
      * at the conclusion of an L2 -> L1 token transfer via the canonical token bridge, for example, when this contract's
-     * reserves do not reflect all of its token balance.
+     * reserves do not reflect all of its token balance due to new tokens being dropped onto the contract at the conclusion of a bridging action.
      */
     function sync(address l1Token) public override nonReentrant {
         _sync(l1Token);
@@ -472,20 +472,18 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     /**
-     * @notice Publish a new root bundle to this contract along with all of the block numbers that the merkle roots
-     * are relevant for. This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller
-     * must stake a bond that can be slashed if the root bundle proposal is invalid, and they will receive it back
-     * if accepted.
+     * @notice Publish a new root bundle to along with all of the block numbers that the merkle roots are relevant for.
+     * This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller stakes a bond that can
+     * be slashed if the root bundle proposal is invalid, and they will receive it back if accepted.
      * @notice After proposeRootBundle is called, if the any props are wrong then this proposal can be challenged.
      * Once the challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be
      * called; moreover, this method can't be called again until all leafs are executed.
-     * @param bundleEvaluationBlockNumbers should contain the latest block number for _all_ chains, even if there are no
-     * relays contained on some of them. But the usage of this variable should be defined in an off chain UMIP.
-     * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root.
-     * @param poolRebalanceRoot Pool rebalance root containing leaves that will send tokens from this contract to a
-     * SpokePool.
-     * @param relayerRefundRoot Relayer refund root to publish to Spoke Pool where a data worker can execute leaves to
-     * refund relayers.
+     * @param bundleEvaluationBlockNumbers should contain the latest block number for all chains, even if there are no
+     * relays contained on some of them. The usage of this variable should be defined in an off chain UMIP.
+     * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max posible is the number of whitelisted chains.
+     * @param poolRebalanceRoot Pool rebalance root containing leaves that will send tokens from this contract to a SpokePool.
+     * @param relayerRefundRoot Relayer refund root to publish to SpokePool where a data worker can execute leaves to
+     * refund relayers on their chosen refund chainId.
      * @param slowRelayRoot Slow relay root to publish to Spoke Pool where a data worker can execute leaves to
      * fulfill slow relays.
      */
