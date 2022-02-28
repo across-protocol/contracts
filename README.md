@@ -3,7 +3,7 @@
 Contains smart contract suite to enable instant token transfers between any two networks. Relays are backstopped by
 liquidity held in a central `HubPool` on Ethereum, which also serves as the cross-chain administrator of all contracts in the
 system. `SpokePool` contracts are deployed to any network that wants to originate token deposits or be the final
-destination for token transfers, and they are all governed by the HubPool on Ethereum.
+destination for token transfers, and they are all governed by the `HubPool` on Ethereum.
 
 This contract set is the second iteration of the [Across smart contracts](https://github.com/across-protocol/across-smart-contracts)
 which facilitate token transfers from any L2 to L1.
