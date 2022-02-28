@@ -526,7 +526,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Executes a pool rebalance leaf as part of the currently published root bundle. Will bridge any tokens
      * from this contract to the SpokePool designated in the leaf, and will also publish relayer refund and slow
-     * relay roots to the SpokePool on the network specified in the leaf.
+     * relay roots to the SpokePool on the network specified in the leaf. In some cases, will instruct spokePool to send funds back to L1.
      * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
      * @param poolRebalanceLeaf Contains all data neccessary to reconstruct leaf contained in root bundle and to
      * bridge tokens to HubPool. This data structure is explained in detail in the HubPoolInterface.
@@ -583,7 +583,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Caller stakes a bond to dispute the current root bundle proposal assuming it has not passed liveness
      * yet. The proposal is deleted, allowing a follow-up proposal to be submitted, and the dispute is sent to the
-     * optimistic oracle to be adjudicated.
+     * optimistic oracle to be adjudicated. Can only be called within the liveness period of the current proposal.
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
