@@ -448,7 +448,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * relayedAmount of tokens to be withdrawn from the pool.
      * @param l1Token L1 token to query utilization for.
      * @param relayedAmount The higher this amount, the higher the utilization.
-     * @return % of liquid reserves currently being "used" and sitting in L2 SpokePools plus the `relayedAmount`.
+     * @return % of liquid reserves currently being "used" and sitting in L2 SpokePools plus the relayedAmount.
      */
     function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
         public
