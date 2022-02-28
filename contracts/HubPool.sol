@@ -426,7 +426,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Returns exchange rate of L1 token:LP token.
+     * @notice Returns exchange rate of L1 token to LP token.
      * @param l1Token L1 token redeemable by burning LP token.
      * @return Amount of L1 tokens redeemable for 1 unit LP token.
      */
