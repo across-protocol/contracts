@@ -1,13 +1,16 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+/**
+ * @notice Contains common data structures and functions used by all SpokePool implementations.
+ */
 interface SpokePoolInterface {
-    // This leaf is meant to be decoded in the SpokePool in order to pay out individual relayers for this bundle.
+    // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
     struct RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
         // negative. This is just that value inverted.
         uint256 amountToReturn;
-        // Used to verify that this is being decoded on the correct chainId.
+        // Used to verify that this is being executed on the correct destination chainId.
         uint256 chainId;
         // This array designates how much each of those addresses should be refunded.
         uint256[] refundAmounts;
@@ -15,14 +18,14 @@ interface SpokePoolInterface {
         uint32 leafId;
         // The associated L2TokenAddress that these claims apply to.
         address l2TokenAddress;
-        // These two arrays must be the same length and are parallel arrays. They should be order by refundAddresses.
-        // This array designates each address that must be refunded.
+        // Must be same length as `refundAmounts` and designates each address that must be refunded.
         address[] refundAddresses;
     }
 
-    // This struct represents the data to fully-specify a relay. If any portion of this data differs, the relay is
+    // This struct represents the data to fully specify a relay. If any portion of this data differs, the relay is
     // considered to be completely distinct. Only one relay for a particular depositId, chainId pair should be
-    // considered valid and repaid.
+    // considered valid and repaid. This data is hashed and inserted into a the slow relay merkle root so that an off
+    // chain validator can choose when to refund slow relayers.
     struct RelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
@@ -56,4 +59,69 @@ interface SpokePoolInterface {
     function setDepositQuoteTimeBuffer(uint32 buffer) external;
 
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) external;
+
+    function deposit(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        uint64 relayerFeePct,
+        uint32 quoteTimestamp
+    ) external payable;
+
+    function speedUpDeposit(
+        address depositor,
+        uint64 newRelayerFeePct,
+        uint32 depositId,
+        bytes memory depositorSignature
+    ) external;
+
+    function fillRelay(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 amount,
+        uint256 maxTokensToSend,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint32 depositId
+    ) external;
+
+    function fillRelayWithUpdatedFee(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 amount,
+        uint256 maxTokensToSend,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint64 newRelayerFeePct,
+        uint32 depositId,
+        bytes memory depositorSignature
+    ) external;
+
+    function executeSlowRelayRoot(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 amount,
+        uint256 originChainId,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) external;
+
+    function executeRelayerRefundRoot(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) external;
+
+    function chainId() external view returns (uint256);
 }

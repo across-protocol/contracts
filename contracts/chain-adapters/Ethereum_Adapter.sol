@@ -9,14 +9,32 @@ import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Contract containing logic to send messages from L1 to Ethereum SpokePool.
+ */
 contract Ethereum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
+    /**
+     * @notice Send message to target on Ethereum.
+     * @notice This function, and contract overall, is not useful in practice except that the HubPool
+     * expects to interact with the SpokePool via an Adapter, so when communicating to the Ethereum_SpokePool, it must
+     * send messages via this pass-through contract.
+     * @param target Contract that will receive message.
+     * @param message Data to send to target.
+     */
     function relayMessage(address target, bytes memory message) external payable override {
         _executeCall(target, message);
         emit MessageRelayed(target, message);
     }
 
+    /**
+     * @notice Send tokens to target.
+     * @param l1Token L1 token to send.
+     * @param l2Token Unused parameter in this contract.
+     * @param amount Amount of L1 tokens to send.
+     * @param to recipient.
+     */
     function relayTokens(
         address l1Token,
         address l2Token, // l2Token is unused for ethereum since we are assuming that the HubPool is only deployed

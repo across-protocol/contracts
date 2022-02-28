@@ -6,21 +6,11 @@ import { ICrossDomainMessenger } from "@eth-optimism/contracts/libraries/bridge/
 
 /**
  * @title CrossDomainEnabled
- * @dev Helper contract for contracts performing cross-domain communications
- *
- * Compiler used: defined by inheriting contract
+ * @dev Helper contract for contracts performing cross-domain communications between L1 and Optimism.
  */
 contract CrossDomainEnabled {
-    /*************
-     * Variables *
-     *************/
-
     // Messenger contract used to send and recieve messages from the other domain.
     address public immutable messenger;
-
-    /***************
-     * Constructor *
-     ***************/
 
     /**
      * @param _messenger Address of the CrossDomainMessenger on the current layer.
@@ -28,10 +18,6 @@ contract CrossDomainEnabled {
     constructor(address _messenger) {
         messenger = _messenger;
     }
-
-    /**********************
-     * Function Modifiers *
-     **********************/
 
     /**
      * Enforces that the modified function is only callable by a specific cross-domain account.
@@ -49,10 +35,6 @@ contract CrossDomainEnabled {
         _;
     }
 
-    /**********************
-     * Internal Functions *
-     **********************/
-
     /**
      * Gets the messenger, usually from storage. This function is exposed in case a child contract
      * needs to override.
@@ -62,7 +44,7 @@ contract CrossDomainEnabled {
         return ICrossDomainMessenger(messenger);
     }
 
-    /**q
+    /**
      * Sends a message to an account on another domain
      * @param _crossDomainTarget The intended recipient on the destination domain
      * @param _message The data to send to the target (usually calldata to a function with

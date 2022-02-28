@@ -6,7 +6,7 @@ import "../SpokePoolInterface.sol";
 
 /**
  * @title MockSpokePool
- * @notice Implements admin internal methods to test internal logic.
+ * @notice Implements abstract contract for testing.
  */
 contract MockSpokePool is SpokePoolInterface, SpokePool {
     constructor(

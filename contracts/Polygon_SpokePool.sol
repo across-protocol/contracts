@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "./interfaces/WETH9.sol";
@@ -20,13 +20,23 @@ interface IFxMessageProcessor {
 /**
  * @notice Polygon specific SpokePool.
  */
-contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool {
+contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     using SafeERC20 for PolygonIERC20;
+
+    // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
+
+    // Contract deployed on L1 and L2 processes all cross-chain transfers between this contract and the the HubPool.
+    // Required because bridging tokens from Polygon to Ethereum has special constraints.
     PolygonTokenBridger public polygonTokenBridger;
+
+    // Internal variable that only flips temporarily to true upon receiving messages from L1. Used to authenticate that
+    // the caller is the fxChild AND that the fxChild called `processMessageFromRoot`
     bool private callValidated = false;
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
+    event SetFxChild(address indexed newFxChild);
+    event SetPolygonTokenBridger(address indexed polygonTokenBridger);
 
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
@@ -45,6 +55,16 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
         callValidated = false;
     }
 
+    /**
+     * @notice Construct the Polygon SpokePool.
+     * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
+     * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
+     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _wmaticAddress Replaces _wethAddress for this network since MATIC is the gas token and sent via msg.value
+     * on Polygon.
+     * @param _fxChild FxChild contract, changeable by Admin.
+     * @param timerAddress Timer address to set.
+     */
     constructor(
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
@@ -57,8 +77,38 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
         fxChild = _fxChild;
     }
 
-    // Note: stateId value isn't used because it isn't relevant for this method. It doesn't care what state sync
-    // triggered this call.
+    /********************************************************
+     *    ARBITRUM-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
+     ********************************************************/
+
+    /**
+     * @notice Change FxChild address. Callable only by admin via `processMessageFromRoot`.
+     * @param newFxChild New FxChild.
+     */
+    function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
+        fxChild = newFxChild;
+        emit SetFxChild(fxChild);
+    }
+
+    /**
+     * @notice Change polygonTokenBridger address. Callable only by admin via `processMessageFromRoot`.
+     * @param newPolygonTokenBridger New Polygon Token Bridger contract.
+     */
+    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
+        polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
+        emit SetPolygonTokenBridger(address(polygonTokenBridger));
+    }
+
+    /**
+     * @notice Called by FxChild upon receiving L1 message that targets this contract. Performs an additional check
+     * that the L1 caller was the expected cross domain admin, and then delegate calls.
+     * @notice Polygon bridge only executes this external function on the target Polygon contract when relaying
+     * messages from L1, so all functions on this SpokePool are expected to originate via this call.
+     * @dev stateId value isn't used because it isn't relevant for this method. It doesn't care what state sync
+     * triggered this call.
+     * @param rootMessageSender Original L1 sender of data.
+     * @param data ABI encoded function call to execute on this contract.
+     */
     function processMessageFromRoot(
         uint256, /*stateId*/
         address rootMessageSender,
@@ -66,7 +116,7 @@ contract Polygon_SpokePool is SpokePoolInterface, IFxMessageProcessor, SpokePool
     ) public validateInternalCalls {
         // Validation logic.
         require(msg.sender == fxChild, "Not from fxChild");
-        require(rootMessageSender == crossDomainAdmin, "Not from mainnet admmin");
+        require(rootMessageSender == crossDomainAdmin, "Not from mainnet admin");
 
         // This uses delegatecall to take the information in the message and process it as a function call on this contract.
         (bool success, ) = address(this).delegatecall(data);

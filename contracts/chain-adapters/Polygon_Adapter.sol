@@ -33,6 +33,12 @@ contract Polygon_Adapter is AdapterInterface {
     IFxStateSender public immutable fxStateSender;
     WETH9 public immutable l1Weth;
 
+    /**
+     * @notice Constructs new Adapter.
+     * @param _rootChainManager RootChainManager Polygon system helper contract.
+     * @param _fxStateSender FxStateSender Polygon system helper contract.
+     * @param _l1Weth WETH address on L1.
+     */
     constructor(
         IRootChainManager _rootChainManager,
         IFxStateSender _fxStateSender,
@@ -43,11 +49,24 @@ contract Polygon_Adapter is AdapterInterface {
         l1Weth = _l1Weth;
     }
 
+    /**
+     * @notice Send cross-chain message to target on Polygon.
+     * @param target Contract on Polygon that will receive message.
+     * @param message Data to send to target.
+     */
+
     function relayMessage(address target, bytes memory message) external payable override {
         fxStateSender.sendMessageToChild(target, message);
         emit MessageRelayed(target, message);
     }
 
+    /**
+     * @notice Bridge tokens to Polygon.
+     * @param l1Token L1 token to deposit.
+     * @param l2Token L2 token to receive.
+     * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
+     * @param to Bridge recipient.
+     */
     function relayTokens(
         address l1Token,
         address l2Token,

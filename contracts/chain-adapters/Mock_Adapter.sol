@@ -5,9 +5,7 @@ import "../interfaces/AdapterInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @notice Sends cross chain messages Optimism L2 network.
- * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
- * BridgeAdmin can call cross-chain administrative functions on the L2 SpokePool via this messenger.
+ * @notice Contract used for testing communication between HubPool and Adapter.
  */
 contract Mock_Adapter is AdapterInterface {
     event RelayMessageCalled(address target, bytes message, address caller);

@@ -31,6 +31,9 @@ interface ArbitrumL1ERC20GatewayLike {
     ) external payable returns (bytes memory);
 }
 
+/**
+ * @notice Contract containing logic to send messages from L1 to Arbitrum.
+ */
 contract Arbitrum_Adapter is AdapterInterface {
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
@@ -61,6 +64,11 @@ contract Arbitrum_Adapter is AdapterInterface {
 
     event L2RefundL2AddressSet(address newL2RefundL2Address);
 
+    /**
+     * @notice Constructs new Adapter.
+     * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
+     * @param _l1ERC20Gateway ERC20 gateway contract to send tokens to Arbitrum.
+     */
     constructor(ArbitrumL1InboxLike _l1ArbitrumInbox, ArbitrumL1ERC20GatewayLike _l1ERC20Gateway) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20Gateway = _l1ERC20Gateway;
@@ -68,6 +76,13 @@ contract Arbitrum_Adapter is AdapterInterface {
         l2RefundL2Address = msg.sender;
     }
 
+    /**
+     * @notice Send cross-chain message to target on Arbitrum.
+     * @notice This contract must hold at least `getL1CallValue()` amount of ETH to send a message via the Inbox
+     * successfully, or the message will get stuck.
+     * @param target Contract on Arbitrum that will receive message.
+     * @param message Data to send to target.
+     */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
@@ -86,6 +101,13 @@ contract Arbitrum_Adapter is AdapterInterface {
         emit MessageRelayed(target, message);
     }
 
+    /**
+     * @notice Bridge tokens to Arbitrum.
+     * @param l1Token L1 token to deposit.
+     * @param l2Token L2 token to receive.
+     * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
+     * @param to Bridge recipient.
+     */
     function relayTokens(
         address l1Token,
         address l2Token, // l2Token is unused for Arbitrum.
@@ -96,7 +118,11 @@ contract Arbitrum_Adapter is AdapterInterface {
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
-    function getL1CallValue() public view returns (uint256) {
+    /**
+     * @notice Returns required amount of ETH to send a message via the Inbox.
+     * @return amount of ETH that this contract needs to hold in order for `relayMessage` to succeed.
+     */
+    function getL1CallValue() public pure returns (uint256) {
         return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
     }
 }

@@ -19,20 +19,23 @@ import "./SpokePoolInterface.sol";
 
 /**
  * @title SpokePool
- * @notice Contract deployed on source and destination chains enabling depositors to transfer assets from source to
+ * @notice Base contract deployed on source and destination chains enabling depositors to transfer assets from source to
  * destination. Deposit orders are fulfilled by off-chain relayers who also interact with this contract. Deposited
  * tokens are locked on the source chain and relayers send the recipient the desired token currency and amount
- * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1.
- * @dev This contract is designed to be deployed to L2's, not mainnet.
+ * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1 HubPool.
+ * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
+ * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
 abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    // Address of the L1 contract that acts as the owner of this SpokePool.
+    // Address of the L1 contract that acts as the owner of this SpokePool. If this contract is deployed on Ethereum,
+    // then this address should be set to the same owner as the HubPool and the whole system.
     address public crossDomainAdmin;
 
-    // Address of the L1 contract that will send tokens to and receive tokens from this contract.
+    // Address of the L1 contract that will send tokens to and receive tokens from this contract to fund relayer
+    // refunds and slow relays.
     address public hubPool;
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
@@ -43,24 +46,30 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     uint32 public deploymentTime;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an up to date realized fee. Defaults to 10 minutes.
+    // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
     uint32 public depositQuoteTimeBuffer = 600;
 
-    // Use count of deposits as unique deposit identifier.
+    // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
-    // Origin token to destination token routings can be turned on or off.
+    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
+    // A reverse mapping is stored on the L1 HubPool to enable or disable rebalance transfers from the HubPool to this
+    // contract.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
+    // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
+    // by "data workers" via inclusion proofs to execute leaves in the roots.
     struct RootBundle {
         // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
         bytes32 slowRelayRoot;
-        // Merkle root of relayer refunds.
+        // Merkle root of relayer refunds for successful relays.
         bytes32 relayerRefundRoot;
         // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
         // 256x256 leaves per root.
         mapping(uint256 => uint256) claimedBitmap;
     }
+
+    // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
@@ -139,6 +148,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address caller
     );
 
+    /**
+     * @notice Construct the base SpokePool.
+     * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
+     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _wethAddress Weth address for this network to set.
+     * @param timerAddress Timer address to set.
+     */
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
@@ -160,6 +176,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _;
     }
 
+    // Implementing contract needs to override `_requireAdminSender()` to ensure that admin functions are protected
+    // appropriately.
     modifier onlyAdmin() {
         _requireAdminSender();
         _;
@@ -169,14 +187,28 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *          ADMIN FUNCTIONS           *
      **************************************/
 
+    /**
+     * @notice Change cross domain admin address. Callable by admin only.
+     * @param newCrossDomainAdmin New cross domain admin.
+     */
     function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyAdmin nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
+    /**
+     * @notice Change L1 hub pool address. Callable by admin only.
+     * @param newHubPool New hub pool.
+     */
     function setHubPool(address newHubPool) public override onlyAdmin nonReentrant {
         _setHubPool(newHubPool);
     }
 
+    /**
+     * @notice Enable/Disable an origin token => destination chain ID route for deposits. Callable by admin only.
+     * @param originToken Token that depositor can deposit to this contract.
+     * @param destinationChainId Chain ID for where depositor wants to receive funds.
+     * @param enabled True to enable deposits, False otherwise.
+     */
     function setEnableRoute(
         address originToken,
         uint256 destinationChainId,
@@ -186,16 +218,24 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
-    function setDepositQuoteTimeBuffer(uint32 _depositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
-        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
-        emit SetDepositQuoteTimeBuffer(_depositQuoteTimeBuffer);
+    /**
+     * @notice Change allowance for deposit quote time to differ from current block time. Callable by admin only.
+     * @param newDepositQuoteTimeBuffer New quote time buffer.
+     */
+    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
+        depositQuoteTimeBuffer = newDepositQuoteTimeBuffer;
+        emit SetDepositQuoteTimeBuffer(newDepositQuoteTimeBuffer);
     }
 
-    // This internal method should be called by an external "relayRootBundle" function that validates the
-    // cross domain sender is the HubPool. This validation step differs for each L2, which is why the implementation
-    // specifics are left to the implementor of this abstract contract.
-    // Once this method is executed and a distribution root is stored in this contract, then `distributeRootBundle`
-    // can be called to execute each leaf in the root.
+    /**
+     * @notice This method stores a new root bundle in this contract that can be executed to refund relayers, fulfill
+     * slow relays, and send funds back to the HubPool on L1. This method can only be called by the admin and is
+     * designed to be called as part of a cross-chain message from the HubPool's "executeRootBundle" method.
+     * @param relayerRefundRoot Merkle root containing relayer refund leaves that can be individually executed via
+     * executeRelayerRefundRoot().
+     * @param slowRelayRoot Merkle root containing slow relay fulfillment leaves that can be individually executed via
+     * executeSlowRelayRoot().
+     */
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin nonReentrant {
         uint32 rootBundleId = uint32(rootBundles.length);
         RootBundle storage rootBundle = rootBundles.push();
@@ -209,8 +249,20 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      **************************************/
 
     /**
-     * @notice Called by user to bridge funds from origin to destination chain.
-     * @dev The caller must first approve this contract to spend `amount` of `originToken`.
+     * @notice Called by user to bridge funds from origin to destination chain. Depositor will effectively lock
+     * tokens in this contract and receive a destination token on the destination chain. The origin => destination
+     * token mapping is stored on the L1 HubPool.
+     * @notice The caller must first approve this contract to spend `amount` of `originToken`.
+     * @notice The originToken => destinationChainId must be enabled.
+     * @notice This method is `payable` because the caller is able to deposit ETH if the originToken is WETH and this
+     * function will handle wrapping ETH.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's "realized LP fee %" which is paid
+     * to LP pool on HubPool.
      */
     function deposit(
         address recipient,
@@ -219,12 +271,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 quoteTimestamp
-    ) public payable onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
+    ) public payable override onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct < 0.5e18, "invalid relayer fee");
-        // Note We assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
+        // Note that we assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // `block.timestamp` is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
-        // buffer to allow for this variance.
+        // buffer of this contract's block time to allow for this variance.
         // Note also that `quoteTimestamp` cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
         require(
@@ -253,18 +305,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             msg.sender
         );
 
+        // Increment count of deposits so that deposit ID for this spoke pool is unique.
         numberOfDeposits += 1;
     }
 
-    // Convenience method that depositor can use to signal to relayer to use updated fee.
     /**
      * @notice Convenience method that depositor can use to signal to relayer to use updated fee.
-     * @dev Relayer should only use events emitted by this function to submit fills with updated fees, otherwise they
+     * @notice Relayer should only use events emitted by this function to submit fills with updated fees, otherwise they
      * risk their fills getting disputed for being invalid, for example if the depositor never actually signed the
      * update fee message.
-     * @dev This function will revert if the depositor did not sign a message containing the updated fee for the deposit
-     * ID stored in this contract. If the deposit ID is for another contract, or the depositor address is incorrect,
-     * or the updated fee is incorrect, then the signature will not match and this function will revert.
+     * @notice This function will revert if the depositor did not sign a message containing the updated fee for the
+     * deposit ID stored in this contract. If the deposit ID is for another contract, or the depositor address is
+     * incorrect, or the updated fee is incorrect, then the signature will not match and this function will revert.
      * @param depositor Signer of the update fee message who originally submitted the deposit. If the deposit doesn't
      * exist, then the relayer will not be able to fill any relay, so the caller should validate that the depositor
      * did in fact submit a relay.
@@ -279,7 +331,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) public nonReentrant {
+    ) public override nonReentrant {
         _verifyUpdateRelayerFeeMessage(depositor, chainId(), newRelayerFeePct, depositId, depositorSignature);
 
         // Assuming the above checks passed, a relayer can take the signature and the updated relayer fee information
@@ -291,6 +343,31 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *         RELAYER FUNCTIONS          *
      **************************************/
 
+    /**
+     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the receipient.
+     * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
+     * relay submission will be validated by off-chain "data workers" who can dispute this relay if any part is invalid.
+     * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
+     * then relayer will not receive any refund.
+     * @notice All of the deposit data can be found via on-chain events from the origin SpokePool, except for the
+     * `realizedLpFeePct` which is a function of the HubPool's utilization at the deposit quote time. This fee %
+     * is deterministic based on the quote time, so the relayer should just compute it using the canonical algorithm
+     * as described in a UMIP linked to the HubPool's identifier.
+     * @param depositor Depositor on origin chain who set this chain as the destination chain.
+     * @param recipient Specified recipient on this chain.
+     * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
+     * and this chain ID via a mapping on the HubPool.
+     * @param amount Full size of the deposit.
+     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than `amount`, then caller will
+     * send recipient the full relay amount.
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed.
+     * @param originChainId Chain of SpokePool where deposit originated.
+     * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
+     * quote time.
+     * @param relayerFeePct Fee % to keep as relayer, specified by depositor.
+     * @param depositId Unique deposit ID on origin spoke pool.
+     */
     function fillRelay(
         address depositor,
         address recipient,
@@ -323,6 +400,27 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData);
     }
 
+    /**
+     * @notice Called by relayer to execute same logic as calling `fillRelay` except that relayer is using an updated
+     * relayer fee %. The fee % must have been emitted in a message cryptographically signed by the depositor.
+     * @notice By design, the depositor probably emitted the message with the updated fee by calling `speedUpRelay()`.
+     * @param depositor Depositor on origin chain who set this chain as the destination chain.
+     * @param recipient Specified recipient on this chain.
+     * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
+     * and this chain ID via a mapping on the HubPool.
+     * @param amount Full size of the deposit.
+     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than `amount`, then caller will
+     * send recipient the full relay amount.
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed.
+     * @param originChainId Chain of SpokePool where deposit originated.
+     * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
+     * quote time.
+     * @param relayerFeePct Original fee % to keep as relayer set by depositor.
+     * @param newRelayerFeePct New fee % to keep as relayer also specified by depositor.
+     * @param depositId Unique deposit ID on origin spoke pool.
+     * @param depositorSignature Depositor-signed message containing updated fee %.
+     */
     function fillRelayWithUpdatedFee(
         address depositor,
         address recipient,
@@ -336,7 +434,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) public nonReentrant {
+    ) public override nonReentrant {
         _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
 
         // Now follow the default `fillRelay` flow with the updated fee and the original relay hash.
@@ -359,6 +457,23 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**************************************
      *         DATA WORKER FUNCTIONS      *
      **************************************/
+
+    /**
+     * @notice Executes a slow relay leaf stored as part of a root bundle. Will send the full amount remaining in the
+     * relay to the recipient, less fees.
+     * @param depositor Depositor on origin chain who set this chain as the destination chain.
+     * @param recipient Specified recipient on this chain.
+     * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
+     * and this chain ID via a mapping on the HubPool.
+     * @param amount Full size of the deposit.
+     * @param originChainId Chain of SpokePool where deposit originated.
+     * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
+     * quote time.
+     * @param relayerFeePct Original fee % to keep as relayer set by depositor.
+     * @param depositId Unique deposit ID on origin spoke pool.
+     * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
+     * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
+     */
     function executeSlowRelayRoot(
         address depositor,
         address recipient,
@@ -370,7 +485,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 depositId,
         uint32 rootBundleId,
         bytes32[] memory proof
-    ) public virtual nonReentrant {
+    ) public virtual override nonReentrant {
         _executeSlowRelayRoot(
             depositor,
             recipient,
@@ -385,11 +500,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
     }
 
+    /**
+     * @notice Executes a relayer refund leaf stored as part of a root bundle. Will send the relayer the amount they
+     * sent to the recipient plus a relayer fee.
+     * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
+     * @param relayerRefundLeaf Contains all data neccessary to reconstruct leaf contained in root bundle and to
+     * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
+     * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
+     */
     function executeRelayerRefundRoot(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public virtual nonReentrant {
+    ) public virtual override nonReentrant {
         _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
     }
 
@@ -397,8 +520,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *           VIEW FUNCTIONS           *
      **************************************/
 
-    // Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the caller to manually set this.
-    function chainId() public view virtual returns (uint256) {
+    /**
+     * @notice Returns chain ID for this network.
+     * @dev Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the implementer to override this.
+     */
+    function chainId() public view override returns (uint256) {
         return block.chainid;
     }
 
@@ -406,6 +532,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
+    // Verifies inclusion proof of leaf in root, sends relayer their refund, and sends to HubPool any rebalance
+    // transfers.
     function _executeRelayerRefundRoot(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
@@ -461,6 +589,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
     }
 
+    // Verifies inclusion proof of leaf in root and sends recipient remainder of relay. Marks relay as filled.
     function _executeSlowRelayRoot(
         address depositor,
         address recipient,
@@ -510,6 +639,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         emit SetHubPool(hubPool);
     }
 
+    // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
     function _bridgeTokensToHubPool(SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf) internal virtual;
 
     function _verifyUpdateRelayerFeeMessage(
@@ -518,7 +648,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) internal {
+    ) internal view {
         // A depositor can request to speed up an un-relayed deposit by signing a hash containing the relayer
         // fee % to update to and information uniquely identifying the deposit to relay. This information ensures
         // that this signature cannot be re-used for other deposits. The version string is included as a precaution
@@ -565,7 +695,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         return (amount * (1e18 - feesPct)) / 1e18;
     }
 
-    // Should we make this public for the relayer's convenience?
     function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(relayData));
     }
@@ -580,6 +709,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         }
     }
 
+    // @notice Caller specifies the max amount of tokens to send to user. Based on this amount and the amount of the
+    // relay remaining (as stored in the relayFills mapping), pull the amount of tokens from the caller ancillaryData
+    // and send to the caller.
+    // @dev `relayFills` keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
+    // numbers for the `maxTokensToSend` parameter or convenient numbers like 100 (i.e. relayers who will fully
+    // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
     function _fillRelay(
         bytes32 relayHash,
         RelayData memory relayData,
@@ -599,8 +734,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (maxTokensToSend == 0) return 0;
 
-        // todo: consider if this code block could be simplified. improve the branching comments and perhaps change the
-        // variable names.
+        // Derive the amount of the relay filled if the caller wants to send exactly `maxTokensToSend` tokens to
+        // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
+        // is 100, and the fee %'s total 5%, then this computation would return ~10.5, meaning that to fill 10.5/100
+        // of the full relay size, the caller would need to send 10 tokens to the user.
         fillAmountPreFees = _computeAmountPreFees(
             maxTokensToSend,
             (relayData.realizedLpFeePct + updatableRelayerFeePct)
@@ -608,29 +745,42 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
         // we'll pull exactly enough tokens to complete the relay.
         uint256 amountToSend = maxTokensToSend;
-        if (relayData.amount - relayFills[relayHash] < fillAmountPreFees) {
-            fillAmountPreFees = relayData.amount - relayFills[relayHash];
+        uint256 amountRemainingInRelay = relayData.amount - relayFills[relayHash];
+        if (amountRemainingInRelay < fillAmountPreFees) {
+            fillAmountPreFees = amountRemainingInRelay;
+
+            // The user will fulfill the remainder of the relay, so we need to compute exactly how many tokens post-fees
+            // that they need to send to the recipient.
             amountToSend = _computeAmountPostFees(
                 fillAmountPreFees,
                 relayData.realizedLpFeePct + updatableRelayerFeePct
             );
         }
+
+        // `relayFills` keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
+        // numbers for the `maxTokensToSend` parameter or convenient numbers like 100 (i.e. relayers who will fully
+        // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
         relayFills[relayHash] += fillAmountPreFees;
+
         // If relay token is weth then unwrap and send eth.
         if (relayData.destinationToken == address(weth)) {
-            // Note: WETH is already in the contract in the slow relay case.
+            // Note: `useContractFunds` is True if we want to send funds to the recipient directly out of this contract,
+            // otherwise we expect the caller to send funds to the recipient. If `useContractFunds` is True and the
+            // recipient wants WETH, then we can assume that WETH is already in the contract, otherwise we'll need the
+            // the user to send WETH to this contract. Regardless, we'll need to unwrap it before sending to the user.
             if (!useContractFunds)
                 IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
             _unwrapWETHTo(payable(relayData.recipient), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
-            // Note: send token directly from the contract to the user in the slow relay case.
+            // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!useContractFunds)
                 IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
             else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
         }
     }
 
+    // The following internal methods emit events with many params to overcome solidity stack too deep issues.
     function _emitFillRelay(
         bytes32 relayHash,
         uint256 fillAmount,
@@ -676,6 +826,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
     }
 
+    // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
+    // certain admin functions. For L2 contracts, the cross chain admin refers to some L1 address or contract, and for
+    // L1, this would just be the same admin of the HubPool.
     function _requireAdminSender() internal virtual;
 
     // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
