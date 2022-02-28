@@ -85,6 +85,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address recipient,
         address indexed depositor
     );
+    event RequestedSpeedUpDeposit(
+        uint64 newRelayerFeePct,
+        uint32 indexed depositId,
+        address indexed depositor,
+        bytes depositorSignature
+    );
     event FilledRelay(
         bytes32 indexed relayHash,
         uint256 amount,
@@ -250,6 +256,37 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         numberOfDeposits += 1;
     }
 
+    // Convenience method that depositor can use to signal to relayer to use updated fee.
+    /**
+     * @notice Convenience method that depositor can use to signal to relayer to use updated fee.
+     * @dev Relayer should only use events emitted by this function to submit fills with updated fees, otherwise they
+     * risk their fills getting disputed for being invalid, for example if the depositor never actually signed the
+     * update fee message.
+     * @dev This function will revert if the depositor did not sign a message containing the updated fee for the deposit
+     * ID stored in this contract. If the deposit ID is for another contract, or the depositor address is incorrect,
+     * or the updated fee is incorrect, then the signature will not match and this function will revert.
+     * @param depositor Signer of the update fee message who originally submitted the deposit. If the deposit doesn't
+     * exist, then the relayer will not be able to fill any relay, so the caller should validate that the depositor
+     * did in fact submit a relay.
+     * @param newRelayerFeePct New relayer fee that relayers can use.
+     * @param depositId Deposit to update fee for that originated in this contract.
+     * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
+     * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
+     * EIP-191 standard. See more in the `_verifyUpdateRelayerFeeMessage()` comments.
+     */
+    function speedUpDeposit(
+        address depositor,
+        uint64 newRelayerFeePct,
+        uint32 depositId,
+        bytes memory depositorSignature
+    ) public nonReentrant {
+        _verifyUpdateRelayerFeeMessage(depositor, chainId(), newRelayerFeePct, depositId, depositorSignature);
+
+        // Assuming the above checks passed, a relayer can take the signature and the updated relayer fee information
+        // from the following event to submit a fill with an updated fee %.
+        emit RequestedSpeedUpDeposit(newRelayerFeePct, depositId, depositor, depositorSignature);
+    }
+
     /**************************************
      *         RELAYER FUNCTIONS          *
      **************************************/
@@ -300,26 +337,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 depositId,
         bytes memory depositorSignature
     ) public nonReentrant {
-        // Grouping the signature validation logic into brackets to address stack too deep error.
-        {
-            // Depositor should have signed a hash of the relayer fee % to update to and information uniquely identifying
-            // the deposit to relay. This ensures that this signature cannot be re-used for other deposits. The version
-            // string is included as a precaution in case this contract is upgraded.
-            // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
-            // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
-            bytes32 expectedDepositorMessageHash = keccak256(
-                abi.encode("ACROSS-V2-FEE-1.0", newRelayerFeePct, depositId, originChainId)
-            );
-
-            // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
-            // JSON-RPC method as part of EIP-191. We use OZ's signature checker library with adds support for
-            // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
-            // If the depositor signed a message with a different updated fee (or any other param included in the
-            // above keccak156 hash), then this will revert.
-            bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
-
-            _verifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
-        }
+        _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
 
         // Now follow the default `fillRelay` flow with the updated fee and the original relay hash.
         RelayData memory relayData = RelayData({
@@ -494,8 +512,36 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     function _bridgeTokensToHubPool(SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf) internal virtual;
 
-    // Allow L2 to implement chain specific recovering of signers from signatures because some L2s might not support
-    // ecrecover, such as those with account abstraction like ZKSync.
+    function _verifyUpdateRelayerFeeMessage(
+        address depositor,
+        uint256 originChainId,
+        uint64 newRelayerFeePct,
+        uint32 depositId,
+        bytes memory depositorSignature
+    ) internal {
+        // A depositor can request to speed up an un-relayed deposit by signing a hash containing the relayer
+        // fee % to update to and information uniquely identifying the deposit to relay. This information ensures
+        // that this signature cannot be re-used for other deposits. The version string is included as a precaution
+        // in case this contract is upgraded.
+        // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
+        // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
+        bytes32 expectedDepositorMessageHash = keccak256(
+            abi.encode("ACROSS-V2-FEE-1.0", newRelayerFeePct, depositId, originChainId)
+        );
+
+        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
+        // JSON-RPC method as part of EIP-191. We use OZ's signature checker library which adds support for
+        // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
+        // If the depositor signed a message with a different updated fee (or any other param included in the
+        // above keccak156 hash), then this will revert.
+        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
+
+        _verifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
+    }
+
+    // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
+    // signers from signatures because some L2s might not support `ecrecover`, such as those with account abstraction
+    // like ZKSync.
     function _verifyDepositorUpdateFeeMessage(
         address depositor,
         bytes32 ethSignedMessageHash,

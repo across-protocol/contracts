@@ -101,14 +101,14 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
       await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, STARTING_LP_AMOUNT);
     }
 
-    const adapter = await (await getContractFactory("Ethereum_Adapter", owner)).deploy(hubPool.address);
+    const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
     const spoke = await (
       await getContractFactory("MockSpokePool", owner)
     ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
     await hubPool.setCrossChainContracts(1, adapter.address, spoke.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
-      const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy(hubPool.address);
+      const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
       const spoke = await (
         await getContractFactory("MockSpokePool", owner)
       ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);

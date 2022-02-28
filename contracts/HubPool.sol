@@ -563,6 +563,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) public view returns (address) {
         return whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
     }
+    
+    // This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for arbitrum
+    // calls, but may also be needed for others.
+    function loadEthForL2Calls() public payable {}
 
     /*************************************************
      *              INTERNAL FUNCTIONS               *
@@ -618,13 +622,18 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                IERC20(l1Token).safeTransfer(address(adapter), uint256(netSendAmounts[i]));
-                adapter.relayTokens(
-                    l1Token, // l1Token.
-                    l2Token, // l2Token.
-                    uint256(netSendAmounts[i]), // amount.
-                    crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                // Perform delegatecall to use the adapter's code with this contract's context. We opt for delegatecall's
+                // complexity in exchange for lower gas costs.
+                (bool success, ) = address(adapter).delegatecall(
+                    abi.encodeWithSignature(
+                        "relayTokens(address,address,uint256,address)",
+                        l1Token, // l1Token.
+                        whitelistedRoutes[l2Token], // l2Token.
+                        uint256(netSendAmounts[i]), // amount.
+                        crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                    )
                 );
+                require(success, "delegatecall failed");
 
                 // Liquid reserves is decreased by the amount sent. utilizedReserves is increased by the amount sent.
                 pooledTokens[l1Token].utilizedReserves += netSendAmounts[i];
@@ -638,14 +647,20 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     function _relayRootBundleToSpokePool(uint256 chainId) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        adapter.relayMessage(
-            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+
+        // Perform delegatecall to use the adapter's code with this contract's context.
+        (bool success, ) = address(adapter).delegatecall(
             abi.encodeWithSignature(
-                "relayRootBundle(bytes32,bytes32)",
-                rootBundleProposal.relayerRefundRoot,
-                rootBundleProposal.slowRelayRoot
-            ) // message
+                "relayMessage(address,bytes)",
+                crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+                abi.encodeWithSignature(
+                    "relayRootBundle(bytes32,bytes32)",
+                    rootBundleProposal.relayerRefundRoot,
+                    rootBundleProposal.slowRelayRoot
+                ) // message
+            )
         );
+        require(success, "delegatecall failed");
     }
 
     function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
@@ -741,10 +756,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     function _relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        adapter.relayMessage(
-            crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
-            functionData
+        require(address(adapter) != address(0), "Adapter not initialized");
+
+        // Perform delegatecall to use the adapter's code with this contract's context.
+        (bool success, ) = address(adapter).delegatecall(
+            abi.encodeWithSignature(
+                "relayMessage(address,bytes)",
+                crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+                functionData
+            )
         );
+        require(success, "delegatecall failed");
         emit SpokePoolAdminFunctionTriggered(chainId, functionData);
     }
 
@@ -765,7 +787,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // over the optimism bridge, for example. If false then this was set as a result of unwinding LP tokens, with the
     // intention of sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
     function _depositEthToWeth() internal {
-        if (functionCallStackOriginatesFromOutsideThisContract()) weth.deposit{ value: address(this).balance }();
+        if (functionCallStackOriginatesFromOutsideThisContract()) weth.deposit{ value: msg.value }();
     }
 
     // Added to enable the HubPool to receive ETH. This will occur both when the HubPool unwraps WETH to send to LPs and

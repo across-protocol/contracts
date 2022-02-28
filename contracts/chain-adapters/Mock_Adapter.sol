@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./Base_Adapter.sol";
+import "../interfaces/AdapterInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -9,14 +9,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
  * BridgeAdmin can call cross-chain administrative functions on the L2 SpokePool via this messenger.
  */
-contract Mock_Adapter is Base_Adapter {
+contract Mock_Adapter is AdapterInterface {
     event RelayMessageCalled(address target, bytes message, address caller);
 
     event RelayTokensCalled(address l1Token, address l2Token, uint256 amount, address to, address caller);
 
-    Mock_Bridge public bridge;
+    Mock_Bridge public immutable bridge;
 
-    constructor(address _hubPool) Base_Adapter(_hubPool) {
+    constructor() {
         bridge = new Mock_Bridge();
     }
 
