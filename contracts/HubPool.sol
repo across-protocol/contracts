@@ -461,7 +461,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This should be done
      * at the conclusion of an L2 -> L1 token transfer via the canonical token bridge, for example, when this contract's
-     * reserves do not reflect all of its token balance.
+     * reserves do not reflect all of its token balance due to new tokens being dropped onto the contract at the conclusion of a bridging action.
      */
     function sync(address l1Token) public override nonReentrant {
         _sync(l1Token);
