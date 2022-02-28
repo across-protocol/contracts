@@ -78,7 +78,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // "route".
     mapping(bytes32 => address) private whitelistedRoutes;
 
-    // Mapping of L1 token addresses to the associated pool information.
     struct PooledToken {
         // LP token given to LPs of a specific L1 token.
         address lpToken;
@@ -94,6 +93,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Number of LP funds reserved to pay out to LPs as fees.
         uint256 undistributedLpFees;
     }
+
+    // Mapping of L1 token addresses to the associated pool information.
     mapping(address => PooledToken) public pooledTokens;
 
     // Heler contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
