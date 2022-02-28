@@ -274,7 +274,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     ) public payable override onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct < 0.5e18, "invalid relayer fee");
-        // Note that we assume that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
+        // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // block.timestamp is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
         // buffer of this contract's block time to allow for this variance.
         // Note also that `quoteTimestamp` cannot be less than the buffer otherwise the following arithmetic can result
