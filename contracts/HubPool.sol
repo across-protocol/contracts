@@ -583,7 +583,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Caller stakes a bond to dispute the current root bundle proposal assuming it has not passed liveness
      * yet. The proposal is deleted, allowing a follow-up proposal to be submitted, and the dispute is sent to the
-     * optimistic oracle to be adjudicated.
+     * optimistic oracle to be adjudicated. Can only be called within the liveness period of the current proposal.
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
