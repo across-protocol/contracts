@@ -346,7 +346,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**
      * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the receipient.
      * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
-     * relay submission will be validated by off-chain "data workers" who can dispute this relay if any part is invalid.
+     * relay submission will be validated by off-chain data workers who can dispute this relay if any part is invalid.
      * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
      * then relayer will not receive any refund.
      * @notice All of the deposit data can be found via on-chain events from the origin SpokePool, except for the
