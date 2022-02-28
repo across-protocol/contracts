@@ -479,7 +479,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * Once the challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be
      * called; moreover, this method can't be called again until all leafs are executed.
      * @param bundleEvaluationBlockNumbers should contain the latest block number for all chains, even if there are no
-     * relays contained on some of them. But the usage of this variable should be defined in an off chain UMIP.
+     * relays contained on some of them. The usage of this variable should be defined in an off chain UMIP.
      * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root.
      * @param relayerRefundRoot Relayer refund root to publish to Spoke Pool where a data worker can execute leaves to
      * refund relayers.
