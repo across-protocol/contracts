@@ -61,8 +61,13 @@ describe("HubPool Root Bundle Execution", function () {
     expect(await dai.balanceOf(hubPool.address)).to.equal(consts.amountToLp.mul(10).sub(daiToSend));
     expect(await dai.balanceOf(await mockAdapter.bridge())).to.equal(daiToSend);
 
+    // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
+    const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
+
     // Check the mockAdapter was called with the correct arguments for each method.
-    const relayMessageEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayMessageCalled());
+    const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
+      mockAdapterAtHubPool.filters.RelayMessageCalled()
+    );
     expect(relayMessageEvents.length).to.equal(4); // Exactly four message send from L1->L2. 3 for each whitelist route
     // and 1 for the initiateRelayerRefund.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
@@ -73,7 +78,7 @@ describe("HubPool Root Bundle Execution", function () {
       ])
     );
 
-    const relayTokensEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayTokensCalled());
+    const relayTokensEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayTokensCalled());
     expect(relayTokensEvents.length).to.equal(2); // Exactly two token transfers from L1->L2.
     expect(relayTokensEvents[0].args?.l1Token).to.equal(weth.address);
     expect(relayTokensEvents[0].args?.l2Token).to.equal(l2Weth);

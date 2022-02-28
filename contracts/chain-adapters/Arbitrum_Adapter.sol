@@ -5,8 +5,6 @@ import "../interfaces/AdapterInterface.sol";
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
 
-import "@uma/core/contracts/common/implementation/Lockable.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ArbitrumL1InboxLike {

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./Base_Adapter.sol";
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
 
@@ -28,24 +27,23 @@ interface IFxStateSender {
 /**
  * @notice Sends cross chain messages Polygon L2 network.
  */
-contract Polygon_Adapter is Base_Adapter, Lockable {
+contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
-    IRootChainManager public rootChainManager;
-    IFxStateSender public fxStateSender;
-    WETH9 public l1Weth;
+    IRootChainManager public immutable rootChainManager;
+    IFxStateSender public immutable fxStateSender;
+    WETH9 public immutable l1Weth;
 
     constructor(
-        address _hubPool,
         IRootChainManager _rootChainManager,
         IFxStateSender _fxStateSender,
         WETH9 _l1Weth
-    ) Base_Adapter(_hubPool) {
+    ) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
         l1Weth = _l1Weth;
     }
 
-    function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
+    function relayMessage(address target, bytes memory message) external payable override {
         fxStateSender.sendMessageToChild(target, message);
         emit MessageRelayed(target, message);
     }
@@ -55,7 +53,7 @@ contract Polygon_Adapter is Base_Adapter, Lockable {
         address l2Token,
         uint256 amount,
         address to
-    ) external payable override nonReentrant onlyHubPool {
+    ) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
@@ -66,7 +64,4 @@ contract Polygon_Adapter is Base_Adapter, Lockable {
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
-
-    // Added to enable the Polygon_Adapter to receive ETH. used when unwrapping WETH.
-    receive() external payable {}
 }
