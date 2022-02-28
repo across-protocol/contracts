@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./Base_Adapter.sol";
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
 
@@ -10,12 +9,10 @@ import "@uma/core/contracts/common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract Ethereum_Adapter is Base_Adapter, Lockable {
+contract Ethereum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
-    constructor(address _hubPool) Base_Adapter(_hubPool) {}
-
-    function relayMessage(address target, bytes memory message) external payable override nonReentrant onlyHubPool {
+    function relayMessage(address target, bytes memory message) external payable override {
         _executeCall(target, message);
         emit MessageRelayed(target, message);
     }
@@ -26,7 +23,7 @@ contract Ethereum_Adapter is Base_Adapter, Lockable {
         // on this network.
         uint256 amount,
         address to
-    ) external payable override nonReentrant onlyHubPool {
+    ) external payable override {
         IERC20(l1Token).safeTransfer(to, amount);
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
@@ -46,6 +43,4 @@ contract Ethereum_Adapter is Base_Adapter, Lockable {
         }
         require(success, "execute call failed");
     }
-
-    receive() external payable {}
 }

@@ -45,7 +45,7 @@ describe("Optimism Chain Adapter", function () {
 
     optimismAdapter = await (
       await getContractFactory("Optimism_Adapter", owner)
-    ).deploy(weth.address, hubPool.address, l1CrossDomainMessenger.address, l1StandardBridge.address);
+    ).deploy(weth.address, l1CrossDomainMessenger.address, l1StandardBridge.address);
 
     await hubPool.setCrossChainContracts(optimismChainId, optimismAdapter.address, mockSpoke.address);
     await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Weth, weth.address);
@@ -56,17 +56,11 @@ describe("Optimism Chain Adapter", function () {
     await hubPool.whitelistRoute(l1ChainId, optimismChainId, dai.address, l2Dai);
   });
 
-  it("Only owner can set l2GasValues", async function () {
-    expect(await optimismAdapter.callStatic.l2GasLimit()).to.equal(sampleL2Gas);
-    await expect(optimismAdapter.connect(liquidityProvider).setL2GasLimit(sampleL2Gas + 1)).to.be.reverted;
-    await optimismAdapter.connect(owner).setL2GasLimit(sampleL2Gas + 1);
-    expect(await optimismAdapter.callStatic.l2GasLimit()).to.equal(sampleL2Gas + 1);
-  });
   it("relayMessage calls spoke pool functions", async function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
     expect(await hubPool.relaySpokePoolAdminFunction(optimismChainId, functionCallData))
-      .to.emit(optimismAdapter, "MessageRelayed")
+      .to.emit(optimismAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
     expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(
       mockSpoke.address,

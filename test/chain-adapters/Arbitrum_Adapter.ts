@@ -38,10 +38,10 @@ describe("Arbitrum Chain Adapter", function () {
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
-    ).deploy(hubPool.address, l1Inbox.address, l1ERC20Gateway.address);
+    ).deploy(l1Inbox.address, l1ERC20Gateway.address);
 
-    // Seed the Arbitrum adapter with some funds so it can send L1->L2 messages.
-    await liquidityProvider.sendTransaction({ to: arbitrumAdapter.address, value: toWei("1") });
+    // Seed the HubPool some funds so it can send L1->L2 messages.
+    await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
 
     await hubPool.setCrossChainContracts(arbitrumChainId, arbitrumAdapter.address, mockSpoke.address);
 
@@ -55,40 +55,12 @@ describe("Arbitrum Chain Adapter", function () {
     await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth);
   });
 
-  it("Only owner can set l2GasValues", async function () {
-    expect(await arbitrumAdapter.callStatic.l2GasLimit()).to.equal(consts.sampleL2Gas);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2GasLimit(consts.sampleL2Gas + 1)).to.be.reverted;
-    await arbitrumAdapter.connect(owner).setL2GasLimit(consts.sampleL2Gas + 1);
-    expect(await arbitrumAdapter.callStatic.l2GasLimit()).to.equal(consts.sampleL2Gas + 1);
-  });
-
-  it("Only owner can set l2MaxSubmissionCost", async function () {
-    expect(await arbitrumAdapter.callStatic.l2MaxSubmissionCost()).to.equal(consts.sampleL2MaxSubmissionCost);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2MaxSubmissionCost(consts.sampleL2Gas + 1)).to.be
-      .reverted;
-    await arbitrumAdapter.connect(owner).setL2MaxSubmissionCost(consts.sampleL2Gas + 1);
-    expect(await arbitrumAdapter.callStatic.l2MaxSubmissionCost()).to.equal(consts.sampleL2Gas + 1);
-  });
-
-  it("Only owner can set l2GasPrice", async function () {
-    expect(await arbitrumAdapter.callStatic.l2GasPrice()).to.equal(consts.sampleL2GasPrice);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2GasPrice(consts.sampleL2Gas + 1)).to.be.reverted;
-    await arbitrumAdapter.connect(owner).setL2GasPrice(consts.sampleL2Gas + 1);
-    expect(await arbitrumAdapter.callStatic.l2GasPrice()).to.equal(consts.sampleL2Gas + 1);
-  });
-
-  it("Only owner can set l2RefundL2Address", async function () {
-    expect(await arbitrumAdapter.callStatic.l2RefundL2Address()).to.equal(owner.address);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2RefundL2Address(liquidityProvider.address)).to.be
-      .reverted;
-    await arbitrumAdapter.connect(owner).setL2RefundL2Address(liquidityProvider.address);
-    expect(await arbitrumAdapter.callStatic.l2RefundL2Address()).to.equal(liquidityProvider.address);
-  });
   it("relayMessage calls spoke pool functions", async function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
+
     expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
-      .to.emit(arbitrumAdapter, "MessageRelayed")
+      .to.emit(arbitrumAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
     expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice;
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(

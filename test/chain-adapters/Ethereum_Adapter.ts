@@ -27,7 +27,7 @@ describe("Ethereum Chain Adapter", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, consts.amountToLp);
     await dai.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
 
-    ethAdapter = await (await getContractFactory("Ethereum_Adapter", owner)).deploy(hubPool.address);
+    ethAdapter = await (await getContractFactory("Ethereum_Adapter", owner)).deploy();
 
     await hubPool.setCrossChainContracts(l1ChainId, ethAdapter.address, mockSpoke.address);
 
@@ -41,7 +41,7 @@ describe("Ethereum Chain Adapter", function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
     expect(await hubPool.relaySpokePoolAdminFunction(l1ChainId, functionCallData))
-      .to.emit(ethAdapter, "MessageRelayed")
+      .to.emit(ethAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
 
     expect(await mockSpoke.crossDomainAdmin()).to.equal(newAdmin);
@@ -53,7 +53,7 @@ describe("Ethereum Chain Adapter", function () {
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     expect(await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0])))
-      .to.emit(ethAdapter, "TokensRelayed")
+      .to.emit(ethAdapter.attach(hubPool.address), "TokensRelayed")
       .withArgs(dai.address, dai.address, tokensSendToL2, mockSpoke.address);
   });
 });
