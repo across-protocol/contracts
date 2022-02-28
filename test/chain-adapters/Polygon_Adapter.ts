@@ -54,7 +54,7 @@ describe("Polygon Chain Adapter", function () {
 
     polygonAdapter = await (
       await getContractFactory("Polygon_Adapter", owner)
-    ).deploy(hubPool.address, rootChainManager.address, fxStateSender.address, weth.address);
+    ).deploy(rootChainManager.address, fxStateSender.address, weth.address);
 
     await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
     await hubPool.whitelistRoute(polygonChainId, l1ChainId, l2Weth, weth.address);
@@ -69,7 +69,7 @@ describe("Polygon Chain Adapter", function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
     expect(await hubPool.relaySpokePoolAdminFunction(polygonChainId, functionCallData))
-      .to.emit(polygonAdapter, "MessageRelayed")
+      .to.emit(polygonAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
 
     expect(fxStateSender.sendMessageToChild).to.have.been.calledWith(mockSpoke.address, functionCallData);
