@@ -57,9 +57,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint64 unclaimedPoolRebalanceLeafCount;
         // Contains leaves instructing this contract to send funds to SpokePools.
         bytes32 poolRebalanceRoot;
-        // Relayer refund merkle root to be published to an L2.
+        // Relayer refund merkle root to be published to a SpokePool.
         bytes32 relayerRefundRoot;
-        // Slow relay merkle root to be published to an L2.
+        // Slow relay merkle root to be published to a SpokePool.
         bytes32 slowRelayRoot;
         // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
         uint256 claimedBitMap;
@@ -306,8 +306,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Sets cross chain relay helper contracts for L2 chain ID. Callable only by owner.
      * @param l2ChainId Chain to set contracts for.
-     * @param adapter Adapter used to relay messages and tokens to L2 spoke pool.
-     * @param spokePool Recipient of relayed messages and tokens on L2.
+     * @param adapter Adapter used to relay messages and tokens to spoke pool.
+     * @param spokePool Recipient of relayed messages and tokens on SpokePool.
      */
 
     function setCrossChainContracts(
@@ -435,20 +435,20 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Returns % of liquid reserves currently being "used" and sitting in L2 SpokePools.
+     * @notice Returns % of liquid reserves currently being "used" and sitting in SpokePools.
      * @param l1Token L1 token to query utilization for.
-     * @return % of liquid reserves currently being "used" and sitting in L2 SpokePools.
+     * @return % of liquid reserves currently being "used" and sitting in SpokePools.
      */
     function liquidityUtilizationCurrent(address l1Token) public override nonReentrant returns (uint256) {
         return _liquidityUtilizationPostRelay(l1Token, 0);
     }
 
     /**
-     * @notice Returns % of liquid reserves currently being "used" and sitting in L2 SpokePools and accounting for
+     * @notice Returns % of liquid reserves currently being "used" and sitting in SpokePools and accounting for
      * relayedAmount of tokens to be withdrawn from the pool.
      * @param l1Token L1 token to query utilization for.
      * @param relayedAmount The higher this amount, the higher the utilization.
-     * @return % of liquid reserves currently being "used" and sitting in L2 SpokePools plus the relayedAmount.
+     * @return % of liquid reserves currently being "used" and sitting in SpokePools plus the relayedAmount.
      */
     function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
         public
