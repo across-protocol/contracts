@@ -22,34 +22,12 @@ contract Ethereum_SpokePool is SpokePoolInterface, SpokePool, Ownable {
     ) SpokePool(msg.sender, _hubPool, _wethAddress, timerAddress) {}
 
     /**************************************
-     *          ADMIN FUNCTIONS           *
+     *          INTERNAL FUNCTIONS           *
      **************************************/
-
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyOwner nonReentrant {
-        _setCrossDomainAdmin(newCrossDomainAdmin);
-    }
-
-    function setHubPool(address newHubPool) public override onlyOwner nonReentrant {
-        _setHubPool(newHubPool);
-    }
-
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enable
-    ) public override onlyOwner nonReentrant {
-        _setEnableRoute(originToken, destinationChainId, enable);
-    }
-
-    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyOwner nonReentrant {
-        _setDepositQuoteTimeBuffer(buffer);
-    }
-
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyOwner nonReentrant {
-        _relayRootBundle(relayerRefundRoot, slowRelayRoot);
-    }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         IERC20(relayerRefundLeaf.l2TokenAddress).transfer(hubPool, relayerRefundLeaf.amountToReturn);
     }
+
+    function _requireAdminSender() internal override onlyOwner {}
 }
