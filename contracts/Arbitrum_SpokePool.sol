@@ -45,45 +45,16 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         _;
     }
 
-    /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
-     **************************************/
+    /********************************************************
+     *    ARBITRUM-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
+     ********************************************************/
 
-    function setL2GatewayRouter(address newL2GatewayRouter) public onlyFromCrossDomainAdmin nonReentrant {
+    function setL2GatewayRouter(address newL2GatewayRouter) public onlyAdmin nonReentrant {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
-    function whitelistToken(address l2Token, address l1Token) public onlyFromCrossDomainAdmin nonReentrant {
+    function whitelistToken(address l2Token, address l1Token) public onlyAdmin nonReentrant {
         _whitelistToken(l2Token, l1Token);
-    }
-
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyFromCrossDomainAdmin nonReentrant {
-        _setCrossDomainAdmin(newCrossDomainAdmin);
-    }
-
-    function setHubPool(address newHubPool) public override onlyFromCrossDomainAdmin nonReentrant {
-        _setHubPool(newHubPool);
-    }
-
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enable
-    ) public override onlyFromCrossDomainAdmin nonReentrant {
-        _setEnableRoute(originToken, destinationChainId, enable);
-    }
-
-    function setDepositQuoteTimeBuffer(uint32 buffer) public override onlyFromCrossDomainAdmin nonReentrant {
-        _setDepositQuoteTimeBuffer(buffer);
-    }
-
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot)
-        public
-        override
-        onlyFromCrossDomainAdmin
-        nonReentrant
-    {
-        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
     }
 
     /**************************************
@@ -111,9 +82,14 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
     }
 
     // l1 addresses are transformed during l1->l2 calls. See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
+    // This cannot be pulled directly from Arbitrum contracts because their contracts are not 0.8.X compatible and this operation takes advantage of
+    // overflows, whose behavior changed in 0.8.0.
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
+        // Allows overflows as explained above.
         unchecked {
             l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
         }
     }
+
+    function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
 }

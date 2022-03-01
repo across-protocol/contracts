@@ -6,13 +6,23 @@ import {
   bondAmount,
   mockSlowRelayRoot,
 } from "./../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, hre } from "../utils";
-import { getContractFactory, seedWallet, randomAddress } from "../utils";
+import {
+  ethers,
+  expect,
+  Contract,
+  FakeContract,
+  SignerWithAddress,
+  createFake,
+  getContractFactory,
+  seedWallet,
+  randomAddress,
+  hre,
+} from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
 let hubPool: Contract,
-  optimismAdapter: Contract,
+  polygonAdapter: Contract,
   mockAdapter: Contract,
   weth: Contract,
   dai: Contract,
@@ -20,12 +30,12 @@ let hubPool: Contract,
   mockSpoke: Contract;
 let l2Weth: string, l2Dai: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
-let l1CrossDomainMessenger: FakeContract, l1StandardBridge: FakeContract;
+let rootChainManager: FakeContract, fxStateSender: FakeContract;
 
-const optimismChainId = 10;
+const polygonChainId = 137;
 let l1ChainId: number;
 
-describe("Optimism Chain Adapter", function () {
+describe("Polygon Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
@@ -41,70 +51,70 @@ describe("Optimism Chain Adapter", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, amountToLp);
     await dai.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
 
-    l1StandardBridge = await createFake("L1StandardBridge");
-    l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
+    rootChainManager = await createFake("RootChainManagerMock");
+    fxStateSender = await createFake("FxStateSenderMock");
 
-    optimismAdapter = await (
-      await getContractFactory("Optimism_Adapter", owner)
-    ).deploy(weth.address, l1CrossDomainMessenger.address, l1StandardBridge.address);
+    polygonAdapter = await (
+      await getContractFactory("Polygon_Adapter", owner)
+    ).deploy(rootChainManager.address, fxStateSender.address, weth.address);
 
-    await hubPool.setCrossChainContracts(optimismChainId, optimismAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Weth, weth.address);
-    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Dai, dai.address);
+    await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
+    await hubPool.whitelistRoute(polygonChainId, l1ChainId, l2Weth, weth.address);
+    await hubPool.whitelistRoute(polygonChainId, l1ChainId, l2Dai, dai.address);
 
     await hubPool.setCrossChainContracts(l1ChainId, mockAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(l1ChainId, optimismChainId, weth.address, l2Weth);
-    await hubPool.whitelistRoute(l1ChainId, optimismChainId, dai.address, l2Dai);
+    await hubPool.whitelistRoute(l1ChainId, polygonChainId, weth.address, l2Weth);
+    await hubPool.whitelistRoute(l1ChainId, polygonChainId, dai.address, l2Dai);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
-    expect(await hubPool.relaySpokePoolAdminFunction(optimismChainId, functionCallData))
-      .to.emit(optimismAdapter.attach(hubPool.address), "MessageRelayed")
+    expect(await hubPool.relaySpokePoolAdminFunction(polygonChainId, functionCallData))
+      .to.emit(polygonAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
-    expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(
-      mockSpoke.address,
-      functionCallData,
-      sampleL2Gas
-    );
+
+    expect(fxStateSender.sendMessageToChild).to.have.been.calledWith(mockSpoke.address, functionCallData);
   });
-  it("Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls", async function () {
+  it("Correctly calls appropriate Polygon bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, optimismChainId);
+    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, polygonChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
-    // The correct functions should have been called on the optimism contracts.
-    expect(l1StandardBridge.depositERC20To).to.have.been.calledOnce; // One token transfer over the bridge.
-    expect(l1StandardBridge.depositETHTo).to.have.callCount(0); // No ETH transfers over the bridge.
-    const expectedErc20L1ToL2BridgeParams = [dai.address, l2Dai, mockSpoke.address, tokensSendToL2, sampleL2Gas, "0x"];
-    expect(l1StandardBridge.depositERC20To).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
-    const expectedL2ToL1FunctionCallParams = [
+    // The correct functions should have been called on the polygon contracts.
+    expect(rootChainManager.depositFor).to.have.been.calledOnce; // One token transfer over the bridge.
+    expect(rootChainManager.depositEtherFor).to.have.callCount(0); // No ETH transfers over the bridge.
+
+    const expectedErc20L1ToL2BridgeParams = [
+      mockSpoke.address,
+      dai.address,
+      ethers.utils.defaultAbiCoder.encode(["uint256"], [tokensSendToL2]),
+    ];
+    expect(rootChainManager.depositFor).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
+    const expectedL1ToL2FunctionCallParams = [
       mockSpoke.address,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockSlowRelayRoot]),
-      sampleL2Gas,
     ];
-    expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
+    expect(fxStateSender.sendMessageToChild).to.have.been.calledWith(...expectedL1ToL2FunctionCallParams);
   });
   it("Correctly unwraps WETH and bridges ETH", async function () {
-    // Cant bridge WETH on optimism. Rather, unwrap WETH to ETH then bridge it. Validate the adapter does this.
-    const { leafs, tree } = await constructSingleChainTree(weth.address, 1, optimismChainId);
+    // Cant bridge WETH on polygon. Rather, unwrap WETH to ETH then bridge it. Validate the adapter does this.
+    const { leafs, tree } = await constructSingleChainTree(weth.address, 1, polygonChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
-    // The correct functions should have been called on the optimism contracts.
-    expect(l1StandardBridge.depositETHTo).to.have.been.calledOnce; // One eth transfer over the bridge.
-    expect(l1StandardBridge.depositERC20To).to.have.callCount(0); // No Token transfers over the bridge.
-    expect(l1StandardBridge.depositETHTo).to.have.been.calledWith(mockSpoke.address, sampleL2Gas, "0x");
+    // The correct functions should have been called on the polygon contracts.
+    expect(rootChainManager.depositEtherFor).to.have.been.calledOnce; // One eth transfer over the bridge.
+    expect(rootChainManager.depositFor).to.have.callCount(0); // No Token transfers over the bridge.
+    expect(rootChainManager.depositEtherFor).to.have.been.calledWith(mockSpoke.address);
     const expectedL2ToL1FunctionCallParams = [
       mockSpoke.address,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockSlowRelayRoot]),
-      sampleL2Gas,
     ];
-    expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
+    expect(fxStateSender.sendMessageToChild).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
   });
 });

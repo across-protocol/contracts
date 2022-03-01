@@ -14,7 +14,7 @@ async function constructSimpleTree() {
   const daiToSend = toBNWei(1000);
   const leafs = buildPoolRebalanceLeafs(
     [consts.repaymentChainId], // repayment chain. In this test we only want to send one token to one chain.
-    [weth.address, dai.address], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
+    [[weth.address, dai.address]], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[toBNWei(1), toBNWei(10)]], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
     [[wethToSendToL2, daiToSend]], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
     [[wethToSendToL2, daiToSend]] // runningBalances. Set to 100 ETH and 1000 DAI.
@@ -48,32 +48,37 @@ describe("HubPool Root Bundle Execution", function () {
       1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
       tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
       consts.mockRelayerRefundRoot, // Not relevant for this test.
-      consts.mockSlowRelayFulfillmentRoot // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
     );
 
     // Advance time so the request can be executed and execute the request.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
 
     // Balances should have updated as expected.
     expect(await weth.balanceOf(hubPool.address)).to.equal(consts.amountToLp.sub(wethToSendToL2));
-    expect(await weth.balanceOf(mockAdapter.address)).to.equal(wethToSendToL2);
+    expect(await weth.balanceOf(await mockAdapter.bridge())).to.equal(wethToSendToL2);
     expect(await dai.balanceOf(hubPool.address)).to.equal(consts.amountToLp.mul(10).sub(daiToSend));
-    expect(await dai.balanceOf(mockAdapter.address)).to.equal(daiToSend);
+    expect(await dai.balanceOf(await mockAdapter.bridge())).to.equal(daiToSend);
+
+    // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
+    const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
 
     // Check the mockAdapter was called with the correct arguments for each method.
-    const relayMessageEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayMessageCalled());
-    expect(relayMessageEvents.length).to.equal(4); // Exactly four message send from L1->L2. 3 for each whitelist route
+    const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
+      mockAdapterAtHubPool.filters.RelayMessageCalled()
+    );
+    expect(relayMessageEvents.length).to.equal(7); // Exactly seven message send from L1->L2. 6 for each whitelist route
     // and 1 for the initiateRelayerRefund.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
         consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot,
+        consts.mockSlowRelayRoot,
       ])
     );
 
-    const relayTokensEvents = await mockAdapter.queryFilter(mockAdapter.filters.RelayTokensCalled());
+    const relayTokensEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayTokensCalled());
     expect(relayTokensEvents.length).to.equal(2); // Exactly two token transfers from L1->L2.
     expect(relayTokensEvents[0].args?.l1Token).to.equal(weth.address);
     expect(relayTokensEvents[0].args?.l2Token).to.equal(l2Weth);
@@ -91,13 +96,7 @@ describe("HubPool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
 
     // Set time 10 seconds before expiration. Should revert.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness - 10);
@@ -107,7 +106,7 @@ describe("HubPool Root Bundle Execution", function () {
     ).to.be.revertedWith("Not passed liveness");
 
     // Set time after expiration. Should no longer revert.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 10);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 11);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
   });
 
@@ -115,14 +114,8 @@ describe("HubPool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
     // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
@@ -136,14 +129,8 @@ describe("HubPool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));

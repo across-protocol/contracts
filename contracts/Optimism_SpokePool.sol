@@ -32,60 +32,63 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
         SpokePool(_crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006, timerAddress)
     {}
 
+    /*******************************************
+     *    OPTIMISM-SPECIFIC ADMIN FUNCTIONS    *
+     *******************************************/
+
+    function setL1GasLimit(uint32 newl1Gas) public onlyAdmin {
+        l1Gas = newl1Gas;
+        emit SetL1Gas(newl1Gas);
+    }
+
     /**************************************
-     *    CROSS-CHAIN ADMIN FUNCTIONS     *
+     *         DATA WORKER FUNCTIONS      *
      **************************************/
+    function executeSlowRelayRoot(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 totalRelayAmount,
+        uint256 originChainId,
+        uint64 realizedLpFeePct,
+        uint64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) public override nonReentrant {
+        if (destinationToken == address(weth)) _depositEthToWeth();
 
-    function setL1GasLimit(uint32 newl1Gas) public onlyFromCrossDomainAccount(crossDomainAdmin) {
-        _setL1GasLimit(newl1Gas);
+        _executeSlowRelayRoot(
+            depositor,
+            recipient,
+            destinationToken,
+            totalRelayAmount,
+            originChainId,
+            realizedLpFeePct,
+            relayerFeePct,
+            depositId,
+            rootBundleId,
+            proof
+        );
     }
 
-    function setCrossDomainAdmin(address newCrossDomainAdmin)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
-        _setCrossDomainAdmin(newCrossDomainAdmin);
-    }
+    function executeRelayerRefundRoot(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) public override nonReentrant {
+        if (relayerRefundLeaf.l2TokenAddress == address(weth)) _depositEthToWeth();
 
-    function setHubPool(address newHubPool) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
-        _setHubPool(newHubPool);
-    }
-
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enable
-    ) public override onlyFromCrossDomainAccount(crossDomainAdmin) nonReentrant {
-        _setEnableRoute(originToken, destinationChainId, enable);
-    }
-
-    function setDepositQuoteTimeBuffer(uint32 buffer)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
-        _setDepositQuoteTimeBuffer(buffer);
-    }
-
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayFulfillmentRoot)
-        public
-        override
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-        nonReentrant
-    {
-        _relayRootBundle(relayerRefundRoot, slowRelayFulfillmentRoot);
+        _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
-
-    function _setL1GasLimit(uint32 _l1Gas) internal {
-        l1Gas = _l1Gas;
-        emit SetL1Gas(l1Gas);
+    function _depositEthToWeth() internal {
+        // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
+        // this SpokePool will receive ETH from the canonical token bridge instead of WETH.
+        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
@@ -105,4 +108,6 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePoolInterface, SpokePool
 
         emit OptimismTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn, l1Gas);
     }
+
+    function _requireAdminSender() internal override onlyFromCrossDomainAccount(crossDomainAdmin) {}
 }

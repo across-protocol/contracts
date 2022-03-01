@@ -1,21 +1,27 @@
 import * as consts from "../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
+import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei, hre } from "../utils";
 import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
+let hubPool: Contract,
+  arbitrumAdapter: Contract,
+  mockAdapter: Contract,
+  weth: Contract,
+  dai: Contract,
+  timer: Contract,
+  mockSpoke: Contract;
 let l2Weth: string, l2Dai: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let l1ERC20Gateway: FakeContract, l1Inbox: FakeContract;
 
 const arbitrumChainId = 42161;
-const l1ChainId = 1;
+let l1ChainId: number;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
+    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, consts.amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
 
@@ -29,55 +35,33 @@ describe("Arbitrum Chain Adapter", function () {
 
     l1Inbox = await createFake("Inbox");
     l1ERC20Gateway = await createFake("TokenGateway");
+    l1ChainId = Number(await hre.getChainId());
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
-    ).deploy(hubPool.address, l1Inbox.address, l1ERC20Gateway.address);
+    ).deploy(l1Inbox.address, l1ERC20Gateway.address);
 
-    // Seed the Arbitrum adapter with some funds so it can send L1->L2 messages.
-    await liquidityProvider.sendTransaction({ to: arbitrumAdapter.address, value: toWei("1") });
+    // Seed the HubPool some funds so it can send L1->L2 messages.
+    await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
 
     await hubPool.setCrossChainContracts(arbitrumChainId, arbitrumAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth);
+    await hubPool.whitelistRoute(arbitrumChainId, l1ChainId, l2Weth, weth.address);
+
+    await hubPool.whitelistRoute(arbitrumChainId, l1ChainId, l2Dai, dai.address);
+
+    await hubPool.setCrossChainContracts(l1ChainId, mockAdapter.address, mockSpoke.address);
 
     await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, dai.address, l2Dai);
+    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth);
   });
 
-  it("Only owner can set l2GasValues", async function () {
-    expect(await arbitrumAdapter.callStatic.l2GasLimit()).to.equal(consts.sampleL2Gas);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2GasLimit(consts.sampleL2Gas + 1)).to.be.reverted;
-    await arbitrumAdapter.connect(owner).setL2GasLimit(consts.sampleL2Gas + 1);
-    expect(await arbitrumAdapter.callStatic.l2GasLimit()).to.equal(consts.sampleL2Gas + 1);
-  });
-
-  it("Only owner can set l2MaxSubmissionCost", async function () {
-    expect(await arbitrumAdapter.callStatic.l2MaxSubmissionCost()).to.equal(consts.sampleL2MaxSubmissionCost);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2MaxSubmissionCost(consts.sampleL2Gas + 1)).to.be
-      .reverted;
-    await arbitrumAdapter.connect(owner).setL2MaxSubmissionCost(consts.sampleL2Gas + 1);
-    expect(await arbitrumAdapter.callStatic.l2MaxSubmissionCost()).to.equal(consts.sampleL2Gas + 1);
-  });
-
-  it("Only owner can set l2GasPrice", async function () {
-    expect(await arbitrumAdapter.callStatic.l2GasPrice()).to.equal(consts.sampleL2GasPrice);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2GasPrice(consts.sampleL2Gas + 1)).to.be.reverted;
-    await arbitrumAdapter.connect(owner).setL2GasPrice(consts.sampleL2Gas + 1);
-    expect(await arbitrumAdapter.callStatic.l2GasPrice()).to.equal(consts.sampleL2Gas + 1);
-  });
-
-  it("Only owner can set l2RefundL2Address", async function () {
-    expect(await arbitrumAdapter.callStatic.l2RefundL2Address()).to.equal(owner.address);
-    await expect(arbitrumAdapter.connect(liquidityProvider).setL2RefundL2Address(liquidityProvider.address)).to.be
-      .reverted;
-    await arbitrumAdapter.connect(owner).setL2RefundL2Address(liquidityProvider.address);
-    expect(await arbitrumAdapter.callStatic.l2RefundL2Address()).to.equal(liquidityProvider.address);
-  });
   it("relayMessage calls spoke pool functions", async function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
+
     expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
-      .to.emit(arbitrumAdapter, "MessageRelayed")
+      .to.emit(arbitrumAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
     expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice;
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
@@ -94,17 +78,11 @@ describe("Arbitrum Chain Adapter", function () {
   it("Correctly calls appropriate arbitrum bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai, 1, arbitrumChainId);
+    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, arbitrumChainId);
     await hubPool
       .connect(dataWorker)
-      .proposeRootBundle(
-        [3117],
-        1,
-        tree.getHexRoot(),
-        consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot
-      );
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness);
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
     // The correct functions should have been called on the arbitrum contracts.
     expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledOnce; // One token transfer over the canonical bridge.
@@ -128,7 +106,7 @@ describe("Arbitrum Chain Adapter", function () {
       consts.sampleL2GasPrice,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
         consts.mockRelayerRefundRoot,
-        consts.mockSlowRelayFulfillmentRoot,
+        consts.mockSlowRelayRoot,
       ])
     );
   });

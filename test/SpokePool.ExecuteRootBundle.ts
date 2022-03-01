@@ -44,7 +44,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // Distribute the first leaf.
@@ -78,31 +78,32 @@ describe("SpokePool Root Bundle Execution", function () {
     expect(tokensBridgedEvents.length).to.equal(1);
   });
 
-  it("Execute relayer root wraps any ETH owned by contract", async function () {
-    const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
+  // TODO: Move to Optimism_SpokePool test.
+  // it("Execute relayer root wraps any ETH owned by contract", async function () {
+  //   const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
 
-    // Store new tree.
-    await spokePool.connect(dataWorker).relayRootBundle(
-      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
-    );
+  //   // Store new tree.
+  //   await spokePool.connect(dataWorker).relayRootBundle(
+  //     tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+  //     consts.mockSlowRelayRoot
+  //   );
 
-    const amountOfEthToWrap = toWei("1");
-    await rando.sendTransaction({
-      to: spokePool.address,
-      value: amountOfEthToWrap,
-    });
+  //   const amountOfEthToWrap = toWei("1");
+  //   await rando.sendTransaction({
+  //     to: spokePool.address,
+  //     value: amountOfEthToWrap,
+  //   });
 
-    // Pool should have wrapped all ETH
-    await expect(() =>
-      spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
-    ).to.changeEtherBalance(spokePool, amountOfEthToWrap.mul(-1));
-  });
+  //   // Pool should have wrapped all ETH
+  //   await expect(() =>
+  //     spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
+  //   ).to.changeEtherBalance(spokePool, amountOfEthToWrap.mul(-1));
+  // });
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // Take the valid root but change some element within it. This will change the hash of the leaf
@@ -120,7 +121,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, 13371);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // Root is valid and leaf is contained in tree, but chain ID doesn't match pool's chain ID.
@@ -131,7 +132,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayFulfillmentRoot
+      consts.mockSlowRelayRoot
     );
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
