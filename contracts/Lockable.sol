@@ -5,6 +5,9 @@ pragma solidity ^0.8.0;
  * @title A contract that provides modifiers to prevent reentrancy to state-changing and view-only methods. This contract
  * is inspired by https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol
  * and https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol.
+ * @dev The reason why we use this local contract instead of importing from uma/contracts is because of the addition
+ * of the internal method `functionCallStackOriginatesFromOutsideThisContract` which doesn't exist in the one exported
+ * by uma/contracts.
  */
 contract Lockable {
     bool internal _notEntered;

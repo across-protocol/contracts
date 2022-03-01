@@ -7,7 +7,6 @@ import "../Lockable.sol";
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import "../Lockable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -27,6 +26,10 @@ interface IFxStateSender {
 
 /**
  * @notice Sends cross chain messages Polygon L2 network.
+ * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
+ * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
+ * For example, the HubPool will delegatecall these functions, therefore its only neccessary that the HubPool's methods
+ * that call this contract's logic guard against reentrancy.
  */
 contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
@@ -56,7 +59,7 @@ contract Polygon_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
 
-    function relayMessage(address target, bytes memory message) external payable override nonReentrant {
+    function relayMessage(address target, bytes memory message) external payable override {
         fxStateSender.sendMessageToChild(target, message);
         emit MessageRelayed(target, message);
     }
@@ -73,7 +76,7 @@ contract Polygon_Adapter is AdapterInterface {
         address l2Token,
         uint256 amount,
         address to
-    ) external payable override nonReentrant {
+    ) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);

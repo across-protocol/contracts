@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
-import "../Lockable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -34,8 +33,12 @@ interface ArbitrumL1ERC20GatewayLike {
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
+ * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
+ * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
+ * For example, the HubPool will delegatecall these functions, therefore its only neccessary that the HubPool's methods
+ * that call this contract's logic guard against reentrancy.
  */
-contract Arbitrum_Adapter is AdapterInterface, Lockable {
+contract Arbitrum_Adapter is AdapterInterface {
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
     uint32 public immutable l2GasLimit = 5_000_000;
@@ -84,7 +87,7 @@ contract Arbitrum_Adapter is AdapterInterface, Lockable {
      * @param target Contract on Arbitrum that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override nonReentrant {
+    function relayMessage(address target, bytes memory message) external payable override {
         uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
 
@@ -114,7 +117,7 @@ contract Arbitrum_Adapter is AdapterInterface, Lockable {
         address l2Token, // l2Token is unused for Arbitrum.
         uint256 amount,
         address to
-    ) external payable override nonReentrant {
+    ) external payable override {
         l1ERC20Gateway.outboundTransfer(l1Token, to, amount, l2GasLimit, l2GasPrice, "");
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
