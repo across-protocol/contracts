@@ -13,9 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @notice Sends cross chain messages Optimism L2 network.
- * @dev This contract's owner should be set to the some multisig or admin contract. The Owner can simply set the L2 gas
- * and the HubPool. The HubPool is the only contract that can relay tokens and messages over the bridge.
+ * @notice Contract containing logic to send messages from L1 to Optimism.
  */
 contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     using SafeERC20 for IERC20;
@@ -27,6 +25,12 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
 
     event L2GasLimitSet(uint32 newGasLimit);
 
+    /**
+     * @notice Constructs new Adapter.
+     * @param _l1Weth WETH address on L1.
+     * @param _crossDomainMessenger XDomainMessenger Optimism system contract.
+     * @param _l1StandardBridge Standard bridge contract.
+     */
     constructor(
         WETH9 _l1Weth,
         address _crossDomainMessenger,
@@ -36,11 +40,23 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
         l1StandardBridge = _l1StandardBridge;
     }
 
+    /**
+     * @notice Send cross-chain message to target on Optimism.
+     * @param target Contract on Optimism that will receive message.
+     * @param message Data to send to target.
+     */
     function relayMessage(address target, bytes memory message) external payable override {
         sendCrossDomainMessage(target, uint32(l2GasLimit), message);
         emit MessageRelayed(target, message);
     }
 
+    /**
+     * @notice Bridge tokens to Optimism.
+     * @param l1Token L1 token to deposit.
+     * @param l2Token L2 token to receive.
+     * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
+     * @param to Bridge recipient.
+     */
     function relayTokens(
         address l1Token,
         address l2Token,

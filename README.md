@@ -1,46 +1,38 @@
-# Advanced Sample Hardhat Project
+![Across-logo](https://raw.githubusercontent.com/across-protocol/across-frontend/65abd7772704a9ec243fd370f9e8e76322f0905b/src/assets/logo.svg)
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+Contains smart contract suite to enable instant token transfers between any two networks. Relays are backstopped by
+liquidity held in a central `HubPool` on Ethereum, which also serves as the cross-chain administrator of all contracts in the
+system. `SpokePool` contracts are deployed to any network that wants to originate token deposits or be the final
+destination for token transfers, and they are all governed by the `HubPool` on Ethereum.
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+This contract set is the second iteration of the [Across smart contracts](https://github.com/across-protocol/across-smart-contracts)
+which facilitate token transfers from any L2 to L1.
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.ts
-TS_NODE_FILES=true npx ts-node scripts/deploy.ts
-npx eslint '**/*.{js,ts}'
-npx eslint '**/*.{js,ts}' --fix
-npx prettier '**/*.{json,sol,md}' --check
-npx prettier '**/*.{json,sol,md}' --write
-npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
-```
-
-# Etherscan verification
-
-To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
-
-In this project, copy the .env.example file to a file named .env, and then edit it to fill in the details. Enter your Etherscan API key, your Ropsten node URL (eg from Alchemy), and the private key of the account which will send the deployment transaction. With a valid .env file in place, first deploy your contract:
+## Build
 
 ```shell
-hardhat run --network ropsten scripts/sample-script.ts
+yarn
+yarn hardhat compile
 ```
 
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
+## Test
 
 ```shell
-npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
+yarn test # Run unit tests without gas analysis
+yarn test:gas-analytics # Run only tests that count gas costs
+yarn test:report-gas # Run unit tests with hardhat-gas-reporter enabled
 ```
 
-# Performance optimizations
+## Lint
 
-For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
+```shell
+yarn lint
+yarn lint-fix
+```
+
+## Deploy and Verify
+
+```shell
+NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --network mainnet
+ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
+```
