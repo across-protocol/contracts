@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
+import "../Lockable.sol";
 
 import "@uma/core/contracts/common/implementation/Lockable.sol";
 
@@ -16,7 +17,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * is that the HubPool will be deployed on Ethereum, so this adapter will be used to communicate between HubPool
  * and the Ethereum_SpokePool.
  */
-contract Ethereum_Adapter is AdapterInterface {
+contract Ethereum_Adapter is AdapterInterface, Lockable {
     using SafeERC20 for IERC20;
 
     /**
@@ -27,7 +28,7 @@ contract Ethereum_Adapter is AdapterInterface {
      * @param target Contract that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes memory message) external payable override nonReentrant {
         _executeCall(target, message);
         emit MessageRelayed(target, message);
     }
@@ -45,7 +46,7 @@ contract Ethereum_Adapter is AdapterInterface {
         // on this network.
         uint256 amount,
         address to
-    ) external payable override {
+    ) external payable override nonReentrant {
         IERC20(l1Token).safeTransfer(to, amount);
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }

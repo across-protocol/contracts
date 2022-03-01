@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
+import "../Lockable.sol";
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
@@ -55,7 +56,7 @@ contract Polygon_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
 
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes memory message) external payable override nonReentrant {
         fxStateSender.sendMessageToChild(target, message);
         emit MessageRelayed(target, message);
     }
@@ -72,7 +73,7 @@ contract Polygon_Adapter is AdapterInterface {
         address l2Token,
         uint256 amount,
         address to
-    ) external payable override {
+    ) external payable override nonReentrant {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);

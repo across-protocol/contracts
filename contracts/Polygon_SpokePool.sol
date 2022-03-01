@@ -85,7 +85,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @notice Change FxChild address. Callable only by admin via processMessageFromRoot.
      * @param newFxChild New FxChild.
      */
-    function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
+    function setFxChild(address newFxChild) public onlyAdmin {
         fxChild = newFxChild;
         emit SetFxChild(fxChild);
     }
@@ -94,7 +94,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @notice Change polygonTokenBridger address. Callable only by admin via processMessageFromRoot.
      * @param newPolygonTokenBridger New Polygon Token Bridger contract.
      */
-    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
+    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin {
         polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
         emit SetPolygonTokenBridger(address(polygonTokenBridger));
     }
@@ -113,7 +113,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         uint256, /*stateId*/
         address rootMessageSender,
         bytes calldata data
-    ) public validateInternalCalls {
+    ) public validateInternalCalls nonReentrant {
         // Validation logic.
         require(msg.sender == fxChild, "Not from fxChild");
         require(rootMessageSender == crossDomainAdmin, "Not from mainnet admin");

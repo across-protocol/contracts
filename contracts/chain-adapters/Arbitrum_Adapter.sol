@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
+import "../Lockable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -34,7 +35,7 @@ interface ArbitrumL1ERC20GatewayLike {
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
  */
-contract Arbitrum_Adapter is AdapterInterface {
+contract Arbitrum_Adapter is AdapterInterface, Lockable {
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
     uint32 public immutable l2GasLimit = 5_000_000;
@@ -83,7 +84,7 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @param target Contract on Arbitrum that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes memory message) external payable override nonReentrant {
         uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
 
@@ -113,7 +114,7 @@ contract Arbitrum_Adapter is AdapterInterface {
         address l2Token, // l2Token is unused for Arbitrum.
         uint256 amount,
         address to
-    ) external payable override {
+    ) external payable override nonReentrant {
         l1ERC20Gateway.outboundTransfer(l1Token, to, amount, l2GasLimit, l2GasPrice, "");
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }

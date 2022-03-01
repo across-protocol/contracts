@@ -267,7 +267,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param newBondToken New bond currency.
      * @param newBondAmount New bond amount.
      */
-    function setBond(IERC20 newBondToken, uint256 newBondAmount) public override onlyOwner noActiveRequests {
+    function setBond(IERC20 newBondToken, uint256 newBondAmount)
+        public
+        override
+        onlyOwner
+        noActiveRequests
+        nonReentrant
+    {
         // Check that this token is on the whitelist.
         AddressWhitelistInterface addressWhitelist = AddressWhitelistInterface(
             finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist)
@@ -294,7 +300,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets identifier for root bundle disputes.. Callable only by owner.
      * @param newIdentifier New identifier.
      */
-    function setIdentifier(bytes32 newIdentifier) public override onlyOwner noActiveRequests {
+    function setIdentifier(bytes32 newIdentifier) public override onlyOwner noActiveRequests nonReentrant {
         IdentifierWhitelistInterface identifierWhitelist = IdentifierWhitelistInterface(
             finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist)
         );
@@ -331,7 +337,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 destinationChainId,
         address originToken,
         address destinationToken
-    ) public override onlyOwner {
+    ) public override onlyOwner nonReentrant {
         whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
 
         // Whitelist the same route on the origin network.
@@ -347,7 +353,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * Callable only by owner.
      * @param l1Token Token to provide liquidity for.
      */
-    function enableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
+    function enableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
         if (pooledTokens[l1Token].lpToken == address(0))
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
@@ -381,7 +387,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to deposit into this contract.
      * @param l1TokenAmount Amount of liquidity to provide.
      */
-    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override {
+    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override nonReentrant {
         require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
