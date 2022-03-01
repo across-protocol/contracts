@@ -427,10 +427,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Set leaf as claimed in bitmap. This is passed by reference to the storage rootBundle.
         MerkleLib.setClaimed(rootBundle.claimedBitmap, relayerRefundLeaf.leafId);
 
-        // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
-        // some SpokePools will receive ETH from the canonical token bridge instead of WETH.
-        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
-
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
         for (uint32 i = 0; i < relayerRefundLeaf.refundAmounts.length; i++) {
