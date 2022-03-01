@@ -1,4 +1,4 @@
-import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "./utils";
+import { toWei, utf8ToHex, toBN, createRandomBytes32, ethers, hre } from "./utils";
 
 export const amountToSeedWallets = toWei("1500");
 
@@ -40,7 +40,11 @@ export const bondAmount = toWei("5");
 
 export const finalFee = toWei("1");
 
-export const refundProposalLiveness = 100;
+export const finalFeeUsdc = ethers.utils.parseUnits("1", 6);
+
+export const totalBond = bondAmount.add(finalFee);
+
+export const refundProposalLiveness = 7200;
 
 export const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -56,9 +60,9 @@ export const mockPoolRebalanceLeafCount = 5;
 
 export const mockPoolRebalanceRoot = createRandomBytes32();
 
-export const mockDestinationDistributionRoot = createRandomBytes32();
+export const mockRelayerRefundRoot = createRandomBytes32();
 
-export const mockSlowRelayFulfillmentRoot = createRandomBytes32();
+export const mockSlowRelayRoot = createRandomBytes32();
 
 // Amount of tokens to seed SpokePool with at beginning of relayer refund distribution tests
 export const amountHeldByPool = amountToRelay.mul(4);

@@ -21,12 +21,12 @@ contract MerkleLibTest {
         return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
     }
 
-    function verifyRelayerDistribution(
+    function verifyRelayerRefund(
         bytes32 root,
-        SpokePoolInterface.DestinationDistributionLeaf memory distribution,
+        SpokePoolInterface.RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyRelayerDistribution(root, distribution, proof);
+        return MerkleLib.verifyRelayerRefund(root, refund, proof);
     }
 
     function verifySlowRelayFulfillment(

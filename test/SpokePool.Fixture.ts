@@ -22,9 +22,8 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
-  const merkleLib = await (await getContractFactory("MerkleLib", deployerWallet)).deploy();
   const spokePool = await (
-    await getContractFactory("MockSpokePool", { signer: deployerWallet, libraries: { MerkleLib: merkleLib.address } })
+    await getContractFactory("MockSpokePool", { signer: deployerWallet })
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
@@ -67,7 +66,7 @@ export interface RelayData {
   depositor: string;
   recipient: string;
   destinationToken: string;
-  relayAmount: string;
+  amount: string;
   realizedLpFeePct: string;
   relayerFeePct: string;
   depositId: string;
@@ -79,7 +78,7 @@ export function getRelayHash(
   _depositId: number,
   _originChainId: number,
   _destinationToken: string,
-  _relayAmount?: string,
+  _amount?: string,
   _realizedLpFeePct?: string,
   _relayerFeePct?: string
 ): { relayHash: string; relayData: RelayData } {
@@ -87,7 +86,7 @@ export function getRelayHash(
     depositor: _depositor,
     recipient: _recipient,
     destinationToken: _destinationToken,
-    relayAmount: _relayAmount || consts.amountToDeposit.toString(),
+    amount: _amount || consts.amountToDeposit.toString(),
     originChainId: _originChainId.toString(),
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
@@ -132,7 +131,7 @@ export function getFillRelayParams(
     _relayData.depositor,
     _relayData.recipient,
     _relayData.destinationToken,
-    _relayData.relayAmount,
+    _relayData.amount,
     _maxTokensToSend.toString(),
     _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.originChainId,
@@ -153,7 +152,7 @@ export function getFillRelayUpdatedFeeParams(
     _relayData.depositor,
     _relayData.recipient,
     _relayData.destinationToken,
-    _relayData.relayAmount,
+    _relayData.amount,
     _maxTokensToSend.toString(),
     _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.originChainId,
@@ -165,11 +164,11 @@ export function getFillRelayUpdatedFeeParams(
   ];
 }
 
-export function getDistributeRelaySlowParams(
+export function getExecuteSlowRelayParams(
   _depositor: string,
   _recipient: string,
   _destToken: string,
-  _amountToRelay: BigNumber,
+  _amount: BigNumber,
   _originChainId: number,
   _realizedLpFeePct: BigNumber,
   _relayerFeePct: BigNumber,
@@ -181,7 +180,7 @@ export function getDistributeRelaySlowParams(
     _depositor,
     _recipient,
     _destToken,
-    _amountToRelay.toString(),
+    _amount.toString(),
     _originChainId.toString(),
     _realizedLpFeePct.toString(),
     _relayerFeePct.toString(),

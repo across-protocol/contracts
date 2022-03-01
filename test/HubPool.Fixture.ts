@@ -1,7 +1,14 @@
 import { TokenRolesEnum } from "@uma/common";
-import { getContractFactory, randomAddress, toBN, fromWei, hre, Contract, Signer } from "./utils";
+import { getContractFactory, randomAddress, hre, Contract, Signer } from "./utils";
 
-import { bondAmount, refundProposalLiveness, finalFee, repaymentChainId } from "./constants";
+import {
+  originChainId,
+  bondAmount,
+  refundProposalLiveness,
+  finalFee,
+  repaymentChainId,
+  finalFeeUsdc,
+} from "./constants";
 
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
@@ -27,33 +34,44 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
 
   // Set the finalFee for all the new tokens.
   await parentFixture.store.setFinalFee(weth.address, { rawValue: finalFee });
-  await parentFixture.store.setFinalFee(usdc.address, { rawValue: toBN(fromWei(finalFee)).mul(1e6) });
+  await parentFixture.store.setFinalFee(usdc.address, { rawValue: finalFeeUsdc });
   await parentFixture.store.setFinalFee(dai.address, { rawValue: finalFee });
 
   // Deploy the hubPool.
-  const merkleLib = await (await getContractFactory("MerkleLib", signer)).deploy();
   const lpTokenFactory = await (await getContractFactory("LpTokenFactory", signer)).deploy();
   const hubPool = await (
-    await getContractFactory("HubPool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
+    await getContractFactory("HubPool", { signer: signer })
   ).deploy(lpTokenFactory.address, parentFixture.finder.address, weth.address, parentFixture.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
-  await hubPool.setRefundProposalLiveness(refundProposalLiveness);
+  await hubPool.setLiveness(refundProposalLiveness);
 
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
-  const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy(hubPool.address);
+  const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpoke = await (
-    await getContractFactory("MockSpokePool", { signer: signer, libraries: { MerkleLib: merkleLib.address } })
+    await getContractFactory("MockSpokePool", { signer: signer })
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
+  await hubPool.setCrossChainContracts(originChainId, mockAdapter.address, mockSpoke.address);
+
+  // Deploy a new set of mocks for mainnet.
+  const mainnetChainId = await hre.getChainId();
+  const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy();
+  const mockSpokeMainnet = await (
+    await getContractFactory("MockSpokePool", { signer: signer })
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
+  await hubPool.setCrossChainContracts(mainnetChainId, mockAdapterMainnet.address, mockSpokeMainnet.address);
 
   // Deploy mock l2 tokens for each token created before and whitelist the routes.
   const mockTokens = { l2Weth: randomAddress(), l2Dai: randomAddress(), l2Usdc: randomAddress() };
 
-  await hubPool.whitelistRoute(repaymentChainId, weth.address, mockTokens.l2Weth);
-  await hubPool.whitelistRoute(repaymentChainId, dai.address, mockTokens.l2Dai);
-  await hubPool.whitelistRoute(repaymentChainId, usdc.address, mockTokens.l2Usdc);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, weth.address, mockTokens.l2Weth);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, dai.address, mockTokens.l2Dai);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc);
+  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, weth.address, mockTokens.l2Weth);
+  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, dai.address, mockTokens.l2Dai);
+  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc);
 
-  return { ...tokens, ...mockTokens, hubPool, merkleLib, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
+  return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
 });
 
 export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {
