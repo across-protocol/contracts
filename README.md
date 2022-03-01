@@ -1,6 +1,4 @@
-# Across V2
-    ![Across-logo](https://raw.githubusercontent.com/across-protocol/across-frontend/65abd7772704a9ec243fd370f9e8e76322f0905b/src/assets/logo.svg)
-
+![Across-logo](https://raw.githubusercontent.com/across-protocol/across-frontend/65abd7772704a9ec243fd370f9e8e76322f0905b/src/assets/logo.svg)
 
 Contains smart contract suite to enable instant token transfers between any two networks. Relays are backstopped by
 liquidity held in a central `HubPool` on Ethereum, which also serves as the cross-chain administrator of all contracts in the
@@ -38,4 +36,3 @@ yarn lint-fix
 NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --network mainnet
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
 ```
-
