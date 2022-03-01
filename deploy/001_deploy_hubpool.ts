@@ -7,7 +7,6 @@ const func = async function (hre: any) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
-  console.log("chainId", chainId);
 
   const lpTokenFactory = await deploy("LpTokenFactory", { from: deployer, log: true, skipIfAlreadyDeployed: true });
 
