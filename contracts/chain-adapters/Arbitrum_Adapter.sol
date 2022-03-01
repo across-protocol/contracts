@@ -78,7 +78,7 @@ contract Arbitrum_Adapter is AdapterInterface {
 
     /**
      * @notice Send cross-chain message to target on Arbitrum.
-     * @notice This contract must hold at least `getL1CallValue()` amount of ETH to send a message via the Inbox
+     * @notice This contract must hold at least getL1CallValue() amount of ETH to send a message via the Inbox
      * successfully, or the message will get stuck.
      * @param target Contract on Arbitrum that will receive message.
      * @param message Data to send to target.
@@ -90,8 +90,8 @@ contract Arbitrum_Adapter is AdapterInterface {
         l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
             target, // destAddr destination L2 contract address
             0, // l2CallValue call value for retryable L2 message
-            l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base submission fee
-            l2RefundL2Address, // excessFeeRefundAddress maxgas x gasprice - execution cost gets credited here on L2 balance
+            l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
+            l2RefundL2Address, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
             l2RefundL2Address, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
             l2GasLimit, // maxGas Max gas deducted from user's L2 balance to cover L2 execution
             l2GasPrice, // gasPriceBid price bid for L2 execution
@@ -120,7 +120,7 @@ contract Arbitrum_Adapter is AdapterInterface {
 
     /**
      * @notice Returns required amount of ETH to send a message via the Inbox.
-     * @return amount of ETH that this contract needs to hold in order for `relayMessage` to succeed.
+     * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue() public pure returns (uint256) {
         return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;

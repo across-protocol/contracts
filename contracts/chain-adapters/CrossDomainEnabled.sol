@@ -48,7 +48,7 @@ contract CrossDomainEnabled {
      * Sends a message to an account on another domain
      * @param _crossDomainTarget The intended recipient on the destination domain
      * @param _message The data to send to the target (usually calldata to a function with
-     *  `onlyFromCrossDomainAccount()`)
+     *  onlyFromCrossDomainAccount())
      * @param _gasLimit The gasLimit for the receipt of the message on the target domain.
      */
     function sendCrossDomainMessage(

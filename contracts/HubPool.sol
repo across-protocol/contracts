@@ -45,9 +45,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // - Send funds from a SpokePool to Relayer as a refund for a relayed deposit
     // - Send funds from a SpokePool to a deposit recipient to fulfill a "slow" relay
     // Anyone can dispute this struct if the merkle roots contain invalid leaves before the
-    // `requestExpirationTimestamp`. Once the expiration timestamp is passed, `executeRootBundle` to execute a leaf
-    // from the `poolRebalanceRoot` on this contract and it will simultaneously publish the `relayerRefundRoot` and
-    // `slowRelayRoot` to a SpokePool. The latter two roots, once published to the SpokePool, contain
+    // requestExpirationTimestamp. Once the expiration timestamp is passed, executeRootBundle to execute a leaf
+    // from the poolRebalanceRoot on this contract and it will simultaneously publish the relayerRefundRoot and
+    // slowRelayRoot to a SpokePool. The latter two roots, once published to the SpokePool, contain
     // leaves that can be executed on the SpokePool to pay relayers or recipients.
     struct RootBundle {
         // When root bundle challenge period passes and this root bundle becomes executable.
@@ -460,8 +460,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This should be done
-     * at the conclusion of an L2 -> L1 token transfer via the canonical token bridge, for example, when this contract's
-     * reserves do not reflect all of its token balance due to new tokens being dropped onto the contract at the conclusion of a bridging action.
+     * at the conclusion of a L2->L1 token transfer via the canonical token bridge, when this contract's reserves do not
+     * reflect its true balance due to new tokens being dropped onto the contract at the conclusion of a bridging action.
      */
     function sync(address l1Token) public override nonReentrant {
         _sync(l1Token);
@@ -473,14 +473,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Publish a new root bundle to along with all of the block numbers that the merkle roots are relevant for.
-     * This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller stakes a bond that can
-     * be slashed if the root bundle proposal is invalid, and they will receive it back if accepted.
+     * This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller stakes a bond that
+     * can be slashed if the root bundle proposal is invalid, and they will receive it back if accepted.
      * @notice After proposeRootBundle is called, if the any props are wrong then this proposal can be challenged.
      * Once the challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be
      * called; moreover, this method can't be called again until all leafs are executed.
      * @param bundleEvaluationBlockNumbers should contain the latest block number for all chains, even if there are no
      * relays contained on some of them. The usage of this variable should be defined in an off chain UMIP.
-     * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max posible is the number of whitelisted chains.
+     * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max is the number of whitelisted chains.
      * @param poolRebalanceRoot Pool rebalance root containing leaves that will send tokens from this contract to a SpokePool.
      * @param relayerRefundRoot Relayer refund root to publish to SpokePool where a data worker can execute leaves to
      * refund relayers on their chosen refund chainId.
@@ -526,7 +526,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Executes a pool rebalance leaf as part of the currently published root bundle. Will bridge any tokens
      * from this contract to the SpokePool designated in the leaf, and will also publish relayer refund and slow
-     * relay roots to the SpokePool on the network specified in the leaf. In some cases, will instruct spokePool to send funds back to L1.
+     * relay roots to the SpokePool on the network specified in the leaf.
+     * @dev In some cases, will instruct spokePool to send funds back to L1.
      * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
      * @param poolRebalanceLeaf Contains all data neccessary to reconstruct leaf contained in root bundle and to
      * bridge tokens to HubPool. This data structure is explained in detail in the HubPoolInterface.
@@ -602,7 +603,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // Only approve enough tokens for the approval to avoid more tokens than expected being pulled into the OptimisticOracle.
+        // Only approve exact tokens to avoid more tokens than expected being pulled into the OptimisticOracle.
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         try
             optimisticOracle.requestAndProposePriceFor(
@@ -659,8 +660,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
 
-        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new
-        // bundle of roots.
+        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
         delete rootBundleProposal;
     }
 
@@ -741,7 +741,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     // Called when a dispute fails due to parameter changes. This effectively resets the state and cancels the request
-    // with no loss of funds.
+    // with no loss of funds, thereby enabling a new bundle to be added.
     function _cancelBundle(bytes memory ancillaryData) internal {
         bondToken.transfer(rootBundleProposal.proposer, bondAmount);
         delete rootBundleProposal;
@@ -790,7 +790,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
             // relayer refund, 2) Update the liquidity trackers for the associated pooled tokens.
             if (netSendAmounts[i] > 0) {
-                // Perform delegatecall to use the adapter's code with this contract's context. We opt for delegatecall's
+                // Perform delegatecall to use the adapter's code with this contract's context. Opt for delegatecall's
                 // complexity in exchange for lower gas costs.
                 (bool success, ) = address(adapter).delegatecall(
                     abi.encodeWithSignature(

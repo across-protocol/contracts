@@ -54,7 +54,7 @@ contract PolygonTokenBridger is Lockable {
      * @notice Called by Polygon SpokePool to send tokens over bridge to contract with the same address as this.
      * @param token Token to bridge.
      * @param amount Amount to bridge.
-     * @param isMatic True if `token` is MATIC.
+     * @param isMatic True if token is MATIC.
      */
     function send(
         PolygonIERC20 token,

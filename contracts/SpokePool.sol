@@ -176,7 +176,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _;
     }
 
-    // Implementing contract needs to override `_requireAdminSender()` to ensure that admin functions are protected
+    // Implementing contract needs to override _requireAdminSender() to ensure that admin functions are protected
     // appropriately.
     modifier onlyAdmin() {
         _requireAdminSender();
@@ -277,7 +277,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // block.timestamp is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
         // buffer of this contract's block time to allow for this variance.
-        // Note also that `quoteTimestamp` cannot be less than the buffer otherwise the following arithmetic can result
+        // Note also that quoteTimestamp cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
         require(
             getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer &&
@@ -290,8 +290,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             require(msg.value == amount, "msg.value must match amount");
             weth.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
-            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
-            // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
+            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit FundsDeposited(
@@ -324,7 +324,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param depositId Deposit to update fee for that originated in this contract.
      * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
      * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
-     * EIP-191 standard. See more in the `_verifyUpdateRelayerFeeMessage()` comments.
+     * EIP-191 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
     function speedUpDeposit(
         address depositor,
@@ -358,7 +358,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
      * and this chain ID via a mapping on the HubPool.
      * @param amount Full size of the deposit.
-     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than `amount`, then caller will
+     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than amount, then caller will
      * send recipient the full relay amount.
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed.
@@ -409,7 +409,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
      * and this chain ID via a mapping on the HubPool.
      * @param amount Full size of the deposit.
-     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than `amount`, then caller will
+     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than amount, then caller will
      * send recipient the full relay amount.
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed.
@@ -437,7 +437,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     ) public override nonReentrant {
         _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
 
-        // Now follow the default `fillRelay` flow with the updated fee and the original relay hash.
+        // Now follow the default fillRelay flow with the updated fee and the original relay hash.
         RelayData memory relayData = RelayData({
             depositor: depositor,
             recipient: recipient,
@@ -545,8 +545,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
-        // Check that `inclusionProof` proves that `relayerRefundLeaf` is contained within the relayer refund root.
-        // Note: This should revert if the `relayerRefundRoot` is uninitialized.
+        // Check that inclusionProof proves that relayerRefundLeaf is contained within the relayer refund root.
+        // Note: This should revert if the relayerRefundRoot is uninitialized.
         require(MerkleLib.verifyRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
 
         // Verify the leafId in the leaf has not yet been claimed.
@@ -563,7 +563,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
                 IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
         }
 
-        // If leaf's `amountToReturn` is positive, then send L2 --> L1 message to bridge tokens back via
+        // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
         if (relayerRefundLeaf.amountToReturn > 0) {
             _bridgeTokensToHubPool(relayerRefundLeaf);
@@ -659,7 +659,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             abi.encode("ACROSS-V2-FEE-1.0", newRelayerFeePct, depositId, originChainId)
         );
 
-        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
+        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[eth_sign]
         // JSON-RPC method as part of EIP-191. We use OZ's signature checker library which adds support for
         // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
         // If the depositor signed a message with a different updated fee (or any other param included in the
@@ -670,15 +670,15 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
-    // signers from signatures because some L2s might not support `ecrecover`, such as those with account abstraction
+    // signers from signatures because some L2s might not support ecrecover, such as those with account abstraction
     // like ZKSync.
     function _verifyDepositorUpdateFeeMessage(
         address depositor,
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
-        // Note: no need to worry about reentrancy from contract deployed at `depositor` address since
-        // `SignatureChecker.isValidSignatureNow` is a non state-modifying STATICCALL:
+        // Note: no need to worry about reentrancy from contract deployed at depositor address since
+        // SignatureChecker.isValidSignatureNow is a non state-modifying STATICCALL:
         // - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/63b466901fb015538913f811c5112a2775042177/contracts/utils/cryptography/SignatureChecker.sol#L35
         // - https://github.com/ethereum/EIPs/pull/214
         require(
@@ -727,14 +727,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // computing the amount pre fees runs into divide-by-0 issues.
         require(updatableRelayerFeePct < 0.5e18 && relayData.realizedLpFeePct < 0.5e18, "invalid fees");
 
-        // Check that the relay has not already been completely filled. Note that the `relays` mapping will point to
-        // the amount filled so far for a particular `relayHash`, so this will start at 0 and increment with each fill.
+        // Check that the relay has not already been completely filled. Note that the relays mapping will point to
+        // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
         require(relayFills[relayHash] < relayData.amount, "relay filled");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (maxTokensToSend == 0) return 0;
 
-        // Derive the amount of the relay filled if the caller wants to send exactly `maxTokensToSend` tokens to
+        // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
         // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
         // is 100, and the fee %'s total 5%, then this computation would return ~10.5, meaning that to fill 10.5/100
         // of the full relay size, the caller would need to send 10 tokens to the user.

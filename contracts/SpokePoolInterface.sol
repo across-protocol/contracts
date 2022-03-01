@@ -18,7 +18,7 @@ interface SpokePoolInterface {
         uint32 leafId;
         // The associated L2TokenAddress that these claims apply to.
         address l2TokenAddress;
-        // Must be same length as `refundAmounts` and designates each address that must be refunded.
+        // Must be same length as refundAmounts and designates each address that must be refunded.
         address[] refundAddresses;
     }
 

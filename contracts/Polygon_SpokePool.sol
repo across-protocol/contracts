@@ -31,7 +31,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     PolygonTokenBridger public polygonTokenBridger;
 
     // Internal variable that only flips temporarily to true upon receiving messages from L1. Used to authenticate that
-    // the caller is the fxChild AND that the fxChild called `processMessageFromRoot`
+    // the caller is the fxChild AND that the fxChild called processMessageFromRoot
     bool private callValidated = false;
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
@@ -82,7 +82,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      ********************************************************/
 
     /**
-     * @notice Change FxChild address. Callable only by admin via `processMessageFromRoot`.
+     * @notice Change FxChild address. Callable only by admin via processMessageFromRoot.
      * @param newFxChild New FxChild.
      */
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
@@ -91,7 +91,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     }
 
     /**
-     * @notice Change polygonTokenBridger address. Callable only by admin via `processMessageFromRoot`.
+     * @notice Change polygonTokenBridger address. Callable only by admin via processMessageFromRoot.
      * @param newPolygonTokenBridger New Polygon Token Bridger contract.
      */
     function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {

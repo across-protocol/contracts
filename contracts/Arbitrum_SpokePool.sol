@@ -66,7 +66,7 @@ contract Arbitrum_SpokePool is SpokePool {
     /**
      * @notice Add L2 -> L1 token mapping. Callable only by admin.
      * @param l2Token Arbitrum token.
-     * @param l1Token Ethereum version of `l2Token`.
+     * @param l1Token Ethereum version of l2Token.
      */
     function whitelistToken(address l2Token, address l1Token) public onlyAdmin nonReentrant {
         _whitelistToken(l2Token, l1Token);

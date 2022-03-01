@@ -13,7 +13,7 @@ import "./SpokePoolInterface.sol";
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions.
  */
 contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
-    // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via `IL2ERC20Bridge`. Currently
+    // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
     uint32 public l1Gas = 5_000_000;
 
@@ -89,7 +89,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
     }
 
     /**
-     * @notice Wraps any ETH into WETH before executing base function. This is neccessary because SpokePool receives
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      * @inheritdoc SpokePool
      */
@@ -107,7 +107,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is neccessary because
+    // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because
     // this SpokePool will receive ETH from the canonical token bridge instead of WETH. Its not sufficient to execute
     // this logic inside a fallback method that executes when this contract receives ETH because ETH is an ERC20
     // on the OVM.

@@ -12,7 +12,8 @@ interface HubPoolInterface {
     struct PoolRebalanceLeaf {
         // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
         uint256 chainId;
-        uint256[] bundleLpFees; // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
+        // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
+        uint256[] bundleLpFees;
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
         // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
@@ -27,8 +28,9 @@ interface HubPoolInterface {
         int256[] runningBalances;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint8 leafId;
-        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and should be ordered by the `l1Tokens` field.
-        // All whitelisted tokens with nonzero relays on this chain in this bundle in the order of whitelisting.
+        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and
+        // should be ordered by the l1Tokens field. All whitelisted tokens with nonzero relays on this chain in this
+        // bundle in the order of whitelisting.
         address[] l1Tokens;
     }
 
