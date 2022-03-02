@@ -2,13 +2,11 @@ import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
-import { buildRelayerRefundTree, buildRelayerRefundLeafs, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
+import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, optimismSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Dai: string;
-
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-
 let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2Weth: FakeContract;
 
 describe("Optimism Spoke Pool", function () {
