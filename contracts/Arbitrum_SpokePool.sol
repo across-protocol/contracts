@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
@@ -14,22 +14,28 @@ interface StandardBridgeLike {
 }
 
 /**
- * @notice AVM specific SpokePool.
- * @dev Uses AVM cross-domain-enabled logic for access control.
+ * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  */
-
-contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
-    // Address of the Arbitrum L2 token gateway.
+contract Arbitrum_SpokePool is SpokePool {
+    // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
     // Admin controlled mapping of arbitrum tokens to L1 counterpart. L1 counterpart addresses
-    // are neccessary to bridge tokens to L1.
+    // are neccessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
 
+    /**
+     * @notice Construct the AVM SpokePool.
+     * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
+     * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
+     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _wethAddress Weth address for this network to set.
+     * @param timerAddress Timer address to set.
+     */
     constructor(
         address _l2GatewayRouter,
         address _crossDomainAdmin,
@@ -49,10 +55,19 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
      *    ARBITRUM-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
      ********************************************************/
 
+    /**
+     * @notice Change L2 gateway router. Callable only by admin.
+     * @param newL2GatewayRouter New L2 gateway router.
+     */
     function setL2GatewayRouter(address newL2GatewayRouter) public onlyAdmin nonReentrant {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
+    /**
+     * @notice Add L2 -> L1 token mapping. Callable only by admin.
+     * @param l2Token Arbitrum token.
+     * @param l1Token Ethereum version of l2Token.
+     */
     function whitelistToken(address l2Token, address l1Token) public onlyAdmin nonReentrant {
         _whitelistToken(l2Token, l1Token);
     }
@@ -81,9 +96,10 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         emit WhitelistedTokens(_l2Token, _l1Token);
     }
 
-    // l1 addresses are transformed during l1->l2 calls. See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
-    // This cannot be pulled directly from Arbitrum contracts because their contracts are not 0.8.X compatible and this operation takes advantage of
-    // overflows, whose behavior changed in 0.8.0.
+    // L1 addresses are transformed during l1->l2 calls.
+    // See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
+    // This cannot be pulled directly from Arbitrum contracts because their contracts are not 0.8.X compatible and
+    // this operation takes advantage of overflows, whose behavior changed in 0.8.0.
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
         // Allows overflows as explained above.
         unchecked {
@@ -91,5 +107,6 @@ contract Arbitrum_SpokePool is SpokePoolInterface, SpokePool {
         }
     }
 
+    // Apply AVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
 }
