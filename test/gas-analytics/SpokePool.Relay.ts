@@ -1,5 +1,5 @@
 import { toBNWei, SignerWithAddress, Contract, ethers, seedWallet } from "../utils";
-import { spokePoolFixture, getRelayHash, getFillRelayParams } from "../SpokePool.Fixture";
+import { spokePoolFixture, getRelayHash, getFillRelayParams } from "../fixtures/SpokePool.Fixture";
 
 require("dotenv").config();
 

@@ -1,7 +1,7 @@
 import { toBNWei, SignerWithAddress, Contract, ethers, BigNumber, expect, seedContract } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
-import { spokePoolFixture } from "../SpokePool.Fixture";
+import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
 import { RelayerRefundLeaf, buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
