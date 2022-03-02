@@ -1,5 +1,5 @@
 import { expect, Contract, ethers, SignerWithAddress } from "./utils";
-import { spokePoolFixture } from "./SpokePool.Fixture";
+import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
 
 let spokePool: Contract;

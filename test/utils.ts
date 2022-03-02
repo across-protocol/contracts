@@ -144,9 +144,9 @@ export async function getParamType(contractName: string, functionName: string, p
   return fragment!.inputs.find((input) => input.name === paramName) || "";
 }
 
-export async function createFake(contractName: string) {
+export async function createFake(contractName: string, targetAddress: string = "") {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  return await smock.fake(contractFactory);
+  return targetAddress != "" ? smock.fake(contractFactory, { address: targetAddress }) : smock.fake(contractFactory);
 }
 
 function avmL1ToL2Alias(l1Address: string) {

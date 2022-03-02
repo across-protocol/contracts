@@ -1,22 +1,6 @@
-import {
-  expect,
-  Contract,
-  ethers,
-  SignerWithAddress,
-  seedWallet,
-  toBN,
-  randomAddress,
-  randomBigNumber,
-  toWei,
-} from "./utils";
-import {
-  spokePoolFixture,
-  enableRoutes,
-  RelayData,
-  getExecuteSlowRelayParams,
-  getFillRelayParams,
-  getRelayHash,
-} from "./SpokePool.Fixture";
+import { expect, Contract, ethers, SignerWithAddress, seedWallet, toBN, randomAddress, randomBigNumber } from "./utils";
+import { spokePoolFixture, enableRoutes, RelayData, getExecuteSlowRelayParams } from "./fixtures/SpokePool.Fixture";
+import { getFillRelayParams, getRelayHash } from "./fixtures/SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import { buildSlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";

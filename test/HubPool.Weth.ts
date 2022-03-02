@@ -1,5 +1,5 @@
 import { toWei, toBN, SignerWithAddress, expect, Contract, ethers } from "./utils";
-import { hubPoolFixture } from "./HubPool.Fixture";
+import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract;
 let owner: SignerWithAddress;
