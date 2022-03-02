@@ -159,16 +159,6 @@ function avmL1ToL2Alias(l1Address: string) {
   return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
 }
 
-function avmL1ToL2Alias(l1Address: string) {
-  const offset = toBN("0x1111000000000000000000000000000000001111");
-  const l1AddressAsNumber = toBN(l1Address);
-
-  const l2AddressAsNumber = l1AddressAsNumber.add(offset);
-
-  const mask = toBN("2").pow(toBN("160"));
-  return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
-}
-
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
 export { avmL1ToL2Alias, expect, Contract, ethers, hre, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };

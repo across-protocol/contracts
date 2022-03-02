@@ -2,7 +2,7 @@ import { mockTreeRoot, amountToReturn, amountToRelay, amountHeldByPool } from ".
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
-import { buildDestinationDistributionLeafTree, buildDestinationDistributionLeafs } from "../MerkleLib.utils";
+import { buildRelayerRefundTree, buildRelayerRefundLeafs } from "../MerkleLib.utils";
 
 let hubPool: Contract, optimismSpokePool: Contract, merkleLib: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainMessengerAddress;
@@ -15,7 +15,7 @@ let owner: SignerWithAddress,
 let crossDomainMessenger: FakeContract;
 
 async function constructSimpleTree(l2Token: Contract | string, destinationChainId: number) {
-  const leafs = buildDestinationDistributionLeafs(
+  const leafs = buildRelayerRefundLeafs(
     [destinationChainId], // Destination chain ID.
     [amountToReturn], // amountToReturn.
     [l2Token as string], // l2Token.
@@ -23,26 +23,29 @@ async function constructSimpleTree(l2Token: Contract | string, destinationChainI
     [[]] // refundAmounts.
   );
 
-  const tree = await buildDestinationDistributionLeafTree(leafs);
+  const tree = await buildRelayerRefundTree(leafs);
 
   return { leafs, tree };
 }
 describe.only("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, l2Weth, dai, l2Dai, hubPool, merkleLib, timer } = await hubPoolFixture());
+    ({ weth, dai, l2Dai, hubPool, timer } = await hubPoolFixture());
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
-    crossDomainMessengerAddress = "0x4361d0F75A0186C05f971c566dC6bEa5957483fD";
-    await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [crossDomainMessengerAddress] });
+    crossDomainMessengerAddress = "0x4200000000000000000000000000000000000007";
     crossDomainMessengerPreDeploy = await ethers.getSigner(crossDomainMessengerAddress);
-    await owner.sendTransaction({ to: crossDomainMessengerAddress, value: toWei("1") });
 
-    crossDomainMessenger = await createFake("L2CrossDomainMessenger", crossDomainMessengerAddress);
+    crossDomainMessenger = await createFake("L2CrossDomainMessenger");
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [crossDomainMessenger.address],
+    });
+    await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
     optimismSpokePool = await (
-      await getContractFactory("Optimism_SpokePool", { signer: owner, libraries: { MerkleLib: merkleLib.address } })
-    ).deploy(owner.address, hubPool.address, l2Weth, timer.address);
+      await getContractFactory("Optimism_SpokePool", { signer: owner })
+    ).deploy(owner.address, hubPool.address, timer.address);
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
   });
@@ -53,8 +56,11 @@ describe.only("Arbitrum Spoke Pool", function () {
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     console.log("owner", owner.address);
     console.log("A", await optimismSpokePool.crossDomainAdmin());
-    // await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
-    await optimismSpokePool.setL1GasLimit(1337);
+
+    console.log("crossDomainMessenger", crossDomainMessenger);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
+    // await optimismSpokePool.setL1GasLimit(1337);
+    // await optimismSpokePool.connect(crossDomainMessengerPreDeploy).setL1GasLimit(1337);
     console.log("B");
     expect(await optimismSpokePool.crossDomainMessenger()).to.equal(rando.address);
   });
