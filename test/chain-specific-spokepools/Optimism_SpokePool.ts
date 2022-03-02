@@ -7,10 +7,7 @@ import { buildRelayerRefundTree, buildRelayerRefundLeafs } from "../MerkleLib.ut
 let hubPool: Contract, optimismSpokePool: Contract, merkleLib: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainMessengerAddress;
 
-let owner: SignerWithAddress,
-  relayer: SignerWithAddress,
-  rando: SignerWithAddress,
-  crossDomainMessengerPreDeploy: SignerWithAddress;
+let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
 let crossDomainMessenger: FakeContract;
 
@@ -32,11 +29,8 @@ describe.only("Arbitrum Spoke Pool", function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, dai, l2Dai, hubPool, timer } = await hubPoolFixture());
 
-    // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
-    crossDomainMessengerAddress = "0x4200000000000000000000000000000000000007";
-    crossDomainMessengerPreDeploy = await ethers.getSigner(crossDomainMessengerAddress);
-
-    crossDomainMessenger = await createFake("L2CrossDomainMessenger");
+    // Create the fake at the optimism cross domain messenger pre-deployment address.
+    crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [crossDomainMessenger.address],
@@ -54,15 +48,8 @@ describe.only("Arbitrum Spoke Pool", function () {
     crossDomainMessenger.xDomainMessageSender.returns(rando.address);
     await expect(optimismSpokePool.setL1GasLimit(1337)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    console.log("owner", owner.address);
-    console.log("A", await optimismSpokePool.crossDomainAdmin());
-
-    console.log("crossDomainMessenger", crossDomainMessenger);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
-    // await optimismSpokePool.setL1GasLimit(1337);
-    // await optimismSpokePool.connect(crossDomainMessengerPreDeploy).setL1GasLimit(1337);
-    console.log("B");
-    expect(await optimismSpokePool.crossDomainMessenger()).to.equal(rando.address);
+    expect(await optimismSpokePool.l1Gas()).to.equal(1337);
   });
 
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
