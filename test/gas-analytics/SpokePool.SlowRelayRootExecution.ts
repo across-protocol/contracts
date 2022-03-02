@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect } from "../utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect, seedContract } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture, RelayData } from "../SpokePool.Fixture";
@@ -7,7 +7,7 @@ import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
 
-let spokePool: Contract;
+let spokePool: Contract, weth: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, recipient: SignerWithAddress;
 
 // Associates an array of L2 tokens to fill relays with.
@@ -58,7 +58,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
 
   beforeEach(async function () {
     [owner, dataWorker, recipient] = await ethers.getSigners();
-    ({ spokePool } = await spokePoolFixture());
+    ({ spokePool, weth } = await spokePoolFixture());
 
     // Deploy test tokens for each chain ID
     l2Tokens = [];
@@ -69,9 +69,12 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       // Seed spoke pool with amount needed to cover all relay fills for L2 token.
       await token.connect(owner).mint(spokePool.address, RELAY_AMOUNT.mul(toBN(2)));
     }
+
+    // Seed pool with WETH for WETH tests
+    await seedContract(spokePool, owner, [], weth, RELAY_AMOUNT.mul(LEAF_COUNT).mul(toBN(2)));
   });
 
-  describe(`Tree with ${LEAF_COUNT} leaves`, function () {
+  describe(`(ERC20) Tree with ${LEAF_COUNT} leaves`, function () {
     beforeEach(async function () {
       // Change relay amount so we don't send tokens from the pool and the root is different.
       const initTree = await constructSimpleTree(
@@ -187,6 +190,69 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
 
       const receipt = await (await spokePool.connect(dataWorker).multicall(multicallData)).wait();
       console.log(`(average) executeSlowRelayRoot-gasUsed: ${receipt.gasUsed.div(LEAF_COUNT)}`);
+    });
+  });
+  describe(`(WETH) Tree with ${LEAF_COUNT} leaves`, function () {
+    beforeEach(async function () {
+      // Change relay amount so we don't send tokens from the pool and the root is different.
+      const initTree = await constructSimpleTree(
+        owner.address,
+        recipient.address,
+        Array(LEAF_COUNT).fill(weth.address),
+        "1"
+      );
+
+      // Store new tree.
+      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
+
+      // Execute 1 leaf from initial tree to warm state storage.
+      await spokePool
+        .connect(dataWorker)
+        .executeSlowRelayRoot(
+          owner.address,
+          recipient.address,
+          weth.address,
+          "1",
+          ORIGIN_CHAIN_ID,
+          FEE_PCT,
+          FEE_PCT,
+          "0",
+          "0",
+          initTree.tree.getHexProof(initTree.leaves[0])
+        );
+
+      const simpleTree = await constructSimpleTree(
+        owner.address,
+        recipient.address,
+        Array(LEAF_COUNT).fill(weth.address),
+        RELAY_AMOUNT.toString()
+      );
+      leaves = simpleTree.leaves;
+      tree = simpleTree.tree;
+    });
+
+    it("Executing 1 leaf", async function () {
+      const leafIndexToExecute = 0;
+
+      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+
+      // Execute second root bundle with index 1:
+      const txn = await spokePool
+        .connect(dataWorker)
+        .executeSlowRelayRoot(
+          owner.address,
+          recipient.address,
+          weth.address,
+          RELAY_AMOUNT,
+          ORIGIN_CHAIN_ID,
+          FEE_PCT,
+          FEE_PCT,
+          "0",
+          "1",
+          tree.getHexProof(leaves[leafIndexToExecute])
+        );
+      const receipt = await txn.wait();
+      console.log(`executeSlowRelayRoot-gasUsed: ${receipt.gasUsed}`);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, BigNumber, expect } from "../utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, BigNumber, expect, seedContract } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture } from "../SpokePool.Fixture";
@@ -7,7 +7,7 @@ import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
 
-let spokePool: Contract;
+let spokePool: Contract, weth: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, recipient: SignerWithAddress;
 
 // Associates an array of L2 tokens to sends refunds.
@@ -67,7 +67,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
 
   beforeEach(async function () {
     [owner, dataWorker, recipient] = await ethers.getSigners();
-    ({ spokePool } = await spokePoolFixture());
+    ({ spokePool, weth } = await spokePoolFixture());
 
     const destinationChainId = Number(await spokePool.chainId());
     destinationChainIds = Array(REFUND_LEAF_COUNT).fill(destinationChainId);
@@ -84,9 +84,12 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       const totalRefundAmount = REFUND_AMOUNT.mul(REFUNDS_PER_LEAF);
       await token.connect(owner).mint(spokePool.address, totalRefundAmount);
     }
+
+    // Seed pool with WETH for WETH tests
+    await seedContract(spokePool, owner, [], weth, REFUND_AMOUNT.mul(REFUNDS_PER_LEAF).mul(REFUND_LEAF_COUNT));
   });
 
-  describe(`Tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {
+  describe(`(ERC20) Tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {
     beforeEach(async function () {
       // Change refund amount to 0 so we don't send tokens from the pool and the root is different.
       const initTree = await constructSimpleTree(
@@ -164,5 +167,50 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       console.log(`(average) executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed.div(REFUND_LEAF_COUNT)}`);
     });
   });
-  describe(`(WETH): Relayer Refund tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {});
+  describe(`(WETH): Relayer Refund tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {
+    beforeEach(async function () {
+      // Change refund amount to 0 so we don't send tokens from the pool and the root is different.
+      const initTree = await constructSimpleTree(
+        destinationChainIds,
+        Array(REFUND_LEAF_COUNT).fill(weth.address),
+        amountsToReturn,
+        toBNWei("0"),
+        refundAddresses
+      );
+
+      // Store new tree.
+      await spokePool.connect(dataWorker).relayRootBundle(
+        initTree.tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+        consts.mockSlowRelayRoot
+      );
+
+      // Execute 1 leaf from initial tree to warm state storage.
+      await spokePool
+        .connect(dataWorker)
+        .executeRelayerRefundRoot(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+
+      const simpleTree = await constructSimpleTree(
+        destinationChainIds,
+        Array(REFUND_LEAF_COUNT).fill(weth.address),
+        amountsToReturn,
+        REFUND_AMOUNT,
+        refundAddresses
+      );
+      leaves = simpleTree.leaves;
+      tree = simpleTree.tree;
+    });
+    it("Executing 1 leaf", async function () {
+      const leafIndexToExecute = 0;
+
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+
+      // Execute second root bundle with index 1:
+      const txn = await spokePool
+        .connect(dataWorker)
+        .executeRelayerRefundRoot(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+
+      const receipt = await txn.wait();
+      console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+    });
+  });
 });
