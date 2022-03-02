@@ -1,5 +1,7 @@
+import { L2_ADDRESS_MAP } from "./consts";
+
 const func = async function (hre: any) {
-  const { deployments, getNamedAccounts, companionNetworks } = hre;
+  const { deployments, getNamedAccounts, companionNetworks, getChainId } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -11,15 +13,17 @@ const func = async function (hre: any) {
   const hubPool = await l1Deployments.get("HubPool");
   console.log(`Using l1 hub pool @ ${hubPool.address}`);
 
+  const chainId = await getChainId();
+
   await deploy("Arbitrum_SpokePool", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
-      "0x9413AD42910c1eA60c737dB5f58d1C504498a3cD", //_l2GatewayRouter
+      L2_ADDRESS_MAP[chainId].l2GatewayRouter, //_l2GatewayRouter
       adapter.address, // Set adapter as cross domain admin
       hubPool.address,
-      "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681", // l2Weth
+      L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth
       "0x0000000000000000000000000000000000000000",
     ],
   });

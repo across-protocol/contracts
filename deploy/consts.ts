@@ -21,3 +21,14 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     finder: "0xeD0169a88d267063184b0853BaAAAe66c3c154B2",
   },
 };
+
+export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
+  421611: {
+    l2GatewayRouter: "0x9413AD42910c1eA60c737dB5f58d1C504498a3cD",
+    l2Weth: "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681",
+  },
+  42161: {
+    l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
+    l2Weth: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+  },
+};
