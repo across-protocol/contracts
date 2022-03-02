@@ -1,15 +1,15 @@
-import { mockTreeRoot, amountToReturn, amountToRelay, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
-import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
-import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
+import { getContractFactory, seedContract, hre } from "../utils";
+import { hubPoolFixture } from "../HubPool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeafs } from "../MerkleLib.utils";
 
-let hubPool: Contract, optimismSpokePool: Contract, merkleLib: Contract, timer: Contract, dai: Contract, weth: Contract;
-let l2Weth: string, l2Dai: string, crossDomainMessengerAddress;
+let hubPool: Contract, optimismSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let l2Dai: string;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
-let crossDomainMessenger: FakeContract;
+let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2Weth: FakeContract;
 
 async function constructSimpleTree(l2Token: Contract | string, destinationChainId: number) {
   const leafs = buildRelayerRefundLeafs(
@@ -24,13 +24,18 @@ async function constructSimpleTree(l2Token: Contract | string, destinationChainI
 
   return { leafs, tree };
 }
-describe.only("Arbitrum Spoke Pool", function () {
+describe("Optimism Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, dai, l2Dai, hubPool, timer } = await hubPoolFixture());
 
-    // Create the fake at the optimism cross domain messenger pre-deployment address.
+    // Create the fake at the optimism cross domain messenger and l2StandardBridge pre-deployment addresses.
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
+    l2StandardBridge = await createFake("L2StandardBridge", "0x4200000000000000000000000000000000000010");
+
+    // Set l2Weth to the address deployed on the optimism predeploy.
+    l2Weth = await createFake("WETH9", "0x4200000000000000000000000000000000000006");
+
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [crossDomainMessenger.address],
@@ -45,26 +50,71 @@ describe.only("Arbitrum Spoke Pool", function () {
   });
 
   it("Only cross domain owner can set l1GasLimit", async function () {
-    crossDomainMessenger.xDomainMessageSender.returns(rando.address);
     await expect(optimismSpokePool.setL1GasLimit(1337)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
     expect(await optimismSpokePool.l1Gas()).to.equal(1337);
   });
 
-  it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
-    // const { leafs, tree } = await constructSimpleTree(l2Dai, await optimismSpokePool.callStatic.chainId());
-    // await optimismSpokePool.connect(crossDomainMessenger).initializeRelayerRefund(tree.getHexRoot(), mockTreeRoot);
-    // await optimismSpokePool.connect(relayer).distributeRelayerRefund(0, leafs[0], tree.getHexProof(leafs[0]));
-    // // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
-    // // outboundTransfer is overloaded in the arbitrum gateway. Define the interface to check the method is called.
-    // const functionKey = "outboundTransfer(address,address,uint256,bytes)";
-    // expect(crossDomainMessenger[functionKey]).to.have.been.calledOnce;
-    // expect(crossDomainMessenger[functionKey]).to.have.been.calledWith(
-    //   dai.address,
-    //   hubPool.address,
-    //   amountToReturn,
-    //   "0x"
-    // );
+  it("Only cross domain owner can enable a route", async function () {
+    await expect(optimismSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setEnableRoute(l2Dai, 1, true);
+    expect(await optimismSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
+  });
+
+  it("Only cross domain owner can set the cross domain admin", async function () {
+    await expect(optimismSpokePool.setCrossDomainAdmin(rando.address)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setCrossDomainAdmin(rando.address);
+    expect(await optimismSpokePool.crossDomainAdmin()).to.equal(rando.address);
+  });
+
+  it("Only cross domain owner can set the hub pool address", async function () {
+    await expect(optimismSpokePool.setHubPool(rando.address)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setHubPool(rando.address);
+    expect(await optimismSpokePool.hubPool()).to.equal(rando.address);
+  });
+
+  it("Only cross domain owner can set the quote time buffer", async function () {
+    await expect(optimismSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setDepositQuoteTimeBuffer(12345);
+    expect(await optimismSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
+  });
+
+  it("Only cross domain owner can initialize a relayer refund", async function () {
+    await expect(optimismSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(mockTreeRoot, mockTreeRoot);
+    expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
+    expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
+  });
+  it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
+    const { leafs, tree } = await constructSimpleTree(l2Dai, await optimismSpokePool.callStatic.chainId());
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+
+    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
+    expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
+    expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
+  });
+
+  it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
+    const { leafs, tree } = await constructSimpleTree(l2Weth.address, await optimismSpokePool.callStatic.chainId());
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+
+    // When sending l2Weth we should see two differences from the previous test: 1) there should be a call to l2WETH to
+    // unwrap l2WETH to l2ETH. 2) the address in the l2StandardBridge that is withdrawn should no longer be l2WETH but
+    // switched to l2ETH as this is what is sent over the canonical Optimism bridge when sending ETH.
+    expect(l2Weth.withdraw).to.have.been.calledOnce;
+    expect(l2Weth.withdraw).to.have.been.calledWith(amountToReturn);
+    expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
+    const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
+    expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Eth, hubPool.address, amountToReturn, 5000000, "0x");
   });
 });
