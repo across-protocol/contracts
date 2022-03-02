@@ -50,11 +50,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // slowRelayRoot to a SpokePool. The latter two roots, once published to the SpokePool, contain
     // leaves that can be executed on the SpokePool to pay relayers or recipients.
     struct RootBundle {
-        // When root bundle challenge period passes and this root bundle becomes executable.
-        uint64 requestExpirationTimestamp;
         // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
-        uint64 unclaimedPoolRebalanceLeafCount;
+        uint8 unclaimedPoolRebalanceLeafCount;
+        // When root bundle challenge period passes and this root bundle becomes executable.
+        uint64 requestExpirationTimestamp;
         // Contains leaves instructing this contract to send funds to SpokePools.
         bytes32 poolRebalanceRoot;
         // Relayer refund merkle root to be published to a SpokePool.
