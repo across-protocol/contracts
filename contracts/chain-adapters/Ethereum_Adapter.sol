@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 import "../interfaces/AdapterInterface.sol";
 import "../interfaces/WETH9.sol";
 
-import "@uma/core/contracts/common/implementation/Lockable.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -15,6 +13,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * contract between HubPool and SpokePool on the same chain. Its named "Ethereum_Adapter" because a core assumption
  * is that the HubPool will be deployed on Ethereum, so this adapter will be used to communicate between HubPool
  * and the Ethereum_SpokePool.
+ * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
+ * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
+ * For example, the HubPool will delegatecall these functions, therefore its only neccessary that the HubPool's methods
+ * that call this contract's logic guard against reentrancy.
  */
 contract Ethereum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
