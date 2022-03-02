@@ -1,6 +1,6 @@
 import { expect, Contract, ethers, SignerWithAddress, toBNWei, seedWallet, toWei } from "./utils";
 import * as consts from "./constants";
-import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "./MerkleLib.utils";
 
 let hubPool: Contract, weth: Contract, timer: Contract;

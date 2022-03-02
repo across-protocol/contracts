@@ -1,8 +1,8 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, hre } from "../utils";
-import { hubPoolFixture } from "../HubPool.Fixture";
-import { buildRelayerRefundTree, buildRelayerRefundLeafs } from "../MerkleLib.utils";
+import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
+import { buildRelayerRefundTree, buildRelayerRefundLeafs, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, optimismSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Dai: string;
@@ -11,19 +11,6 @@ let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddre
 
 let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2Weth: FakeContract;
 
-async function constructSimpleTree(l2Token: Contract | string, destinationChainId: number) {
-  const leafs = buildRelayerRefundLeafs(
-    [destinationChainId], // Destination chain ID.
-    [amountToReturn], // amountToReturn.
-    [l2Token as string], // l2Token.
-    [[]], // refundAddresses.
-    [[]] // refundAmounts.
-  );
-
-  const tree = await buildRelayerRefundTree(leafs);
-
-  return { leafs, tree };
-}
 describe("Optimism Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
@@ -92,7 +79,7 @@ describe("Optimism Spoke Pool", function () {
     expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
-    const { leafs, tree } = await constructSimpleTree(l2Dai, await optimismSpokePool.callStatic.chainId());
+    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await optimismSpokePool.callStatic.chainId());
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
@@ -103,7 +90,10 @@ describe("Optimism Spoke Pool", function () {
   });
 
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
-    const { leafs, tree } = await constructSimpleTree(l2Weth.address, await optimismSpokePool.callStatic.chainId());
+    const { leafs, tree } = await constructSingleRelayerRefundTree(
+      l2Weth.address,
+      await optimismSpokePool.callStatic.chainId()
+    );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));

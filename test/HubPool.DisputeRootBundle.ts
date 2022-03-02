@@ -1,7 +1,7 @@
 import { parseAncillaryData } from "@uma/common";
-import { SignerWithAddress, seedWallet, expect, Contract, ethers, toWei } from "./utils";
+import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
-import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, optimisticOracle: Contract, store: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;

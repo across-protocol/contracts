@@ -1,5 +1,5 @@
-import { getContractFactory, utf8ToHex, hre } from "./utils";
-import { refundProposalLiveness, zeroRawValue, identifier } from "./constants";
+import { getContractFactory, utf8ToHex, hre } from "../utils";
+import { refundProposalLiveness, zeroRawValue, identifier } from "../constants";
 import { interfaceName } from "@uma/common";
 
 export const umaEcosystemFixture = hre.deployments.createFixture(async ({ ethers }) => {

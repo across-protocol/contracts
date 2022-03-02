@@ -1,8 +1,8 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
-import { hubPoolFixture } from "../HubPool.Fixture";
-import { buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
+import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
+import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
@@ -10,19 +10,6 @@ let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
 let l2GatewayRouter: FakeContract;
 
-async function constructSimpleTree(l2Token: Contract | string, destinationChainId: number) {
-  const leafs = buildRelayerRefundLeafs(
-    [destinationChainId], // Destination chain ID.
-    [amountToReturn], // amountToReturn.
-    [l2Token as string], // l2Token.
-    [[]], // refundAddresses.
-    [[]] // refundAmounts.
-  );
-
-  const tree = await buildRelayerRefundTree(leafs);
-
-  return { leafs, tree };
-}
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
@@ -88,7 +75,7 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
-    const { leafs, tree } = await constructSimpleTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
+    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await arbitrumSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
 
