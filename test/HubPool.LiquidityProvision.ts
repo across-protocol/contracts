@@ -1,5 +1,5 @@
 import { getContractFactory, fromWei, toBN, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
-import { hubPoolFixture, enableTokensForLP } from "./HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { amountToSeedWallets, amountToLp } from "./constants";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, dai: Contract;

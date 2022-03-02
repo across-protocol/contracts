@@ -1,5 +1,5 @@
 import { PoolRebalanceLeaf, RelayerRefundLeaf } from "./MerkleLib.utils";
-import { merkleLibFixture } from "./MerkleLib.Fixture";
+import { merkleLibFixture } from "./fixtures/MerkleLib.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import { expect, randomBigNumber, randomAddress, getParamType, defaultAbiCoder } from "./utils";
 import { keccak256, Contract, BigNumber } from "./utils";

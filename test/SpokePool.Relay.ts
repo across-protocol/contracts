@@ -1,12 +1,6 @@
 import { expect, Contract, ethers, SignerWithAddress, seedWallet, toWei, toBN } from "./utils";
-import {
-  spokePoolFixture,
-  enableRoutes,
-  getRelayHash,
-  modifyRelayHelper,
-  getFillRelayParams,
-  getFillRelayUpdatedFeeParams,
-} from "./SpokePool.Fixture";
+import { spokePoolFixture, enableRoutes, getRelayHash, modifyRelayHelper } from "./fixtures/SpokePool.Fixture";
+import { getFillRelayParams, getFillRelayUpdatedFeeParams } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;

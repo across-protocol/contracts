@@ -1,6 +1,6 @@
 import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
-import { hubPoolFixture } from "./HubPool.Fixture";
+import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, dataWorker: SignerWithAddress;
 

@@ -1,12 +1,7 @@
-import { expect } from "chai";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
-
-import { SignerWithAddress, seedContract, toBN, toWei } from "./utils";
+import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
-import { spokePoolFixture } from "./SpokePool.Fixture";
+import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeafs } from "./MerkleLib.utils";
-import { toBNWei } from "@uma/common";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -77,6 +72,7 @@ describe("SpokePool Root Bundle Execution", function () {
     tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
     expect(tokensBridgedEvents.length).to.equal(1);
   });
+
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {
     const { leafs, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(

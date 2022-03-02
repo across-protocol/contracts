@@ -1,7 +1,6 @@
 import { TokenRolesEnum } from "@uma/common";
-
-import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "./utils";
-import * as consts from "./constants";
+import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "../utils";
+import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();

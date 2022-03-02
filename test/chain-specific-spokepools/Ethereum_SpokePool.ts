@@ -1,26 +1,13 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import { ethers, expect, Contract, SignerWithAddress } from "../utils";
 import { getContractFactory, seedContract } from "../utils";
-import { hubPoolFixture } from "../HubPool.Fixture";
-import { buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
+import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
+import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, spokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 
-let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
+let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
-async function constructSimpleTree(l2Token: Contract | string, destinationChainId: number) {
-  const leafs = buildRelayerRefundLeafs(
-    [destinationChainId], // Destination chain ID.
-    [amountToReturn], // amountToReturn.
-    [l2Token as string], // l2Token.
-    [[]], // refundAddresses.
-    [[]] // refundAmounts.
-  );
-
-  const tree = await buildRelayerRefundTree(leafs);
-
-  return { leafs, tree };
-}
 describe("Ethereum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
@@ -67,7 +54,7 @@ describe("Ethereum Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly sends tokens to hub pool", async function () {
-    const { leafs, tree } = await constructSimpleTree(dai.address, await spokePool.callStatic.chainId());
+    const { leafs, tree } = await constructSingleRelayerRefundTree(dai.address, await spokePool.callStatic.chainId());
     await spokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await expect(() =>
       spokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))

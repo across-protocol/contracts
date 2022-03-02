@@ -1,25 +1,8 @@
-import {
-  getContractFactory,
-  SignerWithAddress,
-  seedWallet,
-  expect,
-  Contract,
-  ethers,
-  randomAddress,
-  utf8ToHex,
-} from "./utils";
-import {
-  originChainId,
-  destinationChainId,
-  bondAmount,
-  zeroAddress,
-  mockTreeRoot,
-  mockSlowRelayRoot,
-  finalFeeUsdc,
-  finalFee,
-  totalBond,
-} from "./constants";
-import { hubPoolFixture } from "./HubPool.Fixture";
+import { getContractFactory, SignerWithAddress, seedWallet, expect } from "./utils";
+import { Contract, ethers, randomAddress, utf8ToHex } from "./utils";
+import { originChainId, destinationChainId, bondAmount, zeroAddress, mockTreeRoot } from "./constants";
+import { mockSlowRelayRoot, finalFeeUsdc, finalFee, totalBond } from "./constants";
+import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 
 let hubPool: Contract,
   weth: Contract,

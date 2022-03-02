@@ -1,7 +1,7 @@
 import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "./utils";
-import { repaymentChainId } from "./constants";
+import { repaymentChainId, amountToReturn } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
-import { RelayData } from "./SpokePool.Fixture";
+import { RelayData } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
   chainId: BigNumber;
   bundleLpFees: BigNumber[];
@@ -85,6 +85,20 @@ export function buildPoolRebalanceLeafs(
         leafId: BigNumber.from(i),
       };
     });
+}
+
+export async function constructSingleRelayerRefundTree(l2Token: Contract | String, destinationChainId: number) {
+  const leafs = buildRelayerRefundLeafs(
+    [destinationChainId], // Destination chain ID.
+    [amountToReturn], // amountToReturn.
+    [l2Token as string], // l2Token.
+    [[]], // refundAddresses.
+    [[]] // refundAmounts.
+  );
+
+  const tree = await buildRelayerRefundTree(leafs);
+
+  return { leafs, tree };
 }
 
 export async function constructSingleChainTree(token: string, scalingSize = 1, repaymentChain = repaymentChainId) {

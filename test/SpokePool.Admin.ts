@@ -1,5 +1,5 @@
 import { expect, ethers, Contract, SignerWithAddress } from "./utils";
-import { spokePoolFixture } from "./SpokePool.Fixture";
+import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId } from "./constants";
 
 let spokePool: Contract, erc20: Contract;

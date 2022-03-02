@@ -1,18 +1,8 @@
-import {
-  toBNWei,
-  toBN,
-  SignerWithAddress,
-  seedWallet,
-  Contract,
-  ethers,
-  getContractFactory,
-  BigNumber,
-  randomAddress,
-  createRandomBytes32,
-} from "../utils";
+import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers } from "../utils";
+import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
 import * as consts from "../constants";
 import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
-import { hubPoolFixture, enableTokensForLP } from "../HubPool.Fixture";
+import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs, PoolRebalanceLeaf } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
