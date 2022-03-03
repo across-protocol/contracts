@@ -73,6 +73,9 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
             IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+
+            // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
+            // 1. Dai
             if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F)
                 _l1StandardBridge = IL1StandardBridge(0x10E6593CDda8c58a1d0f14C5164B376352a55f2F);
 
