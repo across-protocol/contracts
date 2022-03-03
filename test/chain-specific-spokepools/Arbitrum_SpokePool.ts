@@ -37,6 +37,12 @@ describe("Arbitrum Spoke Pool", function () {
     expect(await arbitrumSpokePool.l2GatewayRouter()).to.equal(rando.address);
   });
 
+  it("Only cross domain owner can set token bridge address for L2 token", async function () {
+    await expect(arbitrumSpokePool.setTokenBridge(l2Dai, rando.address)).to.be.reverted;
+    await arbitrumSpokePool.connect(crossDomainAlias).setTokenBridge(l2Dai, rando.address);
+    expect(await arbitrumSpokePool.tokenBridges(l2Dai)).to.equal(rando.address);
+  });
+
   it("Only cross domain owner can enable a route", async function () {
     await expect(arbitrumSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).setEnableRoute(l2Dai, 1, true);
@@ -84,5 +90,19 @@ describe("Arbitrum Spoke Pool", function () {
     const functionKey = "outboundTransfer(address,address,uint256,bytes)";
     expect(l2GatewayRouter[functionKey]).to.have.been.calledOnce;
     expect(l2GatewayRouter[functionKey]).to.have.been.calledWith(dai.address, hubPool.address, amountToReturn, "0x");
+  });
+
+  it("Bridge tokens to hub pool correctly calls an alternative L2 Gateway router", async function () {
+    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
+    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    const altL2GatewayRouter = await createFake("L2GatewayRouter");
+    await arbitrumSpokePool.connect(crossDomainAlias).setTokenBridge(l2Dai, altL2GatewayRouter.address);
+    await arbitrumSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+
+    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
+    // outboundTransfer is overloaded in the arbitrum gateway. Define the interface to check the method is called.
+    const functionKey = "outboundTransfer(address,address,uint256,bytes)";
+    expect(altL2GatewayRouter[functionKey]).to.have.been.calledOnce;
+    expect(altL2GatewayRouter[functionKey]).to.have.been.calledWith(dai.address, hubPool.address, amountToReturn, "0x");
   });
 });

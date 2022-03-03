@@ -24,9 +24,13 @@ contract Arbitrum_SpokePool is SpokePool {
     // are neccessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
+    // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge.
+    mapping(address => address) public tokenBridges;
+
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
+    event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
 
     /**
      * @notice Construct the AVM SpokePool.
@@ -56,6 +60,16 @@ contract Arbitrum_SpokePool is SpokePool {
      ********************************************************/
 
     /**
+     * @notice Set bridge contract for L2 token used to withdraw back to L1.
+     * @dev If this mapping isn't set for an L2 token, then the standard bridge will be used to bridge this token.
+     * @param tokenBridge Address of token bridge
+     */
+    function setTokenBridge(address l2Token, address tokenBridge) public onlyAdmin {
+        tokenBridges[l2Token] = tokenBridge;
+        emit SetL2TokenBridge(l2Token, tokenBridge);
+    }
+
+    /**
      * @notice Change L2 gateway router. Callable only by admin.
      * @param newL2GatewayRouter New L2 gateway router.
      */
@@ -77,12 +91,16 @@ contract Arbitrum_SpokePool is SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            relayerRefundLeaf.amountToReturn, // _amount.
-            "" // _data. We don't need to send any data for the bridging action.
-        );
+        StandardBridgeLike(
+            tokenBridges[relayerRefundLeaf.l2TokenAddress] == address(0)
+                ? l2GatewayRouter
+                : tokenBridges[relayerRefundLeaf.l2TokenAddress]
+        ).outboundTransfer(
+                whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
+                hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
+                relayerRefundLeaf.amountToReturn, // _amount.
+                "" // _data. We don't need to send any data for the bridging action.
+            );
         emit ArbitrumTokensBridged(address(0), hubPool, relayerRefundLeaf.amountToReturn);
     }
 
