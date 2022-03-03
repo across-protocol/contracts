@@ -75,9 +75,12 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             IL1StandardBridge _l1StandardBridge = l1StandardBridge;
 
             // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
-            // 1. Dai
+            // 1. DAI
             if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F)
                 _l1StandardBridge = IL1StandardBridge(0x10E6593CDda8c58a1d0f14C5164B376352a55f2F);
+            // 2. SNX
+            if (l1Token == 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F)
+                _l1StandardBridge = IL1StandardBridge(0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068);
 
             IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
