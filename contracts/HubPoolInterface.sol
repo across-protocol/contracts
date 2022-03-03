@@ -40,7 +40,7 @@ interface HubPoolInterface {
 
     function setBond(IERC20 newBondToken, uint256 newBondAmount) external;
 
-    function setLiveness(uint64 newLiveness) external;
+    function setLiveness(uint32 newLiveness) external;
 
     function setIdentifier(bytes32 newIdentifier) external;
 

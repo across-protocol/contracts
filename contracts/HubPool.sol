@@ -50,11 +50,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // slowRelayRoot to a SpokePool. The latter two roots, once published to the SpokePool, contain
     // leaves that can be executed on the SpokePool to pay relayers or recipients.
     struct RootBundle {
-        // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
-        // of leaves are executed, a new root bundle can be proposed
-        uint8 unclaimedPoolRebalanceLeafCount;
-        // When root bundle challenge period passes and this root bundle becomes executable.
-        uint64 requestExpirationTimestamp;
         // Contains leaves instructing this contract to send funds to SpokePools.
         bytes32 poolRebalanceRoot;
         // Relayer refund merkle root to be published to a SpokePool.
@@ -67,6 +62,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address proposer;
         // Whether bond has been repaid to successful root bundle proposer.
         bool proposerBondRepaid;
+        // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
+        // of leaves are executed, a new root bundle can be proposed
+        uint8 unclaimedPoolRebalanceLeafCount;
+        // When root bundle challenge period passes and this root bundle becomes executable.
+        uint32 requestExpirationTimestamp;
     }
 
     // Only one root bundle can be stored at a time. Once all pool rebalance leaves are executed, a new proposal
@@ -136,7 +136,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
     // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint64 public liveness = 7200;
+    uint32 public liveness = 7200;
 
     event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
 
@@ -174,7 +174,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     );
 
     event ProposeRootBundle(
-        uint64 requestExpirationTimestamp,
+        uint32 requestExpirationTimestamp,
         uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
@@ -290,7 +290,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets root bundle proposal liveness period. Callable only by owner.
      * @param newLiveness New liveness period.
      */
-    function setLiveness(uint64 newLiveness) public override onlyOwner {
+    function setLiveness(uint32 newLiveness) public override onlyOwner {
         require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
@@ -504,7 +504,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint64 requestExpirationTimestamp = uint64(getCurrentTime() + liveness);
+        uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
 
