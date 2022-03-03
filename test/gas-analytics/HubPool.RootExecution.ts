@@ -69,7 +69,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
 
     // Seed data worker with bond tokens.
     await seedWallet(dataWorker, [], weth, consts.bondAmount.mul(10));
-    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
+    await weth.connect(dataWorker).approve(hubPool.address, consts.maxUint256);
 
     // Deploy test tokens for each chain ID
     l1Tokens = [];
@@ -79,12 +79,12 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
 
       // Mint data worker amount of tokens needed to bond a new root
       await seedWallet(dataWorker, [_l1Token], undefined, consts.bondAmount.mul(100));
-      await _l1Token.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(100));
+      await _l1Token.connect(dataWorker).approve(hubPool.address, consts.maxUint256);
 
       // Mint LP amount of tokens needed to cover relay
       await seedWallet(liquidityProvider, [_l1Token], undefined, STARTING_LP_AMOUNT);
       await enableTokensForLP(owner, hubPool, weth, [_l1Token]);
-      await _l1Token.connect(liquidityProvider).approve(hubPool.address, STARTING_LP_AMOUNT);
+      await _l1Token.connect(liquidityProvider).approve(hubPool.address, consts.maxUint256);
       await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, STARTING_LP_AMOUNT);
     }
 

@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, BigNumber, expect, seedContract } from "../utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, BigNumber, expect, seedContract, toBN } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
@@ -81,12 +81,20 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       l2Tokens.push(token);
 
       // Seed spoke pool with amount needed to cover all refunds for L2 token, which is used for 1 refund leaf.
+      // Note: Mint more than needed for this test to simulate production, otherwise reported gas costs
+      // will be better because a storage slot is deleted.
       const totalRefundAmount = REFUND_AMOUNT.mul(REFUNDS_PER_LEAF);
-      await token.connect(owner).mint(spokePool.address, totalRefundAmount);
+      await token.connect(owner).mint(spokePool.address, totalRefundAmount.mul(toBN(5)));
     }
 
     // Seed pool with WETH for WETH tests
-    await seedContract(spokePool, owner, [], weth, REFUND_AMOUNT.mul(REFUNDS_PER_LEAF).mul(REFUND_LEAF_COUNT));
+    await seedContract(
+      spokePool,
+      owner,
+      [],
+      weth,
+      REFUND_AMOUNT.mul(REFUNDS_PER_LEAF).mul(REFUND_LEAF_COUNT).mul(toBN(5))
+    );
   });
 
   describe(`(ERC20) Tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {
