@@ -72,8 +72,12 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(l1StandardBridge), amount);
-            l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+            if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F)
+                _l1StandardBridge = IL1StandardBridge(0x10E6593CDda8c58a1d0f14C5164B376352a55f2F);
+
+            IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
+            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
