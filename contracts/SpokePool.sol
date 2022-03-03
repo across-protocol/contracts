@@ -105,14 +105,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
-        uint256 indexed repaymentChainId,
+        uint256 repaymentChainId,
         uint256 originChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
         uint32 depositId,
         address destinationToken,
         address indexed relayer,
-        address depositor,
+        address indexed depositor,
         address recipient
     );
     event ExecutedSlowRelayRoot(
@@ -120,25 +120,25 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
-        uint256 originChainId,
+        uint256 indexed originChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
         uint32 depositId,
         address destinationToken,
-        address indexed caller,
-        address depositor,
+        address caller,
+        address indexed depositor,
         address recipient
     );
     event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
-        uint256 chainId,
+        uint256 indexed chainId,
         uint256[] refundAmounts,
         uint32 indexed rootBundleId,
         uint32 indexed leafId,
         address l2TokenAddress,
         address[] refundAddresses,
-        address indexed caller
+        address caller
     );
     event TokensBridged(
         uint256 amountToReturn,

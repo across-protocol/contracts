@@ -1,5 +1,5 @@
 {
-  "name": "across-smart-contracts-v2",
+  "name": "@across-protocol/contracts-v2",
   "version": "0.0.1",
   "main": "index.js",
   "author": "UMA Team",
