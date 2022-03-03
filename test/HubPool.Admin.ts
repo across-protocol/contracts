@@ -89,7 +89,7 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(owner).setIdentifier(identifier)).to.be.revertedWith("Identifier not supported");
   });
   it("Set liveness", async function () {
-    const newLiveness = "1000000";
+    const newLiveness = 1000000;
     await hubPool.connect(owner).setLiveness(newLiveness);
     await expect(await hubPool.liveness()).to.equal(newLiveness);
   });
@@ -97,6 +97,6 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(owner).setLiveness(599)).to.be.revertedWith("Liveness too short");
   });
   it("Only owner can set liveness", async function () {
-    await expect(hubPool.connect(other).setLiveness("1000000")).to.be.reverted;
+    await expect(hubPool.connect(other).setLiveness(1000000)).to.be.reverted;
   });
 });
