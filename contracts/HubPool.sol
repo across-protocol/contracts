@@ -102,7 +102,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address spokePool;
     }
     // Mapping of chainId to the associated adapter and spokePool contracts.
-    f public crossChainContracts;
+    mapping(uint256 => CrossChainContract) public crossChainContracts;
 
     // WETH contract for Ethereum.
     WETH9 public weth;
