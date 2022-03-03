@@ -343,7 +343,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Whitelist the same route on the origin network.
         _relaySpokePoolAdminFunction(
             originChainId,
-            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
+            abi.encodeWithSignature(
+                "setEnableRoute(address,uint256,bool)",
+                originToken,
+                destinationChainId,
+                (destinationToken != address(0)) // We assume that setting the destination token to 0x0 for any route
+                // is equivalent to "un-whitelisting" the route.
+            )
         );
         emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken);
     }

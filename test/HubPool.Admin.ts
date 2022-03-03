@@ -3,6 +3,7 @@ import { Contract, ethers, randomAddress, utf8ToHex } from "./utils";
 import { originChainId, destinationChainId, bondAmount, zeroAddress, mockTreeRoot } from "./constants";
 import { mockSlowRelayRoot, finalFeeUsdc, finalFee, totalBond } from "./constants";
 import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
+import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract,
   weth: Contract,
@@ -48,6 +49,32 @@ describe("HubPool Admin functions", function () {
       .withArgs(originChainId, destinationChainId, weth.address, usdc.address);
 
     expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(usdc.address);
+
+    // Can set destination token in route to 0x0 to disable a route.
+    await hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, ZERO_ADDRESS);
+
+    // Check content of messages sent to mock spoke pool. The last call should have "disabled" a route, and the call
+    // right before should have enabled the route.
+
+    // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
+    const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
+    const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
+      mockAdapterAtHubPool.filters.RelayMessageCalled()
+    );
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        weth.address,
+        destinationChainId,
+        false, // Should be set to false to disable route on SpokePool
+      ])
+    );
+    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        weth.address,
+        destinationChainId,
+        true, // Should be set to true because destination token wasn't 0x0
+      ])
+    );
   });
 
   it("Can change the bond token and amount", async function () {
