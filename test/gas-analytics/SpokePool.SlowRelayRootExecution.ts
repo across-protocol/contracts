@@ -1,5 +1,5 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect, seedContract } from "../utils";
-import { deployErc20 } from "./utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect, seedContract, seedWallet } from "../utils";
+import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture, RelayData } from "../fixtures/SpokePool.Fixture";
 import { buildSlowRelayTree } from "../MerkleLib.utils";
@@ -68,10 +68,16 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
 
       // Seed spoke pool with amount needed to cover all relay fills for L2 token.
       await token.connect(owner).mint(spokePool.address, RELAY_AMOUNT.mul(toBN(2)));
+
+      await seedWallet(owner, [token], weth, RELAY_AMOUNT.mul(toBN(2)));
+      await token.connect(owner).approve(spokePool.address, consts.maxUint256);
+      await warmSpokePool(spokePool, owner, dataWorker, token.address, RELAY_AMOUNT, RELAY_AMOUNT, 0);
     }
 
     // Seed pool with WETH for WETH tests
     await seedContract(spokePool, owner, [], weth, RELAY_AMOUNT.mul(LEAF_COUNT).mul(toBN(2)));
+    await weth.connect(owner).approve(spokePool.address, consts.maxUint256);
+    await warmSpokePool(spokePool, owner, dataWorker, weth.address, RELAY_AMOUNT, RELAY_AMOUNT, 0);
   });
 
   describe(`(ERC20) Tree with ${LEAF_COUNT} leaves`, function () {

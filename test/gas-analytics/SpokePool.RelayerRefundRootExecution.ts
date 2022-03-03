@@ -1,5 +1,15 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, BigNumber, expect, seedContract, toBN } from "../utils";
-import { deployErc20 } from "./utils";
+import {
+  toBNWei,
+  SignerWithAddress,
+  Contract,
+  ethers,
+  BigNumber,
+  expect,
+  seedContract,
+  toBN,
+  seedWallet,
+} from "../utils";
+import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
 import { RelayerRefundLeaf, buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
@@ -85,6 +95,10 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // will be better because a storage slot is deleted.
       const totalRefundAmount = REFUND_AMOUNT.mul(REFUNDS_PER_LEAF);
       await token.connect(owner).mint(spokePool.address, totalRefundAmount.mul(toBN(5)));
+
+      await seedWallet(owner, [token], weth, totalRefundAmount.mul(toBN(5)));
+      await token.connect(owner).approve(spokePool.address, consts.maxUint256);
+      await warmSpokePool(spokePool, owner, recipient, token.address, totalRefundAmount, totalRefundAmount, 0);
     }
 
     // Seed pool with WETH for WETH tests
@@ -94,6 +108,16 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       [],
       weth,
       REFUND_AMOUNT.mul(REFUNDS_PER_LEAF).mul(REFUND_LEAF_COUNT).mul(toBN(5))
+    );
+    await weth.connect(owner).approve(spokePool.address, consts.maxUint256);
+    await warmSpokePool(
+      spokePool,
+      owner,
+      dataWorker,
+      weth.address,
+      REFUND_AMOUNT.mul(REFUNDS_PER_LEAF),
+      REFUND_AMOUNT.mul(REFUNDS_PER_LEAF),
+      0
     );
   });
 
