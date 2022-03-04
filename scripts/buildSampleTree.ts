@@ -1,6 +1,6 @@
 import { toWei, toBN, toBNWei, getParamType, defaultAbiCoder, keccak256 } from "../test/utils";
 import { MerkleTree } from "../utils/MerkleTree";
-import { RelayData } from "../test/SpokePool.Fixture";
+import { RelayData } from "../test/fixtures/SpokePool.Fixture";
 
 import { PoolRebalanceLeaf, RelayerRefundLeaf } from "../test/MerkleLib.utils";
 
@@ -51,7 +51,7 @@ async function main() {
     depositor: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
     recipient: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
     destinationToken: "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681",
-    relayAmount: "100000000000000000",
+    amount: "100000000000000000",
     realizedLpFeePct: "100000000000000000",
     relayerFeePct: "100000000000000000",
     depositId: "0",
