@@ -101,35 +101,6 @@ describe("SpokePool Slow Relay Logic", async function () {
     );
   });
 
-  // TODO: Move to Optimism_SpokePool test.
-  // it("Execute root wraps any ETH owned by contract", async function () {
-  //   const amountOfEthToWrap = toWei("1");
-  //   await relayer.sendTransaction({
-  //     to: spokePool.address,
-  //     value: amountOfEthToWrap,
-  //   });
-
-  //   // Pool should have wrapped all ETH
-  //   await expect(() =>
-  //     spokePool
-  //       .connect(relayer)
-  //       .executeSlowRelayRoot(
-  //         ...getExecuteSlowRelayParams(
-  //           depositor.address,
-  //           recipient.address,
-  //           weth.address,
-  //           consts.amountToRelay,
-  //           consts.originChainId,
-  //           consts.realizedLpFeePct,
-  //           consts.depositRelayerFeePct,
-  //           consts.firstDepositId,
-  //           0,
-  //           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
-  //         )
-  //       )
-  //   ).to.changeEtherBalance(spokePool, amountOfEthToWrap.mul(-1));
-  // });
-
   it("Simple SlowRelay ERC20 event", async function () {
     const relay = relays.find((relay) => relay.destinationToken === destErc20.address)!;
 
