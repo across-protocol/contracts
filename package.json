@@ -1,5 +1,5 @@
 {
-  "name": "across-smart-contracts-v2",
+  "name": "@across-protocol/contracts-v2",
   "version": "0.0.2",
   "main": "index.js",
   "author": "UMA Team",
@@ -66,5 +66,9 @@
     "hooks": {
       "pre-commit": "echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"
     }
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   }
 }
