@@ -74,7 +74,10 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
         } else {
             IL1StandardBridge _l1StandardBridge = l1StandardBridge;
 
-            // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
+            // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge. This is
+            // required as Optimism uses custom bridges for non-standard tokens. In the event we want to support a new
+            // token that is not supported by Optimism, we can add a new custom bridge for it and re-deploy the adapter.
+            // Full list of OP custom tokens can be found here: https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/optimism.tokenlist.json
             // 1. DAI
             if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F)
                 _l1StandardBridge = IL1StandardBridge(0x10E6593CDda8c58a1d0f14C5164B376352a55f2F);
