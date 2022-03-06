@@ -1,5 +1,5 @@
 import { expect, Contract, ethers, SignerWithAddress, seedWallet, toWei, toBN } from "./utils";
-import { spokePoolFixture, enableRoutes, getRelayHash, modifyRelayHelper } from "./fixtures/SpokePool.Fixture";
+import { spokePoolFixture, getRelayHash, modifyRelayHelper } from "./fixtures/SpokePool.Fixture";
 import { getFillRelayParams, getFillRelayUpdatedFeeParams } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 
@@ -20,9 +20,6 @@ describe("SpokePool Relayer Logic", async function () {
     await weth.connect(depositor).approve(spokePool.address, consts.amountToDeposit);
     await destErc20.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
     await weth.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
-
-    // Whitelist origin token => destination chain ID routes:
-    await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
   });
   it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
     const { relayHash, relayData } = getRelayHash(

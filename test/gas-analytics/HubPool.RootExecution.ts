@@ -1,14 +1,15 @@
-import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers } from "../utils";
+import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre } from "../utils";
 import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
+import { deployErc20 } from "./utils";
 import * as consts from "../constants";
-import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
+import { ZERO_ADDRESS } from "@uma/common";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs, PoolRebalanceLeaf } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
 
-let hubPool: Contract, timer: Contract, weth: Contract, mockAdapter: Contract, mockSpoke: Contract;
+let hubPool: Contract, timer: Contract, weth: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 
 // Associates an array of L1 tokens to sends refunds for to each chain ID.
@@ -24,12 +25,6 @@ const SEND_AMOUNT = toBNWei("10");
 const STARTING_LP_AMOUNT = SEND_AMOUNT.mul(100); // This should be >= `SEND_AMOUNT` otherwise some relays will revert because
 // the pool balance won't be sufficient to cover the relay.
 const LP_FEE = SEND_AMOUNT.div(toBN(10));
-
-async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSymbol: string) {
-  const erc20 = await (await getContractFactory("ExpandedERC20", signer)).deploy(tokenName, tokenSymbol, 18);
-  await erc20.addMember(TokenRolesEnum.MINTER, owner.address);
-  return erc20;
-}
 
 // Construct tree with REFUND_CHAIN_COUNT leaves, each containing REFUND_TOKEN_COUNT sends
 async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Contract[]) {
@@ -58,7 +53,7 @@ async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Co
   return { leaves, tree };
 }
 
-describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
+describe("Gas Analytics: HubPool Root Bundle Execution", function () {
   before(async function () {
     if (!process.env.GAS_TEST_ENABLED) this.skip();
   });
@@ -68,11 +63,13 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
     destinationChainIds = [];
 
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ hubPool, timer, weth, mockSpoke, mockAdapter } = await hubPoolFixture());
+    ({ hubPool, timer, weth } = await hubPoolFixture());
+
+    const hubPoolChainId = Number(await hre.getChainId());
 
     // Seed data worker with bond tokens.
     await seedWallet(dataWorker, [], weth, consts.bondAmount.mul(10));
-    await weth.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
+    await weth.connect(dataWorker).approve(hubPool.address, consts.maxUint256);
 
     // Deploy test tokens for each chain ID
     l1Tokens = [];
@@ -82,12 +79,12 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
 
       // Mint data worker amount of tokens needed to bond a new root
       await seedWallet(dataWorker, [_l1Token], undefined, consts.bondAmount.mul(100));
-      await _l1Token.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(100));
+      await _l1Token.connect(dataWorker).approve(hubPool.address, consts.maxUint256);
 
       // Mint LP amount of tokens needed to cover relay
       await seedWallet(liquidityProvider, [_l1Token], undefined, STARTING_LP_AMOUNT);
       await enableTokensForLP(owner, hubPool, weth, [_l1Token]);
-      await _l1Token.connect(liquidityProvider).approve(hubPool.address, STARTING_LP_AMOUNT);
+      await _l1Token.connect(liquidityProvider).approve(hubPool.address, consts.maxUint256);
       await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, STARTING_LP_AMOUNT);
     }
 
@@ -95,7 +92,7 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
     const spoke = await (
       await getContractFactory("MockSpokePool", owner)
     ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
-    await hubPool.setCrossChainContracts(1, adapter.address, spoke.address);
+    await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
@@ -106,14 +103,14 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
       // Just whitelist route from mainnet to l2 (hacky), which shouldn't change gas estimates, but will allow refunds to be sent.
       await Promise.all(
         l1Tokens.map(async (token) => {
-          await hubPool.whitelistRoute(1, i, token.address, randomAddress());
+          await hubPool.whitelistRoute(hubPoolChainId, i, token.address, randomAddress());
         })
       );
       destinationChainIds.push(i);
     }
   });
 
-  describe(`Tree with ${REFUND_CHAIN_COUNT} Leaves, each containing refunds for ${REFUND_TOKEN_COUNT} different tokens`, function () {
+  describe(`Pool Rebalance tree with ${REFUND_CHAIN_COUNT} leaves, each containing refunds for ${REFUND_TOKEN_COUNT} different tokens`, function () {
     beforeEach(async function () {
       // Add extra token to make the root different.
       const initTree = await constructSimpleTree([...destinationChainIds], [...l1Tokens]);
@@ -186,7 +183,7 @@ describe("Gas Analytics: HubPool Relayer Refund Execution", function () {
         txns.push(await hubPool.connect(dataWorker).executeRootBundle(leaves[i], tree.getHexProof(leaves[i])));
       }
 
-      // Now that we've verified that the transaction succeeded, let's compute average gas costs.
+      // Compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
       console.log(`(average) executeRootBundle-gasUsed: ${gasUsed.div(REFUND_CHAIN_COUNT)}`);
