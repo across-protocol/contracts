@@ -331,7 +331,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param originChainId Chain where deposit occurs.
      * @param destinationChainId Chain where depositor wants to receive funds.
      * @param originToken Deposited token.
-     * @param destinationToken Token that depositor wants to receive on destination chain.
+     * @param destinationToken Token that depositor wants to receive on destination chain. Unused if `enableRoute` is
+     * False.
      * @param enableRoute Set to true to enable route on L2 and whitelist new destination token, or False to disable
      * route on L2 and delete destination token mapping on this contract.
      */
@@ -356,6 +357,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 enableRoute
             )
         );
+
+        // @dev Client should ignore `destinationToken` value if `enableRoute == False`.
         emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken, enableRoute);
     }
 
