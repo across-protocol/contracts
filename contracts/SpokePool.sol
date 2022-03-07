@@ -627,8 +627,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
 
         // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
-        // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds.
-        _emitFillRelay(relayHash, fillAmountPreFees, 0, relayerFeePct, relayData);
+        // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
+        // to 0 as slow relays do not pay the caller of this method (depositor is refunded this fee).
+        _emitFillRelay(relayHash, fillAmountPreFees, 0, 0, relayData);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
