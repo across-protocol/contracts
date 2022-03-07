@@ -27,6 +27,11 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
 
     IL1StandardBridge public immutable l1StandardBridge;
 
+    address public immutable dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public immutable daiOptimismBridge = 0x10E6593CDda8c58a1d0f14C5164B376352a55f2F;
+    address public immutable snx = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
+    address public immutable snxOptimismBridge = 0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068;
+
     event L2GasLimitSet(uint32 newGasLimit);
 
     /**
@@ -78,12 +83,8 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             // required as Optimism uses custom bridges for non-standard tokens. In the event we want to support a new
             // token that is not supported by Optimism, we can add a new custom bridge for it and re-deploy the adapter.
             // Full list of OP custom tokens can be found here: https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/optimism.tokenlist.json
-            // 1. DAI
-            if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F)
-                _l1StandardBridge = IL1StandardBridge(0x10E6593CDda8c58a1d0f14C5164B376352a55f2F);
-            // 2. SNX
-            if (l1Token == 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F)
-                _l1StandardBridge = IL1StandardBridge(0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068);
+            if (l1Token == dai) _l1StandardBridge = IL1StandardBridge(daiOptimismBridge); // 1. DAI
+            if (l1Token == snx) _l1StandardBridge = IL1StandardBridge(snxOptimismBridge); // 2. SNX
 
             IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
