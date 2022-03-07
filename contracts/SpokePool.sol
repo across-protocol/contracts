@@ -750,10 +750,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             fillAmountPreFees = amountRemainingInRelay;
 
             // The user will fulfill the remainder of the relay, so we need to compute exactly how many tokens post-fees
-            // that they need to send to the recipient.
+            // that they need to send to the recipient. Note that if the relayer is filled using contract funds then
+            // this is a slow relay. In this case the depositor should get refunded the relayerFeePct. To do this we
+            // simply exclude it from the fees taken from the fillAmountPreFees, thereby refunding the user this amount.
             amountToSend = _computeAmountPostFees(
                 fillAmountPreFees,
-                relayData.realizedLpFeePct + updatableRelayerFeePct
+                relayData.realizedLpFeePct + (useContractFunds ? 0 : updatableRelayerFeePct)
             );
         }
 

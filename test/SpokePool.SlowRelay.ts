@@ -10,7 +10,11 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerW
 let relays: RelayData[];
 let tree: MerkleTree<RelayData>;
 
-const fullRelayAmountPostFees = consts.amountToRelay.mul(consts.totalPostFeesPct).div(toBN(consts.oneHundredPct));
+// Relay fees for slow relay are only the realizedLpFee; the depositor should be re-funded the relayer fee
+// for any amount sent by a slow relay.
+const fullRelayAmountPostFees = consts.amountToRelay
+  .mul(toBN(consts.oneHundredPct).sub(consts.realizedLpFeePct))
+  .div(toBN(consts.oneHundredPct));
 
 describe("SpokePool Slow Relay Logic", async function () {
   beforeEach(async function () {
@@ -101,35 +105,6 @@ describe("SpokePool Slow Relay Logic", async function () {
     );
   });
 
-  // TODO: Move to Optimism_SpokePool test.
-  // it("Execute root wraps any ETH owned by contract", async function () {
-  //   const amountOfEthToWrap = toWei("1");
-  //   await relayer.sendTransaction({
-  //     to: spokePool.address,
-  //     value: amountOfEthToWrap,
-  //   });
-
-  //   // Pool should have wrapped all ETH
-  //   await expect(() =>
-  //     spokePool
-  //       .connect(relayer)
-  //       .executeSlowRelayRoot(
-  //         ...getExecuteSlowRelayParams(
-  //           depositor.address,
-  //           recipient.address,
-  //           weth.address,
-  //           consts.amountToRelay,
-  //           consts.originChainId,
-  //           consts.realizedLpFeePct,
-  //           consts.depositRelayerFeePct,
-  //           consts.firstDepositId,
-  //           0,
-  //           tree.getHexProof(relays.find((relay) => relay.destinationToken === weth.address)!)
-  //         )
-  //       )
-  //   ).to.changeEtherBalance(spokePool, amountOfEthToWrap.mul(-1));
-  // });
-
   it("Simple SlowRelay ERC20 event", async function () {
     const relay = relays.find((relay) => relay.destinationToken === destErc20.address)!;
 
@@ -211,7 +186,11 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Partial SlowRelay ERC20 balances", async function () {
-    const partialAmountPostFees = fullRelayAmountPostFees.div(4);
+    // Work out a partial amount to fill normally. This should be 1/4 of the total amount post fees, minus
+    // the associated deposit relayer fee that is allocated to the fast relayer.
+    const partialAmountPostFees = fullRelayAmountPostFees
+      .mul(toBN(consts.oneHundredPct).sub(consts.depositRelayerFeePct).div(consts.oneHundredPct))
+      .div(4);
     const leftoverPostFees = fullRelayAmountPostFees.sub(partialAmountPostFees);
 
     await spokePool
@@ -250,7 +229,9 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Partial SlowRelay WETH balance", async function () {
-    const partialAmountPostFees = fullRelayAmountPostFees.div(4);
+    const partialAmountPostFees = fullRelayAmountPostFees
+      .mul(toBN(consts.oneHundredPct).sub(consts.depositRelayerFeePct).div(consts.oneHundredPct))
+      .div(4);
     const leftoverPostFees = fullRelayAmountPostFees.sub(partialAmountPostFees);
 
     await spokePool
@@ -290,7 +271,9 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Partial SlowRelay ETH balance", async function () {
-    const partialAmountPostFees = fullRelayAmountPostFees.div(4);
+    const partialAmountPostFees = fullRelayAmountPostFees
+      .mul(toBN(consts.oneHundredPct).sub(consts.depositRelayerFeePct).div(consts.oneHundredPct))
+      .div(4);
     const leftoverPostFees = fullRelayAmountPostFees.sub(partialAmountPostFees);
 
     await spokePool
