@@ -167,10 +167,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address indexed liquidityProvider
     );
     event WhitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        address destinationToken
+        uint256 indexed originChainId,
+        uint256 indexed destinationChainId,
+        address indexed originToken,
+        address destinationToken,
+        bool enableRoute
     );
 
     event ProposeRootBundle(
@@ -331,14 +332,19 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param destinationChainId Chain where depositor wants to receive funds.
      * @param originToken Deposited token.
      * @param destinationToken Token that depositor wants to receive on destination chain.
+     * @param enableRoute Set to true to enable route on L2 and whitelist new destination token, or False to disable
+     * route on L2 and delete destination token mapping on this contract.
      */
     function whitelistRoute(
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
-        address destinationToken
+        address destinationToken,
+        bool enableRoute
     ) public override onlyOwner nonReentrant {
-        whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
+        if (enableRoute)
+            whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
+        else delete whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
 
         // Whitelist the same route on the origin network.
         _relaySpokePoolAdminFunction(
@@ -347,11 +353,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 "setEnableRoute(address,uint256,bool)",
                 originToken,
                 destinationChainId,
-                (destinationToken != address(0)) // We assume that setting the destination token to 0x0 for any route
-                // is equivalent to "un-whitelisting" the route.
+                enableRoute
             )
         );
-        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken);
+        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken, enableRoute);
     }
 
     /**

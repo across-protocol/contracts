@@ -44,14 +44,15 @@ describe("HubPool Admin functions", function () {
   });
   it("Can whitelist route for deposits and rebalances", async function () {
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
-    await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address))
+    await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true))
       .to.emit(hubPool, "WhitelistRoute")
-      .withArgs(originChainId, destinationChainId, weth.address, usdc.address);
+      .withArgs(originChainId, destinationChainId, weth.address, usdc.address, true);
 
     expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(usdc.address);
 
-    // Can set destination token in route to 0x0 to disable a route.
-    await hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, ZERO_ADDRESS);
+    // Can disable a route.
+    await hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, false);
+    expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(ZERO_ADDRESS);
 
     // Check content of messages sent to mock spoke pool. The last call should have "disabled" a route, and the call
     // right before should have enabled the route.

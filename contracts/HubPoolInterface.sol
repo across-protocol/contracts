@@ -54,7 +54,8 @@ interface HubPoolInterface {
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
-        address destinationToken
+        address destinationToken,
+        bool enableRoute
     ) external;
 
     function enableL1TokenForLiquidityProvision(address l1Token) external;
