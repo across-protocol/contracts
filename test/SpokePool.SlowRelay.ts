@@ -105,7 +105,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     );
   });
 
-  it("Simple SlowRelay ERC20 event", async function () {
+  it("Simple SlowRelay ERC20 ExecutedSlowRelayRoot event", async function () {
     const relay = relays.find((relay) => relay.destinationToken === destErc20.address)!;
 
     await expect(
@@ -132,6 +132,45 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         consts.amountToRelay,
         consts.amountToRelay,
+        consts.originChainId,
+        consts.depositRelayerFeePct,
+        consts.realizedLpFeePct,
+        consts.firstDepositId,
+        destErc20.address,
+        relayer.address,
+        depositor.address,
+        recipient.address
+      );
+  });
+
+  it("Simple SlowRelay ERC20 FilledRelay event", async function () {
+    const relay = relays.find((relay) => relay.destinationToken === destErc20.address)!;
+
+    await expect(
+      spokePool
+        .connect(relayer)
+        .executeSlowRelayRoot(
+          ...getExecuteSlowRelayParams(
+            depositor.address,
+            recipient.address,
+            destErc20.address,
+            consts.amountToRelay,
+            consts.originChainId,
+            consts.realizedLpFeePct,
+            consts.depositRelayerFeePct,
+            consts.firstDepositId,
+            0,
+            tree.getHexProof(relays.find((relay) => relay.destinationToken === destErc20.address)!)
+          )
+        )
+    )
+      .to.emit(spokePool, "FilledRelay")
+      .withArgs(
+        tree.hashFn(relay),
+        consts.amountToRelay,
+        consts.amountToRelay,
+        consts.amountToRelay,
+        0, // Repayment chain ID should always be 0 for slow relay fills.
         consts.originChainId,
         consts.depositRelayerFeePct,
         consts.realizedLpFeePct,

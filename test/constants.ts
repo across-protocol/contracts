@@ -1,5 +1,7 @@
 import { toWei, utf8ToHex, toBN, createRandomBytes32, ethers, hre } from "./utils";
 
+export const maxUint256 = ethers.constants.MaxInt256;
+
 export const amountToSeedWallets = toWei("1500");
 
 export const amountToLp = toWei("1000");

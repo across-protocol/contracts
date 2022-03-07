@@ -16,7 +16,8 @@
     "test": "hardhat test",
     "test:report-gas": "REPORT_GAS=true hardhat test",
     "test:gas-analytics": "GAS_TEST_ENABLED=true hardhat test ./test/gas-analytics/*",
-    "prepublish": "yarn build"
+    "prepublish": "yarn build",
+    "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test"
   },
   "dependencies": {
     "@defi-wonderland/smock": "^2.0.7",
