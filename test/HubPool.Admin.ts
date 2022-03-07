@@ -49,9 +49,10 @@ describe("HubPool Admin functions", function () {
   });
   it("Only owner can whitelist route for deposits and rebalances", async function () {
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
-    await expect(hubPool.connect(other).whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address))
-      .to.be.reverted;
-    await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address))
+    await expect(
+      hubPool.connect(other).whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true)
+    ).to.be.reverted;
+    await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true))
       .to.emit(hubPool, "WhitelistRoute")
       .withArgs(originChainId, destinationChainId, weth.address, usdc.address, true);
 
