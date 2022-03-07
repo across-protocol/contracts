@@ -13,6 +13,7 @@
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",
     "test": "yarn hardhat test",
+    "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test",
     "test:report-gas": "REPORT_GAS=true yarn hardhat test",
     "test:gas-analytics": "GAS_TEST_ENABLED=true yarn hardhat test ./test/gas-analytics/*"
   },

@@ -20,8 +20,13 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
     // ETH is an ERC20 on OVM.
     address public l2Eth = address(Lib_PredeployAddresses.OVM_ETH);
 
+    // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
+    // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
+    mapping(address => address) public tokenBridges;
+
     event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
     event SetL1Gas(uint32 indexed newL1Gas);
+    event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
 
     /**
      * @notice Construct the OVM SpokePool.
@@ -49,6 +54,16 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
     function setL1GasLimit(uint32 newl1Gas) public onlyAdmin {
         l1Gas = newl1Gas;
         emit SetL1Gas(newl1Gas);
+    }
+
+    /**
+     * @notice Set bridge contract for L2 token used to withdraw back to L1.
+     * @dev If this mapping isn't set for an L2 token, then the standard bridge will be used to bridge this token.
+     * @param tokenBridge Address of token bridge
+     */
+    function setTokenBridge(address l2Token, address tokenBridge) public onlyAdmin {
+        tokenBridges[l2Token] = tokenBridge;
+        emit SetL2TokenBridge(l2Token, tokenBridge);
     }
 
     /**************************************
@@ -122,13 +137,17 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
             WETH9(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
         }
-        IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
-            relayerRefundLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-            relayerRefundLeaf.amountToReturn, // _amount.
-            l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-            "" // _data. We don't need to send any data for the bridging action.
-        );
+        IL2ERC20Bridge(
+            tokenBridges[relayerRefundLeaf.l2TokenAddress] == address(0)
+                ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
+                : tokenBridges[relayerRefundLeaf.l2TokenAddress]
+        ).withdrawTo(
+                relayerRefundLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                relayerRefundLeaf.amountToReturn, // _amount.
+                l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
+                "" // _data. We don't need to send any data for the bridging action.
+            );
 
         emit OptimismTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn, l1Gas);
     }
