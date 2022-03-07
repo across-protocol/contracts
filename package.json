@@ -1,13 +1,19 @@
 {
   "name": "@across-protocol/contracts-v2",
   "version": "0.0.5",
-  "main": "index.js",
   "author": "UMA Team",
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/across-protocol/across-smart-contracts-v2.git"
   },
+  "files": [
+    "/contracts/**/*.sol",
+    "/artifacts/**/*",
+    "/dist/**/*"
+  ],
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
   "scripts": {
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
