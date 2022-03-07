@@ -115,20 +115,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address indexed depositor,
         address recipient
     );
-    event ExecutedSlowRelayRoot(
-        bytes32 indexed relayHash,
-        uint256 amount,
-        uint256 totalFilledAmount,
-        uint256 fillAmount,
-        uint256 indexed originChainId,
-        uint64 relayerFeePct,
-        uint64 realizedLpFeePct,
-        uint32 depositId,
-        address destinationToken,
-        address caller,
-        address indexed depositor,
-        address recipient
-    );
     event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
@@ -624,8 +610,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // funds in all cases.
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, relayerFeePct, true);
 
-        _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
-
         // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
         // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds.
         _emitFillRelay(relayHash, fillAmountPreFees, 0, relayerFeePct, relayData);
@@ -800,27 +784,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             repaymentChainId,
             relayData.originChainId,
             relayerFeePct,
-            relayData.realizedLpFeePct,
-            relayData.depositId,
-            relayData.destinationToken,
-            msg.sender,
-            relayData.depositor,
-            relayData.recipient
-        );
-    }
-
-    function _emitExecutedSlowRelayRoot(
-        bytes32 relayHash,
-        uint256 fillAmount,
-        RelayData memory relayData
-    ) internal {
-        emit ExecutedSlowRelayRoot(
-            relayHash,
-            relayData.amount,
-            relayFills[relayHash],
-            fillAmount,
-            relayData.originChainId,
-            relayData.relayerFeePct,
             relayData.realizedLpFeePct,
             relayData.depositId,
             relayData.destinationToken,
