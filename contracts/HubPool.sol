@@ -554,7 +554,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
         require(address(crossChainContracts[poolRebalanceLeaf.chainId].adapter) != address(0), "No adapter for chain");
 
-        // Make sure SpokePool address is initialized since `_sendTokensToChainAndUpdatePooledTokenTrackers` will not
+        // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
         // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
         // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
         // incorrectly.
