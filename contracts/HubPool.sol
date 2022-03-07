@@ -167,10 +167,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address indexed liquidityProvider
     );
     event WhitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        address destinationToken
+        uint256 indexed originChainId,
+        uint256 indexed destinationChainId,
+        address indexed originToken,
+        address destinationToken,
+        bool enableRoute
     );
 
     event ProposeRootBundle(
@@ -320,7 +321,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) public override onlyOwner noActiveRequests {
+    ) public override onlyOwner {
         crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -330,22 +331,35 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param originChainId Chain where deposit occurs.
      * @param destinationChainId Chain where depositor wants to receive funds.
      * @param originToken Deposited token.
-     * @param destinationToken Token that depositor wants to receive on destination chain.
+     * @param destinationToken Token that depositor wants to receive on destination chain. Unused if `enableRoute` is
+     * False.
+     * @param enableRoute Set to true to enable route on L2 and whitelist new destination token, or False to disable
+     * route on L2 and delete destination token mapping on this contract.
      */
     function whitelistRoute(
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
-        address destinationToken
+        address destinationToken,
+        bool enableRoute
     ) public override onlyOwner nonReentrant {
-        whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
+        if (enableRoute)
+            whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
+        else delete whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
 
         // Whitelist the same route on the origin network.
         _relaySpokePoolAdminFunction(
             originChainId,
-            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
+            abi.encodeWithSignature(
+                "setEnableRoute(address,uint256,bool)",
+                originToken,
+                destinationChainId,
+                enableRoute
+            )
         );
-        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken);
+
+        // @dev Client should ignore `destinationToken` value if `enableRoute == False`.
+        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken, enableRoute);
     }
 
     /**
@@ -554,6 +568,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
         require(address(crossChainContracts[poolRebalanceLeaf.chainId].adapter) != address(0), "No adapter for chain");
 
+        // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
+        // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
+        // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
+        // incorrectly.
+        address spokePool = crossChainContracts[poolRebalanceLeaf.chainId].spokePool;
+        require(spokePool != address(0), "Uninitialized spoke pool");
+
         // Set the leafId in the claimed bitmap.
         rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(
             rootBundleProposal.claimedBitMap,
@@ -564,12 +585,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         _sendTokensToChainAndUpdatePooledTokenTrackers(
+            spokePool,
             poolRebalanceLeaf.chainId,
             poolRebalanceLeaf.l1Tokens,
             poolRebalanceLeaf.netSendAmounts,
             poolRebalanceLeaf.bundleLpFees
         );
-        _relayRootBundleToSpokePool(poolRebalanceLeaf.chainId);
+        _relayRootBundleToSpokePool(spokePool, poolRebalanceLeaf.chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
@@ -779,6 +801,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Note this method does a lot and wraps together the sending of tokens and updating the pooled token trackers. This
     // is done as a gas saving so we don't need to iterate over the l1Tokens multiple times.
     function _sendTokensToChainAndUpdatePooledTokenTrackers(
+        address spokePool,
         uint256 chainId,
         address[] memory l1Tokens,
         int256[] memory netSendAmounts,
@@ -804,7 +827,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                         l1Token, // l1Token.
                         l2Token, // l2Token.
                         uint256(netSendAmounts[i]), // amount.
-                        crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                        spokePool // to. This should be the spokePool.
                     )
                 );
                 require(success, "delegatecall failed");
@@ -819,14 +842,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         }
     }
 
-    function _relayRootBundleToSpokePool(uint256 chainId) internal {
+    function _relayRootBundleToSpokePool(address spokePool, uint256 chainId) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
 
         // Perform delegatecall to use the adapter's code with this contract's context.
         (bool success, ) = address(adapter).delegatecall(
             abi.encodeWithSignature(
                 "relayMessage(address,bytes)",
-                crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+                spokePool, // target. This should be the spokePool on the L2.
                 abi.encodeWithSignature(
                     "relayRootBundle(bytes32,bytes32)",
                     rootBundleProposal.relayerRefundRoot,
@@ -868,7 +891,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Calculate the unallocated accumulatedFees from the last time the contract was called.
     function _getAccumulatedFees(uint256 undistributedLpFees, uint256 lastLpFeeUpdate) internal view returns (uint256) {
-        // accumulatedFees := min(undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction ,undistributedLpFees)
+        // accumulatedFees := min(undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction, undistributedLpFees)
         // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
         uint256 timeFromLastInteraction = getCurrentTime() - lastLpFeeUpdate;
         uint256 maxUndistributedLpFees = (undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction) / (1e18);

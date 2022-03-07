@@ -105,40 +105,27 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
-        uint256 indexed repaymentChainId,
+        uint256 repaymentChainId,
         uint256 originChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
         uint32 depositId,
         address destinationToken,
         address indexed relayer,
-        address depositor,
-        address recipient
-    );
-    event ExecutedSlowRelayRoot(
-        bytes32 indexed relayHash,
-        uint256 amount,
-        uint256 totalFilledAmount,
-        uint256 fillAmount,
-        uint256 originChainId,
-        uint64 relayerFeePct,
-        uint64 realizedLpFeePct,
-        uint32 depositId,
-        address destinationToken,
-        address indexed caller,
-        address depositor,
-        address recipient
+        address indexed depositor,
+        address recipient,
+        bool isSlowRelay
     );
     event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
-        uint256 chainId,
+        uint256 indexed chainId,
         uint256[] refundAmounts,
         uint32 indexed rootBundleId,
         uint32 indexed leafId,
         address l2TokenAddress,
         address[] refundAddresses,
-        address indexed caller
+        address caller
     );
     event TokensBridged(
         uint256 amountToReturn,
@@ -397,7 +384,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, relayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData, false);
     }
 
     /**
@@ -451,7 +438,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData, false);
     }
 
     /**************************************
@@ -621,10 +608,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
 
         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
-        // funds in all cases.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, relayerFeePct, true);
+        // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
+        // relayer component of the relayerFee thereby only charging the depositor the LpFee.
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, 0, true);
 
-        _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
+        // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
+        // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
+        // to 0 as slow relays do not pay the caller of this method (depositor is refunded this fee).
+        _emitFillRelay(relayHash, fillAmountPreFees, 0, 0, relayData, true);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
@@ -750,7 +741,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             fillAmountPreFees = amountRemainingInRelay;
 
             // The user will fulfill the remainder of the relay, so we need to compute exactly how many tokens post-fees
-            // that they need to send to the recipient.
+            // that they need to send to the recipient. Note that if the relayer is filled using contract funds then
+            // this is a slow relay.
             amountToSend = _computeAmountPostFees(
                 fillAmountPreFees,
                 relayData.realizedLpFeePct + updatableRelayerFeePct
@@ -786,7 +778,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 fillAmount,
         uint256 repaymentChainId,
         uint64 relayerFeePct,
-        RelayData memory relayData
+        RelayData memory relayData,
+        bool isSlowRelay
     ) internal {
         emit FilledRelay(
             relayHash,
@@ -801,28 +794,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayData.destinationToken,
             msg.sender,
             relayData.depositor,
-            relayData.recipient
-        );
-    }
-
-    function _emitExecutedSlowRelayRoot(
-        bytes32 relayHash,
-        uint256 fillAmount,
-        RelayData memory relayData
-    ) internal {
-        emit ExecutedSlowRelayRoot(
-            relayHash,
-            relayData.amount,
-            relayFills[relayHash],
-            fillAmount,
-            relayData.originChainId,
-            relayData.relayerFeePct,
-            relayData.realizedLpFeePct,
-            relayData.depositId,
-            relayData.destinationToken,
-            msg.sender,
-            relayData.depositor,
-            relayData.recipient
+            relayData.recipient,
+            isSlowRelay
         );
     }
 

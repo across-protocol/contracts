@@ -58,12 +58,12 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   // Deploy mock l2 tokens for each token created before and whitelist the routes.
   const mockTokens = { l2Weth: randomAddress(), l2Dai: randomAddress(), l2Usdc: randomAddress() };
 
-  await hubPool.whitelistRoute(originChainId, repaymentChainId, weth.address, mockTokens.l2Weth);
-  await hubPool.whitelistRoute(originChainId, repaymentChainId, dai.address, mockTokens.l2Dai);
-  await hubPool.whitelistRoute(originChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc);
-  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, weth.address, mockTokens.l2Weth);
-  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, dai.address, mockTokens.l2Dai);
-  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, weth.address, mockTokens.l2Weth, true);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, dai.address, mockTokens.l2Dai, true);
+  await hubPool.whitelistRoute(originChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc, true);
+  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, weth.address, mockTokens.l2Weth, true);
+  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, dai.address, mockTokens.l2Dai, true);
+  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc, true);
 
   return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
 });

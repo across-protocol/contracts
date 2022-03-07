@@ -2,6 +2,7 @@ import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
+import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -92,6 +93,28 @@ describe("HubPool Root Bundle Execution", function () {
     // Check the leaf count was decremented correctly.
     expect((await hubPool.rootBundleProposal()).unclaimedPoolRebalanceLeafCount).to.equal(0);
   });
+
+  it("Reverts if spoke pool not set for chain ID", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+
+    await hubPool.connect(dataWorker).proposeRootBundle(
+      [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
+      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+      consts.mockRelayerRefundRoot, // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
+    );
+
+    // Set spoke pool to address 0x0
+    await hubPool.setCrossChainContracts(consts.repaymentChainId, mockAdapter.address, ZERO_ADDRESS);
+
+    // Advance time so the request can be executed and check that executing the request reverts.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Uninitialized spoke pool");
+  });
+
   it("Execution rejects leaf claim before liveness passed", async function () {
     const { leafs, tree } = await constructSimpleTree();
     await hubPool
