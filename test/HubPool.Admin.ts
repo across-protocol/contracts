@@ -42,8 +42,16 @@ describe("HubPool Admin functions", function () {
   it("Only owner can disable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
-  it("Can whitelist route for deposits and rebalances", async function () {
+  it("Only owner can set cross chain contract helpers", async function () {
+    await expect(
+      hubPool.connect(other).setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address)
+    ).to.be.reverted;
+  });
+  it("Only owner can whitelist route for deposits and rebalances", async function () {
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
+    await expect(
+      hubPool.connect(other).whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true)
+    ).to.be.reverted;
     await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true))
       .to.emit(hubPool, "WhitelistRoute")
       .withArgs(originChainId, destinationChainId, weth.address, usdc.address, true);
