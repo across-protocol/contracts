@@ -136,7 +136,8 @@ describe("SpokePool Slow Relay Logic", async function () {
         destErc20.address,
         relayer.address,
         depositor.address,
-        recipient.address
+        recipient.address,
+        true
       );
   });
 

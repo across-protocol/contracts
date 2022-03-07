@@ -113,7 +113,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         address indexed relayer,
         address indexed depositor,
-        address recipient
+        address recipient,
+        bool isSlowRelay
     );
     event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
     event ExecutedRelayerRefundRoot(
@@ -383,7 +384,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, relayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData, false);
     }
 
     /**
@@ -437,7 +438,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
 
-        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData);
+        _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData, false);
     }
 
     /**************************************
@@ -610,9 +611,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // funds in all cases.
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, relayerFeePct, true);
 
-        // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
-        // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds.
-        _emitFillRelay(relayHash, fillAmountPreFees, 0, relayerFeePct, relayData);
+        // Note: Set repayment chain ID to 0 arbitrarily for slow relays.
+        _emitFillRelay(relayHash, fillAmountPreFees, 0, relayerFeePct, relayData, true);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
@@ -774,7 +774,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 fillAmount,
         uint256 repaymentChainId,
         uint64 relayerFeePct,
-        RelayData memory relayData
+        RelayData memory relayData,
+        bool isSlowRelay
     ) internal {
         emit FilledRelay(
             relayHash,
@@ -789,7 +790,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayData.destinationToken,
             msg.sender,
             relayData.depositor,
-            relayData.recipient
+            relayData.recipient,
+            isSlowRelay
         );
     }
 
