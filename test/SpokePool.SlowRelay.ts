@@ -172,7 +172,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         0, // Repayment chain ID should always be 0 for slow relay fills.
         consts.originChainId,
-        consts.depositRelayerFeePct,
+        0, // Should not have a relayerFeePct for slow relay fills.
         consts.realizedLpFeePct,
         consts.firstDepositId,
         destErc20.address,
