@@ -7384,7 +7384,7 @@ hardhat@^2.5.0, hardhat@^2.6.1:
     uuid "^8.3.2"
     ws "^7.4.6"
 
-hardhat@^2.9.0:
+hardhat@^2.9.1:
   version "2.9.1"
   resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.9.1.tgz#f69f82bb4d98e28744584779483caa7c5cfbde8b"
   integrity sha512-q0AkYXV7R26RzyAkHGQRhhQjk508pseVvH3wSwZwwPUbvA+tjl0vMIrD4aFQDonRXkrnXX4+5KglozzjSd0//Q==
