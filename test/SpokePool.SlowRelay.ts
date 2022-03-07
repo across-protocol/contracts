@@ -10,7 +10,11 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerW
 let relays: RelayData[];
 let tree: MerkleTree<RelayData>;
 
-const fullRelayAmountPostFees = consts.amountToRelay.mul(consts.totalPostFeesPct).div(toBN(consts.oneHundredPct));
+// Relay fees for slow relay are only the realizedLpFee; the depositor should be re-funded the relayer fee
+// for any amount sent by a slow relay.
+const fullRelayAmountPostFees = consts.amountToRelay
+  .mul(toBN(consts.oneHundredPct).sub(consts.realizedLpFeePct))
+  .div(toBN(consts.oneHundredPct));
 
 describe("SpokePool Slow Relay Logic", async function () {
   beforeEach(async function () {
@@ -130,7 +134,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         0, // Repayment chain ID should always be 0 for slow relay fills.
         consts.originChainId,
-        consts.depositRelayerFeePct,
+        0, // Should not have a relayerFeePct for slow relay fills.
         consts.realizedLpFeePct,
         consts.firstDepositId,
         destErc20.address,
@@ -184,7 +188,11 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Partial SlowRelay ERC20 balances", async function () {
-    const partialAmountPostFees = fullRelayAmountPostFees.div(4);
+    // Work out a partial amount to fill normally. This should be 1/4 of the total amount post fees, minus
+    // the associated deposit relayer fee that is allocated to the fast relayer.
+    const partialAmountPostFees = fullRelayAmountPostFees
+      .mul(toBN(consts.oneHundredPct).sub(consts.depositRelayerFeePct).div(consts.oneHundredPct))
+      .div(4);
     const leftoverPostFees = fullRelayAmountPostFees.sub(partialAmountPostFees);
 
     await spokePool
@@ -223,7 +231,9 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Partial SlowRelay WETH balance", async function () {
-    const partialAmountPostFees = fullRelayAmountPostFees.div(4);
+    const partialAmountPostFees = fullRelayAmountPostFees
+      .mul(toBN(consts.oneHundredPct).sub(consts.depositRelayerFeePct).div(consts.oneHundredPct))
+      .div(4);
     const leftoverPostFees = fullRelayAmountPostFees.sub(partialAmountPostFees);
 
     await spokePool
@@ -263,7 +273,9 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Partial SlowRelay ETH balance", async function () {
-    const partialAmountPostFees = fullRelayAmountPostFees.div(4);
+    const partialAmountPostFees = fullRelayAmountPostFees
+      .mul(toBN(consts.oneHundredPct).sub(consts.depositRelayerFeePct).div(consts.oneHundredPct))
+      .div(4);
     const leftoverPostFees = fullRelayAmountPostFees.sub(partialAmountPostFees);
 
     await spokePool

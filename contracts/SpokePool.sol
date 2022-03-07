@@ -608,11 +608,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
 
         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
-        // funds in all cases.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, relayerFeePct, true);
+        // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
+        // relayer component of the relayerFee thereby only charging the depositor the LpFee.
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, 0, true);
 
-        // Note: Set repayment chain ID to 0 arbitrarily for slow relays.
-        _emitFillRelay(relayHash, fillAmountPreFees, 0, relayerFeePct, relayData, true);
+        // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
+        // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
+        // to 0 as slow relays do not pay the caller of this method (depositor is refunded this fee).
+        _emitFillRelay(relayHash, fillAmountPreFees, 0, 0, relayData, true);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
@@ -738,7 +741,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             fillAmountPreFees = amountRemainingInRelay;
 
             // The user will fulfill the remainder of the relay, so we need to compute exactly how many tokens post-fees
-            // that they need to send to the recipient.
+            // that they need to send to the recipient. Note that if the relayer is filled using contract funds then
+            // this is a slow relay.
             amountToSend = _computeAmountPostFees(
                 fillAmountPreFees,
                 relayData.realizedLpFeePct + updatableRelayerFeePct

@@ -71,7 +71,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      **************************************/
 
     /**
-     * @notice Wraps any ETH into WETH before executing base function. This is neccessary because SpokePool receives
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      * @inheritdoc SpokePool
      */
