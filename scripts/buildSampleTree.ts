@@ -15,13 +15,13 @@ const RELAYER_REFUND_LEAF_COUNT = 1;
 const SLOW_RELAY_LEAF_COUNT = 1;
 const POOL_REBALANCE_NET_SEND_AMOUNT = 0.1; // Amount of tokens to send from HubPool to SpokePool
 const RELAYER_REFUND_AMOUNT_TO_RETURN = 0.1; // Amount of tokens to send from SpokePool to HubPool
-const L1_TOKEN = "0xc778417E063141139Fce010982780140Aa0cD5Ab";
-const L2_TOKEN = "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681";
+const L1_TOKEN = "0xd0A1E359811322d97991E03f863a0C30C2cF029C";
+const L2_TOKEN = "0x4200000000000000000000000000000000000006";
 const RELAYER_REFUND_ADDRESS_TO_REFUND = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 const RELAYER_REFUND_AMOUNT_TO_REFUND = 0.1; // Amount of tokens to send out of SpokePool to relayer refund recipient
 const SLOW_RELAY_RECIPIENT_ADDRESS = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 const SLOW_RELAY_AMOUNT = 0.1; // Amount of tokens to send out of SpokePool to slow relay recipient address
-const SPOKE_POOL_CHAIN_ID = 421611;
+const SPOKE_POOL_CHAIN_ID = 69;
 
 function tuplelifyLeaf(leaf: Object) {
   return JSON.stringify(
@@ -64,7 +64,7 @@ async function main() {
     console.log("- Pool rebalance root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < POOL_REBALANCE_LEAF_COUNT; i++) {
-      console.log(`- Proof for leaf ID#${i}: ${tree.getHexProof(leaves[i])}`);
+      console.log(`- Proof for leaf ID#${i}: `, tree.getHexProof(leaves[i]));
     }
     console.groupEnd();
 
@@ -80,12 +80,12 @@ async function main() {
     const leaves: RelayerRefundLeaf[] = [];
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
       leaves.push({
-        leafId: toBN(i),
-        chainId: toBN(SPOKE_POOL_CHAIN_ID),
         amountToReturn: toBNWei(RELAYER_REFUND_AMOUNT_TO_RETURN),
+        chainId: toBN(SPOKE_POOL_CHAIN_ID),
+        refundAmounts: [toBNWei(RELAYER_REFUND_AMOUNT_TO_REFUND)],
+        leafId: toBN(i),
         l2TokenAddress: L2_TOKEN,
         refundAddresses: [RELAYER_REFUND_ADDRESS_TO_REFUND],
-        refundAmounts: [toBNWei(RELAYER_REFUND_AMOUNT_TO_REFUND)],
       });
       console.group();
       console.log(`- relayerRefundLeaf ID#${i}: `, leaves[i]);
@@ -105,7 +105,7 @@ async function main() {
     console.log("- Relayer refund root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
-      console.log(`- Proof for leaf ID#${i}: ${tree.getHexProof(leaves[i])}`);
+      console.log(`- Proof for leaf ID#${i}: `, tree.getHexProof(leaves[i]));
     }
     console.groupEnd();
 
@@ -125,10 +125,10 @@ async function main() {
         recipient: SLOW_RELAY_RECIPIENT_ADDRESS,
         destinationToken: L2_TOKEN,
         amount: toBNWei(SLOW_RELAY_AMOUNT).toString(),
+        originChainId: SPOKE_POOL_CHAIN_ID.toString(),
         realizedLpFeePct: "0",
         relayerFeePct: "0",
         depositId: i.toString(),
-        originChainId: SPOKE_POOL_CHAIN_ID.toString(),
       });
       console.group();
       console.log(`- slowRelayLeaf ID#${i}: `, leaves[i]);
@@ -148,7 +148,7 @@ async function main() {
     console.log("- Slow relay root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < SLOW_RELAY_LEAF_COUNT; i++) {
-      console.log(`- Proof for leaf ID#${i}: ${tree.getHexProof(leaves[i])}`);
+      console.log(`- Proof for leaf ID#${i}: `, tree.getHexProof(leaves[i]));
     }
     console.groupEnd();
 

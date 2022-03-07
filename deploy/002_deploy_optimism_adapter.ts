@@ -5,11 +5,9 @@ import { L1_ADDRESS_MAP } from "./consts";
 
 const func = async function (hre: any) {
   const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy, get } = deployments;
+  const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-
-  const hubPoolAddress = (await get("HubPool")).address;
 
   const chainId = await getChainId();
 
@@ -19,7 +17,6 @@ const func = async function (hre: any) {
     skipIfAlreadyDeployed: true,
     args: [
       L1_ADDRESS_MAP[chainId].weth,
-      hubPoolAddress,
       L1_ADDRESS_MAP[chainId].optimismCrossDomainMessenger,
       L1_ADDRESS_MAP[chainId].optimismStandardBridge,
     ],
