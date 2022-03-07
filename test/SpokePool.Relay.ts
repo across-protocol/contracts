@@ -45,7 +45,8 @@ describe("SpokePool Relayer Logic", async function () {
         relayData.destinationToken,
         relayer.address,
         relayData.depositor,
-        relayData.recipient
+        relayData.recipient,
+        false
       );
 
     // The collateral should have transferred from relayer to recipient.
