@@ -49,6 +49,11 @@ export async function getContractFactory(
   }
 }
 
+function getLocalArtifact(contractName: string) {
+  const artifactsPath = `../contracts`;
+  return findArtifactFromPath(contractName, artifactsPath);
+}
+
 // Arbitrum does not export any of their artifacts nicely, so we have to do this manually. The methods that follow can
 // be re-used if we end up requiring to import contract artifacts from other projects that dont export cleanly.
 function getArbitrumArtifact(contractName: string) {
