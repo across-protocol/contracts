@@ -621,8 +621,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash = _getRelayHash(relayData);
 
         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
-        // funds in all cases.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, relayerFeePct, true);
+        // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
+        // relayer component of the relayerFee thereby only charging the depositor the LpFee.
+        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, 0, true);
 
         _emitExecutedSlowRelayRoot(relayHash, fillAmountPreFees, relayData);
 
@@ -756,11 +757,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
             // The user will fulfill the remainder of the relay, so we need to compute exactly how many tokens post-fees
             // that they need to send to the recipient. Note that if the relayer is filled using contract funds then
-            // this is a slow relay. In this case the depositor should get refunded the relayerFeePct. To do this we
-            // simply exclude it from the fees taken from the fillAmountPreFees, thereby refunding the user this amount.
+            // this is a slow relay.
             amountToSend = _computeAmountPostFees(
                 fillAmountPreFees,
-                relayData.realizedLpFeePct + (useContractFunds ? 0 : updatableRelayerFeePct)
+                relayData.realizedLpFeePct + updatableRelayerFeePct
             );
         }
 
