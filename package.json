@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts-v2",
-  "version": "0.0.5",
+  "version": "0.0.1",
   "main": "index.js",
   "author": "UMA Team",
   "license": "AGPL-3.0",
@@ -12,12 +12,10 @@
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",
-    "build": "hardhat compile && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
-    "test": "hardhat test",
-    "test:report-gas": "REPORT_GAS=true hardhat test",
-    "test:gas-analytics": "GAS_TEST_ENABLED=true hardhat test ./test/gas-analytics/*",
-    "prepublish": "yarn build",
-    "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test"
+    "test": "yarn hardhat test",
+    "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test",
+    "test:report-gas": "REPORT_GAS=true yarn hardhat test",
+    "test:gas-analytics": "GAS_TEST_ENABLED=true yarn hardhat test ./test/gas-analytics/*"
   },
   "dependencies": {
     "@defi-wonderland/smock": "^2.0.7",
