@@ -34,7 +34,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   // Deploy the hubPool.
   const lpTokenFactory = await (await getContractFactory("LpTokenFactory", signer)).deploy();
   const hubPool = await (
-    await getContractFactory("HubPool", { signer: signer })
+    await getContractFactory("HubPool", signer)
   ).deploy(lpTokenFactory.address, parentFixture.finder.address, weth.address, parentFixture.timer.address);
   await hubPool.setBond(weth.address, bondAmount);
   await hubPool.setLiveness(refundProposalLiveness);
@@ -42,7 +42,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpoke = await (
-    await getContractFactory("MockSpokePool", { signer: signer })
+    await getContractFactory("MockSpokePool", signer)
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
   await hubPool.setCrossChainContracts(originChainId, mockAdapter.address, mockSpoke.address);
@@ -51,7 +51,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const mainnetChainId = await hre.getChainId();
   const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpokeMainnet = await (
-    await getContractFactory("MockSpokePool", { signer: signer })
+    await getContractFactory("MockSpokePool", signer)
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(mainnetChainId, mockAdapterMainnet.address, mockSpokeMainnet.address);
 

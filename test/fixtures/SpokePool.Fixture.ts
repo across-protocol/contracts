@@ -22,7 +22,7 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
 
   // Deploy the pool
   const spokePool = await (
-    await getContractFactory("MockSpokePool", { signer: deployerWallet })
+    await getContractFactory("MockSpokePool", deployerWallet)
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };

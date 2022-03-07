@@ -14,7 +14,7 @@ describe("Ethereum Spoke Pool", function () {
     ({ weth, dai, hubPool, timer } = await hubPoolFixture());
 
     spokePool = await (
-      await getContractFactory("Ethereum_SpokePool", { signer: owner })
+      await getContractFactory("Ethereum_SpokePool", owner)
     ).deploy(hubPool.address, weth.address, timer.address);
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
