@@ -27,6 +27,16 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
 
     IL1StandardBridge public immutable l1StandardBridge;
 
+    // Optimism has the ability to support "custom" bridges. These bridges are not supported by the canonical bridge
+    // and so we need to store the address of the custom token and the associated bridge. In the event we want to
+    // support a new token that is not supported by Optimism, we can add a new custom bridge for it and re-deploy the
+    // adapter. A full list of custom optimism tokens and their associated bridges can be found here:
+    // https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/optimism.tokenlist.json
+    address public immutable dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public immutable daiOptimismBridge = 0x10E6593CDda8c58a1d0f14C5164B376352a55f2F;
+    address public immutable snx = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
+    address public immutable snxOptimismBridge = 0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068;
+
     event L2GasLimitSet(uint32 newGasLimit);
 
     /**
@@ -72,8 +82,14 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(l1StandardBridge), amount);
-            l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+
+            // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
+            if (l1Token == dai) _l1StandardBridge = IL1StandardBridge(daiOptimismBridge); // 1. DAI
+            if (l1Token == snx) _l1StandardBridge = IL1StandardBridge(snxOptimismBridge); // 2. SNX
+
+            IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
+            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
