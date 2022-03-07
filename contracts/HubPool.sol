@@ -321,7 +321,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) public override onlyOwner noActiveRequests {
+    ) public override onlyOwner {
         crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -568,6 +568,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
         require(address(crossChainContracts[poolRebalanceLeaf.chainId].adapter) != address(0), "No adapter for chain");
 
+        // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
+        // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
+        // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
+        // incorrectly.
+        address spokePool = crossChainContracts[poolRebalanceLeaf.chainId].spokePool;
+        require(spokePool != address(0), "Uninitialized spoke pool");
+
         // Set the leafId in the claimed bitmap.
         rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(
             rootBundleProposal.claimedBitMap,
@@ -578,12 +585,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         _sendTokensToChainAndUpdatePooledTokenTrackers(
+            spokePool,
             poolRebalanceLeaf.chainId,
             poolRebalanceLeaf.l1Tokens,
             poolRebalanceLeaf.netSendAmounts,
             poolRebalanceLeaf.bundleLpFees
         );
-        _relayRootBundleToSpokePool(poolRebalanceLeaf.chainId);
+        _relayRootBundleToSpokePool(spokePool, poolRebalanceLeaf.chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
@@ -793,6 +801,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Note this method does a lot and wraps together the sending of tokens and updating the pooled token trackers. This
     // is done as a gas saving so we don't need to iterate over the l1Tokens multiple times.
     function _sendTokensToChainAndUpdatePooledTokenTrackers(
+        address spokePool,
         uint256 chainId,
         address[] memory l1Tokens,
         int256[] memory netSendAmounts,
@@ -818,7 +827,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                         l1Token, // l1Token.
                         l2Token, // l2Token.
                         uint256(netSendAmounts[i]), // amount.
-                        crossChainContracts[chainId].spokePool // to. This should be the spokePool.
+                        spokePool // to. This should be the spokePool.
                     )
                 );
                 require(success, "delegatecall failed");
@@ -833,14 +842,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         }
     }
 
-    function _relayRootBundleToSpokePool(uint256 chainId) internal {
+    function _relayRootBundleToSpokePool(address spokePool, uint256 chainId) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
 
         // Perform delegatecall to use the adapter's code with this contract's context.
         (bool success, ) = address(adapter).delegatecall(
             abi.encodeWithSignature(
                 "relayMessage(address,bytes)",
-                crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+                spokePool, // target. This should be the spokePool on the L2.
                 abi.encodeWithSignature(
                     "relayRootBundle(bytes32,bytes32)",
                     rootBundleProposal.relayerRefundRoot,
