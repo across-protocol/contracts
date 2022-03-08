@@ -21,6 +21,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: { optimizer: { enabled: true, runs: 200 } },
 };
+``;
 
 const config: HardhatUserConfig = {
   solidity: {

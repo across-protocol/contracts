@@ -24,7 +24,7 @@ describe("Arbitrum Spoke Pool", function () {
     l2GatewayRouter = await createFake("L2GatewayRouter");
 
     arbitrumSpokePool = await (
-      await getContractFactory("Arbitrum_SpokePool", { signer: owner })
+      await getContractFactory("Arbitrum_SpokePool", owner)
     ).deploy(l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);

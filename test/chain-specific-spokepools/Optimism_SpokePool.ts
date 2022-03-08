@@ -28,7 +28,7 @@ describe("Optimism Spoke Pool", function () {
     await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
     optimismSpokePool = await (
-      await getContractFactory("Optimism_SpokePool", { signer: owner })
+      await getContractFactory("Optimism_SpokePool", owner)
     ).deploy(owner.address, hubPool.address, timer.address);
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);

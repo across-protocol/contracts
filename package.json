@@ -1,21 +1,28 @@
 {
   "name": "@across-protocol/contracts-v2",
-  "version": "0.0.1",
-  "main": "index.js",
+  "version": "0.0.15",
   "author": "UMA Team",
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/across-protocol/across-smart-contracts-v2.git"
   },
+  "files": [
+    "/contracts/**/*.sol",
+    "/artifacts/**/*",
+    "/dist/**/*"
+  ],
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
   "scripts": {
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",
-    "test": "yarn hardhat test",
-    "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test",
-    "test:report-gas": "REPORT_GAS=true yarn hardhat test",
-    "test:gas-analytics": "GAS_TEST_ENABLED=true yarn hardhat test ./test/gas-analytics/*"
+    "build": "hardhat compile && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
+    "test": "hardhat test",
+    "test:report-gas": "REPORT_GAS=true hardhat test",
+    "test:gas-analytics": "GAS_TEST_ENABLED=true hardhat test ./test/gas-analytics/*",
+    "prepublish": "yarn build"
   },
   "dependencies": {
     "@defi-wonderland/smock": "^2.0.7",
