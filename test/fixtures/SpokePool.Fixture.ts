@@ -49,16 +49,17 @@ export async function deposit(
   recipient: SignerWithAddress,
   depositor: SignerWithAddress
 ) {
-  const currentSpokePoolTime = await spokePool.getCurrentTime();
   await spokePool
     .connect(depositor)
     .deposit(
-      recipient.address,
-      token.address,
-      consts.amountToDeposit,
-      consts.depositRelayerFeePct,
-      consts.destinationChainId,
-      currentSpokePoolTime
+      ...getDepositParams(
+        recipient.address,
+        token.address,
+        consts.amountToDeposit,
+        consts.destinationChainId,
+        consts.depositRelayerFeePct,
+        await spokePool.getCurrentTime()
+      )
     );
 }
 export interface RelayData {
