@@ -103,7 +103,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       // Just whitelist route from mainnet to l2 (hacky), which shouldn't change gas estimates, but will allow refunds to be sent.
       await Promise.all(
         l1Tokens.map(async (token) => {
-          await hubPool.whitelistRoute(hubPoolChainId, i, token.address, randomAddress());
+          await hubPool.whitelistRoute(hubPoolChainId, i, token.address, randomAddress(), true);
         })
       );
       destinationChainIds.push(i);
