@@ -21,6 +21,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: { optimizer: { enabled: true, runs: 200 } },
 };
+``;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -73,7 +74,19 @@ const config: HardhatUserConfig = {
     },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
-  etherscan: { apiKey: process.env.ETHERSCAN_API_KEY },
+  etherscan: {
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY,
+      kovan: process.env.ETHERSCAN_API_KEY,
+      rinkeby: process.env.ETHERSCAN_API_KEY,
+      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY,
+      optimisticKovan: process.env.OPTIMISM_ETHERSCAN_API_KEY,
+      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY,
+      arbitrumTestnet: process.env.ARBITRUM_ETHERSCAN_API_KEY,
+      polygon: process.env.POLYGON_ETHERSCAN_API_KEY,
+      polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY,
+    },
+  },
   namedAccounts: { deployer: 0 },
 };
 

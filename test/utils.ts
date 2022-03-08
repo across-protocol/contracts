@@ -27,22 +27,29 @@ export async function getContractFactory(
     // First, try get the artifact from this repo.
     return await ethers.getContractFactory(name, signerOrFactoryOptions);
   } catch (_) {
-    // If it does not exist then try find the contract in the UMA core package.
-    if (isFactoryOptions(signerOrFactoryOptions))
-      throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
     try {
+      // If it does not exist then try find the contract in the UMA core package.
+      if (isFactoryOptions(signerOrFactoryOptions))
+        throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
       return new ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
     } catch (_) {
       // If that also fails, try fetching it from Optimism package.
       try {
-        return await optimismContracts.getContractFactory(name, signerOrFactoryOptions);
+        return await optimismContracts.getContractFactory(name, signerOrFactoryOptions as Signer);
       } catch (_) {
         // If that also fails, then try getting it from the Arbitrum package.
         try {
           const arbitrumArtifact = getArbitrumArtifact(name);
           return new ContractFactory(arbitrumArtifact.abi, arbitrumArtifact.bytecode, signerOrFactoryOptions as Signer);
-        } catch (error) {
-          throw new Error(`Could not find the artifact for ${name}!`);
+        } catch (_) {
+          // Finally, try importing the package from the local path. This would be the case when running these utils
+          // from node modules which breaks using the hardhat getContractFactory function.
+          try {
+            const localArtifact = getLocalArtifact(name);
+            return new ContractFactory(localArtifact.abi, localArtifact.bytecode, signerOrFactoryOptions as Signer);
+          } catch (_) {
+            throw new Error(`Could not find the artifact for ${name}!`);
+          }
         }
       }
     }
@@ -61,6 +68,12 @@ function getArbitrumArtifact(contractName: string) {
     const artifactsPath = `${findPathToRootOfPackage("arb-bridge-peripherals")}build/contracts/contracts`;
     return findArtifactFromPath(contractName, artifactsPath);
   }
+}
+
+// Fetch the artifact from the publish package's artifacts directory.
+function getLocalArtifact(contractName: string) {
+  const artifactsPath = `${__dirname}/../../artifacts/contracts`;
+  return findArtifactFromPath(contractName, artifactsPath);
 }
 
 function findPathToRootOfPackage(packageName: string) {

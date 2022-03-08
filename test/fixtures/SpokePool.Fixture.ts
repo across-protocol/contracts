@@ -22,7 +22,7 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
 
   // Deploy the pool
   const spokePool = await (
-    await getContractFactory("MockSpokePool", { signer: deployerWallet })
+    await getContractFactory("MockSpokePool", deployerWallet)
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
@@ -47,19 +47,39 @@ export async function deposit(
   spokePool: Contract,
   token: Contract,
   recipient: SignerWithAddress,
-  depositor: SignerWithAddress
+  depositor: SignerWithAddress,
+  destinationChainId: number = consts.destinationChainId
 ) {
-  const currentSpokePoolTime = await spokePool.getCurrentTime();
   await spokePool
     .connect(depositor)
     .deposit(
-      recipient.address,
-      token.address,
-      consts.amountToDeposit,
-      consts.depositRelayerFeePct,
-      consts.destinationChainId,
-      currentSpokePoolTime
+      ...getDepositParams(
+        recipient.address,
+        token.address,
+        consts.amountToDeposit,
+        destinationChainId,
+        consts.depositRelayerFeePct,
+        await spokePool.getCurrentTime()
+      )
     );
+  const [events, networkInfo] = await Promise.all([
+    spokePool.queryFilter(spokePool.filters.FundsDeposited()),
+    spokePool.provider.getNetwork(),
+  ]);
+  const lastEvent = events[events.length - 1];
+  if (lastEvent.args)
+    return {
+      amount: lastEvent.args.amount,
+      destinationChainId: Number(lastEvent.args.destinationChainId),
+      relayerFeePct: lastEvent.args.relayerFeePct,
+      depositId: lastEvent.args.depositId,
+      quoteTimestamp: lastEvent.args.quoteTimestamp,
+      originToken: lastEvent.args.originToken,
+      recipient: lastEvent.args.recipient,
+      depositor: lastEvent.args.depositor,
+      originChainId: networkInfo.chainId,
+    };
+  return null;
 }
 export interface RelayData {
   depositor: string;

@@ -42,12 +42,12 @@ describe("Optimism Chain Adapter", function () {
     ).deploy(weth.address, l1CrossDomainMessenger.address, l1StandardBridge.address);
 
     await hubPool.setCrossChainContracts(optimismChainId, optimismAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Weth, weth.address);
-    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Dai, dai.address);
+    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Weth, weth.address, true);
+    await hubPool.whitelistRoute(optimismChainId, l1ChainId, l2Dai, dai.address, true);
 
     await hubPool.setCrossChainContracts(l1ChainId, mockAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(l1ChainId, optimismChainId, weth.address, l2Weth);
-    await hubPool.whitelistRoute(l1ChainId, optimismChainId, dai.address, l2Dai);
+    await hubPool.whitelistRoute(l1ChainId, optimismChainId, weth.address, l2Weth, true);
+    await hubPool.whitelistRoute(l1ChainId, optimismChainId, dai.address, l2Dai, true);
   });
 
   it("relayMessage calls spoke pool functions", async function () {

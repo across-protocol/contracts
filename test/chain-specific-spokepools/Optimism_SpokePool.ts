@@ -28,7 +28,7 @@ describe("Optimism Spoke Pool", function () {
     await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
     optimismSpokePool = await (
-      await getContractFactory("Optimism_SpokePool", { signer: owner })
+      await getContractFactory("Optimism_SpokePool", owner)
     ).deploy(owner.address, hubPool.address, timer.address);
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -39,6 +39,13 @@ describe("Optimism Spoke Pool", function () {
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
     expect(await optimismSpokePool.l1Gas()).to.equal(1337);
+  });
+
+  it("Only cross domain owner can set token bridge address for L2 token", async function () {
+    await expect(optimismSpokePool.setTokenBridge(l2Dai, rando.address)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, rando.address);
+    expect(await optimismSpokePool.tokenBridges(l2Dai)).to.equal(rando.address);
   });
 
   it("Only cross domain owner can enable a route", async function () {
@@ -86,7 +93,18 @@ describe("Optimism Spoke Pool", function () {
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
   });
+  it("Bridge tokens to hub pool correctly calls an alternative L2 Gateway router", async function () {
+    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await optimismSpokePool.callStatic.chainId());
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    const altL2Bridge = await createFake("L2StandardBridge");
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
+    await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
 
+    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
+    expect(altL2Bridge.withdrawTo).to.have.been.calledOnce;
+    expect(altL2Bridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
+  });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(
       l2Weth.address,

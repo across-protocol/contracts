@@ -14,14 +14,14 @@ describe("Polygon Spoke Pool", function () {
     ({ weth, hubPool, timer } = await hubPoolFixture());
 
     const polygonTokenBridger = await (
-      await getContractFactory("PolygonTokenBridger", { signer: owner })
+      await getContractFactory("PolygonTokenBridger", owner)
     ).deploy(hubPool.address, weth.address);
 
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
 
     polygonSpokePool = await (
-      await getContractFactory("Polygon_SpokePool", { signer: owner })
+      await getContractFactory("Polygon_SpokePool", owner)
     ).deploy(polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address);
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -119,7 +119,7 @@ describe("Polygon Spoke Pool", function () {
 
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {
     const polygonTokenBridger = await (
-      await getContractFactory("PolygonTokenBridger", { signer: owner })
+      await getContractFactory("PolygonTokenBridger", owner)
     ).deploy(hubPool.address, weth.address);
 
     await expect(() =>
