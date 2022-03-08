@@ -34,6 +34,10 @@ interface HubPoolInterface {
         address[] l1Tokens;
     }
 
+    function setPaused(bool pause) external;
+
+    function emergencyDeleteProposal() external;
+
     function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) external;
 
     function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct) external;
