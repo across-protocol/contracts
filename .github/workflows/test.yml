@@ -19,7 +19,7 @@ jobs:
           apt-get -y install rsync
 
       - name: Install deps and build (with cache)
-        uses: bahmutov/npm-install@v2
+        uses: bahmutov/npm-install@v1
 
       - name: Test
         run: yarn test

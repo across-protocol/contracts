@@ -14,7 +14,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install deps and build (with cache)
-        uses: bahmutov/npm-install@v2
+        uses: bahmutov/npm-install@v1
 
       - name: Lint
         run: yarn lint
