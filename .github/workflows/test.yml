@@ -15,8 +15,8 @@ jobs:
 
       - name: Install Additional dependencies
         run: |
-          apt-get update -y
-          apt-get -y install rsync
+          sudo apt-get update -y
+          sudo apt-get -y install rsync
 
       - name: Install deps and build (with cache)
         uses: bahmutov/npm-install@v1
