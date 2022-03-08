@@ -4,11 +4,9 @@ import { L1_ADDRESS_MAP } from "./consts";
 
 const func = async function (hre: any) {
   const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy, get } = deployments;
+  const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-
-  const hubPoolAddress = (await get("HubPool")).address;
 
   const chainId = await getChainId();
 
@@ -16,7 +14,7 @@ const func = async function (hre: any) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [hubPoolAddress, L1_ADDRESS_MAP[chainId].l1ArbitrumInbox, L1_ADDRESS_MAP[chainId].l1ERC20Gateway],
+    args: [L1_ADDRESS_MAP[chainId].l1ArbitrumInbox, L1_ADDRESS_MAP[chainId].l1ERC20Gateway],
   });
 };
 
