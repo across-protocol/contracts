@@ -47,7 +47,8 @@ export async function deposit(
   spokePool: Contract,
   token: Contract,
   recipient: SignerWithAddress,
-  depositor: SignerWithAddress
+  depositor: SignerWithAddress,
+  destinationChainId: number = consts.destinationChainId
 ) {
   await spokePool
     .connect(depositor)
@@ -56,7 +57,7 @@ export async function deposit(
         recipient.address,
         token.address,
         consts.amountToDeposit,
-        consts.destinationChainId,
+        destinationChainId,
         consts.depositRelayerFeePct,
         await spokePool.getCurrentTime()
       )
