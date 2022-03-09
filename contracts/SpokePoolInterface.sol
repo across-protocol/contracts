@@ -37,6 +37,8 @@ interface SpokePoolInterface {
         uint256 amount;
         // Origin chain id.
         uint256 originChainId;
+        // Destination chain id.
+        uint256 destinationChainId;
         // The LP Fee percentage computed by the relayer based on the deposit's quote timestamp
         // and the HubPool's utilization.
         uint64 realizedLpFeePct;
@@ -110,6 +112,7 @@ interface SpokePoolInterface {
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
+        uint256 destinationChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,

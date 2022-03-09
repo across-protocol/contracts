@@ -90,12 +90,14 @@ export interface RelayData {
   relayerFeePct: string;
   depositId: string;
   originChainId: string;
+  destinationChainId: string;
 }
 export function getRelayHash(
   _depositor: string,
   _recipient: string,
   _depositId: number,
   _originChainId: number,
+  _destinationChainId: number,
   _destinationToken: string,
   _amount?: string,
   _realizedLpFeePct?: string,
@@ -107,13 +109,14 @@ export function getRelayHash(
     destinationToken: _destinationToken,
     amount: _amount || consts.amountToDeposit.toString(),
     originChainId: _originChainId.toString(),
+    destinationChainId: _destinationChainId.toString(),
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
   };
   const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["address", "address", "address", "uint256", "uint256", "uint64", "uint64", "uint32"],
+      ["address", "address", "address", "uint256", "uint256", "uint256", "uint64", "uint64", "uint32"],
       Object.values(relayData)
     )
   );
@@ -189,6 +192,7 @@ export function getExecuteSlowRelayParams(
   _destToken: string,
   _amount: BigNumber,
   _originChainId: number,
+  _destinationChainId: number,
   _realizedLpFeePct: BigNumber,
   _relayerFeePct: BigNumber,
   _depositId: number,
@@ -201,6 +205,7 @@ export function getExecuteSlowRelayParams(
     _destToken,
     _amount.toString(),
     _originChainId.toString(),
+    _destinationChainId.toString(),
     _realizedLpFeePct.toString(),
     _relayerFeePct.toString(),
     _depositId.toString(),

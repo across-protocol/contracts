@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
@@ -107,6 +106,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 fillAmount,
         uint256 repaymentChainId,
         uint256 originChainId,
+        uint256 destinationChainId,
         uint64 relayerFeePct,
         uint64 realizedLpFeePct,
         uint32 depositId,
@@ -378,7 +378,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
             depositId: depositId,
-            originChainId: originChainId
+            originChainId: originChainId,
+            destinationChainId: chainId()
         });
         bytes32 relayHash = _getRelayHash(relayData);
 
@@ -433,7 +434,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
             depositId: depositId,
-            originChainId: originChainId
+            originChainId: originChainId,
+            destinationChainId: chainId()
         });
         bytes32 relayHash = _getRelayHash(relayData);
         uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
@@ -448,12 +450,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**
      * @notice Executes a slow relay leaf stored as part of a root bundle. Will send the full amount remaining in the
      * relay to the recipient, less fees.
+     * @dev This function will revert if destinationChainId is not equal to this contract's chain ID.
      * @param depositor Depositor on origin chain who set this chain as the destination chain.
      * @param recipient Specified recipient on this chain.
      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
      * and this chain ID via a mapping on the HubPool.
      * @param amount Full size of the deposit.
      * @param originChainId Chain of SpokePool where deposit originated.
+     * @param destinationChainId Chain of SpokePool where partial fill occurred and slow relay will be executed.
      * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
      * quote time.
      * @param relayerFeePct Original fee % to keep as relayer set by depositor.
@@ -467,18 +471,21 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
+        uint256 destinationChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
+        require(destinationChainId == chainId(), "Incorrect destination chain");
         _executeSlowRelayRoot(
             depositor,
             recipient,
             destinationToken,
             amount,
             originChainId,
+            destinationChainId,
             realizedLpFeePct,
             relayerFeePct,
             depositId,
@@ -511,7 +518,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Returns chain ID for this network.
      * @dev Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the implementer to override this.
      */
-    function chainId() public view override returns (uint256) {
+    function chainId() public view virtual override returns (uint256) {
         return block.chainid;
     }
 
@@ -583,6 +590,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
+        uint256 destinationChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
@@ -595,6 +603,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             destinationToken: destinationToken,
             amount: amount,
             originChainId: originChainId,
+            destinationChainId: destinationChainId,
             realizedLpFeePct: realizedLpFeePct,
             relayerFeePct: relayerFeePct,
             depositId: depositId
@@ -651,8 +660,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
 
         // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[eth_sign]
-        // JSON-RPC method as part of EIP-191. We use OZ's signature checker library which adds support for
-        // EIP-1271 which can verify messages signed by smart contract wallets like Argent and Gnosis safes.
         // If the depositor signed a message with a different updated fee (or any other param included in the
         // above keccak156 hash), then this will revert.
         bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
@@ -662,20 +669,17 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
     // signers from signatures because some L2s might not support ecrecover, such as those with account abstraction
-    // like ZKSync.
+    // like ZKSync. To be safe, consider always reverting this function for L2s where ecrecover is different from how
+    // it works on Ethereum, otherwise there is the potential to forge a signature from the depositor using a
     function _verifyDepositorUpdateFeeMessage(
         address depositor,
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
-        // Note: no need to worry about reentrancy from contract deployed at depositor address since
-        // SignatureChecker.isValidSignatureNow is a non state-modifying STATICCALL:
-        // - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/63b466901fb015538913f811c5112a2775042177/contracts/utils/cryptography/SignatureChecker.sol#L35
-        // - https://github.com/ethereum/EIPs/pull/214
-        require(
-            SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature),
-            "invalid signature"
-        );
+        // Note: We purposefully do not support EIP-191 signatures (meaning that multisigs and smart contract wallets
+        // like Argent are not supported) because of the possibility that a multisig that signed a message on the origin
+        // chain does not have a parallel on this destination chain.
+        require(depositor == ECDSA.recover(ethSignedMessageHash, depositorSignature), "invalid signature");
     }
 
     function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
@@ -788,6 +792,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             fillAmount,
             repaymentChainId,
             relayData.originChainId,
+            relayData.destinationChainId,
             relayerFeePct,
             relayData.realizedLpFeePct,
             relayData.depositId,

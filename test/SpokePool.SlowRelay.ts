@@ -10,6 +10,8 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerW
 let relays: RelayData[];
 let tree: MerkleTree<RelayData>;
 
+const OTHER_DESTINATION_CHAIN_ID = (consts.destinationChainId + 666).toString();
+
 // Relay fees for slow relay are only the realizedLpFee; the depositor should be re-funded the relayer fee
 // for any amount sent by a slow relay.
 const fullRelayAmountPostFees = consts.amountToRelay
@@ -40,12 +42,14 @@ describe("SpokePool Slow Relay Logic", async function () {
 
     relays = [];
     for (let i = 0; i < 99; i++) {
+      // Relay for different destination chain
       relays.push({
         depositor: randomAddress(),
         recipient: randomAddress(),
         destinationToken: randomAddress(),
         amount: randomBigNumber().toString(),
         originChainId: randomBigNumber(2).toString(),
+        destinationChainId: OTHER_DESTINATION_CHAIN_ID,
         realizedLpFeePct: randomBigNumber(8).toString(),
         relayerFeePct: randomBigNumber(8).toString(),
         depositId: randomBigNumber(2).toString(),
@@ -59,6 +63,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       destinationToken: destErc20.address,
       amount: consts.amountToRelay.toString(),
       originChainId: consts.originChainId.toString(),
+      destinationChainId: consts.destinationChainId.toString(),
       realizedLpFeePct: consts.realizedLpFeePct.toString(),
       relayerFeePct: consts.depositRelayerFeePct.toString(),
       depositId: consts.firstDepositId.toString(),
@@ -71,6 +76,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       destinationToken: weth.address,
       amount: consts.amountToRelay.toString(),
       originChainId: consts.originChainId.toString(),
+      destinationChainId: consts.destinationChainId.toString(),
       realizedLpFeePct: consts.realizedLpFeePct.toString(),
       relayerFeePct: consts.depositRelayerFeePct.toString(),
       depositId: consts.firstDepositId.toString(),
@@ -91,6 +97,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             destErc20.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -118,6 +125,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             destErc20.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -134,6 +142,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.amountToRelay,
         0, // Repayment chain ID should always be 0 for slow relay fills.
         consts.originChainId,
+        consts.destinationChainId,
         0, // Should not have a relayerFeePct for slow relay fills.
         consts.realizedLpFeePct,
         consts.firstDepositId,
@@ -156,6 +165,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -177,6 +187,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -204,6 +215,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             recipient.address,
             consts.firstDepositId,
             consts.originChainId,
+            consts.destinationChainId,
             destErc20.address,
             consts.amountToRelay.toString()
           ).relayData,
@@ -220,6 +232,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             destErc20.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -245,6 +258,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             recipient.address,
             consts.firstDepositId,
             consts.originChainId,
+            consts.destinationChainId,
             weth.address,
             consts.amountToRelay.toString()
           ).relayData,
@@ -262,6 +276,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -287,6 +302,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             recipient.address,
             consts.firstDepositId,
             consts.originChainId,
+            consts.destinationChainId,
             weth.address,
             consts.amountToRelay.toString()
           ).relayData,
@@ -304,6 +320,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
+            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -312,6 +329,30 @@ describe("SpokePool Slow Relay Logic", async function () {
           )
         )
     ).to.changeEtherBalance(recipient, leftoverPostFees);
+  });
+
+  it("Desination chain ID in relay struct must match spoke pool's chain ID", async function () {
+    const relay = relays.find((relay) => relay.destinationChainId === OTHER_DESTINATION_CHAIN_ID)!;
+
+    await expect(
+      spokePool
+        .connect(relayer)
+        .executeSlowRelayRoot(
+          ...getExecuteSlowRelayParams(
+            relay.depositor,
+            relay.recipient,
+            relay.destinationToken,
+            toBN(relay.amount),
+            Number(relay.originChainId),
+            Number(relay.destinationChainId),
+            toBN(relay.realizedLpFeePct),
+            toBN(relay.relayerFeePct),
+            Number(relay.depositId),
+            0,
+            tree.getHexProof(relay!)
+          )
+        )
+    ).to.be.revertedWith("Incorrect destination chain");
   });
 
   it("Bad proof", async function () {
@@ -323,6 +364,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           weth.address,
           consts.amountToRelay.sub(1), // Slightly modify the relay data from the expected set.
           consts.originChainId,
+          consts.destinationChainId,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
