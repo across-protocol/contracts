@@ -87,7 +87,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      */
     function setFxChild(address newFxChild) public onlyAdmin {
         fxChild = newFxChild;
-        emit SetFxChild(fxChild);
+        emit SetFxChild(newFxChild);
     }
 
     /**
@@ -96,7 +96,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      */
     function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin {
         polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
-        emit SetPolygonTokenBridger(address(polygonTokenBridger));
+        emit SetPolygonTokenBridger(address(newPolygonTokenBridger));
     }
 
     /**

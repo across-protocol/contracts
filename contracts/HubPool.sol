@@ -284,7 +284,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // The bond should be the passed in bondAmount + the final fee.
         bondToken = newBondToken;
         bondAmount = newBondAmount + _getBondTokenFinalFee();
-        emit BondSet(address(newBondToken), bondAmount);
+        emit BondSet(address(newBondToken), newBondAmount + _getBondTokenFinalFee());
     }
 
     /**

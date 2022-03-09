@@ -629,13 +629,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
         require(newCrossDomainAdmin != address(0), "Bad bridge router address");
         crossDomainAdmin = newCrossDomainAdmin;
-        emit SetXDomainAdmin(crossDomainAdmin);
+        emit SetXDomainAdmin(newCrossDomainAdmin);
     }
 
     function _setHubPool(address newHubPool) internal {
         require(newHubPool != address(0), "Bad hub pool address");
         hubPool = newHubPool;
-        emit SetHubPool(hubPool);
+        emit SetHubPool(newHubPool);
     }
 
     // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
