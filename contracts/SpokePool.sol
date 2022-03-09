@@ -491,7 +491,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Executes a relayer refund leaf stored as part of a root bundle. Will send the relayer the amount they
      * sent to the recipient plus a relayer fee.
      * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
-     * @param relayerRefundLeaf Contains all data neccessary to reconstruct leaf contained in root bundle and to
+     * @param relayerRefundLeaf Contains all data necessary to reconstruct leaf contained in root bundle and to
      * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */

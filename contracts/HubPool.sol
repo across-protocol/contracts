@@ -543,70 +543,62 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
-    /**
-     * @notice Executes a pool rebalance leaf as part of the currently published root bundle. Will bridge any tokens
-     * from this contract to the SpokePool designated in the leaf, and will also publish relayer refund and slow
-     * relay roots to the SpokePool on the network specified in the leaf.
-     * @dev In some cases, will instruct spokePool to send funds back to L1.
-     * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
-     * @param poolRebalanceLeaf Contains all data neccessary to reconstruct leaf contained in root bundle and to
-     * bridge tokens to HubPool. This data structure is explained in detail in the HubPoolInterface.
-     * @param proof Inclusion proof for this leaf in pool rebalance root in root bundle.
-     */
-    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public nonReentrant {
+    function executeRootBundle(
+        uint256 chainId,
+        uint256[] memory bundleLpFees,
+        int256[] memory netSendAmounts,
+        int256[] memory runningBalances,
+        uint8 leafId,
+        address[] memory l1Tokens,
+        bytes32[] memory proof
+    ) public nonReentrant {
         require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
-        require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
+        require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, leafId), "Already claimed");
 
         // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
         require(
-            MerkleLib.verifyPoolRebalance(rootBundleProposal.poolRebalanceRoot, poolRebalanceLeaf, proof),
+            MerkleLib.verifyPoolRebalance(
+                rootBundleProposal.poolRebalanceRoot,
+                PoolRebalanceLeaf({
+                    chainId: chainId,
+                    bundleLpFees: bundleLpFees,
+                    netSendAmounts: netSendAmounts,
+                    runningBalances: runningBalances,
+                    leafId: leafId,
+                    l1Tokens: l1Tokens
+                }),
+                proof
+            ),
             "Bad Proof"
         );
 
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
-        require(address(crossChainContracts[poolRebalanceLeaf.chainId].adapter) != address(0), "No adapter for chain");
+        require(address(crossChainContracts[chainId].adapter) != address(0), "No adapter for chain");
 
         // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
         // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
         // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
         // incorrectly.
-        address spokePool = crossChainContracts[poolRebalanceLeaf.chainId].spokePool;
+        address spokePool = crossChainContracts[chainId].spokePool;
         require(spokePool != address(0), "Uninitialized spoke pool");
 
         // Set the leafId in the claimed bitmap.
-        rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(
-            rootBundleProposal.claimedBitMap,
-            poolRebalanceLeaf.leafId
-        );
+        rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
 
         // Decrement the unclaimedPoolRebalanceLeafCount.
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
-        _sendTokensToChainAndUpdatePooledTokenTrackers(
-            spokePool,
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.bundleLpFees
-        );
-        _relayRootBundleToSpokePool(spokePool, poolRebalanceLeaf.chainId);
+        _sendTokensToChainAndUpdatePooledTokenTrackers(spokePool, chainId, l1Tokens, netSendAmounts, bundleLpFees);
+        _relayRootBundleToSpokePool(spokePool, chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
         if (rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
 
-        emit RootBundleExecuted(
-            poolRebalanceLeaf.leafId,
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.bundleLpFees,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.runningBalances,
-            msg.sender
-        );
+        emit RootBundleExecuted(leafId, chainId, l1Tokens, bundleLpFees, netSendAmounts, runningBalances, msg.sender);
     }
 
     /**

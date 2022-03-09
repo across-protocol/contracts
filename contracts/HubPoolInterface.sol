@@ -86,7 +86,15 @@ interface HubPoolInterface {
         bytes32 slowRelayRoot
     ) external;
 
-    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) external;
+    function executeRootBundle(
+        uint256 chainId,
+        uint256[] memory bundleLpFees,
+        int256[] memory netSendAmounts,
+        int256[] memory runningBalances,
+        uint8 leafId,
+        address[] memory l1Tokens,
+        bytes32[] memory proof
+    ) external;
 
     function disputeRootBundle() external;
 
