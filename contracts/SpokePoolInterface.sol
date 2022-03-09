@@ -112,7 +112,6 @@ interface SpokePoolInterface {
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
-        uint256 destinationChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,

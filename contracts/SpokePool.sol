@@ -85,6 +85,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
+        uint256 originChainId,
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 indexed depositId,
@@ -281,8 +282,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit FundsDeposited(
+        _emitDeposit(
             amount,
+            chainId(),
             destinationChainId,
             relayerFeePct,
             numberOfDeposits,
@@ -450,14 +452,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**
      * @notice Executes a slow relay leaf stored as part of a root bundle. Will send the full amount remaining in the
      * relay to the recipient, less fees.
-     * @dev This function will revert if destinationChainId is not equal to this contract's chain ID.
+     * @dev This function assumes that the relay's destination chain ID is the current chain ID, which prevents
+     * the caller from executing a slow relay intended for another chain on this chain.
      * @param depositor Depositor on origin chain who set this chain as the destination chain.
      * @param recipient Specified recipient on this chain.
      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
      * and this chain ID via a mapping on the HubPool.
      * @param amount Full size of the deposit.
      * @param originChainId Chain of SpokePool where deposit originated.
-     * @param destinationChainId Chain of SpokePool where partial fill occurred and slow relay will be executed.
      * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
      * quote time.
      * @param relayerFeePct Original fee % to keep as relayer set by depositor.
@@ -471,21 +473,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
-        uint256 destinationChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
-        require(destinationChainId == chainId(), "Incorrect destination chain");
         _executeSlowRelayRoot(
             depositor,
             recipient,
             destinationToken,
             amount,
             originChainId,
-            destinationChainId,
+            chainId(),
             realizedLpFeePct,
             relayerFeePct,
             depositId,
@@ -668,9 +668,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
-    // signers from signatures because some L2s might not support ecrecover, such as those with account abstraction
-    // like ZKSync. To be safe, consider always reverting this function for L2s where ecrecover is different from how
-    // it works on Ethereum, otherwise there is the potential to forge a signature from the depositor using a
+    // signers from signatures because some L2s might not support ecrecover. To be safe, consider always reverting
+    // this function for L2s where ecrecover is different from how it works on Ethereum, otherwise there is the
+    // potential to forge a signature from the depositor using a different private key than the original depositor's.
     function _verifyDepositorUpdateFeeMessage(
         address depositor,
         bytes32 ethSignedMessageHash,
@@ -801,6 +801,30 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayData.depositor,
             relayData.recipient,
             isSlowRelay
+        );
+    }
+
+    function _emitDeposit(
+        uint256 amount,
+        uint256 originChainId,
+        uint256 destinationChainId,
+        uint64 relayerFeePct,
+        uint32 depositId,
+        uint32 quoteTimestamp,
+        address originToken,
+        address recipient,
+        address depositor
+    ) internal {
+        emit FundsDeposited(
+            amount,
+            originChainId,
+            destinationChainId,
+            relayerFeePct,
+            depositId,
+            quoteTimestamp,
+            originToken,
+            recipient,
+            depositor
         );
     }
 

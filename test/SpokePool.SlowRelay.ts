@@ -97,7 +97,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             destErc20.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -125,7 +124,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             destErc20.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -165,7 +163,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -187,7 +184,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -232,7 +228,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             destErc20.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -276,7 +271,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -320,7 +314,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             weth.address,
             consts.amountToRelay,
             consts.originChainId,
-            consts.destinationChainId,
             consts.realizedLpFeePct,
             consts.depositRelayerFeePct,
             consts.firstDepositId,
@@ -331,9 +324,12 @@ describe("SpokePool Slow Relay Logic", async function () {
     ).to.changeEtherBalance(recipient, leftoverPostFees);
   });
 
-  it("Desination chain ID in relay struct must match spoke pool's chain ID", async function () {
+  it("Bad proof: Relay data is correct except that destination chain ID doesn't match spoke pool's", async function () {
     const relay = relays.find((relay) => relay.destinationChainId === OTHER_DESTINATION_CHAIN_ID)!;
 
+    // This should revert because the relay struct that we found via .find() is the one inserted in the merkle root
+    // published to the spoke pool, but its destination chain ID is OTHER_DESTINATION_CHAIN_ID, which is different
+    // than the spoke pool's destination chain ID.
     await expect(
       spokePool
         .connect(relayer)
@@ -344,7 +340,6 @@ describe("SpokePool Slow Relay Logic", async function () {
             relay.destinationToken,
             toBN(relay.amount),
             Number(relay.originChainId),
-            Number(relay.destinationChainId),
             toBN(relay.realizedLpFeePct),
             toBN(relay.relayerFeePct),
             Number(relay.depositId),
@@ -352,10 +347,10 @@ describe("SpokePool Slow Relay Logic", async function () {
             tree.getHexProof(relay!)
           )
         )
-    ).to.be.revertedWith("Incorrect destination chain");
+    ).to.be.revertedWith("Invalid proof");
   });
 
-  it("Bad proof", async function () {
+  it("Bad proof: Relay data besides destination chain ID is not included in merkle root", async function () {
     await expect(
       spokePool.connect(relayer).executeSlowRelayRoot(
         ...getExecuteSlowRelayParams(
@@ -364,7 +359,6 @@ describe("SpokePool Slow Relay Logic", async function () {
           weth.address,
           consts.amountToRelay.sub(1), // Slightly modify the relay data from the expected set.
           consts.originChainId,
-          consts.destinationChainId,
           consts.realizedLpFeePct,
           consts.depositRelayerFeePct,
           consts.firstDepositId,
