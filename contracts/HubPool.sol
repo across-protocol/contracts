@@ -543,6 +543,20 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
     }
 
+    /**
+     * @notice Executes a pool rebalance leaf as part of the currently published root bundle. Will bridge any tokens
+     * from this contract to the SpokePool designated in the leaf, and will also publish relayer refund and slow
+     * relay roots to the SpokePool on the network specified in the leaf.
+     * @dev In some cases, will instruct spokePool to send funds back to L1.
+     * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
+     * @param chainId ChainId number of the target spoke pool on which the bundle is executed.
+     * @param bundleLpFees Array representing the total LP fee amount per token in this bundle for all bundled relays.
+     * @param netSendAmounts Array representing the amount of tokens to send to the SpokePool on the target chainId.
+     * @param runningBalances Array used to track any unsent tokens that are not included in the netSendAmounts.
+     * @param leafId Index of this executed leaf within the poolRebalance tree.
+     * @param l1Tokens Array of all the tokens associated with the bundleLpFees, nedSendAmounts and runningBalances.
+     * @param proof Inclusion proof for this leaf in pool rebalance root in root bundle.
+     */
     function executeRootBundle(
         uint256 chainId,
         uint256[] memory bundleLpFees,
