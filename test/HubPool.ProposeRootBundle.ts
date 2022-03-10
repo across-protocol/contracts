@@ -48,7 +48,6 @@ describe("HubPool Root Bundle Proposal", function () {
     expect(rootBundle.relayerRefundRoot).to.equal(consts.mockRelayerRefundRoot);
     expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
     expect(rootBundle.proposer).to.equal(dataWorker.address);
-    expect(rootBundle.proposerBondRepaid).to.equal(false);
 
     // Can not re-initialize if the previous bundle has unclaimed leaves.
     await expect(
