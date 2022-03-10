@@ -139,14 +139,6 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(other).setPaused(true)).to.be.reverted;
     await expect(hubPool.connect(owner).setPaused(true)).to.emit(hubPool, "Paused").withArgs(true);
   });
-  it("Cannot propose while paused", async function () {
-    await seedWallet(owner, [], weth, totalBond);
-    await weth.approve(hubPool.address, totalBond);
-    await hubPool.connect(owner).setPaused(true);
-    await expect(
-      hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot)
-    ).to.be.revertedWith("Proposal process has been paused");
-  });
   it("Emergency deletion clears the rootBundleProposal", async function () {
     await seedWallet(owner, [], weth, totalBond);
     await weth.approve(hubPool.address, totalBond);
