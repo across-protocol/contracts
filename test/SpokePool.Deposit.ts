@@ -117,7 +117,7 @@ describe("SpokePool Depositor Logic", async function () {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
 
     // Blocked if user hasn't approved token.
-    await erc20.connect(depositor).approve(spokePool.address, 0);
+    await erc20.connect(depositor).approve(spokePool.address);
     await expect(
       spokePool
         .connect(depositor)

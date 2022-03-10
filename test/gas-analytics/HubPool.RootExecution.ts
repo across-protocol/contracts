@@ -92,13 +92,13 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     const spoke = await (
       await getContractFactory("MockSpokePool", owner)
     ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
-    await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address, 0);
+    await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
       const spoke = await (
         await getContractFactory("MockSpokePool", owner)
-      ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS, 0);
+      ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
       // Just whitelist route from mainnet to l2 (hacky), which shouldn't change gas estimates, but will allow refunds to be sent.
       await Promise.all(

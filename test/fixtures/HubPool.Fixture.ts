@@ -43,7 +43,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpoke = await (
     await getContractFactory("MockSpokePool", signer)
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address, 0);
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
   await hubPool.setCrossChainContracts(originChainId, mockAdapter.address, mockSpoke.address);
 
@@ -52,7 +52,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpokeMainnet = await (
     await getContractFactory("MockSpokePool", signer)
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address, 0);
+  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address);
   await hubPool.setCrossChainContracts(mainnetChainId, mockAdapterMainnet.address, mockSpokeMainnet.address);
 
   // Deploy mock l2 tokens for each token created before and whitelist the routes.
