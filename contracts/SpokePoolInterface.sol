@@ -60,6 +60,8 @@ interface SpokePoolInterface {
 
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) external;
 
+    function emergencyDeleteRootBundle(uint256 rootBundleId) external;
+
     function deposit(
         address recipient,
         address originToken,

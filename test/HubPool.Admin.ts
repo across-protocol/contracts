@@ -135,4 +135,39 @@ describe("HubPool Admin functions", function () {
   it("Only owner can set liveness", async function () {
     await expect(hubPool.connect(other).setLiveness(1000000)).to.be.reverted;
   });
+  it("Only owner can pause", async function () {
+    await expect(hubPool.connect(other).setPaused(true)).to.be.reverted;
+    await expect(hubPool.connect(owner).setPaused(true)).to.emit(hubPool, "Paused").withArgs(true);
+  });
+  it("Cannot propose while paused", async function () {
+    await seedWallet(owner, [], weth, totalBond);
+    await weth.approve(hubPool.address, totalBond);
+    await hubPool.connect(owner).setPaused(true);
+    await expect(
+      hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot)
+    ).to.be.revertedWith("Proposal process has been paused");
+  });
+  it("Emergency deletion clears the rootBundleProposal", async function () {
+    await seedWallet(owner, [], weth, totalBond);
+    await weth.approve(hubPool.address, totalBond);
+    await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot);
+    expect(await hubPool.rootBundleProposal()).to.have.property("poolRebalanceRoot", mockTreeRoot);
+    expect(await hubPool.rootBundleProposal()).to.have.property("unclaimedPoolRebalanceLeafCount", 5);
+    await expect(() => hubPool.connect(owner).emergencyDeleteProposal()).to.changeTokenBalances(
+      weth,
+      [owner, hubPool],
+      [totalBond, totalBond.mul(-1)]
+    );
+    expect(await hubPool.rootBundleProposal()).to.have.property(
+      "poolRebalanceRoot",
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
+    expect(await hubPool.rootBundleProposal()).to.have.property("unclaimedPoolRebalanceLeafCount", 0);
+  });
+  it("Emergency deletion can only be called by owner", async function () {
+    await seedWallet(owner, [], weth, totalBond);
+    await weth.approve(hubPool.address, totalBond);
+    await expect(hubPool.connect(other).emergencyDeleteProposal()).to.be.reverted;
+    await expect(hubPool.connect(owner).emergencyDeleteProposal()).to.not.be.reverted;
+  });
 });

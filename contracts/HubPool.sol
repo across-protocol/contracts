@@ -60,8 +60,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 claimedBitMap;
         // Proposer of this root bundle.
         address proposer;
-        // Whether bond has been repaid to successful root bundle proposer.
-        bool proposerBondRepaid;
         // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
@@ -265,7 +263,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * indefinitely blocked, migration would be required, and in-progress transfers would never be repaid.
      */
     function emergencyDeleteProposal() public onlyOwner nonReentrant {
-        if (!rootBundleProposal.proposerBondRepaid) bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
+        if (rootBundleProposal.unclaimedPoolRebalanceLeafCount > 0)
+            bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
         emit EmergencyRootBundleDeleted(
             rootBundleProposal.poolRebalanceRoot,
             rootBundleProposal.relayerRefundRoot,

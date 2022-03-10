@@ -83,6 +83,18 @@ describe("Optimism Spoke Pool", function () {
     expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
     expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
+
+  it("Only owner can delete a relayer refund", async function () {
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(mockTreeRoot, mockTreeRoot);
+    await expect(optimismSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).emergencyDeleteRootBundle(0)).to.not.be
+      .reverted;
+    expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+  });
+
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await optimismSpokePool.callStatic.chainId());
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
