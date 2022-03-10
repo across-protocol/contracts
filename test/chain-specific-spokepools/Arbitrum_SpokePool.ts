@@ -74,6 +74,14 @@ describe("Arbitrum Spoke Pool", function () {
     expect((await arbitrumSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
+  it("Only cross domain owner can delete a relayer refund", async function () {
+    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(mockTreeRoot, mockTreeRoot);
+    await expect(arbitrumSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
+    await expect(arbitrumSpokePool.connect(crossDomainAlias).emergencyDeleteRootBundle(0)).to.not.be.reverted;
+    expect((await arbitrumSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    expect((await arbitrumSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+  });
+
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);

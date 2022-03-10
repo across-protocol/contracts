@@ -60,8 +60,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 claimedBitMap;
         // Proposer of this root bundle.
         address proposer;
-        // Whether bond has been repaid to successful root bundle proposer.
-        bool proposerBondRepaid;
         // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
@@ -72,6 +70,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Only one root bundle can be stored at a time. Once all pool rebalance leaves are executed, a new proposal
     // can be submitted.
     RootBundle public rootBundleProposal;
+
+    // Whether the bundle proposal process is paused.
+    bool public paused;
 
     // Whitelist of origin token + ID to destination token routings to be used by off-chain agents. The notion of a
     // route does not need to include L1; it can be L2->L2 route. i.e USDC on Arbitrum -> USDC on Optimism as a "route".
@@ -138,6 +139,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
     uint32 public liveness = 7200;
 
+    event Paused(bool indexed isPaused);
+
+    event EmergencyRootBundleDeleted(
+        bytes32 indexed poolRebalanceRoot,
+        bytes32 indexed relayerRefundRoot,
+        bytes32 slowRelayRoot,
+        address indexed proposer
+    );
+
     event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
 
     event ProtocolFeesCapturedClaimed(address indexed l1Token, uint256 indexed accumulatedFees);
@@ -203,6 +213,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _;
     }
 
+    modifier unpaused() {
+        require(!paused, "Proposal process has been paused");
+        _;
+    }
+
     modifier zeroOptimisticOracleApproval() {
         _;
         bondToken.safeApprove(address(_getOptimisticOracle()), 0);
@@ -230,6 +245,34 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    /**
+     * @notice Pauses the bundle proposal and execution process. This is intended to be used during upgrades or when
+     * something goes awry.
+     * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
+     */
+    function setPaused(bool pause) public onlyOwner nonReentrant {
+        paused = pause;
+        emit Paused(pause);
+    }
+
+    /**
+     * @notice This allows for the deletion of the active proposal in case of emergency.
+     * @dev This is primarily intended to rectify situations where an unexecutable bundle gets through liveness in the
+     * case of a non-malicious bug in the proposal/dispute code. Without this function, the contract would be
+     * indefinitely blocked, migration would be required, and in-progress transfers would never be repaid.
+     */
+    function emergencyDeleteProposal() public onlyOwner nonReentrant {
+        if (rootBundleProposal.unclaimedPoolRebalanceLeafCount > 0)
+            bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
+        emit EmergencyRootBundleDeleted(
+            rootBundleProposal.poolRebalanceRoot,
+            rootBundleProposal.relayerRefundRoot,
+            rootBundleProposal.slowRelayRoot,
+            rootBundleProposal.proposer
+        );
+        delete rootBundleProposal;
+    }
 
     /**
      * @notice Sends message to SpokePool from this contract. Callable only by owner.
@@ -513,7 +556,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot
-    ) public override nonReentrant noActiveRequests {
+    ) public override nonReentrant noActiveRequests unpaused {
         // Note: this is to prevent "empty block" style attacks where someone can make empty proposals that are
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
@@ -553,7 +596,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * bridge tokens to HubPool. This data structure is explained in detail in the HubPoolInterface.
      * @param proof Inclusion proof for this leaf in pool rebalance root in root bundle.
      */
-    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public nonReentrant {
+    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof)
+        public
+        nonReentrant
+        unpaused
+    {
         require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
