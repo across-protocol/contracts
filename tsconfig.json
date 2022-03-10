@@ -8,6 +8,6 @@
     "declaration": true,
     "skipLibCheck": true
   },
-  "include": ["./scripts", "./test", "./typechain", "./index.ts", "./test.ts"],
+  "include": ["./scripts", "./test", "./typechain", "./index.ts", "./test-utils.ts"],
   "files": ["./hardhat.config.ts"]
 }
