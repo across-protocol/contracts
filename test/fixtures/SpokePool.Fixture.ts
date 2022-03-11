@@ -121,6 +121,7 @@ export async function fillRelay(
           recipient.address,
           depositId,
           originChainId,
+          consts.destinationChainId,
           destErc20.address,
           depositAmount.toString(),
           realizedLpFeePct.toString(),
