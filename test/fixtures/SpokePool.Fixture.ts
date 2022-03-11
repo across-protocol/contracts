@@ -152,7 +152,7 @@ export async function fillRelay(
       depositor: lastEvent.args.depositor,
       recipient: lastEvent.args.recipient,
       isSlowRelay: lastEvent.args.isSlowRelay,
-      destinationChainId,
+      destinationChainId: Number(destinationChainId),
     };
   else return null;
 }
