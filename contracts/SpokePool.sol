@@ -135,6 +135,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address indexed l2TokenAddress,
         address caller
     );
+    event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
 
     /**
      * @notice Construct the base SpokePool.
@@ -230,6 +231,17 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         rootBundle.relayerRefundRoot = relayerRefundRoot;
         rootBundle.slowRelayRoot = slowRelayRoot;
         emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayRoot);
+    }
+
+    /**
+     * @notice This method is intended to only be used in emergencies where a bad root bundle has reached the
+     * SpokePool.
+     * @param rootBundleId Index of the root bundle that needs to be deleted. Note: this is intentionally a uint256
+     * to ensure that a small input range doesn't limit which indices this method is able to reach.
+     */
+    function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin {
+        delete rootBundles[rootBundleId];
+        emit EmergencyDeleteRootBundle(rootBundleId);
     }
 
     /**************************************
