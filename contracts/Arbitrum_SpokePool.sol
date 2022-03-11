@@ -21,7 +21,7 @@ contract Arbitrum_SpokePool is SpokePool {
     address public l2GatewayRouter;
 
     // Admin controlled mapping of arbitrum tokens to L1 counterpart. L1 counterpart addresses
-    // are neccessary params used when bridging tokens to L1.
+    // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);

@@ -1,5 +1,6 @@
 import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract } from "../utils";
 import { TokenRolesEnum } from "@uma/common";
+import * as consts from "../constants";
 import { getDepositParams, getRelayHash, getFillRelayParams, enableRoutes } from "../fixtures/SpokePool.Fixture";
 
 export async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSymbol: string) {
@@ -34,7 +35,7 @@ export function constructRelayParams(
   depositId: number,
   relayAmount: BigNumber
 ) {
-  const { relayData } = getRelayHash(depositor, recipient, depositId, 1, relayTokenAddress);
+  const { relayData } = getRelayHash(depositor, recipient, depositId, 1, consts.destinationChainId, relayTokenAddress);
   return getFillRelayParams(relayData, relayAmount);
 }
 export async function sendRelay(

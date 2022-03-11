@@ -4,6 +4,19 @@ import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber
 import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
+  return await deploySpokePool(ethers);
+});
+
+// Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
+// to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
+export async function deploySpokePool(ethers: any): Promise<{
+  timer: Contract;
+  weth: Contract;
+  erc20: Contract;
+  spokePool: Contract;
+  unwhitelistedErc20: Contract;
+  destErc20: Contract;
+}> {
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
   // Useful contracts.
   const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
@@ -25,9 +38,10 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
+  await spokePool.setChainId(consts.destinationChainId);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
-});
+}
 
 export interface DepositRoute {
   originToken: string;
@@ -65,9 +79,9 @@ export async function deposit(
         await spokePool.getCurrentTime()
       )
     );
-  const [events, networkInfo] = await Promise.all([
+  const [events, originChainId] = await Promise.all([
     spokePool.queryFilter(spokePool.filters.FundsDeposited()),
-    spokePool.provider.getNetwork(),
+    spokePool.chainId(),
   ]);
   const lastEvent = events[events.length - 1];
   if (lastEvent.args)
@@ -80,7 +94,7 @@ export async function deposit(
       originToken: lastEvent.args.originToken,
       recipient: lastEvent.args.recipient,
       depositor: lastEvent.args.depositor,
-      originChainId: networkInfo.chainId,
+      originChainId: Number(originChainId),
     };
   return null;
 }
@@ -107,6 +121,7 @@ export async function fillRelay(
           recipient.address,
           depositId,
           originChainId,
+          consts.destinationChainId,
           destErc20.address,
           depositAmount.toString(),
           realizedLpFeePct.toString(),
@@ -151,12 +166,14 @@ export interface RelayData {
   relayerFeePct: string;
   depositId: string;
   originChainId: string;
+  destinationChainId: string;
 }
 export function getRelayHash(
   _depositor: string,
   _recipient: string,
   _depositId: number,
   _originChainId: number,
+  _destinationChainId: number,
   _destinationToken: string,
   _amount?: string,
   _realizedLpFeePct?: string,
@@ -168,13 +185,14 @@ export function getRelayHash(
     destinationToken: _destinationToken,
     amount: _amount || consts.amountToDeposit.toString(),
     originChainId: _originChainId.toString(),
+    destinationChainId: _destinationChainId.toString(),
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
   };
   const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["address", "address", "address", "uint256", "uint256", "uint64", "uint64", "uint32"],
+      ["address", "address", "address", "uint256", "uint256", "uint256", "uint64", "uint64", "uint32"],
       Object.values(relayData)
     )
   );
