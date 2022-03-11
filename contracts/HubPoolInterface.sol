@@ -26,6 +26,10 @@ interface HubPoolInterface {
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
         int256[] runningBalances;
+        // Used by data worker to mark which leaves should relay roots to SpokePools. We assume that the data worker
+        // would not mark this `True` for leaves that share `chainId` otherwise a root would get sent twice to a
+        // SpokePool which would be exploited to steal funds from the SpokePool.
+        bool relayToSpokePool;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint8 leafId;
         // The following arrays are required to be the same length. They are parallel arrays for the given chainId and
@@ -96,6 +100,7 @@ interface HubPoolInterface {
         int256[] memory netSendAmounts,
         int256[] memory runningBalances,
         uint8 leafId,
+        bool relayToSpokePool,
         address[] memory l1Tokens,
         bytes32[] memory proof
     ) external;

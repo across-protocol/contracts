@@ -196,6 +196,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address indexed proposer
     );
     event RootBundleExecuted(
+        bool relayToSpokePool,
         uint256 indexed leafId,
         uint256 indexed chainId,
         address[] l1Token,
@@ -599,6 +600,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param netSendAmounts Array representing the amount of tokens to send to the SpokePool on the target chainId.
      * @param runningBalances Array used to track any unsent tokens that are not included in the netSendAmounts.
      * @param leafId Index of this executed leaf within the poolRebalance tree.
+     * @param relayToSpokePool If True, then relay roots to SpokePool via cross chain bridge.
      * @param l1Tokens Array of all the tokens associated with the bundleLpFees, nedSendAmounts and runningBalances.
      * @param proof Inclusion proof for this leaf in pool rebalance root in root bundle.
      */
@@ -609,6 +611,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] memory netSendAmounts,
         int256[] memory runningBalances,
         uint8 leafId,
+        bool relayToSpokePool,
         address[] memory l1Tokens,
         bytes32[] memory proof
     ) public nonReentrant unpaused {
@@ -627,6 +630,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                     netSendAmounts: netSendAmounts,
                     runningBalances: runningBalances,
                     leafId: leafId,
+                    relayToSpokePool: relayToSpokePool,
                     l1Tokens: l1Tokens
                 }),
                 proof
@@ -652,9 +656,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         _sendTokensToChainAndUpdatePooledTokenTrackers(spokePool, chainId, l1Tokens, netSendAmounts, bundleLpFees);
 
-        // Do not relay same roots to SpokePool more than once.
-        if (!rootBundleProposal.relayedRootToSpokePool[chainId]) {
-            rootBundleProposal.relayedRootToSpokePool[chainId] = true;
+        // Check bool used by data worker to prevent relaying redundant roots to SpokePool.
+        if (relayToSpokePool) {
             _relayRootBundleToSpokePool(spokePool, chainId);
         }
 
@@ -663,7 +666,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         if (rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
 
-        emit RootBundleExecuted(leafId, chainId, l1Tokens, bundleLpFees, netSendAmounts, runningBalances, msg.sender);
+        emit RootBundleExecuted(
+            relayToSpokePool,
+            leafId,
+            chainId,
+            l1Tokens,
+            bundleLpFees,
+            netSendAmounts,
+            runningBalances,
+            msg.sender
+        );
     }
 
     /**

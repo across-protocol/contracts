@@ -18,14 +18,15 @@ async function constructSimpleTree() {
     [[weth.address, dai.address], []], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[toBNWei(1), toBNWei(10)], []], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
     [[wethToSendToL2, daiToSend], []], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
-    [[wethToSendToL2, daiToSend], []] // runningBalances. Set to 100 ETH and 1000 DAI.
+    [[wethToSendToL2, daiToSend], []], // runningBalances. Set to 100 ETH and 1000 DAI.
+    [true, false] // relayToSpokePool. Second leaf should not relay roots to spoke pool.
   );
   const tree = await buildPoolRebalanceLeafTree(leafs);
 
   return { wethToSendToL2, daiToSend, leafs, tree };
 }
 
-describe.only("HubPool Root Bundle Execution", function () {
+describe("HubPool Root Bundle Execution", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, hubPool, mockAdapter, mockSpoke, timer, l2Weth, l2Dai } = await hubPoolFixture());

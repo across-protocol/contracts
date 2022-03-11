@@ -8,6 +8,7 @@ export interface PoolRebalanceLeaf {
   netSendAmounts: BigNumber[];
   runningBalances: BigNumber[];
   leafId: BigNumber;
+  relayToSpokePool: boolean;
   l1Tokens: string[];
 }
 
@@ -71,7 +72,8 @@ export function buildPoolRebalanceLeafs(
   l1Tokens: string[][],
   bundleLpFees: BigNumber[][],
   netSendAmounts: BigNumber[][],
-  runningBalances: BigNumber[][]
+  runningBalances: BigNumber[][],
+  relayToSpokePool: boolean[]
 ): PoolRebalanceLeaf[] {
   return Array(destinationChainIds.length)
     .fill(0)
@@ -82,6 +84,7 @@ export function buildPoolRebalanceLeafs(
         netSendAmounts: netSendAmounts[i],
         runningBalances: runningBalances[i],
         leafId: BigNumber.from(i),
+        relayToSpokePool: relayToSpokePool[i],
         l1Tokens: l1Tokens[i],
       };
     });
@@ -109,7 +112,8 @@ export async function constructSingleChainTree(token: string, scalingSize = 1, r
     [[token]], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.
     [[tokensSendToL2]], // netSendAmounts.
-    [[tokensSendToL2]] // runningBalances.
+    [[tokensSendToL2]], // runningBalances.
+    [true] // relayToSpokePool
   );
   const tree = await buildPoolRebalanceLeafTree(leafs);
 
