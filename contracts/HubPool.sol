@@ -60,6 +60,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 claimedBitMap;
         // Proposer of this root bundle.
         address proposer;
+        // Keeps track of which SpokePools we have already relayed roots to.
+        mapping(uint256 => bool) relayedRootToSpokePool;
         // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
@@ -649,7 +651,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         _sendTokensToChainAndUpdatePooledTokenTrackers(spokePool, chainId, l1Tokens, netSendAmounts, bundleLpFees);
-        _relayRootBundleToSpokePool(spokePool, chainId);
+
+        // Do not relay same roots to SpokePool more than once.
+        if (!rootBundleProposal.relayedRootToSpokePool[chainId]) {
+            rootBundleProposal.relayedRootToSpokePool[chainId] = true;
+            _relayRootBundleToSpokePool(spokePool, chainId);
+        }
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
