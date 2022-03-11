@@ -60,8 +60,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 claimedBitMap;
         // Proposer of this root bundle.
         address proposer;
-        // Keeps track of which SpokePools we have already relayed roots to.
-        mapping(uint256 => bool) relayedRootToSpokePool;
         // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
