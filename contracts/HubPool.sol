@@ -750,43 +750,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Returns ancillary data containing all relevant root bundle data that voters can format into UTF8 and
-     * use to determine if the root bundle proposal is valid.
+     * @notice Returns ancillary data containing the minimum data necessary that voters can use to identify
+     * a root bundle proposal to validate its correctness.
+     * @dev The root bundle that is being disputed was the most recently proposed one with a block number less than
+     * or equal to the dispute block time. All of this root bundles data can be found in the ProposeRootBundle event
+     * params. Moreover, the optimistic oracle will stamp the requester's address (i.e. this contract address) meaning
+     * that ancillary data for a dispute originating from another HubPool will always be distinct from a dispute
+     * originating from this HubPool.
      * @return ancillaryData Ancillary data that can be decoded into UTF8.
      */
     function getRootBundleProposalAncillaryData() public view override returns (bytes memory ancillaryData) {
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            "",
-            "requestExpirationTimestamp",
-            rootBundleProposal.requestExpirationTimestamp
-        );
-
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            ancillaryData,
-            "unclaimedPoolRebalanceLeafCount",
-            rootBundleProposal.unclaimedPoolRebalanceLeafCount
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "poolRebalanceRoot",
-            rootBundleProposal.poolRebalanceRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "relayerRefundRoot",
-            rootBundleProposal.relayerRefundRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "slowRelayRoot",
-            rootBundleProposal.slowRelayRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            ancillaryData,
-            "claimedBitMap",
-            rootBundleProposal.claimedBitMap
-        );
-        ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", rootBundleProposal.proposer);
+        return "";
     }
 
     /**
