@@ -8,7 +8,7 @@ import "../SpokePoolInterface.sol";
  * @title MockSpokePool
  * @notice Implements abstract contract for testing.
  */
-contract MockSpokePool is SpokePoolInterface, SpokePool {
+contract MockSpokePool is SpokePool {
     uint256 chainId_;
 
     constructor(
@@ -22,7 +22,7 @@ contract MockSpokePool is SpokePoolInterface, SpokePool {
 
     function _requireAdminSender() internal override {}
 
-    function chainId() public view override(SpokePool, SpokePoolInterface) returns (uint256) {
+    function chainId() public view override(SpokePool) returns (uint256) {
         // If chainId_ is set then return it, else do nothing and return the parent chainId().
         return chainId_ == 0 ? super.chainId() : chainId_;
     }

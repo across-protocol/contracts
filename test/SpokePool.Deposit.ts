@@ -40,6 +40,7 @@ describe("SpokePool Depositor Logic", async function () {
       .withArgs(
         amountToDeposit,
         destinationChainId,
+        destinationChainId,
         depositRelayerFeePct,
         0,
         currentSpokePoolTime,

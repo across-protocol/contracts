@@ -126,6 +126,7 @@ async function main() {
         destinationToken: L2_TOKEN,
         amount: toBNWei(SLOW_RELAY_AMOUNT).toString(),
         originChainId: SPOKE_POOL_CHAIN_ID.toString(),
+        destinationChainId: SPOKE_POOL_CHAIN_ID.toString(),
         realizedLpFeePct: "0",
         relayerFeePct: "0",
         depositId: i.toString(),

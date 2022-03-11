@@ -95,6 +95,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
             destinationToken,
             totalRelayAmount,
             originChainId,
+            chainId(),
             realizedLpFeePct,
             relayerFeePct,
             depositId,

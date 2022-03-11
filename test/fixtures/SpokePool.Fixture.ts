@@ -38,6 +38,7 @@ export async function deploySpokePool(ethers: any): Promise<{
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
   ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
+  await spokePool.setChainId(consts.destinationChainId);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
 }
@@ -120,6 +121,7 @@ export async function fillRelay(
           recipient.address,
           depositId,
           originChainId,
+          consts.destinationChainId,
           destErc20.address,
           depositAmount.toString(),
           realizedLpFeePct.toString(),
@@ -164,12 +166,14 @@ export interface RelayData {
   relayerFeePct: string;
   depositId: string;
   originChainId: string;
+  destinationChainId: string;
 }
 export function getRelayHash(
   _depositor: string,
   _recipient: string,
   _depositId: number,
   _originChainId: number,
+  _destinationChainId: number,
   _destinationToken: string,
   _amount?: string,
   _realizedLpFeePct?: string,
@@ -181,13 +185,14 @@ export function getRelayHash(
     destinationToken: _destinationToken,
     amount: _amount || consts.amountToDeposit.toString(),
     originChainId: _originChainId.toString(),
+    destinationChainId: _destinationChainId.toString(),
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
     depositId: _depositId.toString(),
   };
   const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["address", "address", "address", "uint256", "uint256", "uint64", "uint64", "uint32"],
+      ["address", "address", "address", "uint256", "uint256", "uint256", "uint64", "uint64", "uint32"],
       Object.values(relayData)
     )
   );
