@@ -753,10 +753,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Returns ancillary data containing the minimum data necessary that voters can use to identify
      * a root bundle proposal to validate its correctness.
      * @dev The root bundle that is being disputed was the most recently proposed one with a block number less than
-     * or equal to the dispute block time. All of this root bundles data can be found in the ProposeRootBundle event
+     * or equal to the dispute block time. All of this root bundle data can be found in the ProposeRootBundle event
      * params. Moreover, the optimistic oracle will stamp the requester's address (i.e. this contract address) meaning
      * that ancillary data for a dispute originating from another HubPool will always be distinct from a dispute
      * originating from this HubPool.
+     * @dev Since bundleEvaluationNumbers for a root bundle proposal are not stored on-chain, DVM voters will always
+     * have to look up the ProposeRootBundle event to evaluate a dispute, therefore there is no point emitting extra
+     * data in this ancillary data that is already included in the ProposeRootBundle event.
      * @return ancillaryData Ancillary data that can be decoded into UTF8.
      */
     function getRootBundleProposalAncillaryData() public view override returns (bytes memory ancillaryData) {
