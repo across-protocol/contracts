@@ -161,4 +161,28 @@ describe("HubPool Root Bundle Execution", function () {
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
     ).to.be.revertedWith("Already claimed");
   });
+
+  it("Cannot execute while paused", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+
+    await hubPool.connect(dataWorker).proposeRootBundle(
+      [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
+      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+      consts.mockRelayerRefundRoot, // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
+    );
+
+    // Advance time so the request can be executed and execute the request.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+    // Should revert while paused.
+    await hubPool.setPaused(true);
+    await expect(hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]))).to.be.reverted;
+
+    // Should not revert after unpaused.
+    await hubPool.setPaused(false);
+    await expect(hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]))).to.not.be
+      .reverted;
+  });
 });

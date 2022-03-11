@@ -98,6 +98,36 @@ describe("Polygon Spoke Pool", function () {
     expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
+  it("Only owner can delete a relayer refund", async function () {
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      mockTreeRoot,
+      mockTreeRoot,
+    ]);
+
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+
+    const emergencyDeleteRelayRootBundleData = polygonSpokePool.interface.encodeFunctionData(
+      "emergencyDeleteRootBundle",
+      [0]
+    );
+
+    // Wrong rootMessageSender address.
+    await expect(
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, emergencyDeleteRelayRootBundleData)
+    ).to.be.reverted;
+
+    // Wrong calling address.
+    await expect(
+      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData)
+    ).to.be.reverted;
+
+    await expect(
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData)
+    ).to.not.be.reverted;
+    expect((await polygonSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+  });
+
   it("Bridge tokens to hub pool correctly sends tokens through the PolygonTokenBridger", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(
       dai.address,

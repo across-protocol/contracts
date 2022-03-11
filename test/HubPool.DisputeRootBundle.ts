@@ -47,7 +47,6 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.slowRelayRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
-    expect(rootBundle.proposerBondRepaid).to.equal(false);
 
     const priceProposalEvent = (await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice()))[0].args;
 
@@ -111,7 +110,6 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.slowRelayRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
-    expect(rootBundle.proposerBondRepaid).to.equal(false);
 
     // No proposal should have been made.
     expect((await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice())).length).to.equal(0);
@@ -155,7 +153,6 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.slowRelayRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
-    expect(rootBundle.proposerBondRepaid).to.equal(false);
 
     // Proposal/DVM request should have been made.
     expect((await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice())).length).to.equal(1);

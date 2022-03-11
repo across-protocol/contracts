@@ -53,6 +53,14 @@ describe("Ethereum Spoke Pool", function () {
     expect((await spokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
+  it("Only owner can delete a relayer refund", async function () {
+    await spokePool.connect(owner).relayRootBundle(mockTreeRoot, mockTreeRoot);
+    await expect(spokePool.connect(rando).emergencyDeleteRootBundle(0)).to.be.reverted;
+    await expect(spokePool.connect(owner).emergencyDeleteRootBundle(0)).to.not.be.reverted;
+    expect((await spokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    expect((await spokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+  });
+
   it("Bridge tokens to hub pool correctly sends tokens to hub pool", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(dai.address, await spokePool.callStatic.chainId());
     await spokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
