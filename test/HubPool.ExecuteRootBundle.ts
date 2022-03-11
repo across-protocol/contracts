@@ -178,11 +178,12 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Should revert while paused.
     await hubPool.setPaused(true);
-    await expect(hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]))).to.be.reverted;
+    await expect(hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0])))
+      .to.be.reverted;
 
     // Should not revert after unpaused.
     await hubPool.setPaused(false);
-    await expect(hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]))).to.not.be
-      .reverted;
+    await expect(hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0])))
+      .to.not.be.reverted;
   });
 });

@@ -609,7 +609,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint8 leafId,
         address[] memory l1Tokens,
         bytes32[] memory proof
-    ) public unpaused nonReentrant {
+    ) public nonReentrant unpaused {
         require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
