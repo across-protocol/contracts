@@ -65,7 +65,7 @@ describe("Polygon Chain Adapter", function () {
     const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, polygonChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
 
     // The correct functions should have been called on the polygon contracts.
     expect(rootChainManager.depositFor).to.have.been.calledOnce; // One token transfer over the bridge.
@@ -88,7 +88,7 @@ describe("Polygon Chain Adapter", function () {
     const { leafs, tree } = await constructSingleChainTree(weth.address, 1, polygonChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
 
     // The correct functions should have been called on the polygon contracts.
     expect(rootChainManager.depositEtherFor).to.have.been.calledOnce; // One eth transfer over the bridge.

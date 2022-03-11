@@ -28,7 +28,7 @@ interface IFxStateSender {
  * @notice Sends cross chain messages Polygon L2 network.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
- * For example, the HubPool will delegatecall these functions, therefore its only neccessary that the HubPool's methods
+ * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
 contract Polygon_Adapter is AdapterInterface {

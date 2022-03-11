@@ -35,7 +35,7 @@ interface ArbitrumL1ERC20GatewayLike {
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
- * For example, the HubPool will delegatecall these functions, therefore its only neccessary that the HubPool's methods
+ * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
 contract Arbitrum_Adapter is AdapterInterface {
