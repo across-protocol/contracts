@@ -523,7 +523,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Returns chain ID for this network.
      * @dev Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the implementer to override this.
      */
-    function chainId() public view override returns (uint256) {
+    function chainId() public view virtual override returns (uint256) {
         return block.chainid;
     }
 
