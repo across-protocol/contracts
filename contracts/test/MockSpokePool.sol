@@ -9,6 +9,8 @@ import "../SpokePoolInterface.sol";
  * @notice Implements abstract contract for testing.
  */
 contract MockSpokePool is SpokePool {
+    uint256 chainId_;
+
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
@@ -21,6 +23,11 @@ contract MockSpokePool is SpokePool {
     function _requireAdminSender() internal override {}
 
     function chainId() public view override(SpokePool) returns (uint256) {
-        return 1337;
+        // If chainId_ is set then return it, else do nothing and return the parent chainId().
+        return chainId_ == 0 ? super.chainId() : chainId_;
+    }
+
+    function setChainId(uint256 _chainId) public {
+        chainId_ = _chainId;
     }
 }
