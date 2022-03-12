@@ -55,7 +55,9 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Advance time so the request can be executed and execute first leaf.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    expect(
+      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+    ).to.emit(hubPool, "RootBundleExecuted");
 
     // Balances should have updated as expected. Note that pool should still have bond remaining since a leaf
     // is unexecuted.
