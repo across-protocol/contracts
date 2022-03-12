@@ -646,7 +646,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
 
         // Decrement the unclaimedPoolRebalanceLeafCount.
-        rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
+        --rootBundleProposal.unclaimedPoolRebalanceLeafCount;
 
         _sendTokensToChainAndUpdatePooledTokenTrackers(
             _crossChainContracts.spokePool,
