@@ -566,12 +566,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        for (uint32 i = 0; i < relayerRefundLeaf.refundAmounts.length; ) {
+        uint32 length = uint32(relayerRefundLeaf.refundAmounts.length);
+        for (uint32 i = 0; i < length; ) {
             uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
                 IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
 
-            // OK because we assume refund amounts won't be > types(uint32).max
+            // OK because we assume refund array length won't be > types(uint32).max
             unchecked {
                 ++i;
             }

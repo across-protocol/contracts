@@ -859,7 +859,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) internal {
         AdapterInterface adapter = crossChainContracts[chainId].adapter;
 
-        for (uint32 i = 0; i < l1Tokens.length; ) {
+        uint32 length = uint32(l1Tokens.length);
+        for (uint32 i = 0; i < length; ) {
             address l1Token = l1Tokens[i];
             // Validate the L1 -> L2 token route is whitelisted. If it is not then the output of the bridging action
             // could send tokens to the 0x0 address on the L2.
@@ -890,7 +891,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
             _allocateLpAndProtocolFees(l1Token, bundleLpFees[i]);
 
-            // L1 tokens length won't be > types(uint32).length
+            // L1 tokens length won't be > types(uint32).length, so use unchecked block to save gas.
             unchecked {
                 ++i;
             }
