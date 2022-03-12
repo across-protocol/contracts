@@ -78,11 +78,11 @@ export function buildPoolRebalanceLeafs(
     .map((_, i) => {
       return {
         chainId: BigNumber.from(destinationChainIds[i]),
-        l1Tokens: l1Tokens[i],
         bundleLpFees: bundleLpFees[i],
         netSendAmounts: netSendAmounts[i],
         runningBalances: runningBalances[i],
         leafId: BigNumber.from(i),
+        l1Tokens: l1Tokens[i],
       };
     });
 }

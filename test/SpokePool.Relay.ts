@@ -27,6 +27,7 @@ describe("SpokePool Relayer Logic", async function () {
       recipient.address,
       consts.firstDepositId,
       consts.originChainId,
+      consts.destinationChainId,
       destErc20.address
     );
 
@@ -39,6 +40,7 @@ describe("SpokePool Relayer Logic", async function () {
         consts.amountToRelayPreFees,
         consts.repaymentChainId,
         toBN(relayData.originChainId),
+        toBN(relayData.destinationChainId),
         relayData.relayerFeePct,
         relayData.realizedLpFeePct,
         toBN(relayData.depositId),
@@ -75,6 +77,7 @@ describe("SpokePool Relayer Logic", async function () {
       recipient.address,
       consts.firstDepositId,
       consts.originChainId,
+      consts.destinationChainId,
       weth.address
     );
 
@@ -100,6 +103,7 @@ describe("SpokePool Relayer Logic", async function () {
               recipient.address,
               consts.firstDepositId,
               consts.originChainId,
+              consts.destinationChainId,
               destErc20.address,
               consts.amountToDeposit.toString(),
               toWei("0.5").toString(),
@@ -120,6 +124,7 @@ describe("SpokePool Relayer Logic", async function () {
               recipient.address,
               consts.firstDepositId,
               consts.originChainId,
+              consts.destinationChainId,
               destErc20.address,
               consts.amountToDeposit.toString(),
               consts.realizedLpFeePct.toString(),
@@ -139,6 +144,7 @@ describe("SpokePool Relayer Logic", async function () {
           recipient.address,
           consts.firstDepositId,
           consts.originChainId,
+          consts.destinationChainId,
           destErc20.address
         ).relayData,
         consts.amountToDeposit, // Send the full relay amount
@@ -153,6 +159,7 @@ describe("SpokePool Relayer Logic", async function () {
             recipient.address,
             consts.firstDepositId,
             consts.originChainId,
+            consts.destinationChainId,
             destErc20.address
           ).relayData,
           toBN("1"), // relay any amount
@@ -221,6 +228,7 @@ describe("SpokePool Relayer Logic", async function () {
       recipient.address,
       consts.firstDepositId,
       consts.originChainId,
+      consts.destinationChainId,
       destErc20.address
     );
     const { signature } = await modifyRelayHelper(
@@ -248,6 +256,7 @@ describe("SpokePool Relayer Logic", async function () {
       recipient.address,
       consts.firstDepositId,
       consts.originChainId,
+      consts.destinationChainId,
       destErc20.address
     );
 

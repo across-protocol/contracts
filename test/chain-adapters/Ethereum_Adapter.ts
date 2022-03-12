@@ -53,7 +53,7 @@ describe("Ethereum Chain Adapter", function () {
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    expect(await hubPool.connect(dataWorker).executeRootBundle(leafs[0], tree.getHexProof(leafs[0])))
+    expect(await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0])))
       .to.emit(ethAdapter.attach(hubPool.address), "TokensRelayed")
       .withArgs(dai.address, dai.address, tokensSendToL2, mockSpoke.address);
   });

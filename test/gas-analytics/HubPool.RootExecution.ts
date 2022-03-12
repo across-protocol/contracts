@@ -128,7 +128,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
         await hubPool
           .connect(dataWorker)
-          .executeRootBundle(initTree.leaves[i], initTree.tree.getHexProof(initTree.leaves[i]));
+          .executeRootBundle(...Object.values(initTree.leaves[i]), initTree.tree.getHexProof(initTree.leaves[i]));
       }
 
       const simpleTree = await constructSimpleTree(destinationChainIds, l1Tokens);
@@ -162,7 +162,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
       const txn = await hubPool
         .connect(dataWorker)
-        .executeRootBundle(leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRootBundle(...Object.values(leaves[leafIndexToExecute]), tree.getHexProof(leaves[leafIndexToExecute]));
 
       const receipt = await txn.wait();
       console.log(`executeRootBundle-gasUsed: ${receipt.gasUsed}`);
@@ -180,7 +180,9 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
       const txns = [];
       for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
-        txns.push(await hubPool.connect(dataWorker).executeRootBundle(leaves[i], tree.getHexProof(leaves[i])));
+        txns.push(
+          await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[i]), tree.getHexProof(leaves[i]))
+        );
       }
 
       // Compute average gas costs.

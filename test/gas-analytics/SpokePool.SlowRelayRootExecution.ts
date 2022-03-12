@@ -41,6 +41,7 @@ async function constructSimpleTree(
       destinationToken: destinationTokens[i],
       amount: universalRelayAmount,
       originChainId: ORIGIN_CHAIN_ID,
+      destinationChainId: consts.destinationChainId.toString(),
       realizedLpFeePct: FEE_PCT,
       relayerFeePct: FEE_PCT,
       depositId: i.toString(),

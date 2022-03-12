@@ -60,8 +60,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 claimedBitMap;
         // Proposer of this root bundle.
         address proposer;
-        // Whether bond has been repaid to successful root bundle proposer.
-        bool proposerBondRepaid;
         // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
@@ -72,6 +70,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Only one root bundle can be stored at a time. Once all pool rebalance leaves are executed, a new proposal
     // can be submitted.
     RootBundle public rootBundleProposal;
+
+    // Whether the bundle proposal process is paused.
+    bool public paused;
 
     // Whitelist of origin token + ID to destination token routings to be used by off-chain agents. The notion of a
     // route does not need to include L1; it can be L2->L2 route. i.e USDC on Arbitrum -> USDC on Optimism as a "route".
@@ -138,6 +139,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
     uint32 public liveness = 7200;
 
+    event Paused(bool indexed isPaused);
+
+    event EmergencyRootBundleDeleted(
+        bytes32 indexed poolRebalanceRoot,
+        bytes32 indexed relayerRefundRoot,
+        bytes32 slowRelayRoot,
+        address indexed proposer
+    );
+
     event ProtocolFeeCaptureSet(address indexed newProtocolFeeCaptureAddress, uint256 indexed newProtocolFeeCapturePct);
 
     event ProtocolFeesCapturedClaimed(address indexed l1Token, uint256 indexed accumulatedFees);
@@ -203,6 +213,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _;
     }
 
+    modifier unpaused() {
+        require(!paused, "Proposal process has been paused");
+        _;
+    }
+
     modifier zeroOptimisticOracleApproval() {
         _;
         bondToken.safeApprove(address(_getOptimisticOracle()), 0);
@@ -230,6 +245,34 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /*************************************************
      *                ADMIN FUNCTIONS                *
      *************************************************/
+
+    /**
+     * @notice Pauses the bundle proposal and execution process. This is intended to be used during upgrades or when
+     * something goes awry.
+     * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
+     */
+    function setPaused(bool pause) public onlyOwner nonReentrant {
+        paused = pause;
+        emit Paused(pause);
+    }
+
+    /**
+     * @notice This allows for the deletion of the active proposal in case of emergency.
+     * @dev This is primarily intended to rectify situations where an unexecutable bundle gets through liveness in the
+     * case of a non-malicious bug in the proposal/dispute code. Without this function, the contract would be
+     * indefinitely blocked, migration would be required, and in-progress transfers would never be repaid.
+     */
+    function emergencyDeleteProposal() public onlyOwner nonReentrant {
+        if (rootBundleProposal.unclaimedPoolRebalanceLeafCount > 0)
+            bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
+        emit EmergencyRootBundleDeleted(
+            rootBundleProposal.poolRebalanceRoot,
+            rootBundleProposal.relayerRefundRoot,
+            rootBundleProposal.slowRelayRoot,
+            rootBundleProposal.proposer
+        );
+        delete rootBundleProposal;
+    }
 
     /**
      * @notice Sends message to SpokePool from this contract. Callable only by owner.
@@ -513,7 +556,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot
-    ) public override nonReentrant noActiveRequests {
+    ) public override nonReentrant noActiveRequests unpaused {
         // Note: this is to prevent "empty block" style attacks where someone can make empty proposals that are
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
@@ -549,64 +592,71 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * relay roots to the SpokePool on the network specified in the leaf.
      * @dev In some cases, will instruct spokePool to send funds back to L1.
      * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
-     * @param poolRebalanceLeaf Contains all data neccessary to reconstruct leaf contained in root bundle and to
-     * bridge tokens to HubPool. This data structure is explained in detail in the HubPoolInterface.
+     * @param chainId ChainId number of the target spoke pool on which the bundle is executed.
+     * @param bundleLpFees Array representing the total LP fee amount per token in this bundle for all bundled relays.
+     * @param netSendAmounts Array representing the amount of tokens to send to the SpokePool on the target chainId.
+     * @param runningBalances Array used to track any unsent tokens that are not included in the netSendAmounts.
+     * @param leafId Index of this executed leaf within the poolRebalance tree.
+     * @param l1Tokens Array of all the tokens associated with the bundleLpFees, nedSendAmounts and runningBalances.
      * @param proof Inclusion proof for this leaf in pool rebalance root in root bundle.
      */
-    function executeRootBundle(PoolRebalanceLeaf memory poolRebalanceLeaf, bytes32[] memory proof) public nonReentrant {
+
+    function executeRootBundle(
+        uint256 chainId,
+        uint256[] memory bundleLpFees,
+        int256[] memory netSendAmounts,
+        int256[] memory runningBalances,
+        uint8 leafId,
+        address[] memory l1Tokens,
+        bytes32[] memory proof
+    ) public nonReentrant unpaused {
         require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
-        require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, poolRebalanceLeaf.leafId), "Already claimed");
+        require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, leafId), "Already claimed");
 
         // Verify the props provided generate a leaf that, along with the proof, are included in the merkle root.
         require(
-            MerkleLib.verifyPoolRebalance(rootBundleProposal.poolRebalanceRoot, poolRebalanceLeaf, proof),
+            MerkleLib.verifyPoolRebalance(
+                rootBundleProposal.poolRebalanceRoot,
+                PoolRebalanceLeaf({
+                    chainId: chainId,
+                    bundleLpFees: bundleLpFees,
+                    netSendAmounts: netSendAmounts,
+                    runningBalances: runningBalances,
+                    leafId: leafId,
+                    l1Tokens: l1Tokens
+                }),
+                proof
+            ),
             "Bad Proof"
         );
 
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
-        require(address(crossChainContracts[poolRebalanceLeaf.chainId].adapter) != address(0), "No adapter for chain");
+        require(address(crossChainContracts[chainId].adapter) != address(0), "No adapter for chain");
 
         // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
         // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
         // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
         // incorrectly.
-        address spokePool = crossChainContracts[poolRebalanceLeaf.chainId].spokePool;
+        address spokePool = crossChainContracts[chainId].spokePool;
         require(spokePool != address(0), "Uninitialized spoke pool");
 
         // Set the leafId in the claimed bitmap.
-        rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(
-            rootBundleProposal.claimedBitMap,
-            poolRebalanceLeaf.leafId
-        );
+        rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
 
         // Decrement the unclaimedPoolRebalanceLeafCount.
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
-        _sendTokensToChainAndUpdatePooledTokenTrackers(
-            spokePool,
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.bundleLpFees
-        );
-        _relayRootBundleToSpokePool(spokePool, poolRebalanceLeaf.chainId);
+        _sendTokensToChainAndUpdatePooledTokenTrackers(spokePool, chainId, l1Tokens, netSendAmounts, bundleLpFees);
+        _relayRootBundleToSpokePool(spokePool, chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
         if (rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
 
-        emit RootBundleExecuted(
-            poolRebalanceLeaf.leafId,
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.bundleLpFees,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.runningBalances,
-            msg.sender
-        );
+        emit RootBundleExecuted(leafId, chainId, l1Tokens, bundleLpFees, netSendAmounts, runningBalances, msg.sender);
     }
 
     /**
