@@ -87,7 +87,7 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @param target Contract on Arbitrum that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
 

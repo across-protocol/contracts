@@ -633,13 +633,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
 
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
-        require(address(crossChainContracts[chainId].adapter) != address(0), "No adapter for chain");
+        CrossChainContract memory _crossChainContracts = crossChainContracts[chainId];
+        require(address(_crossChainContracts.adapter) != address(0), "No adapter for chain");
 
         // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
         // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
         // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
         // incorrectly.
-        address spokePool = crossChainContracts[chainId].spokePool;
+        address spokePool = _crossChainContracts.spokePool;
         require(spokePool != address(0), "Uninitialized spoke pool");
 
         // Set the leafId in the claimed bitmap.
