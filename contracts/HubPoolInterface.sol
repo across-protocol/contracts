@@ -27,7 +27,7 @@ interface HubPoolInterface {
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
         int256[] runningBalances;
         // Used by data worker to mark which leaves should relay roots to SpokePools. We assume that the data worker
-        // would not mark this `True` for leaves that share `chainId` otherwise a root would get sent twice to a
+        // would not mark this True for leaves that share chainId otherwise a root would get sent twice to a
         // SpokePool which would be exploited to steal funds from the SpokePool.
         bool relayToSpokePool;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
