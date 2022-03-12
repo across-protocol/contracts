@@ -18,7 +18,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
     uint32 public l1Gas = 5_000_000;
 
     // ETH is an ERC20 on OVM.
-    address public l2Eth = address(Lib_PredeployAddresses.OVM_ETH);
+    address public immutable l2Eth = address(Lib_PredeployAddresses.OVM_ETH);
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
