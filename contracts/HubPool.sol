@@ -655,9 +655,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _sendTokensToChainAndUpdatePooledTokenTrackers(spokePool, chainId, l1Tokens, netSendAmounts, bundleLpFees);
 
         // Check bool used by data worker to prevent relaying redundant roots to SpokePool.
-        if (relayToSpokePool) {
-            _relayRootBundleToSpokePool(spokePool, chainId);
-        }
+        if (relayToSpokePool) _relayRootBundleToSpokePool(spokePool, chainId);
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
