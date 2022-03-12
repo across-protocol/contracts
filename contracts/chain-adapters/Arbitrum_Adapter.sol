@@ -39,10 +39,6 @@ interface ArbitrumL1ERC20GatewayLike {
  * that call this contract's logic guard against reentrancy.
  */
 contract Arbitrum_Adapter is AdapterInterface {
-    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
-    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
-    uint32 public immutable l2GasLimit = 5_000_000;
-
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
     // retryable transactions; the user is charged the base submission fee to cover the storage costs of keeping their
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
@@ -59,6 +55,10 @@ contract Arbitrum_Adapter is AdapterInterface {
     ArbitrumL1InboxLike public immutable l1Inbox;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20Gateway;
+
+    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
+    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
+    uint32 public immutable l2GasLimit = 5_000_000;
 
     event L2GasLimitSet(uint32 newL2GasLimit);
 

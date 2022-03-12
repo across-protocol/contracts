@@ -51,11 +51,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
-    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    // A reverse mapping is stored on the L1 HubPool to enable or disable rebalance transfers from the HubPool to this
-    // contract.
-    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
-
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
     // by "data workers" via inclusion proofs to execute leaves in the roots.
     struct RootBundle {
@@ -70,6 +65,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
+
+    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
+    // A reverse mapping is stored on the L1 HubPool to enable or disable rebalance transfers from the HubPool to this
+    // contract.
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to

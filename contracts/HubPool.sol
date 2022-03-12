@@ -71,9 +71,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // can be submitted.
     RootBundle public rootBundleProposal;
 
-    // Whether the bundle proposal process is paused.
-    bool public paused;
-
     // Whitelist of origin token + ID to destination token routings to be used by off-chain agents. The notion of a
     // route does not need to include L1; it can be L2->L2 route. i.e USDC on Arbitrum -> USDC on Optimism as a "route".
     mapping(bytes32 => address) private whitelistedRoutes;
@@ -105,6 +102,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Mapping of chainId to the associated adapter and spokePool contracts.
     mapping(uint256 => CrossChainContract) public crossChainContracts;
 
+    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
+
+    // Whether the bundle proposal process is paused.
+    bool public paused;
+
     // WETH contract for Ethereum.
     WETH9 public immutable weth;
 
@@ -114,6 +116,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Finder contract for this network.
     FinderInterface public immutable finder;
 
+    // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
+    address public protocolFeeCaptureAddress;
+
+    // Token used to bond the data worker for proposing relayer refund bundles.
+    IERC20 public bondToken;
+
+    // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
+    // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
+    uint32 public liveness = 7200;
+
     // When root bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
     bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
 
@@ -121,23 +133,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
     uint256 public lpFeeRatePerSecond = 1500000000000;
 
-    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
-
-    // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
-    address public protocolFeeCaptureAddress;
-
     // Percentage of lpFees that are captured by the protocol and claimable by the protocolFeeCaptureAddress.
     uint256 public protocolFeeCapturePct;
 
-    // Token used to bond the data worker for proposing relayer refund bundles.
-    IERC20 public bondToken;
-
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
-
-    // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
-    // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint32 public liveness = 7200;
 
     event Paused(bool indexed isPaused);
 
