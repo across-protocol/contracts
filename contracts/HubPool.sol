@@ -80,7 +80,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // chain ID is this network (i.e. origin chain ID = 1). This route is also used to keep track of which deposit
     // routes are enabled/disabled.
     struct Route {
+        // destinationToken is used for pool rebalances.
         address destinationToken;
+        // depositsEnabled enables deposit paths on SpokePools.
         bool depositsEnabled;
     }
 
@@ -90,7 +92,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // likely require its "reverse" route to be stored as well. For example, we would want to store USDC on Ethereum
     // to USDC on Optimism.  This means that we'll map: keccak256(1, USDC-ethereum, 10) => USDC-optimism, and
     // keccak(10, USDC-optimism, 1) => USDC-ethereum. Note that not all routes are enabled, but we might still want
-    // to know what the destination token address is, for rebalances for example.
+    // to know what the destination token address is for rebalances.
     mapping(bytes32 => Route) private whitelistedRoutes;
 
     struct PooledToken {
