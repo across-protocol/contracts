@@ -849,7 +849,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken
-    ) public view override returns (address destinationToken, bool depositsEnabled) {
+    ) external view override returns (address destinationToken, bool depositsEnabled) {
         Route memory route = whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
         destinationToken = route.destinationToken;
         depositsEnabled = route.depositsEnabled;
