@@ -32,6 +32,7 @@ let tree: MerkleTree<RelayerRefundLeaf>;
 const REFUND_LEAF_COUNT = 10;
 const REFUNDS_PER_LEAF = 10;
 const REFUND_AMOUNT = toBNWei("10");
+const STRESS_TEST_REFUND_COUNT = 500;
 
 // Construct tree with REFUND_LEAF_COUNT leaves, each containing REFUNDS_PER_LEAF refunds.
 async function constructSimpleTree(
@@ -240,6 +241,33 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       const txn = await spokePool
         .connect(dataWorker)
         .executeRelayerRefundRoot(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+
+      const receipt = await txn.wait();
+      console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+    });
+    it(`Stress Test: 1 leaf contains ${STRESS_TEST_REFUND_COUNT} refunds with amount > 0`, async function () {
+      // This test should inform the limit # refunds that we would allow a RelayerRefundLeaf to contain to avoid
+      // publishing a leaf that is unexecutable due to the block gas limit.
+
+      // Regarding the block limit, we should target a maximum of 30 million gas. Technically block's can support up
+      // to 30 million gas, with a target of 15 million. In practice, we should set the maximum number of L1 tokens
+      // allowed in one leaf to much lower than this limit fo 30 million.
+      await seedContract(spokePool, owner, [], weth, toBN(STRESS_TEST_REFUND_COUNT).mul(REFUND_AMOUNT).mul(toBN(5)));
+
+      // Create tree with 1 large leaf.
+      const bigLeaves = buildRelayerRefundLeafs(
+        [destinationChainIds[0]],
+        [toBNWei("1")],
+        [weth.address],
+        [Array(STRESS_TEST_REFUND_COUNT).fill(recipient.address)],
+        [Array(STRESS_TEST_REFUND_COUNT).fill(REFUND_AMOUNT)]
+      );
+      const bigLeafTree = await buildRelayerRefundTree(bigLeaves);
+
+      await spokePool.connect(dataWorker).relayRootBundle(bigLeafTree.getHexRoot(), consts.mockSlowRelayRoot);
+      const txn = await spokePool
+        .connect(dataWorker)
+        .executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
 
       const receipt = await txn.wait();
       console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);

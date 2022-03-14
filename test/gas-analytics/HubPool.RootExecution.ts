@@ -11,6 +11,7 @@ require("dotenv").config();
 
 let hubPool: Contract, timer: Contract, weth: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
+let hubPoolChainId: number;
 
 // Associates an array of L1 tokens to sends refunds for to each chain ID.
 let l1Tokens: Contract[];
@@ -25,6 +26,7 @@ const SEND_AMOUNT = toBNWei("10");
 const STARTING_LP_AMOUNT = SEND_AMOUNT.mul(100); // This should be >= `SEND_AMOUNT` otherwise some relays will revert because
 // the pool balance won't be sufficient to cover the relay.
 const LP_FEE = SEND_AMOUNT.div(toBN(10));
+const STRESS_TEST_L1_TOKEN_COUNT = 150;
 
 // Construct tree with REFUND_CHAIN_COUNT leaves, each containing REFUND_TOKEN_COUNT sends
 async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Contract[]) {
@@ -65,7 +67,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ hubPool, timer, weth } = await hubPoolFixture());
 
-    const hubPoolChainId = Number(await hre.getChainId());
+    hubPoolChainId = Number(await hre.getChainId());
 
     // Seed data worker with bond tokens.
     await seedWallet(dataWorker, [], weth, consts.bondAmount.mul(10));
@@ -76,10 +78,6 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     for (let i = 0; i < REFUND_TOKEN_COUNT; i++) {
       const _l1Token = await deployErc20(owner, `Test Token #${i}`, `T-${i}`);
       l1Tokens.push(_l1Token);
-
-      // Mint data worker amount of tokens needed to bond a new root
-      await seedWallet(dataWorker, [_l1Token], undefined, consts.bondAmount.mul(100));
-      await _l1Token.connect(dataWorker).approve(hubPool.address, consts.maxUint256);
 
       // Mint LP amount of tokens needed to cover relay
       await seedWallet(liquidityProvider, [_l1Token], undefined, STARTING_LP_AMOUNT);
@@ -190,7 +188,6 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
       console.log(`(average) executeRootBundle-gasUsed: ${gasUsed.div(REFUND_CHAIN_COUNT)}`);
     });
-
     it("Executing all leaves using multicall", async function () {
       await hubPool.connect(dataWorker).proposeRootBundle(
         destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
@@ -203,11 +200,68 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
       const multicallData = leaves.map((leaf) => {
-        return hubPool.interface.encodeFunctionData("executeRootBundle", [leaf, tree.getHexProof(leaf)]);
+        return hubPool.interface.encodeFunctionData("executeRootBundle", [
+          ...Object.values(leaf),
+          tree.getHexProof(leaf),
+        ]);
       });
 
       const receipt = await (await hubPool.connect(dataWorker).multicall(multicallData)).wait();
       console.log(`(average) executeRootBundle-gasUsed: ${receipt.gasUsed.div(REFUND_CHAIN_COUNT)}`);
+    });
+    it(`Stress Test: 1 leaf contains ${STRESS_TEST_L1_TOKEN_COUNT} L1 tokens with netSendAmounts > 0`, async function () {
+      // This test should inform the limit # of L1 tokens that we would allow a PoolRebalanceLeaf to contain to avoid
+      // publishing a leaf that is unexecutable due to the block gas limit. Note that this estimate is a bit contrived
+      // and likely an underestimate because we are relaying tokens via the MockAdapter, not an Adapter used for
+      // production.
+
+      // Regarding the block limit, we should target a maximum of 30 million gas. Technically block's can support up
+      // to 30 million gas, with a target of 15 million. In practice, we should set the maximum number of L1 tokens
+      // allowed in one leaf to much lower than this limit fo 30 million.
+      const l1TokenAddresses = [];
+      for (let i = 0; i < STRESS_TEST_L1_TOKEN_COUNT; i++) {
+        const _l1Token = await deployErc20(owner, `Test Token #${i}`, `T-${i}`);
+        l1TokenAddresses.push(_l1Token.address);
+
+        // Mint LP amount of tokens needed to cover relay
+        await seedWallet(liquidityProvider, [_l1Token], undefined, STARTING_LP_AMOUNT);
+        await enableTokensForLP(owner, hubPool, weth, [_l1Token]);
+        await _l1Token.connect(liquidityProvider).approve(hubPool.address, consts.maxUint256);
+        await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, STARTING_LP_AMOUNT);
+
+        // Whitelist token route from HubPool to dest. chain ID
+        await hubPool.whitelistRoute(hubPoolChainId, destinationChainIds[0], _l1Token.address, randomAddress(), true);
+      }
+
+      // Add leaf to tree that contains enough L1 tokens that we can determine the limit after which the executeRoot
+      // will fail due to out of gas.
+      const bigLeaves = buildPoolRebalanceLeafs(
+        [destinationChainIds[0]],
+        [l1TokenAddresses],
+        [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(toBNWei("0"))],
+        [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(SEND_AMOUNT)],
+        [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(SEND_AMOUNT)]
+      );
+      const bigLeafTree = await buildPoolRebalanceLeafTree(bigLeaves);
+
+      await hubPool
+        .connect(dataWorker)
+        .proposeRootBundle(
+          [consts.mockBundleEvaluationBlockNumbers[0]],
+          1,
+          bigLeafTree.getHexRoot(),
+          consts.mockRelayerRefundRoot,
+          consts.mockSlowRelayRoot
+        );
+
+      // Advance time so the request can be executed and execute the request.
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+      const txn = await hubPool
+        .connect(dataWorker)
+        .executeRootBundle(...Object.values(bigLeaves[0]), bigLeafTree.getHexProof(bigLeaves[0]));
+
+      const receipt = await txn.wait();
+      console.log(`executeRootBundle-gasUsed: ${receipt.gasUsed}`);
     });
   });
 });
