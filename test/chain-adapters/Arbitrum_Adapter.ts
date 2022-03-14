@@ -63,7 +63,7 @@ describe("Arbitrum Chain Adapter", function () {
     expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
       .to.emit(arbitrumAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice;
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce;
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,
@@ -94,8 +94,7 @@ describe("Arbitrum Chain Adapter", function () {
       consts.sampleL2GasPrice,
       "0x"
     );
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice; // only 1 L1->L2 message sent. Note that the two
-    // whitelist transactions already sent two messages.
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce; // only 1 L1->L2 message sent.
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,

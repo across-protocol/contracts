@@ -54,14 +54,6 @@ interface HubPoolInterface {
         address spokePool
     ) external;
 
-    function whitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        address destinationToken,
-        bool enableRoute
-    ) external;
-
     function enableL1TokenForLiquidityProvision(address l1Token) external;
 
     function disableL1TokenForLiquidityProvision(address l1Token) external;
@@ -106,11 +98,26 @@ interface HubPoolInterface {
 
     function getRootBundleProposalAncillaryData() external view returns (bytes memory ancillaryData);
 
+    function whitelistRoute(
+        uint256 originChainId,
+        uint256 destinationChainId,
+        address originToken,
+        address destinationToken,
+        bool depositsEnabled
+    ) external;
+
+    function relayWhitelistRoute(
+        uint256 originChainId,
+        uint256 destinationChainId,
+        address originToken,
+        bool depositsEnabled
+    ) external;
+
     function whitelistedRoute(
         uint256 originChainId,
-        address originToken,
-        uint256 destinationChainId
-    ) external view returns (address);
+        uint256 destinationChainId,
+        address originToken
+    ) external view returns (address destinationToken, bool depositsEnabled);
 
     function loadEthForL2Calls() external payable;
 }

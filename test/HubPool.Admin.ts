@@ -3,7 +3,6 @@ import { Contract, ethers, randomAddress, utf8ToHex } from "./utils";
 import { originChainId, destinationChainId, bondAmount, zeroAddress, mockTreeRoot } from "./constants";
 import { mockSlowRelayRoot, finalFeeUsdc, finalFee, totalBond } from "./constants";
 import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
-import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract,
   weth: Contract,
@@ -55,15 +54,23 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true))
       .to.emit(hubPool, "WhitelistRoute")
       .withArgs(originChainId, destinationChainId, weth.address, usdc.address, true);
-
-    expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(usdc.address);
+    let whitelistedRoute = await hubPool.whitelistedRoute(originChainId, destinationChainId, weth.address);
+    expect(whitelistedRoute.destinationToken).to.equal(usdc.address);
+    expect(whitelistedRoute.depositsEnabled).to.equal(true);
 
     // Can disable a route.
     await hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, false);
-    expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(ZERO_ADDRESS);
+    whitelistedRoute = await hubPool.whitelistedRoute(originChainId, destinationChainId, weth.address);
+    expect(whitelistedRoute.destinationToken).to.equal(usdc.address);
+    expect(whitelistedRoute.depositsEnabled).to.equal(false);
 
-    // Check content of messages sent to mock spoke pool. The last call should have "disabled" a route, and the call
-    // right before should have enabled the route.
+    // Relay whitelist mapping to spoke pool. Check content of messages sent to mock spoke pool.
+    await expect(hubPool.connect(other).relayWhitelistRoute(originChainId, destinationChainId, weth.address, true)).to
+      .be.reverted;
+    await expect(hubPool.relayWhitelistRoute(originChainId, destinationChainId, weth.address, true))
+      .to.emit(hubPool, "RelayWhitelistRoute")
+      .withArgs(originChainId, destinationChainId, weth.address, true);
+    await hubPool.relayWhitelistRoute(originChainId, destinationChainId, weth.address, false);
 
     // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
     const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
@@ -74,14 +81,14 @@ describe("HubPool Admin functions", function () {
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         weth.address,
         destinationChainId,
-        false, // Should be set to false to disable route on SpokePool
+        false, // Latest call disabled the route
       ])
     );
     expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         weth.address,
         destinationChainId,
-        true, // Should be set to true because destination token wasn't 0x0
+        true, // Second to last call enabled the route
       ])
     );
   });
