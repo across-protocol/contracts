@@ -251,7 +251,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * something goes awry.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
-    function setPaused(bool pause) public onlyOwner nonReentrant {
+    function setPaused(bool pause) public onlyOwner {
         paused = pause;
         emit Paused(pause);
     }
