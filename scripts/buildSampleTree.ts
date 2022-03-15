@@ -43,7 +43,7 @@ async function main() {
         bundleLpFees: [toBNWei(0.1)],
         netSendAmounts: [toBNWei(POOL_REBALANCE_NET_SEND_AMOUNT)],
         runningBalances: [toWei(0)],
-        groupIndex: 0,
+        groupIndex: toBN(0),
         leafId: toBN(i),
         l1Tokens: [L1_TOKEN],
       });
