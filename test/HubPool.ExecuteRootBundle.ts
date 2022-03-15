@@ -19,7 +19,7 @@ async function constructSimpleTree() {
     [[toBNWei(1), toBNWei(10)], []], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
     [[wethToSendToL2, daiToSend], []], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
     [[wethToSendToL2, daiToSend], []], // runningBalances. Set to 100 ETH and 1000 DAI.
-    [true, false] // relayToSpokePool. Second leaf should not relay roots to spoke pool.
+    [0, 1] // groupIndex. Second leaf should not relay roots to spoke pool.
   );
   const tree = await buildPoolRebalanceLeafTree(leafs);
 

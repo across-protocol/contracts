@@ -33,7 +33,7 @@ describe("MerkleLib Proofs", async function () {
         bundleLpFees,
         netSendAmounts,
         runningBalances,
-        relayToSpokePool: true,
+        groupIndex: BigNumber.from(0),
       });
     }
 

@@ -47,7 +47,7 @@ async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Co
     _bundleLpFeeAmounts,
     _netSendAmounts, // netSendAmounts.
     _netSendAmounts, // runningBalances.
-    Array(REFUND_CHAIN_COUNT).fill(true) // relayToSpokePool
+    Array(REFUND_CHAIN_COUNT).fill(0) // relayToSpokePool
   );
   const tree = await buildPoolRebalanceLeafTree(leaves);
 
