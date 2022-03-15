@@ -176,6 +176,12 @@ describe("SpokePool Relayer Logic", async function () {
       spokePoolChainId.toString(),
       depositor
     );
+
+    // Cannot set new relayer fee pct >= 50%
+    await expect(
+      spokePool.connect(relayer).speedUpDeposit(depositor.address, toWei("0.5"), consts.firstDepositId, signature)
+    ).to.be.revertedWith("invalid relayer fee");
+
     await expect(
       spokePool
         .connect(relayer)

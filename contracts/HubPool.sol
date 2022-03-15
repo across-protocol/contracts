@@ -5,7 +5,6 @@ import "./MerkleLib.sol";
 import "./HubPoolInterface.sol";
 import "./Lockable.sol";
 
-import "./interfaces/AdapterInterface.sol";
 import "./interfaces/LpTokenFactoryInterface.sol";
 import "./interfaces/WETH9.sol";
 
@@ -96,7 +95,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Heler contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
     struct CrossChainContract {
-        AdapterInterface adapter;
+        address adapter;
         address spokePool;
     }
     // Mapping of chainId to the associated adapter and spokePool contracts.
@@ -301,6 +300,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         onlyOwner
     {
         require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
+        require(newProtocolFeeCaptureAddress != address(0), "Bad protocolFeeCaptureAddress");
         protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
         protocolFeeCapturePct = newProtocolFeeCapturePct;
         emit ProtocolFeeCaptureSet(newProtocolFeeCaptureAddress, newProtocolFeeCapturePct);
@@ -365,7 +365,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address adapter,
         address spokePool
     ) public override onlyOwner {
-        crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
+        crossChainContracts[l2ChainId] = CrossChainContract(adapter, spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
 
@@ -631,7 +631,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // Before interacting with a particular chain's adapter, ensure that the adapter is set.
         CrossChainContract memory _crossChainContracts = crossChainContracts[chainId];
-        require(address(_crossChainContracts.adapter) != address(0), "No adapter for chain");
 
         // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
         // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
@@ -648,14 +647,33 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Decrement the unclaimedPoolRebalanceLeafCount.
         --rootBundleProposal.unclaimedPoolRebalanceLeafCount;
 
+        // Relay each L1 token to destination chain.
+        // Note: We don't check that the adapter is initialized since if its the zero address or invalid otherwise,
+        // then the delegate call should revert.
+        address adapter = crossChainContracts[chainId].adapter;
         _sendTokensToChainAndUpdatePooledTokenTrackers(
+            _crossChainContracts.adapter,
             _crossChainContracts.spokePool,
-            poolRebalanceLeaf.chainId,
-            poolRebalanceLeaf.l1Tokens,
-            poolRebalanceLeaf.netSendAmounts,
-            poolRebalanceLeaf.bundleLpFees
+            chainId,
+            l1Tokens,
+            netSendAmounts,
+            bundleLpFees
         );
-        _relayRootBundleToSpokePool(_crossChainContracts.spokePool, poolRebalanceLeaf.chainId);
+
+        // Relay root bundles to spoke pool on destination chain by
+        // performing delegatecall to use the adapter's code with this contract's context.
+        (bool success, ) = _crossChainContracts.adapter.delegatecall(
+            abi.encodeWithSignature(
+                "relayMessage(address,bytes)",
+                _crossChainContracts.spokePool, // target. This should be the spokePool on the L2.
+                abi.encodeWithSignature(
+                    "relayRootBundle(bytes32,bytes32)",
+                    rootBundleProposal.relayerRefundRoot,
+                    rootBundleProposal.slowRelayRoot
+                ) // message
+            )
+        );
+        require(success, "delegatecall failed");
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
@@ -767,43 +785,20 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Returns ancillary data containing all relevant root bundle data that voters can format into UTF8 and
-     * use to determine if the root bundle proposal is valid.
+     * @notice Returns ancillary data containing the minimum data necessary that voters can use to identify
+     * a root bundle proposal to validate its correctness.
+     * @dev The root bundle that is being disputed was the most recently proposed one with a block number less than
+     * or equal to the dispute block time. All of this root bundle data can be found in the ProposeRootBundle event
+     * params. Moreover, the optimistic oracle will stamp the requester's address (i.e. this contract address) meaning
+     * that ancillary data for a dispute originating from another HubPool will always be distinct from a dispute
+     * originating from this HubPool.
+     * @dev Since bundleEvaluationNumbers for a root bundle proposal are not stored on-chain, DVM voters will always
+     * have to look up the ProposeRootBundle event to evaluate a dispute, therefore there is no point emitting extra
+     * data in this ancillary data that is already included in the ProposeRootBundle event.
      * @return ancillaryData Ancillary data that can be decoded into UTF8.
      */
     function getRootBundleProposalAncillaryData() public view override returns (bytes memory ancillaryData) {
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            "",
-            "requestExpirationTimestamp",
-            rootBundleProposal.requestExpirationTimestamp
-        );
-
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            ancillaryData,
-            "unclaimedPoolRebalanceLeafCount",
-            rootBundleProposal.unclaimedPoolRebalanceLeafCount
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "poolRebalanceRoot",
-            rootBundleProposal.poolRebalanceRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "relayerRefundRoot",
-            rootBundleProposal.relayerRefundRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueBytes32(
-            ancillaryData,
-            "slowRelayRoot",
-            rootBundleProposal.slowRelayRoot
-        );
-        ancillaryData = AncillaryData.appendKeyValueUint(
-            ancillaryData,
-            "claimedBitMap",
-            rootBundleProposal.claimedBitMap
-        );
-        ancillaryData = AncillaryData.appendKeyValueAddress(ancillaryData, "proposer", rootBundleProposal.proposer);
+        return "";
     }
 
     /**
@@ -865,14 +860,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Note this method does a lot and wraps together the sending of tokens and updating the pooled token trackers. This
     // is done as a gas saving so we don't need to iterate over the l1Tokens multiple times.
     function _sendTokensToChainAndUpdatePooledTokenTrackers(
+        address adapter,
         address spokePool,
         uint256 chainId,
         address[] memory l1Tokens,
         int256[] memory netSendAmounts,
         uint256[] memory bundleLpFees
     ) internal {
-        AdapterInterface adapter = crossChainContracts[chainId].adapter;
-
         uint32 length = uint32(l1Tokens.length);
         for (uint32 i = 0; i < length; ) {
             address l1Token = l1Tokens[i];
@@ -886,7 +880,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             if (netSendAmounts[i] > 0) {
                 // Perform delegatecall to use the adapter's code with this contract's context. Opt for delegatecall's
                 // complexity in exchange for lower gas costs.
-                (bool success, ) = address(adapter).delegatecall(
+                (bool success, ) = adapter.delegatecall(
                     abi.encodeWithSignature(
                         "relayTokens(address,address,uint256,address)",
                         l1Token, // l1Token.
@@ -910,24 +904,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 ++i;
             }
         }
-    }
-
-    function _relayRootBundleToSpokePool(address spokePool, uint256 chainId) internal {
-        AdapterInterface adapter = crossChainContracts[chainId].adapter;
-
-        // Perform delegatecall to use the adapter's code with this contract's context.
-        (bool success, ) = address(adapter).delegatecall(
-            abi.encodeWithSignature(
-                "relayMessage(address,bytes)",
-                spokePool, // target. This should be the spokePool on the L2.
-                abi.encodeWithSignature(
-                    "relayRootBundle(bytes32,bytes32)",
-                    rootBundleProposal.relayerRefundRoot,
-                    rootBundleProposal.slowRelayRoot
-                ) // message
-            )
-        );
-        require(success, "delegatecall failed");
     }
 
     function _exchangeRateCurrent(address l1Token) internal returns (uint256) {
@@ -1022,14 +998,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function _relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) internal {
-        AdapterInterface adapter = crossChainContracts[chainId].adapter;
-        require(address(adapter) != address(0), "Adapter not initialized");
+        address adapter = crossChainContracts[chainId].adapter;
+        address spokePool = crossChainContracts[chainId].spokePool;
+        require(spokePool != address(0), "SpokePool not initialized");
 
         // Perform delegatecall to use the adapter's code with this contract's context.
-        (bool success, ) = address(adapter).delegatecall(
+        (bool success, ) = adapter.delegatecall(
             abi.encodeWithSignature(
                 "relayMessage(address,bytes)",
-                crossChainContracts[chainId].spokePool, // target. This should be the spokePool on the L2.
+                spokePool, // target. This should be the spokePool on the L2.
                 functionData
             )
         );

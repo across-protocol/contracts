@@ -54,12 +54,12 @@ contract PolygonTokenBridger is Lockable {
      * @notice Called by Polygon SpokePool to send tokens over bridge to contract with the same address as this.
      * @param token Token to bridge.
      * @param amount Amount to bridge.
-     * @param isMatic True if token is MATIC.
+     * @param isWrappedMatic True if token is WMATIC.
      */
     function send(
         PolygonIERC20 token,
         uint256 amount,
-        bool isMatic
+        bool isWrappedMatic
     ) public nonReentrant {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -67,7 +67,7 @@ contract PolygonTokenBridger is Lockable {
         token.withdraw(amount);
 
         // This takes the token that was withdrawn and calls withdraw on the "native" ERC20.
-        if (isMatic) maticToken.withdraw{ value: amount }(amount);
+        if (isWrappedMatic) maticToken.withdraw{ value: amount }(amount);
     }
 
     /**
