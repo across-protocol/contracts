@@ -13,7 +13,7 @@ let hubPool: Contract,
   identifierWhitelist: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
-describe.only("HubPool Admin functions", function () {
+describe("HubPool Admin functions", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
     ({ weth, hubPool, usdc, mockAdapter, mockSpoke, identifierWhitelist } = await hubPoolFixture());
