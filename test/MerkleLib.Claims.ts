@@ -60,7 +60,7 @@ describe("MerkleLib Claims", async function () {
 
     // Setting right at the max should revert.
     await expect(merkleLibTest.setClaimed1D(256)).to.be.reverted;
-    expect(await merkleLibTest.isClaimed1D(255)).to.equal(false);
+    await expect(merkleLibTest.isClaimed1D(256)).to.be.reverted;
 
     // Should be able to set right below the max.
     expect(await merkleLibTest.isClaimed1D(255)).to.equal(false);

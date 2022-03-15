@@ -131,9 +131,9 @@ export async function fillRelay(
         consts.repaymentChainId
       )
     );
-  const [events, networkInfo] = await Promise.all([
+  const [events, destinationChainId] = await Promise.all([
     spokePool.queryFilter(spokePool.filters.FilledRelay()),
-    spokePool.provider.getNetwork(),
+    spokePool.chainId(),
   ]);
   const lastEvent = events[events.length - 1];
   if (lastEvent.args)
@@ -152,7 +152,7 @@ export async function fillRelay(
       depositor: lastEvent.args.depositor,
       recipient: lastEvent.args.recipient,
       isSlowRelay: lastEvent.args.isSlowRelay,
-      destinationChainId: networkInfo.chainId,
+      destinationChainId: Number(destinationChainId),
     };
   else return null;
 }
