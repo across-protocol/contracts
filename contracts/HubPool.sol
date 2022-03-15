@@ -32,6 +32,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * responsible for publishing relayer refund and slow relay merkle roots to SpokePools.
  * @notice This contract is meant to act as the cross chain administrator and owner of all L2 spoke pools, so all
  * governance actions and pool rebalances originate from here and bridge instructions to L2s.
+ * @dev This contract should be deprecated by the year 2106, at which point uint32 timestamps will roll over. This is
+ * an issue for this contract because fee calculations will become bizarre when multiplying by negative time deltas.
+ * Before this date, this contract should be paused from accepting new root bundles and all LP tokens should be
+ * disabled by the admin.
  */
 contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
