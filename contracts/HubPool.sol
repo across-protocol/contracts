@@ -197,6 +197,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address indexed proposer
     );
     event RootBundleExecuted(
+        uint256 groupIndex,
         uint256 indexed leafId,
         uint256 indexed chainId,
         address[] l1Token,
@@ -601,6 +602,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @dev In some cases, will instruct spokePool to send funds back to L1.
      * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
      * @param chainId ChainId number of the target spoke pool on which the bundle is executed.
+     * @param groupIndex If set to 0, then relay roots to SpokePool via cross chain bridge. Used by off-chain validator
+     * to organize leafs with the same chain ID and also set which leaves should result in relayed messages.
      * @param bundleLpFees Array representing the total LP fee amount per token in this bundle for all bundled relays.
      * @param netSendAmounts Array representing the amount of tokens to send to the SpokePool on the target chainId.
      * @param runningBalances Array used to track any unsent tokens that are not included in the netSendAmounts.
@@ -611,6 +614,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     function executeRootBundle(
         uint256 chainId,
+        uint256 groupIndex,
         uint256[] memory bundleLpFees,
         int256[] memory netSendAmounts,
         int256[] memory runningBalances,
@@ -629,6 +633,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 rootBundleProposal.poolRebalanceRoot,
                 PoolRebalanceLeaf({
                     chainId: chainId,
+                    groupIndex: groupIndex,
                     bundleLpFees: bundleLpFees,
                     netSendAmounts: netSendAmounts,
                     runningBalances: runningBalances,
@@ -666,27 +671,39 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             bundleLpFees
         );
 
-        // Relay root bundles to spoke pool on destination chain by
-        // performing delegatecall to use the adapter's code with this contract's context.
-        (bool success, ) = adapter.delegatecall(
-            abi.encodeWithSignature(
-                "relayMessage(address,bytes)",
-                spokePool, // target. This should be the spokePool on the L2.
+        // Check bool used by data worker to prevent relaying redundant roots to SpokePool.
+        if (groupIndex == 0) {
+            // Relay root bundles to spoke pool on destination chain by
+            // performing delegatecall to use the adapter's code with this contract's context.
+            (bool success, ) = adapter.delegatecall(
                 abi.encodeWithSignature(
-                    "relayRootBundle(bytes32,bytes32)",
-                    rootBundleProposal.relayerRefundRoot,
-                    rootBundleProposal.slowRelayRoot
-                ) // message
-            )
-        );
-        require(success, "delegatecall failed");
+                    "relayMessage(address,bytes)",
+                    spokePool, // target. This should be the spokePool on the L2.
+                    abi.encodeWithSignature(
+                        "relayRootBundle(bytes32,bytes32)",
+                        rootBundleProposal.relayerRefundRoot,
+                        rootBundleProposal.slowRelayRoot
+                    ) // message
+                )
+            );
+            require(success, "delegatecall failed");
+        }
 
         // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
         // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
         if (rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
 
-        emit RootBundleExecuted(leafId, chainId, l1Tokens, bundleLpFees, netSendAmounts, runningBalances, msg.sender);
+        emit RootBundleExecuted(
+            groupIndex,
+            leafId,
+            chainId,
+            l1Tokens,
+            bundleLpFees,
+            netSendAmounts,
+            runningBalances,
+            msg.sender
+        );
     }
 
     /**

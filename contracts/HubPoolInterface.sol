@@ -26,6 +26,13 @@ interface HubPoolInterface {
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
         // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
         int256[] runningBalances;
+        // Used by data worker to mark which leaves should relay roots to SpokePools, and to otherwise organize leaves.
+        // For example, each leaf should contain all the rebalance information for a single chain, but in the case where
+        // the list of l1Tokens is very large such that they all can't fit into a single leaf that can be executed under
+        // the block gas limit, then the data worker can use this groupIndex to organize them. Any leaves with
+        // a groupIndex equal to 0 will relay roots to the SpokePool, so the data worker should ensure that only one
+        // leaf for a specific chainId should have a groupIndex equal to 0.
+        uint256 groupIndex;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint8 leafId;
         // The following arrays are required to be the same length. They are parallel arrays for the given chainId and
@@ -92,6 +99,7 @@ interface HubPoolInterface {
 
     function executeRootBundle(
         uint256 chainId,
+        uint256 groupIndex,
         uint256[] memory bundleLpFees,
         int256[] memory netSendAmounts,
         int256[] memory runningBalances,
