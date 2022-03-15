@@ -415,11 +415,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to provide liquidity for.
      */
     function enableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
-        if (pooledTokens[l1Token].lpToken == address(0))
+        // If token is being enabled for the first time, create a new LP token and set the timestamp once. We don't
+        // want to ever reset this timestamp otherwise fees that have accrued will be lost since the last update. This
+        // could happen for example if an L1 token is enabled, disabled, and then enabled again.
+        if (pooledTokens[l1Token].lpToken == address(0)) {
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
+            pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
+        }
 
         pooledTokens[l1Token].isEnabled = true;
-        pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
 
         emit L1TokenEnabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
