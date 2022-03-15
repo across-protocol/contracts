@@ -58,7 +58,7 @@ interface SpokePoolInterface {
         bool enable
     ) external;
 
-    function setDepositQuoteTimeBuffer(uint64 buffer) external;
+    function setDepositQuoteTimeBuffer(uint32 buffer) external;
 
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) external;
 
@@ -70,7 +70,7 @@ interface SpokePoolInterface {
         uint256 amount,
         uint256 destinationChainId,
         uint64 relayerFeePct,
-        uint64 quoteTimestamp
+        uint32 quoteTimestamp
     ) external payable;
 
     function speedUpDeposit(

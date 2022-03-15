@@ -68,7 +68,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
         // When root bundle challenge period passes and this root bundle becomes executable.
-        uint64 requestExpirationTimestamp;
+        uint32 requestExpirationTimestamp;
     }
 
     // Only one root bundle can be stored at a time. Once all pool rebalance leaves are executed, a new proposal
@@ -88,7 +88,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // True if accepting new LP's.
         bool isEnabled;
         // Timestamp of last LP fee update.
-        uint64 lastLpFeeUpdate;
+        uint32 lastLpFeeUpdate;
         // Number of LP funds sent via pool rebalances to SpokePools and are expected to be sent
         // back later.
         int256 utilizedReserves;
@@ -141,7 +141,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
     // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint64 public liveness = 7200;
+    uint32 public liveness = 7200;
 
     event Paused(bool indexed isPaused);
 
@@ -189,7 +189,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     );
 
     event ProposeRootBundle(
-        uint64 requestExpirationTimestamp,
+        uint32 requestExpirationTimestamp,
         uint64 unclaimedPoolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
@@ -338,7 +338,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets root bundle proposal liveness period. Callable only by owner.
      * @param newLiveness New liveness period.
      */
-    function setLiveness(uint64 newLiveness) public override onlyOwner {
+    function setLiveness(uint32 newLiveness) public override onlyOwner {
         require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
@@ -419,7 +419,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
         pooledTokens[l1Token].isEnabled = true;
-        pooledTokens[l1Token].lastLpFeeUpdate = uint64(getCurrentTime());
+        pooledTokens[l1Token].lastLpFeeUpdate = uint32(getCurrentTime());
 
         emit L1TokenEnabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
@@ -565,7 +565,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint64 requestExpirationTimestamp = uint64(getCurrentTime()) + liveness;
+        uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
 
@@ -669,7 +669,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * optimistic oracle to be adjudicated. Can only be called within the liveness period of the current proposal.
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
-        uint64 currentTime = uint64(getCurrentTime());
+        uint32 currentTime = uint32(getCurrentTime());
         require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
@@ -690,9 +690,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         try
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
-                uint32(currentTime), // Note: Because the skinny OO interface requires a uint32 value here, this code
-                // will be unreliable beginning around the year 2106 because casting the time to a uint32 will overflow
-                // to 0 at that point.
+                currentTime,
                 requestAncillaryData,
                 bondToken,
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
@@ -717,8 +715,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         }
 
         // Dispute the request that we just sent.
-        // Note: We might as well cast the expiration time similarly to
-        // uint32 so at least if the time rolls over to 0 after the year 2106, proposals can still expire.
         SkinnyOptimisticOracleInterface.Request memory ooPriceRequest = SkinnyOptimisticOracleInterface.Request({
             proposer: rootBundleProposal.proposer,
             disputer: address(0),
@@ -726,7 +722,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             settled: false,
             proposedPrice: int256(1e18),
             resolvedPrice: 0,
-            expirationTime: uint256(uint32(currentTime + liveness)),
+            expirationTime: currentTime + liveness,
             reward: 0,
             finalFee: finalFee,
             bond: bondAmount - finalFee,
@@ -737,7 +733,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         optimisticOracle.disputePriceFor(
             identifier,
-            uint32(currentTime),
+            currentTime,
             requestAncillaryData,
             ooPriceRequest,
             msg.sender,
@@ -944,7 +940,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     function _updateAccumulatedLpFees(PooledToken storage pooledToken) internal {
         uint256 accumulatedFees = _getAccumulatedFees(pooledToken.undistributedLpFees, pooledToken.lastLpFeeUpdate);
         pooledToken.undistributedLpFees -= accumulatedFees;
-        pooledToken.lastLpFeeUpdate = uint64(getCurrentTime());
+        pooledToken.lastLpFeeUpdate = uint32(getCurrentTime());
     }
 
     // Calculate the unallocated accumulatedFees from the last time the contract was called.

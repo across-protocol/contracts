@@ -46,7 +46,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
-    uint64 public depositQuoteTimeBuffer = 600;
+    uint32 public depositQuoteTimeBuffer = 600;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
@@ -82,14 +82,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
-    event SetDepositQuoteTimeBuffer(uint64 newBuffer);
+    event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 indexed depositId,
-        uint64 quoteTimestamp,
+        uint32 quoteTimestamp,
         address indexed originToken,
         address recipient,
         address indexed depositor
@@ -211,7 +211,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change allowance for deposit quote time to differ from current block time. Callable by admin only.
      * @param newDepositQuoteTimeBuffer New quote time buffer.
      */
-    function setDepositQuoteTimeBuffer(uint64 newDepositQuoteTimeBuffer) public override onlyAdmin {
+    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin {
         depositQuoteTimeBuffer = newDepositQuoteTimeBuffer;
         emit SetDepositQuoteTimeBuffer(newDepositQuoteTimeBuffer);
     }
@@ -270,7 +270,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 destinationChainId,
         uint64 relayerFeePct,
-        uint64 quoteTimestamp
+        uint32 quoteTimestamp
     ) public payable override onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct < 0.5e18, "invalid relayer fee");
@@ -280,8 +280,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Note also that quoteTimestamp cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
         require(
-            uint64(getCurrentTime()) >= quoteTimestamp - depositQuoteTimeBuffer &&
-                uint64(getCurrentTime()) <= quoteTimestamp + depositQuoteTimeBuffer,
+            getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer &&
+                getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
         // If the address of the origin token is a WETH contract and there is a msg.value with the transaction
@@ -822,7 +822,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint64 quoteTimestamp,
+        uint32 quoteTimestamp,
         address originToken,
         address recipient,
         address depositor
