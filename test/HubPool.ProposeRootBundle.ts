@@ -2,12 +2,12 @@ import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils
 import * as consts from "./constants";
 import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract, dataWorker: SignerWithAddress, owner: SignerWithAddress;
+let hubPool: Contract, weth: Contract, store: Contract, dataWorker: SignerWithAddress, owner: SignerWithAddress;
 
 describe("HubPool Root Bundle Proposal", function () {
   beforeEach(async function () {
     [owner, dataWorker] = await ethers.getSigners();
-    ({ weth, hubPool } = await hubPoolFixture());
+    ({ weth, hubPool, store } = await hubPoolFixture());
     await seedWallet(dataWorker, [], weth, consts.totalBond);
   });
 
@@ -16,6 +16,21 @@ describe("HubPool Root Bundle Proposal", function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond);
     const dataWorkerWethBalancerBefore = await weth.callStatic.balanceOf(dataWorker.address);
 
+    // Can't propose when bond is equal to final fee.
+    await store.setFinalFee(weth.address, { rawValue: consts.totalBond });
+    await expect(
+      hubPool
+        .connect(dataWorker)
+        .proposeRootBundle(
+          consts.mockBundleEvaluationBlockNumbers,
+          consts.mockPoolRebalanceLeafCount,
+          consts.mockPoolRebalanceRoot,
+          consts.mockRelayerRefundRoot,
+          consts.mockSlowRelayRoot
+        )
+    ).to.be.revertedWith("bond amount equal to final fee");
+
+    await store.setFinalFee(weth.address, { rawValue: consts.totalBond.div(2) });
     await expect(
       hubPool
         .connect(dataWorker)

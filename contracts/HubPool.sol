@@ -318,6 +318,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         noActiveRequests
         nonReentrant
     {
+        // Bond should not be great than final fee otherwise every proposal will get cancelled in a dispute.
+        // In practice we expect that bond amounts are set >> final fees so this shouldn't be an inconvenience.
+        // The only way for the bond amount to be equal to the final fee is if the newBondAmount == 0.
+        require(newBondAmount != 0, "bond equal to final fee");
+
         // Check that this token is on the whitelist.
         AddressWhitelistInterface addressWhitelist = AddressWhitelistInterface(
             finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist)
@@ -561,6 +566,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
+        // Check that bond amount is > final fee, otherwise this root bundle will always get deleted
+        // on a dispute. This isn't an exploitable situation but is unexpected potentially for disputers, and best to
+        // avoid upfront.
+        require(bondAmount > _getBondTokenFinalFee(), "bond amount must be > final fee");
+
         uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
@@ -673,8 +683,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 finalFee = _getBondTokenFinalFee();
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
-        // through. Cancel to avoid a revert.
-        if (finalFee > bondAmount) {
+        // through. Cancel to avoid a revert. Similarly, if the final fee == bond amount, then the proposer bond
+        // set in the optimistic oracle would be 0. The optimistic oracle would then default the bond to be equal
+        // to the final fee, which would mean that the allowance set to the bondAmount would be insufficient and the
+        // requestAndProposePriceFor() call would revert. Source: https://github.com/UMAprotocol/protocol/blob/5b37ea818a28479c01e458389a83c3e736306b17/packages/core/contracts/oracle/implementation/SkinnyOptimisticOracle.sol#L321
+        if (finalFee >= bondAmount) {
             _cancelBundle(requestAncillaryData);
             return;
         }
@@ -692,7 +705,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
                 // proposal has passed the challenge period.
                 0,
-                // Set the Optimistic oracle proposer bond for the price request.
+                // Set the Optimistic oracle proposer bond for the price request. We can assume that
+                // bondAmount > finalFee.
                 bondAmount - finalFee,
                 // Set the Optimistic oracle liveness for the price request.
                 liveness,

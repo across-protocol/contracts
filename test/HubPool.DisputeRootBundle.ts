@@ -81,7 +81,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     await expect(hubPool.connect(dataWorker).disputeRootBundle()).to.be.revertedWith("Request passed liveness");
   });
-  it("Increase in final fee triggers cancellation", async function () {
+  it("Setting final fee equal to bond triggers cancellation", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond.mul(2));
     await hubPool
       .connect(dataWorker)
@@ -93,7 +93,8 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockSlowRelayRoot
       );
 
-    await store.setFinalFee(weth.address, { rawValue: consts.finalFee.mul(10) });
+    // Setting the final fee < totalBond should fail this test
+    await store.setFinalFee(weth.address, { rawValue: consts.totalBond });
 
     await expect(() => hubPool.connect(dataWorker).disputeRootBundle()).to.changeTokenBalances(
       weth,
