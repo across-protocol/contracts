@@ -13,7 +13,7 @@ let hubPool: Contract,
   identifierWhitelist: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
-describe("HubPool Admin functions", function () {
+describe.only("HubPool Admin functions", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
     ({ weth, hubPool, usdc, mockAdapter, mockSpoke, identifierWhitelist } = await hubPoolFixture());
@@ -22,10 +22,6 @@ describe("HubPool Admin functions", function () {
   it("Can add L1 token to whitelisted lpTokens mapping", async function () {
     expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(zeroAddress);
     await hubPool.enableL1TokenForLiquidityProvision(weth.address);
-
-    await expect(hubPool.enableL1TokenForLiquidityProvision(weth.address)).to.be.revertedWith(
-      "L1 token already enabled"
-    );
 
     const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
     expect(pooledTokenStruct.lpToken).to.not.equal(zeroAddress);
@@ -43,13 +39,15 @@ describe("HubPool Admin functions", function () {
     await hubPool.enableL1TokenForLiquidityProvision(weth.address);
     const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
     const lpToken = pooledTokenStruct.lpToken;
+    const lastLpFeeUpdate = pooledTokenStruct.lastLpFeeUpdate;
 
     await hubPool.disableL1TokenForLiquidityProvision(weth.address);
     expect((await hubPool.callStatic.pooledTokens(weth.address)).isEnabled).to.equal(false);
 
-    // Can re-enable the L1 token now without creating a new LP token.
+    // Can re-enable the L1 token now without creating a new LP token or resetting timestamp.
     await hubPool.enableL1TokenForLiquidityProvision(weth.address);
     expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(lpToken);
+    expect((await hubPool.callStatic.pooledTokens(weth.address)).lastLpFeeUpdate).to.equal(lastLpFeeUpdate);
   });
   it("Only owner can disable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
