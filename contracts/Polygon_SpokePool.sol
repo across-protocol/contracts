@@ -85,7 +85,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @notice Change FxChild address. Callable only by admin via processMessageFromRoot.
      * @param newFxChild New FxChild.
      */
-    function setFxChild(address newFxChild) public onlyAdmin {
+    function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
         fxChild = newFxChild;
         emit SetFxChild(fxChild);
     }
@@ -94,7 +94,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @notice Change polygonTokenBridger address. Callable only by admin via processMessageFromRoot.
      * @param newPolygonTokenBridger New Polygon Token Bridger contract.
      */
-    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin {
+    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
         polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
         emit SetPolygonTokenBridger(address(polygonTokenBridger));
     }

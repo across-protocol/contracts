@@ -299,6 +299,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         public
         override
         onlyOwner
+        nonReentrant
     {
         require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
         protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
@@ -334,7 +335,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets root bundle proposal liveness period. Callable only by owner.
      * @param newLiveness New liveness period.
      */
-    function setLiveness(uint32 newLiveness) public override onlyOwner {
+    function setLiveness(uint32 newLiveness) public override onlyOwner nonReentrant {
         require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
@@ -364,7 +365,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) public override onlyOwner {
+    ) public override onlyOwner nonReentrant {
         crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -424,7 +425,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Disables LPs from providing liquidity for L1 token. Callable only by owner.
      * @param l1Token Token to disable liquidity provision for.
      */
-    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
+    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
         pooledTokens[l1Token].isEnabled = false;
         emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
