@@ -33,6 +33,11 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * responsible for publishing relayer refund and slow relay merkle roots to SpokePools.
  * @notice This contract is meant to act as the cross chain administrator and owner of all L2 spoke pools, so all
  * governance actions and pool rebalances originate from here and bridge instructions to L2s.
+ * @dev This contract should be deprecated by the year 2106, at which point uint32 timestamps will roll over. This is
+ * an issue for this contract because the SkinnyOptimisticOracleInterface expects request timestamps to be uint32,
+ * which will create uncertain behavior for disputes sent after that year. In all likelihood, the SkinnyOptimisticOracle
+ * will be deprecated by 2106 and upgraded to an interface that can handle at least uint64 timestamps, and this
+ * contract can be upgraded to handle that new interface.
  */
 contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
