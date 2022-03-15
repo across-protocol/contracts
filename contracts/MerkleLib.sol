@@ -82,21 +82,21 @@ library MerkleLib {
     /**
      * @notice Tests whether a claim is contained within a 1D claimedBitMap mapping.
      * @param claimedBitMap a simple uint256 value, encoding a 1D bitmap.
-     * @param index the index to check in the bitmap.
-     \* @return bool indicating if the index within the claimedBitMap has been marked as claimed.
+     * @param index the index to check in the bitmap. Uint8 type enforces that index can't be > 255.
+     * @return bool indicating if the index within the claimedBitMap has been marked as claimed.
      */
-    function isClaimed1D(uint256 claimedBitMap, uint256 index) internal pure returns (bool) {
+    function isClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (bool) {
         uint256 mask = (1 << index);
         return claimedBitMap & mask == mask;
     }
 
     /**
      * @notice Marks an index in a claimedBitMap as claimed.
-     * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap.
+     * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap. Uint8 type enforces that index
+     * can't be > 255.
      * @param index the index to mark in the bitmap.
      */
-    function setClaimed1D(uint256 claimedBitMap, uint256 index) internal pure returns (uint256) {
-        require(index <= 255, "Index out of bounds");
+    function setClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (uint256) {
         return claimedBitMap | (1 << index % 256);
     }
 }

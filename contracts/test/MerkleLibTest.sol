@@ -45,11 +45,11 @@ contract MerkleLibTest {
         MerkleLib.setClaimed(claimedBitMap, index);
     }
 
-    function isClaimed1D(uint256 index) public view returns (bool) {
+    function isClaimed1D(uint8 index) public view returns (bool) {
         return MerkleLib.isClaimed1D(claimedBitMap1D, index);
     }
 
-    function setClaimed1D(uint256 index) public {
+    function setClaimed1D(uint8 index) public {
         claimedBitMap1D = MerkleLib.setClaimed1D(claimedBitMap1D, index);
     }
 }

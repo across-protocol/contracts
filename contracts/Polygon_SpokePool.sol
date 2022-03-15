@@ -134,11 +134,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         );
 
         // Note: WETH is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
-        polygonTokenBridger.send(
-            PolygonIERC20(relayerRefundLeaf.l2TokenAddress),
-            relayerRefundLeaf.amountToReturn,
-            address(weth) == relayerRefundLeaf.l2TokenAddress
-        );
+        polygonTokenBridger.send(PolygonIERC20(relayerRefundLeaf.l2TokenAddress), relayerRefundLeaf.amountToReturn);
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }

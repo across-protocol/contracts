@@ -299,6 +299,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         public
         override
         onlyOwner
+        noActiveRequests
     {
         require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
         protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;

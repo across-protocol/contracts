@@ -27,6 +27,11 @@ describe("HubPool Protocol fees", function () {
     await expect(hubPool.connect(liquidityProvider).setProtocolFeeCapture(liquidityProvider.address, toWei("0.1"))).to
       .be.reverted;
   });
+  it("Can not change the protocol fee capture during a pending refund", async function () {
+    const { tree } = await constructSingleChainTree(weth.address);
+    await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
+    await expect(hubPool.connect(owner).setProtocolFeeCapture(liquidityProvider.address, toWei("0.1"))).to.be.reverted;
+  });
   it("Can change protocol fee capture settings", async function () {
     expect(await hubPool.callStatic.protocolFeeCaptureAddress()).to.equal(owner.address);
     expect(await hubPool.callStatic.protocolFeeCapturePct()).to.equal(initialProtocolFeeCapturePct);
