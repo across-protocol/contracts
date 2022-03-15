@@ -35,5 +35,5 @@ contract Ethereum_SpokePool is SpokePool, Ownable {
 
     // Admin is simply owner which should be same account that owns the HubPool deployed on this network. A core
     // assumption of this contract system is that the HubPool is deployed on Ethereum.
-    function _requireAdminSender() internal override onlyOwner {}
+    function _requireAdminSender() internal override onlyOwner nonReentrant {}
 }

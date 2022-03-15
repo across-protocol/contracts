@@ -454,8 +454,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Since _exchangeRateCurrent() reads this contract's balance and updates contract state using it, it must be
         // first before transferring any tokens to this contract to ensure synchronization.
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent(l1Token);
-        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
+        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
 
         if (address(weth) == l1Token && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
@@ -477,11 +477,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     ) public override nonReentrant {
         require(address(weth) == l1Token || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
+        // Note this method does not make any liquidity utilization checks before letting the LP redeem their LP tokens.
+        // If they try access more funds than available (i.e l1TokensToReturn > liquidReserves) this will underflow.
+        pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
-        // Note this method does not make any liquidity utilization checks before letting the LP redeem their LP tokens.
-        // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
-        pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
         else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
@@ -726,6 +726,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             customLiveness: liveness
         });
 
+        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
+        delete rootBundleProposal;
+
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         optimisticOracle.disputePriceFor(
@@ -738,9 +741,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
 
         emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
-
-        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
-        delete rootBundleProposal;
     }
 
     /**
@@ -748,9 +748,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token whose protocol fees the caller wants to disburse.
      */
     function claimProtocolFeesCaptured(address l1Token) public override nonReentrant {
-        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
-        emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
+        uint256 _unclaimedAccumulatedProtocolFees = unclaimedAccumulatedProtocolFees[l1Token];
         unclaimedAccumulatedProtocolFees[l1Token] = 0;
+        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, _unclaimedAccumulatedProtocolFees);
+        emit ProtocolFeesCapturedClaimed(l1Token, _unclaimedAccumulatedProtocolFees);
     }
 
     /**
