@@ -23,6 +23,10 @@ describe("HubPool Admin functions", function () {
     expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(zeroAddress);
     await hubPool.enableL1TokenForLiquidityProvision(weth.address);
 
+    await expect(hubPool.enableL1TokenForLiquidityProvision(weth.address)).to.be.revertedWith(
+      "L1 token already enabled"
+    );
+
     const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
     expect(pooledTokenStruct.lpToken).to.not.equal(zeroAddress);
     expect(pooledTokenStruct.isEnabled).to.equal(true);
@@ -36,8 +40,16 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
   it("Can disable L1 Tokens for liquidity provision", async function () {
+    await hubPool.enableL1TokenForLiquidityProvision(weth.address);
+    const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
+    const lpToken = pooledTokenStruct.lpToken;
+
     await hubPool.disableL1TokenForLiquidityProvision(weth.address);
     expect((await hubPool.callStatic.pooledTokens(weth.address)).isEnabled).to.equal(false);
+
+    // Can re-enable the L1 token now without creating a new LP token.
+    await hubPool.enableL1TokenForLiquidityProvision(weth.address);
+    expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(lpToken);
   });
   it("Only owner can disable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;

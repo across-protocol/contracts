@@ -411,6 +411,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to provide liquidity for.
      */
     function enableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
+        // The reason we revert if this L1 token is already enabled is so that the LpFeeUpdate timestamp is not
+        // reset unnecessarily, as this would cause any LP fees that have accrued since the last timestamp to be lost.
+        require(!pooledTokens[l1Token].isEnabled, "L1 token already enabled");
         if (pooledTokens[l1Token].lpToken == address(0))
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
