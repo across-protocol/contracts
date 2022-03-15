@@ -28,7 +28,7 @@ describe("HubPool Root Bundle Proposal", function () {
           consts.mockRelayerRefundRoot,
           consts.mockSlowRelayRoot
         )
-    ).to.be.revertedWith("bond amount equal to final fee");
+    ).to.be.revertedWith("bond amount must be > final fee");
 
     await store.setFinalFee(weth.address, { rawValue: consts.totalBond.div(2) });
     await expect(
