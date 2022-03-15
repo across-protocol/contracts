@@ -271,7 +271,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 quoteTimestamp
-    ) public payable override onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
+    ) external payable override onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct < 0.5e18, "invalid relayer fee");
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
@@ -332,7 +332,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) public override nonReentrant {
+    ) external override nonReentrant {
         _verifyUpdateRelayerFeeMessage(depositor, chainId(), newRelayerFeePct, depositId, depositorSignature);
 
         // Assuming the above checks passed, a relayer can take the signature and the updated relayer fee information
@@ -380,7 +380,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId
-    ) public nonReentrant {
+    ) external nonReentrant {
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
@@ -436,7 +436,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) public override nonReentrant {
+    ) external override nonReentrant {
         _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
 
         // Now follow the default fillRelay flow with the updated fee and the original relay hash.
@@ -490,7 +490,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 depositId,
         uint32 rootBundleId,
         bytes32[] memory proof
-    ) public virtual override nonReentrant {
+    ) external virtual override nonReentrant {
         _executeSlowRelayRoot(
             depositor,
             recipient,
@@ -518,7 +518,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public virtual override nonReentrant {
+    ) external virtual override nonReentrant {
         _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
     }
 

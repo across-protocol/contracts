@@ -59,7 +59,7 @@ contract Arbitrum_SpokePool is SpokePool {
      * @notice Change L2 gateway router. Callable only by admin.
      * @param newL2GatewayRouter New L2 gateway router.
      */
-    function setL2GatewayRouter(address newL2GatewayRouter) public onlyAdmin {
+    function setL2GatewayRouter(address newL2GatewayRouter) external onlyAdmin {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
@@ -68,7 +68,7 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param l2Token Arbitrum token.
      * @param l1Token Ethereum version of l2Token.
      */
-    function whitelistToken(address l2Token, address l1Token) public onlyAdmin {
+    function whitelistToken(address l2Token, address l1Token) external onlyAdmin {
         _whitelistToken(l2Token, l1Token);
     }
 

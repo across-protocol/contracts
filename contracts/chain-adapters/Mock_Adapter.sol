@@ -43,13 +43,13 @@ contract Mock_Bridge {
 
     mapping(address => uint256) deposits;
 
-    function bridgeTokens(address token, uint256 amount) public {
+    function bridgeTokens(address token, uint256 amount) external {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         deposits[token] += amount;
         emit BridgedTokens(token, amount);
     }
 
-    function bridgeMessage(address target, bytes memory message) public {
+    function bridgeMessage(address target, bytes memory message) external {
         emit BridgedMessage(target, message);
     }
 }

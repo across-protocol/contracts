@@ -251,7 +251,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * something goes awry.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
-    function setPaused(bool pause) public onlyOwner nonReentrant {
+    function setPaused(bool pause) external onlyOwner nonReentrant {
         paused = pause;
         emit Paused(pause);
     }
@@ -262,7 +262,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * case of a non-malicious bug in the proposal/dispute code. Without this function, the contract would be
      * indefinitely blocked, migration would be required, and in-progress transfers would never be repaid.
      */
-    function emergencyDeleteProposal() public onlyOwner nonReentrant {
+    function emergencyDeleteProposal() external onlyOwner nonReentrant {
         if (rootBundleProposal.unclaimedPoolRebalanceLeafCount > 0)
             bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
         emit EmergencyRootBundleDeleted(
@@ -282,7 +282,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param functionData ABI encoded function call to send to SpokePool, but can be any arbitrary data technically.
      */
     function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData)
-        public
+        external
         override
         onlyOwner
         nonReentrant
@@ -296,7 +296,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param newProtocolFeeCapturePct New protocol fee capture %.
      */
     function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
-        public
+        external
         override
         onlyOwner
     {
@@ -312,7 +312,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param newBondAmount New bond amount.
      */
     function setBond(IERC20 newBondToken, uint256 newBondAmount)
-        public
+        external
         override
         onlyOwner
         noActiveRequests
@@ -334,7 +334,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets root bundle proposal liveness period. Callable only by owner.
      * @param newLiveness New liveness period.
      */
-    function setLiveness(uint32 newLiveness) public override onlyOwner {
+    function setLiveness(uint32 newLiveness) external override onlyOwner {
         require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
@@ -344,7 +344,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets identifier for root bundle disputes.. Callable only by owner.
      * @param newIdentifier New identifier.
      */
-    function setIdentifier(bytes32 newIdentifier) public override onlyOwner noActiveRequests nonReentrant {
+    function setIdentifier(bytes32 newIdentifier) external override onlyOwner noActiveRequests nonReentrant {
         IdentifierWhitelistInterface identifierWhitelist = IdentifierWhitelistInterface(
             finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist)
         );
@@ -364,7 +364,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) public override onlyOwner {
+    ) external override onlyOwner {
         crossChainContracts[l2ChainId] = CrossChainContract(AdapterInterface(adapter), spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -385,7 +385,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address originToken,
         address destinationToken,
         bool enableRoute
-    ) public override onlyOwner nonReentrant {
+    ) external override onlyOwner nonReentrant {
         if (enableRoute)
             whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = destinationToken;
         else delete whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
@@ -410,7 +410,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * Callable only by owner.
      * @param l1Token Token to provide liquidity for.
      */
-    function enableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
+    function enableL1TokenForLiquidityProvision(address l1Token) external override onlyOwner nonReentrant {
         if (pooledTokens[l1Token].lpToken == address(0))
             pooledTokens[l1Token].lpToken = lpTokenFactory.createLpToken(l1Token);
 
@@ -424,7 +424,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Disables LPs from providing liquidity for L1 token. Callable only by owner.
      * @param l1Token Token to disable liquidity provision for.
      */
-    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
+    function disableL1TokenForLiquidityProvision(address l1Token) external override onlyOwner {
         pooledTokens[l1Token].isEnabled = false;
         emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
@@ -444,7 +444,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to deposit into this contract.
      * @param l1TokenAmount Amount of liquidity to provide.
      */
-    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override nonReentrant {
+    function addLiquidity(address l1Token, uint256 l1TokenAmount) external payable override nonReentrant {
         require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
@@ -473,7 +473,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address l1Token,
         uint256 lpTokenAmount,
         bool sendEth
-    ) public override nonReentrant {
+    ) external override nonReentrant {
         require(address(weth) == l1Token || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
@@ -493,7 +493,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token L1 token redeemable by burning LP token.
      * @return Amount of L1 tokens redeemable for 1 unit LP token.
      */
-    function exchangeRateCurrent(address l1Token) public override nonReentrant returns (uint256) {
+    function exchangeRateCurrent(address l1Token) external override nonReentrant returns (uint256) {
         return _exchangeRateCurrent(l1Token);
     }
 
@@ -502,7 +502,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token L1 token to query utilization for.
      * @return % of liquid reserves currently being "used" and sitting in SpokePools.
      */
-    function liquidityUtilizationCurrent(address l1Token) public override nonReentrant returns (uint256) {
+    function liquidityUtilizationCurrent(address l1Token) external override nonReentrant returns (uint256) {
         return _liquidityUtilizationPostRelay(l1Token, 0);
     }
 
@@ -514,7 +514,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @return % of liquid reserves currently being "used" and sitting in SpokePools plus the relayedAmount.
      */
     function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
-        public
+        external
         nonReentrant
         returns (uint256)
     {
@@ -526,7 +526,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * at the conclusion of a L2->L1 token transfer via the canonical token bridge, when this contract's reserves do not
      * reflect its true balance due to new tokens being dropped onto the contract at the conclusion of a bridging action.
      */
-    function sync(address l1Token) public override nonReentrant {
+    function sync(address l1Token) external override nonReentrant {
         _sync(l1Token);
     }
 
@@ -556,7 +556,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot
-    ) public override nonReentrant noActiveRequests unpaused {
+    ) external override nonReentrant noActiveRequests unpaused {
         // Note: this is to prevent "empty block" style attacks where someone can make empty proposals that are
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
@@ -609,7 +609,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint8 leafId,
         address[] memory l1Tokens,
         bytes32[] memory proof
-    ) public nonReentrant unpaused {
+    ) external nonReentrant unpaused {
         require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
@@ -664,7 +664,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * yet. The proposal is deleted, allowing a follow-up proposal to be submitted, and the dispute is sent to the
      * optimistic oracle to be adjudicated. Can only be called within the liveness period of the current proposal.
      */
-    function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
+    function disputeRootBundle() external nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
         require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
@@ -746,7 +746,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Send unclaimed accumulated protocol fees to fee capture address.
      * @param l1Token Token whose protocol fees the caller wants to disburse.
      */
-    function claimProtocolFeesCaptured(address l1Token) public override nonReentrant {
+    function claimProtocolFeesCaptured(address l1Token) external override nonReentrant {
         IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
         emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
         unclaimedAccumulatedProtocolFees[l1Token] = 0;
@@ -804,7 +804,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 originChainId,
         address originToken,
         uint256 destinationChainId
-    ) public view override returns (address) {
+    ) external view override returns (address) {
         return whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
     }
 
@@ -812,7 +812,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for arbitrum
      * calls, but may also be needed for others.
      */
-    function loadEthForL2Calls() public payable override {}
+    function loadEthForL2Calls() external payable override {}
 
     /*************************************************
      *              INTERNAL FUNCTIONS               *
