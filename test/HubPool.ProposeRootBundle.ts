@@ -60,7 +60,7 @@ describe("HubPool Root Bundle Proposal", function () {
           consts.mockRelayerRefundRoot,
           consts.mockSlowRelayRoot
         )
-    ).to.be.revertedWith("proposal has unclaimed leafs");
+    ).to.be.revertedWith("proposal has unclaimed leaves");
   });
 
   it("Cannot propose while paused", async function () {

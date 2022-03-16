@@ -48,7 +48,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
-    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
+    // Origin token to destination chainId routings can be turned on or off, which can enable or disable deposits.
     // A reverse mapping is stored on the L1 HubPool to enable or disable rebalance transfers from the HubPool to this
     // contract.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
@@ -60,7 +60,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 slowRelayRoot;
         // Merkle root of relayer refunds for successful relays.
         bytes32 relayerRefundRoot;
-        // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
+        // This is a 2D bitmap tracking which leaves in the relayer refund root have been claimed, with max size of
         // 256x256 leaves per root.
         mapping(uint256 => uint256) claimedBitmap;
     }
@@ -285,7 +285,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         if (originToken == address(weth) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
             weth.deposit{ value: msg.value }();
-            // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
+            // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
@@ -343,7 +343,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      **************************************/
 
     /**
-     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the receipient.
+     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
      * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
      * relay submission will be validated by off-chain data workers who can dispute this relay if any part is invalid.
      * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,

@@ -127,7 +127,7 @@ describe("HubPool Admin functions", function () {
     await seedWallet(owner, [], weth, totalBond);
     await weth.approve(hubPool.address, totalBond);
     await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot);
-    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
+    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leaves");
   });
   it("Cannot change bond token to unwhitelisted token", async function () {
     await expect(hubPool.setBond(randomAddress(), "1")).to.be.revertedWith("Not on whitelist");

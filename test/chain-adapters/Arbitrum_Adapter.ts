@@ -78,12 +78,12 @@ describe("Arbitrum Chain Adapter", function () {
   it("Correctly calls appropriate arbitrum bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, arbitrumChainId);
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, arbitrumChainId);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
     // The correct functions should have been called on the arbitrum contracts.
     expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledOnce; // One token transfer over the canonical bridge.
     expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledWith(

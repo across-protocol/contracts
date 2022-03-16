@@ -1,19 +1,19 @@
 import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves } from "./MerkleLib.utils";
 import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let l2Weth: string, l2Dai: string;
 
-// Construct the leafs that will go into the merkle tree. For this function create a simple set of leafs that will
+// Construct the leaves that will go into the merkle tree. For this function create a simple set of leaves that will
 // repay two token to one chain Id with simple lpFee, netSend and running balance amounts.
 async function constructSimpleTree() {
   const wethToSendToL2 = toBNWei(100);
   const daiToSend = toBNWei(1000);
-  const leafs = buildPoolRebalanceLeafs(
+  const leaves = buildPoolRebalanceLeaves(
     [consts.repaymentChainId, consts.repaymentChainId], // repayment chain.
     [[weth.address, dai.address], []], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
     [[toBNWei(1), toBNWei(10)], []], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
@@ -21,9 +21,9 @@ async function constructSimpleTree() {
     [[wethToSendToL2, daiToSend], []], // runningBalances. Set to 100 ETH and 1000 DAI.
     [0, 1] // groupIndex. Second leaf should not relay roots to spoke pool.
   );
-  const tree = await buildPoolRebalanceLeafTree(leafs);
+  const tree = await buildPoolRebalanceLeafTree(leaves);
 
-  return { wethToSendToL2, daiToSend, leafs, tree };
+  return { wethToSendToL2, daiToSend, leaves, tree };
 }
 
 describe("HubPool Root Bundle Execution", function () {
@@ -43,10 +43,10 @@ describe("HubPool Root Bundle Execution", function () {
   });
 
   it("Executing root bundle correctly produces the relay bundle call and sends repayment actions", async function () {
-    const { wethToSendToL2, daiToSend, leafs, tree } = await constructSimpleTree();
+    const { wethToSendToL2, daiToSend, leaves, tree } = await constructSimpleTree();
 
     await hubPool.connect(dataWorker).proposeRootBundle(
-      [3117, 3118], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+      [3117, 3118], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
       2, // poolRebalanceLeafCount.
       tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
       consts.mockRelayerRefundRoot, // Not relevant for this test.
@@ -56,7 +56,7 @@ describe("HubPool Root Bundle Execution", function () {
     // Advance time so the request can be executed and execute first leaf.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     expect(
-      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
     ).to.emit(hubPool, "RootBundleExecuted");
 
     // Balances should have updated as expected. Note that pool should still have bond remaining since a leaf
@@ -101,7 +101,7 @@ describe("HubPool Root Bundle Execution", function () {
   });
 
   it("Executing two leaves with the same chain ID does not relay root bundle to spoke pool twice", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+    const { leaves, tree } = await constructSimpleTree();
 
     await hubPool
       .connect(dataWorker)
@@ -109,8 +109,8 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Advance time so the request can be executed and execute two leaves with same chain ID.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[1]), tree.getHexProof(leafs[1]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[1]), tree.getHexProof(leaves[1]));
 
     // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
     const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
@@ -132,7 +132,7 @@ describe("HubPool Root Bundle Execution", function () {
   });
 
   it("Executing all leaves returns bond to proposer", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+    const { leaves, tree } = await constructSimpleTree();
 
     await hubPool
       .connect(dataWorker)
@@ -140,17 +140,17 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Advance time so the request can be executed and execute both leaves.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
 
     // Second execution sends bond back to data worker.
     const bondAmount = consts.bondAmount.add(consts.finalFee);
     expect(
-      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[1]), tree.getHexProof(leafs[1]))
+      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[1]), tree.getHexProof(leaves[1]))
     ).to.changeTokenBalances(weth, [dataWorker, hubPool], [bondAmount, bondAmount.mul(-1)]);
   });
 
   it("Reverts if spoke pool not set for chain ID", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+    const { leaves, tree } = await constructSimpleTree();
 
     await hubPool
       .connect(dataWorker)
@@ -162,12 +162,12 @@ describe("HubPool Root Bundle Execution", function () {
     // Advance time so the request can be executed and check that executing the request reverts.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await expect(
-      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Uninitialized spoke pool");
   });
 
   it("Execution rejects leaf claim before liveness passed", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+    const { leaves, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
@@ -176,16 +176,16 @@ describe("HubPool Root Bundle Execution", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness - 10);
 
     await expect(
-      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Not passed liveness");
 
     // Set time after expiration. Should no longer revert.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + 11);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
   });
 
-  it("Execution rejects invalid leafs", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+  it("Execution rejects invalid leaves", async function () {
+    const { leaves, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
@@ -193,28 +193,28 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Take the valid root but change some element within it, such as the chainId. This will change the hash of the leaf
     // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
-    const badLeaf = { ...leafs[0], chainId: 13371 };
+    const badLeaf = { ...leaves[0], chainId: 13371 };
     await expect(
-      hubPool.connect(dataWorker).executeRootBundle(...Object.values(badLeaf), tree.getHexProof(leafs[0]))
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(badLeaf), tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Bad Proof");
   });
 
-  it("Execution rejects double claimed leafs", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+  it("Execution rejects double claimed leaves", async function () {
+    const { leaves, tree } = await constructSimpleTree();
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
     await expect(
-      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Already claimed");
   });
 
   it("Cannot execute while paused", async function () {
-    const { leafs, tree } = await constructSimpleTree();
+    const { leaves, tree } = await constructSimpleTree();
 
     await hubPool
       .connect(dataWorker)
@@ -225,12 +225,14 @@ describe("HubPool Root Bundle Execution", function () {
 
     // Should revert while paused.
     await hubPool.setPaused(true);
-    await expect(hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0])))
-      .to.be.reverted;
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+    ).to.be.reverted;
 
     // Should not revert after unpaused.
     await hubPool.setPaused(false);
-    await expect(hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0])))
-      .to.not.be.reverted;
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+    ).to.not.be.reverted;
   });
 });

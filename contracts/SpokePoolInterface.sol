@@ -8,7 +8,7 @@ interface SpokePoolInterface {
     // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
     struct RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
-        // negative. This is just that value inverted.
+        // negative. This is just the negative of this value.
         uint256 amountToReturn;
         // Used to verify that this is being executed on the correct destination chainId.
         uint256 chainId;
@@ -24,7 +24,7 @@ interface SpokePoolInterface {
 
     // This struct represents the data to fully specify a relay. If any portion of this data differs, the relay is
     // considered to be completely distinct. Only one relay for a particular depositId, chainId pair should be
-    // considered valid and repaid. This data is hashed and inserted into a the slow relay merkle root so that an off
+    // considered valid and repaid. This data is hashed and inserted into the slow relay merkle root so that an off
     // chain validator can choose when to refund slow relayers.
     struct RelayData {
         // The address that made the deposit on the origin chain.
