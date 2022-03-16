@@ -88,14 +88,14 @@ contract Arbitrum_SpokePool is SpokePool {
         emit ArbitrumTokensBridged(address(0), hubPool, relayerRefundLeaf.amountToReturn);
     }
 
-    function _whitelistToken(address _l2Token, address _l1Token) internal {
-        whitelistedTokens[_l2Token] = _l1Token;
-        emit WhitelistedTokens(_l2Token, _l1Token);
-    }
-
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {
         l2GatewayRouter = _l2GatewayRouter;
         emit SetL2GatewayRouter(l2GatewayRouter);
+    }
+
+    function _whitelistToken(address _l2Token, address _l1Token) internal {
+        whitelistedTokens[_l2Token] = _l1Token;
+        emit WhitelistedTokens(_l2Token, _l1Token);
     }
 
     // L1 addresses are transformed during l1->l2 calls.
