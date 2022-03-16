@@ -60,6 +60,7 @@ describe("HubPool Admin functions", function () {
   it("Only owner can relay spoke pool admin message", async function () {
     const functionData = mockSpoke.interface.encodeFunctionData("setEnableRoute", [
       weth.address,
+      randomAddress(),
       destinationChainId,
       false,
     ]);
