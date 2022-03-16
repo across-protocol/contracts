@@ -306,6 +306,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
+        // Note: Off-chain relayers are expected to send to the recipient `destinationToken` on the destination chain,
+        // but there is a chance that the destination token is set incorrectly or cannot be sent for other reasons. In
+        // these cases, we expect that the UMIP explains how to handle such cases. For example, a rule could be:
+        // "If the destination token address doesn't exist on the destination chain, then wait to relay the deposit
+        // until the destination token address is reset, or refund the user their token on the origin chain".
         _emitDeposit(
             amount,
             chainId(),
