@@ -37,9 +37,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // refunds and slow relays.
     address public hubPool;
 
-    // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
-    // instruct this contract to wrap ETH when depositing.
-    WETH9 public weth;
+    // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
+    // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
+    WETH9 public wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
@@ -138,26 +138,26 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Construct the base SpokePool.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
+     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param timerAddress Timer address to set.
      */
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
-        address _wethAddress,
+        address _wrappedNativeTokenAddress,
         address timerAddress
     ) Testable(timerAddress) {
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        weth = WETH9(_wethAddress);
+        wrappedNativeToken = WETH9(_wrappedNativeTokenAddress);
     }
 
     /****************************************
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyEnabledRoute(address originToken, uint256 destinationId) {
-        require(enabledDepositRoutes[originToken][destinationId], "Disabled route");
+    modifier onlyEnabledRoute(address originToken, uint256 destinationChainId) {
+        require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
         _;
     }
 
@@ -217,9 +217,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * slow relays, and send funds back to the HubPool on L1. This method can only be called by the admin and is
      * designed to be called as part of a cross-chain message from the HubPool's executeRootBundle method.
      * @param relayerRefundRoot Merkle root containing relayer refund leaves that can be individually executed via
-     * executeRelayerRefundRoot().
+     * executeRelayerRefundLeaf().
      * @param slowRelayRoot Merkle root containing slow relay fulfillment leaves that can be individually executed via
-     * executeSlowRelayRoot().
+     * executeSlowRelayLeaf().
      */
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin {
         uint32 rootBundleId = uint32(rootBundles.length);
@@ -250,8 +250,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * token mapping is stored on the L1 HubPool.
      * @notice The caller must first approve this contract to spend amount of originToken.
      * @notice The originToken => destinationChainId must be enabled.
-     * @notice This method is payable because the caller is able to deposit ETH if the originToken is WETH and this
-     * function will handle wrapping ETH.
+     * @notice This method is payable because the caller is able to deposit native token if the originToken is
+     * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
      * @param recipient Address to receive funds at on destination chain.
      * @param originToken Token to lock into this contract to initiate deposit.
      * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
@@ -280,14 +280,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
                 getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
-        // If the address of the origin token is a WETH contract and there is a msg.value with the transaction
-        // then the user is sending ETH. In this case, the ETH should be deposited to WETH.
-        if (originToken == address(weth) && msg.value > 0) {
+        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
+        // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
+        if (originToken == address(wrappedNativeToken) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
-            weth.deposit{ value: msg.value }();
+            wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
-            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
-            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+            // Note: this includes the case where the L2 user has wrappedNativeToken (already wrapped ETH) and wants to
+            // bridge them. In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         _emitDeposit(
@@ -343,7 +343,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      **************************************/
 
     /**
-     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the receipient.
+     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
      * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
      * relay submission will be validated by off-chain data workers who can dispute this relay if any part is invalid.
      * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
@@ -477,7 +477,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
      */
-    function executeSlowRelayRoot(
+    function executeSlowRelayLeaf(
         address depositor,
         address recipient,
         address destinationToken,
@@ -489,7 +489,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 rootBundleId,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
-        _executeSlowRelayRoot(
+        _executeSlowRelayLeaf(
             depositor,
             recipient,
             destinationToken,
@@ -512,12 +512,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */
-    function executeRelayerRefundRoot(
+    function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
-        _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
+        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
@@ -538,7 +538,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Verifies inclusion proof of leaf in root, sends relayer their refund, and sends to HubPool any rebalance
     // transfers.
-    function _executeRelayerRefundRoot(
+    function _executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
@@ -594,7 +594,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     }
 
     // Verifies inclusion proof of leaf in root and sends recipient remainder of relay. Marks relay as filled.
-    function _executeSlowRelayRoot(
+    function _executeSlowRelayLeaf(
         address depositor,
         address recipient,
         address destinationToken,
@@ -704,12 +704,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         return keccak256(abi.encode(relayData));
     }
 
-    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
-    function _unwrapWETHTo(address payable to, uint256 amount) internal {
+    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
+    function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(address(weth)).safeTransfer(to, amount);
+            IERC20(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
-            weth.withdraw(amount);
+            wrappedNativeToken.withdraw(amount);
             to.transfer(amount);
         }
     }
@@ -768,15 +768,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
         relayFills[relayHash] += fillAmountPreFees;
 
-        // If relay token is weth then unwrap and send eth.
-        if (relayData.destinationToken == address(weth)) {
+        // If relay token is wrappedNativeToken then unwrap and send native token.
+        if (relayData.destinationToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
-            // recipient wants WETH, then we can assume that WETH is already in the contract, otherwise we'll need the
-            // the user to send WETH to this contract. Regardless, we'll need to unwrap it before sending to the user.
+            // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
+            // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
+            // need to unwrap it to native token before sending to the user.
             if (!useContractFunds)
                 IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapWETHTo(payable(relayData.recipient), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(relayData.recipient), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
@@ -843,6 +844,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // L1, this would just be the same admin of the HubPool.
     function _requireAdminSender() internal virtual;
 
-    // Added to enable the this contract to receive ETH. Used when unwrapping Weth.
+    // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}
 }

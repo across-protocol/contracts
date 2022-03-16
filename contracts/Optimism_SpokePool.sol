@@ -75,7 +75,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * ETH over the canonical token bridge instead of WETH.
      * @inheritdoc SpokePool
      */
-    function executeSlowRelayRoot(
+    function executeSlowRelayLeaf(
         address depositor,
         address recipient,
         address destinationToken,
@@ -87,9 +87,9 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
         uint32 rootBundleId,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (destinationToken == address(weth)) _depositEthToWeth();
+        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
 
-        _executeSlowRelayRoot(
+        _executeSlowRelayLeaf(
             depositor,
             recipient,
             destinationToken,
@@ -109,14 +109,14 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * ETH over the canonical token bridge instead of WETH.
      * @inheritdoc SpokePool
      */
-    function executeRelayerRefundRoot(
+    function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (relayerRefundLeaf.l2TokenAddress == address(weth)) _depositEthToWeth();
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
 
-        _executeRelayerRefundRoot(rootBundleId, relayerRefundLeaf, proof);
+        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
@@ -128,13 +128,13 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
     // this logic inside a fallback method that executes when this contract receives ETH because ETH is an ERC20
     // on the OVM.
     function _depositEthToWeth() internal {
-        if (address(this).balance > 0) weth.deposit{ value: address(this).balance }();
+        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
-        if (relayerRefundLeaf.l2TokenAddress == address(weth)) {
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
             WETH9(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
         }

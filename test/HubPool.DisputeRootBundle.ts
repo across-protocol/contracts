@@ -40,7 +40,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     // Data should be deleted from the contracts refundRequest struct.
     const rootBundle = await hubPool.rootBundleProposal();
-    expect(rootBundle.requestExpirationTimestamp).to.equal(0);
+    expect(rootBundle.challengePeriodEndTimestamp).to.equal(0);
     expect(rootBundle.unclaimedPoolRebalanceLeafCount).to.equal(0);
     expect(rootBundle.poolRebalanceRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.relayerRefundRoot).to.equal(consts.zeroBytes32);
@@ -98,7 +98,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     // Data should be deleted from the contracts refundRequest struct.
     const rootBundle = await hubPool.rootBundleProposal();
-    expect(rootBundle.requestExpirationTimestamp).to.equal(0);
+    expect(rootBundle.challengePeriodEndTimestamp).to.equal(0);
     expect(rootBundle.unclaimedPoolRebalanceLeafCount).to.equal(0);
     expect(rootBundle.poolRebalanceRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.relayerRefundRoot).to.equal(consts.zeroBytes32);
@@ -141,7 +141,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     // Data should be deleted from the contracts refundRequest struct.
     const rootBundle = await hubPool.rootBundleProposal();
-    expect(rootBundle.requestExpirationTimestamp).to.equal(0);
+    expect(rootBundle.challengePeriodEndTimestamp).to.equal(0);
     expect(rootBundle.unclaimedPoolRebalanceLeafCount).to.equal(0);
     expect(rootBundle.poolRebalanceRoot).to.equal(consts.zeroBytes32);
     expect(rootBundle.relayerRefundRoot).to.equal(consts.zeroBytes32);

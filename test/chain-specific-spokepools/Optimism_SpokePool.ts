@@ -99,7 +99,7 @@ describe("Optimism Spoke Pool", function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await optimismSpokePool.callStatic.chainId());
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
@@ -111,7 +111,7 @@ describe("Optimism Spoke Pool", function () {
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     const altL2Bridge = await createFake("L2StandardBridge");
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(altL2Bridge.withdrawTo).to.have.been.calledOnce;
@@ -124,7 +124,7 @@ describe("Optimism Spoke Pool", function () {
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // When sending l2Weth we should see two differences from the previous test: 1) there should be a call to l2WETH to
     // unwrap l2WETH to l2ETH. 2) the address in the l2StandardBridge that is withdrawn should no longer be l2WETH but

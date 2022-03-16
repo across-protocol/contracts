@@ -159,8 +159,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     );
 
     event ProposeRootBundle(
-        uint32 requestExpirationTimestamp,
-        uint64 unclaimedPoolRebalanceLeafCount,
+        uint32 challengePeriodEndTimestamp,
+        uint64 poolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed relayerRefundRoot,
@@ -171,17 +171,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 groupIndex,
         uint256 indexed leafId,
         uint256 indexed chainId,
-        address[] l1Token,
+        address[] l1Tokens,
         uint256[] bundleLpFees,
-        int256[] netSendAmount,
-        int256[] runningBalance,
+        int256[] netSendAmounts,
+        int256[] runningBalances,
         address indexed caller
     );
     event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
     event RootBundleDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
 
-    event RootBundleCanceled(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RootBundleCanceled(address indexed disputer, uint256 requestTime, bytes ancillaryData);
 
     modifier noActiveRequests() {
         require(!_activeRequest(), "proposal has unclaimed leafs");
@@ -541,11 +541,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
+        uint32 challengePeriodEndTimestamp = uint32(getCurrentTime()) + liveness;
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
 
-        rootBundleProposal.requestExpirationTimestamp = requestExpirationTimestamp;
+        rootBundleProposal.challengePeriodEndTimestamp = challengePeriodEndTimestamp;
         rootBundleProposal.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         rootBundleProposal.poolRebalanceRoot = poolRebalanceRoot;
         rootBundleProposal.relayerRefundRoot = relayerRefundRoot;
@@ -556,7 +556,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit ProposeRootBundle(
-            requestExpirationTimestamp,
+            challengePeriodEndTimestamp,
             poolRebalanceLeafCount,
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
@@ -593,7 +593,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address[] memory l1Tokens,
         bytes32[] memory proof
     ) public nonReentrant unpaused {
-        require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() > rootBundleProposal.challengePeriodEndTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
         require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, leafId), "Already claimed");
@@ -684,7 +684,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
-        require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
+        require(currentTime <= rootBundleProposal.challengePeriodEndTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
         bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();

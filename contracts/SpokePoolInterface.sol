@@ -108,7 +108,7 @@ interface SpokePoolInterface {
         bytes memory depositorSignature
     ) external;
 
-    function executeSlowRelayRoot(
+    function executeSlowRelayLeaf(
         address depositor,
         address recipient,
         address destinationToken,
@@ -121,7 +121,7 @@ interface SpokePoolInterface {
         bytes32[] memory proof
     ) external;
 
-    function executeRelayerRefundRoot(
+    function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof

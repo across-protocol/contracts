@@ -65,7 +65,7 @@ describe("Ethereum Spoke Pool", function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(dai.address, await spokePool.callStatic.chainId());
     await spokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await expect(() =>
-      spokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
+      spokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]))
     ).to.changeTokenBalances(dai, [spokePool, hubPool], [amountToReturn.mul(-1), amountToReturn]);
   });
 });
