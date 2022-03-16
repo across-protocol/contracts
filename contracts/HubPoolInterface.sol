@@ -22,9 +22,9 @@ interface HubPoolInterface {
         // does occur, runningBalances should be set to zero for this token and the netSendAmounts should be set to the
         // previous runningBalances + relays - deposits in this bundle.
         int256[] netSendAmounts;
-        // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
-        // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
-        // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
+        // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1
+        // pool. A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that
+        // the SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts.
         int256[] runningBalances;
         // Used by data worker to mark which leaves should relay roots to SpokePools, and to otherwise organize leaves.
         // For example, each leaf should contain all the rebalance information for a single chain, but in the case where
@@ -39,6 +39,35 @@ interface HubPoolInterface {
         // should be ordered by the l1Tokens field. All whitelisted tokens with nonzero relays on this chain in this
         // bundle in the order of whitelisting.
         address[] l1Tokens;
+    }
+
+    // A data worker can optimistically store several merkle roots on this contract by staking a bond and calling
+    // proposeRootBundle. By staking a bond, the data worker is alleging that the merkle roots all contain valid leaves
+    // that can be executed later to:
+    // - Send funds from this contract to a SpokePool or vice versa
+    // - Send funds from a SpokePool to Relayer as a refund for a relayed deposit
+    // - Send funds from a SpokePool to a deposit recipient to fulfill a "slow" relay
+    // Anyone can dispute this struct if the merkle roots contain invalid leaves before the
+    // requestExpirationTimestamp. Once the expiration timestamp is passed, executeRootBundle to execute a leaf
+    // from the poolRebalanceRoot on this contract and it will simultaneously publish the relayerRefundRoot and
+    // slowRelayRoot to a SpokePool. The latter two roots, once published to the SpokePool, contain
+    // leaves that can be executed on the SpokePool to pay relayers or recipients.
+    struct RootBundle {
+        // Contains leaves instructing this contract to send funds to SpokePools.
+        bytes32 poolRebalanceRoot;
+        // Relayer refund merkle root to be published to a SpokePool.
+        bytes32 relayerRefundRoot;
+        // Slow relay merkle root to be published to a SpokePool.
+        bytes32 slowRelayRoot;
+        // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
+        uint256 claimedBitMap;
+        // Proposer of this root bundle.
+        address proposer;
+        // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
+        // of leaves are executed, a new root bundle can be proposed
+        uint8 unclaimedPoolRebalanceLeafCount;
+        // When root bundle challenge period passes and this root bundle becomes executable.
+        uint32 requestExpirationTimestamp;
     }
 
     function setPaused(bool pause) external;
