@@ -818,7 +818,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Conveniently queries whether an origin chain + token => destination chain ID is whitelisted and returns
-     * the whitelisted destination token.
+     * the whitelisted destination token. If not whitelisted returns address(0x).
      * @param originChainId Deposit chain.
      * @param originToken Deposited token.
      * @param destinationChainId Where depositor can receive funds.
