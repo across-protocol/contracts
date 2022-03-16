@@ -65,9 +65,15 @@ describe("HubPool Admin functions", function () {
     ]);
     await expect(hubPool.connect(other).relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.reverted;
 
-    // Cannot relay admin function if spoke pool is set to zero address.
+    // Cannot relay admin function if spoke pool is set to zero address or adapter is set to non contract..
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, ZERO_ADDRESS);
-    await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.reverted;
+    await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.revertedWith(
+      "SpokePool not initialized"
+    );
+    await hubPool.setCrossChainContracts(destinationChainId, randomAddress(), mockSpoke.address);
+    await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.revertedWith(
+      "Adapter not initialized"
+    );
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
     await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData))
       .to.emit(hubPool, "SpokePoolAdminFunctionTriggered")
