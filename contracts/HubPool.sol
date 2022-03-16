@@ -109,13 +109,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     mapping(uint256 => CrossChainContract) public crossChainContracts;
 
     // WETH contract for Ethereum.
-    WETH9 public weth;
+    WETH9 public immutable weth;
 
     // Helper factory to deploy new LP tokens for enabled L1 tokens
-    LpTokenFactoryInterface public lpTokenFactory;
+    LpTokenFactoryInterface public immutable lpTokenFactory;
 
     // Finder contract for this network.
-    FinderInterface public finder;
+    FinderInterface public immutable finder;
 
     // When root bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
     bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
