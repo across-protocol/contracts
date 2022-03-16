@@ -98,7 +98,7 @@ library MerkleLib {
      * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap. Uint8 type enforces that index
      * can't be > 255.
      * @param index the index to mark in the bitmap.
-     * @param uint256 representing the modified input claimedBitMap with the index set to true.
+     * @return uint256 representing the modified input claimedBitMap with the index set to true.
      */
     function setClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (uint256) {
         return claimedBitMap | (1 << index % 256);
