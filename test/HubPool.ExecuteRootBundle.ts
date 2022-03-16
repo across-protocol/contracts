@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, hre } from "./utils";
+import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
@@ -162,7 +162,24 @@ describe("HubPool Root Bundle Execution", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await expect(
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
-    ).to.be.revertedWith("Uninitialized spoke pool");
+    ).to.be.revertedWith("SpokePool not initialized");
+  });
+
+  it("Reverts if adapter not set for chain ID", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+
+    // Set adapter to random address.
+    await hubPool.setCrossChainContracts(consts.repaymentChainId, randomAddress(), mockSpoke.address);
+
+    // Advance time so the request can be executed and check that executing the request reverts.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Adapter not initialized");
   });
 
   it("Reverts if destination token is zero address for a pool rebalance route", async function () {

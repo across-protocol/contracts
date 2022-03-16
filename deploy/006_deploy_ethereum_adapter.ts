@@ -1,4 +1,8 @@
-const func = async function (hre: any) {
+// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
+import "hardhat-deploy";
+import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
+
+const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -14,4 +18,4 @@ const func = async function (hre: any) {
 
 module.exports = func;
 func.dependencies = ["HubPool"];
-func.tags = ["ethereum-adapter"];
+func.tags = ["EthereumAdapter", "mainnet"];

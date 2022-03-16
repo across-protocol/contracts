@@ -367,9 +367,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Sets cross chain relay helper contracts for L2 chain ID. Callable only by owner.
+     * @dev We do not block setting the adapter or spokepool to invalid/zero addresses because we want to allow the
+     * admin to block relaying roots to the spoke pool for emergency recovery purposes.
      * @param l2ChainId Chain to set contracts for.
-     * @param adapter Adapter used to relay messages and tokens to spoke pool.
-     * @param spokePool Recipient of relayed messages and tokens on SpokePool.
+     * @param adapter Adapter used to relay messages and tokens to spoke pool. Deployed on current chain.
+     * @param spokePool Recipient of relayed messages and tokens on SpokePool. Deployed on l2ChainId.
      */
 
     function setCrossChainContracts(
@@ -660,12 +662,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             "Bad Proof"
         );
 
-        // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
-        // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
-        // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
-        // incorrectly.
-        address spokePool = crossChainContracts[chainId].spokePool;
-        require(spokePool != address(0), "Uninitialized spoke pool");
+        // Get cross chain helpers for leaf's destination chain ID. This internal method will revert if either helper
+        // is set improperly.
+        (address adapter, address spokePool) = _getInitializedCrossChainContracts(chainId);
 
         // Set the leafId in the claimed bitmap.
         rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
@@ -674,9 +673,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         // Relay each L1 token to destination chain.
-        // Note: We don't check that the adapter is initialized since if its the zero address or invalid otherwise,
-        // then the delegate call should revert.
-        address adapter = crossChainContracts[chainId].adapter;
         // Note: if any of the keccak256(l1Tokens, chainId) are not mapped to a destination token address, then this
         // internal method will revert. In this case the admin will have to associate a destination token with each l1
         // token. If the destination token mapping was missing at the time of the proposal, we assume that the root
@@ -1028,9 +1024,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     function _relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData) internal {
-        address adapter = crossChainContracts[chainId].adapter;
-        address spokePool = crossChainContracts[chainId].spokePool;
-        require(spokePool != address(0), "SpokePool not initialized");
+        (address adapter, address spokePool) = _getInitializedCrossChainContracts(chainId);
 
         // Perform delegatecall to use the adapter's code with this contract's context.
         (bool success, ) = adapter.delegatecall(
@@ -1046,6 +1040,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     function _poolRebalanceRouteKey(address l1Token, uint256 destinationChainId) internal pure returns (bytes32) {
         return keccak256(abi.encode(l1Token, destinationChainId));
+    }
+
+    function _getInitializedCrossChainContracts(uint256 chainId)
+        internal
+        view
+        returns (address adapter, address spokePool)
+    {
+        adapter = crossChainContracts[chainId].adapter;
+        spokePool = crossChainContracts[chainId].spokePool;
+        require(spokePool != address(0), "SpokePool not initialized");
+        require(adapter.isContract(), "Adapter not initialized");
     }
 
     function _activeRequest() internal view returns (bool) {
