@@ -14,6 +14,7 @@ library MerkleLib {
      * @param root the merkle root.
      * @param rebalance the rebalance struct.
      * @param proof the merkle proof.
+     * @return bool to signal if the pool rebalance proof correctly shows inclusion of the rebalance within the tree.
      */
     function verifyPoolRebalance(
         bytes32 root,
@@ -28,6 +29,7 @@ library MerkleLib {
      * @param root the merkle root.
      * @param refund the refund struct.
      * @param proof the merkle proof.
+     * @return bool to signal if the relayer refund proof correctly shows inclusion of the refund within the tree.
      */
     function verifyRelayerRefund(
         bytes32 root,
@@ -40,8 +42,9 @@ library MerkleLib {
     /**
      * @notice Verifies that a distribution is contained within a merkle root.
      * @param root the merkle root.
-     * @param slowRelayFulfillment the relayData fulfullment struct.
+     * @param slowRelayFulfillment the relayData fulfillment struct.
      * @param proof the merkle proof.
+     * @return bool to signal if the slow rely's proof correctly shows inclusion of the slow relay within the tree.
      */
     function verifySlowRelayFulfillment(
         bytes32 root,
@@ -95,6 +98,7 @@ library MerkleLib {
      * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap. Uint8 type enforces that index
      * can't be > 255.
      * @param index the index to mark in the bitmap.
+     * @param uint256 representing the modified input claimedBitMap with the index set to true.
      */
     function setClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (uint256) {
         return claimedBitMap | (1 << index % 256);
