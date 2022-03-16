@@ -427,10 +427,52 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
+     * @notice Convenience method that whitelists (or unwhitelists) a pool rebalance route to a destination SpokePool
+     * and whitelists deposits from a different spoke pool to that destination spoke pool. Callable only by owner.
+     * For example, the admin might want to enable USDC on Optimism --> USDC on Arbitrum relays. In practice, the
+     * admin would also need to enable pool rebalances from this contract to Arbitrum for USDC to refund relayers.
+     * So the admin would like to execute two transactions atomically:
+     *     - whitelist pool rebalance route from USDC on Ethereum to USDC on Arbitrum
+     *     - whitelist deposit route from USDC on Optimism to USDC on Arbitrum
+     * @param depositOriginChainId Chain ID for one SpokePool that we want to enable as a deposit origin.
+     * @param depositDestinationChainId Chain ID that we want the newly whitelited deposit route to use as a
+     * destination. Will also be enabled for pool rebalances from this contract, since we'll likely need to
+     * send funds to this network to refund relayers.
+     * @param ethereumCounterpartToken Token on the current network that will be sent to the SpokePool on
+     * both `depositDestinationChainId` for pool rebalances.
+     * @param originToken Token that we want to enable for deposits on `depositOriginChainId` that can be fulfilled by
+     * `destinationToken` on `depositDestinationChainId`. Should be the `depositOriginChainId` counterpart of
+     * `ethereumCounterpartToken`.
+     * @param destinationToken Token that deposits from `depositOriginChainId` for the `originToken` should be sent
+     * to recipients on `depositDestinationChainId`.
+     * @param enable Set to True to set up pool rebalances to `depositDestinationChainId` and deposits from
+     * `depositOriginChainId` to `depositDestinationChainId`. Set to False to disable all of the above. If
+     * this value is false, the pool rebalance destination token will be set to 0x0 and the deposit route will be
+     * disabled on the SpokePools.
+     */
+    function setDepositAndPoolRebalanceRoute(
+        uint256 depositOriginChainId,
+        uint256 depositDestinationChainId,
+        address ethereumCounterpartToken,
+        address originToken,
+        address destinationToken,
+        bool enable
+    ) public override nonReentrant onlyOwner {
+        _setDepositAndPoolRebalanceRoute(
+            depositOriginChainId,
+            depositDestinationChainId,
+            ethereumCounterpartToken,
+            originToken,
+            destinationToken,
+            enable
+        );
+    }
+
+    /**
      * @notice Convenience method that whitelists (or unwhitelists) a pool rebalance route to two SpokePools and also
      * whitelists deposits between the two spoke pools. Callable only by owner. For example, the admin might want
      * to enable two-way USDC on Optimism <> USDC on Arbitrum relays. In practice, the admin would also need to
-     * enable pool rebalances from this contract to Optimism and Arbitrum for USDC. So this function would execute
+     * enable pool rebalances from this contract to Optimism and Arbitrum for USDC. So the admin would like to execute
      * four transactions atomically:
      *     - whitelist pool rebalance route from USDC on Ethereum to USDC on Optimism
      *     - whitelist pool rebalance route from USDC on Ethereum to USDC on Arbitrum
@@ -441,7 +483,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param depositRouteChainId_2 The other chain in addition to `depositRouteChainId_1` that we want to enable
      * as a deposit origin and destination, and make available for pool rebalances.
      * @param ethereumCounterpartToken Token on the current network that will be sent to the SpokePool on
-     * both `depositRouteChainId_1` and ``depositRouteChainId_2` for pool rebalances.
+     * both `depositRouteChainId_1` and `depositRouteChainId_2` for pool rebalances.
      * @param l2Token_1 Token that we want to enable for deposits on `depositRouteChainId_1` that can be fulfilled by
      * `l2Token_2` on `depositRouteChainId_2`. Should be the chainId_1 counterpart of `ethereumCounterpartToken`.
      * @param l2Token_2 Token that we want to enable for deposits on `depositRouteChainId_2` that can be fulfilled by
@@ -451,7 +493,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * this value is false, the pool rebalance destination tokens will be set to 0x0 and the deposit routes will be
      * disabled on the SpokePools.
      */
-    function setDepositAndPoolRebalanceRoute(
+    function setDepositAndPoolRebalanceBiDirectionRoute(
         uint256 depositRouteChainId_1,
         uint256 depositRouteChainId_2,
         address ethereumCounterpartToken,
@@ -459,37 +501,22 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address l2Token_2,
         bool enable
     ) public override nonReentrant onlyOwner {
-        poolRebalanceRoutes[_poolRebalanceRouteKey(ethereumCounterpartToken, depositRouteChainId_1)] = (
-            enable ? l2Token_1 : address(0)
-        );
-        poolRebalanceRoutes[_poolRebalanceRouteKey(ethereumCounterpartToken, depositRouteChainId_2)] = (
-            enable ? l2Token_2 : address(0)
-        );
-        _relaySpokePoolAdminFunction(
-            depositRouteChainId_1,
-            abi.encodeWithSignature(
-                "setEnableRoute(address,address,uint256,bool)",
-                l2Token_1,
-                l2Token_2,
-                depositRouteChainId_2,
-                enable
-            )
-        );
-        _relaySpokePoolAdminFunction(
+        _setDepositAndPoolRebalanceRoute(
             depositRouteChainId_2,
-            abi.encodeWithSignature(
-                "setEnableRoute(address,address,uint256,bool)",
-                l2Token_2,
-                l2Token_1,
-                depositRouteChainId_1,
-                enable
-            )
+            depositRouteChainId_1,
+            ethereumCounterpartToken,
+            l2Token_2,
+            l2Token_1,
+            enable
         );
-
-        emit SetPoolRebalanceRoute(depositRouteChainId_1, ethereumCounterpartToken, l2Token_1);
-        emit SetPoolRebalanceRoute(depositRouteChainId_2, ethereumCounterpartToken, l2Token_2);
-        emit SetEnableDepositRoute(depositRouteChainId_1, depositRouteChainId_2, l2Token_1, l2Token_2, enable);
-        emit SetEnableDepositRoute(depositRouteChainId_2, depositRouteChainId_1, l2Token_2, l2Token_1, enable);
+        _setDepositAndPoolRebalanceRoute(
+            depositRouteChainId_1,
+            depositRouteChainId_2,
+            ethereumCounterpartToken,
+            l2Token_1,
+            l2Token_2,
+            enable
+        );
     }
 
     /**
@@ -924,6 +951,41 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /*************************************************
      *              INTERNAL FUNCTIONS               *
      *************************************************/
+
+    function _setDepositAndPoolRebalanceRoute(
+        uint256 depositOriginChainId,
+        uint256 depositDestinationChainId,
+        address ethereumCounterpartToken,
+        address originToken,
+        address destinationToken,
+        bool enable
+    ) internal {
+        poolRebalanceRoutes[_poolRebalanceRouteKey(ethereumCounterpartToken, depositDestinationChainId)] = (
+            enable ? destinationToken : address(0)
+        );
+        _relaySpokePoolAdminFunction(
+            depositOriginChainId,
+            abi.encodeWithSignature(
+                "setEnableRoute(address,address,uint256,bool)",
+                originToken,
+                destinationToken,
+                depositDestinationChainId,
+                enable
+            )
+        );
+        emit SetPoolRebalanceRoute(
+            depositDestinationChainId,
+            ethereumCounterpartToken,
+            enable ? destinationToken : address(0)
+        );
+        emit SetEnableDepositRoute(
+            depositOriginChainId,
+            depositDestinationChainId,
+            originToken,
+            destinationToken,
+            enable
+        );
+    }
 
     // Called when a dispute fails due to parameter changes. This effectively resets the state and cancels the request
     // with no loss of funds, thereby enabling a new bundle to be added.

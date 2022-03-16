@@ -125,7 +125,7 @@ describe("HubPool Admin functions", function () {
     await expect(
       hubPool
         .connect(other)
-        .setDepositAndPoolRebalanceRoute(
+        .setDepositAndPoolRebalanceBiDirectionRoute(
           originChainId,
           destinationChainId,
           weth.address,
@@ -134,7 +134,7 @@ describe("HubPool Admin functions", function () {
           true
         )
     ).to.be.reverted;
-    await hubPool.setDepositAndPoolRebalanceRoute(
+    await hubPool.setDepositAndPoolRebalanceBiDirectionRoute(
       originChainId,
       destinationChainId,
       weth.address,
@@ -150,7 +150,7 @@ describe("HubPool Admin functions", function () {
     // Check content of messages relayed to spoke pools
     const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
     let relayMessageEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayMessageCalled());
-    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         wethOnDestinationChain,
         wethOnOriginChain,
@@ -158,7 +158,7 @@ describe("HubPool Admin functions", function () {
         true,
       ])
     );
-    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         wethOnOriginChain,
         wethOnDestinationChain,
@@ -184,20 +184,20 @@ describe("HubPool Admin functions", function () {
       wethOnOriginChain
     );
     const depositRouteEvents = await hubPool.queryFilter(hubPool.filters.SetEnableDepositRoute());
-    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.originChainId).to.equal(destinationChainId);
-    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.destinationChainId).to.equal(originChainId);
-    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.originToken).to.equal(wethOnDestinationChain);
-    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.destinationToken).to.equal(wethOnOriginChain);
-    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.depositsEnabled).to.equal(true);
-    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.originChainId).to.equal(originChainId);
-    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.destinationChainId).to.equal(destinationChainId);
-    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.originToken).to.equal(wethOnOriginChain);
-    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.destinationToken).to.equal(wethOnDestinationChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.originChainId).to.equal(destinationChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.destinationChainId).to.equal(originChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.originToken).to.equal(wethOnDestinationChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.destinationToken).to.equal(wethOnOriginChain);
     expect(depositRouteEvents[depositRouteEvents.length - 2].args?.depositsEnabled).to.equal(true);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.originChainId).to.equal(originChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.destinationChainId).to.equal(destinationChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.originToken).to.equal(wethOnOriginChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.destinationToken).to.equal(wethOnDestinationChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.depositsEnabled).to.equal(true);
 
     // Now disable the routes and check that pool rebalance destination tokens are zeroed out and relayed message
     // correctly disables the deposit routes.
-    await hubPool.setDepositAndPoolRebalanceRoute(
+    await hubPool.setDepositAndPoolRebalanceBiDirectionRoute(
       originChainId,
       destinationChainId,
       weth.address,
@@ -208,7 +208,7 @@ describe("HubPool Admin functions", function () {
     expect(await hubPool.poolRebalanceRoute(originChainId, weth.address)).to.equal(ZERO_ADDRESS);
     expect(await hubPool.poolRebalanceRoute(destinationChainId, weth.address)).to.equal(ZERO_ADDRESS);
     relayMessageEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayMessageCalled());
-    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         wethOnDestinationChain,
         wethOnOriginChain,
@@ -216,12 +216,52 @@ describe("HubPool Admin functions", function () {
         false,
       ])
     );
-    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         wethOnOriginChain,
         wethOnDestinationChain,
         destinationChainId,
         false,
+      ])
+    );
+
+    // Finally, re-enable the routes individually using the one-way helper methods.
+    await hubPool.setDepositAndPoolRebalanceRoute(
+      originChainId,
+      destinationChainId,
+      weth.address,
+      wethOnOriginChain,
+      wethOnDestinationChain,
+      true
+    );
+    expect(await hubPool.poolRebalanceRoute(destinationChainId, weth.address)).to.equal(wethOnDestinationChain);
+    expect(await hubPool.poolRebalanceRoute(originChainId, weth.address)).to.equal(ZERO_ADDRESS);
+    relayMessageEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayMessageCalled());
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        wethOnOriginChain,
+        wethOnDestinationChain,
+        destinationChainId,
+        true,
+      ])
+    );
+    await hubPool.setDepositAndPoolRebalanceRoute(
+      destinationChainId,
+      originChainId,
+      weth.address,
+      wethOnDestinationChain,
+      wethOnOriginChain,
+      true
+    );
+    expect(await hubPool.poolRebalanceRoute(destinationChainId, weth.address)).to.equal(wethOnDestinationChain);
+    expect(await hubPool.poolRebalanceRoute(originChainId, weth.address)).to.equal(wethOnOriginChain);
+    relayMessageEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayMessageCalled());
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        wethOnDestinationChain,
+        wethOnOriginChain,
+        originChainId,
+        true,
       ])
     );
   });
