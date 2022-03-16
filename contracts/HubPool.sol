@@ -678,7 +678,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // then the delegate call should revert.
         address adapter = crossChainContracts[chainId].adapter;
         // Note: if any of the keccak256(l1Tokens, chainId) are not mapped to a destination token address, then this
-        // internal method will revert.
+        // internal method will revert. In this case the admin will have to associate a destination token with each l1
+        // token. If the destination token mapping was missing at the time of the proposal, we assume that the root
+        // bundle would have been disputed because the off-chain data worker would have been unable to determine
+        // if the relayers used the correct destination token for a given origin token.
         _sendTokensToChainAndUpdatePooledTokenTrackers(
             adapter,
             spokePool,
