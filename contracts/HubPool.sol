@@ -646,11 +646,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
 
         // Make sure SpokePool address is initialized since _sendTokensToChainAndUpdatePooledTokenTrackers() will not
-        // revert if its accidentally set to address(0). We don't make the same check on the adapter for this
-        // chainId because the internal method's delegatecall() to the adapter will revert if its address is set
-        // incorrectly.
+        // revert if its accidentally set to address(0). Also check that adapter is not 0x0 since delegatecall to the
+        // 0x0 address will not revert.
         address spokePool = crossChainContracts[chainId].spokePool;
+        address adapter = crossChainContracts[chainId].adapter;
         require(spokePool != address(0), "Uninitialized spoke pool");
+        require(adapter != address(0), "Uninitialized adapter");
 
         // Set the leafId in the claimed bitmap.
         rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
@@ -659,9 +660,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         // Relay each L1 token to destination chain.
-        // Note: We don't check that the adapter is initialized since if its the zero address or invalid otherwise,
-        // then the delegate call should revert.
-        address adapter = crossChainContracts[chainId].adapter;
         _sendTokensToChainAndUpdatePooledTokenTrackers(
             adapter,
             spokePool,
@@ -1010,6 +1008,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address adapter = crossChainContracts[chainId].adapter;
         address spokePool = crossChainContracts[chainId].spokePool;
         require(spokePool != address(0), "SpokePool not initialized");
+        require(adapter != address(0), "Adapter not initialized");
 
         // Perform delegatecall to use the adapter's code with this contract's context.
         (bool success, ) = adapter.delegatecall(
