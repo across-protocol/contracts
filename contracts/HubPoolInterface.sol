@@ -14,17 +14,17 @@ interface HubPoolInterface {
         uint256 chainId;
         // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         uint256[] bundleLpFees;
-        // This array is grouped with the two above, and it represents the amount to send or request back from the
-        // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
-        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero when the
-        // rules indicate that a rebalancing action should occur. When a rebalance does occur, runningBalances should be
-        //  set to zero for this token and the netSendAmounts should be set to the previous runningBalances + relays -
-        // deposits in this bundle. If non-zero then it must be set on the SpokePool's RelayerRefundLeaf amountToReturn
-        // as -1 * this value to indicate if funds are being sent from or to the SpokePool.
+        // This array is represents the amount to send to or request back from the SpokePool. If positive, the pool will
+        // pay the SpokePool. If negative the SpokePool will pay the HubPool. There can be arbitrarily rebalancing rules
+        // defined offchain. This number is only nonzero when the rules indicate that a rebalancing action should occur.
+        // When a rebalance does occur, runningBalances should be set to zero for this token and the netSendAmounts
+        // should be set to the previous runningBalances + relays - deposits in this bundle. If non-zero then it must be
+        // set on the SpokePool's RelayerRefundLeaf amountToReturn as -1 * this value to indicate if funds are
+        // being sent to or from the associated SpokePool.
         int256[] netSendAmounts;
-        // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
-        // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
-        // SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts
+        // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1
+        // pool. A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that
+        // the SpokePool owes the HubPool funds. See the comment above for the dynamics of this and netSendAmounts.
         int256[] runningBalances;
         // Used by data worker to mark which leaves should relay roots to SpokePools, and to otherwise organize leaves.
         // For example, each leaf should contain all the rebalance information for a single chain, but in the case where
