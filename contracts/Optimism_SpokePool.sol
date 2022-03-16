@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./SpokePool.sol";
 import "./interfaces/WETH9.sol";
+import "./SpokePoolInterface.sol";
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
-import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
 
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions.
