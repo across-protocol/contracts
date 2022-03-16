@@ -41,9 +41,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // instruct this contract to wrap ETH when depositing.
     WETH9 public weth;
 
-    // Timestamp when contract was constructed. Relays cannot have a quote time before this.
-    uint32 public deploymentTime;
-
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
     uint32 public depositQuoteTimeBuffer = 600;
@@ -160,7 +157,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     ) Testable(timerAddress) {
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        deploymentTime = uint32(getCurrentTime());
         weth = WETH9(_wethAddress);
     }
 
@@ -351,6 +347,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 depositId,
         bytes memory depositorSignature
     ) public override nonReentrant {
+        require(newRelayerFeePct < 0.5e18, "invalid relayer fee");
+
         _verifyUpdateRelayerFeeMessage(depositor, chainId(), newRelayerFeePct, depositId, depositorSignature);
 
         // Assuming the above checks passed, a relayer can take the signature and the updated relayer fee information

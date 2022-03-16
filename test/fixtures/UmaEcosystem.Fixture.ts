@@ -31,7 +31,7 @@ export const umaEcosystemFixture = hre.deployments.createFixture(async ({ ethers
   // Set up other required UMA ecosystem components.
   await identifierWhitelist.addSupportedIdentifier(identifier);
 
-  return { timer, finder, collateralWhitelist, identifierWhitelist, store, optimisticOracle };
+  return { timer, finder, collateralWhitelist, identifierWhitelist, store, optimisticOracle, mockOracle };
 });
 
 module.exports.tags = ["UmaEcosystem"];
