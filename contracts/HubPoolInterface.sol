@@ -98,21 +98,24 @@ interface HubPoolInterface {
 
     function getRootBundleProposalAncillaryData() external view returns (bytes memory ancillaryData);
 
-    function whitelistRoute(
+    function setPoolRebalanceRoute(
+        uint256 destinationChainId,
+        address originToken,
+        address destinationToken
+    ) external;
+
+    function setDepositRoute(
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
         address destinationToken,
-        bool depositsEnabled,
-        bool relayToSpokePool,
-        bool setInHubPool
+        bool depositsEnabled
     ) external;
 
-    function poolRebalanceRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken
-    ) external view returns (address destinationToken);
+    function poolRebalanceRoute(uint256 destinationChainId, address originToken)
+        external
+        view
+        returns (address destinationToken);
 
     function loadEthForL2Calls() external payable;
 }

@@ -100,10 +100,9 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
         await getContractFactory("MockSpokePool", owner)
       ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
-      // Just whitelist route from mainnet to l2 (hacky), which shouldn't change gas estimates, but will allow refunds to be sent.
       await Promise.all(
         l1Tokens.map(async (token) => {
-          await hubPool.whitelistRoute(hubPoolChainId, i, token.address, randomAddress(), true, false, true);
+          await hubPool.setPoolRebalanceRoute(i, token.address, randomAddress());
         })
       );
       destinationChainIds.push(i);

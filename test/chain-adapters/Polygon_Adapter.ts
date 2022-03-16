@@ -42,8 +42,8 @@ describe("Polygon Chain Adapter", function () {
     ).deploy(rootChainManager.address, fxStateSender.address, weth.address);
 
     await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
-    await hubPool.whitelistRoute(l1ChainId, polygonChainId, weth.address, l2Weth, true, false, true);
-    await hubPool.whitelistRoute(l1ChainId, polygonChainId, dai.address, l2Dai, true, false, true);
+    await hubPool.setPoolRebalanceRoute(polygonChainId, weth.address, l2Weth);
+    await hubPool.setPoolRebalanceRoute(polygonChainId, dai.address, l2Dai);
   });
 
   it("relayMessage calls spoke pool functions", async function () {

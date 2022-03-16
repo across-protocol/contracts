@@ -40,8 +40,8 @@ describe("Arbitrum Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(arbitrumChainId, arbitrumAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, dai.address, l2Dai, true, false, true);
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth, true, false, true);
+    await hubPool.setPoolRebalanceRoute(arbitrumChainId, dai.address, l2Dai);
+    await hubPool.setPoolRebalanceRoute(arbitrumChainId, weth.address, l2Weth);
   });
 
   it("relayMessage calls spoke pool functions", async function () {

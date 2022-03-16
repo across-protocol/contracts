@@ -59,9 +59,9 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   const mockTokens = { l2Weth: randomAddress(), l2Dai: randomAddress(), l2Usdc: randomAddress() };
 
   // Whitelist pool rebalance routes but don't relay any messages to SpokePool
-  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, weth.address, mockTokens.l2Weth, true, false, true);
-  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, dai.address, mockTokens.l2Dai, true, false, true);
-  await hubPool.whitelistRoute(mainnetChainId, repaymentChainId, usdc.address, mockTokens.l2Usdc, true, false, true);
+  await hubPool.setPoolRebalanceRoute(repaymentChainId, weth.address, mockTokens.l2Weth);
+  await hubPool.setPoolRebalanceRoute(repaymentChainId, dai.address, mockTokens.l2Dai);
+  await hubPool.setPoolRebalanceRoute(repaymentChainId, usdc.address, mockTokens.l2Usdc);
 
   return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
 });

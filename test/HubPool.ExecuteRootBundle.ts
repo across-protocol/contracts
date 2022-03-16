@@ -126,15 +126,7 @@ describe("HubPool Root Bundle Execution", function () {
     );
 
     // Let's set weth pool rebalance route to zero address.
-    await hubPool.whitelistRoute(
-      await hre.getChainId(),
-      consts.repaymentChainId,
-      weth.address,
-      ZERO_ADDRESS,
-      true,
-      false,
-      true
-    );
+    await hubPool.setPoolRebalanceRoute(consts.repaymentChainId, weth.address, ZERO_ADDRESS);
 
     // Advance time so the request can be executed and check that executing the request reverts.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);

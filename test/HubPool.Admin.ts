@@ -47,33 +47,24 @@ describe("HubPool Admin functions", function () {
       hubPool.connect(other).setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address)
     ).to.be.reverted;
   });
-  it("Only owner can whitelist route for deposits and rebalances", async function () {
+  it("Only owner can whitelist route for rebalances and deposits", async function () {
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
-    await expect(
-      hubPool
-        .connect(other)
-        .whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true, false, true)
-    ).to.be.reverted;
-    await expect(
-      hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true, false, true)
-    )
+    await expect(hubPool.connect(other).setPoolRebalanceRoute(destinationChainId, weth.address, usdc.address)).to.be
+      .reverted;
+    await expect(hubPool.setPoolRebalanceRoute(destinationChainId, weth.address, usdc.address))
       .to.emit(hubPool, "SetPoolRebalanceRoute")
-      .withArgs(originChainId, destinationChainId, weth.address, usdc.address);
+      .withArgs(destinationChainId, weth.address, usdc.address);
 
-    // Relay whitelist mapping to spoke pool. Check content of messages sent to mock spoke pool.
+    // Relay deposit mapping to spoke pool. Check content of messages sent to mock spoke pool.
     await expect(
-      hubPool
-        .connect(other)
-        .whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true, true, false)
+      hubPool.connect(other).setDepositRoute(originChainId, destinationChainId, weth.address, usdc.address, true)
     ).to.be.reverted;
-    await expect(
-      hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true, true, false)
-    )
+    await expect(hubPool.setDepositRoute(originChainId, destinationChainId, weth.address, usdc.address, true))
       .to.emit(hubPool, "SetEnableDepositRoute")
       .withArgs(originChainId, destinationChainId, weth.address, usdc.address, true);
 
     // Disable deposit route on SpokePool right after:
-    await hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, false, true, true);
+    await hubPool.setDepositRoute(originChainId, destinationChainId, weth.address, usdc.address, false);
 
     // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
     const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
