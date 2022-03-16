@@ -427,6 +427,72 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
+     * @notice Convenience method that whitelists (or unwhitelists) a pool rebalance route to two SpokePools and also
+     * whitelists deposits between the two spoke pools. Callable only by owner. For example, the admin might want
+     * to enable two-way USDC on Optimism <> USDC on Arbitrum relays. In practice, the admin would also need to
+     * enable pool rebalances from this contract to Optimism and Arbitrum for USDC. So this function would execute
+     * four transactions atomically:
+     *     - whitelist pool rebalance route from USDC on Ethereum to USDC on Optimism
+     *     - whitelist pool rebalance route from USDC on Ethereum to USDC on Arbitrum
+     *     - whitelist deposit route from USDC on Optimism to USDC on Arbitrum
+     *     - whitelist deposit route from USDC on Arbitrum to USDC on Optimism
+     * @param depositRouteChainId_1 Chain ID for one SpokePool that we want to enable as a deposit origin and
+     * destination. Pool rebalances to this chain will also be enabled.
+     * @param depositRouteChainId_2 The other chain in addition to `depositRouteChainId_1` that we want to enable
+     * as a deposit origin and destination, and make available for pool rebalances.
+     * @param ethereumCounterpartToken Token on the current network that will be sent to the SpokePool on
+     * both `depositRouteChainId_1` and ``depositRouteChainId_2` for pool rebalances.
+     * @param l2Token_1 Token that we want to enable for deposits on `depositRouteChainId_1` that can be fulfilled by
+     * `l2Token_2` on `depositRouteChainId_2`. Should be the chainId_1 counterpart of `ethereumCounterpartToken`.
+     * @param l2Token_2 Token that we want to enable for deposits on `depositRouteChainId_2` that can be fulfilled by
+     * `l2Token_1` on `depositRouteChainId_1`. Should be the chainId_2 counterpart of `ethereumCounterpartToken`.
+     * @param enable Set to True to set up pool rebalances to `depositRouteChainId_1` and `depositRouteChainId_2` and
+     * deposits from `depositRouteChainId_1` to `depositRouteChainId_2`. Set to False to disable all of the above. If
+     * this value is false, the pool rebalance destination tokens will be set to 0x0 and the deposit routes will be
+     * disabled on the SpokePools.
+     */
+    function setDepositAndPoolRebalanceRoute(
+        uint256 depositRouteChainId_1,
+        uint256 depositRouteChainId_2,
+        address ethereumCounterpartToken,
+        address l2Token_1,
+        address l2Token_2,
+        bool enable
+    ) public override nonReentrant onlyOwner {
+        poolRebalanceRoutes[_poolRebalanceRouteKey(ethereumCounterpartToken, depositRouteChainId_1)] = (
+            enable ? l2Token_1 : address(0)
+        );
+        poolRebalanceRoutes[_poolRebalanceRouteKey(ethereumCounterpartToken, depositRouteChainId_2)] = (
+            enable ? l2Token_2 : address(0)
+        );
+        _relaySpokePoolAdminFunction(
+            depositRouteChainId_1,
+            abi.encodeWithSignature(
+                "setEnableRoute(address,address,uint256,bool)",
+                l2Token_1,
+                l2Token_2,
+                depositRouteChainId_2,
+                enable
+            )
+        );
+        _relaySpokePoolAdminFunction(
+            depositRouteChainId_2,
+            abi.encodeWithSignature(
+                "setEnableRoute(address,address,uint256,bool)",
+                l2Token_2,
+                l2Token_1,
+                depositRouteChainId_1,
+                enable
+            )
+        );
+
+        emit SetPoolRebalanceRoute(depositRouteChainId_1, ethereumCounterpartToken, l2Token_1);
+        emit SetPoolRebalanceRoute(depositRouteChainId_2, ethereumCounterpartToken, l2Token_2);
+        emit SetEnableDepositRoute(depositRouteChainId_1, depositRouteChainId_2, l2Token_1, l2Token_2, enable);
+        emit SetEnableDepositRoute(depositRouteChainId_2, depositRouteChainId_1, l2Token_2, l2Token_1, enable);
+    }
+
+    /**
      * @notice Enables LPs to provide liquidity for L1 token. Deploys new LP token for L1 token if appropriate.
      * Callable only by owner.
      * @param l1Token Token to provide liquidity for.

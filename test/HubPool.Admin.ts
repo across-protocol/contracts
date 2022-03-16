@@ -116,6 +116,116 @@ describe("HubPool Admin functions", function () {
     );
   });
 
+  it("Only owner can whitelist deposits and rebalances atomically", async function () {
+    await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
+    await hubPool.setCrossChainContracts(originChainId, mockAdapter.address, mockSpoke.address);
+
+    const wethOnOriginChain = randomAddress();
+    const wethOnDestinationChain = randomAddress();
+    await expect(
+      hubPool
+        .connect(other)
+        .setDepositAndPoolRebalanceRoute(
+          originChainId,
+          destinationChainId,
+          weth.address,
+          wethOnOriginChain,
+          wethOnDestinationChain,
+          true
+        )
+    ).to.be.reverted;
+    await hubPool.setDepositAndPoolRebalanceRoute(
+      originChainId,
+      destinationChainId,
+      weth.address,
+      wethOnOriginChain,
+      wethOnDestinationChain,
+      true
+    );
+
+    // Check pool rebalance routes
+    expect(await hubPool.poolRebalanceRoute(originChainId, weth.address)).to.equal(wethOnOriginChain);
+    expect(await hubPool.poolRebalanceRoute(destinationChainId, weth.address)).to.equal(wethOnDestinationChain);
+
+    // Check content of messages relayed to spoke pools
+    const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
+    let relayMessageEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayMessageCalled());
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        wethOnDestinationChain,
+        wethOnOriginChain,
+        originChainId,
+        true,
+      ])
+    );
+    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        wethOnOriginChain,
+        wethOnDestinationChain,
+        destinationChainId,
+        true,
+      ])
+    );
+
+    // Check that HubPool emitted four events.
+    const poolRebalanceRouteEvents = await hubPool.queryFilter(hubPool.filters.SetPoolRebalanceRoute());
+    expect(poolRebalanceRouteEvents[poolRebalanceRouteEvents.length - 1].args?.destinationChainId).to.equal(
+      destinationChainId
+    );
+    expect(poolRebalanceRouteEvents[poolRebalanceRouteEvents.length - 1].args?.originToken).to.equal(weth.address);
+    expect(poolRebalanceRouteEvents[poolRebalanceRouteEvents.length - 1].args?.destinationToken).to.equal(
+      wethOnDestinationChain
+    );
+    expect(poolRebalanceRouteEvents[poolRebalanceRouteEvents.length - 2].args?.destinationChainId).to.equal(
+      originChainId
+    );
+    expect(poolRebalanceRouteEvents[poolRebalanceRouteEvents.length - 2].args?.originToken).to.equal(weth.address);
+    expect(poolRebalanceRouteEvents[poolRebalanceRouteEvents.length - 2].args?.destinationToken).to.equal(
+      wethOnOriginChain
+    );
+    const depositRouteEvents = await hubPool.queryFilter(hubPool.filters.SetEnableDepositRoute());
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.originChainId).to.equal(destinationChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.destinationChainId).to.equal(originChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.originToken).to.equal(wethOnDestinationChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.destinationToken).to.equal(wethOnOriginChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 1].args?.depositsEnabled).to.equal(true);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.originChainId).to.equal(originChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.destinationChainId).to.equal(destinationChainId);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.originToken).to.equal(wethOnOriginChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.destinationToken).to.equal(wethOnDestinationChain);
+    expect(depositRouteEvents[depositRouteEvents.length - 2].args?.depositsEnabled).to.equal(true);
+
+    // Now disable the routes and check that pool rebalance destination tokens are zeroed out and relayed message
+    // correctly disables the deposit routes.
+    await hubPool.setDepositAndPoolRebalanceRoute(
+      originChainId,
+      destinationChainId,
+      weth.address,
+      wethOnOriginChain,
+      wethOnDestinationChain,
+      false
+    );
+    expect(await hubPool.poolRebalanceRoute(originChainId, weth.address)).to.equal(ZERO_ADDRESS);
+    expect(await hubPool.poolRebalanceRoute(destinationChainId, weth.address)).to.equal(ZERO_ADDRESS);
+    relayMessageEvents = await mockAdapterAtHubPool.queryFilter(mockAdapterAtHubPool.filters.RelayMessageCalled());
+    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        wethOnDestinationChain,
+        wethOnOriginChain,
+        originChainId,
+        false,
+      ])
+    );
+    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
+      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
+        wethOnOriginChain,
+        wethOnDestinationChain,
+        destinationChainId,
+        false,
+      ])
+    );
+  });
+
   it("Can change the bond token and amount", async function () {
     expect(await hubPool.callStatic.bondToken()).to.equal(weth.address); // Default set in the fixture.
     expect(await hubPool.callStatic.bondAmount()).to.equal(bondAmount.add(finalFee)); // Default set in the fixture.
