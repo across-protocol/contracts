@@ -143,6 +143,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }
 
+    // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`. So, we don't need
+    // to explicitly reentrancy guard admin functions on this spoke pool, but we should ensure that the
+    // `processMessageFromRoot` method is reentrancy guarded which is why the `callValidated` check is made below
+    // and why we use the `validateInternalCalls` modifier on `processMessageFromRoot`.
     function _requireAdminSender() internal view override {
         require(callValidated, "Must call processMessageFromRoot");
     }
