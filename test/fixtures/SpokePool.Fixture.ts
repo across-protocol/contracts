@@ -44,7 +44,6 @@ export async function deploySpokePool(ethers: any): Promise<{
 
 export interface DepositRoute {
   originToken: string;
-  destinationToken: string;
   destinationChainId?: number;
   enabled?: boolean;
 }
@@ -52,7 +51,6 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   for (const route of routes) {
     await spokePool.setEnableRoute(
       route.originToken,
-      route.destinationToken,
       route.destinationChainId ? route.destinationChainId : consts.destinationChainId,
       route.enabled !== undefined ? route.enabled : true
     );

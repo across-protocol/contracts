@@ -11,13 +11,10 @@ describe("SpokePool Admin Functions", async function () {
     ({ spokePool, erc20 } = await spokePoolFixture());
   });
   it("Enable token path", async function () {
-    const destToken = randomAddress();
-    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destToken, destinationChainId, true))
+    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
       .to.emit(spokePool, "EnabledDepositRoute")
-      .withArgs(destinationChainId, erc20.address, destToken, true);
-    const destTokenStruct = await spokePool.enabledDepositRoutes(erc20.address, destinationChainId);
-    expect(destTokenStruct.enabled).to.equal(true);
-    expect(destTokenStruct.destinationToken).to.equal(destToken);
+      .withArgs(destinationChainId, erc20.address, true);
+    expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
   });
   it("Change deposit quote buffer", async function () {
     await expect(spokePool.connect(owner).setDepositQuoteTimeBuffer(60))

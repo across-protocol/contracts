@@ -48,12 +48,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
-    struct DepositDestinationToken {
-        address destinationToken;
-        bool enabled;
-    }
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    mapping(address => mapping(uint256 => DepositDestinationToken)) public enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
     // by "data workers" via inclusion proofs to execute leaves in the roots.
@@ -80,12 +76,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      ****************************************/
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
-    event EnabledDepositRoute(
-        uint256 indexed destinationChainId,
-        address indexed originToken,
-        address indexed destinationToken,
-        bool enabled
-    );
+    event EnabledDepositRoute(uint256 indexed destinationChainId, address indexed originToken, bool enabled);
     event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
@@ -95,7 +86,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         address indexed originToken,
-        address destinationToken,
         address recipient,
         address indexed depositor
     );
@@ -194,21 +184,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**
      * @notice Enable/Disable an origin token => destination chain ID route for deposits. Callable by admin only.
      * @param originToken Token that depositor can deposit to this contract.
-     * @param destinationToken Token that recipient on destination chain receives.
      * @param destinationChainId Chain ID for where depositor wants to receive funds.
      * @param enabled True to enable deposits, False otherwise.
      */
     function setEnableRoute(
         address originToken,
-        address destinationToken,
         uint256 destinationChainId,
         bool enabled
     ) public override onlyAdmin {
-        enabledDepositRoutes[originToken][destinationChainId] = DepositDestinationToken({
-            destinationToken: destinationToken,
-            enabled: enabled
-        });
-        emit EnabledDepositRoute(destinationChainId, originToken, destinationToken, enabled);
+        enabledDepositRoutes[originToken][destinationChainId] = enabled;
+        emit EnabledDepositRoute(destinationChainId, originToken, enabled);
     }
 
     /**
@@ -257,7 +242,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * tokens in this contract and receive a destination token on the destination chain. The origin => destination
      * token mapping is stored on the L1 HubPool.
      * @notice The caller must first approve this contract to spend amount of originToken.
-     * @notice The originToken => destinationChainId must be enabled and the destination token must be set.
+     * @notice The originToken => destinationChainId must be enabled.
      * @notice This method is payable because the caller is able to deposit ETH if the originToken is WETH and this
      * function will handle wrapping ETH.
      * @param recipient Address to receive funds at on destination chain.
@@ -276,9 +261,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 relayerFeePct,
         uint32 quoteTimestamp
     ) public payable override nonReentrant {
-        // Check that deposit route is initialized.
-        DepositDestinationToken memory destinationToken = enabledDepositRoutes[originToken][destinationChainId];
-        require(destinationToken.destinationToken != address(0) && destinationToken.enabled, "Disabled route");
+        // Check that deposit route is enabled.
+        require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
 
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct < 0.5e18, "invalid relayer fee");
@@ -302,11 +286,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        // Note: Off-chain relayers are expected to send to the recipient `destinationToken` on the destination chain,
-        // but there is a chance that the destination token is set incorrectly or cannot be sent for other reasons. In
-        // these cases, we expect that the UMIP explains how to handle such cases. For example, a rule could be:
-        // "If the destination token address doesn't exist on the destination chain, then wait to relay the deposit
-        // until the destination token address is reset, or refund the user their token on the origin chain".
         _emitDeposit(
             amount,
             chainId(),
@@ -315,7 +294,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             numberOfDeposits,
             quoteTimestamp,
             originToken,
-            destinationToken.destinationToken,
             recipient,
             msg.sender
         );
@@ -840,7 +818,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint32 depositId,
         uint32 quoteTimestamp,
         address originToken,
-        address destinationToken,
         address recipient,
         address depositor
     ) internal {
@@ -852,7 +829,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             depositId,
             quoteTimestamp,
             originToken,
-            destinationToken,
             recipient,
             depositor
         );

@@ -49,12 +49,10 @@ describe("Optimism Spoke Pool", function () {
   });
 
   it("Only cross domain owner can enable a route", async function () {
-    await expect(optimismSpokePool.setEnableRoute(l2Dai, dai.address, 1, true)).to.be.reverted;
+    await expect(optimismSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setEnableRoute(l2Dai, dai.address, 1, true);
-    const destinationTokenStruct = await optimismSpokePool.enabledDepositRoutes(l2Dai, 1);
-    expect(destinationTokenStruct.enabled).to.equal(true);
-    expect(destinationTokenStruct.destinationToken).to.equal(dai.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setEnableRoute(l2Dai, 1, true);
+    expect(await optimismSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only cross domain owner can set the cross domain admin", async function () {

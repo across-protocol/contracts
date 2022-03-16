@@ -108,7 +108,7 @@ interface HubPoolInterface {
 
     function setPoolRebalanceRoute(
         uint256 destinationChainId,
-        address originToken,
+        address l1Token,
         address destinationToken
     ) external;
 
@@ -116,29 +116,10 @@ interface HubPoolInterface {
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken,
-        address destinationToken,
         bool depositsEnabled
     ) external;
 
-    function setDepositAndPoolRebalanceRoute(
-        uint256 depositOriginChainId,
-        uint256 depositDestinationChainId,
-        address ethereumCounterpartToken,
-        address originToken,
-        address destinationToken,
-        bool enable
-    ) external;
-
-    function setDepositAndPoolRebalanceBiDirectionRoute(
-        uint256 depositRouteChainId_1,
-        uint256 depositRouteChainId_2,
-        address ethereumCounterpartToken,
-        address l2Token_1,
-        address l2Token_2,
-        bool enable
-    ) external;
-
-    function poolRebalanceRoute(uint256 destinationChainId, address originToken)
+    function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
         external
         view
         returns (address destinationToken);

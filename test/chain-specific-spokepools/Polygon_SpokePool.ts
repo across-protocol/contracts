@@ -60,12 +60,7 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can enable a route", async function () {
-    const setEnableRouteData = polygonSpokePool.interface.encodeFunctionData("setEnableRoute", [
-      l2Dai,
-      dai.address,
-      1,
-      true,
-    ]);
+    const setEnableRouteData = polygonSpokePool.interface.encodeFunctionData("setEnableRoute", [l2Dai, 1, true]);
 
     // Wrong rootMessageSender address.
     await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, setEnableRouteData)).to.be
@@ -76,9 +71,7 @@ describe("Polygon Spoke Pool", function () {
       .reverted;
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setEnableRouteData);
-    const destinationTokenStruct = await polygonSpokePool.enabledDepositRoutes(l2Dai, 1);
-    expect(destinationTokenStruct.enabled).to.equal(true);
-    expect(destinationTokenStruct.destinationToken).to.equal(dai.address);
+    expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only correct caller can set the quote time buffer", async function () {
