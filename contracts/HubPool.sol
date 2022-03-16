@@ -814,7 +814,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * data in this ancillary data that is already included in the ProposeRootBundle event.
      * @return ancillaryData Ancillary data that can be decoded into UTF8.
      */
-    function getRootBundleProposalAncillaryData() public view override returns (bytes memory ancillaryData) {
+    function getRootBundleProposalAncillaryData() public pure override returns (bytes memory ancillaryData) {
         return "";
     }
 
