@@ -808,8 +808,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for arbitrum
-     * calls, but may also be needed for others.
+     * @notice This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for
+     * Arbitrum calls, but may also be needed for others.
      * @dev This function cannot be included in a multicall transaction call because it is `payable`. A realistic
      * situation where this might be an issue is if the caller is executing a PoolRebalanceLeaf that needs to relay
      * messages to Arbitrum. Relaying messages to Arbitrum requires that this contract has an ETH balance, so in this
