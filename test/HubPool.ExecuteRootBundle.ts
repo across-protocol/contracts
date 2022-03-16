@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, randomAddress } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
@@ -173,14 +173,14 @@ describe("HubPool Root Bundle Execution", function () {
       .connect(dataWorker)
       .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
 
-    // Set adapter to address 0x0
-    await hubPool.setCrossChainContracts(consts.repaymentChainId, ZERO_ADDRESS, mockSpoke.address);
+    // Set adapter to random address.
+    await hubPool.setCrossChainContracts(consts.repaymentChainId, randomAddress(), mockSpoke.address);
 
     // Advance time so the request can be executed and check that executing the request reverts.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await expect(
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
-    ).to.be.revertedWith("delegatecall failed");
+    ).to.be.revertedWith("Adapter not initialized");
   });
 
   it("Execution rejects leaf claim before liveness passed", async function () {
