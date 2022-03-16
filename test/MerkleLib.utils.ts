@@ -4,6 +4,7 @@ import { MerkleTree } from "../utils/MerkleTree";
 import { RelayData } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
   chainId: BigNumber;
+  groupIndex: BigNumber;
   bundleLpFees: BigNumber[];
   netSendAmounts: BigNumber[];
   runningBalances: BigNumber[];
@@ -71,13 +72,15 @@ export function buildPoolRebalanceLeafs(
   l1Tokens: string[][],
   bundleLpFees: BigNumber[][],
   netSendAmounts: BigNumber[][],
-  runningBalances: BigNumber[][]
+  runningBalances: BigNumber[][],
+  groupIndex: number[]
 ): PoolRebalanceLeaf[] {
   return Array(destinationChainIds.length)
     .fill(0)
     .map((_, i) => {
       return {
         chainId: BigNumber.from(destinationChainIds[i]),
+        groupIndex: BigNumber.from(groupIndex[i]),
         bundleLpFees: bundleLpFees[i],
         netSendAmounts: netSendAmounts[i],
         runningBalances: runningBalances[i],
@@ -109,7 +112,8 @@ export async function constructSingleChainTree(token: string, scalingSize = 1, r
     [[token]], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.
     [[tokensSendToL2]], // netSendAmounts.
-    [[tokensSendToL2]] // runningBalances.
+    [[tokensSendToL2]], // runningBalances.
+    [0] // groupIndex
   );
   const tree = await buildPoolRebalanceLeafTree(leafs);
 
