@@ -38,7 +38,10 @@ describe("SpokePool Slow Relay Logic", async function () {
     await weth.connect(relayer).approve(spokePool.address, fullRelayAmountPostFees);
 
     // Whitelist origin token => destination chain ID routes:
-    await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
+    await enableRoutes(spokePool, [
+      { originToken: erc20.address, destinationToken: randomAddress() },
+      { originToken: weth.address, destinationToken: randomAddress() },
+    ]);
 
     relays = [];
     for (let i = 0; i < 99; i++) {

@@ -103,21 +103,16 @@ interface HubPoolInterface {
         uint256 destinationChainId,
         address originToken,
         address destinationToken,
-        bool depositsEnabled
+        bool depositsEnabled,
+        bool relayToSpokePool,
+        bool setInHubPool
     ) external;
 
-    function relayWhitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        bool depositsEnabled
-    ) external;
-
-    function whitelistedRoute(
+    function poolRebalanceRoute(
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken
-    ) external view returns (address destinationToken, bool depositsEnabled);
+    ) external view returns (address destinationToken);
 
     function loadEthForL2Calls() external payable;
 }

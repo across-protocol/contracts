@@ -74,26 +74,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Whether the bundle proposal process is paused.
     bool public paused;
 
-    // A Route is mapped to a hash of an origin chain ID, origin token address, and destination chain ID. Those three
-    // values should point to a unique token address existing on the destination chain. This route is used to determine
-    // which token to send from this contract to a spoke pool to execute a "pool rebalance" in the case where the origin
-    // chain ID is this network (i.e. origin chain ID = 1). This route is also used to keep track of which deposit
-    // routes are enabled/disabled.
-    struct Route {
-        // destinationToken is used for pool rebalances.
-        address destinationToken;
-        // depositsEnabled enables deposit paths on SpokePools.
-        bool depositsEnabled;
-    }
-
     // Stores paths from origin token + ID to destination token + ID. Since different tokens on an origin might map to
     // to the same address on a destination, we hash (origin chain ID, origin token address, destination ID) to
-    // use as a key that maps to a destination token. This means that routes are stored "one-way" and each route will
-    // likely require its "reverse" route to be stored as well. For example, we would want to store USDC on Ethereum
-    // to USDC on Optimism.  This means that we'll map: keccak256(1, USDC-ethereum, 10) => USDC-optimism, and
-    // keccak(10, USDC-optimism, 1) => USDC-ethereum. Note that not all routes are enabled, but we might still want
-    // to know what the destination token address is for rebalances.
-    mapping(bytes32 => Route) private whitelistedRoutes;
+    // use as a key that maps to a destination token. This mapping is used to enable pool rebalances from
+    // HubPool to SpokePool. Note that the value component of the mapping, or the "destination token" can be
+    // set to 0x0 to disable a pool rebalance route.
+    mapping(bytes32 => address) private poolRebalanceRoutes;
 
     struct PooledToken {
         // LP token given to LPs of a specific L1 token.
@@ -193,17 +179,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokensBurnt,
         address indexed liquidityProvider
     );
-    event WhitelistRoute(
+    event SetPoolRebalanceRoute(
+        uint256 indexed originChainId,
+        uint256 indexed destinationChainId,
+        address indexed originToken,
+        address destinationToken
+    );
+    event SetEnableDepositRoute(
         uint256 indexed originChainId,
         uint256 indexed destinationChainId,
         address indexed originToken,
         address destinationToken,
-        bool depositsEnabled
-    );
-    event RelayWhitelistRoute(
-        uint256 indexed originChainId,
-        uint256 indexed destinationChainId,
-        address indexed originToken,
         bool depositsEnabled
     );
     event ProposeRootBundle(
@@ -393,15 +379,30 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Stores mapping from origin chain ID + token + destination chain ID to token. This mapping corresponds
-     * to token transfer routes and can be used for both HubPool => SpokePool rebalances and SpokePool ==> SpokePool
-     * deposits. Callable only by owner.
+     * to token transfer routes and can be used for HubPool => SpokePool rebalances. Callable only by owner.
+     * @notice Can also be used to send cross-chain message to SpokePool on originChainId to enable or disable
+     * mapping from origin token to destination chain ID. If this path is enabled on the SpokePool, then relays
+     * are allowed to be sent via that path.
+     * @notice The meaning of a "route" is reused in this contract and is possible confusing. What's important to note
+     * is that token transfers always go from origin chain to destination chain. The HubPool stores a whitelist
+     * of routes where tokens can be sent from it to SpokePools for "pool rebalances", but it has no control over
+     * which deposits are enabled on SpokePools. Conversely, the SpokePool whitelists routes that deposited tokens
+     * can be sent along to execute cross-chain relays. The reason that this function is overloaded is because this
+     * contract is the only one that can update the SpokePool's whitelist of allowed deposit routes. It is likely
+     * in practice that the admin would want to simultaneously whitelist pool rebalance routes from the HubPool
+     * to the Optimism and Arbitrum SpokePools, and whitelist deposits from Optimism to Arbitrum.
      * @param originChainId Chain where token transfer originates.
      * @param destinationChainId Chain where token transfer ends up.
      * @param originToken Token sent from origin chain.
      * @param destinationToken Token received at destination chain.
      * @param depositsEnabled Set to true to whitelist this route for deposits, set to false if caller just wants to
      * map the origin token + origin ID + destination ID to the destination token address and wants to explicitly
-     * disable this route for deposits.
+     * disable this route for deposits. This variable is used only if `relayToSpokePool` is True, in which case it is
+     * relayed as part of the message to the SpokePool.
+     * @param relayToSpokePool Set to true to relay a message to the SpokePool on the origin chain to enable
+     * deposits for the origin token to the destination chain ID. Set to false to skip this step
+     * @param setInHubPool Set to true to store the mapping from origin chain ID + token + destination chain ID to
+     * the destination token and whether deposits are enabled or not. Set to false to skip this step.
      */
 
     function whitelistRoute(
@@ -409,44 +410,41 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 destinationChainId,
         address originToken,
         address destinationToken,
-        bool depositsEnabled
+        bool depositsEnabled,
+        bool relayToSpokePool,
+        bool setInHubPool
     ) public override onlyOwner {
-        whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)] = Route({
-            destinationToken: destinationToken,
-            depositsEnabled: depositsEnabled
-        });
-        emit WhitelistRoute(originChainId, destinationChainId, originToken, destinationToken, depositsEnabled);
-    }
-
-    /**
-     * @notice Send cross-chain message to SpokePool on originChainId to enable or disable mapping from origin
-     * origin token to destination chain ID. If this path is enabled on the SpokePool, then relays are allowed to be
-     * sent via that path. The destination token address mapped to the origin token can be set by `whitelistRoute` and
-     * fetched by off-chain relayers. The SpokePool doesn't need to know which destination tokens are mapped to origin
-     * tokens as this protocol assumes that relayers use the correct whitelisted route. Callable only by owner,
-     * who has the responsibility to make sure  that calls to `whitelistRoute` are made in concert with these calls,
-     * otherwise the enabled path information will become out of sync between SpokePool and HubPool.
-     * @param originChainId Chain where token transfer originates.
-     * @param destinationChainId Chain where token transfer ends up.
-     * @param originToken Token sent from origin chain.
-     * @param depositsEnabled Set to True/False to enable/disable route on SpokePool for deposits.
-     */
-    function relayWhitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        bool depositsEnabled
-    ) public override onlyOwner nonReentrant {
-        _relaySpokePoolAdminFunction(
-            originChainId,
-            abi.encodeWithSignature(
-                "setEnableRoute(address,uint256,bool)",
-                originToken,
+        if (setInHubPool) {
+            // Store which destination token we need to bridge to SpokePool on origin chain.
+            // @dev There is an argument we should require that `originChainId == block.chainId` since pool rebalances
+            // will only ever originate from this contract, but this is an onlyOwner function and we leave it to the
+            // admin to use this function correctly.
+            poolRebalanceRoutes[
+                _poolRebalanceRouteKey(originChainId, originToken, destinationChainId)
+            ] = destinationToken;
+            emit SetPoolRebalanceRoute(originChainId, destinationChainId, originToken, destinationToken);
+        }
+        if (relayToSpokePool) {
+            // Store whether deposit route from origin chain to destination chain should be enabled or disabled on
+            // spoke pool on origin chain.
+            _relaySpokePoolAdminFunction(
+                originChainId,
+                abi.encodeWithSignature(
+                    "setEnableRoute(address,address,uint256,bool)",
+                    originToken,
+                    destinationToken,
+                    destinationChainId,
+                    depositsEnabled
+                )
+            );
+            emit SetEnableDepositRoute(
+                originChainId,
                 destinationChainId,
+                originToken,
+                destinationToken,
                 depositsEnabled
-            )
-        );
-        emit RelayWhitelistRoute(originChainId, destinationChainId, originToken, depositsEnabled);
+            );
+        }
     }
 
     /**
@@ -837,22 +835,20 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Conveniently queries whether an origin chain + token => destination chain ID is enabled for deposits and
-     * the mapped destination token.
-     * @param originChainId Deposit chain.
-     * @param destinationChainId Where depositor can receive funds.
-     * @param originToken Deposited token.
-     * @return destinationToken address Depositor can receive this token on destination chain.
-     * @return depositsEnabled boolean Whether deposits are enabled on SpokePool on origin chain.
+     * @notice Conveniently queries which destination token is mapped to the hash of an origin chain + token +
+     * destination chain ID for use in pool rebalances.
+     * @param originChainId Origin chain.
+     * @param destinationChainId Where pool rebalance sends funds.
+     * @param originToken Rebalance token.
+     * @return destinationToken address SpokePool can receive this token on destination chain following pool
+     * rebalance.
      */
-    function whitelistedRoute(
+    function poolRebalanceRoute(
         uint256 originChainId,
         uint256 destinationChainId,
         address originToken
-    ) external view override returns (address destinationToken, bool depositsEnabled) {
-        Route memory route = whitelistedRoutes[_whitelistedRouteKey(originChainId, originToken, destinationChainId)];
-        destinationToken = route.destinationToken;
-        depositsEnabled = route.depositsEnabled;
+    ) external view override returns (address destinationToken) {
+        return poolRebalanceRoutes[_poolRebalanceRouteKey(originChainId, originToken, destinationChainId)];
     }
 
     /**
@@ -910,7 +906,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             address l1Token = l1Tokens[i];
             // Validate the L1 -> L2 token route is stored. If it is not then the output of the bridging action
             // could send tokens to the 0x0 address on the L2.
-            address l2Token = whitelistedRoutes[_whitelistedRouteKey(block.chainid, l1Token, chainId)].destinationToken;
+            address l2Token = poolRebalanceRoutes[_poolRebalanceRouteKey(block.chainid, l1Token, chainId)];
             require(l2Token != address(0), "Route not whitelisted");
 
             // If the net send amount for this token is positive then: 1) send tokens from L1->L2 to facilitate the L2
@@ -1064,7 +1060,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit SpokePoolAdminFunctionTriggered(chainId, functionData);
     }
 
-    function _whitelistedRouteKey(
+    function _poolRebalanceRouteKey(
         uint256 originChainId,
         address originToken,
         uint256 destinationChainId

@@ -1,6 +1,7 @@
-import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei, randomAddress } from "./utils";
 import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
 import { amountToSeedWallets, amountToDeposit, destinationChainId, depositRelayerFeePct } from "./constants";
+import { ZERO_ADDRESS } from "@uma/common";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress;
@@ -18,7 +19,10 @@ describe("SpokePool Depositor Logic", async function () {
     await weth.connect(depositor).approve(spokePool.address, amountToDeposit);
 
     // Whitelist origin token => destination chain ID routes:
-    await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
+    await enableRoutes(spokePool, [
+      { originToken: erc20.address, destinationToken: weth.address },
+      { originToken: weth.address, destinationToken: erc20.address },
+    ]);
   });
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function () {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
@@ -45,6 +49,7 @@ describe("SpokePool Depositor Logic", async function () {
         0,
         currentSpokePoolTime,
         erc20.address,
+        weth.address,
         recipient.address,
         depositor.address
       );
@@ -152,7 +157,7 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.reverted;
 
     // Cannot deposit disabled route.
-    await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, weth.address, destinationChainId, false);
     await expect(
       spokePool
         .connect(depositor)
@@ -167,8 +172,39 @@ describe("SpokePool Depositor Logic", async function () {
           )
         )
     ).to.be.reverted;
-    // Re-enable route.
-    await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, true);
+    // Re-enable route but "forget" to set destination token address
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, ZERO_ADDRESS, destinationChainId, true);
+    await expect(
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime
+          )
+        )
+    ).to.be.reverted;
+
+    // Re-enable route and demonstrate that call would work.
+    await spokePool.connect(depositor).setEnableRoute(erc20.address, weth.address, destinationChainId, true);
+    await expect(
+      spokePool
+        .connect(depositor)
+        .callStatic.deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime
+          )
+        )
+    ).to.be.ok;
 
     // Cannot deposit with invalid relayer fee.
     await expect(

@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, hre } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
@@ -112,6 +112,35 @@ describe("HubPool Root Bundle Execution", function () {
     await expect(
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
     ).to.be.revertedWith("Uninitialized spoke pool");
+  });
+
+  it("Reverts if destination token is zero address for a pool rebalance route", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+
+    await hubPool.connect(dataWorker).proposeRootBundle(
+      [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
+      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+      consts.mockRelayerRefundRoot, // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
+    );
+
+    // Let's set weth pool rebalance route to zero address.
+    await hubPool.whitelistRoute(
+      await hre.getChainId(),
+      consts.repaymentChainId,
+      weth.address,
+      ZERO_ADDRESS,
+      true,
+      false,
+      true
+    );
+
+    // Advance time so the request can be executed and check that executing the request reverts.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Route not whitelisted");
   });
 
   it("Execution rejects leaf claim before liveness passed", async function () {

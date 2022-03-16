@@ -32,9 +32,9 @@ describe("Ethereum Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(l1ChainId, ethAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(l1ChainId, l1ChainId, weth.address, weth.address, true);
+    await hubPool.whitelistRoute(l1ChainId, l1ChainId, weth.address, weth.address, true, false, true);
 
-    await hubPool.whitelistRoute(l1ChainId, l1ChainId, dai.address, dai.address, true);
+    await hubPool.whitelistRoute(l1ChainId, l1ChainId, dai.address, dai.address, true, false, true);
   });
 
   it("relayMessage calls spoke pool functions", async function () {

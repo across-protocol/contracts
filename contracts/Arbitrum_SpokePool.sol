@@ -20,13 +20,8 @@ contract Arbitrum_SpokePool is SpokePool {
     // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
-    // Admin controlled mapping of arbitrum tokens to L1 counterpart. L1 counterpart addresses
-    // are necessary params used when bridging tokens to L1.
-    mapping(address => address) public whitelistedTokens;
-
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
-    event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
 
     /**
      * @notice Construct the AVM SpokePool.
@@ -63,22 +58,20 @@ contract Arbitrum_SpokePool is SpokePool {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
-    /**
-     * @notice Add L2 -> L1 token mapping. Callable only by admin.
-     * @param l2Token Arbitrum token.
-     * @param l1Token Ethereum version of l2Token.
-     */
-    function whitelistToken(address l2Token, address l1Token) public onlyAdmin {
-        _whitelistToken(l2Token, l1Token);
-    }
-
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
+        // Check that the Ethereum counterpart of the L2 token is stored on this contract. We assume that the HubPool
+        // is deployed with a chain ID of 1.
+        require(
+            enabledDepositRoutes[relayerRefundLeaf.l2TokenAddress][1].destinationToken != address(0),
+            "Uninitialized mainnet token"
+        );
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
+            enabledDepositRoutes[relayerRefundLeaf.l2TokenAddress][1].destinationToken, // _l1Token. Address of the
+            // L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
             relayerRefundLeaf.amountToReturn, // _amount.
             "" // _data. We don't need to send any data for the bridging action.
@@ -89,11 +82,6 @@ contract Arbitrum_SpokePool is SpokePool {
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {
         l2GatewayRouter = _l2GatewayRouter;
         emit SetL2GatewayRouter(l2GatewayRouter);
-    }
-
-    function _whitelistToken(address _l2Token, address _l1Token) internal {
-        whitelistedTokens[_l2Token] = _l1Token;
-        emit WhitelistedTokens(_l2Token, _l1Token);
     }
 
     // L1 addresses are transformed during l1->l2 calls.

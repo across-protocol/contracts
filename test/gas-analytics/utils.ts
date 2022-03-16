@@ -1,4 +1,4 @@
-import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract } from "../utils";
+import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract, randomAddress } from "../utils";
 import { TokenRolesEnum } from "@uma/common";
 import * as consts from "../constants";
 import { getDepositParams, getRelayHash, getFillRelayParams, enableRoutes } from "../fixtures/SpokePool.Fixture";
@@ -63,6 +63,7 @@ export async function warmSpokePool(
   await enableRoutes(_spokePool, [
     {
       originToken: _currencyAddress,
+      destinationToken: randomAddress(),
       destinationChainId: 1,
     },
   ]);

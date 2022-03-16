@@ -28,7 +28,6 @@ describe("Arbitrum Spoke Pool", function () {
     ).deploy(l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
-    await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
   });
 
   it("Only cross domain owner can set L2GatewayRouter", async function () {
@@ -38,15 +37,11 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Only cross domain owner can enable a route", async function () {
-    await expect(arbitrumSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).setEnableRoute(l2Dai, 1, true);
-    expect(await arbitrumSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
-  });
-
-  it("Only cross domain owner can whitelist a token pair", async function () {
-    await expect(arbitrumSpokePool.whitelistToken(l2Dai, dai.address)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
-    expect(await arbitrumSpokePool.whitelistedTokens(l2Dai)).to.equal(dai.address);
+    await expect(arbitrumSpokePool.setEnableRoute(l2Dai, dai.address, 1, true)).to.be.reverted;
+    await arbitrumSpokePool.connect(crossDomainAlias).setEnableRoute(l2Dai, dai.address, 1, true);
+    const destinationTokenStruct = await arbitrumSpokePool.enabledDepositRoutes(l2Dai, 1);
+    expect(destinationTokenStruct.enabled).to.equal(true);
+    expect(destinationTokenStruct.destinationToken).to.equal(dai.address);
   });
 
   it("Only cross domain owner can set the cross domain admin", async function () {
@@ -85,6 +80,13 @@ describe("Arbitrum Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+
+    // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
+    await expect(
+      arbitrumSpokePool.executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Uninitialized mainnet token");
+
+    await arbitrumSpokePool.connect(crossDomainAlias).setEnableRoute(l2Dai, dai.address, 1, true);
     await arbitrumSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
