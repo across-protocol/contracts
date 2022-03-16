@@ -46,7 +46,8 @@ async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Co
     _l1TokenAddresses,
     _bundleLpFeeAmounts,
     _netSendAmounts, // netSendAmounts.
-    _netSendAmounts // runningBalances.
+    _netSendAmounts, // runningBalances.
+    Array(REFUND_CHAIN_COUNT).fill(0) // relayToSpokePool
   );
   const tree = await buildPoolRebalanceLeafTree(leaves);
 
@@ -203,7 +204,10 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
       const multicallData = leaves.map((leaf) => {
-        return hubPool.interface.encodeFunctionData("executeRootBundle", [leaf, tree.getHexProof(leaf)]);
+        return hubPool.interface.encodeFunctionData("executeRootBundle", [
+          ...Object.values(leaf),
+          tree.getHexProof(leaf),
+        ]);
       });
 
       const receipt = await (await hubPool.connect(dataWorker).multicall(multicallData)).wait();
