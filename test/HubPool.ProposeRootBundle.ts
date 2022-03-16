@@ -12,7 +12,7 @@ describe("HubPool Root Bundle Proposal", function () {
   });
 
   it("Proposal of root bundle correctly stores data, emits events and pulls the bond", async function () {
-    const expectedRequestExpirationTimestamp = Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness;
+    const expectedrequestExpirationTimestamp = Number(await hubPool.getCurrentTime()) + consts.refundProposalLiveness;
     await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond);
     const dataWorkerWethBalancerBefore = await weth.callStatic.balanceOf(dataWorker.address);
 
@@ -29,7 +29,7 @@ describe("HubPool Root Bundle Proposal", function () {
     )
       .to.emit(hubPool, "ProposeRootBundle")
       .withArgs(
-        expectedRequestExpirationTimestamp,
+        expectedrequestExpirationTimestamp,
         consts.mockPoolRebalanceLeafCount,
         consts.mockBundleEvaluationBlockNumbers,
         consts.mockPoolRebalanceRoot,
@@ -42,7 +42,7 @@ describe("HubPool Root Bundle Proposal", function () {
     expect(await weth.balanceOf(dataWorker.address)).to.equal(dataWorkerWethBalancerBefore.sub(consts.totalBond));
 
     const rootBundle = await hubPool.rootBundleProposal();
-    expect(rootBundle.requestExpirationTimestamp).to.equal(expectedRequestExpirationTimestamp);
+    expect(rootBundle.requestExpirationTimestamp).to.equal(expectedrequestExpirationTimestamp);
     expect(rootBundle.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
     expect(rootBundle.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
     expect(rootBundle.relayerRefundRoot).to.equal(consts.mockRelayerRefundRoot);

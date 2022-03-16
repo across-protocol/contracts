@@ -85,7 +85,7 @@ interface HubPoolInterface {
 
     function liquidityUtilizationCurrent(address l1Token) external returns (uint256);
 
-    function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) external returns (uint256);
+    function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount) external returns (uint256);
 
     function sync(address l1Token) external;
 
