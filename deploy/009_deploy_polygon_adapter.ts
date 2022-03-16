@@ -1,10 +1,8 @@
-// l1Arbitrum Inbox and L1ERC20 Gateway taken from: https://developer.offchainlabs.com/docs/public_testnet
-
-import { L1_ADDRESS_MAP } from "./consts";
-
 // This import is needed to override the definition of the HardhatRuntimeEnvironment type.
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
+
+import { L1_ADDRESS_MAP } from "./consts";
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -14,14 +12,17 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
   const chainId = parseInt(await getChainId());
 
-  await deploy("Arbitrum_Adapter", {
+  await deploy("Polygon_Adapter", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: true,
-    args: [L1_ADDRESS_MAP[chainId].l1ArbitrumInbox, L1_ADDRESS_MAP[chainId].l1ERC20Gateway],
+    skipIfAlreadyDeployed: false,
+    args: [
+      L1_ADDRESS_MAP[chainId].polygonRootChainManager,
+      L1_ADDRESS_MAP[chainId].polygonFxRoot,
+      L1_ADDRESS_MAP[chainId].weth,
+    ],
   });
 };
 
 module.exports = func;
-func.dependencies = ["HubPool"];
-func.tags = ["ArbitrumAdapter", "mainnet"];
+func.tags = ["PolygonAdapter", "mainnet"];
