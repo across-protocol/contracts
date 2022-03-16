@@ -22,7 +22,7 @@ contract LpTokenFactory is LpTokenFactoryInterface {
             IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );
         lpToken.addMinter(msg.sender); // Set the caller as the LP Token's minter.
-        lpToken.addMinter(msg.sender); // Set the caller as the LP Token's burner.
+        lpToken.addBurner(msg.sender); // Set the caller as the LP Token's burner.
 
         return address(lpToken);
     }
