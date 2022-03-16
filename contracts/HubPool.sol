@@ -486,7 +486,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         if (sendEth) {
             weth.withdraw(l1TokensToReturn);
-            payable(msg.sender).transfer(l1TokensToReturn);
+            payable(msg.sender).transfer(l1TokensToReturn); // This will revert if the caller is a contract that does not implement a fallback function.
         } else {
             IERC20(address(l1Token)).safeTransfer(msg.sender, l1TokensToReturn);
         }
