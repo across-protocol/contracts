@@ -163,7 +163,7 @@ describe("HubPool Root Bundle Execution", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await expect(
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
-    ).to.be.revertedWith("Uninitialized spoke pool");
+    ).to.be.revertedWith("SpokePool not initialized");
   });
 
   it("Reverts if adapter not set for chain ID", async function () {
