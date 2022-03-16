@@ -1,7 +1,6 @@
 import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei, randomAddress } from "./utils";
 import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
 import { amountToSeedWallets, amountToDeposit, destinationChainId, depositRelayerFeePct } from "./constants";
-import { ZERO_ADDRESS } from "@uma/common";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress;

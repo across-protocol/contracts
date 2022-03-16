@@ -82,7 +82,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // use as a key that maps to a destination token. This mapping is used to direct pool rebalances from
     // HubPool to SpokePool, and also is designed to be used as a lookup for off-chain data workers to determine
     // which L1 tokens to relay to SpokePools to refund relayers. The admin can set the "destination token"
-    // to 0x0 to disable a pool rebalance route.
+    // to 0x0 to disable a pool rebalance route and block executeRootBundle() from executing.
     mapping(bytes32 => address) private poolRebalanceRoutes;
 
     struct PooledToken {
@@ -384,12 +384,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Store which destination token we need to bridge to SpokePool on origin chain. Callable only by owner.
-     * @dev Admin can set destinationToken to effectively disable pool rebalances for this l1 token + destination
-     * chain ID combination.
-     * @param destinationChainId Chain where pool rebalance sends tokens to.
-     * @param l1Token Token sent from this pool.
-     * @param destinationToken Token received at destination chain. Destination chain counterpart to l1Token.
+     * @notice Store canonical destination token counterpart for l1 token. Callable only by owner.
+     * @dev Admin can set destinationToken to effectively disable executing any root bundles with leaves containing
+     * this l1 token + destination chain ID combination.
+     * @param destinationChainId Destination chain where destination token resides.
+     * @param l1Token Token enabled for liquidity in this pool, and the L1 counterpart to the destination token on the
+     * destination chain ID.
+     * @param destinationToken Destination chain counterpart of L1 token.
      */
     function setPoolRebalanceRoute(
         uint256 destinationChainId,
@@ -403,6 +404,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Sends cross-chain message to SpokePool on originChainId to enable or disable
      * deposit route from that SpokePool to another one. Callable only by owner.
+     * @dev Admin is responsible for ensuring that `originToken` is linked to some L1 token on this contract, via
+     * poolRebalanceRoutes(), and that this L1 token also has a counterpart on the destination chain. If either
+     * condition fails, then the deposit will be unrelayable by off-chain relayers because they will not know which
+     * token to relay to recipients on the destination chain, and data workers wouldn't know which L1 token to send
+     * to the destination chain to refund the relayer.
      * @param originChainId Chain where token deposit occurs.
      * @param destinationChainId Chain where token depositor wants to receive funds.
      * @param originToken Token sent in deposit.
@@ -673,11 +679,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         // Relay each L1 token to destination chain.
-        // Note: if any of the keccak256(l1Tokens, chainId) are not mapped to a destination token address, then this
-        // internal method will revert. In this case the admin will have to associate a destination token with each l1
-        // token. If the destination token mapping was missing at the time of the proposal, we assume that the root
-        // bundle would have been disputed because the off-chain data worker would have been unable to determine
-        // if the relayers used the correct destination token for a given origin token.
+        // Note: if any of the keccak256(l1Tokens, chainId) combinations are not mapped to a destination token address,
+        // then this internal method will revert. In this case the admin will have to associate a destination token
+        // with each l1 token. If the destination token mapping was missing at the time of the proposal, we assume
+        //that the root bundle would have been disputed because the off-chain data worker would have been unable to
+        // determine if the relayers used the correct destination token for a given origin token.
         _sendTokensToChainAndUpdatePooledTokenTrackers(
             adapter,
             spokePool,
