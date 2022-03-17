@@ -258,8 +258,10 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // publishing a leaf that is unexecutable due to the block gas limit.
 
       // Note: Since the SpokePool is deployed on L2s we care specifically about L2 block gas limits.
-      // - Optimism: same as L1
-      // - Arbitrum: TODO
+      // - Optimism: 15mil cap, soon to be raised to 30mil when they upgrade to London.
+      // - Arbitrum: uses different units when reasoning about gas (but with the nitro upgrade those will then be
+      //   closer to Ethereum). You can do about the same amount of computation per second on the chain; each
+      //   transaction can use up to 2.5m arbgas in computation.
       // - Polygon: same as L1
 
       // Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
