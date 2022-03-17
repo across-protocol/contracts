@@ -499,7 +499,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to redeem LP share for.
      * @param lpTokenAmount Amount of LP tokens to burn. Exchange rate between L1 token and LP token can be queried
      * via public exchangeRateCurrent method.
-     * @param sendEth Set to True if L1 token is WETH and user wants to receive ETH.
+     * @param sendEth Set to True if L1 token is WETH and user wants to receive ETH. Note that if caller
+     * is a contract, then the contract should have a way to receive ETH if this value is set to True. Similarly,
+     * if this value is set to False, then the calling contract should have a way to handle WETH.
      */
     function removeLiquidity(
         address l1Token,
@@ -514,9 +516,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
-        if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
-        else IERC20(l1Token).safeTransfer(msg.sender, l1TokensToReturn);
-
+        if (sendEth) {
+            weth.withdraw(l1TokensToReturn);
+            payable(msg.sender).transfer(l1TokensToReturn); // This will revert if the caller is a contract that does not implement a fallback function.
+        } else {
+            IERC20(address(l1Token)).safeTransfer(msg.sender, l1TokensToReturn);
+        }
         emit LiquidityRemoved(l1Token, l1TokensToReturn, lpTokenAmount, msg.sender);
     }
 
@@ -871,16 +876,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.transfer(rootBundleProposal.proposer, bondAmount);
         delete rootBundleProposal;
         emit RootBundleCanceled(msg.sender, getCurrentTime(), ancillaryData);
-    }
-
-    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
-    function _unwrapWETHTo(address payable to, uint256 amount) internal {
-        if (address(to).isContract()) {
-            IERC20(address(weth)).safeTransfer(to, amount);
-        } else {
-            weth.withdraw(amount);
-            to.transfer(amount);
-        }
     }
 
     function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
