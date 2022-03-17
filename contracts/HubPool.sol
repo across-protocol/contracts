@@ -310,6 +310,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         public
         override
         onlyOwner
+        nonReentrant
     {
         require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
         require(newProtocolFeeCaptureAddress != address(0), "Bad protocolFeeCaptureAddress");
@@ -351,7 +352,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets root bundle proposal liveness period. Callable only by owner.
      * @param newLiveness New liveness period.
      */
-    function setLiveness(uint32 newLiveness) public override onlyOwner {
+    function setLiveness(uint32 newLiveness) public override onlyOwner nonReentrant {
         require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
@@ -383,7 +384,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) public override onlyOwner {
+    ) public override onlyOwner nonReentrant {
         crossChainContracts[l2ChainId] = CrossChainContract(adapter, spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -461,7 +462,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Disables LPs from providing liquidity for L1 token. Callable only by owner.
      * @param l1Token Token to disable liquidity provision for.
      */
-    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
+    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
         pooledTokens[l1Token].isEnabled = false;
         emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
@@ -490,8 +491,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Since _exchangeRateCurrent() reads this contract's balance and updates contract state using it, it must be
         // first before transferring any tokens to this contract to ensure synchronization.
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent(l1Token);
-        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
+        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
 
         if (address(weth) == l1Token && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
@@ -518,7 +519,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
         // Note this method does not make any liquidity utilization checks before letting the LP redeem their LP tokens.
-        // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
+        // If they try access more funds than available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) {
@@ -808,6 +809,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             customLiveness: liveness
         });
 
+        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
+        delete rootBundleProposal;
+
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         optimisticOracle.disputePriceFor(
@@ -820,9 +824,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         );
 
         emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
-
-        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
-        delete rootBundleProposal;
     }
 
     /**
@@ -830,9 +831,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token whose protocol fees the caller wants to disburse.
      */
     function claimProtocolFeesCaptured(address l1Token) public override nonReentrant {
-        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
-        emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
+        uint256 _unclaimedAccumulatedProtocolFees = unclaimedAccumulatedProtocolFees[l1Token];
         unclaimedAccumulatedProtocolFees[l1Token] = 0;
+        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, _unclaimedAccumulatedProtocolFees);
+        emit ProtocolFeesCapturedClaimed(l1Token, _unclaimedAccumulatedProtocolFees);
     }
 
     /**
@@ -848,7 +850,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * data in this ancillary data that is already included in the ProposeRootBundle event.
      * @return ancillaryData Ancillary data that can be decoded into UTF8.
      */
-    function getRootBundleProposalAncillaryData() public view override returns (bytes memory ancillaryData) {
+    function getRootBundleProposalAncillaryData() public pure override returns (bytes memory ancillaryData) {
         return "";
     }
 

@@ -169,7 +169,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change cross domain admin address. Callable by admin only.
      * @param newCrossDomainAdmin New cross domain admin.
      */
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyAdmin {
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyAdmin nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
@@ -177,7 +177,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change L1 hub pool address. Callable by admin only.
      * @param newHubPool New hub pool.
      */
-    function setHubPool(address newHubPool) public override onlyAdmin {
+    function setHubPool(address newHubPool) public override onlyAdmin nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -191,7 +191,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address originToken,
         uint256 destinationChainId,
         bool enabled
-    ) public override onlyAdmin {
+    ) public override onlyAdmin nonReentrant {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
@@ -200,7 +200,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change allowance for deposit quote time to differ from current block time. Callable by admin only.
      * @param newDepositQuoteTimeBuffer New quote time buffer.
      */
-    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin {
+    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
         depositQuoteTimeBuffer = newDepositQuoteTimeBuffer;
         emit SetDepositQuoteTimeBuffer(newDepositQuoteTimeBuffer);
     }
@@ -214,7 +214,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param slowRelayRoot Merkle root containing slow relay fulfillment leaves that can be individually executed via
      * executeSlowRelayRoot().
      */
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin {
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin nonReentrant {
         uint32 rootBundleId = uint32(rootBundles.length);
         RootBundle storage rootBundle = rootBundles.push();
         rootBundle.relayerRefundRoot = relayerRefundRoot;
@@ -228,7 +228,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param rootBundleId Index of the root bundle that needs to be deleted. Note: this is intentionally a uint256
      * to ensure that a small input range doesn't limit which indices this method is able to reach.
      */
-    function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin {
+    function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin nonReentrant {
         delete rootBundles[rootBundleId];
         emit EmergencyDeleteRootBundle(rootBundleId);
     }
