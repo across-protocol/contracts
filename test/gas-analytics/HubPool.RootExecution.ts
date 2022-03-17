@@ -1,4 +1,4 @@
-import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre } from "../utils";
+import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre, expect } from "../utils";
 import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
@@ -26,7 +26,13 @@ const SEND_AMOUNT = toBNWei("10");
 const STARTING_LP_AMOUNT = SEND_AMOUNT.mul(100); // This should be >= `SEND_AMOUNT` otherwise some relays will revert because
 // the pool balance won't be sufficient to cover the relay.
 const LP_FEE = SEND_AMOUNT.div(toBN(10));
-const STRESS_TEST_L1_TOKEN_COUNT = 150;
+// Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
+// we'll target 12 million gas as a conservative upper-bound. This test script will fail if executing a leaf with
+// `STRESS_TEST_L1_TOKEN_COUNT` number of tokens to send pool rebalances for is not within the
+// [TARGET_GAS_LOWER_BOUND, TARGET_GAS_UPPER_BOUND] gas usage range.
+const TARGET_GAS_UPPER_BOUND = 12_000_000;
+const TARGET_GAS_LOWER_BOUND = 10_000_000;
+const STRESS_TEST_L1_TOKEN_COUNT = 100;
 
 // Construct tree with REFUND_CHAIN_COUNT leaves, each containing REFUND_TOKEN_COUNT sends
 async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Contract[]) {
@@ -215,9 +221,8 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       // and likely an underestimate because we are relaying tokens via the MockAdapter, not an Adapter used for
       // production.
 
-      // Regarding the block limit, we should target a maximum of 30 million gas. Technically block's can support up
-      // to 30 million gas, with a target of 15 million. In practice, we should set the maximum number of L1 tokens
-      // allowed in one leaf to much lower than this limit fo 30 million.
+      // Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
+      // we'll target 12 million gas as a conservative upper-bound.
       const l1TokenAddresses = [];
       for (let i = 0; i < STRESS_TEST_L1_TOKEN_COUNT; i++) {
         const _l1Token = await deployErc20(owner, `Test Token #${i}`, `T-${i}`);
@@ -229,8 +234,8 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
         await _l1Token.connect(liquidityProvider).approve(hubPool.address, consts.maxUint256);
         await hubPool.connect(liquidityProvider).addLiquidity(_l1Token.address, STARTING_LP_AMOUNT);
 
-        // Whitelist token route from HubPool to dest. chain ID
-        await hubPool.whitelistRoute(hubPoolChainId, destinationChainIds[0], _l1Token.address, randomAddress(), true);
+        // Whitelist token route from HubPool to dest. chain ID. Destination token doesn't matter for this test.
+        await hubPool.setPoolRebalanceRoute(destinationChainIds[0], _l1Token.address, randomAddress());
       }
 
       // Add leaf to tree that contains enough L1 tokens that we can determine the limit after which the executeRoot
@@ -240,7 +245,8 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
         [l1TokenAddresses],
         [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(toBNWei("0"))],
         [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(SEND_AMOUNT)],
-        [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(SEND_AMOUNT)]
+        [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(SEND_AMOUNT)],
+        [0]
       );
       const bigLeafTree = await buildPoolRebalanceLeafTree(bigLeaves);
 
@@ -256,12 +262,24 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
 
       // Advance time so the request can be executed and execute the request.
       await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+      // Estimate the transaction gas and set it (plus some buffer) explicitly as the transaction's gas limit. This is
+      // done because ethers.js' default gas limit setting doesn't seem to always work and sometimes overestimates
+      // it and throws something like:
+      // "InvalidInputError: Transaction gas limit is X and exceeds block gas limit of 30000000"
+      const gasEstimate = await hubPool
+        .connect(dataWorker)
+        .estimateGas.executeRootBundle(...Object.values(bigLeaves[0]), bigLeafTree.getHexProof(bigLeaves[0]));
       const txn = await hubPool
         .connect(dataWorker)
-        .executeRootBundle(...Object.values(bigLeaves[0]), bigLeafTree.getHexProof(bigLeaves[0]));
+        .executeRootBundle(...Object.values(bigLeaves[0]), bigLeafTree.getHexProof(bigLeaves[0]), {
+          gasLimit: gasEstimate.mul(toBN("1.2")),
+        });
 
       const receipt = await txn.wait();
       console.log(`executeRootBundle-gasUsed: ${receipt.gasUsed}`);
+      expect(Number(receipt.gasUsed)).to.be.lessThanOrEqual(TARGET_GAS_UPPER_BOUND);
+      expect(Number(receipt.gasUsed)).to.be.greaterThanOrEqual(TARGET_GAS_LOWER_BOUND);
     });
   });
 });

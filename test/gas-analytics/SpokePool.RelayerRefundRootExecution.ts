@@ -32,7 +32,15 @@ let tree: MerkleTree<RelayerRefundLeaf>;
 const REFUND_LEAF_COUNT = 10;
 const REFUNDS_PER_LEAF = 10;
 const REFUND_AMOUNT = toBNWei("10");
-const STRESS_TEST_REFUND_COUNT = 500;
+// Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
+// we'll target 12 million gas as a conservative upper-bound. This test script will fail if executing a leaf with
+// `STRESS_TEST_REFUND_COUNT` number of refunds is not within the [TARGET_GAS_LOWER_BOUND, TARGET_GAS_UPPER_BOUND]
+// gas usage range.
+const TARGET_GAS_UPPER_BOUND = 12_000_000;
+const TARGET_GAS_LOWER_BOUND = 6_000_000;
+// Note: I can't get this to work with a gas > 8mil without the transaction timing out. This is why I've set
+// the lower bound to 6mil instead of a tighter 10mil.
+const STRESS_TEST_REFUND_COUNT = 1000;
 
 // Construct tree with REFUND_LEAF_COUNT leaves, each containing REFUNDS_PER_LEAF refunds.
 async function constructSimpleTree(
@@ -249,15 +257,19 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // This test should inform the limit # refunds that we would allow a RelayerRefundLeaf to contain to avoid
       // publishing a leaf that is unexecutable due to the block gas limit.
 
-      // Regarding the block limit, we should target a maximum of 30 million gas. Technically block's can support up
-      // to 30 million gas, with a target of 15 million. In practice, we should set the maximum number of L1 tokens
-      // allowed in one leaf to much lower than this limit fo 30 million.
-      await seedContract(spokePool, owner, [], weth, toBN(STRESS_TEST_REFUND_COUNT).mul(REFUND_AMOUNT).mul(toBN(5)));
+      // Note: Since the SpokePool is deployed on L2s we care specifically about L2 block gas limits.
+      // - Optimism: same as L1
+      // - Arbitrum: TODO
+      // - Polygon: same as L1
+
+      // Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
+      // we'll target 12 million gas as a conservative upper-bound.
+      await seedContract(spokePool, owner, [], weth, toBN(STRESS_TEST_REFUND_COUNT).mul(REFUND_AMOUNT).mul(toBN(10)));
 
       // Create tree with 1 large leaf.
       const bigLeaves = buildRelayerRefundLeafs(
         [destinationChainIds[0]],
-        [toBNWei("1")],
+        [toBNWei("1")], // Set amount to return > 0 to better simulate long execution path of _executeRelayerRefundLeaf
         [weth.address],
         [Array(STRESS_TEST_REFUND_COUNT).fill(recipient.address)],
         [Array(STRESS_TEST_REFUND_COUNT).fill(REFUND_AMOUNT)]
@@ -265,12 +277,24 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       const bigLeafTree = await buildRelayerRefundTree(bigLeaves);
 
       await spokePool.connect(dataWorker).relayRootBundle(bigLeafTree.getHexRoot(), consts.mockSlowRelayRoot);
+
+      // Estimate the transaction gas and set it (plus some buffer) explicitly as the transaction's gas limit. This is
+      // done because ethers.js' default gas limit setting doesn't seem to always work and sometimes overestimates
+      // it and throws something like:
+      // "InvalidInputError: Transaction gas limit is X and exceeds block gas limit of 30000000"
+      const gasEstimate = await spokePool
+        .connect(dataWorker)
+        .estimateGas.executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
+        .executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]), {
+          gasLimit: gasEstimate.mul(toBN("1.2")),
+        });
 
       const receipt = await txn.wait();
       console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+      expect(Number(receipt.gasUsed)).to.be.lessThanOrEqual(TARGET_GAS_UPPER_BOUND);
+      expect(Number(receipt.gasUsed)).to.be.greaterThanOrEqual(TARGET_GAS_LOWER_BOUND);
     });
   });
 });
