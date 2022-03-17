@@ -215,9 +215,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     );
     event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
-    event RootBundleDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RootBundleDisputed(address indexed disputer, uint256 requestTime);
 
-    event RootBundleCanceled(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RootBundleCanceled(address indexed disputer, uint256 requestTime);
 
     modifier noActiveRequests() {
         require(!_activeRequest(), "proposal has unclaimed leafs");
@@ -742,14 +742,21 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint32 currentTime = uint32(getCurrentTime());
         require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
-        // Request price from OO and dispute it.
-        bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
-        uint256 finalFee = _getBondTokenFinalFee();
+        // This method will request a price from the OO and dispute it. Note that we set the ancillary data to
+        // the empty string (""). The root bundle that is being disputed was the most recently proposed one with a
+        // block number less than or equal to the dispute block time. All of this root bundle data can be found in
+        // the ProposeRootBundle event params. Moreover, the optimistic oracle will stamp the requester's address
+        // (i.e. this contract address) meaning that ancillary data for a dispute originating from another HubPool
+        // will always be distinct from a dispute originating from this HubPool. Moreover, since
+        // bundleEvaluationNumbers for a root bundle proposal are not stored in this contract, DVM voters will always
+        // have to look up the ProposeRootBundle event to evaluate a dispute, therefore there is no point emitting extra
+        // data in this ancillary data that is already included in the ProposeRootBundle event.
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
         // through. Cancel to avoid a revert.
+        uint256 finalFee = _getBondTokenFinalFee();
         if (finalFee > bondAmount) {
-            _cancelBundle(requestAncillaryData);
+            _cancelBundle();
             return;
         }
 
@@ -761,7 +768,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
                 currentTime,
-                requestAncillaryData,
+                "",
                 bondToken,
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
                 // proposal has passed the challenge period.
@@ -780,7 +787,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             bondToken.safeApprove(address(optimisticOracle), 0);
         } catch {
             // Cancel the bundle since the proposal failed.
-            _cancelBundle(requestAncillaryData);
+            _cancelBundle();
             return;
         }
 
@@ -801,16 +808,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
-        optimisticOracle.disputePriceFor(
-            identifier,
-            currentTime,
-            requestAncillaryData,
-            ooPriceRequest,
-            msg.sender,
-            address(this)
-        );
+        optimisticOracle.disputePriceFor(identifier, currentTime, "", ooPriceRequest, msg.sender, address(this));
 
-        emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
+        emit RootBundleDisputed(msg.sender, currentTime);
 
         // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
         delete rootBundleProposal;
@@ -824,23 +824,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
         emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
         unclaimedAccumulatedProtocolFees[l1Token] = 0;
-    }
-
-    /**
-     * @notice Returns ancillary data containing the minimum data necessary that voters can use to identify
-     * a root bundle proposal to validate its correctness.
-     * @dev The root bundle that is being disputed was the most recently proposed one with a block number less than
-     * or equal to the dispute block time. All of this root bundle data can be found in the ProposeRootBundle event
-     * params. Moreover, the optimistic oracle will stamp the requester's address (i.e. this contract address) meaning
-     * that ancillary data for a dispute originating from another HubPool will always be distinct from a dispute
-     * originating from this HubPool.
-     * @dev Since bundleEvaluationNumbers for a root bundle proposal are not stored on-chain, DVM voters will always
-     * have to look up the ProposeRootBundle event to evaluate a dispute, therefore there is no point emitting extra
-     * data in this ancillary data that is already included in the ProposeRootBundle event.
-     * @return ancillaryData Ancillary data that can be decoded into UTF8.
-     */
-    function getRootBundleProposalAncillaryData() public view override returns (bytes memory ancillaryData) {
-        return "";
     }
 
     /**
@@ -872,10 +855,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Called when a dispute fails due to parameter changes. This effectively resets the state and cancels the request
     // with no loss of funds, thereby enabling a new bundle to be added.
-    function _cancelBundle(bytes memory ancillaryData) internal {
+    function _cancelBundle() internal {
         bondToken.transfer(rootBundleProposal.proposer, bondAmount);
         delete rootBundleProposal;
-        emit RootBundleCanceled(msg.sender, getCurrentTime(), ancillaryData);
+        emit RootBundleCanceled(msg.sender, getCurrentTime());
     }
 
     function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
