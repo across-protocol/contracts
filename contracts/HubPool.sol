@@ -367,7 +367,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Sets cross chain relay helper contracts for L2 chain ID. Callable only by owner.
-     * @dev We do not block setting the adapter or spokepool to invalid/zero addresses because we want to allow the
+     * @dev We do not block setting the adapter or SpokePool to invalid/zero addresses because we want to allow the
      * admin to block relaying roots to the spoke pool for emergency recovery purposes.
      * @param l2ChainId Chain to set contracts for.
      * @param adapter Adapter used to relay messages and tokens to spoke pool. Deployed on current chain.
@@ -839,12 +839,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token +
-     * destination chain ID for use in pool rebalances.
+     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID
+     * for use in pool rebalances.
      * @param destinationChainId Where pool rebalance sends funds.
      * @param l1Token Ethereum version token.
-     * @return destinationToken address SpokePool can receive this token on destination chain following pool
-     * rebalance.
+     * @return destinationToken address SpokePool can receive this token on destination chain following pool rebalance.
      */
     function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
         external
