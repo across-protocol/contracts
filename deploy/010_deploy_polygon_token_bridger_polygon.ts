@@ -5,22 +5,22 @@ import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 import { L1_ADDRESS_MAP } from "./consts";
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
+  const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
-  const chainId = parseInt(await getChainId());
+  const l1ChainId = parseInt(await hre.companionNetworks.l1.getChainId());
+  const l1HubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
 
-  const hubPool = await deployments.get("HubPool");
-  console.log(`Using l1 hub pool @ ${hubPool.address}`);
-
-  await deploy("Ethereum_SpokePool", {
+  await deploy("PolygonTokenBridger", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [hubPool.address, L1_ADDRESS_MAP[chainId].weth, "0x0000000000000000000000000000000000000000"],
+    args: [l1HubPool.address, L1_ADDRESS_MAP[l1ChainId].weth],
+    deterministicDeployment: "0x1234", // Salt for the create2 call.
   });
 };
+
 module.exports = func;
-func.tags = ["EthereumSpokePool", "mainnet"];
+func.tags = ["PolygonTokenBridgerL2", "polygon"];
