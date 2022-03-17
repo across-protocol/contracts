@@ -2,7 +2,7 @@
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
-import { L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, POLYGON_CHAIN_IDS } from "./consts";
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -17,7 +17,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [hubPool.address, L1_ADDRESS_MAP[chainId].weth],
+    args: [hubPool.address, L1_ADDRESS_MAP[chainId].weth, chainId, POLYGON_CHAIN_IDS[chainId]],
     deterministicDeployment: "0x1234", // Salt for the create2 call.
   });
 };

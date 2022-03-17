@@ -52,3 +52,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
   },
 };
+
+export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
+  1: 137,
+  5: 80001,
+};
