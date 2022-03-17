@@ -36,8 +36,18 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
   });
   it("Can disable L1 Tokens for liquidity provision", async function () {
+    await hubPool.enableL1TokenForLiquidityProvision(weth.address);
+    const pooledTokenStruct = await hubPool.callStatic.pooledTokens(weth.address);
+    const lpToken = pooledTokenStruct.lpToken;
+    const lastLpFeeUpdate = pooledTokenStruct.lastLpFeeUpdate;
+
     await hubPool.disableL1TokenForLiquidityProvision(weth.address);
     expect((await hubPool.callStatic.pooledTokens(weth.address)).isEnabled).to.equal(false);
+
+    // Can re-enable the L1 token now without creating a new LP token or resetting timestamp.
+    await hubPool.enableL1TokenForLiquidityProvision(weth.address);
+    expect((await hubPool.callStatic.pooledTokens(weth.address)).lpToken).to.equal(lpToken);
+    expect((await hubPool.callStatic.pooledTokens(weth.address)).lastLpFeeUpdate).to.equal(lastLpFeeUpdate);
   });
   it("Only owner can disable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).disableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
@@ -55,9 +65,15 @@ describe("HubPool Admin functions", function () {
     ]);
     await expect(hubPool.connect(other).relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.reverted;
 
-    // Cannot relay admin function if spoke pool is set to zero address.
+    // Cannot relay admin function if spoke pool is set to zero address or adapter is set to non contract..
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, ZERO_ADDRESS);
-    await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.reverted;
+    await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.revertedWith(
+      "SpokePool not initialized"
+    );
+    await hubPool.setCrossChainContracts(destinationChainId, randomAddress(), mockSpoke.address);
+    await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.revertedWith(
+      "Adapter not initialized"
+    );
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
     await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData))
       .to.emit(hubPool, "SpokePoolAdminFunctionTriggered")
@@ -65,21 +81,21 @@ describe("HubPool Admin functions", function () {
   });
   it("Only owner can whitelist route for deposits and rebalances", async function () {
     await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
-    await expect(
-      hubPool.connect(other).whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true)
-    ).to.be.reverted;
-    await expect(hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, true))
-      .to.emit(hubPool, "WhitelistRoute")
-      .withArgs(originChainId, destinationChainId, weth.address, usdc.address, true);
+    await expect(hubPool.connect(other).setPoolRebalanceRoute(destinationChainId, weth.address, usdc.address)).to.be
+      .reverted;
+    await expect(hubPool.setPoolRebalanceRoute(destinationChainId, weth.address, usdc.address))
+      .to.emit(hubPool, "SetPoolRebalanceRoute")
+      .withArgs(destinationChainId, weth.address, usdc.address);
 
-    expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(usdc.address);
+    // Relay deposit route to spoke pool. Check content of messages sent to mock spoke pool.
+    await expect(hubPool.connect(other).setDepositRoute(originChainId, destinationChainId, weth.address, true)).to.be
+      .reverted;
+    await expect(hubPool.setDepositRoute(originChainId, destinationChainId, weth.address, true))
+      .to.emit(hubPool, "SetEnableDepositRoute")
+      .withArgs(originChainId, destinationChainId, weth.address, true);
 
-    // Can disable a route.
-    await hubPool.whitelistRoute(originChainId, destinationChainId, weth.address, usdc.address, false);
-    expect(await hubPool.whitelistedRoute(originChainId, weth.address, destinationChainId)).to.equal(ZERO_ADDRESS);
-
-    // Check content of messages sent to mock spoke pool. The last call should have "disabled" a route, and the call
-    // right before should have enabled the route.
+    // Disable deposit route on SpokePool right after:
+    await hubPool.setDepositRoute(originChainId, destinationChainId, weth.address, false);
 
     // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
     const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
@@ -90,14 +106,14 @@ describe("HubPool Admin functions", function () {
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         weth.address,
         destinationChainId,
-        false, // Should be set to false to disable route on SpokePool
+        false, // Latest call disabled the route
       ])
     );
     expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("setEnableRoute", [
         weth.address,
         destinationChainId,
-        true, // Should be set to true because destination token wasn't 0x0
+        true, // Second to last call enabled the route
       ])
     );
   });
@@ -109,6 +125,9 @@ describe("HubPool Admin functions", function () {
     // Set the bond token and amount to 1000 USDC
     const newBondAmount = ethers.utils.parseUnits("1000", 6); // set to 1000e6, i.e 1000 USDC.
     await hubPool.setBond(usdc.address, newBondAmount);
+
+    // Can't set bond to 0.
+    await expect(hubPool.setBond(usdc.address, "0")).to.be.revertedWith("bond equal to final fee");
 
     expect(await hubPool.callStatic.bondToken()).to.equal(usdc.address); // New Address.
     expect(await hubPool.callStatic.bondAmount()).to.equal(newBondAmount.add(finalFeeUsdc)); // New Bond amount.

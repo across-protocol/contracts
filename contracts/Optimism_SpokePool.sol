@@ -51,7 +51,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @notice Change L1 gas limit. Callable only by admin.
      * @param newl1Gas New L1 gas limit to set.
      */
-    function setL1GasLimit(uint32 newl1Gas) public onlyAdmin {
+    function setL1GasLimit(uint32 newl1Gas) public onlyAdmin nonReentrant {
         l1Gas = newl1Gas;
         emit SetL1Gas(newl1Gas);
     }
@@ -61,7 +61,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @dev If this mapping isn't set for an L2 token, then the standard bridge will be used to bridge this token.
      * @param tokenBridge Address of token bridge
      */
-    function setTokenBridge(address l2Token, address tokenBridge) public onlyAdmin {
+    function setTokenBridge(address l2Token, address tokenBridge) public onlyAdmin nonReentrant {
         tokenBridges[l2Token] = tokenBridge;
         emit SetL2TokenBridge(l2Token, tokenBridge);
     }

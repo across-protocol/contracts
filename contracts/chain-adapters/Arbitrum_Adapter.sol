@@ -49,24 +49,16 @@ contract Arbitrum_Adapter is AdapterInterface {
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public immutable l2GasPrice = 10e9; // 10 gWei
 
+    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
+    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
+    uint32 public immutable l2GasLimit = 5_000_000;
+
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable l2RefundL2Address;
 
     ArbitrumL1InboxLike public immutable l1Inbox;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20Gateway;
-
-    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
-    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
-    uint32 public immutable l2GasLimit = 5_000_000;
-
-    event L2GasLimitSet(uint32 newL2GasLimit);
-
-    event L2MaxSubmissionCostSet(uint256 newL2MaxSubmissionCost);
-
-    event L2GasPriceSet(uint256 newL2GasPrice);
-
-    event L2RefundL2AddressSet(address newL2RefundL2Address);
 
     /**
      * @notice Constructs new Adapter.

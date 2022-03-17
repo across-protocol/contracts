@@ -21,7 +21,6 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: { optimizer: { enabled: true, runs: 200 } },
 };
-``;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -72,6 +71,26 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
     },
+    goerli: {
+      chainId: 5,
+      url: getNodeUrl("goerli", true, 5),
+      saveDeployments: true,
+      accounts: { mnemonic },
+    },
+    polygon: {
+      chainId: 137,
+      url: getNodeUrl("polygon-matic", true, 137),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "polygon-mumbai": {
+      chainId: 80001,
+      url: getNodeUrl("polygon-mumbai", true, 80001),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -79,6 +98,7 @@ const config: HardhatUserConfig = {
       mainnet: process.env.ETHERSCAN_API_KEY,
       kovan: process.env.ETHERSCAN_API_KEY,
       rinkeby: process.env.ETHERSCAN_API_KEY,
+      goerli: process.env.ETHERSCAN_API_KEY,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY,
       optimisticKovan: process.env.OPTIMISM_ETHERSCAN_API_KEY,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY,
