@@ -566,11 +566,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        // Check that bond amount is > final fee, otherwise this root bundle will always get deleted
-        // on a dispute. This isn't an exploitable situation but is unexpected potentially for disputers, and best to
-        // avoid upfront.
-        require(bondAmount > _getBondTokenFinalFee(), "bond amount must be > final fee");
-
         uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
