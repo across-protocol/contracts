@@ -402,8 +402,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Sends cross-chain message to SpokePool on originChainId to enable or disable
-     * deposit route from that SpokePool to another one. Callable only by owner.
+     * @notice Sends cross-chain message to SpokePool on originChainId to enable or disable deposit route from that
+     * SpokePool to another one. Callable only by owner.
      * @dev Admin is responsible for ensuring that `originToken` is linked to some L1 token on this contract, via
      * poolRebalanceRoutes(), and that this L1 token also has a counterpart on the destination chain. If either
      * condition fails, then the deposit will be unrelayable by off-chain relayers because they will not know which
