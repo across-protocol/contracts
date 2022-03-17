@@ -49,8 +49,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     uint32 public numberOfDeposits;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    // A reverse mapping is stored on the L1 HubPool to enable or disable rebalance transfers from the HubPool to this
-    // contract.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
@@ -155,11 +153,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /****************************************
      *               MODIFIERS              *
      ****************************************/
-
-    modifier onlyEnabledRoute(address originToken, uint256 destinationId) {
-        require(enabledDepositRoutes[originToken][destinationId], "Disabled route");
-        _;
-    }
 
     // Implementing contract needs to override _requireAdminSender() to ensure that admin functions are protected
     // appropriately.
@@ -267,7 +260,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 quoteTimestamp
-    ) public payable override onlyEnabledRoute(originToken, destinationChainId) nonReentrant {
+    ) public payable override nonReentrant {
+        // Check that deposit route is enabled.
+        require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
+
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(relayerFeePct < 0.5e18, "invalid relayer fee");
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,

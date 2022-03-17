@@ -4,14 +4,14 @@ import { ethers, expect, Contract, SignerWithAddress, getContractFactory, seedCo
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract, l2Dai: string;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
-    ({ weth, hubPool, timer } = await hubPoolFixture());
+    ({ weth, hubPool, timer, l2Dai } = await hubPoolFixture());
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
@@ -57,6 +57,21 @@ describe("Polygon Spoke Pool", function () {
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setHubPoolData);
     expect(await polygonSpokePool.hubPool()).to.equal(rando.address);
+  });
+
+  it("Only correct caller can enable a route", async function () {
+    const setEnableRouteData = polygonSpokePool.interface.encodeFunctionData("setEnableRoute", [l2Dai, 1, true]);
+
+    // Wrong rootMessageSender address.
+    await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, setEnableRouteData)).to.be
+      .reverted;
+
+    // Wrong calling address.
+    await expect(polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, setEnableRouteData)).to.be
+      .reverted;
+
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setEnableRouteData);
+    expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only correct caller can set the quote time buffer", async function () {

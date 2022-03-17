@@ -75,8 +75,7 @@ describe("HubPool Root Bundle Execution", function () {
     const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
       mockAdapterAtHubPool.filters.RelayMessageCalled()
     );
-    expect(relayMessageEvents.length).to.equal(7); // Exactly seven message send from L1->L2. 6 for each whitelist route
-    // and 1 for the initiateRelayerRefund.
+    expect(relayMessageEvents.length).to.equal(1); // Exactly one message sent from L1->L2.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
@@ -120,7 +119,7 @@ describe("HubPool Root Bundle Execution", function () {
     const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
       mockAdapterAtHubPool.filters.RelayMessageCalled()
     );
-    expect(relayMessageEvents.length).to.equal(7); // Exactly seven message send from L1->L2. 6 for each whitelist route
+    expect(relayMessageEvents.length).to.equal(1); // Exactly one message sent from L1->L2.
     // and 1 for the initiateRelayerRefund.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
@@ -181,6 +180,27 @@ describe("HubPool Root Bundle Execution", function () {
     await expect(
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
     ).to.be.revertedWith("Adapter not initialized");
+  });
+
+  it("Reverts if destination token is zero address for a pool rebalance route", async function () {
+    const { leafs, tree } = await constructSimpleTree();
+
+    await hubPool.connect(dataWorker).proposeRootBundle(
+      [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
+      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+      consts.mockRelayerRefundRoot, // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
+    );
+
+    // Let's set weth pool rebalance route to zero address.
+    await hubPool.setPoolRebalanceRoute(consts.repaymentChainId, weth.address, ZERO_ADDRESS);
+
+    // Advance time so the request can be executed and check that executing the request reverts.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Route not whitelisted");
   });
 
   it("Execution rejects leaf claim before liveness passed", async function () {
