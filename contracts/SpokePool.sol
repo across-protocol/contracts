@@ -25,9 +25,8 @@ import "./SpokePoolInterface.sol";
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  * @dev We don't use reentrancy guards in public onlyAdmin methods because these functions are expected to be called
- * via the canonical L1 --> L2 bridge. Some bridges, like Polygon's, ultimately call these functions internally, so
- * we leave it up to the overriding SpokePool contract to add reentrancy to the _requireAdminSender overridden
- * implementation.
+ * via the canonical L1 --> L2 bridge. Some bridges, like Polygon's, ultimately call these functions internally, which
+ * would always revert with a reentrancy guard.
  */
 abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;

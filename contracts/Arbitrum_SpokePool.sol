@@ -108,11 +108,5 @@ contract Arbitrum_SpokePool is SpokePool {
     }
 
     // Apply AVM-specific transformation to cross domain admin address on L1.
-    // @dev: This is an internal method that we purposefully add a reentrancy guard to. We don't add the `nonReentrant`
-    // modifier to `onlyAdmin` functions in the base `SpokePool` contract because the `Polygon_SpokePool` will
-    // call these methods internally via the `processMessageFromRoot`. The other spoke pools like `Optimism_SpokePool`
-    // and `Arbitrum_SpokePool` have their admin functions triggered by an external contract so we should be
-    // reentrancy guarding those methods. However, in the `Polygon_SpokePool` case we need to reentrancy guard at the
-    // `processMessageFromRoot` method instead of at the admin functions.
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin nonReentrant {}
 }
