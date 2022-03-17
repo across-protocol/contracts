@@ -108,5 +108,5 @@ contract Arbitrum_SpokePool is SpokePool {
     }
 
     // Apply AVM-specific transformation to cross domain admin address on L1.
-    function _requireAdminSender() internal override onlyFromCrossDomainAdmin nonReentrant {}
+    function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
 }
