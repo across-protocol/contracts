@@ -126,6 +126,9 @@ describe("HubPool Admin functions", function () {
     const newBondAmount = ethers.utils.parseUnits("1000", 6); // set to 1000e6, i.e 1000 USDC.
     await hubPool.setBond(usdc.address, newBondAmount);
 
+    // Can't set bond to 0.
+    await expect(hubPool.setBond(usdc.address, "0")).to.be.revertedWith("bond equal to final fee");
+
     expect(await hubPool.callStatic.bondToken()).to.equal(usdc.address); // New Address.
     expect(await hubPool.callStatic.bondAmount()).to.equal(newBondAmount.add(finalFeeUsdc)); // New Bond amount.
   });
