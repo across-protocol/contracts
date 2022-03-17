@@ -40,7 +40,7 @@ const TARGET_GAS_UPPER_BOUND = 12_000_000;
 const TARGET_GAS_LOWER_BOUND = 5_000_000;
 // Note: I can't get this to work with a gas >> 5mil without the transaction timing out. This is why I've set
 // the lower bound to 6mil instead of a tighter 10mil.
-const STRESS_TEST_REFUND_COUNT = 600;
+const STRESS_TEST_REFUND_COUNT = 800;
 
 // Construct tree with REFUND_LEAF_COUNT leaves, each containing REFUNDS_PER_LEAF refunds.
 async function constructSimpleTree(
