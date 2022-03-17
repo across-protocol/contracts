@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, randomAddress } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs } from "./MerkleLib.utils";
