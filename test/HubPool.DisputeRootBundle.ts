@@ -3,13 +3,13 @@ import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 
-let hubPool: Contract, weth: Contract, optimisticOracle: Contract, store: Contract;
+let hubPool: Contract, weth: Contract, optimisticOracle: Contract, store: Contract, mockOracle: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 
 describe("HubPool Root Bundle Dispute", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, hubPool, optimisticOracle, store } = await hubPoolFixture());
+    ({ weth, hubPool, optimisticOracle, store, mockOracle } = await hubPoolFixture());
     await enableTokensForLP(owner, hubPool, weth, [weth]);
 
     await seedWallet(dataWorker, [], weth, consts.totalBond.mul(2));
@@ -48,22 +48,17 @@ describe("HubPool Root Bundle Dispute", function () {
     expect(rootBundle.claimedBitMap).to.equal(0); // no claims yet so everything should be marked at 0.
     expect(rootBundle.proposer).to.equal(consts.zeroAddress);
 
+    // HubPool should use `getRootBundleProposalAncillaryData()` return value as the ancillary data that it sends
+    // to the oracle, and the oracle should stamp the hub pool's address.
+    const priceRequestAddedEvent = (await mockOracle.queryFilter(mockOracle.filters.PriceRequestAdded()))[0].args;
     const priceProposalEvent = (await optimisticOracle.queryFilter(optimisticOracle.filters.ProposePrice()))[0].args;
 
     expect(priceProposalEvent?.requester).to.equal(hubPool.address);
     expect(priceProposalEvent?.identifier).to.equal(consts.identifier);
     expect(priceProposalEvent?.ancillaryData).to.equal(preCallAncillaryData);
 
-    const parsedAncillaryData = parseAncillaryData(priceProposalEvent?.ancillaryData);
-    expect(parsedAncillaryData?.requestExpirationTimestamp).to.equal(
-      proposalTime.add(consts.refundProposalLiveness).toNumber()
-    );
-    expect(parsedAncillaryData?.unclaimedPoolRebalanceLeafCount).to.equal(consts.mockPoolRebalanceLeafCount);
-    expect("0x" + parsedAncillaryData?.poolRebalanceRoot).to.equal(consts.mockPoolRebalanceRoot);
-    expect("0x" + parsedAncillaryData?.relayerRefundRoot).to.equal(consts.mockRelayerRefundRoot);
-    expect("0x" + parsedAncillaryData?.slowRelayRoot).to.equal(consts.mockSlowRelayRoot);
-    expect(parsedAncillaryData?.claimedBitMap).to.equal(0);
-    expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.proposer)).to.equal(dataWorker.address);
+    const parsedAncillaryData = parseAncillaryData(priceRequestAddedEvent?.ancillaryData);
+    expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.ooRequester)).to.equal(hubPool.address);
   });
   it("Can not dispute after proposal liveness", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond.mul(2));
@@ -81,7 +76,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     await expect(hubPool.connect(dataWorker).disputeRootBundle()).to.be.revertedWith("Request passed liveness");
   });
-  it("Increase in final fee triggers cancellation", async function () {
+  it("Setting final fee equal to bond triggers cancellation", async function () {
     await weth.connect(dataWorker).approve(hubPool.address, consts.totalBond.mul(2));
     await hubPool
       .connect(dataWorker)
@@ -93,7 +88,8 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockSlowRelayRoot
       );
 
-    await store.setFinalFee(weth.address, { rawValue: consts.finalFee.mul(10) });
+    // Setting the final fee < totalBond should fail this test
+    await store.setFinalFee(weth.address, { rawValue: consts.totalBond });
 
     await expect(() => hubPool.connect(dataWorker).disputeRootBundle()).to.changeTokenBalances(
       weth,

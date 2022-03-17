@@ -49,11 +49,11 @@ describe("HubPool Liquidity Provision", function () {
     // Removing more than the total balance of LP tokens should throw.
     await expect(hubPool.connect(other).removeLiquidity(dai.address, amountToLp, false)).to.be.reverted;
 
-    // Cant try receive ETH if the token is pool token is not WETH. Try redeem 1/3 of the original amount added. This is
-    // less than the total amount the wallet has left (since we removed half the amount before).
-    await expect(hubPool.connect(other).removeLiquidity(dai.address, amountToLp.div(3), true)).to.be.reverted;
+    // Cant try receive ETH if the token is pool token is not WETH.
+    await expect(hubPool.connect(other).removeLiquidity(dai.address, amountToLp.div(2), true)).to.be.reverted;
 
-    // Can remove the remaining LP tokens for a balance of 0.
+    // Can remove the remaining LP tokens for a balance of 0. Use the same params as the above reverted call to show
+    // that only the sendEth param needs to be changed.
     await hubPool.connect(liquidityProvider).removeLiquidity(dai.address, amountToLp.div(2), false);
     expect(await dai.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets); // back to starting balance.
     expect(await daiLpToken.balanceOf(liquidityProvider.address)).to.equal(0); // All LP tokens burnt.

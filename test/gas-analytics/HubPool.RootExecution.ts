@@ -48,7 +48,8 @@ async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Co
     _l1TokenAddresses,
     _bundleLpFeeAmounts,
     _netSendAmounts, // netSendAmounts.
-    _netSendAmounts // runningBalances.
+    _netSendAmounts, // runningBalances.
+    Array(REFUND_CHAIN_COUNT).fill(0) // relayToSpokePool
   );
   const tree = await buildPoolRebalanceLeafTree(leaves);
 
@@ -98,10 +99,9 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
         await getContractFactory("MockSpokePool", owner)
       ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
-      // Just whitelist route from mainnet to l2 (hacky), which shouldn't change gas estimates, but will allow refunds to be sent.
       await Promise.all(
         l1Tokens.map(async (token) => {
-          await hubPool.whitelistRoute(hubPoolChainId, i, token.address, randomAddress(), true);
+          await hubPool.setPoolRebalanceRoute(i, token.address, randomAddress());
         })
       );
       destinationChainIds.push(i);
