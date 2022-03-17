@@ -76,7 +76,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      ****************************************/
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
-    event EnabledDepositRoute(uint256 indexed destinationChainId, address indexed originToken, bool enabled);
+    event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
@@ -193,7 +193,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bool enabled
     ) public override onlyAdmin {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
-        emit EnabledDepositRoute(destinationChainId, originToken, enabled);
+        emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
     /**

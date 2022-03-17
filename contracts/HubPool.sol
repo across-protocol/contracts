@@ -77,7 +77,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Whether the bundle proposal process is paused.
     bool public paused;
 
-    // Stores paths from L1 token to destination ID + token. Since different tokens on L1 might map to
+    // Stores paths from L1 token + destination ID to destination token. Since different tokens on L1 might map to
     // to the same address on different destinations, we hash (L1 token address, destination ID) to
     // use as a key that maps to a destination token. This mapping is used to direct pool rebalances from
     // HubPool to SpokePool, and also is designed to be used as a lookup for off-chain data workers to determine
@@ -371,7 +371,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * admin to block relaying roots to the spoke pool for emergency recovery purposes.
      * @param l2ChainId Chain to set contracts for.
      * @param adapter Adapter used to relay messages and tokens to spoke pool. Deployed on current chain.
-     * @param spokePool Recipient of relayed messages and tokens on SpokePool. Deployed on l2ChainId.
+     * @param spokePool Recipient of relayed messages and tokens on spoke pool. Deployed on l2ChainId.
      */
 
     function setCrossChainContracts(
@@ -385,8 +385,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Store canonical destination token counterpart for l1 token. Callable only by owner.
-     * @dev Admin can set destinationToken to effectively disable executing any root bundles with leaves containing
-     * this l1 token + destination chain ID combination.
+     * @dev Admin can set destinationToken to 0x0 to effectively disable executing any root bundles with leaves
+     * containing this l1 token + destination chain ID combination.
      * @param destinationChainId Destination chain where destination token resides.
      * @param l1Token Token enabled for liquidity in this pool, and the L1 counterpart to the destination token on the
      * destination chain ID.
@@ -682,7 +682,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Note: if any of the keccak256(l1Tokens, chainId) combinations are not mapped to a destination token address,
         // then this internal method will revert. In this case the admin will have to associate a destination token
         // with each l1 token. If the destination token mapping was missing at the time of the proposal, we assume
-        //that the root bundle would have been disputed because the off-chain data worker would have been unable to
+        // that the root bundle would have been disputed because the off-chain data worker would have been unable to
         // determine if the relayers used the correct destination token for a given origin token.
         _sendTokensToChainAndUpdatePooledTokenTrackers(
             adapter,
@@ -839,11 +839,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID
-     * for use in pool rebalances.
-     * @param destinationChainId Where pool rebalance sends funds.
+     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token +
+     * destination chain ID.
+     * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
-     * @return destinationToken address SpokePool can receive this token on destination chain following pool rebalance.
+     * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
+     * the l1Token to the destination chain.
      */
     function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
         external

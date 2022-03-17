@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei, randomAddress } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
 import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
 import { amountToSeedWallets, amountToDeposit, destinationChainId, depositRelayerFeePct } from "./constants";
 

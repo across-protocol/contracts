@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, randomAddress } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress } from "./utils";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
 
@@ -13,7 +13,7 @@ describe("SpokePool Admin Functions", async function () {
   it("Enable token path", async function () {
     await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
       .to.emit(spokePool, "EnabledDepositRoute")
-      .withArgs(destinationChainId, erc20.address, true);
+      .withArgs(erc20.address, destinationChainId, true);
     expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
   });
   it("Change deposit quote buffer", async function () {
