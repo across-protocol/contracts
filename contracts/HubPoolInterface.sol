@@ -158,8 +158,6 @@ interface HubPoolInterface {
 
     function claimProtocolFeesCaptured(address l1Token) external;
 
-    function getRootBundleProposalAncillaryData() external pure returns (bytes memory ancillaryData);
-
     function setPoolRebalanceRoute(
         uint256 destinationChainId,
         address l1Token,

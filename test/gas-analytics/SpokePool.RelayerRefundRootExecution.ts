@@ -269,7 +269,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       await seedContract(spokePool, owner, [], weth, toBN(STRESS_TEST_REFUND_COUNT).mul(REFUND_AMOUNT).mul(toBN(10)));
 
       // Create tree with 1 large leaf.
-      const bigLeaves = buildRelayerRefundLeafs(
+      const bigLeaves = buildRelayerRefundLeaves(
         [destinationChainIds[0]],
         [toBNWei("1")], // Set amount to return > 0 to better simulate long execution path of _executeRelayerRefundLeaf
         [weth.address],
