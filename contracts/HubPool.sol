@@ -124,7 +124,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
     uint256 public lpFeeRatePerSecond = 1500000000000;
 
-    // Mapping of l1TokenAddress to cumulative unclaimed protocol tokens that the sent to the protocolFeeCaptureAddress
+    // Mapping of l1TokenAddress to cumulative unclaimed protocol tokens that can be sent to the protocolFeeCaptureAddress
     // at any time. This enables the protocol to capture some percentage of LP fees which can be allocated elsewhere.
     mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
 
