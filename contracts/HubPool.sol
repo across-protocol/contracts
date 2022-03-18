@@ -821,7 +821,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * the whitelisted destination token.
      * @dev Admin must be considerate to the compatibility of originToken and destinationToken within the protocol. Some
      * token implementations will not function correctly within the Across v2 system. For example ERC20s that charge
-     * fees will break internal accounting, ERC777 can cause some functions to revert and upgradable tokens can be pose
+     * fees will break internal accounting, ERC777 can cause some functions to revert and upgradable tokens can pose
      * risks if the implementation is shifted between whitelisting and usage.
      * @param originChainId Deposit chain.
      * @param originToken Deposited token.
