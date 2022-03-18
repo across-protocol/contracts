@@ -96,35 +96,41 @@ describe("Optimism Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
-    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await optimismSpokePool.callStatic.chainId());
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2Dai,
+      await optimismSpokePool.callStatic.chainId()
+    );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
   });
   it("Bridge tokens to hub pool correctly calls an alternative L2 Gateway router", async function () {
-    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await optimismSpokePool.callStatic.chainId());
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2Dai,
+      await optimismSpokePool.callStatic.chainId()
+    );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     const altL2Bridge = await createFake("L2StandardBridge");
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(altL2Bridge.withdrawTo).to.have.been.calledOnce;
     expect(altL2Bridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
   });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
-    const { leafs, tree } = await constructSingleRelayerRefundTree(
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Weth.address,
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leafs[0], tree.getHexProof(leafs[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // When sending l2Weth we should see two differences from the previous test: 1) there should be a call to l2WETH to
     // unwrap l2WETH to l2ETH. 2) the address in the l2StandardBridge that is withdrawn should no longer be l2WETH but

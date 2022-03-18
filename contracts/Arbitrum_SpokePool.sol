@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
@@ -59,7 +58,7 @@ contract Arbitrum_SpokePool is SpokePool {
      * @notice Change L2 gateway router. Callable only by admin.
      * @param newL2GatewayRouter New L2 gateway router.
      */
-    function setL2GatewayRouter(address newL2GatewayRouter) public onlyAdmin {
+    function setL2GatewayRouter(address newL2GatewayRouter) public onlyAdmin nonReentrant {
         _setL2GatewayRouter(newL2GatewayRouter);
     }
 
@@ -68,7 +67,7 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param l2Token Arbitrum token.
      * @param l1Token Ethereum version of l2Token.
      */
-    function whitelistToken(address l2Token, address l1Token) public onlyAdmin {
+    function whitelistToken(address l2Token, address l1Token) public onlyAdmin nonReentrant {
         _whitelistToken(l2Token, l1Token);
     }
 
@@ -77,8 +76,11 @@ contract Arbitrum_SpokePool is SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
+        // Check that the Ethereum counterpart of the L2 token is stored on this contract.
+        address ethereumTokenToBridge = whitelistedTokens[relayerRefundLeaf.l2TokenAddress];
+        require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            whitelistedTokens[relayerRefundLeaf.l2TokenAddress], // _l1Token. Address of the L1 token to bridge over.
+            ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
             relayerRefundLeaf.amountToReturn, // _amount.
             "" // _data. We don't need to send any data for the bridging action.

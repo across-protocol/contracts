@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
 import "./interfaces/WETH9.sol";
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
 interface PolygonIERC20 is IERC20 {
@@ -52,6 +53,7 @@ contract PolygonTokenBridger is Lockable {
 
     /**
      * @notice Called by Polygon SpokePool to send tokens over bridge to contract with the same address as this.
+     * @notice The caller of this function must approve this contract to spend amount of token.
      * @param token Token to bridge.
      * @param amount Amount to bridge.
      * @param isWrappedMatic True if token is WMATIC.

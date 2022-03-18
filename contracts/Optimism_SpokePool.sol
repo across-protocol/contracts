@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./SpokePool.sol";
 import "./interfaces/WETH9.sol";
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
-import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
 
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions.
@@ -18,7 +17,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
     uint32 public l1Gas = 5_000_000;
 
     // ETH is an ERC20 on OVM.
-    address public l2Eth = address(Lib_PredeployAddresses.OVM_ETH);
+    address public immutable l2Eth = address(Lib_PredeployAddresses.OVM_ETH);
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
@@ -51,7 +50,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @notice Change L1 gas limit. Callable only by admin.
      * @param newl1Gas New L1 gas limit to set.
      */
-    function setL1GasLimit(uint32 newl1Gas) public onlyAdmin {
+    function setL1GasLimit(uint32 newl1Gas) public onlyAdmin nonReentrant {
         l1Gas = newl1Gas;
         emit SetL1Gas(newl1Gas);
     }
@@ -61,7 +60,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @dev If this mapping isn't set for an L2 token, then the standard bridge will be used to bridge this token.
      * @param tokenBridge Address of token bridge
      */
-    function setTokenBridge(address l2Token, address tokenBridge) public onlyAdmin {
+    function setTokenBridge(address l2Token, address tokenBridge) public onlyAdmin nonReentrant {
         tokenBridges[l2Token] = tokenBridge;
         emit SetL2TokenBridge(l2Token, tokenBridge);
     }

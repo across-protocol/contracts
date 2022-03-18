@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -52,7 +51,7 @@ contract Ethereum_Adapter is AdapterInterface {
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
-    // Note: this snippet of code is copied from Governor.sol.
+    // Note: this snippet of code is copied from Governor.sol. Source: https://github.com/UMAprotocol/protocol/blob/5b37ea818a28479c01e458389a83c3e736306b17/packages/core/contracts/oracle/implementation/Governor.sol#L190-L207
     function _executeCall(address to, bytes memory data) private {
         // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
         // solhint-disable-next-line no-inline-assembly
