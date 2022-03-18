@@ -48,7 +48,7 @@ interface HubPoolInterface {
     // - Send funds from a SpokePool to Relayer as a refund for a relayed deposit
     // - Send funds from a SpokePool to a deposit recipient to fulfill a "slow" relay
     // Anyone can dispute this struct if the merkle roots contain invalid leaves before the
-    // requestExpirationTimestamp. Once the expiration timestamp is passed, executeRootBundle to execute a leaf
+    // challengePeriodEndTimestamp. Once the expiration timestamp is passed, executeRootBundle to execute a leaf
     // from the poolRebalanceRoot on this contract and it will simultaneously publish the relayerRefundRoot and
     // slowRelayRoot to a SpokePool. The latter two roots, once published to the SpokePool, contain
     // leaves that can be executed on the SpokePool to pay relayers or recipients.
@@ -67,7 +67,7 @@ interface HubPoolInterface {
         // of leaves are executed, a new root bundle can be proposed
         uint8 unclaimedPoolRebalanceLeafCount;
         // When root bundle challenge period passes and this root bundle becomes executable.
-        uint32 requestExpirationTimestamp;
+        uint32 challengePeriodEndTimestamp;
     }
 
     // Each whitelisted L1 token has an associated pooledToken struct that contains all information used to track the
@@ -130,7 +130,7 @@ interface HubPoolInterface {
 
     function liquidityUtilizationCurrent(address l1Token) external returns (uint256);
 
-    function liquidityUtilizationPostRelay(address token, uint256 relayedAmount) external returns (uint256);
+    function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount) external returns (uint256);
 
     function sync(address l1Token) external;
 

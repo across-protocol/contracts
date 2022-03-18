@@ -149,8 +149,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bool depositsEnabled
     );
     event ProposeRootBundle(
-        uint32 requestExpirationTimestamp,
-        uint64 unclaimedPoolRebalanceLeafCount,
+        uint32 challengePeriodEndTimestamp,
+        uint64 poolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed relayerRefundRoot,
@@ -161,10 +161,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 groupIndex,
         uint256 indexed leafId,
         uint256 indexed chainId,
-        address[] l1Token,
+        address[] l1Tokens,
         uint256[] bundleLpFees,
-        int256[] netSendAmount,
-        int256[] runningBalance,
+        int256[] netSendAmounts,
+        int256[] runningBalances,
         address indexed caller
     );
     event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
@@ -560,11 +560,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
+        uint32 challengePeriodEndTimestamp = uint32(getCurrentTime()) + liveness;
 
         delete rootBundleProposal; // Only one bundle of roots can be executed at a time. Delete the previous bundle.
 
-        rootBundleProposal.requestExpirationTimestamp = requestExpirationTimestamp;
+        rootBundleProposal.challengePeriodEndTimestamp = challengePeriodEndTimestamp;
         rootBundleProposal.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         rootBundleProposal.poolRebalanceRoot = poolRebalanceRoot;
         rootBundleProposal.relayerRefundRoot = relayerRefundRoot;
@@ -575,7 +575,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit ProposeRootBundle(
-            requestExpirationTimestamp,
+            challengePeriodEndTimestamp,
             poolRebalanceLeafCount,
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
@@ -611,7 +611,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address[] memory l1Tokens,
         bytes32[] memory proof
     ) public nonReentrant unpaused {
-        require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() > rootBundleProposal.challengePeriodEndTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
         require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, leafId), "Already claimed");
@@ -703,7 +703,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
-        require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
+        require(currentTime <= rootBundleProposal.challengePeriodEndTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
         uint256 finalFee = _getBondTokenFinalFee();
@@ -949,10 +949,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
         // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
         // contract. In this case, ignore it as it is captured in liquid reserves and has no meaning in the numerator.
-        PooledToken memory pooledToken = pooledTokens[l1Token]; // Note this is storage so the state can be modified.
-        uint256 flooredUtilizedReserves = pooledToken.utilizedReserves > 0 ? uint256(pooledToken.utilizedReserves) : 0;
+        PooledToken memory pooledL1Token = pooledTokens[l1Token];
+        uint256 flooredUtilizedReserves = pooledL1Token.utilizedReserves > 0
+            ? uint256(pooledL1Token.utilizedReserves) // If positive: take the uint256 cast utilizedReserves.
+            : 0; // Else, if negative, then the is already captured in liquidReserves and should be ignored.
         uint256 numerator = relayedAmount + flooredUtilizedReserves;
-        uint256 denominator = pooledToken.liquidReserves + flooredUtilizedReserves;
+        uint256 denominator = pooledL1Token.liquidReserves + flooredUtilizedReserves;
 
         // If the denominator equals zero, return 1e18 (max utilization).
         if (denominator == 0) return 1e18;

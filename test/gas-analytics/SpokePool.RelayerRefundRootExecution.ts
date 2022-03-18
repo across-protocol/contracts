@@ -150,7 +150,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+        .executeRelayerRefundLeaf(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
 
       const simpleTree = await constructSimpleTree(
         destinationChainIds,
@@ -176,10 +176,10 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRelayerRefundLeaf(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
 
       const receipt = await txn.wait();
-      console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
@@ -187,25 +187,25 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       const txns = [];
       for (let i = 0; i < REFUND_LEAF_COUNT; i++) {
         txns.push(
-          await spokePool.connect(dataWorker).executeRelayerRefundRoot(1, leaves[i], tree.getHexProof(leaves[i]))
+          await spokePool.connect(dataWorker).executeRelayerRefundLeaf(1, leaves[i], tree.getHexProof(leaves[i]))
         );
       }
 
       // Compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
-      console.log(`(average) executeRelayerRefundRoot-gasUsed: ${gasUsed.div(REFUND_LEAF_COUNT)}`);
+      console.log(`(average) executeRelayerRefundLeaf-gasUsed: ${gasUsed.div(REFUND_LEAF_COUNT)}`);
     });
 
     it("Executing all leaves using multicall", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
 
       const multicallData = leaves.map((leaf) => {
-        return spokePool.interface.encodeFunctionData("executeRelayerRefundRoot", [1, leaf, tree.getHexProof(leaf)]);
+        return spokePool.interface.encodeFunctionData("executeRelayerRefundLeaf", [1, leaf, tree.getHexProof(leaf)]);
       });
 
       const receipt = await (await spokePool.connect(dataWorker).multicall(multicallData)).wait();
-      console.log(`(average) executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed.div(REFUND_LEAF_COUNT)}`);
+      console.log(`(average) executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed.div(REFUND_LEAF_COUNT)}`);
     });
   });
   describe(`(WETH): Relayer Refund tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {
@@ -228,7 +228,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+        .executeRelayerRefundLeaf(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
 
       const simpleTree = await constructSimpleTree(
         destinationChainIds,
@@ -248,10 +248,10 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRelayerRefundLeaf(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
 
       const receipt = await txn.wait();
-      console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it(`Stress Test: 1 leaf contains ${STRESS_TEST_REFUND_COUNT} refunds with amount > 0`, async function () {
       // This test should inform the limit # refunds that we would allow a RelayerRefundLeaf to contain to avoid
