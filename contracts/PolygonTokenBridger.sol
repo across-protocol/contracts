@@ -41,14 +41,36 @@ contract PolygonTokenBridger is Lockable {
     // WETH contract on Ethereum.
     WETH9 public immutable l1Weth;
 
+    // Chain id for the L1 that this contract is deployed on or communicates with.
+    // For example: if this contract were meant to facilitate transfers from polygon to mainnet, this value would be
+    // the mainnet chainId 1.
+    uint256 public immutable l1ChainId;
+
+    // Chain id for the L2 that this contract is deployed on or communicates with.
+    // For example: if this contract were meant to facilitate transfers from polygon to mainnet, this value would be
+    // the polygon chainId 137.
+    uint256 public immutable l2ChainId;
+
+    modifier onlyChainId(uint256 chainId) {
+        _requireChainId(chainId);
+        _;
+    }
+
     /**
      * @notice Constructs Token Bridger contract.
      * @param _destination Where to send tokens to for this network.
      * @param _l1Weth Ethereum WETH address.
      */
-    constructor(address _destination, WETH9 _l1Weth) {
+    constructor(
+        address _destination,
+        WETH9 _l1Weth,
+        uint256 _l1ChainId,
+        uint256 _l2ChainId
+    ) {
         destination = _destination;
         l1Weth = _l1Weth;
+        l1ChainId = _l1ChainId;
+        l2ChainId = _l2ChainId;
     }
 
     /**
@@ -62,7 +84,7 @@ contract PolygonTokenBridger is Lockable {
         PolygonIERC20 token,
         uint256 amount,
         bool isWrappedMatic
-    ) public nonReentrant {
+    ) public nonReentrant onlyChainId(l2ChainId) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // In the wMatic case, this unwraps. For other ERC20s, this is the burn/send action.
@@ -76,12 +98,22 @@ contract PolygonTokenBridger is Lockable {
      * @notice Called by someone to send tokens to the destination, which should be set to the HubPool.
      * @param token Token to send to destination.
      */
-    function retrieve(IERC20 token) public nonReentrant {
+    function retrieve(IERC20 token) public nonReentrant onlyChainId(l1ChainId) {
         token.safeTransfer(destination, token.balanceOf(address(this)));
     }
 
     receive() external payable {
-        // Note: this should only happen on the mainnet side where ETH is sent to the contract directly by the bridge.
-        if (functionCallStackOriginatesFromOutsideThisContract()) l1Weth.deposit{ value: address(this).balance }();
+        if (functionCallStackOriginatesFromOutsideThisContract()) {
+            // This should only happen on the mainnet side where ETH is sent to the contract directly by the bridge.
+            _requireChainId(l1ChainId);
+            l1Weth.deposit{ value: address(this).balance }();
+        } else {
+            // This should only happen on the l2 side where matic is unwrapped by this contract.
+            _requireChainId(l2ChainId);
+        }
+    }
+
+    function _requireChainId(uint256 chainId) internal view {
+        require(block.chainid == chainId, "Cannot run method on this chain");
     }
 }
