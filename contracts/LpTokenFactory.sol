@@ -23,7 +23,7 @@ contract LpTokenFactory is LpTokenFactoryInterface {
         );
         lpToken.addMinter(msg.sender); // Set the caller as the LP Token's minter.
         lpToken.addBurner(msg.sender); // Set the caller as the LP Token's burner.
-        lpToken.resetOwner(address(0)); // Set the owner of to the 0 address to prevent future role changes.
+        lpToken.resetOwner(address(0)); // Set the owner to the 0 address to prevent future role changes.
 
         return address(lpToken);
     }
