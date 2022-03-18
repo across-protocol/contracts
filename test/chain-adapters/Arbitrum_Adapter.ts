@@ -4,13 +4,7 @@ import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
-let hubPool: Contract,
-  arbitrumAdapter: Contract,
-  mockAdapter: Contract,
-  weth: Contract,
-  dai: Contract,
-  timer: Contract,
-  mockSpoke: Contract;
+let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
 let l2Weth: string, l2Dai: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let l1ERC20Gateway: FakeContract, l1Inbox: FakeContract;
@@ -21,7 +15,7 @@ let l1ChainId: number;
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
+    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, consts.amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
 
@@ -46,14 +40,8 @@ describe("Arbitrum Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(arbitrumChainId, arbitrumAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(arbitrumChainId, l1ChainId, l2Weth, weth.address, true);
-
-    await hubPool.whitelistRoute(arbitrumChainId, l1ChainId, l2Dai, dai.address, true);
-
-    await hubPool.setCrossChainContracts(l1ChainId, mockAdapter.address, mockSpoke.address);
-
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, dai.address, l2Dai, true);
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth, true);
+    await hubPool.setPoolRebalanceRoute(arbitrumChainId, dai.address, l2Dai);
+    await hubPool.setPoolRebalanceRoute(arbitrumChainId, weth.address, l2Weth);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -63,7 +51,7 @@ describe("Arbitrum Chain Adapter", function () {
     expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
       .to.emit(arbitrumAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice;
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce;
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,
@@ -94,8 +82,7 @@ describe("Arbitrum Chain Adapter", function () {
       consts.sampleL2GasPrice,
       "0x"
     );
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice; // only 1 L1->L2 message sent. Note that the two
-    // whitelist transactions already sent two messages.
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce; // only 1 L1->L2 message sent.
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,

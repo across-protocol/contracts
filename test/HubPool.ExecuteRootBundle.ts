@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, randomAddress } from "./utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves } from "./MerkleLib.utils";
@@ -75,8 +75,7 @@ describe("HubPool Root Bundle Execution", function () {
     const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
       mockAdapterAtHubPool.filters.RelayMessageCalled()
     );
-    expect(relayMessageEvents.length).to.equal(7); // Exactly seven message send from L1->L2. 6 for each whitelist route
-    // and 1 for the initiateRelayerRefund.
+    expect(relayMessageEvents.length).to.equal(1); // Exactly one message sent from L1->L2.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
@@ -120,7 +119,7 @@ describe("HubPool Root Bundle Execution", function () {
     const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
       mockAdapterAtHubPool.filters.RelayMessageCalled()
     );
-    expect(relayMessageEvents.length).to.equal(7); // Exactly seven message send from L1->L2. 6 for each whitelist route
+    expect(relayMessageEvents.length).to.equal(1); // Exactly one message sent from L1->L2.
     // and 1 for the initiateRelayerRefund.
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
@@ -163,7 +162,45 @@ describe("HubPool Root Bundle Execution", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
     await expect(
       hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
-    ).to.be.revertedWith("Uninitialized spoke pool");
+    ).to.be.revertedWith("SpokePool not initialized");
+  });
+
+  it("Reverts if adapter not set for chain ID", async function () {
+    const { leaves, tree } = await constructSimpleTree();
+
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+
+    // Set adapter to random address.
+    await hubPool.setCrossChainContracts(consts.repaymentChainId, randomAddress(), mockSpoke.address);
+
+    // Advance time so the request can be executed and check that executing the request reverts.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("Adapter not initialized");
+  });
+
+  it("Reverts if destination token is zero address for a pool rebalance route", async function () {
+    const { leaves, tree } = await constructSimpleTree();
+
+    await hubPool.connect(dataWorker).proposeRootBundle(
+      [3117], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
+      1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle (just sending WETH to one address).
+      tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+      consts.mockRelayerRefundRoot, // Not relevant for this test.
+      consts.mockSlowRelayRoot // Not relevant for this test.
+    );
+
+    // Let's set weth pool rebalance route to zero address.
+    await hubPool.setPoolRebalanceRoute(consts.repaymentChainId, weth.address, ZERO_ADDRESS);
+
+    // Advance time so the request can be executed and check that executing the request reverts.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await expect(
+      hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("Route not whitelisted");
   });
 
   it("Execution rejects leaf claim before liveness passed", async function () {

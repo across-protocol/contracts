@@ -61,14 +61,6 @@ interface HubPoolInterface {
         address spokePool
     ) external;
 
-    function whitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        address destinationToken,
-        bool enableRoute
-    ) external;
-
     function enableL1TokenForLiquidityProvision(address l1Token) external;
 
     function disableL1TokenForLiquidityProvision(address l1Token) external;
@@ -112,13 +104,25 @@ interface HubPoolInterface {
 
     function claimProtocolFeesCaptured(address l1Token) external;
 
-    function getRootBundleProposalAncillaryData() external view returns (bytes memory ancillaryData);
+    function getRootBundleProposalAncillaryData() external pure returns (bytes memory ancillaryData);
 
-    function whitelistedRoute(
+    function setPoolRebalanceRoute(
+        uint256 destinationChainId,
+        address l1Token,
+        address destinationToken
+    ) external;
+
+    function setDepositRoute(
         uint256 originChainId,
+        uint256 destinationChainId,
         address originToken,
-        uint256 destinationChainId
-    ) external view returns (address);
+        bool depositsEnabled
+    ) external;
+
+    function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
+        external
+        view
+        returns (address destinationToken);
 
     function loadEthForL2Calls() external payable;
 }
