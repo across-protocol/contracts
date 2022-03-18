@@ -754,6 +754,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint32 currentTime = uint32(getCurrentTime());
         require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
+        // Request price from OO and dispute it.
+        bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
+        uint256 finalFee = _getBondTokenFinalFee();
+
         // This method will request a price from the OO and dispute it. Note that we set the ancillary data to
         // the empty string (""). The root bundle that is being disputed was the most recently proposed one with a
         // block number less than or equal to the dispute block time. All of this root bundle data can be found in
