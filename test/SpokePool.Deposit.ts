@@ -167,8 +167,23 @@ describe("SpokePool Depositor Logic", async function () {
           )
         )
     ).to.be.reverted;
-    // Re-enable route.
+
+    // Re-enable route and demonstrate that call would work.
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, true);
+    await expect(
+      spokePool
+        .connect(depositor)
+        .callStatic.deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime
+          )
+        )
+    ).to.be.ok;
 
     // Cannot deposit with invalid relayer fee.
     await expect(
