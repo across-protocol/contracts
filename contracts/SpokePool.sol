@@ -58,7 +58,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Merkle root of relayer refunds for successful relays.
         bytes32 relayerRefundRoot;
         // This is a 2D bitmap tracking which leaves in the relayer refund root have been claimed, with max size of
-        // 256x(2^248) leaves per root.
+        // 256x(2^248) leaves per root. Due to the indexing scheme in MerkleLib, there are a maximum of
+        // 2^248 different values of claimedWordIndex with 256 different claimedBitIndexes.
         mapping(uint256 => uint256) claimedBitmap;
     }
 
