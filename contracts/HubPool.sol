@@ -361,7 +361,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Sets identifier for root bundle disputes.. Callable only by owner.
+     * @notice Sets identifier for root bundle disputes. Callable only by owner.
      * @param newIdentifier New identifier.
      */
     function setIdentifier(bytes32 newIdentifier) public override onlyOwner noActiveRequests nonReentrant {
