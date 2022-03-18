@@ -7,8 +7,8 @@ pragma solidity ^0.8.0;
 interface SpokePoolInterface {
     // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
     struct RelayerRefundLeaf {
-        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
-        // negative. This is just that value inverted.
+        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that
+        // is negative. This is just the negative of this value.
         uint256 amountToReturn;
         // Used to verify that this is being executed on the correct destination chainId.
         uint256 chainId;
@@ -24,7 +24,7 @@ interface SpokePoolInterface {
 
     // This struct represents the data to fully specify a relay. If any portion of this data differs, the relay is
     // considered to be completely distinct. Only one relay for a particular depositId, chainId pair should be
-    // considered valid and repaid. This data is hashed and inserted into a the slow relay merkle root so that an off
+    // considered valid and repaid. This data is hashed and inserted into the slow relay merkle root so that an off
     // chain validator can choose when to refund slow relayers.
     struct RelayData {
         // The address that made the deposit on the origin chain.
@@ -46,6 +46,18 @@ interface SpokePoolInterface {
         uint64 relayerFeePct;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
+    }
+
+    // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
+    // by "data workers" via inclusion proofs to execute leaves in the roots.
+    struct RootBundle {
+        // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
+        bytes32 slowRelayRoot;
+        // Merkle root of relayer refunds for successful relays.
+        bytes32 relayerRefundRoot;
+        // This is a 2D bitmap tracking which leaves in the relayer refund root have been claimed, with max size of
+        // 256x256 leaves per root.
+        mapping(uint256 => uint256) claimedBitmap;
     }
 
     function setCrossDomainAdmin(address newCrossDomainAdmin) external;
@@ -108,7 +120,7 @@ interface SpokePoolInterface {
         bytes memory depositorSignature
     ) external;
 
-    function executeSlowRelayRoot(
+    function executeSlowRelayLeaf(
         address depositor,
         address recipient,
         address destinationToken,
@@ -121,7 +133,7 @@ interface SpokePoolInterface {
         bytes32[] memory proof
     ) external;
 
-    function executeRelayerRefundRoot(
+    function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof

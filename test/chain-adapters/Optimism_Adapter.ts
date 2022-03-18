@@ -61,10 +61,10 @@ describe("Optimism Chain Adapter", function () {
   it("Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, optimismChainId);
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, optimismChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
 
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositERC20To).to.have.been.calledOnce; // One token transfer over the bridge.
@@ -80,10 +80,10 @@ describe("Optimism Chain Adapter", function () {
   });
   it("Correctly unwraps WETH and bridges ETH", async function () {
     // Cant bridge WETH on optimism. Rather, unwrap WETH to ETH then bridge it. Validate the adapter does this.
-    const { leafs, tree } = await constructSingleChainTree(weth.address, 1, optimismChainId);
+    const { leaves, tree } = await constructSingleChainTree(weth.address, 1, optimismChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
 
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositETHTo).to.have.been.calledOnce; // One eth transfer over the bridge.

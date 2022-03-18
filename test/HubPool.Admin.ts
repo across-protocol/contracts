@@ -30,7 +30,7 @@ describe("HubPool Admin functions", function () {
 
     const lpToken = await (await getContractFactory("ExpandedERC20", owner)).attach(pooledTokenStruct.lpToken);
     expect(await lpToken.callStatic.symbol()).to.equal("Av2-WETH-LP");
-    expect(await lpToken.callStatic.name()).to.equal("Across Wrapped Ether LP Token");
+    expect(await lpToken.callStatic.name()).to.equal("Across V2 Wrapped Ether LP Token");
   });
   it("Only owner can enable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
@@ -136,7 +136,7 @@ describe("HubPool Admin functions", function () {
     await seedWallet(owner, [], weth, totalBond);
     await weth.approve(hubPool.address, totalBond);
     await hubPool.proposeRootBundle([1, 2, 3], 5, mockTreeRoot, mockTreeRoot, mockSlowRelayRoot);
-    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("proposal has unclaimed leafs");
+    await expect(hubPool.setBond(usdc.address, "1")).to.be.revertedWith("Proposal has unclaimed leaves");
   });
   it("Cannot change bond token to unwhitelisted token", async function () {
     await expect(hubPool.setBond(randomAddress(), "1")).to.be.revertedWith("Not on whitelist");

@@ -17,17 +17,19 @@ contract LpTokenFactory is LpTokenFactoryInterface {
      */
     function createLpToken(address l1Token) public returns (address) {
         ExpandedERC20 lpToken = new ExpandedERC20(
-            _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
-            _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
+            _concatenate("Across V2 ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
+            _concatenate("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
             IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );
-        lpToken.addMember(1, msg.sender); // Set this contract as the LP Token's minter.
-        lpToken.addMember(2, msg.sender); // Set this contract as the LP Token's burner.
+
+        lpToken.addMinter(msg.sender); // Set the caller as the LP Token's minter.
+        lpToken.addBurner(msg.sender); // Set the caller as the LP Token's burner.
+        lpToken.resetOwner(msg.sender); // Set the caller as the LP Token's owner.
 
         return address(lpToken);
     }
 
-    function _append(
+    function _concatenate(
         string memory a,
         string memory b,
         string memory c

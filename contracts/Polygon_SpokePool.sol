@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./SpokePool.sol";
+import "./PolygonTokenBridger.sol";
 import "./interfaces/WETH9.sol";
+import "./SpokePoolInterface.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
-import "./PolygonTokenBridger.sol";
 
 // IFxMessageProcessor represents interface to process messages.
 interface IFxMessageProcessor {
@@ -40,7 +41,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
-    // All calls that have admin priviledges must be fired from within the processMessageFromRoot method that's gone
+    // All calls that have admin privileges must be fired from within the processMessageFromRoot method that's gone
     // through validation where the sender is checked and the root (mainnet) sender is also validated.
     // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {
@@ -64,8 +65,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wmaticAddress Replaces _wethAddress for this network since MATIC is the gas token and sent via msg.value
-     * on Polygon.
+     * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
      * @param _fxChild FxChild contract, changeable by Admin.
      * @param timerAddress Timer address to set.
      */
@@ -82,7 +82,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     }
 
     /********************************************************
-     *    ARBITRUM-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
+     *    POLYGON-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
      ********************************************************/
 
     /**
@@ -137,11 +137,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
             relayerRefundLeaf.amountToReturn
         );
 
-        // Note: WETH is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
+        // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
         polygonTokenBridger.send(
             PolygonIERC20(relayerRefundLeaf.l2TokenAddress),
             relayerRefundLeaf.amountToReturn,
-            address(weth) == relayerRefundLeaf.l2TokenAddress
+            address(wrappedNativeToken) == relayerRefundLeaf.l2TokenAddress
         );
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);

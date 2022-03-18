@@ -84,17 +84,20 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
-    const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2Dai,
+      await arbitrumSpokePool.callStatic.chainId()
+    );
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
     // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, ZERO_ADDRESS);
     await expect(
-      arbitrumSpokePool.executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
+      arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Uninitialized mainnet token");
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
 
-    await arbitrumSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
+    await arbitrumSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     // outboundTransfer is overloaded in the arbitrum gateway. Define the interface to check the method is called.

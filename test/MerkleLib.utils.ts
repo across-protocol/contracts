@@ -21,18 +21,18 @@ export interface RelayerRefundLeaf {
   refundAddresses: string[];
 }
 
-export async function buildRelayerRefundTree(relayerRefundLeafs: RelayerRefundLeaf[]) {
-  for (let i = 0; i < relayerRefundLeafs.length; i++) {
+export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundLeaf[]) {
+  for (let i = 0; i < relayerRefundLeaves.length; i++) {
     // The 2 provided parallel arrays must be of equal length.
-    expect(relayerRefundLeafs[i].refundAddresses.length).to.equal(relayerRefundLeafs[i].refundAmounts.length);
+    expect(relayerRefundLeaves[i].refundAddresses.length).to.equal(relayerRefundLeaves[i].refundAmounts.length);
   }
 
   const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
   const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeafs, hashFn);
+  return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 }
 
-export function buildRelayerRefundLeafs(
+export function buildRelayerRefundLeaves(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
   l2Tokens: string[],
@@ -53,21 +53,21 @@ export function buildRelayerRefundLeafs(
     });
 }
 
-export async function buildPoolRebalanceLeafTree(poolRebalanceLeafs: PoolRebalanceLeaf[]) {
-  for (let i = 0; i < poolRebalanceLeafs.length; i++) {
+export async function buildPoolRebalanceLeafTree(poolRebalanceLeaves: PoolRebalanceLeaf[]) {
+  for (let i = 0; i < poolRebalanceLeaves.length; i++) {
     // The 4 provided parallel arrays must be of equal length.
-    expect(poolRebalanceLeafs[i].l1Tokens.length)
-      .to.equal(poolRebalanceLeafs[i].bundleLpFees.length)
-      .to.equal(poolRebalanceLeafs[i].netSendAmounts.length)
-      .to.equal(poolRebalanceLeafs[i].runningBalances.length);
+    expect(poolRebalanceLeaves[i].l1Tokens.length)
+      .to.equal(poolRebalanceLeaves[i].bundleLpFees.length)
+      .to.equal(poolRebalanceLeaves[i].netSendAmounts.length)
+      .to.equal(poolRebalanceLeaves[i].runningBalances.length);
   }
 
   const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
   const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  return new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeafs, hashFn);
+  return new MerkleTree<PoolRebalanceLeaf>(poolRebalanceLeaves, hashFn);
 }
 
-export function buildPoolRebalanceLeafs(
+export function buildPoolRebalanceLeaves(
   destinationChainIds: number[],
   l1Tokens: string[][],
   bundleLpFees: BigNumber[][],
@@ -91,7 +91,7 @@ export function buildPoolRebalanceLeafs(
 }
 
 export async function constructSingleRelayerRefundTree(l2Token: Contract | String, destinationChainId: number) {
-  const leafs = buildRelayerRefundLeafs(
+  const leaves = buildRelayerRefundLeaves(
     [destinationChainId], // Destination chain ID.
     [amountToReturn], // amountToReturn.
     [l2Token as string], // l2Token.
@@ -99,15 +99,15 @@ export async function constructSingleRelayerRefundTree(l2Token: Contract | Strin
     [[]] // refundAmounts.
   );
 
-  const tree = await buildRelayerRefundTree(leafs);
+  const tree = await buildRelayerRefundTree(leaves);
 
-  return { leafs, tree };
+  return { leaves, tree };
 }
 
 export async function constructSingleChainTree(token: string, scalingSize = 1, repaymentChain = repaymentChainId) {
   const tokensSendToL2 = toBNWei(100 * scalingSize);
   const realizedLpFees = toBNWei(10 * scalingSize);
-  const leafs = buildPoolRebalanceLeafs(
+  const leaves = buildPoolRebalanceLeaves(
     [repaymentChain], // repayment chain. In this test we only want to send one token to one chain.
     [[token]], // l1Token. We will only be sending 1 token to one chain.
     [[realizedLpFees]], // bundleLpFees.
@@ -115,9 +115,9 @@ export async function constructSingleChainTree(token: string, scalingSize = 1, r
     [[tokensSendToL2]], // runningBalances.
     [0] // groupIndex
   );
-  const tree = await buildPoolRebalanceLeafTree(leafs);
+  const tree = await buildPoolRebalanceLeafTree(leaves);
 
-  return { tokensSendToL2, realizedLpFees, leafs, tree };
+  return { tokensSendToL2, realizedLpFees, leaves, tree };
 }
 
 export async function buildSlowRelayTree(relays: RelayData[]) {

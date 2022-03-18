@@ -12,7 +12,7 @@ import {
 import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
-import { RelayerRefundLeaf, buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
+import { RelayerRefundLeaf, buildRelayerRefundLeaves, buildRelayerRefundTree } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
@@ -32,6 +32,15 @@ let tree: MerkleTree<RelayerRefundLeaf>;
 const REFUND_LEAF_COUNT = 10;
 const REFUNDS_PER_LEAF = 10;
 const REFUND_AMOUNT = toBNWei("10");
+// Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
+// we'll target 12 million gas as a conservative upper-bound. This test script will fail if executing a leaf with
+// `STRESS_TEST_REFUND_COUNT` number of refunds is not within the [TARGET_GAS_LOWER_BOUND, TARGET_GAS_UPPER_BOUND]
+// gas usage range.
+const TARGET_GAS_UPPER_BOUND = 12_000_000;
+const TARGET_GAS_LOWER_BOUND = 5_000_000;
+// Note: I can't get this to work with a gas >> 5mil without the transaction timing out. This is why I've set
+// the lower bound to 6mil instead of a tighter 10mil.
+const STRESS_TEST_REFUND_COUNT = 800;
 
 // Construct tree with REFUND_LEAF_COUNT leaves, each containing REFUNDS_PER_LEAF refunds.
 async function constructSimpleTree(
@@ -58,7 +67,7 @@ async function constructSimpleTree(
       _refundAddresses[i].push(refundAddresses[j]);
     }
   }
-  const leaves = buildRelayerRefundLeafs(
+  const leaves = buildRelayerRefundLeaves(
     _destinationChainIds,
     _amountsToReturn,
     _l2Tokens,
@@ -141,7 +150,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+        .executeRelayerRefundLeaf(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
 
       const simpleTree = await constructSimpleTree(
         destinationChainIds,
@@ -167,10 +176,10 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRelayerRefundLeaf(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
 
       const receipt = await txn.wait();
-      console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
@@ -178,25 +187,25 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       const txns = [];
       for (let i = 0; i < REFUND_LEAF_COUNT; i++) {
         txns.push(
-          await spokePool.connect(dataWorker).executeRelayerRefundRoot(1, leaves[i], tree.getHexProof(leaves[i]))
+          await spokePool.connect(dataWorker).executeRelayerRefundLeaf(1, leaves[i], tree.getHexProof(leaves[i]))
         );
       }
 
       // Compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
-      console.log(`(average) executeRelayerRefundRoot-gasUsed: ${gasUsed.div(REFUND_LEAF_COUNT)}`);
+      console.log(`(average) executeRelayerRefundLeaf-gasUsed: ${gasUsed.div(REFUND_LEAF_COUNT)}`);
     });
 
     it("Executing all leaves using multicall", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
 
       const multicallData = leaves.map((leaf) => {
-        return spokePool.interface.encodeFunctionData("executeRelayerRefundRoot", [1, leaf, tree.getHexProof(leaf)]);
+        return spokePool.interface.encodeFunctionData("executeRelayerRefundLeaf", [1, leaf, tree.getHexProof(leaf)]);
       });
 
       const receipt = await (await spokePool.connect(dataWorker).multicall(multicallData)).wait();
-      console.log(`(average) executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed.div(REFUND_LEAF_COUNT)}`);
+      console.log(`(average) executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed.div(REFUND_LEAF_COUNT)}`);
     });
   });
   describe(`(WETH): Relayer Refund tree with ${REFUND_LEAF_COUNT} leaves, each containing ${REFUNDS_PER_LEAF} refunds`, function () {
@@ -219,7 +228,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+        .executeRelayerRefundLeaf(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
 
       const simpleTree = await constructSimpleTree(
         destinationChainIds,
@@ -239,10 +248,55 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRelayerRefundLeaf(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+
+      const receipt = await txn.wait();
+      console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
+    });
+    it(`Stress Test: 1 leaf contains ${STRESS_TEST_REFUND_COUNT} refunds with amount > 0`, async function () {
+      // This test should inform the limit # refunds that we would allow a RelayerRefundLeaf to contain to avoid
+      // publishing a leaf that is unexecutable due to the block gas limit.
+
+      // Note: Since the SpokePool is deployed on L2s we care specifically about L2 block gas limits.
+      // - Optimism: 15mil cap, soon to be raised to 30mil when they upgrade to London.
+      // - Arbitrum: uses different units when reasoning about gas (but with the nitro upgrade those will then be
+      //   closer to Ethereum). You can do about the same amount of computation per second on the chain; each
+      //   transaction can use up to 2.5m arbgas in computation.
+      // - Polygon: same as L1
+
+      // Regarding the block limit, the max limit is 30 million gas, the expected block gas limit is 15 million, so
+      // we'll target 12 million gas as a conservative upper-bound.
+      await seedContract(spokePool, owner, [], weth, toBN(STRESS_TEST_REFUND_COUNT).mul(REFUND_AMOUNT).mul(toBN(10)));
+
+      // Create tree with 1 large leaf.
+      const bigLeaves = buildRelayerRefundLeaves(
+        [destinationChainIds[0]],
+        [toBNWei("1")], // Set amount to return > 0 to better simulate long execution path of _executeRelayerRefundLeaf
+        [weth.address],
+        [Array(STRESS_TEST_REFUND_COUNT).fill(recipient.address)],
+        [Array(STRESS_TEST_REFUND_COUNT).fill(REFUND_AMOUNT)]
+      );
+      const bigLeafTree = await buildRelayerRefundTree(bigLeaves);
+
+      await spokePool.connect(dataWorker).relayRootBundle(bigLeafTree.getHexRoot(), consts.mockSlowRelayRoot);
+
+      // Estimate the transaction gas and set it (plus some buffer) explicitly as the transaction's gas limit. This is
+      // done because ethers.js' default gas limit setting doesn't seem to always work and sometimes overestimates
+      // it and throws something like:
+      // "InvalidInputError: Transaction gas limit is X and exceeds block gas limit of 30000000"
+      const gasEstimate = await spokePool
+        .connect(dataWorker)
+        .estimateGas.executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
+      const txn = await spokePool
+        .connect(dataWorker)
+        .executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]), {
+          gasLimit: gasEstimate.mul(toBN("1.2")),
+        });
 
       const receipt = await txn.wait();
       console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+      expect(Number(receipt.gasUsed)).to.be.lessThanOrEqual(TARGET_GAS_UPPER_BOUND);
+      expect(Number(receipt.gasUsed)).to.be.greaterThanOrEqual(TARGET_GAS_LOWER_BOUND);
     });
   });
 });
