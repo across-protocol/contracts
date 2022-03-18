@@ -4,7 +4,7 @@ import { deployErc20 } from "./utils";
 import * as consts from "../constants";
 import { ZERO_ADDRESS } from "@uma/common";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeafs, PoolRebalanceLeaf } from "../MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves, PoolRebalanceLeaf } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
@@ -41,7 +41,7 @@ async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Co
       _l1TokenAddresses[i].push(_l1Tokens[j].address);
     }
   }
-  const leaves = buildPoolRebalanceLeafs(
+  const leaves = buildPoolRebalanceLeaves(
     _destinationChainIds,
     _l1TokenAddresses,
     _bundleLpFeeAmounts,
@@ -116,7 +116,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       const initTree = await constructSimpleTree([...destinationChainIds], [...l1Tokens]);
 
       await hubPool.connect(dataWorker).proposeRootBundle(
-        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         initTree.tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         createRandomBytes32(),
@@ -138,7 +138,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
 
     it("Simple proposal", async function () {
       const initiateTxn = await hubPool.connect(dataWorker).proposeRootBundle(
-        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         createRandomBytes32(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         createRandomBytes32(), // Not relevant for this test.
@@ -151,7 +151,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       const leafIndexToExecute = 0;
 
       await hubPool.connect(dataWorker).proposeRootBundle(
-        [consts.mockBundleEvaluationBlockNumbers[0]], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        [consts.mockBundleEvaluationBlockNumbers[0]], // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
         1, // poolRebalanceLeafCount. There is exactly one leaf in the bundle.
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
@@ -169,7 +169,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     });
     it("Executing all leaves", async function () {
       await hubPool.connect(dataWorker).proposeRootBundle(
-        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.
@@ -193,7 +193,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
 
     it("Executing all leaves using multicall", async function () {
       await hubPool.connect(dataWorker).proposeRootBundle(
-        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leafs.
+        destinationChainIds, // bundleEvaluationBlockNumbers used by bots to construct bundles. Length must equal the number of leaves.
         REFUND_CHAIN_COUNT, // poolRebalanceLeafCount. Execute all leaves
         tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
         consts.mockRelayerRefundRoot, // Not relevant for this test.

@@ -41,7 +41,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
-    // All calls that have admin priviledges must be fired from within the processMessageFromRoot method that's gone
+    // All calls that have admin privileges must be fired from within the processMessageFromRoot method that's gone
     // through validation where the sender is checked and the root (mainnet) sender is also validated.
     // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {

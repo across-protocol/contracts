@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface HubPoolInterface {
     // This leaf is meant to be decoded in the HubPool to rebalance tokens between HubPool and SpokePool.
     struct PoolRebalanceLeaf {
-        // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
+        // This is used to know which chain to send cross-chain transactions to (and which SpokePool to send to).
         uint256 chainId;
         // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         uint256[] bundleLpFees;
