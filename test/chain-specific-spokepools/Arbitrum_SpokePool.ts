@@ -3,6 +3,7 @@ import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, 
 import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
+import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
@@ -85,6 +86,14 @@ describe("Arbitrum Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
     const { leafs, tree } = await constructSingleRelayerRefundTree(l2Dai, await arbitrumSpokePool.callStatic.chainId());
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+
+    // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
+    await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, ZERO_ADDRESS);
+    await expect(
+      arbitrumSpokePool.executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]))
+    ).to.be.revertedWith("Uninitialized mainnet token");
+    await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
+
     await arbitrumSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.

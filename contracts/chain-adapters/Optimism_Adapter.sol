@@ -37,8 +37,6 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     address public immutable snx = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
     address public immutable snxOptimismBridge = 0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068;
 
-    event L2GasLimitSet(uint32 newGasLimit);
-
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.

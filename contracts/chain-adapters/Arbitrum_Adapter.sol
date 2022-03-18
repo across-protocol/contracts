@@ -60,14 +60,6 @@ contract Arbitrum_Adapter is AdapterInterface {
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20Gateway;
 
-    event L2GasLimitSet(uint32 newL2GasLimit);
-
-    event L2MaxSubmissionCostSet(uint256 newL2MaxSubmissionCost);
-
-    event L2GasPriceSet(uint256 newL2GasPrice);
-
-    event L2RefundL2AddressSet(address newL2RefundL2Address);
-
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.

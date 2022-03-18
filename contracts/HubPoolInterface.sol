@@ -16,11 +16,11 @@ interface HubPoolInterface {
         uint256[] bundleLpFees;
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
-        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
-        // when the rules indicate that a rebalancing action should occur. When a rebalance does not occur,
-        // runningBalances for this token should change by the total relays - deposits in this bundle. When a rebalance
-        // does occur, runningBalances should be set to zero for this token and the netSendAmounts should be set to the
-        // previous runningBalances + relays - deposits in this bundle.
+        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero when the
+        // rules indicate that a rebalancing action should occur. When a rebalance does occur, runningBalances should be
+        // set to zero for this token and the netSendAmounts should be set to the previous runningBalances + relays -
+        // deposits in this bundle. If non-zero then it must be set on the SpokePool's RelayerRefundLeaf amountToReturn
+        // as -1 * this value to indicate if funds are being sent from or to the SpokePool.
         int256[] netSendAmounts;
         // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1 pool.
         // A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that the
@@ -59,14 +59,6 @@ interface HubPoolInterface {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) external;
-
-    function whitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        address destinationToken,
-        bool enableRoute
     ) external;
 
     function enableL1TokenForLiquidityProvision(address l1Token) external;
@@ -112,13 +104,25 @@ interface HubPoolInterface {
 
     function claimProtocolFeesCaptured(address l1Token) external;
 
-    function getRootBundleProposalAncillaryData() external view returns (bytes memory ancillaryData);
+    function getRootBundleProposalAncillaryData() external pure returns (bytes memory ancillaryData);
 
-    function whitelistedRoute(
+    function setPoolRebalanceRoute(
+        uint256 destinationChainId,
+        address l1Token,
+        address destinationToken
+    ) external;
+
+    function setDepositRoute(
         uint256 originChainId,
+        uint256 destinationChainId,
         address originToken,
-        uint256 destinationChainId
-    ) external view returns (address);
+        bool depositsEnabled
+    ) external;
+
+    function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
+        external
+        view
+        returns (address destinationToken);
 
     function loadEthForL2Calls() external payable;
 }

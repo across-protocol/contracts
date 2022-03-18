@@ -21,8 +21,9 @@ contract LpTokenFactory is LpTokenFactoryInterface {
             _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
             IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );
-        lpToken.addMember(1, msg.sender); // Set this contract as the LP Token's minter.
-        lpToken.addMember(2, msg.sender); // Set this contract as the LP Token's burner.
+        lpToken.addMinter(msg.sender); // Set the caller as the LP Token's minter.
+        lpToken.addBurner(msg.sender); // Set the caller as the LP Token's burner.
+        lpToken.resetOwner(msg.sender); // Set the caller as the LP Token's owner.
 
         return address(lpToken);
     }
