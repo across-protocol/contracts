@@ -240,7 +240,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
 
       // Add leaf to tree that contains enough L1 tokens that we can determine the limit after which the executeRoot
       // will fail due to out of gas.
-      const bigLeaves = buildPoolRebalanceLeafs(
+      const bigLeaves = buildPoolRebalanceLeaves(
         [destinationChainIds[0]],
         [l1TokenAddresses],
         [Array(STRESS_TEST_L1_TOKEN_COUNT).fill(toBNWei("0"))],

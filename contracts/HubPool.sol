@@ -755,7 +755,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
-        bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         uint256 finalFee = _getBondTokenFinalFee();
 
         // This method will request a price from the OO and dispute it. Note that we set the ancillary data to
@@ -774,7 +773,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // to the final fee, which would mean that the allowance set to the bondAmount would be insufficient and the
         // requestAndProposePriceFor() call would revert. Source: https://github.com/UMAprotocol/protocol/blob/5b37ea818a28479c01e458389a83c3e736306b17/packages/core/contracts/oracle/implementation/SkinnyOptimisticOracle.sol#L321
         if (finalFee >= bondAmount) {
-            _cancelBundle(requestAncillaryData);
+            _cancelBundle();
             return;
         }
 
