@@ -53,6 +53,7 @@ contract PolygonTokenBridger is Lockable {
 
     /**
      * @notice Called by Polygon SpokePool to send tokens over bridge to contract with the same address as this.
+     * @notice The caller of this function must approve this contract to spend amount of token.
      * @param token Token to bridge.
      * @param amount Amount to bridge.
      * @param isWrappedMatic True if token is WMATIC.

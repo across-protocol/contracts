@@ -481,6 +481,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * and the caller, or "liquidity provider" earns a continuous fee for their credit that they are extending relayers.
      * @notice Caller will receive an LP token representing their share of this pool. The LP token's redemption value
      * increments from the time that they enter the pool to reflect their accrued fees.
+     * @notice The caller of this function must approve this contract to spend l1TokenAmount of l1Token.
      * @param l1Token Token to deposit into this contract.
      * @param l1TokenAmount Amount of liquidity to provide.
      */
@@ -588,6 +589,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * called; moreover, this method can't be called again until all leafs are executed.
      * @param bundleEvaluationBlockNumbers should contain the latest block number for all chains, even if there are no
      * relays contained on some of them. The usage of this variable should be defined in an off chain UMIP.
+     * @notice The caller of this function must approve this contract to spend bondAmount of bondToken.
      * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max is the number of whitelisted chains.
      * @param poolRebalanceRoot Pool rebalance root containing leaves that will send tokens from this contract to a SpokePool.
      * @param relayerRefundRoot Relayer refund root to publish to SpokePool where a data worker can execute leaves to
@@ -745,6 +747,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Caller stakes a bond to dispute the current root bundle proposal assuming it has not passed liveness
      * yet. The proposal is deleted, allowing a follow-up proposal to be submitted, and the dispute is sent to the
      * optimistic oracle to be adjudicated. Can only be called within the liveness period of the current proposal.
+     * @notice The caller of this function must approve this contract to spend bondAmount of l1Token.
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
