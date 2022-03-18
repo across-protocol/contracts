@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
