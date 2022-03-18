@@ -41,35 +41,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    // A data worker can optimistically store several merkle roots on this contract by staking a bond and calling
-    // proposeRootBundle. By staking a bond, the data worker is alleging that the merkle roots all
-    // contain valid leaves that can be executed later to:
-    // - Send funds from this contract to a SpokePool or vice versa
-    // - Send funds from a SpokePool to Relayer as a refund for a relayed deposit
-    // - Send funds from a SpokePool to a deposit recipient to fulfill a "slow" relay
-    // Anyone can dispute this struct if the merkle roots contain invalid leaves before the
-    // requestExpirationTimestamp. Once the expiration timestamp is passed, executeRootBundle to execute a leaf
-    // from the poolRebalanceRoot on this contract and it will simultaneously publish the relayerRefundRoot and
-    // slowRelayRoot to a SpokePool. The latter two roots, once published to the SpokePool, contain
-    // leaves that can be executed on the SpokePool to pay relayers or recipients.
-    struct RootBundle {
-        // Contains leaves instructing this contract to send funds to SpokePools.
-        bytes32 poolRebalanceRoot;
-        // Relayer refund merkle root to be published to a SpokePool.
-        bytes32 relayerRefundRoot;
-        // Slow relay merkle root to be published to a SpokePool.
-        bytes32 slowRelayRoot;
-        // This is a 1D bitmap, with max size of 256 elements, limiting us to 256 chainsIds.
-        uint256 claimedBitMap;
-        // Proposer of this root bundle.
-        address proposer;
-        // Number of pool rebalance leaves to execute in the poolRebalanceRoot. After this number
-        // of leaves are executed, a new root bundle can be proposed
-        uint8 unclaimedPoolRebalanceLeafCount;
-        // When root bundle challenge period passes and this root bundle becomes executable.
-        uint32 requestExpirationTimestamp;
-    }
-
     // Only one root bundle can be stored at a time. Once all pool rebalance leaves are executed, a new proposal
     // can be submitted.
     RootBundle public rootBundleProposal;
@@ -85,30 +56,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // to 0x0 to disable a pool rebalance route and block executeRootBundle() from executing.
     mapping(bytes32 => address) private poolRebalanceRoutes;
 
-    struct PooledToken {
-        // LP token given to LPs of a specific L1 token.
-        address lpToken;
-        // True if accepting new LP's.
-        bool isEnabled;
-        // Timestamp of last LP fee update.
-        uint32 lastLpFeeUpdate;
-        // Number of LP funds sent via pool rebalances to SpokePools and are expected to be sent
-        // back later.
-        int256 utilizedReserves;
-        // Number of LP funds held in contract less utilized reserves.
-        uint256 liquidReserves;
-        // Number of LP funds reserved to pay out to LPs as fees.
-        uint256 undistributedLpFees;
-    }
-
     // Mapping of L1 token addresses to the associated pool information.
     mapping(address => PooledToken) public pooledTokens;
 
-    // Helper contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
-    struct CrossChainContract {
-        address adapter;
-        address spokePool;
-    }
     // Mapping of chainId to the associated adapter and spokePool contracts.
     mapping(uint256 => CrossChainContract) public crossChainContracts;
 
@@ -219,9 +169,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     );
     event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
 
-    event RootBundleDisputed(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RootBundleDisputed(address indexed disputer, uint256 requestTime);
 
-    event RootBundleCanceled(address indexed disputer, uint256 requestTime, bytes disputedAncillaryData);
+    event RootBundleCanceled(address indexed disputer, uint256 requestTime);
 
     modifier noActiveRequests() {
         require(!_activeRequest(), "Proposal has unclaimed leaves");
@@ -592,8 +542,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param bundleEvaluationBlockNumbers should contain the latest block number for all chains, even if there are no
      * relays contained on some of them. The usage of this variable should be defined in an off chain UMIP.
      * @notice The caller of this function must approve this contract to spend bondAmount of bondToken.
-     * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max is the number of whitelisted chains.
-     * @param poolRebalanceRoot Pool rebalance root containing leaves that will send tokens from this contract to a SpokePool.
+     * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max is # of whitelisted chains.
+     * @param poolRebalanceRoot Pool rebalance root containing leaves that sends tokens from this contract to SpokePool.
      * @param relayerRefundRoot Relayer refund root to publish to SpokePool where a data worker can execute leaves to
      * refund relayers on their chosen refund chainId.
      * @param slowRelayRoot Slow relay root to publish to Spoke Pool where a data worker can execute leaves to
@@ -756,8 +706,17 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
-        bytes memory requestAncillaryData = getRootBundleProposalAncillaryData();
         uint256 finalFee = _getBondTokenFinalFee();
+
+        // This method will request a price from the OO and dispute it. Note that we set the ancillary data to
+        // the empty string (""). The root bundle that is being disputed was the most recently proposed one with a
+        // block number less than or equal to the dispute block time. All of this root bundle data can be found in
+        // the ProposeRootBundle event params. Moreover, the optimistic oracle will stamp the requester's address
+        // (i.e. this contract address) meaning that ancillary data for a dispute originating from another HubPool
+        // will always be distinct from a dispute originating from this HubPool. Moreover, since
+        // bundleEvaluationNumbers for a root bundle proposal are not stored in this contract, DVM voters will always
+        // have to look up the ProposeRootBundle event to evaluate a dispute, therefore there is no point emitting extra
+        // data in this ancillary data that is already included in the ProposeRootBundle event.
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
         // through. Cancel to avoid a revert. Similarly, if the final fee == bond amount, then the proposer bond
@@ -765,7 +724,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // to the final fee, which would mean that the allowance set to the bondAmount would be insufficient and the
         // requestAndProposePriceFor() call would revert. Source: https://github.com/UMAprotocol/protocol/blob/5b37ea818a28479c01e458389a83c3e736306b17/packages/core/contracts/oracle/implementation/SkinnyOptimisticOracle.sol#L321
         if (finalFee >= bondAmount) {
-            _cancelBundle(requestAncillaryData);
+            _cancelBundle();
             return;
         }
 
@@ -777,7 +736,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
                 currentTime,
-                requestAncillaryData,
+                "",
                 bondToken,
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
                 // proposal has passed the challenge period.
@@ -796,7 +755,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             bondToken.safeApprove(address(optimisticOracle), 0);
         } catch {
             // Cancel the bundle since the proposal failed.
-            _cancelBundle(requestAncillaryData);
+            _cancelBundle();
             return;
         }
 
@@ -820,16 +779,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
-        optimisticOracle.disputePriceFor(
-            identifier,
-            currentTime,
-            requestAncillaryData,
-            ooPriceRequest,
-            msg.sender,
-            address(this)
-        );
+        optimisticOracle.disputePriceFor(identifier, currentTime, "", ooPriceRequest, msg.sender, address(this));
 
-        emit RootBundleDisputed(msg.sender, currentTime, requestAncillaryData);
+        emit RootBundleDisputed(msg.sender, currentTime);
     }
 
     /**
@@ -843,25 +795,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit ProtocolFeesCapturedClaimed(l1Token, _unclaimedAccumulatedProtocolFees);
     }
 
-    /**
-     * @notice Returns ancillary data containing the minimum data necessary that voters can use to identify
-     * a root bundle proposal to validate its correctness.
-     * @dev The root bundle that is being disputed was the most recently proposed one with a block number less than
-     * or equal to the dispute block time. All of this root bundle data can be found in the ProposeRootBundle event
-     * params. Moreover, the optimistic oracle will stamp the requester's address (i.e. this contract address) meaning
-     * that ancillary data for a dispute originating from another HubPool will always be distinct from a dispute
-     * originating from this HubPool.
-     * @dev Since bundleEvaluationNumbers for a root bundle proposal are not stored on-chain, DVM voters will always
-     * have to look up the ProposeRootBundle event to evaluate a dispute, therefore there is no point emitting extra
-     * data in this ancillary data that is already included in the ProposeRootBundle event.
-     * @return ancillaryData Ancillary data that can be decoded into UTF8.
-     */
-    function getRootBundleProposalAncillaryData() public pure override returns (bytes memory ancillaryData) {
-        return "";
-    }
-
-    /**
-
+    /**master
      * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID.
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
@@ -893,10 +827,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Called when a dispute fails due to parameter changes. This effectively resets the state and cancels the request
     // with no loss of funds, thereby enabling a new bundle to be added.
-    function _cancelBundle(bytes memory ancillaryData) internal {
+    function _cancelBundle() internal {
         bondToken.transfer(rootBundleProposal.proposer, bondAmount);
         delete rootBundleProposal;
-        emit RootBundleCanceled(msg.sender, getCurrentTime(), ancillaryData);
+        emit RootBundleCanceled(msg.sender, getCurrentTime());
     }
 
     function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {

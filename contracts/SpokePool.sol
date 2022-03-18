@@ -50,19 +50,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
-    // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
-    // by "data workers" via inclusion proofs to execute leaves in the roots.
-    struct RootBundle {
-        // Merkle root of slow relays that were not fully filled and whose recipient is still owed funds from the LP pool.
-        bytes32 slowRelayRoot;
-        // Merkle root of relayer refunds for successful relays.
-        bytes32 relayerRefundRoot;
-        // This is a 2D bitmap tracking which leaves in the relayer refund root have been claimed, with max size of
-        // 256x(2^248) leaves per root. Due to the indexing scheme in MerkleLib, there are a maximum of
-        // 2^248 different values of claimedWordIndex with 256 different claimedBitIndexes.
-        mapping(uint256 => uint256) claimedBitmap;
-    }
-
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
 

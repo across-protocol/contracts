@@ -34,8 +34,6 @@ describe("HubPool Root Bundle Dispute", function () {
     const proposalTime = await hubPool.getCurrentTime();
     await hubPool.connect(dataWorker).setCurrentTime(proposalTime.add(15));
 
-    const preCallAncillaryData = await hubPool.getRootBundleProposalAncillaryData();
-
     await hubPool.connect(dataWorker).disputeRootBundle();
 
     // Data should be deleted from the contracts refundRequest struct.
@@ -55,7 +53,7 @@ describe("HubPool Root Bundle Dispute", function () {
 
     expect(priceProposalEvent?.requester).to.equal(hubPool.address);
     expect(priceProposalEvent?.identifier).to.equal(consts.identifier);
-    expect(priceProposalEvent?.ancillaryData).to.equal(preCallAncillaryData);
+    expect(priceProposalEvent?.ancillaryData).to.equal("0x");
 
     const parsedAncillaryData = parseAncillaryData(priceRequestAddedEvent?.ancillaryData);
     expect(ethers.utils.getAddress("0x" + parsedAncillaryData?.ooRequester)).to.equal(hubPool.address);
