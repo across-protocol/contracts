@@ -12,7 +12,7 @@ import "hardhat-deploy";
 
 dotenv.config();
 
-const solcVersion = "0.8.11";
+const solcVersion = "0.8.13";
 const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
