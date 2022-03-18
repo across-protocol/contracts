@@ -97,7 +97,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeSlowRelayRoot(
+        .executeSlowRelayLeaf(
           owner.address,
           recipient.address,
           l2Tokens[0].address,
@@ -133,7 +133,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeSlowRelayRoot(
+        .executeSlowRelayLeaf(
           owner.address,
           recipient.address,
           l2Tokens[0].address,
@@ -146,7 +146,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           tree.getHexProof(leaves[leafIndexToExecute])
         );
       const receipt = await txn.wait();
-      console.log(`executeSlowRelayRoot-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeSlowRelayLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
@@ -156,7 +156,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
         txns.push(
           await spokePool
             .connect(dataWorker)
-            .executeSlowRelayRoot(
+            .executeSlowRelayLeaf(
               owner.address,
               recipient.address,
               l2Tokens[i].address,
@@ -174,14 +174,14 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       // Compute average gas costs.
       const receipts = await Promise.all(txns.map((_txn) => _txn.wait()));
       const gasUsed = receipts.map((_receipt) => _receipt.gasUsed).reduce((x, y) => x.add(y));
-      console.log(`(average) executeSlowRelayRoot-gasUsed: ${gasUsed.div(LEAF_COUNT)}`);
+      console.log(`(average) executeSlowRelayLeaf-gasUsed: ${gasUsed.div(LEAF_COUNT)}`);
     });
 
     it("Executing all leaves using multicall", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       const multicallData = leaves.map((leaf, i) => {
-        return spokePool.interface.encodeFunctionData("executeSlowRelayRoot", [
+        return spokePool.interface.encodeFunctionData("executeSlowRelayLeaf", [
           owner.address,
           recipient.address,
           l2Tokens[i].address,
@@ -196,7 +196,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       });
 
       const receipt = await (await spokePool.connect(dataWorker).multicall(multicallData)).wait();
-      console.log(`(average) executeSlowRelayRoot-gasUsed: ${receipt.gasUsed.div(LEAF_COUNT)}`);
+      console.log(`(average) executeSlowRelayLeaf-gasUsed: ${receipt.gasUsed.div(LEAF_COUNT)}`);
     });
   });
   describe(`(WETH) Tree with ${LEAF_COUNT} leaves`, function () {
@@ -215,7 +215,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeSlowRelayRoot(
+        .executeSlowRelayLeaf(
           owner.address,
           recipient.address,
           weth.address,
@@ -246,7 +246,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeSlowRelayRoot(
+        .executeSlowRelayLeaf(
           owner.address,
           recipient.address,
           weth.address,
@@ -259,7 +259,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           tree.getHexProof(leaves[leafIndexToExecute])
         );
       const receipt = await txn.wait();
-      console.log(`executeSlowRelayRoot-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeSlowRelayLeaf-gasUsed: ${receipt.gasUsed}`);
     });
   });
 });

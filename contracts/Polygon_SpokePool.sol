@@ -65,8 +65,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wmaticAddress Replaces _wethAddress for this network since MATIC is the gas token and sent via msg.value
-     * on Polygon.
+     * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
      * @param _fxChild FxChild contract, changeable by Admin.
      * @param timerAddress Timer address to set.
      */
@@ -83,7 +82,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     }
 
     /********************************************************
-     *    ARBITRUM-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
+     *    POLYGON-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
      ********************************************************/
 
     /**
@@ -138,11 +137,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
             relayerRefundLeaf.amountToReturn
         );
 
-        // Note: WETH is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
+        // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
         polygonTokenBridger.send(
             PolygonIERC20(relayerRefundLeaf.l2TokenAddress),
             relayerRefundLeaf.amountToReturn,
-            address(weth) == relayerRefundLeaf.l2TokenAddress
+            address(wrappedNativeToken) == relayerRefundLeaf.l2TokenAddress
         );
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
