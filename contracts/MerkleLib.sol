@@ -44,7 +44,7 @@ library MerkleLib {
      * @param root the merkle root.
      * @param slowRelayFulfillment the relayData fulfillment struct.
      * @param proof the merkle proof.
-     * @return bool to signal if the slow rely's proof correctly shows inclusion of the slow relay within the tree.
+     * @return bool to signal if the slow relay's proof correctly shows inclusion of the slow relay within the tree.
      */
     function verifySlowRelayFulfillment(
         bytes32 root,
