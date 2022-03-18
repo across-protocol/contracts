@@ -857,8 +857,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token +
-     * destination chain ID.
+     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID.
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
      * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
