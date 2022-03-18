@@ -717,7 +717,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**
      * @notice Caller specifies the max amount of tokens to send to user. Based on this amount and the amount of the
      * relay remaining (as stored in the relayFills mapping), pull the amount of tokens from the caller
-     * and send to the caller.
+     * and send to the recipient.
      * @dev relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
      * numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
      * fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
