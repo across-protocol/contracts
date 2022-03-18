@@ -17,7 +17,7 @@ contract LpTokenFactory is LpTokenFactoryInterface {
      */
     function createLpToken(address l1Token) public returns (address) {
         ExpandedERC20 lpToken = new ExpandedERC20(
-            _append("Across ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
+            _append("Across V2 ", IERC20Metadata(l1Token).name(), " LP Token"), // LP Token Name
             _append("Av2-", IERC20Metadata(l1Token).symbol(), "-LP"), // LP Token Symbol
             IERC20Metadata(l1Token).decimals() // LP Token Decimals
         );

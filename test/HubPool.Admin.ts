@@ -30,7 +30,7 @@ describe("HubPool Admin functions", function () {
 
     const lpToken = await (await getContractFactory("ExpandedERC20", owner)).attach(pooledTokenStruct.lpToken);
     expect(await lpToken.callStatic.symbol()).to.equal("Av2-WETH-LP");
-    expect(await lpToken.callStatic.name()).to.equal("Across Wrapped Ether LP Token");
+    expect(await lpToken.callStatic.name()).to.equal("Across V2 Wrapped Ether LP Token");
   });
   it("Only owner can enable L1 Tokens for liquidity provision", async function () {
     await expect(hubPool.connect(other).enableL1TokenForLiquidityProvision(weth.address)).to.be.reverted;
