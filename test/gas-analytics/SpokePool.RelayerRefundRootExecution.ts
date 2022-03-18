@@ -12,7 +12,7 @@ import {
 import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
-import { RelayerRefundLeaf, buildRelayerRefundLeafs, buildRelayerRefundTree } from "../MerkleLib.utils";
+import { RelayerRefundLeaf, buildRelayerRefundLeaves, buildRelayerRefundTree } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
 require("dotenv").config();
@@ -58,7 +58,7 @@ async function constructSimpleTree(
       _refundAddresses[i].push(refundAddresses[j]);
     }
   }
-  const leaves = buildRelayerRefundLeafs(
+  const leaves = buildRelayerRefundLeaves(
     _destinationChainIds,
     _amountsToReturn,
     _l2Tokens,

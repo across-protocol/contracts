@@ -2,10 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
-import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9.sol";
-
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ArbitrumL1InboxLike {
     function createRetryableTicket(
@@ -59,14 +55,6 @@ contract Arbitrum_Adapter is AdapterInterface {
     ArbitrumL1InboxLike public immutable l1Inbox;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20Gateway;
-
-    event L2GasLimitSet(uint32 newL2GasLimit);
-
-    event L2MaxSubmissionCostSet(uint256 newL2MaxSubmissionCost);
-
-    event L2GasPriceSet(uint256 newL2GasPrice);
-
-    event L2RefundL2AddressSet(address newL2RefundL2Address);
 
     /**
      * @notice Constructs new Adapter.

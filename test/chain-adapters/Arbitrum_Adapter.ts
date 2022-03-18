@@ -4,13 +4,7 @@ import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
-let hubPool: Contract,
-  arbitrumAdapter: Contract,
-  mockAdapter: Contract,
-  weth: Contract,
-  dai: Contract,
-  timer: Contract,
-  mockSpoke: Contract;
+let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
 let l2Weth: string, l2Dai: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let l1ERC20Gateway: FakeContract, l1Inbox: FakeContract;
@@ -21,7 +15,7 @@ let l1ChainId: number;
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
+    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, consts.amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
 
@@ -46,14 +40,8 @@ describe("Arbitrum Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(arbitrumChainId, arbitrumAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(arbitrumChainId, l1ChainId, l2Weth, weth.address, true);
-
-    await hubPool.whitelistRoute(arbitrumChainId, l1ChainId, l2Dai, dai.address, true);
-
-    await hubPool.setCrossChainContracts(l1ChainId, mockAdapter.address, mockSpoke.address);
-
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, dai.address, l2Dai, true);
-    await hubPool.whitelistRoute(l1ChainId, arbitrumChainId, weth.address, l2Weth, true);
+    await hubPool.setPoolRebalanceRoute(arbitrumChainId, dai.address, l2Dai);
+    await hubPool.setPoolRebalanceRoute(arbitrumChainId, weth.address, l2Weth);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -63,7 +51,7 @@ describe("Arbitrum Chain Adapter", function () {
     expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
       .to.emit(arbitrumAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice;
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce;
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,
@@ -78,12 +66,12 @@ describe("Arbitrum Chain Adapter", function () {
   it("Correctly calls appropriate arbitrum bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, arbitrumChainId);
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, arbitrumChainId);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0]));
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
     // The correct functions should have been called on the arbitrum contracts.
     expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledOnce; // One token transfer over the canonical bridge.
     expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledWith(
@@ -94,8 +82,7 @@ describe("Arbitrum Chain Adapter", function () {
       consts.sampleL2GasPrice,
       "0x"
     );
-    expect(l1Inbox.createRetryableTicket).to.have.been.calledThrice; // only 1 L1->L2 message sent. Note that the two
-    // whitelist transactions already sent two messages.
+    expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce; // only 1 L1->L2 message sent.
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
       0,

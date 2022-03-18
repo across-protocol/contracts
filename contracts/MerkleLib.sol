@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./SpokePoolInterface.sol";
 import "./HubPoolInterface.sol";
+
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @notice Library to help with merkle roots, proofs, and claims.
@@ -44,7 +45,7 @@ library MerkleLib {
      * @param root the merkle root.
      * @param slowRelayFulfillment the relayData fulfillment struct.
      * @param proof the merkle proof.
-     * @return bool to signal if the slow rely's proof correctly shows inclusion of the slow relay within the tree.
+     * @return bool to signal if the slow relay's proof correctly shows inclusion of the slow relay within the tree.
      */
     function verifySlowRelayFulfillment(
         bytes32 root,
@@ -98,7 +99,7 @@ library MerkleLib {
      * @param claimedBitMap a simple uint256 mapping in storage used as a bitmap. Uint8 type enforces that index
      * can't be > 255.
      * @param index the index to mark in the bitmap.
-     * @param uint256 representing the modified input claimedBitMap with the index set to true.
+     * @return uint256 representing the modified input claimedBitMap with the index set to true.
      */
     function setClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (uint256) {
         return claimedBitMap | (1 << index % 256);
