@@ -721,6 +721,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @dev relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
      * numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
      * fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
+     * @dev Caller must approved this contract to transfer up to maxTokensToSend of the relayData.destinationToken. 
+     * The amount to be sent might end up less if there is insufficient relay amount remaining to be sent.
      */
     function _fillRelay(
         bytes32 relayHash,
