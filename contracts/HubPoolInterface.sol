@@ -71,6 +71,30 @@ interface HubPoolInterface {
         uint32 challengePeriodEndTimestamp;
     }
 
+    // Each whitelisted L1 token has an associated pooledToken struct that contains all information used to track the
+    // cumulative LP positions and if this token is enabled for deposits.
+    struct PooledToken {
+        // LP token given to LPs of a specific L1 token.
+        address lpToken;
+        // True if accepting new LP's.
+        bool isEnabled;
+        // Timestamp of last LP fee update.
+        uint32 lastLpFeeUpdate;
+        // Number of LP funds sent via pool rebalances to SpokePools and are expected to be sent
+        // back later.
+        int256 utilizedReserves;
+        // Number of LP funds held in contract less utilized reserves.
+        uint256 liquidReserves;
+        // Number of LP funds reserved to pay out to LPs as fees.
+        uint256 undistributedLpFees;
+    }
+
+    // Helper contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
+    struct CrossChainContract {
+        address adapter;
+        address spokePool;
+    }
+
     function setPaused(bool pause) external;
 
     function emergencyDeleteProposal() external;
@@ -133,8 +157,6 @@ interface HubPoolInterface {
     function disputeRootBundle() external;
 
     function claimProtocolFeesCaptured(address l1Token) external;
-
-    function getRootBundleProposalAncillaryData() external pure returns (bytes memory ancillaryData);
 
     function setPoolRebalanceRoute(
         uint256 destinationChainId,
