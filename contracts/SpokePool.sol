@@ -3,18 +3,16 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./interfaces/WETH9.sol";
+import "./Lockable.sol";
+import "./SpokePoolInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "./Lockable.sol";
-import "./MerkleLib.sol";
-import "./SpokePoolInterface.sol";
 
 /**
  * @title SpokePool
@@ -39,7 +37,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
-    WETH9 public weth;
+    WETH9 public immutable weth;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
@@ -49,6 +47,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     uint32 public numberOfDeposits;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
+
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
@@ -58,7 +57,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 slowRelayRoot;
         // Merkle root of relayer refunds for successful relays.
         bytes32 relayerRefundRoot;
-        // This is a 2D bitmap tracking which leafs in the relayer refund root have been claimed, with max size of
+        // This is a 2D bitmap tracking which leaves in the relayer refund root have been claimed, with max size of
         // 256x256 leaves per root.
         mapping(uint256 => uint256) claimedBitmap;
     }
@@ -169,7 +168,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change cross domain admin address. Callable by admin only.
      * @param newCrossDomainAdmin New cross domain admin.
      */
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyAdmin {
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public override onlyAdmin nonReentrant {
         _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
@@ -177,7 +176,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change L1 hub pool address. Callable by admin only.
      * @param newHubPool New hub pool.
      */
-    function setHubPool(address newHubPool) public override onlyAdmin {
+    function setHubPool(address newHubPool) public override onlyAdmin nonReentrant {
         _setHubPool(newHubPool);
     }
 
@@ -191,7 +190,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address originToken,
         uint256 destinationChainId,
         bool enabled
-    ) public override onlyAdmin {
+    ) public override onlyAdmin nonReentrant {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
@@ -200,7 +199,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice Change allowance for deposit quote time to differ from current block time. Callable by admin only.
      * @param newDepositQuoteTimeBuffer New quote time buffer.
      */
-    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin {
+    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
         depositQuoteTimeBuffer = newDepositQuoteTimeBuffer;
         emit SetDepositQuoteTimeBuffer(newDepositQuoteTimeBuffer);
     }
@@ -214,7 +213,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param slowRelayRoot Merkle root containing slow relay fulfillment leaves that can be individually executed via
      * executeSlowRelayRoot().
      */
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin {
+    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin nonReentrant {
         uint32 rootBundleId = uint32(rootBundles.length);
         RootBundle storage rootBundle = rootBundles.push();
         rootBundle.relayerRefundRoot = relayerRefundRoot;
@@ -228,7 +227,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param rootBundleId Index of the root bundle that needs to be deleted. Note: this is intentionally a uint256
      * to ensure that a small input range doesn't limit which indices this method is able to reach.
      */
-    function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin {
+    function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin nonReentrant {
         delete rootBundles[rootBundleId];
         emit EmergencyDeleteRootBundle(rootBundleId);
     }
@@ -281,7 +280,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         if (originToken == address(weth) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
             weth.deposit{ value: msg.value }();
-            // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
+            // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
@@ -339,7 +338,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      **************************************/
 
     /**
-     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the receipient.
+     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
      * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
      * relay submission will be validated by off-chain data workers who can dispute this relay if any part is invalid.
      * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
@@ -710,12 +709,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         }
     }
 
-    // @notice Caller specifies the max amount of tokens to send to user. Based on this amount and the amount of the
-    // relay remaining (as stored in the relayFills mapping), pull the amount of tokens from the caller ancillaryData
-    // and send to the caller.
-    // @dev relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
-    // numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
-    // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
+    /**
+     * @notice Caller specifies the max amount of tokens to send to user. Based on this amount and the amount of the
+     * relay remaining (as stored in the relayFills mapping), pull the amount of tokens from the caller
+     * and send to the recipient.
+     * @dev relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
+     * numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
+     * fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
+     * @dev Caller must approve this contract to transfer up to maxTokensToSend of the relayData.destinationToken.
+     * The amount to be sent might end up less if there is insufficient relay amount remaining to be sent.
+     */
     function _fillRelay(
         bytes32 relayHash,
         RelayData memory relayData,

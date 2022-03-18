@@ -104,7 +104,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Mapping of L1 token addresses to the associated pool information.
     mapping(address => PooledToken) public pooledTokens;
 
-    // Heler contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
+    // Helper contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
     struct CrossChainContract {
         address adapter;
         address spokePool;
@@ -113,13 +113,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     mapping(uint256 => CrossChainContract) public crossChainContracts;
 
     // WETH contract for Ethereum.
-    WETH9 public weth;
+    WETH9 public immutable weth;
 
     // Helper factory to deploy new LP tokens for enabled L1 tokens
-    LpTokenFactoryInterface public lpTokenFactory;
+    LpTokenFactoryInterface public immutable lpTokenFactory;
 
     // Finder contract for this network.
-    FinderInterface public finder;
+    FinderInterface public immutable finder;
 
     // When root bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
     bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
@@ -128,6 +128,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
     uint256 public lpFeeRatePerSecond = 1500000000000;
 
+    // Mapping of l1TokenAddress to cumulative unclaimed protocol tokens that can be sent to the protocolFeeCaptureAddress
+    // at any time. This enables the protocol to reallocate some percentage of LP fees elsewhere.
     mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
 
     // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
@@ -220,7 +222,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event RootBundleCanceled(address indexed disputer, uint256 requestTime);
 
     modifier noActiveRequests() {
-        require(!_activeRequest(), "proposal has unclaimed leafs");
+        require(!_activeRequest(), "Proposal has unclaimed leaves");
         _;
     }
 
@@ -287,8 +289,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Sends message to SpokePool from this contract. Callable only by owner.
-     * @dev This function has permission to call onlyAdmin functions on the SpokePool, so its imperative
-     * that this contract only allows the owner to call this method directly or indirectly.
+     * @dev This function has permission to call onlyAdmin functions on the SpokePool, so it's imperative that this
+     * contract only allows the owner to call this method directly or indirectly.
      * @param chainId Chain with SpokePool to send message to.
      * @param functionData ABI encoded function call to send to SpokePool, but can be any arbitrary data technically.
      */
@@ -310,6 +312,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         public
         override
         onlyOwner
+        nonReentrant
     {
         require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
         require(newProtocolFeeCaptureAddress != address(0), "Bad protocolFeeCaptureAddress");
@@ -330,6 +333,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         noActiveRequests
         nonReentrant
     {
+        // Bond should not be great than final fee otherwise every proposal will get cancelled in a dispute.
+        // In practice we expect that bond amounts are set >> final fees so this shouldn't be an inconvenience.
+        // The only way for the bond amount to be equal to the final fee is if the newBondAmount == 0.
+        require(newBondAmount != 0, "bond equal to final fee");
+
         // Check that this token is on the whitelist.
         AddressWhitelistInterface addressWhitelist = AddressWhitelistInterface(
             finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist)
@@ -346,14 +354,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Sets root bundle proposal liveness period. Callable only by owner.
      * @param newLiveness New liveness period.
      */
-    function setLiveness(uint32 newLiveness) public override onlyOwner {
+    function setLiveness(uint32 newLiveness) public override onlyOwner nonReentrant {
         require(newLiveness > 10 minutes, "Liveness too short");
         liveness = newLiveness;
         emit LivenessSet(newLiveness);
     }
 
     /**
-     * @notice Sets identifier for root bundle disputes.. Callable only by owner.
+     * @notice Sets identifier for root bundle disputes. Callable only by owner.
      * @param newIdentifier New identifier.
      */
     function setIdentifier(bytes32 newIdentifier) public override onlyOwner noActiveRequests nonReentrant {
@@ -378,7 +386,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) public override onlyOwner {
+    ) public override onlyOwner nonReentrant {
         crossChainContracts[l2ChainId] = CrossChainContract(adapter, spokePool);
         emit CrossChainContractsSet(l2ChainId, adapter, spokePool);
     }
@@ -456,7 +464,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Disables LPs from providing liquidity for L1 token. Callable only by owner.
      * @param l1Token Token to disable liquidity provision for.
      */
-    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner {
+    function disableL1TokenForLiquidityProvision(address l1Token) public override onlyOwner nonReentrant {
         pooledTokens[l1Token].isEnabled = false;
         emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
@@ -469,10 +477,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Deposit liquidity into this contract to earn LP fees in exchange for funding relays on SpokePools.
      * Caller is essentially loaning their funds to be sent from this contract to the SpokePool, where it will be used
      * to repay a relayer, and ultimately receives their loan back after the tokens are bridged back to this contract
-     * via the canonical token bridge. Then, the caller's loans are used for again. This loan cycle repeats continuously
+     * via the canonical token bridge. Then, the caller's loans are used again. This loan cycle repeats continuously
      * and the caller, or "liquidity provider" earns a continuous fee for their credit that they are extending relayers.
      * @notice Caller will receive an LP token representing their share of this pool. The LP token's redemption value
      * increments from the time that they enter the pool to reflect their accrued fees.
+     * @notice The caller of this function must approve this contract to spend l1TokenAmount of l1Token.
      * @param l1Token Token to deposit into this contract.
      * @param l1TokenAmount Amount of liquidity to provide.
      */
@@ -485,8 +494,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // Since _exchangeRateCurrent() reads this contract's balance and updates contract state using it, it must be
         // first before transferring any tokens to this contract to ensure synchronization.
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent(l1Token);
-        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
+        ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
 
         if (address(weth) == l1Token && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
@@ -513,7 +522,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
         // Note this method does not make any liquidity utilization checks before letting the LP redeem their LP tokens.
-        // If they try access more funds that available (i.e l1TokensToReturn > liquidReserves) this will underflow.
+        // If they try access more funds than available (i.e l1TokensToReturn > liquidReserves) this will underflow.
         pooledTokens[l1Token].liquidReserves -= l1TokensToReturn;
 
         if (sendEth) {
@@ -572,14 +581,15 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      *************************************************/
 
     /**
-     * @notice Publish a new root bundle to along with all of the block numbers that the merkle roots are relevant for.
+     * @notice Publish a new root bundle along with all of the block numbers that the merkle roots are relevant for.
      * This is used to aid off-chain validators in evaluating the correctness of this bundle. Caller stakes a bond that
      * can be slashed if the root bundle proposal is invalid, and they will receive it back if accepted.
      * @notice After proposeRootBundle is called, if the any props are wrong then this proposal can be challenged.
      * Once the challenge period passes, then the roots are no longer disputable, and only executeRootBundle can be
-     * called; moreover, this method can't be called again until all leafs are executed.
+     * called; moreover, this method can't be called again until all leaves are executed.
      * @param bundleEvaluationBlockNumbers should contain the latest block number for all chains, even if there are no
      * relays contained on some of them. The usage of this variable should be defined in an off chain UMIP.
+     * @notice The caller of this function must approve this contract to spend bondAmount of bondToken.
      * @param poolRebalanceLeafCount Number of leaves contained in pool rebalance root. Max is the number of whitelisted chains.
      * @param poolRebalanceRoot Pool rebalance root containing leaves that will send tokens from this contract to a SpokePool.
      * @param relayerRefundRoot Relayer refund root to publish to SpokePool where a data worker can execute leaves to
@@ -631,7 +641,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
      * @param chainId ChainId number of the target spoke pool on which the bundle is executed.
      * @param groupIndex If set to 0, then relay roots to SpokePool via cross chain bridge. Used by off-chain validator
-     * to organize leafs with the same chain ID and also set which leaves should result in relayed messages.
+     * to organize leaves with the same chain ID and also set which leaves should result in relayed messages.
      * @param bundleLpFees Array representing the total LP fee amount per token in this bundle for all bundled relays.
      * @param netSendAmounts Array representing the amount of tokens to send to the SpokePool on the target chainId.
      * @param runningBalances Array used to track any unsent tokens that are not included in the netSendAmounts.
@@ -684,6 +694,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
 
         // Relay each L1 token to destination chain.
+
         // Note: if any of the keccak256(l1Tokens, chainId) combinations are not mapped to a destination token address,
         // then this internal method will revert. In this case the admin will have to associate a destination token
         // with each l1 token. If the destination token mapping was missing at the time of the proposal, we assume
@@ -716,8 +727,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             require(success, "delegatecall failed");
         }
 
-        // Transfer the bondAmount to back to the proposer, if this the last executed leaf. Only sending this once all
-        // leafs have been executed acts to force the data worker to execute all bundles or they wont receive their bond.
+        // Transfer the bondAmount back to the proposer, if this the last executed leaf. Only sending this once all
+        // leaves have been executed acts to force the data worker to execute all bundles or they won't receive their bond.
         if (rootBundleProposal.unclaimedPoolRebalanceLeafCount == 0)
             bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
 
@@ -737,6 +748,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @notice Caller stakes a bond to dispute the current root bundle proposal assuming it has not passed liveness
      * yet. The proposal is deleted, allowing a follow-up proposal to be submitted, and the dispute is sent to the
      * optimistic oracle to be adjudicated. Can only be called within the liveness period of the current proposal.
+     * @notice The caller of this function must approve this contract to spend bondAmount of l1Token.
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
@@ -753,10 +765,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // data in this ancillary data that is already included in the ProposeRootBundle event.
 
         // If the finalFee is larger than the bond amount, the bond amount needs to be reset before a request can go
-        // through. Cancel to avoid a revert.
-        uint256 finalFee = _getBondTokenFinalFee();
-        if (finalFee > bondAmount) {
-            _cancelBundle();
+        // through. Cancel to avoid a revert. Similarly, if the final fee == bond amount, then the proposer bond
+        // set in the optimistic oracle would be 0. The optimistic oracle would then default the bond to be equal
+        // to the final fee, which would mean that the allowance set to the bondAmount would be insufficient and the
+        // requestAndProposePriceFor() call would revert. Source: https://github.com/UMAprotocol/protocol/blob/5b37ea818a28479c01e458389a83c3e736306b17/packages/core/contracts/oracle/implementation/SkinnyOptimisticOracle.sol#L321
+        if (finalFee >= bondAmount) {
+            _cancelBundle(requestAncillaryData);
             return;
         }
 
@@ -773,7 +787,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a root
                 // proposal has passed the challenge period.
                 0,
-                // Set the Optimistic oracle proposer bond for the price request.
+                // Set the Optimistic oracle proposer bond for the request. We can assume that bondAmount > finalFee.
                 bondAmount - finalFee,
                 // Set the Optimistic oracle liveness for the price request.
                 liveness,
@@ -806,14 +820,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             customLiveness: liveness
         });
 
+        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
+        delete rootBundleProposal;
+
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
         bondToken.safeIncreaseAllowance(address(optimisticOracle), bondAmount);
         optimisticOracle.disputePriceFor(identifier, currentTime, "", ooPriceRequest, msg.sender, address(this));
 
         emit RootBundleDisputed(msg.sender, currentTime);
-
-        // Finally, delete the state pertaining to the active proposal so that another proposer can submit a new bundle.
-        delete rootBundleProposal;
     }
 
     /**
@@ -821,14 +835,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token whose protocol fees the caller wants to disburse.
      */
     function claimProtocolFeesCaptured(address l1Token) public override nonReentrant {
-        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, unclaimedAccumulatedProtocolFees[l1Token]);
-        emit ProtocolFeesCapturedClaimed(l1Token, unclaimedAccumulatedProtocolFees[l1Token]);
+        uint256 _unclaimedAccumulatedProtocolFees = unclaimedAccumulatedProtocolFees[l1Token];
         unclaimedAccumulatedProtocolFees[l1Token] = 0;
+        IERC20(l1Token).safeTransfer(protocolFeeCaptureAddress, _unclaimedAccumulatedProtocolFees);
+        emit ProtocolFeesCapturedClaimed(l1Token, _unclaimedAccumulatedProtocolFees);
     }
 
     /**
-     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token +
-     * destination chain ID.
+     * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID.
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
      * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
@@ -844,8 +858,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for arbitrum
-     * calls, but may also be needed for others.
+     * @notice This function allows a caller to load the contract with raw ETH to perform L2 calls. This is needed for
+     * Arbitrum calls, but may also be needed for others.
+     * @dev This function cannot be included in a multicall transaction call because it is payable. A realistic
+     * situation where this might be an issue is if the caller is executing a PoolRebalanceLeaf that needs to relay
+     * messages to Arbitrum. Relaying messages to Arbitrum requires that this contract has an ETH balance, so in this
+     * case the caller would need to pre-load this contract with ETH before multicall-executing the leaf.
      */
     function loadEthForL2Calls() public payable override {}
 
@@ -948,7 +966,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Calculate the unallocated accumulatedFees from the last time the contract was called.
     function _getAccumulatedFees(uint256 undistributedLpFees, uint256 lastLpFeeUpdate) internal view returns (uint256) {
         // accumulatedFees := min(undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction, undistributedLpFees)
-        // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
+        // The min acts to pay out all fees in the case the equation returns more than the remaining fees.
         uint256 timeFromLastInteraction = getCurrentTime() - lastLpFeeUpdate;
         uint256 maxUndistributedLpFees = (undistributedLpFees * lpFeeRatePerSecond * timeFromLastInteraction) / (1e18);
         return maxUndistributedLpFees < undistributedLpFees ? maxUndistributedLpFees : undistributedLpFees;
@@ -995,7 +1013,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpFeesCaptured = bundleLpFees - protocolFeesCaptured;
 
         // Assign any LP fees included into the bundle to the pooled token. These LP fees are tracked in the
-        // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decrease
+        // undistributedLpFees and within the utilizedReserves. undistributedLpFees is gradually decreased
         // over the smear duration to give the LPs their rewards over a period of time. Adding to utilizedReserves
         // acts to track these rewards after the smear duration. See _exchangeRateCurrent for more details.
         if (lpFeesCaptured > 0) {
@@ -1050,7 +1068,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     // Added to enable the HubPool to receive ETH. This will occur both when the HubPool unwraps WETH to send to LPs and
-    // when ETH is send over the canonical Optimism bridge, which sends ETH.
+    // when ETH is sent over the canonical Optimism bridge, which sends ETH.
     fallback() external payable {
         _depositEthToWeth();
     }

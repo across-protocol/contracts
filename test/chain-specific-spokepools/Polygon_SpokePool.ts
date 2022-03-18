@@ -28,6 +28,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can set the cross domain admin", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setCrossDomainAdmin(rando.address)).to.be.reverted;
+
     const setCrossDomainAdminData = polygonSpokePool.interface.encodeFunctionData("setCrossDomainAdmin", [
       rando.address,
     ]);
@@ -45,6 +48,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can set the hub pool address", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setHubPool(rando.address)).to.be.reverted;
+
     const setHubPoolData = polygonSpokePool.interface.encodeFunctionData("setHubPool", [rando.address]);
 
     // Wrong rootMessageSender address.
@@ -60,6 +66,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can enable a route", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
+
     const setEnableRouteData = polygonSpokePool.interface.encodeFunctionData("setEnableRoute", [l2Dai, 1, true]);
 
     // Wrong rootMessageSender address.
@@ -75,6 +84,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can set the quote time buffer", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
+
     const setDepositQuoteTimeBufferData = polygonSpokePool.interface.encodeFunctionData("setDepositQuoteTimeBuffer", [
       12345,
     ]);
@@ -94,6 +106,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can initialize a relayer refund", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
+
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
       mockTreeRoot,
       mockTreeRoot,
@@ -113,6 +128,21 @@ describe("Polygon Spoke Pool", function () {
     expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
+  it("Cannot re-enter processMessageFromRoot", async function () {
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      mockTreeRoot,
+      mockTreeRoot,
+    ]);
+    const processMessageFromRootData = polygonSpokePool.interface.encodeFunctionData("processMessageFromRoot", [
+      0,
+      owner.address,
+      relayRootBundleData,
+    ]);
+
+    await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, processMessageFromRootData))
+      .to.be.reverted;
+  });
+
   it("Only owner can delete a relayer refund", async function () {
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
       mockTreeRoot,
@@ -120,6 +150,9 @@ describe("Polygon Spoke Pool", function () {
     ]);
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+
+    // Cannot call directly
+    await expect(polygonSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
 
     const emergencyDeleteRelayRootBundleData = polygonSpokePool.interface.encodeFunctionData(
       "emergencyDeleteRootBundle",
@@ -144,7 +177,7 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly sends tokens through the PolygonTokenBridger", async function () {
-    const { leafs, tree } = await constructSingleRelayerRefundTree(
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
       await polygonSpokePool.callStatic.chainId()
     );
@@ -157,7 +190,7 @@ describe("Polygon Spoke Pool", function () {
     const bridger = await polygonSpokePool.polygonTokenBridger();
 
     // Checks that there's a burn event from the bridger.
-    await expect(polygonSpokePool.connect(relayer).executeRelayerRefundRoot(0, leafs[0], tree.getHexProof(leafs[0])))
+    await expect(polygonSpokePool.connect(relayer).executeRelayerRefundRoot(0, leaves[0], tree.getHexProof(leaves[0])))
       .to.emit(dai, "Transfer")
       .withArgs(bridger, ZERO_ADDRESS, amountToReturn);
   });
