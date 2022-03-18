@@ -39,7 +39,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Address of WETH contract for this network. If an origin token matches this, then the caller can optionally
     // instruct this contract to wrap ETH when depositing.
-    WETH9 public weth;
+    WETH9 public immutable weth;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
