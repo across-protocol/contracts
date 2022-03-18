@@ -1,12 +1,16 @@
 import { L1_ADDRESS_MAP } from "./consts";
 
-const func = async function (hre: any) {
+// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
+import "hardhat-deploy";
+import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
+
+const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
-  const chainId = await getChainId();
+  const chainId = parseInt(await getChainId());
 
   const lpTokenFactory = await deploy("LpTokenFactory", { from: deployer, log: true, skipIfAlreadyDeployed: true });
 
@@ -24,4 +28,4 @@ const func = async function (hre: any) {
   });
 };
 module.exports = func;
-func.tags = ["hubpool"];
+func.tags = ["HubPool", "mainnet"];

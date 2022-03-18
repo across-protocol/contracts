@@ -4,14 +4,14 @@ import { ethers, expect, Contract, SignerWithAddress, getContractFactory, seedCo
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract, l2Dai: string;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
-    ({ weth, hubPool, timer } = await hubPoolFixture());
+    ({ weth, hubPool, timer, l2Dai } = await hubPoolFixture());
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
@@ -28,6 +28,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can set the cross domain admin", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setCrossDomainAdmin(rando.address)).to.be.reverted;
+
     const setCrossDomainAdminData = polygonSpokePool.interface.encodeFunctionData("setCrossDomainAdmin", [
       rando.address,
     ]);
@@ -45,6 +48,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can set the hub pool address", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setHubPool(rando.address)).to.be.reverted;
+
     const setHubPoolData = polygonSpokePool.interface.encodeFunctionData("setHubPool", [rando.address]);
 
     // Wrong rootMessageSender address.
@@ -59,7 +65,28 @@ describe("Polygon Spoke Pool", function () {
     expect(await polygonSpokePool.hubPool()).to.equal(rando.address);
   });
 
+  it("Only correct caller can enable a route", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
+
+    const setEnableRouteData = polygonSpokePool.interface.encodeFunctionData("setEnableRoute", [l2Dai, 1, true]);
+
+    // Wrong rootMessageSender address.
+    await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, setEnableRouteData)).to.be
+      .reverted;
+
+    // Wrong calling address.
+    await expect(polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, setEnableRouteData)).to.be
+      .reverted;
+
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setEnableRouteData);
+    expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
+  });
+
   it("Only correct caller can set the quote time buffer", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
+
     const setDepositQuoteTimeBufferData = polygonSpokePool.interface.encodeFunctionData("setDepositQuoteTimeBuffer", [
       12345,
     ]);
@@ -79,6 +106,9 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Only correct caller can initialize a relayer refund", async function () {
+    // Cannot call directly
+    await expect(polygonSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
+
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
       mockTreeRoot,
       mockTreeRoot,
@@ -98,6 +128,21 @@ describe("Polygon Spoke Pool", function () {
     expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
+  it("Cannot re-enter processMessageFromRoot", async function () {
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      mockTreeRoot,
+      mockTreeRoot,
+    ]);
+    const processMessageFromRootData = polygonSpokePool.interface.encodeFunctionData("processMessageFromRoot", [
+      0,
+      owner.address,
+      relayRootBundleData,
+    ]);
+
+    await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, processMessageFromRootData))
+      .to.be.reverted;
+  });
+
   it("Only owner can delete a relayer refund", async function () {
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
       mockTreeRoot,
@@ -105,6 +150,9 @@ describe("Polygon Spoke Pool", function () {
     ]);
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+
+    // Cannot call directly
+    await expect(polygonSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
 
     const emergencyDeleteRelayRootBundleData = polygonSpokePool.interface.encodeFunctionData(
       "emergencyDeleteRootBundle",

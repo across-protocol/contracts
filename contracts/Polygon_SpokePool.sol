@@ -44,6 +44,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     // through validation where the sender is checked and the root (mainnet) sender is also validated.
     // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {
+        // Make sure callValidated is set to True only once at beginning of processMessageFromRoot, which prevents
+        // processMessageFromRoot from being re-entered.
+        require(!callValidated, "callValidated already set");
+
         // This sets a variable indicating that we're now inside a validated call.
         // Note: this is used by other methods to ensure that this call has been validated by this method and is not
         // spoofed. See
@@ -85,7 +89,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @notice Change FxChild address. Callable only by admin via processMessageFromRoot.
      * @param newFxChild New FxChild.
      */
-    function setFxChild(address newFxChild) public onlyAdmin {
+    function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
         fxChild = newFxChild;
         emit SetFxChild(fxChild);
     }
@@ -94,7 +98,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @notice Change polygonTokenBridger address. Callable only by admin via processMessageFromRoot.
      * @param newPolygonTokenBridger New Polygon Token Bridger contract.
      */
-    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin {
+    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
         polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
         emit SetPolygonTokenBridger(address(polygonTokenBridger));
     }
@@ -113,7 +117,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         uint256, /*stateId*/
         address rootMessageSender,
         bytes calldata data
-    ) public validateInternalCalls nonReentrant {
+    ) public validateInternalCalls {
         // Validation logic.
         require(msg.sender == fxChild, "Not from fxChild");
         require(rootMessageSender == crossDomainAdmin, "Not from mainnet admin");
@@ -143,6 +147,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }
 
+    // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`, which is why
+    // the `callValidated` check is made below  and why we use the `validateInternalCalls` modifier on
+    // `processMessageFromRoot`. This prevents calling the admin functions from any other method besides
+    // `processMessageFromRoot`.
     function _requireAdminSender() internal view override {
         require(callValidated, "Must call processMessageFromRoot");
     }
