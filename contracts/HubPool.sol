@@ -126,7 +126,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
     // the full amount of fees entitled to LPs in ~ 7.72 days assuming no contract interactions. If someone interacts
-    // with the contract then the LP rewards are smeared sublinearly over the window.
+    // with the contract then the LP rewards are smeared sublinearly over the window (i.e spread over the remaining
+    // period for each interaction which approximates a decreasing exponential function).
     uint256 public lpFeeRatePerSecond = 1500000000000;
 
     // Mapping of l1TokenAddress to cumulative unclaimed protocol tokens that can be sent to the protocolFeeCaptureAddress
