@@ -1,6 +1,10 @@
+// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
+import "hardhat-deploy";
+import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
+
 import { L2_ADDRESS_MAP } from "./consts";
 
-const func = async function (hre: any) {
+const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, companionNetworks, getChainId } = hre;
   const { deploy } = deployments;
 
@@ -11,7 +15,7 @@ const func = async function (hre: any) {
   const hubPool = await l1Deployments.get("HubPool");
   console.log(`Using l1 hub pool @ ${hubPool.address}`);
 
-  const chainId = await getChainId();
+  const chainId = parseInt(await getChainId());
 
   await deploy("Arbitrum_SpokePool", {
     from: deployer,
@@ -27,4 +31,4 @@ const func = async function (hre: any) {
   });
 };
 module.exports = func;
-func.tags = ["arbitrum-spokepool"];
+func.tags = ["ArbitrumSpokePool", "arbitrum"];

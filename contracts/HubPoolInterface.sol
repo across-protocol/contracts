@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/AdapterInterface.sol";
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @notice Concise list of functions in HubPool implementation.
@@ -10,17 +11,17 @@ import "./interfaces/AdapterInterface.sol";
 interface HubPoolInterface {
     // This leaf is meant to be decoded in the HubPool to rebalance tokens between HubPool and SpokePool.
     struct PoolRebalanceLeaf {
-        // This is used to know which chain to send cross-chain transactions to (and which SpokePool to sent to).
+        // This is used to know which chain to send cross-chain transactions to (and which SpokePool to send to).
         uint256 chainId;
         // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         uint256[] bundleLpFees;
         // This array is grouped with the two above, and it represents the amount to send or request back from the
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
-        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero
-        // when the rules indicate that a rebalancing action should occur. When a rebalance does not occur,
-        // runningBalances for this token should change by the total relays - deposits in this bundle. When a rebalance
-        // does occur, runningBalances should be set to zero for this token and the netSendAmounts should be set to the
-        // previous runningBalances + relays - deposits in this bundle.
+        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero when the
+        // rules indicate that a rebalancing action should occur. When a rebalance does occur, runningBalances should be
+        // set to zero for this token and the netSendAmounts should be set to the previous runningBalances + relays -
+        // deposits in this bundle. If non-zero then it must be set on the SpokePool's RelayerRefundLeaf amountToReturn
+        // as -1 * this value to indicate if funds are being sent from or to the SpokePool.
         int256[] netSendAmounts;
         // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1
         // pool. A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that
@@ -70,6 +71,30 @@ interface HubPoolInterface {
         uint32 requestExpirationTimestamp;
     }
 
+    // Each whitelisted L1 token has an associated pooledToken struct that contains all information used to track the
+    // cumulative LP positions and if this token is enabled for deposits.
+    struct PooledToken {
+        // LP token given to LPs of a specific L1 token.
+        address lpToken;
+        // True if accepting new LP's.
+        bool isEnabled;
+        // Timestamp of last LP fee update.
+        uint32 lastLpFeeUpdate;
+        // Number of LP funds sent via pool rebalances to SpokePools and are expected to be sent
+        // back later.
+        int256 utilizedReserves;
+        // Number of LP funds held in contract less utilized reserves.
+        uint256 liquidReserves;
+        // Number of LP funds reserved to pay out to LPs as fees.
+        uint256 undistributedLpFees;
+    }
+
+    // Helper contracts to facilitate cross chain actions between HubPool and SpokePool for a specific network.
+    struct CrossChainContract {
+        address adapter;
+        address spokePool;
+    }
+
     function setPaused(bool pause) external;
 
     function emergencyDeleteProposal() external;
@@ -88,14 +113,6 @@ interface HubPoolInterface {
         uint256 l2ChainId,
         address adapter,
         address spokePool
-    ) external;
-
-    function whitelistRoute(
-        uint256 originChainId,
-        uint256 destinationChainId,
-        address originToken,
-        address destinationToken,
-        bool enableRoute
     ) external;
 
     function enableL1TokenForLiquidityProvision(address l1Token) external;
@@ -141,13 +158,25 @@ interface HubPoolInterface {
 
     function claimProtocolFeesCaptured(address l1Token) external;
 
-    function getRootBundleProposalAncillaryData() external view returns (bytes memory ancillaryData);
+    function getRootBundleProposalAncillaryData() external pure returns (bytes memory ancillaryData);
 
-    function whitelistedRoute(
+    function setPoolRebalanceRoute(
+        uint256 destinationChainId,
+        address l1Token,
+        address destinationToken
+    ) external;
+
+    function setDepositRoute(
         uint256 originChainId,
+        uint256 destinationChainId,
         address originToken,
-        uint256 destinationChainId
-    ) external view returns (address);
+        bool depositsEnabled
+    ) external;
+
+    function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
+        external
+        view
+        returns (address destinationToken);
 
     function loadEthForL2Calls() external payable;
 }

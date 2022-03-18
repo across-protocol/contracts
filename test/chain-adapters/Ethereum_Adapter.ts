@@ -32,9 +32,9 @@ describe("Ethereum Chain Adapter", function () {
 
     await hubPool.setCrossChainContracts(l1ChainId, ethAdapter.address, mockSpoke.address);
 
-    await hubPool.whitelistRoute(l1ChainId, l1ChainId, weth.address, weth.address, true);
+    await hubPool.setPoolRebalanceRoute(l1ChainId, weth.address, weth.address);
 
-    await hubPool.whitelistRoute(l1ChainId, l1ChainId, dai.address, dai.address, true);
+    await hubPool.setPoolRebalanceRoute(l1ChainId, dai.address, dai.address);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -48,12 +48,14 @@ describe("Ethereum Chain Adapter", function () {
     expect(await mockSpoke.crossDomainAdmin()).to.equal(newAdmin);
   });
   it("Correctly transfers tokens when executing pool rebalance", async function () {
-    const { leafs, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, l1ChainId);
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(dai.address, 1, l1ChainId);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    expect(await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leafs[0]), tree.getHexProof(leafs[0])))
+    expect(
+      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+    )
       .to.emit(ethAdapter.attach(hubPool.address), "TokensRelayed")
       .withArgs(dai.address, dai.address, tokensSendToL2, mockSpoke.address);
   });

@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./interfaces/WETH9.sol";
-
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @notice Ethereum L1 specific SpokePool. Used on Ethereum L1 to facilitate L2->L1 transfers.
