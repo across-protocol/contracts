@@ -15,13 +15,12 @@ interface HubPoolInterface {
         uint256 chainId;
         // Total LP fee amount per token in this bundle, encompassing all associated bundled relays.
         uint256[] bundleLpFees;
-        // This array is grouped with the two above, and it represents the amount to send or request back from the
-        // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
-        // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero when the
-        // rules indicate that a rebalancing action should occur. When a rebalance does occur, runningBalances should be
-        // set to zero for this token and the netSendAmounts should be set to the previous runningBalances + relays -
-        // deposits in this bundle. If non-zero then it must be set on the SpokePool's RelayerRefundLeaf amountToReturn
-        // as -1 * this value to indicate if funds are being sent from or to the SpokePool.
+        // Represents the amount to push to or pull from the SpokePool. If +, the pool pays the SpokePool. If negative
+        // the SpokePool pays the HubPool. There can be arbitrarily complex rebalancing rules defined offchain. This
+        // number is only nonzero when the rules indicate that a rebalancing action should occur. When a rebalance does
+        // occur, runningBalances must be set to zero for this token and netSendAmounts should be set to the previous
+        // runningBalances + relays - deposits in this bundle. If non-zero then it must be set on the SpokePool's
+        // RelayerRefundLeaf amountToReturn as -1 * this value to show if funds are being sent from or to the SpokePool.
         int256[] netSendAmounts;
         // This is only here to be emitted in an event to track a running unpaid balance between the L2 pool and the L1
         // pool. A positive number indicates that the HubPool owes the SpokePool funds. A negative number indicates that
@@ -36,9 +35,9 @@ interface HubPoolInterface {
         uint256 groupIndex;
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint8 leafId;
-        // The following arrays are required to be the same length. They are parallel arrays for the given chainId and
-        // should be ordered by the l1Tokens field. All whitelisted tokens with nonzero relays on this chain in this
-        // bundle in the order of whitelisting.
+        // The bundleLpFees, netSendAmounts, and runningBalances are required to be the same length. They are parallel
+        // arrays for the given chainId and should be ordered by the l1Tokens field. All whitelisted tokens with nonzero
+        // relays on this chain in this bundle in the order of whitelisting.
         address[] l1Tokens;
     }
 
