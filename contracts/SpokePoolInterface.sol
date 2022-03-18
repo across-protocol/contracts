@@ -7,8 +7,8 @@ pragma solidity ^0.8.0;
 interface SpokePoolInterface {
     // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
     struct RelayerRefundLeaf {
-        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that is
-        // negative. This is just the negative of this value.
+        // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that
+        // is negative. This is just the negative of this value.
         uint256 amountToReturn;
         // Used to verify that this is being executed on the correct destination chainId.
         uint256 chainId;

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./SpokePool.sol";
+import "./PolygonTokenBridger.sol";
 import "./interfaces/WETH9.sol";
+import "./SpokePoolInterface.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./SpokePool.sol";
-import "./SpokePoolInterface.sol";
-import "./PolygonTokenBridger.sol";
 
 // IFxMessageProcessor represents interface to process messages.
 interface IFxMessageProcessor {
