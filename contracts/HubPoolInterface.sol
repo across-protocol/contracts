@@ -18,7 +18,7 @@ interface HubPoolInterface {
         // SpokePool. If positive, the pool will pay the SpokePool. If negative the SpokePool will pay the HubPool.
         // There can be arbitrarily complex rebalancing rules defined offchain. This number is only nonzero when the
         // rules indicate that a rebalancing action should occur. When a rebalance does occur, runningBalances should be
-        //  set to zero for this token and the netSendAmounts should be set to the previous runningBalances + relays -
+        // set to zero for this token and the netSendAmounts should be set to the previous runningBalances + relays -
         // deposits in this bundle. If non-zero then it must be set on the SpokePool's RelayerRefundLeaf amountToReturn
         // as -1 * this value to indicate if funds are being sent from or to the SpokePool.
         int256[] netSendAmounts;
