@@ -888,7 +888,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
             _allocateLpAndProtocolFees(l1Token, bundleLpFees[i]);
 
-            // L1 tokens length won't be > types(uint32).length, so use unchecked block to save gas.
+            // L1 tokens length won't be > types(uint32).length, so use unchecked block to save gas. Based on the
+            // stress test results in /test/gas-analytics/HubPool.RootExecution.ts, the UMIP should limit the L1 token
+            // count in valid proposals to be ~100 so any PoolRebalanceLeaves with > 100 l1Tokens should not make it
+            // to this stage.
             unchecked {
                 ++i;
             }

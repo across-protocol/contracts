@@ -552,7 +552,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             if (amount > 0)
                 IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
 
-            // OK because we assume refund array length won't be > types(uint32).max
+            // OK because we assume refund array length won't be > types(uint32).max.
+            // Based on the stress test results in /test/gas-analytics/SpokePool.RelayerRefundLeaf.ts, the UMIP should
+            // limit the refund count in valid proposals to be ~800 so any RelayerRefundLeaves with > 800 refunds should
+            // not make it to this stage.
+
             unchecked {
                 ++i;
             }
