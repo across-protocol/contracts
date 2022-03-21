@@ -43,7 +43,7 @@ describe("SpokePool Root Bundle Execution", function () {
     );
 
     // Distribute the first leaf.
-    await spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leaves[0], tree.getHexProof(leaves[0]));
+    await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // Relayers should be refunded
     expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(leavesRefundAmount));
@@ -65,7 +65,8 @@ describe("SpokePool Root Bundle Execution", function () {
     expect(tokensBridgedEvents.length).to.equal(1);
 
     // Does not attempt to bridge tokens if amountToReturn is 0. Execute a leaf where amountToReturn is 0.
-    await spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leaves[1], tree.getHexProof(leaves[1]));
+    await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[1], tree.getHexProof(leaves[1]));
+
     // Show that a second DistributedRelayRefund event was emitted but not a second TokensBridged event.
     relayTokensEvents = await spokePool.queryFilter(spokePool.filters.ExecutedRelayerRefundRoot());
     expect(relayTokensEvents.length).to.equal(2);
@@ -83,11 +84,11 @@ describe("SpokePool Root Bundle Execution", function () {
     // Take the valid root but change some element within it. This will change the hash of the leaf
     // and as such the contract should reject it for not being included within the merkle tree for the valid proof.
     const badLeaf = { ...leaves[0], chainId: 13371 };
-    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(0, badLeaf, tree.getHexProof(leaves[0]))).to.be
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, badLeaf, tree.getHexProof(leaves[0]))).to.be
       .reverted;
 
     // Reverts if the distribution root index is incorrect.
-    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(1, leaves[0], tree.getHexProof(leaves[0]))).to
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(1, leaves[0], tree.getHexProof(leaves[0]))).to
       .be.reverted;
   });
   it("Cannot refund leaf with chain ID for another network", async function () {
@@ -99,7 +100,7 @@ describe("SpokePool Root Bundle Execution", function () {
     );
 
     // Root is valid and leaf is contained in tree, but chain ID doesn't match pool's chain ID.
-    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leaves[0], tree.getHexProof(leaves[0]))).to
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
       .be.reverted;
   });
   it("Execution rejects double claimed leaves", async function () {
@@ -110,8 +111,8 @@ describe("SpokePool Root Bundle Execution", function () {
     );
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
-    await spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leaves[0], tree.getHexProof(leaves[0]));
-    await expect(spokePool.connect(dataWorker).executeRelayerRefundRoot(0, leaves[0], tree.getHexProof(leaves[0]))).to
+    await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
       .be.reverted;
   });
 });

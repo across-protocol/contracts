@@ -1,6 +1,16 @@
 import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, SignerWithAddress, getContractFactory, seedContract, toWei } from "../utils";
+import {
+  ethers,
+  expect,
+  Contract,
+  SignerWithAddress,
+  getContractFactory,
+  seedContract,
+  toWei,
+  randomBigNumber,
+  seedWallet,
+} from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
@@ -13,9 +23,13 @@ describe("Polygon Spoke Pool", function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
     ({ weth, hubPool, timer, l2Dai } = await hubPoolFixture());
 
+    // The spoke pool exists on l2, so add a random chainId for L1 to ensure that the L2's block.chainid will not match.
+    const l1ChainId = randomBigNumber();
+    const l2ChainId = await owner.getChainId();
+
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address);
+    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
 
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
@@ -25,6 +39,7 @@ describe("Polygon Spoke Pool", function () {
     ).deploy(polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address);
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
+    await seedWallet(owner, [], weth, toWei("1"));
   });
 
   it("Only correct caller can set the cross domain admin", async function () {
@@ -190,15 +205,19 @@ describe("Polygon Spoke Pool", function () {
     const bridger = await polygonSpokePool.polygonTokenBridger();
 
     // Checks that there's a burn event from the bridger.
-    await expect(polygonSpokePool.connect(relayer).executeRelayerRefundRoot(0, leaves[0], tree.getHexProof(leaves[0])))
+    await expect(polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
       .to.emit(dai, "Transfer")
       .withArgs(bridger, ZERO_ADDRESS, amountToReturn);
   });
 
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {
+    const l1ChainId = await owner.getChainId();
+
+    // Retrieve can only be performed on L1, so seed the L2 chainId with a non matching value.
+    const l2ChainId = randomBigNumber();
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address);
+    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
 
     await expect(() =>
       owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })
@@ -208,6 +227,45 @@ describe("Polygon Spoke Pool", function () {
       weth,
       [polygonTokenBridger, hubPool],
       [toWei("1").mul(-1), toWei("1")]
+    );
+  });
+
+  it("PolygonTokenBridger doesn't allow L1 actions on L2", async function () {
+    // Make sure the L1 chain is different from the chainId where this is deployed.
+    const l1ChainId = randomBigNumber();
+    const l2ChainId = await owner.getChainId();
+
+    const polygonTokenBridger = await (
+      await getContractFactory("PolygonTokenBridger", owner)
+    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+
+    // Cannot send ETH directly into the contract on L2.
+    await expect(owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })).to.be.revertedWith(
+      "Cannot run method on this chain"
+    );
+
+    // Cannot call retrieve on the contract on L2.
+    await weth.connect(owner).transfer(polygonTokenBridger.address, toWei("1"));
+    await expect(polygonTokenBridger.connect(owner).retrieve(weth.address)).to.be.revertedWith(
+      "Cannot run method on this chain"
+    );
+  });
+
+  it("PolygonTokenBridger doesn't allow L2 actions on L1", async function () {
+    const l1ChainId = await owner.getChainId();
+
+    // Make sure the L1 chain is different from the chainId where this is deployed.
+    const l2ChainId = randomBigNumber();
+
+    const polygonTokenBridger = await (
+      await getContractFactory("PolygonTokenBridger", owner)
+    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+
+    await weth.connect(owner).approve(polygonTokenBridger.address, toWei("1"));
+
+    // Cannot call send on the contract on L1.
+    await expect(polygonTokenBridger.connect(owner).send(weth.address, toWei("1"), false)).to.be.revertedWith(
+      "Cannot run method on this chain"
     );
   });
 });

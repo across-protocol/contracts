@@ -75,7 +75,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
 
     // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
-    // the full amount of fees entitled to LPs in ~ 7.72 days, just over the standard L2 7 day liveness.
+    // the full amount of fees entitled to LPs in ~ 7.72 days assuming no contract interactions. If someone interacts
+    // with the contract then the LP rewards are smeared sublinearly over the window (i.e spread over the remaining
+    // period for each interaction which approximates a decreasing exponential function).
     uint256 public lpFeeRatePerSecond = 1500000000000;
 
     // Mapping of l1TokenAddress to cumulative unclaimed protocol tokens that can be sent to the protocolFeeCaptureAddress
@@ -147,8 +149,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bool depositsEnabled
     );
     event ProposeRootBundle(
-        uint32 requestExpirationTimestamp,
-        uint64 unclaimedPoolRebalanceLeafCount,
+        uint32 challengePeriodEndTimestamp,
+        uint64 poolRebalanceLeafCount,
         uint256[] bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
         bytes32 indexed relayerRefundRoot,
@@ -159,10 +161,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 groupIndex,
         uint256 indexed leafId,
         uint256 indexed chainId,
-        address[] l1Token,
+        address[] l1Tokens,
         uint256[] bundleLpFees,
-        int256[] netSendAmount,
-        int256[] runningBalance,
+        int256[] netSendAmounts,
+        int256[] runningBalances,
         address indexed caller
     );
     event SpokePoolAdminFunctionTriggered(uint256 indexed chainId, bytes message);
@@ -558,11 +560,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // technically valid but not useful. This could also potentially be enforced at the UMIP-level.
         require(poolRebalanceLeafCount > 0, "Bundle must have at least 1 leaf");
 
-        uint32 requestExpirationTimestamp = uint32(getCurrentTime()) + liveness;
+        uint32 challengePeriodEndTimestamp = uint32(getCurrentTime()) + liveness;
 
-        delete rootBundleProposal; // Only one bundle of roots can be executed at a time.
+        delete rootBundleProposal; // Only one bundle of roots can be executed at a time. Delete the previous bundle.
 
-        rootBundleProposal.requestExpirationTimestamp = requestExpirationTimestamp;
+        rootBundleProposal.challengePeriodEndTimestamp = challengePeriodEndTimestamp;
         rootBundleProposal.unclaimedPoolRebalanceLeafCount = poolRebalanceLeafCount;
         rootBundleProposal.poolRebalanceRoot = poolRebalanceRoot;
         rootBundleProposal.relayerRefundRoot = relayerRefundRoot;
@@ -573,7 +575,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         bondToken.safeTransferFrom(msg.sender, address(this), bondAmount);
 
         emit ProposeRootBundle(
-            requestExpirationTimestamp,
+            challengePeriodEndTimestamp,
             poolRebalanceLeafCount,
             bundleEvaluationBlockNumbers,
             poolRebalanceRoot,
@@ -588,7 +590,6 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * from this contract to the SpokePool designated in the leaf, and will also publish relayer refund and slow
      * relay roots to the SpokePool on the network specified in the leaf.
      * @dev In some cases, will instruct spokePool to send funds back to L1.
-     * @notice Deletes the published root bundle if this is the last leaf to be executed in the root bundle.
      * @param chainId ChainId number of the target spoke pool on which the bundle is executed.
      * @param groupIndex If set to 0, then relay roots to SpokePool via cross chain bridge. Used by off-chain validator
      * to organize leaves with the same chain ID and also set which leaves should result in relayed messages.
@@ -610,7 +611,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address[] memory l1Tokens,
         bytes32[] memory proof
     ) public nonReentrant unpaused {
-        require(getCurrentTime() > rootBundleProposal.requestExpirationTimestamp, "Not passed liveness");
+        require(getCurrentTime() > rootBundleProposal.challengePeriodEndTimestamp, "Not passed liveness");
 
         // Verify the leafId in the poolRebalanceLeaf has not yet been claimed.
         require(!MerkleLib.isClaimed1D(rootBundleProposal.claimedBitMap, leafId), "Already claimed");
@@ -702,7 +703,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      */
     function disputeRootBundle() public nonReentrant zeroOptimisticOracleApproval {
         uint32 currentTime = uint32(getCurrentTime());
-        require(currentTime <= rootBundleProposal.requestExpirationTimestamp, "Request passed liveness");
+        require(currentTime <= rootBundleProposal.challengePeriodEndTimestamp, "Request passed liveness");
 
         // Request price from OO and dispute it.
         uint256 finalFee = _getBondTokenFinalFee();
@@ -794,7 +795,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit ProtocolFeesCapturedClaimed(l1Token, _unclaimedAccumulatedProtocolFees);
     }
 
-    /**
+    /**master
      * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID.
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
@@ -948,10 +949,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
         // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
         // contract. In this case, ignore it as it is captured in liquid reserves and has no meaning in the numerator.
-        PooledToken memory pooledToken = pooledTokens[l1Token]; // Note this is storage so the state can be modified.
-        uint256 flooredUtilizedReserves = pooledToken.utilizedReserves > 0 ? uint256(pooledToken.utilizedReserves) : 0;
+        PooledToken memory pooledL1Token = pooledTokens[l1Token];
+        uint256 flooredUtilizedReserves = pooledL1Token.utilizedReserves > 0
+            ? uint256(pooledL1Token.utilizedReserves) // If positive: take the uint256 cast utilizedReserves.
+            : 0; // Else, if negative, then the is already captured in liquidReserves and should be ignored.
         uint256 numerator = relayedAmount + flooredUtilizedReserves;
-        uint256 denominator = pooledToken.liquidReserves + flooredUtilizedReserves;
+        uint256 denominator = pooledL1Token.liquidReserves + flooredUtilizedReserves;
 
         // If the denominator equals zero, return 1e18 (max utilization).
         if (denominator == 0) return 1e18;
