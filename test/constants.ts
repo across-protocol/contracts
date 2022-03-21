@@ -74,9 +74,8 @@ export const amountToReturn = toWei("1");
 
 export const mockTreeRoot = createRandomBytes32();
 
-// Following should match variables set in Arbitrum_Adapter
-export const sampleL2Gas = 2000000;
+export const sampleL2Gas = 5000000;
 
-export const sampleL2MaxSubmissionCost = toWei("0.01");
+export const sampleL2MaxSubmissionCost = toWei("0.1");
 
-export const sampleL2GasPrice = 5e9;
+export const sampleL2GasPrice = 10e9; // 10 gWei

@@ -1,26 +1,16 @@
 import * as consts from "../constants";
-import {
-  ethers,
-  expect,
-  Contract,
-  FakeContract,
-  SignerWithAddress,
-  createFake,
-  toWei,
-  hre,
-  defaultAbiCoder,
-  toBN,
-} from "../utils";
+import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei, hre } from "../utils";
 import { getContractFactory, seedWallet, randomAddress } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
-let l2Weth: string, l2Dai: string, gatewayAddress: string;
+let l2Weth: string, l2Dai: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
-let l1ERC20GatewayRouter: FakeContract, l1Inbox: FakeContract;
+let l1ERC20Gateway: FakeContract, l1Inbox: FakeContract;
 
 const arbitrumChainId = 42161;
+let l1ChainId: number;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
@@ -38,13 +28,12 @@ describe("Arbitrum Chain Adapter", function () {
     await dai.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
 
     l1Inbox = await createFake("Inbox");
-    l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
-    gatewayAddress = randomAddress();
-    l1ERC20GatewayRouter.getGateway.returns(gatewayAddress);
+    l1ERC20Gateway = await createFake("TokenGateway");
+    l1ChainId = Number(await hre.getChainId());
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
-    ).deploy(l1Inbox.address, l1ERC20GatewayRouter.address);
+    ).deploy(l1Inbox.address, l1ERC20Gateway.address);
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
@@ -59,10 +48,9 @@ describe("Arbitrum Chain Adapter", function () {
     const newAdmin = randomAddress();
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
 
-    expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData)).to.changeEtherBalances(
-      [l1Inbox],
-      [toBN(consts.sampleL2MaxSubmissionCost).add(toBN(consts.sampleL2Gas).mul(consts.sampleL2GasPrice))]
-    );
+    expect(await hubPool.relaySpokePoolAdminFunction(arbitrumChainId, functionCallData))
+      .to.emit(arbitrumAdapter.attach(hubPool.address), "MessageRelayed")
+      .withArgs(mockSpoke.address, functionCallData);
     expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce;
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
       mockSpoke.address,
@@ -83,27 +71,16 @@ describe("Arbitrum Chain Adapter", function () {
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-    expect(
-      await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
-    ).to.changeEtherBalances(
-      [l1ERC20GatewayRouter],
-      [toBN(consts.sampleL2MaxSubmissionCost).add(toBN(consts.sampleL2Gas).mul(consts.sampleL2GasPrice))]
-    );
-
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
     // The correct functions should have been called on the arbitrum contracts.
-    expect(l1ERC20GatewayRouter.outboundTransfer).to.have.been.calledOnce; // One token transfer over the canonical bridge.
-
-    // Adapter should have approved gateway to spend its ERC20.
-    expect(await dai.allowance(hubPool.address, gatewayAddress)).to.equal(tokensSendToL2);
-
-    const message = defaultAbiCoder.encode(["uint256", "bytes"], [consts.sampleL2MaxSubmissionCost, "0x"]);
-    expect(l1ERC20GatewayRouter.outboundTransfer).to.have.been.calledWith(
+    expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledOnce; // One token transfer over the canonical bridge.
+    expect(l1ERC20Gateway.outboundTransfer).to.have.been.calledWith(
       dai.address,
       mockSpoke.address,
       tokensSendToL2,
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
-      message
+      "0x"
     );
     expect(l1Inbox.createRetryableTicket).to.have.been.calledOnce; // only 1 L1->L2 message sent.
     expect(l1Inbox.createRetryableTicket).to.have.been.calledWith(
