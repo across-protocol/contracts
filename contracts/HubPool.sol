@@ -632,51 +632,48 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             ),
             "Bad Proof"
         );
+        // Grouping code that uses adapter and spokepool to avoid stack too deep warning.
+        // Get cross chain helpers for leaf's destination chain ID. This internal method will revert if either helper
+        // is set improperly.
+        (address adapter, address spokePool) = _getInitializedCrossChainContracts(chainId);
 
-        {
-            // Grouping code that uses adapter and spokepool to avoid stack too deep warning.
-            // Get cross chain helpers for leaf's destination chain ID. This internal method will revert if either helper
-            // is set improperly.
-            (address adapter, address spokePool) = _getInitializedCrossChainContracts(chainId);
+        // Set the leafId in the claimed bitmap.
+        rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
 
-            // Set the leafId in the claimed bitmap.
-            rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
+        // Decrement the unclaimedPoolRebalanceLeafCount.
+        --rootBundleProposal.unclaimedPoolRebalanceLeafCount;
 
-            // Decrement the unclaimedPoolRebalanceLeafCount.
-            --rootBundleProposal.unclaimedPoolRebalanceLeafCount;
+        // Relay each L1 token to destination chain.
+        // Note: if any of the keccak256(l1Tokens, chainId) combinations are not mapped to a destination token address,
+        // then this internal method will revert. In this case the admin will have to associate a destination token
+        // with each l1 token. If the destination token mapping was missing at the time of the proposal, we assume
+        // that the root bundle would have been disputed because the off-chain data worker would have been unable to
+        // determine if the relayers used the correct destination token for a given origin token.
+        _sendTokensToChainAndUpdatePooledTokenTrackers(
+            adapter,
+            spokePool,
+            chainId,
+            l1Tokens,
+            netSendAmounts,
+            bundleLpFees
+        );
 
-            // Relay each L1 token to destination chain.
-            // Note: if any of the keccak256(l1Tokens, chainId) combinations are not mapped to a destination token address,
-            // then this internal method will revert. In this case the admin will have to associate a destination token
-            // with each l1 token. If the destination token mapping was missing at the time of the proposal, we assume
-            // that the root bundle would have been disputed because the off-chain data worker would have been unable to
-            // determine if the relayers used the correct destination token for a given origin token.
-            _sendTokensToChainAndUpdatePooledTokenTrackers(
-                adapter,
-                spokePool,
-                chainId,
-                l1Tokens,
-                netSendAmounts,
-                bundleLpFees
-            );
-
-            // Check bool used by data worker to prevent relaying redundant roots to SpokePool.
-            if (groupIndex == 0) {
-                // Relay root bundles to spoke pool on destination chain by
-                // performing delegatecall to use the adapter's code with this contract's context.
-                (bool success, ) = adapter.delegatecall(
+        // Check bool used by data worker to prevent relaying redundant roots to SpokePool.
+        if (groupIndex == 0) {
+            // Relay root bundles to spoke pool on destination chain by
+            // performing delegatecall to use the adapter's code with this contract's context.
+            (bool success, ) = adapter.delegatecall(
+                abi.encodeWithSignature(
+                    "relayMessage(address,bytes)",
+                    spokePool, // target. This should be the spokePool on the L2.
                     abi.encodeWithSignature(
-                        "relayMessage(address,bytes)",
-                        spokePool, // target. This should be the spokePool on the L2.
-                        abi.encodeWithSignature(
-                            "relayRootBundle(bytes32,bytes32)",
-                            rootBundleProposal.relayerRefundRoot,
-                            rootBundleProposal.slowRelayRoot
-                        ) // message
-                    )
-                );
-                require(success, "delegatecall failed");
-            }
+                        "relayRootBundle(bytes32,bytes32)",
+                        rootBundleProposal.relayerRefundRoot,
+                        rootBundleProposal.slowRelayRoot
+                    ) // message
+                )
+            );
+            require(success, "delegatecall failed");
         }
 
         // Transfer the bondAmount back to the proposer, if this the last executed leaf. Only sending this once all
