@@ -104,7 +104,13 @@ export function getAllFilesInPath(dirPath: string, arrayOfFiles: string[] = []):
 
 export const toWei = (num: string | number | BigNumber) => ethers.utils.parseEther(num.toString());
 
+export const toWeiWithDecimals = (num: string | number | BigNumber, decimals: number) =>
+  ethers.utils.parseUnits(num.toString(), decimals);
+
 export const toBNWei = (num: string | number | BigNumber) => BigNumber.from(toWei(num));
+
+export const toBNWeiWithDecimals = (num: string | number | BigNumber, decimals: number) =>
+  BigNumber.from(toWeiWithDecimals(num, decimals));
 
 export const fromWei = (num: string | number | BigNumber) => ethers.utils.formatUnits(num.toString());
 
