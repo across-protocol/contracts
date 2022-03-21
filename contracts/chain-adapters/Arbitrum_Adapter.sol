@@ -3,6 +3,9 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 interface ArbitrumL1InboxLike {
     function createRetryableTicket(
         address destAddr,
@@ -25,6 +28,8 @@ interface ArbitrumL1ERC20GatewayLike {
         uint256 _gasPriceBid,
         bytes calldata _data
     ) external payable returns (bytes memory);
+
+    function getGateway(address _token) external view returns (address);
 }
 
 /**
@@ -35,35 +40,37 @@ interface ArbitrumL1ERC20GatewayLike {
  * that call this contract's logic guard against reentrancy.
  */
 contract Arbitrum_Adapter is AdapterInterface {
+    using SafeERC20 for IERC20;
+
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
-    uint32 public immutable l2GasLimit = 5_000_000;
+    uint32 public immutable l2GasLimit = 2_000_000;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
     // retryable transactions; the user is charged the base submission fee to cover the storage costs of keeping their
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    uint256 public immutable l2MaxSubmissionCost = 0.1e18;
+    uint256 public immutable l2MaxSubmissionCost = 0.01e18;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    uint256 public immutable l2GasPrice = 10e9; // 10 gWei
+    uint256 public immutable l2GasPrice = 5e9; // 5 gWei
 
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable l2RefundL2Address;
 
     ArbitrumL1InboxLike public immutable l1Inbox;
 
-    ArbitrumL1ERC20GatewayLike public immutable l1ERC20Gateway;
+    ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
 
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
-     * @param _l1ERC20Gateway ERC20 gateway contract to send tokens to Arbitrum.
+     * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      */
-    constructor(ArbitrumL1InboxLike _l1ArbitrumInbox, ArbitrumL1ERC20GatewayLike _l1ERC20Gateway) {
+    constructor(ArbitrumL1InboxLike _l1ArbitrumInbox, ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter) {
         l1Inbox = _l1ArbitrumInbox;
-        l1ERC20Gateway = _l1ERC20Gateway;
+        l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
 
         l2RefundL2Address = msg.sender;
     }
@@ -76,8 +83,7 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes memory message) external payable override {
-        uint256 requiredL1CallValue = getL1CallValue();
-        require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
+        uint256 requiredL1CallValue = _contractHasSufficientEthBalance();
 
         l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
             target, // destAddr destination L2 contract address
@@ -95,6 +101,8 @@ contract Arbitrum_Adapter is AdapterInterface {
 
     /**
      * @notice Bridge tokens to Arbitrum.
+     * @notice This contract must hold at least getL1CallValue() amount of ETH to send a message via the Inbox
+     * successfully, or the message will get stuck.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
@@ -106,7 +114,25 @@ contract Arbitrum_Adapter is AdapterInterface {
         uint256 amount,
         address to
     ) external payable override {
-        l1ERC20Gateway.outboundTransfer(l1Token, to, amount, l2GasLimit, l2GasPrice, "");
+        uint256 requiredL1CallValue = _contractHasSufficientEthBalance();
+
+        // Approve the gateway, not the router, to spend the hub pool's balance. The gateway, which is different
+        // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
+        address erc20Gateway = l1ERC20GatewayRouter.getGateway(l1Token);
+        IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
+
+        // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
+        // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
+        bytes memory data = abi.encode(l2MaxSubmissionCost, "");
+        l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
+            l1Token,
+            to,
+            amount,
+            l2GasLimit,
+            l2GasPrice,
+            data
+        );
+
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
@@ -116,5 +142,10 @@ contract Arbitrum_Adapter is AdapterInterface {
      */
     function getL1CallValue() public pure returns (uint256) {
         return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
+    }
+
+    function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {
+        requiredL1CallValue = getL1CallValue();
+        require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
     }
 }
