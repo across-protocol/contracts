@@ -18,7 +18,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [L1_ADDRESS_MAP[chainId].l1ArbitrumInbox, L1_ADDRESS_MAP[chainId].l1ERC20Gateway],
+    args: [L1_ADDRESS_MAP[chainId].l1ArbitrumInbox, L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter],
   });
 };
 
