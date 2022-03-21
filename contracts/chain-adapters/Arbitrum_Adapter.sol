@@ -34,6 +34,8 @@ interface ArbitrumL1ERC20GatewayLike {
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
+
+// solhint-disable-next-line contract-name-camelcase
 contract Arbitrum_Adapter is AdapterInterface {
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8

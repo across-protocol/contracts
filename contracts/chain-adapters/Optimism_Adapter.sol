@@ -19,6 +19,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
+
+// solhint-disable-next-linecontract-name-camelcase
 contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 5_000_000;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >0.5.0 <0.9.0;
+pragma solidity ^0.8.0;
 
 /* Interface Imports */
 import { ICrossDomainMessenger } from "@eth-optimism/contracts/libraries/bridge/ICrossDomainMessenger.sol";
@@ -27,11 +27,11 @@ contract CrossDomainEnabled {
      *  authenticated to call this function.
      */
     modifier onlyFromCrossDomainAccount(address _sourceDomainAccount) {
-        require(msg.sender == address(getCrossDomainMessenger()), "OVM_XCHAIN: messenger contract unauthenticated");
+        require(msg.sender == address(getCrossDomainMessenger()), "invalid cross domain messenger");
 
         require(
             getCrossDomainMessenger().xDomainMessageSender() == _sourceDomainAccount,
-            "OVM_XCHAIN: wrong sender of cross-domain message"
+            "invalid cross domain sender"
         );
 
         _;
