@@ -607,7 +607,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] memory netSendAmounts,
         int256[] memory runningBalances,
         uint8 leafId,
-        address[] calldata l1Tokens,
+        address[] memory l1Tokens,
         bytes32[] calldata proof
     ) public nonReentrant unpaused {
         require(getCurrentTime() > rootBundleProposal.challengePeriodEndTimestamp, "Not passed liveness");
