@@ -14,7 +14,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
     finder: "0xbb6206fb01fAad31e8aaFc3AD303cEA89D8c8157",
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // Should be listed as "DelayedInbox" here: https://developer.offchainlabs.com/docs/useful_addresses
-    l1ERC20Gateway: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // Should be listed as "L1 ERC20 Gateway Router" here: https://developer.offchainlabs.com/docs/useful_addresses
+    l1ERC20GatewayRouter: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // Should be listed as "L1 ERC20 Gateway Router" here: https://developer.offchainlabs.com/docs/useful_addresses
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // dummy: Optimism's testnet is kovan
     optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", // dummy: Optimism's testnet is kovan
     polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74", // dummy: Polygon's testnet is goerli
@@ -24,7 +24,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // dummy: Optimism's testnet is kovan
     optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", // dummy: Optimism's testnet is kovan
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
-    l1ERC20Gateway: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // dummy: Arbitrum's testnet is rinkeby
+    l1ERC20GatewayRouter: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // dummy: Arbitrum's testnet is rinkeby
     finder: "0xDC6b80D38004F495861E081e249213836a2F3217",
     polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
     polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA",
@@ -32,7 +32,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
-    l1ERC20Gateway: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // dummy: Arbitrum's testnet is rinkeby
+    l1ERC20GatewayRouter: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // dummy: Arbitrum's testnet is rinkeby
     optimismCrossDomainMessenger: "0x4361d0F75A0186C05f971c566dC6bEa5957483fD",
     weth: "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
     optimismStandardBridge: "0x22F24361D548e5FaAfb36d1437839f080363982B",
