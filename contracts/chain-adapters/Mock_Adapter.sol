@@ -18,7 +18,7 @@ contract Mock_Adapter is AdapterInterface {
         bridge = new Mock_Bridge();
     }
 
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         bridge.bridgeMessage(target, message);
         emit RelayMessageCalled(target, message, msg.sender);
     }
@@ -49,7 +49,7 @@ contract Mock_Bridge {
         emit BridgedTokens(token, amount);
     }
 
-    function bridgeMessage(address target, bytes memory message) public {
+    function bridgeMessage(address target, bytes calldata message) public {
         emit BridgedMessage(target, message);
     }
 }

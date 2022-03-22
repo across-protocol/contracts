@@ -56,7 +56,7 @@ contract Polygon_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
 
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         fxStateSender.sendMessageToChild(target, message);
         emit MessageRelayed(target, message);
     }
