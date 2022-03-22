@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     using SafeERC20 for IERC20;
-    uint32 public immutable l2GasLimit = 5_000_000;
+    uint32 public immutable l2GasLimit = 2_000_000;
 
     WETH9 public immutable l1Weth;
 

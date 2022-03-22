@@ -2,7 +2,7 @@
 //         test net.
 // @dev    Modify constants to modify merkle leaves. Command: `yarn hardhat run ./scripts/buildSampleTree.ts`
 
-import { toWei, toBN, toBNWei, getParamType, defaultAbiCoder, keccak256 } from "../test/utils";
+import { toBN, getParamType, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../test/utils";
 import { MerkleTree } from "../utils/MerkleTree";
 import { RelayData } from "../test/fixtures/SpokePool.Fixture";
 
@@ -15,13 +15,14 @@ const RELAYER_REFUND_LEAF_COUNT = 1;
 const SLOW_RELAY_LEAF_COUNT = 1;
 const POOL_REBALANCE_NET_SEND_AMOUNT = 0.1; // Amount of tokens to send from HubPool to SpokePool
 const RELAYER_REFUND_AMOUNT_TO_RETURN = 0.1; // Amount of tokens to send from SpokePool to HubPool
-const L1_TOKEN = "0xd0A1E359811322d97991E03f863a0C30C2cF029C";
-const L2_TOKEN = "0x4200000000000000000000000000000000000006";
+const L1_TOKEN = "0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b";
+const L2_TOKEN = "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d";
+const DECIMALS = 6;
 const RELAYER_REFUND_ADDRESS_TO_REFUND = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 const RELAYER_REFUND_AMOUNT_TO_REFUND = 0.1; // Amount of tokens to send out of SpokePool to relayer refund recipient
 const SLOW_RELAY_RECIPIENT_ADDRESS = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 const SLOW_RELAY_AMOUNT = 0.1; // Amount of tokens to send out of SpokePool to slow relay recipient address
-const SPOKE_POOL_CHAIN_ID = 69;
+const SPOKE_POOL_CHAIN_ID = 421611;
 
 function tuplelifyLeaf(leaf: Object) {
   return JSON.stringify(
@@ -40,9 +41,9 @@ async function main() {
     for (let i = 0; i < POOL_REBALANCE_LEAF_COUNT; i++) {
       leaves.push({
         chainId: toBN(SPOKE_POOL_CHAIN_ID),
-        bundleLpFees: [toBNWei(0.1)],
-        netSendAmounts: [toBNWei(POOL_REBALANCE_NET_SEND_AMOUNT)],
-        runningBalances: [toWei(0)],
+        bundleLpFees: [toBN(0)],
+        netSendAmounts: [toBNWeiWithDecimals(POOL_REBALANCE_NET_SEND_AMOUNT, DECIMALS)],
+        runningBalances: [toBN(0)],
         groupIndex: toBN(0),
         leafId: toBN(i),
         l1Tokens: [L1_TOKEN],
@@ -81,9 +82,9 @@ async function main() {
     const leaves: RelayerRefundLeaf[] = [];
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
       leaves.push({
-        amountToReturn: toBNWei(RELAYER_REFUND_AMOUNT_TO_RETURN),
+        amountToReturn: toBNWeiWithDecimals(RELAYER_REFUND_AMOUNT_TO_RETURN, DECIMALS),
         chainId: toBN(SPOKE_POOL_CHAIN_ID),
-        refundAmounts: [toBNWei(RELAYER_REFUND_AMOUNT_TO_REFUND)],
+        refundAmounts: [toBNWeiWithDecimals(RELAYER_REFUND_AMOUNT_TO_REFUND, DECIMALS)],
         leafId: toBN(i),
         l2TokenAddress: L2_TOKEN,
         refundAddresses: [RELAYER_REFUND_ADDRESS_TO_REFUND],
@@ -125,7 +126,7 @@ async function main() {
         depositor: SLOW_RELAY_RECIPIENT_ADDRESS,
         recipient: SLOW_RELAY_RECIPIENT_ADDRESS,
         destinationToken: L2_TOKEN,
-        amount: toBNWei(SLOW_RELAY_AMOUNT).toString(),
+        amount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS).toString(),
         originChainId: SPOKE_POOL_CHAIN_ID.toString(),
         destinationChainId: SPOKE_POOL_CHAIN_ID.toString(),
         realizedLpFeePct: "0",
