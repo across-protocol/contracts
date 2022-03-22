@@ -46,8 +46,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
-    // This contract can store as many root bundles as the HubPool chooses to publish here.
-    RootBundle[] public rootBundles;
+    // Associates root bundles with unique ID. This enables the HubPool admin to overwrite root bundles on this contract
+    // and defends against replay attacks. If a bridged message containing the root bundle to publish to this contract
+    // somehow gets replayed, then the UUID key ensures that the root bundle will not be published twice.
+    mapping(uint256 => RootBundle) public rootBundles;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
@@ -98,7 +100,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address recipient,
         bool isSlowRelay
     );
-    event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
+    event RelayedRootBundle(uint256 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
@@ -195,14 +197,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice This method stores a new root bundle in this contract that can be executed to refund relayers, fulfill
      * slow relays, and send funds back to the HubPool on L1. This method can only be called by the admin and is
      * designed to be called as part of a cross-chain message from the HubPool's executeRootBundle method.
+     * @param rootBundleId Unique key associated with root bundle.
      * @param relayerRefundRoot Merkle root containing relayer refund leaves that can be individually executed via
      * executeRelayerRefundLeaf().
      * @param slowRelayRoot Merkle root containing slow relay fulfillment leaves that can be individually executed via
      * executeSlowRelayLeaf().
      */
-    function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) public override onlyAdmin nonReentrant {
-        uint32 rootBundleId = uint32(rootBundles.length);
-        RootBundle storage rootBundle = rootBundles.push();
+    function relayRootBundle(
+        uint256 rootBundleId,
+        bytes32 relayerRefundRoot,
+        bytes32 slowRelayRoot
+    ) public override onlyAdmin nonReentrant {
+        RootBundle storage rootBundle = rootBundles[rootBundleId];
         rootBundle.relayerRefundRoot = relayerRefundRoot;
         rootBundle.slowRelayRoot = slowRelayRoot;
         emit RelayedRootBundle(rootBundleId, relayerRefundRoot, slowRelayRoot);

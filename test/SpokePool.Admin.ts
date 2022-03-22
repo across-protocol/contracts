@@ -1,6 +1,6 @@
 import { expect, ethers, Contract, SignerWithAddress } from "./utils";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
-import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
+import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot, rootBundleId } from "./constants";
 
 let spokePool: Contract, erc20: Contract;
 let owner: SignerWithAddress;
@@ -25,16 +25,21 @@ describe("SpokePool Admin Functions", async function () {
   });
 
   it("Delete rootBundle", async function () {
-    await spokePool.connect(owner).relayRootBundle(mockRelayerRefundRoot, mockSlowRelayRoot);
+    await expect(spokePool.connect(owner).relayRootBundle(rootBundleId, mockRelayerRefundRoot, mockSlowRelayRoot))
+      .to.emit(spokePool, "RelayedRootBundle")
+      .withArgs(rootBundleId, mockRelayerRefundRoot, mockSlowRelayRoot);
 
-    expect(await spokePool.rootBundles(0)).has.property("slowRelayRoot", mockSlowRelayRoot);
-    expect(await spokePool.rootBundles(0)).has.property("relayerRefundRoot", mockRelayerRefundRoot);
+    expect(await spokePool.rootBundles(rootBundleId)).has.property("slowRelayRoot", mockSlowRelayRoot);
+    expect(await spokePool.rootBundles(rootBundleId)).has.property("relayerRefundRoot", mockRelayerRefundRoot);
 
-    await expect(spokePool.connect(owner).emergencyDeleteRootBundle(0))
+    await expect(spokePool.connect(owner).emergencyDeleteRootBundle(rootBundleId))
       .to.emit(spokePool, "EmergencyDeleteRootBundle")
-      .withArgs(0);
+      .withArgs(rootBundleId);
 
-    expect(await spokePool.rootBundles(0)).has.property("slowRelayRoot", ethers.utils.hexZeroPad("0x0", 32));
-    expect(await spokePool.rootBundles(0)).has.property("relayerRefundRoot", ethers.utils.hexZeroPad("0x0", 32));
+    expect(await spokePool.rootBundles(rootBundleId)).has.property("slowRelayRoot", ethers.utils.hexZeroPad("0x0", 32));
+    expect(await spokePool.rootBundles(rootBundleId)).has.property(
+      "relayerRefundRoot",
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
   });
 });

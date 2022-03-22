@@ -82,7 +82,8 @@ describe("Arbitrum Chain Adapter", function () {
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    const expirationTime = Number(await timer.getCurrentTime()) + consts.refundProposalLiveness;
+    await timer.setCurrentTime(expirationTime + 1);
     expect(
       await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
     ).to.changeEtherBalances(
@@ -115,6 +116,7 @@ describe("Arbitrum Chain Adapter", function () {
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
+        expirationTime,
         consts.mockRelayerRefundRoot,
         consts.mockSlowRelayRoot,
       ])

@@ -143,6 +143,7 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
 
       // Store new tree.
       await spokePool.connect(dataWorker).relayRootBundle(
+        consts.rootBundleId + 1,
         initTree.tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
         consts.mockSlowRelayRoot
       );
@@ -150,7 +151,11 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundLeaf(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+        .executeRelayerRefundLeaf(
+          consts.rootBundleId + 1,
+          initTree.leaves[0],
+          initTree.tree.getHexProof(initTree.leaves[0])
+        );
 
       const simpleTree = await constructSimpleTree(
         destinationChainIds,
@@ -164,30 +169,41 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
     });
 
     it("Relay proposal", async function () {
-      const txn = await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      const txn = await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(consts.rootBundleId, tree.getHexRoot(), consts.mockSlowRelayRoot);
       console.log(`relayRootBundle-gasUsed: ${(await txn.wait()).gasUsed}`);
     });
 
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(consts.rootBundleId, tree.getHexRoot(), consts.mockSlowRelayRoot);
 
-      // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundLeaf(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRelayerRefundLeaf(
+          consts.rootBundleId,
+          leaves[leafIndexToExecute],
+          tree.getHexProof(leaves[leafIndexToExecute])
+        );
 
       const receipt = await txn.wait();
       console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(consts.rootBundleId, tree.getHexRoot(), consts.mockSlowRelayRoot);
 
       const txns = [];
       for (let i = 0; i < REFUND_LEAF_COUNT; i++) {
         txns.push(
-          await spokePool.connect(dataWorker).executeRelayerRefundLeaf(1, leaves[i], tree.getHexProof(leaves[i]))
+          await spokePool
+            .connect(dataWorker)
+            .executeRelayerRefundLeaf(consts.rootBundleId, leaves[i], tree.getHexProof(leaves[i]))
         );
       }
 
@@ -198,10 +214,16 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
     });
 
     it("Executing all leaves using multicall", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(consts.rootBundleId, tree.getHexRoot(), consts.mockSlowRelayRoot);
 
       const multicallData = leaves.map((leaf) => {
-        return spokePool.interface.encodeFunctionData("executeRelayerRefundLeaf", [1, leaf, tree.getHexProof(leaf)]);
+        return spokePool.interface.encodeFunctionData("executeRelayerRefundLeaf", [
+          consts.rootBundleId,
+          leaf,
+          tree.getHexProof(leaf),
+        ]);
       });
 
       const receipt = await (await spokePool.connect(dataWorker).multicall(multicallData)).wait();
@@ -221,14 +243,18 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
 
       // Store new tree.
       await spokePool.connect(dataWorker).relayRootBundle(
+        consts.rootBundleId + 1,
         initTree.tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
         consts.mockSlowRelayRoot
       );
 
-      // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundLeaf(0, initTree.leaves[0], initTree.tree.getHexProof(initTree.leaves[0]));
+        .executeRelayerRefundLeaf(
+          consts.rootBundleId + 1,
+          initTree.leaves[0],
+          initTree.tree.getHexProof(initTree.leaves[0])
+        );
 
       const simpleTree = await constructSimpleTree(
         destinationChainIds,
@@ -243,12 +269,17 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(consts.rootBundleId, tree.getHexRoot(), consts.mockSlowRelayRoot);
 
-      // Execute second root bundle with index 1:
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundLeaf(1, leaves[leafIndexToExecute], tree.getHexProof(leaves[leafIndexToExecute]));
+        .executeRelayerRefundLeaf(
+          consts.rootBundleId,
+          leaves[leafIndexToExecute],
+          tree.getHexProof(leaves[leafIndexToExecute])
+        );
 
       const receipt = await txn.wait();
       console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
@@ -278,7 +309,9 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
       );
       const bigLeafTree = await buildRelayerRefundTree(bigLeaves);
 
-      await spokePool.connect(dataWorker).relayRootBundle(bigLeafTree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(consts.rootBundleId, bigLeafTree.getHexRoot(), consts.mockSlowRelayRoot);
 
       // Estimate the transaction gas and set it (plus some buffer) explicitly as the transaction's gas limit. This is
       // done because ethers.js' default gas limit setting doesn't seem to always work and sometimes overestimates
@@ -286,10 +319,10 @@ describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
       // "InvalidInputError: Transaction gas limit is X and exceeds block gas limit of 30000000"
       const gasEstimate = await spokePool
         .connect(dataWorker)
-        .estimateGas.executeRelayerRefundLeaf(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
+        .estimateGas.executeRelayerRefundLeaf(consts.rootBundleId, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundLeaf(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]), {
+        .executeRelayerRefundLeaf(consts.rootBundleId, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]), {
           gasLimit: gasEstimate.mul(toBN("1.2")),
         });
 

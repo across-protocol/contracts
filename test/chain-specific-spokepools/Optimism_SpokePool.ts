@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, rootBundleId } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -77,22 +77,30 @@ describe("Optimism Spoke Pool", function () {
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {
-    await expect(optimismSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
+    await expect(optimismSpokePool.relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(mockTreeRoot, mockTreeRoot);
-    expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
-    expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet)
+      .relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot);
+    expect((await optimismSpokePool.rootBundles(rootBundleId)).slowRelayRoot).to.equal(mockTreeRoot);
+    expect((await optimismSpokePool.rootBundles(rootBundleId)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
   it("Only owner can delete a relayer refund", async function () {
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(mockTreeRoot, mockTreeRoot);
-    await expect(optimismSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet)
+      .relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot);
+    await expect(optimismSpokePool.emergencyDeleteRootBundle(rootBundleId)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).emergencyDeleteRootBundle(0)).to.not.be
-      .reverted;
-    expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
-    expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).emergencyDeleteRootBundle(rootBundleId)).to.not
+      .be.reverted;
+    expect((await optimismSpokePool.rootBundles(rootBundleId)).slowRelayRoot).to.equal(
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
+    expect((await optimismSpokePool.rootBundles(rootBundleId)).relayerRefundRoot).to.equal(
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
   });
 
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
@@ -101,8 +109,12 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet)
+      .relayRootBundle(rootBundleId, tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(rootBundleId, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
@@ -114,10 +126,14 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet)
+      .relayRootBundle(rootBundleId, tree.getHexRoot(), mockTreeRoot);
     const altL2Bridge = await createFake("L2StandardBridge");
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await optimismSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(rootBundleId, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(altL2Bridge.withdrawTo).to.have.been.calledOnce;
@@ -129,8 +145,12 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet)
+      .relayRootBundle(rootBundleId, tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(rootBundleId, leaves[0], tree.getHexProof(leaves[0]));
 
     // When sending l2Weth we should see two differences from the previous test: 1) there should be a call to l2WETH to
     // unwrap l2WETH to l2ETH. 2) the address in the l2StandardBridge that is withdrawn should no longer be l2WETH but

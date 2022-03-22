@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, rootBundleId } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -69,18 +69,23 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {
-    await expect(arbitrumSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(mockTreeRoot, mockTreeRoot);
-    expect((await arbitrumSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
-    expect((await arbitrumSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
+    await expect(arbitrumSpokePool.relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot)).to.be.reverted;
+    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot);
+    expect((await arbitrumSpokePool.rootBundles(rootBundleId)).slowRelayRoot).to.equal(mockTreeRoot);
+    expect((await arbitrumSpokePool.rootBundles(rootBundleId)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
   it("Only cross domain owner can delete a relayer refund", async function () {
-    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(mockTreeRoot, mockTreeRoot);
-    await expect(arbitrumSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
-    await expect(arbitrumSpokePool.connect(crossDomainAlias).emergencyDeleteRootBundle(0)).to.not.be.reverted;
-    expect((await arbitrumSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
-    expect((await arbitrumSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot);
+    await expect(arbitrumSpokePool.emergencyDeleteRootBundle(rootBundleId)).to.be.reverted;
+    await expect(arbitrumSpokePool.connect(crossDomainAlias).emergencyDeleteRootBundle(rootBundleId)).to.not.be
+      .reverted;
+    expect((await arbitrumSpokePool.rootBundles(rootBundleId)).slowRelayRoot).to.equal(
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
+    expect((await arbitrumSpokePool.rootBundles(rootBundleId)).relayerRefundRoot).to.equal(
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
   });
 
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
@@ -88,16 +93,18 @@ describe("Arbitrum Spoke Pool", function () {
       l2Dai,
       await arbitrumSpokePool.callStatic.chainId()
     );
-    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(rootBundleId, tree.getHexRoot(), mockTreeRoot);
 
     // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, ZERO_ADDRESS);
     await expect(
-      arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      arbitrumSpokePool.executeRelayerRefundLeaf(rootBundleId, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Uninitialized mainnet token");
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
 
-    await arbitrumSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await arbitrumSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(rootBundleId, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     // outboundTransfer is overloaded in the arbitrum gateway. Define the interface to check the method is called.

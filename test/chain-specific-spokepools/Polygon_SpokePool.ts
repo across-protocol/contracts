@@ -1,5 +1,5 @@
 import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, rootBundleId } from "../constants";
 import {
   ethers,
   expect,
@@ -122,9 +122,10 @@ describe("Polygon Spoke Pool", function () {
 
   it("Only correct caller can initialize a relayer refund", async function () {
     // Cannot call directly
-    await expect(polygonSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
+    await expect(polygonSpokePool.relayRootBundle(rootBundleId, mockTreeRoot, mockTreeRoot)).to.be.reverted;
 
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      rootBundleId,
       mockTreeRoot,
       mockTreeRoot,
     ]);
@@ -139,12 +140,13 @@ describe("Polygon Spoke Pool", function () {
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
 
-    expect((await polygonSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
-    expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
+    expect((await polygonSpokePool.rootBundles(rootBundleId)).slowRelayRoot).to.equal(mockTreeRoot);
+    expect((await polygonSpokePool.rootBundles(rootBundleId)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
   it("Cannot re-enter processMessageFromRoot", async function () {
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      rootBundleId,
       mockTreeRoot,
       mockTreeRoot,
     ]);
@@ -160,6 +162,7 @@ describe("Polygon Spoke Pool", function () {
 
   it("Only owner can delete a relayer refund", async function () {
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      rootBundleId,
       mockTreeRoot,
       mockTreeRoot,
     ]);
@@ -167,11 +170,11 @@ describe("Polygon Spoke Pool", function () {
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
 
     // Cannot call directly
-    await expect(polygonSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
+    await expect(polygonSpokePool.emergencyDeleteRootBundle(rootBundleId)).to.be.reverted;
 
     const emergencyDeleteRelayRootBundleData = polygonSpokePool.interface.encodeFunctionData(
       "emergencyDeleteRootBundle",
-      [0]
+      [rootBundleId]
     );
 
     // Wrong rootMessageSender address.
@@ -187,8 +190,12 @@ describe("Polygon Spoke Pool", function () {
     await expect(
       polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData)
     ).to.not.be.reverted;
-    expect((await polygonSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
-    expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
+    expect((await polygonSpokePool.rootBundles(rootBundleId)).slowRelayRoot).to.equal(
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
+    expect((await polygonSpokePool.rootBundles(rootBundleId)).relayerRefundRoot).to.equal(
+      ethers.utils.hexZeroPad("0x0", 32)
+    );
   });
 
   it("Bridge tokens to hub pool correctly sends tokens through the PolygonTokenBridger", async function () {
@@ -197,6 +204,7 @@ describe("Polygon Spoke Pool", function () {
       await polygonSpokePool.callStatic.chainId()
     );
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      rootBundleId,
       tree.getHexRoot(),
       mockTreeRoot,
     ]);
@@ -205,7 +213,9 @@ describe("Polygon Spoke Pool", function () {
     const bridger = await polygonSpokePool.polygonTokenBridger();
 
     // Checks that there's a burn event from the bridger.
-    await expect(polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
+    await expect(
+      polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(rootBundleId, leaves[0], tree.getHexProof(leaves[0]))
+    )
       .to.emit(dai, "Transfer")
       .withArgs(bridger, ZERO_ADDRESS, amountToReturn);
   });

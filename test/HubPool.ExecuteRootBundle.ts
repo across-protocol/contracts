@@ -54,7 +54,8 @@ describe("HubPool Root Bundle Execution", function () {
     );
 
     // Advance time so the request can be executed and execute first leaf.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    const expirationTime = Number(await timer.getCurrentTime()) + consts.refundProposalLiveness;
+    await timer.setCurrentTime(expirationTime + 1);
     expect(
       await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
     ).to.emit(hubPool, "RootBundleExecuted");
@@ -79,6 +80,7 @@ describe("HubPool Root Bundle Execution", function () {
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
+        expirationTime,
         consts.mockRelayerRefundRoot,
         consts.mockSlowRelayRoot,
       ])
@@ -107,7 +109,8 @@ describe("HubPool Root Bundle Execution", function () {
       .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
 
     // Advance time so the request can be executed and execute two leaves with same chain ID.
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    const expirationTime = Number(await timer.getCurrentTime()) + consts.refundProposalLiveness;
+    await timer.setCurrentTime(expirationTime + 1);
     await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
     await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[1]), tree.getHexProof(leaves[1]));
 
@@ -124,6 +127,7 @@ describe("HubPool Root Bundle Execution", function () {
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.target).to.equal(mockSpoke.address);
     expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
+        expirationTime,
         consts.mockRelayerRefundRoot,
         consts.mockSlowRelayRoot,
       ])

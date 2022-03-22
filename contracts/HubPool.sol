@@ -671,7 +671,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
                     "relayMessage(address,bytes)",
                     spokePool, // target. This should be the spokePool on the L2.
                     abi.encodeWithSignature(
-                        "relayRootBundle(bytes32,bytes32)",
+                        "relayRootBundle(uint256,bytes32,bytes32)",
+                        // Use request expiration time as unique identifier for root bundle
+                        rootBundleProposal.challengePeriodEndTimestamp,
                         rootBundleProposal.relayerRefundRoot,
                         rootBundleProposal.slowRelayRoot
                     ) // message

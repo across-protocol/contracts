@@ -66,6 +66,8 @@ export const mockRelayerRefundRoot = createRandomBytes32();
 
 export const mockSlowRelayRoot = createRandomBytes32();
 
+export const rootBundleId = 123456789;
+
 // Amount of tokens to seed SpokePool with at beginning of relayer refund distribution tests
 export const amountHeldByPool = amountToRelay.mul(4);
 
