@@ -1,6 +1,7 @@
 // @notice Logs ABI-encoded function data that can be relayed from HubPool to ArbitrumSpokePool to set it up.
 
-import { getContractFactory, ethers } from "../test/utils";
+import { getContractFactory, ethers, hre } from "../test/utils";
+import * as consts from "../test/constants";
 
 async function main() {
   const [signer] = await ethers.getSigners();
@@ -12,6 +13,13 @@ async function main() {
     "0xc778417e063141139fce010982780140aa0cd5ab", // L1 WETH
   ]);
   console.log(`(WETH) whitelistToken: `, whitelistWeth);
+
+  // USDC is also not verified on the rinkeby explorer so we should approve it to be spent by the spoke pool.
+  const ERC20 = await getContractFactory("ExpandedERC20", { signer });
+  const usdc = await ERC20.attach("0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b");
+  const deployedHubPool = await hre.deployments.get("HubPool");
+  const approval = await usdc.approve(deployedHubPool.address, consts.maxUint256);
+  console.log(`Approved USDC to be spent by HubPool @ ${deployedHubPool.address}: `, approval.hash);
 }
 
 main().then(
