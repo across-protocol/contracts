@@ -28,7 +28,7 @@ contract Ethereum_Adapter is AdapterInterface {
      * @param target Contract that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         _executeCall(target, message);
         emit MessageRelayed(target, message);
     }

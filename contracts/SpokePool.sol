@@ -46,12 +46,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
-    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-
-    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
-
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
+
+    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -286,7 +285,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         );
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        numberOfDeposits += 1;
+        // @dev: Use pre-increment to save gas:
+        // i++ --> Load, Store, Add, Store
+        // ++i --> Load, Add, Store
+        ++numberOfDeposits;
     }
 
     /**
@@ -544,10 +546,20 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        for (uint32 i = 0; i < relayerRefundLeaf.refundAmounts.length; i++) {
+        uint32 length = uint32(relayerRefundLeaf.refundAmounts.length);
+        for (uint32 i = 0; i < length; ) {
             uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
                 IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
+
+            // OK because we assume refund array length won't be > types(uint32).max.
+            // Based on the stress test results in /test/gas-analytics/SpokePool.RelayerRefundLeaf.ts, the UMIP should
+            // limit the refund count in valid proposals to be ~800 so any RelayerRefundLeaves with > 800 refunds should
+            // not make it to this stage.
+
+            unchecked {
+                ++i;
+            }
         }
 
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
@@ -623,13 +635,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
         require(newCrossDomainAdmin != address(0), "Bad bridge router address");
         crossDomainAdmin = newCrossDomainAdmin;
-        emit SetXDomainAdmin(crossDomainAdmin);
+        emit SetXDomainAdmin(newCrossDomainAdmin);
     }
 
     function _setHubPool(address newHubPool) internal {
         require(newHubPool != address(0), "Bad hub pool address");
         hubPool = newHubPool;
-        emit SetHubPool(hubPool);
+        emit SetHubPool(newHubPool);
     }
 
     // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
