@@ -3,17 +3,17 @@ pragma solidity ^0.8.0;
 
 contract ArbitrumMockErc20GatewayRouter {
     function outboundTransfer(
-        address _token,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
+        address,
+        address,
+        uint256,
+        uint256,
+        uint256,
         bytes calldata _data
     ) external payable returns (bytes memory) {
         return _data;
     }
 
-    function getGateway(address _token) external view returns (address) {
+    function getGateway(address) external view returns (address) {
         return address(this);
     }
 }
