@@ -79,7 +79,7 @@ async function constructSimpleTree(
   return { leaves, tree };
 }
 
-describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
+describe("Gas Analytics: SpokePool Relayer Refund Leaf Execution", function () {
   before(async function () {
     if (!process.env.GAS_TEST_ENABLED) this.skip();
   });
@@ -286,15 +286,15 @@ describe("Gas Analytics: SpokePool Relayer Refund Root Execution", function () {
       // "InvalidInputError: Transaction gas limit is X and exceeds block gas limit of 30000000"
       const gasEstimate = await spokePool
         .connect(dataWorker)
-        .estimateGas.executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
+        .estimateGas.executeRelayerRefundLeaf(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]));
       const txn = await spokePool
         .connect(dataWorker)
-        .executeRelayerRefundRoot(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]), {
+        .executeRelayerRefundLeaf(1, bigLeaves[0], bigLeafTree.getHexProof(bigLeaves[0]), {
           gasLimit: gasEstimate.mul(toBN("1.2")),
         });
 
       const receipt = await txn.wait();
-      console.log(`executeRelayerRefundRoot-gasUsed: ${receipt.gasUsed}`);
+      console.log(`executeRelayerRefundLeaf-gasUsed: ${receipt.gasUsed}`);
       expect(Number(receipt.gasUsed)).to.be.lessThanOrEqual(TARGET_GAS_UPPER_BOUND);
       expect(Number(receipt.gasUsed)).to.be.greaterThanOrEqual(TARGET_GAS_LOWER_BOUND);
     });

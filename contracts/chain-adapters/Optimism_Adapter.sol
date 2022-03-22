@@ -59,7 +59,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
      * @param target Contract on Optimism that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         sendCrossDomainMessage(target, uint32(l2GasLimit), message);
         emit MessageRelayed(target, message);
     }

@@ -37,10 +37,6 @@ interface ArbitrumL1ERC20GatewayLike {
 
 // solhint-disable-next-line contract-name-camelcase
 contract Arbitrum_Adapter is AdapterInterface {
-    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
-    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
-    uint32 public immutable l2GasLimit = 5_000_000;
-
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
     // retryable transactions; the user is charged the base submission fee to cover the storage costs of keeping their
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
@@ -50,6 +46,10 @@ contract Arbitrum_Adapter is AdapterInterface {
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public immutable l2GasPrice = 10e9; // 10 gWei
+
+    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
+    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
+    uint32 public immutable l2GasLimit = 5_000_000;
 
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable l2RefundL2Address;
@@ -77,7 +77,7 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @param target Contract on Arbitrum that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         uint256 requiredL1CallValue = getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
 

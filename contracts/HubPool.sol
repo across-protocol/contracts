@@ -45,8 +45,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // can be submitted.
     RootBundle public rootBundleProposal;
 
-    // Whether the bundle proposal process is paused.
-    bool public paused;
+    // Mapping of L1 token addresses to the associated pool information.
+    mapping(address => PooledToken) public pooledTokens;
 
     // Stores paths from L1 token + destination ID to destination token. Since different tokens on L1 might map to
     // to the same address on different destinations, we hash (L1 token address, destination ID) to
@@ -56,11 +56,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // to 0x0 to disable a pool rebalance route and block executeRootBundle() from executing.
     mapping(bytes32 => address) private poolRebalanceRoutes;
 
-    // Mapping of L1 token addresses to the associated pool information.
-    mapping(address => PooledToken) public pooledTokens;
-
     // Mapping of chainId to the associated adapter and spokePool contracts.
     mapping(uint256 => CrossChainContract) public crossChainContracts;
+
+    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
+
+    // Whether the bundle proposal process is paused.
+    bool public paused;
 
     // WETH contract for Ethereum.
     WETH9 public immutable weth;
@@ -71,6 +73,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // Finder contract for this network.
     FinderInterface public immutable finder;
 
+    // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
+    address public protocolFeeCaptureAddress;
+
+    // Token used to bond the data worker for proposing relayer refund bundles.
+    IERC20 public bondToken;
+
+    // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
+    // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
+    uint32 public liveness = 7200;
+
     // When root bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
     bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
 
@@ -80,25 +92,11 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     // period for each interaction which approximates a decreasing exponential function).
     uint256 public lpFeeRatePerSecond = 1500000000000;
 
-    // Mapping of l1TokenAddress to cumulative unclaimed protocol tokens that can be sent to the protocolFeeCaptureAddress
-    // at any time. This enables the protocol to reallocate some percentage of LP fees elsewhere.
-    mapping(address => uint256) public unclaimedAccumulatedProtocolFees;
-
-    // Address that captures protocol fees. Accumulated protocol fees can be claimed by this address.
-    address public protocolFeeCaptureAddress;
-
     // Percentage of lpFees that are captured by the protocol and claimable by the protocolFeeCaptureAddress.
     uint256 public protocolFeeCapturePct;
 
-    // Token used to bond the data worker for proposing relayer refund bundles.
-    IERC20 public bondToken;
-
     // The computed bond amount as the UMA Store's final fee multiplied by the bondTokenFinalFeeMultiplier.
     uint256 public bondAmount;
-
-    // Each root bundle proposal must stay in liveness for this period of time before it can be considered finalized.
-    // It can be disputed only during this period of time. Defaults to 2 hours, like the rest of the UMA ecosystem.
-    uint32 public liveness = 7200;
 
     event Paused(bool indexed isPaused);
 
@@ -298,8 +296,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         // The bond should be the passed in bondAmount + the final fee.
         bondToken = newBondToken;
-        bondAmount = newBondAmount + _getBondTokenFinalFee();
-        emit BondSet(address(newBondToken), bondAmount);
+        uint256 _bondAmount = newBondAmount + _getBondTokenFinalFee();
+        bondAmount = _bondAmount;
+        emit BondSet(address(newBondToken), _bondAmount);
     }
 
     /**
@@ -550,7 +549,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * fulfill slow relays.
      */
     function proposeRootBundle(
-        uint256[] memory bundleEvaluationBlockNumbers,
+        uint256[] calldata bundleEvaluationBlockNumbers,
         uint8 poolRebalanceLeafCount,
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
@@ -609,7 +608,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] memory runningBalances,
         uint8 leafId,
         address[] memory l1Tokens,
-        bytes32[] memory proof
+        bytes32[] calldata proof
     ) public nonReentrant unpaused {
         require(getCurrentTime() > rootBundleProposal.challengePeriodEndTimestamp, "Not passed liveness");
 
@@ -633,7 +632,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             ),
             "Bad Proof"
         );
-
+        // Grouping code that uses adapter and spokepool to avoid stack too deep warning.
         // Get cross chain helpers for leaf's destination chain ID. This internal method will revert if either helper
         // is set improperly.
         (address adapter, address spokePool) = _getInitializedCrossChainContracts(chainId);
@@ -642,10 +641,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         rootBundleProposal.claimedBitMap = MerkleLib.setClaimed1D(rootBundleProposal.claimedBitMap, leafId);
 
         // Decrement the unclaimedPoolRebalanceLeafCount.
-        rootBundleProposal.unclaimedPoolRebalanceLeafCount--;
+        --rootBundleProposal.unclaimedPoolRebalanceLeafCount;
 
         // Relay each L1 token to destination chain.
-
         // Note: if any of the keccak256(l1Tokens, chainId) combinations are not mapped to a destination token address,
         // then this internal method will revert. In this case the admin will have to associate a destination token
         // with each l1 token. If the destination token mapping was missing at the time of the proposal, we assume
@@ -861,7 +859,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] memory netSendAmounts,
         uint256[] memory bundleLpFees
     ) internal {
-        for (uint32 i = 0; i < l1Tokens.length; i++) {
+        uint32 length = uint32(l1Tokens.length);
+        for (uint32 i = 0; i < length; ) {
             address l1Token = l1Tokens[i];
             // Validate the L1 -> L2 token route is stored. If it is not then the output of the bridging action
             // could send tokens to the 0x0 address on the L2.
@@ -895,6 +894,14 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
             // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
             _allocateLpAndProtocolFees(l1Token, bundleLpFees[i]);
+
+            // L1 tokens length won't be > types(uint32).length, so use unchecked block to save gas. Based on the
+            // stress test results in /test/gas-analytics/HubPool.RootExecution.ts, the UMIP should limit the L1 token
+            // count in valid proposals to be ~100 so any PoolRebalanceLeaves with > 100 l1Tokens should not make it
+            // to this stage.
+            unchecked {
+                ++i;
+            }
         }
     }
 
