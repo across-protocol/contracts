@@ -662,6 +662,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         if (groupIndex == 0) {
             // Relay root bundles to spoke pool on destination chain by
             // performing delegatecall to use the adapter's code with this contract's context.
+
+            // We are ok with this low-level call since the adapter address is set by the admin and we've
+            // already checked that its not the zero address.
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = adapter.delegatecall(
                 abi.encodeWithSignature(
                     "relayMessage(address,bytes)",
@@ -817,7 +821,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * messages to Arbitrum. Relaying messages to Arbitrum requires that this contract has an ETH balance, so in this
      * case the caller would need to pre-load this contract with ETH before multicall-executing the leaf.
      */
-    function loadEthForL2Calls() public payable override {}
+    function loadEthForL2Calls() public payable override {
+        /* solhint-disable-line no-empty-blocks */
+    }
 
     /*************************************************
      *              INTERNAL FUNCTIONS               *
@@ -866,6 +872,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             if (netSendAmounts[i] > 0) {
                 // Perform delegatecall to use the adapter's code with this contract's context. Opt for delegatecall's
                 // complexity in exchange for lower gas costs.
+
+                // We are ok with this low-level call since the adapter address is set by the admin and we've
+                // already checked that its not the zero address.
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = adapter.delegatecall(
                     abi.encodeWithSignature(
                         "relayTokens(address,address,uint256,address)",
@@ -992,6 +1002,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         (address adapter, address spokePool) = _getInitializedCrossChainContracts(chainId);
 
         // Perform delegatecall to use the adapter's code with this contract's context.
+
+        // We are ok with this low-level call since the adapter address is set by the admin and we've
+        // already checked that its not the zero address.
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = adapter.delegatecall(
             abi.encodeWithSignature(
                 "relayMessage(address,bytes)",

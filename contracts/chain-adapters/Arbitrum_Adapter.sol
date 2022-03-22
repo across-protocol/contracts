@@ -39,6 +39,8 @@ interface ArbitrumL1ERC20GatewayLike {
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
+
+// solhint-disable-next-line contract-name-camelcase
 contract Arbitrum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 

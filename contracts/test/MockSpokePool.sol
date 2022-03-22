@@ -9,18 +9,20 @@ import "../SpokePoolInterface.sol";
  * @notice Implements abstract contract for testing.
  */
 contract MockSpokePool is SpokePool {
-    uint256 chainId_;
+    uint256 private chainId_;
 
+    // solhint-disable-next-line no-empty-blocks
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {}
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {} // solhint-disable-line no-empty-blocks
 
+    // solhint-disable-next-line no-empty-blocks
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}
 
-    function _requireAdminSender() internal override {}
+    function _requireAdminSender() internal override {} // solhint-disable-line no-empty-blocks
 
     function chainId() public view override(SpokePool) returns (uint256) {
         // If chainId_ is set then return it, else do nothing and return the parent chainId().

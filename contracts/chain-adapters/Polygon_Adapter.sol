@@ -28,6 +28,8 @@ interface IFxStateSender {
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
+
+// solhint-disable-next-linecontract-name-camelcase
 contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
