@@ -133,12 +133,12 @@ interface SpokePoolInterface {
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint32 rootBundleId,
+        uint256,
         bytes32[] memory proof
     ) external;
 
     function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) external;

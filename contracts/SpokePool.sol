@@ -477,7 +477,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
         _executeSlowRelayLeaf(
@@ -504,7 +504,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */
     function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
@@ -530,7 +530,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Verifies inclusion proof of leaf in root, sends relayer their refund, and sends to HubPool any rebalance
     // transfers.
     function _executeRelayerRefundLeaf(
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) internal {
