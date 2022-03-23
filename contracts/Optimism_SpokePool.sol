@@ -83,7 +83,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
         if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
@@ -109,7 +109,7 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @inheritdoc SpokePool
      */
     function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {

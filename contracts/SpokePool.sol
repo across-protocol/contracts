@@ -105,7 +105,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amountToReturn,
         uint256 indexed chainId,
         uint256[] refundAmounts,
-        uint32 indexed rootBundleId,
+        uint256 indexed rootBundleId,
         uint32 indexed leafId,
         address l2TokenAddress,
         address[] refundAddresses,
@@ -605,7 +605,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId,
-        uint32 rootBundleId,
+        uint256 rootBundleId,
         bytes32[] memory proof
     ) internal {
         RelayData memory relayData = RelayData({
