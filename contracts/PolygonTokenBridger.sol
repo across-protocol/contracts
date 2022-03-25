@@ -107,6 +107,12 @@ contract PolygonTokenBridger is Lockable {
 
     receive() external payable {
         // This method is empty to avoid any gas expendatures that might cause transfers to fail.
+        // Note: the fact that there is _no_ code in this function means that matic can be erroneously transferred in
+        // to the contract on the polygon side. These tokens would be locked indefinitely since the receive function
+        // cannot be called on the polygon side. While this does have some downsides, the lack of any functionality
+        // in this function means that it has no chance of running out of gas on transfers, which is a much more
+        // important benefit. This just makes the matic token risk similar to that of ERC20s that are erroneously
+        // sent to the contract.
     }
 
     function _requireChainId(uint256 chainId) internal view {
