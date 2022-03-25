@@ -99,18 +99,14 @@ contract PolygonTokenBridger is Lockable {
      * @param token Token to send to destination.
      */
     function retrieve(IERC20 token) public nonReentrant onlyChainId(l1ChainId) {
+        if (address(token) == address(l1Weth)) {
+            l1Weth.deposit{ value: address(this).balance }();
+        }
         token.safeTransfer(destination, token.balanceOf(address(this)));
     }
 
     receive() external payable {
-        if (functionCallStackOriginatesFromOutsideThisContract()) {
-            // This should only happen on the mainnet side where ETH is sent to the contract directly by the bridge.
-            _requireChainId(l1ChainId);
-            l1Weth.deposit{ value: address(this).balance }();
-        } else {
-            // This should only happen on the l2 side where matic is unwrapped by this contract.
-            _requireChainId(l2ChainId);
-        }
+        // This method is empty to avoid any gas expendatures that might cause transfers to fail.
     }
 
     function _requireChainId(uint256 chainId) internal view {
