@@ -100,6 +100,7 @@ contract PolygonTokenBridger is Lockable {
      */
     function retrieve(IERC20 token) public nonReentrant onlyChainId(l1ChainId) {
         if (address(token) == address(l1Weth)) {
+            // For WETH, there is a pre-deposit step to ensure any ETH that has been sent to the contract is captured.
             l1Weth.deposit{ value: address(this).balance }();
         }
         token.safeTransfer(destination, token.balanceOf(address(this)));
