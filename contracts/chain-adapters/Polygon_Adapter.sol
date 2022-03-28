@@ -34,6 +34,7 @@ contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
     IFxStateSender public immutable fxStateSender;
+    address public immutable erc20Predicate;
     WETH9 public immutable l1Weth;
 
     /**
@@ -45,10 +46,12 @@ contract Polygon_Adapter is AdapterInterface {
     constructor(
         IRootChainManager _rootChainManager,
         IFxStateSender _fxStateSender,
+        address _erc20Predicate,
         WETH9 _l1Weth
     ) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
+        erc20Predicate = _erc20Predicate;
         l1Weth = _l1Weth;
     }
 
@@ -81,7 +84,7 @@ contract Polygon_Adapter is AdapterInterface {
             l1Weth.withdraw(amount);
             rootChainManager.depositEtherFor{ value: amount }(to);
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(rootChainManager), amount);
+            IERC20(l1Token).safeIncreaseAllowance(erc20Predicate, amount);
             rootChainManager.depositFor(to, l1Token, abi.encode(amount));
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
