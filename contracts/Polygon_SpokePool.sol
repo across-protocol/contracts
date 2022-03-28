@@ -154,4 +154,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     function _requireAdminSender() internal view override {
         require(callValidated, "Must call processMessageFromRoot");
     }
+
+    // This is overridden to ensure that all matic sent to this contract is wrapped.
+    receive() external payable override {
+        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
+    }
 }
