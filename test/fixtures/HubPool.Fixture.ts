@@ -7,6 +7,10 @@ import { repaymentChainId, finalFeeUsdc } from "../constants";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
 export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
+  return await deployHubPool(ethers);
+});
+
+export async function deployHubPool(ethers: any) {
   const [signer, crossChainAdmin] = await ethers.getSigners();
 
   // This fixture is dependent on the UMA ecosystem fixture. Run it first and grab the output. This is used in the
@@ -64,7 +68,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   await hubPool.setPoolRebalanceRoute(repaymentChainId, usdc.address, mockTokens.l2Usdc);
 
   return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
-});
+}
 
 export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {
   const lpTokens = [];
