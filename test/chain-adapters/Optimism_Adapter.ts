@@ -16,13 +16,11 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let l1CrossDomainMessenger: FakeContract, l1StandardBridge: FakeContract;
 
 const optimismChainId = 10;
-let l1ChainId: number;
 
 describe("Optimism Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
-    l1ChainId = Number(await hre.getChainId());
     await seedWallet(dataWorker, [dai], weth, amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, amountToLp.mul(10));
 

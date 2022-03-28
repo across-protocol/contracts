@@ -17,6 +17,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
+
+// solhint-disable-next-linecontract-name-camelcase
 contract Ethereum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
@@ -28,7 +30,7 @@ contract Ethereum_Adapter is AdapterInterface {
      * @param target Contract that will receive message.
      * @param message Data to send to target.
      */
-    function relayMessage(address target, bytes memory message) external payable override {
+    function relayMessage(address target, bytes calldata message) external payable override {
         _executeCall(target, message);
         emit MessageRelayed(target, message);
     }
@@ -54,9 +56,10 @@ contract Ethereum_Adapter is AdapterInterface {
     // Note: this snippet of code is copied from Governor.sol. Source: https://github.com/UMAprotocol/protocol/blob/5b37ea818a28479c01e458389a83c3e736306b17/packages/core/contracts/oracle/implementation/Governor.sol#L190-L207
     function _executeCall(address to, bytes memory data) private {
         // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
-        // solhint-disable-next-line no-inline-assembly
 
         bool success;
+
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)

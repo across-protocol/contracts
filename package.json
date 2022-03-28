@@ -15,6 +15,7 @@
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
   "scripts": {
+    "lint-contracts": "yarn solhint ./contracts/**/*.sol",
     "lint": "yarn prettier --list-different",
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",
