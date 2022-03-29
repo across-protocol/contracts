@@ -1,5 +1,6 @@
 import { TokenRolesEnum } from "@uma/common";
-import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "../utils";
+import { getContractFactory, SignerWithAddress, Contract, hre } from "../utils";
+import { ethers, BigNumber, defaultAbiCoder, toBN } from "../utils";
 import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
@@ -116,12 +117,12 @@ export async function fillRelay(
     .fillRelay(
       ...getFillRelayParams(
         getRelayHash(
-          depositor.address,
-          recipient.address,
+          depositor.address ?? depositor,
+          recipient.address ?? recipient,
           depositId,
           originChainId,
           consts.destinationChainId,
-          destErc20.address,
+          destErc20.address ?? destErc20,
           depositAmount.toString(),
           realizedLpFeePct.toString(),
           relayerFeePct.toString()
