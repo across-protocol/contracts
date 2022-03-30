@@ -1,6 +1,6 @@
 import * as deploymentExport from "../deployments/export.json";
 
-export function getContract(contractName: string, networkId: number) {
+export function getContractArtifact(contractName: string, networkId: number) {
   try {
     return deploymentExport[networkId.toString()][0].contracts[contractName];
   } catch (error) {
