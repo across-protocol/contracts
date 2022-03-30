@@ -6887,7 +6887,7 @@
           ]
         },
         "Ethereum_SpokePool": {
-          "address": "0x73549B5639B04090033c1E77a22eE9Aa44C2eBa0",
+          "address": "0x42Be973223aE6b29e67655c808a995eaE9f84534",
           "abi": [
             {
               "inputs": [
@@ -7476,7 +7476,7 @@
                   "type": "bytes32[]"
                 }
               ],
-              "name": "executeRelayerRefundRoot",
+              "name": "executeRelayerRefundLeaf",
               "outputs": [],
               "stateMutability": "nonpayable",
               "type": "function"
@@ -7534,7 +7534,7 @@
                   "type": "bytes32[]"
                 }
               ],
-              "name": "executeSlowRelayRoot",
+              "name": "executeSlowRelayLeaf",
               "outputs": [],
               "stateMutability": "nonpayable",
               "type": "function"
@@ -7935,7 +7935,7 @@
             },
             {
               "inputs": [],
-              "name": "weth",
+              "name": "wrappedNativeToken",
               "outputs": [
                 {
                   "internalType": "contract WETH9",
