@@ -117,12 +117,12 @@ export async function fillRelay(
     .fillRelay(
       ...getFillRelayParams(
         getRelayHash(
-          depositor.address ?? depositor,
-          recipient.address ?? recipient,
+          depositor.address,
+          recipient.address,
           depositId,
           originChainId,
           consts.destinationChainId,
-          destErc20.address ?? destErc20,
+          destErc20.address,
           depositAmount.toString(),
           realizedLpFeePct.toString(),
           relayerFeePct.toString()
