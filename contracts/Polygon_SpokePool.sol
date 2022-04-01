@@ -127,6 +127,16 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         require(success, "delegatecall failed");
     }
 
+    /**
+     * @notice Allows the caller to trigger the wrapping of any unwrapped matic tokens.
+     * @dev Matic sends via L1 -> L2 bridging actions don't call into the contract receiving the tokens, so wrapping
+     * must be done via a separate transaction.
+     */
+    function wrap() public nonReentrant {
+        uint256 balance = address(this).balance;
+        if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
+    }
+
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/

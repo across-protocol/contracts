@@ -11,19 +11,24 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonFxRoot: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2",
     polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
     polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
+    polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
+    matic: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
     finder: "0xbb6206fb01fAad31e8aaFc3AD303cEA89D8c8157",
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // Should be listed as "DelayedInbox" here: https://developer.offchainlabs.com/docs/useful_addresses
     l1ERC20GatewayRouter: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // Should be listed as "L1 ERC20 Gateway Router" here: https://developer.offchainlabs.com/docs/useful_addresses
-    optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // dummy: Optimism's testnet is kovan
-    optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", // dummy: Optimism's testnet is kovan
-    polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74", // dummy: Polygon's testnet is goerli
-    polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA", // dummy: Polygon's testnet is goerli
+    polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74", // Dummy: Polygon's testnet is goerli
+    polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA", // Dummy: Polygon's testnet is goerli
+    polygonERC20Predicate: "0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34", // Dummy: Polygon's testnet is goerli
+    polygonRegistry: "0xeE11713Fe713b2BfF2942452517483654078154D", // Dummy: Polygon's testnet is goerli
+    polygonDepositManager: "0x7850ec290A2e2F40B82Ed962eaf30591bb5f5C96", // Dummy: Polygon's testnet is goerli
+    matic: "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae", // Dummy: Polygon's testnet is goerli
   },
   5: {
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // dummy: Optimism's testnet is kovan
+    weth: "0x60D4dB9b534EF9260a88b0BED6c486fe13E604Fc",
     optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", // dummy: Optimism's testnet is kovan
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
     l1ERC20GatewayRouter: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // dummy: Arbitrum's testnet is rinkeby
@@ -32,7 +37,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA",
     polygonERC20Predicate: "0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34",
     polygonRegistry: "0xeE11713Fe713b2BfF2942452517483654078154D",
-    weth: "0x60D4dB9b534EF9260a88b0BED6c486fe13E604Fc",
+    polygonDepositManager: "0x7850ec290A2e2F40B82Ed962eaf30591bb5f5C96",
+    matic: "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
@@ -41,8 +47,12 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     weth: "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
     optimismStandardBridge: "0x22F24361D548e5FaAfb36d1437839f080363982B",
     finder: "0xeD0169a88d267063184b0853BaAAAe66c3c154B2",
-    polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74", // dummy: Polygon's testnet is goerli
-    polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA", // dummy: Polygon's testnet is goerli
+    polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74", // Dummy: Polygon's testnet is goerli
+    polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA", // Dummy: Polygon's testnet is goerli
+    polygonERC20Predicate: "0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34", // Dummy: Polygon's testnet is goerli
+    polygonRegistry: "0xeE11713Fe713b2BfF2942452517483654078154D", // Dummy: Polygon's testnet is goerli
+    polygonDepositManager: "0x7850ec290A2e2F40B82Ed962eaf30591bb5f5C96", // Dummy: Polygon's testnet is goerli
+    matic: "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae", // Dummy: Polygon's testnet is goerli
   },
 };
 

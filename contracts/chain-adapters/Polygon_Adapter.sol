@@ -21,6 +21,14 @@ interface IFxStateSender {
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
 }
 
+interface DepositManager {
+    function depositERC20ForUser(
+        address token,
+        address user,
+        uint256 amount
+    ) external;
+}
+
 /**
  * @notice Sends cross chain messages Polygon L2 network.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
@@ -34,24 +42,33 @@ contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
     IFxStateSender public immutable fxStateSender;
+    DepositManager public immutable depositManager;
     address public immutable erc20Predicate;
+    address public immutable l1Matic;
     WETH9 public immutable l1Weth;
 
     /**
      * @notice Constructs new Adapter.
-     * @param _rootChainManager RootChainManager Polygon system helper contract.
-     * @param _fxStateSender FxStateSender Polygon system helper contract.
+     * @param _rootChainManager RootChainManager Polygon system contract to deposit tokens over the PoS bridge.
+     * @param _fxStateSender FxStateSender Polygon system contract to send arbitrary messages to L2.
+     * @param _depositManager DepositManager Polygon system contract to deposit tokens over the Plasma bridge (Matic).
+     * @param _erc20Predicate ERC20Predicate Polygon system contract to approve when depositing to the PoS bridge.
+     * @param _l1Matic matic address on l1.
      * @param _l1Weth WETH address on L1.
      */
     constructor(
         IRootChainManager _rootChainManager,
         IFxStateSender _fxStateSender,
+        DepositManager _depositManager,
         address _erc20Predicate,
+        address _l1Matic,
         WETH9 _l1Weth
     ) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
+        depositManager = _depositManager;
         erc20Predicate = _erc20Predicate;
+        l1Matic = _l1Matic;
         l1Weth = _l1Weth;
     }
 
@@ -83,6 +100,9 @@ contract Polygon_Adapter is AdapterInterface {
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             rootChainManager.depositEtherFor{ value: amount }(to);
+        } else if (l1Token == l1Matic) {
+            IERC20(l1Token).safeIncreaseAllowance(address(depositManager), amount);
+            depositManager.depositERC20ForUser(l1Token, to, amount);
         } else {
             IERC20(l1Token).safeIncreaseAllowance(erc20Predicate, amount);
             rootChainManager.depositFor(to, l1Token, abi.encode(amount));
