@@ -9,6 +9,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
     polygonRootChainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
     polygonFxRoot: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2",
+    polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
+    polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -28,6 +30,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     finder: "0xDC6b80D38004F495861E081e249213836a2F3217",
     polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
     polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA",
+    polygonERC20Predicate: "0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34",
+    polygonRegistry: "0xeE11713Fe713b2BfF2942452517483654078154D",
     weth: "0x60D4dB9b534EF9260a88b0BED6c486fe13E604Fc",
   },
   42: {

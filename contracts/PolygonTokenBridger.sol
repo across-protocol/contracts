@@ -7,6 +7,16 @@ import "./interfaces/WETH9.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Polygon Registry contract that stores their addresses.
+interface PolygonRegistry {
+    function erc20Predicate() external returns (address);
+}
+
+// Polygon ERC20Predicate contract that handles Plasma exits (only used for Matic).
+interface PolygonERC20Predicate {
+    function startExitWithBurntTokens(bytes calldata data) external;
+}
+
 // ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
 interface PolygonIERC20 is IERC20 {
     function withdraw(uint256 amount) external;
@@ -38,6 +48,9 @@ contract PolygonTokenBridger is Lockable {
     // Should be set to HubPool on Ethereum, or unused on Polygon.
     address public immutable destination;
 
+    // Registry that stores L1 polygon addresses.
+    PolygonRegistry public immutable polygonRegistry;
+
     // WETH contract on Ethereum.
     WETH9 public immutable l1Weth;
 
@@ -59,15 +72,20 @@ contract PolygonTokenBridger is Lockable {
     /**
      * @notice Constructs Token Bridger contract.
      * @param _destination Where to send tokens to for this network.
-     * @param _l1Weth Ethereum WETH address.
+     * @param _polygonRegistry L1 registry that stores updated addresses of polygon contracts.
+     * @param _l1Weth L1 WETH address.
+     * @param _l1ChainId the chain id for the L1 in this environment.
+     * @param _l2ChainId the chain id for the L2 in this environment.
      */
     constructor(
         address _destination,
+        PolygonRegistry _polygonRegistry,
         WETH9 _l1Weth,
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
         destination = _destination;
+        polygonRegistry = _polygonRegistry;
         l1Weth = _l1Weth;
         l1ChainId = _l1ChainId;
         l2ChainId = _l2ChainId;
@@ -104,6 +122,14 @@ contract PolygonTokenBridger is Lockable {
             l1Weth.deposit{ value: address(this).balance }();
         }
         token.safeTransfer(destination, token.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Called to initiate an l1 exit (withdrawal) of matic tokens that have been sent over the plasma bridge.
+     */
+    function callExit(bytes memory data) public nonReentrant onlyChainId(l1ChainId) {
+        PolygonERC20Predicate erc20Predicate = PolygonERC20Predicate(polygonRegistry.erc20Predicate());
+        erc20Predicate.startExitWithBurntTokens(data);
     }
 
     receive() external payable {
