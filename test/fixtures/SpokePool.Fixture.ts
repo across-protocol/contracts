@@ -101,7 +101,7 @@ export async function deposit(
 
 export async function fillRelay(
   spokePool: Contract,
-  destErc20: Contract,
+  destErc20: Contract | string,
   recipient: SignerWithAddress,
   depositor: SignerWithAddress,
   relayer: SignerWithAddress,
@@ -122,7 +122,7 @@ export async function fillRelay(
           depositId,
           originChainId,
           consts.destinationChainId,
-          destErc20.address,
+          (destErc20 as Contract).address ?? (destErc20 as string),
           depositAmount.toString(),
           realizedLpFeePct.toString(),
           relayerFeePct.toString()
