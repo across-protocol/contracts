@@ -126,6 +126,7 @@ contract PolygonTokenBridger is Lockable {
 
     /**
      * @notice Called to initiate an l1 exit (withdrawal) of matic tokens that have been sent over the plasma bridge.
+     * @param data the proof data to trigger the exit. Can be generated using the maticjs-plasma package.
      */
     function callExit(bytes memory data) public nonReentrant onlyChainId(l1ChainId) {
         PolygonERC20Predicate erc20Predicate = PolygonERC20Predicate(polygonRegistry.erc20Predicate());
