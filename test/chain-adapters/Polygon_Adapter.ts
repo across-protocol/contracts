@@ -3,47 +3,64 @@ import { ethers, expect, Contract, FakeContract, SignerWithAddress } from "../ut
 import { createFake, getContractFactory, seedWallet, randomAddress, hre } from "../utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
+import { TokenRolesEnum } from "@uma/common";
 
 let hubPool: Contract,
   polygonAdapter: Contract,
-  mockAdapter: Contract,
   weth: Contract,
   dai: Contract,
+  matic: Contract,
   timer: Contract,
   mockSpoke: Contract;
-let l2Weth: string, l2Dai: string;
+let l2Weth: string, l2Dai: string, l2WMatic: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
-let rootChainManager: FakeContract, fxStateSender: FakeContract;
+let rootChainManager: FakeContract, fxStateSender: FakeContract, depositManager: FakeContract, erc20Predicate: string;
 
 const polygonChainId = 137;
-let l1ChainId: number;
 
 describe("Polygon Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, mockAdapter } = await hubPoolFixture());
-    l1ChainId = Number(await hre.getChainId());
-    await seedWallet(dataWorker, [dai], weth, amountToLp);
-    await seedWallet(liquidityProvider, [dai], weth, amountToLp.mul(10));
+    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
 
-    await enableTokensForLP(owner, hubPool, weth, [weth, dai]);
+    matic = await (await getContractFactory("ExpandedERC20", owner)).deploy("Matic", "MATIC", 18);
+    await matic.addMember(TokenRolesEnum.MINTER, owner.address);
+    l2WMatic = randomAddress();
+
+    l1ChainId = Number(await hre.getChainId());
+    await seedWallet(dataWorker, [dai, matic], weth, amountToLp);
+    await seedWallet(liquidityProvider, [dai, matic], weth, amountToLp.mul(10));
+
+    await enableTokensForLP(owner, hubPool, weth, [weth, dai, matic]);
     await weth.connect(liquidityProvider).approve(hubPool.address, amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, amountToLp);
     await weth.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
     await dai.connect(liquidityProvider).approve(hubPool.address, amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(dai.address, amountToLp);
-    await dai.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
+    await dai.connect(liquidityProvider).approve(hubPool.address, amountToLp);
+    await matic.connect(liquidityProvider).approve(hubPool.address, amountToLp);
+    await hubPool.connect(liquidityProvider).addLiquidity(matic.address, amountToLp);
 
     rootChainManager = await createFake("RootChainManagerMock");
     fxStateSender = await createFake("FxStateSenderMock");
+    depositManager = await createFake("DepositManagerMock");
+    erc20Predicate = randomAddress();
 
     polygonAdapter = await (
       await getContractFactory("Polygon_Adapter", owner)
-    ).deploy(rootChainManager.address, fxStateSender.address, weth.address);
+    ).deploy(
+      rootChainManager.address,
+      fxStateSender.address,
+      depositManager.address,
+      erc20Predicate,
+      matic.address,
+      weth.address
+    );
 
     await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
     await hubPool.setPoolRebalanceRoute(polygonChainId, weth.address, l2Weth);
     await hubPool.setPoolRebalanceRoute(polygonChainId, dai.address, l2Dai);
+    await hubPool.setPoolRebalanceRoute(polygonChainId, matic.address, l2WMatic);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -90,6 +107,29 @@ describe("Polygon Chain Adapter", function () {
     expect(rootChainManager.depositEtherFor).to.have.been.calledOnce; // One eth transfer over the bridge.
     expect(rootChainManager.depositFor).to.have.callCount(0); // No Token transfers over the bridge.
     expect(rootChainManager.depositEtherFor).to.have.been.calledWith(mockSpoke.address);
+    const expectedL2ToL1FunctionCallParams = [
+      mockSpoke.address,
+      mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockSlowRelayRoot]),
+    ];
+    expect(fxStateSender.sendMessageToChild).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
+  });
+
+  it("Correctly bridges matic", async function () {
+    // Cant bridge WETH on polygon. Rather, unwrap WETH to ETH then bridge it. Validate the adapter does this.
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(matic.address, 1, polygonChainId);
+    await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // The correct functions should have been called on the polygon contracts.
+    expect(depositManager.depositERC20ForUser).to.have.been.calledOnce; // Should call into the plasma bridge
+    expect(depositManager.depositERC20ForUser).to.have.been.calledWith(
+      matic.address,
+      mockSpoke.address,
+      tokensSendToL2
+    );
+    expect(rootChainManager.depositFor).to.have.callCount(0); // No PoS calls.
+    expect(rootChainManager.depositEtherFor).to.have.callCount(0); // No PoS calls.
     const expectedL2ToL1FunctionCallParams = [
       mockSpoke.address,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockSlowRelayRoot]),
