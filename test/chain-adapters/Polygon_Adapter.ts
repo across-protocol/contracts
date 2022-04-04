@@ -17,6 +17,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let rootChainManager: FakeContract, fxStateSender: FakeContract, depositManager: FakeContract, erc20Predicate: string;
 
 const polygonChainId = 137;
+let l1ChainId: number;
 
 describe("Polygon Chain Adapter", function () {
   beforeEach(async function () {
