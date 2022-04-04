@@ -22,11 +22,8 @@ contract DepositManagerMock {
     function depositERC20ForUser(
         address token,
         address user,
-        uint256 amount
-    ) external // solhint-disable-next-line no-empty-blocks
-    {
-
-    } // solhint-disable-line no-empty-blocks
+        uint256 amount // solhint-disable-next-line no-empty-blocks
+    ) external {} // solhint-disable-line no-empty-blocks
 }
 
 contract PolygonRegistryMock {
