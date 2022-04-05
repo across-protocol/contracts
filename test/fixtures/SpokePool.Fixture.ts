@@ -123,9 +123,9 @@ export async function fillRelay(
           originChainId,
           consts.destinationChainId,
           (destErc20 as Contract).address ?? (destErc20 as string),
-          depositAmount.toString(),
-          realizedLpFeePct.toString(),
-          relayerFeePct.toString()
+          depositAmount,
+          realizedLpFeePct,
+          relayerFeePct
         ).relayData,
         amountToRelay,
         consts.repaymentChainId
@@ -161,9 +161,9 @@ export interface RelayData {
   depositor: string;
   recipient: string;
   destinationToken: string;
-  amount: string;
-  realizedLpFeePct: string;
-  relayerFeePct: string;
+  amount: BigNumber;
+  realizedLpFeePct: BigNumber;
+  relayerFeePct: BigNumber;
   depositId: string;
   originChainId: string;
   destinationChainId: string;
@@ -175,19 +175,19 @@ export function getRelayHash(
   _originChainId: number,
   _destinationChainId: number,
   _destinationToken: string,
-  _amount?: string,
-  _realizedLpFeePct?: string,
-  _relayerFeePct?: string
+  _amount?: BigNumber,
+  _realizedLpFeePct?: BigNumber,
+  _relayerFeePct?: BigNumber
 ): { relayHash: string; relayData: RelayData } {
   const relayData = {
     depositor: _depositor,
     recipient: _recipient,
     destinationToken: _destinationToken,
-    amount: _amount || consts.amountToDeposit.toString(),
+    amount: _amount || consts.amountToDeposit,
     originChainId: _originChainId.toString(),
     destinationChainId: _destinationChainId.toString(),
-    realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
-    relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
+    realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct,
+    relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct,
     depositId: _depositId.toString(),
   };
   const relayHash = ethers.utils.keccak256(
@@ -196,10 +196,7 @@ export function getRelayHash(
       Object.values(relayData)
     )
   );
-  return {
-    relayHash,
-    relayData,
-  };
+  return { relayHash, relayData };
 }
 
 export function getDepositParams(
@@ -229,12 +226,12 @@ export function getFillRelayParams(
     _relayData.depositor,
     _relayData.recipient,
     _relayData.destinationToken,
-    _relayData.amount,
+    _relayData.amount.toString(),
     _maxTokensToSend.toString(),
     _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.originChainId,
-    _relayData.realizedLpFeePct,
-    _relayData.relayerFeePct,
+    _relayData.realizedLpFeePct.toString(),
+    _relayData.relayerFeePct.toString(),
     _relayData.depositId,
   ];
 }
@@ -250,12 +247,12 @@ export function getFillRelayUpdatedFeeParams(
     _relayData.depositor,
     _relayData.recipient,
     _relayData.destinationToken,
-    _relayData.amount,
+    _relayData.amount.toString(),
     _maxTokensToSend.toString(),
     _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.originChainId,
-    _relayData.realizedLpFeePct,
-    _relayData.relayerFeePct,
+    _relayData.realizedLpFeePct.toString(),
+    _relayData.relayerFeePct.toString(),
     _updatedFee.toString(),
     _relayData.depositId,
     _signature,

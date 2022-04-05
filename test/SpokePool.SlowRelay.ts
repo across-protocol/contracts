@@ -47,11 +47,11 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositor: randomAddress(),
         recipient: randomAddress(),
         destinationToken: randomAddress(),
-        amount: randomBigNumber().toString(),
+        amount: randomBigNumber(),
         originChainId: randomBigNumber(2).toString(),
         destinationChainId: OTHER_DESTINATION_CHAIN_ID,
-        realizedLpFeePct: randomBigNumber(8).toString(),
-        relayerFeePct: randomBigNumber(8).toString(),
+        realizedLpFeePct: randomBigNumber(8),
+        relayerFeePct: randomBigNumber(8),
         depositId: randomBigNumber(2).toString(),
       });
     }
@@ -61,11 +61,11 @@ describe("SpokePool Slow Relay Logic", async function () {
       depositor: depositor.address,
       recipient: recipient.address,
       destinationToken: destErc20.address,
-      amount: consts.amountToRelay.toString(),
+      amount: consts.amountToRelay,
       originChainId: consts.originChainId.toString(),
       destinationChainId: consts.destinationChainId.toString(),
-      realizedLpFeePct: consts.realizedLpFeePct.toString(),
-      relayerFeePct: consts.depositRelayerFeePct.toString(),
+      realizedLpFeePct: consts.realizedLpFeePct,
+      relayerFeePct: consts.depositRelayerFeePct,
       depositId: consts.firstDepositId.toString(),
     });
 
@@ -74,11 +74,11 @@ describe("SpokePool Slow Relay Logic", async function () {
       depositor: depositor.address,
       recipient: recipient.address,
       destinationToken: weth.address,
-      amount: consts.amountToRelay.toString(),
+      amount: consts.amountToRelay,
       originChainId: consts.originChainId.toString(),
       destinationChainId: consts.destinationChainId.toString(),
-      realizedLpFeePct: consts.realizedLpFeePct.toString(),
-      relayerFeePct: consts.depositRelayerFeePct.toString(),
+      realizedLpFeePct: consts.realizedLpFeePct,
+      relayerFeePct: consts.depositRelayerFeePct,
       depositId: consts.firstDepositId.toString(),
     });
 
@@ -213,7 +213,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.originChainId,
             consts.destinationChainId,
             destErc20.address,
-            consts.amountToRelay.toString()
+            consts.amountToRelay
           ).relayData,
           partialAmountPostFees
         )
@@ -255,7 +255,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.originChainId,
             consts.destinationChainId,
             weth.address,
-            consts.amountToRelay.toString()
+            consts.amountToRelay
           ).relayData,
           partialAmountPostFees
         )
@@ -298,7 +298,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.originChainId,
             consts.destinationChainId,
             weth.address,
-            consts.amountToRelay.toString()
+            consts.amountToRelay
           ).relayData,
           partialAmountPostFees
         )
