@@ -3,7 +3,7 @@ const path = require("path");
 
 import * as deploymentExport from "../cache/massExport.json";
 export async function run(): Promise<void> {
-  console.log("keys", Object.keys(deploymentExport));
+  console.log("Generating exports on the following networks(if they have deployments)", Object.keys(deploymentExport));
   const processedOutput: { [chainid: string]: { [contractName: string]: string } } = {};
   Object.keys(deploymentExport).forEach((chainId) => {
     if (deploymentExport[chainId][0])
