@@ -49,7 +49,7 @@ contract PolygonTokenBridger is Lockable {
     address public immutable destination;
 
     // Registry that stores L1 polygon addresses.
-    PolygonRegistry public immutable polygonRegistry;
+    PolygonRegistry public immutable l1PolygonRegistry;
 
     // WETH contract on Ethereum.
     WETH9 public immutable l1Weth;
@@ -72,20 +72,21 @@ contract PolygonTokenBridger is Lockable {
     /**
      * @notice Constructs Token Bridger contract.
      * @param _destination Where to send tokens to for this network.
-     * @param _polygonRegistry L1 registry that stores updated addresses of polygon contracts.
+     * @param _l1PolygonRegistry L1 registry that stores updated addresses of polygon contracts. This should always be
+     * set to the L1 registry regardless if whether it's deployed on L2 or L1.
      * @param _l1Weth L1 WETH address.
      * @param _l1ChainId the chain id for the L1 in this environment.
      * @param _l2ChainId the chain id for the L2 in this environment.
      */
     constructor(
         address _destination,
-        PolygonRegistry _polygonRegistry,
+        PolygonRegistry _l1PolygonRegistry,
         WETH9 _l1Weth,
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
         destination = _destination;
-        polygonRegistry = _polygonRegistry;
+        l1PolygonRegistry = _l1PolygonRegistry;
         l1Weth = _l1Weth;
         l1ChainId = _l1ChainId;
         l2ChainId = _l2ChainId;
@@ -129,7 +130,7 @@ contract PolygonTokenBridger is Lockable {
      * @param data the proof data to trigger the exit. Can be generated using the maticjs-plasma package.
      */
     function callExit(bytes memory data) public nonReentrant onlyChainId(l1ChainId) {
-        PolygonERC20Predicate erc20Predicate = PolygonERC20Predicate(polygonRegistry.erc20Predicate());
+        PolygonERC20Predicate erc20Predicate = PolygonERC20Predicate(l1PolygonRegistry.erc20Predicate());
         erc20Predicate.startExitWithBurntTokens(data);
     }
 
