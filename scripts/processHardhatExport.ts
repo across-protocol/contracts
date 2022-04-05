@@ -1,5 +1,5 @@
-var fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
 import * as deploymentExport from "../cache/massExport.json";
 export async function run(): Promise<void> {
