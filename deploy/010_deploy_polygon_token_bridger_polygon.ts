@@ -18,7 +18,13 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [l1HubPool.address, L1_ADDRESS_MAP[l1ChainId].weth, l1ChainId, chainId],
+    args: [
+      l1HubPool.address,
+      L1_ADDRESS_MAP[l1ChainId].polygonRegistry,
+      L1_ADDRESS_MAP[l1ChainId].weth,
+      l1ChainId,
+      chainId,
+    ],
     deterministicDeployment: "0x1234", // Salt for the create2 call.
   });
 };

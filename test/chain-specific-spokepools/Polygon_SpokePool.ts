@@ -10,11 +10,15 @@ import {
   toWei,
   randomBigNumber,
   seedWallet,
+  FakeContract,
+  createFake,
 } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
+import { randomBytes } from "crypto";
 
 let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract, l2Dai: string;
+let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
@@ -27,9 +31,14 @@ describe("Polygon Spoke Pool", function () {
     const l1ChainId = randomBigNumber();
     const l2ChainId = await owner.getChainId();
 
+    polygonRegistry = await createFake("PolygonRegistryMock");
+    erc20Predicate = await createFake("PolygonERC20PredicateMock");
+
+    polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
+
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, polygonRegistry.address, weth.address, l1ChainId, l2ChainId);
 
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
@@ -191,6 +200,13 @@ describe("Polygon Spoke Pool", function () {
     expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
   });
 
+  it("Can wrap native token", async function () {
+    await expect(() =>
+      rando.sendTransaction({ to: polygonSpokePool.address, value: toWei("0.1") })
+    ).to.changeEtherBalance(polygonSpokePool, toWei("0.1"));
+    await expect(() => polygonSpokePool.wrap()).to.changeTokenBalance(weth, polygonSpokePool, toWei("0.1"));
+  });
+
   it("Bridge tokens to hub pool correctly sends tokens through the PolygonTokenBridger", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
@@ -217,16 +233,17 @@ describe("Polygon Spoke Pool", function () {
     const l2ChainId = randomBigNumber();
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, polygonRegistry.address, weth.address, l1ChainId, l2ChainId);
 
     await expect(() =>
       owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })
-    ).to.changeTokenBalance(weth, polygonTokenBridger, toWei("1"));
+    ).to.changeEtherBalance(polygonTokenBridger, toWei("1"));
 
-    await expect(() => polygonTokenBridger.connect(owner).retrieve(weth.address)).to.changeTokenBalances(
+    // Retrieve automatically unwraps
+    await expect(() => polygonTokenBridger.connect(owner).retrieve(weth.address)).to.changeTokenBalance(
       weth,
-      [polygonTokenBridger, hubPool],
-      [toWei("1").mul(-1), toWei("1")]
+      hubPool,
+      toWei("1")
     );
   });
 
@@ -237,16 +254,15 @@ describe("Polygon Spoke Pool", function () {
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
-
-    // Cannot send ETH directly into the contract on L2.
-    await expect(owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })).to.be.revertedWith(
-      "Cannot run method on this chain"
-    );
+    ).deploy(hubPool.address, polygonRegistry.address, weth.address, l1ChainId, l2ChainId);
 
     // Cannot call retrieve on the contract on L2.
     await weth.connect(owner).transfer(polygonTokenBridger.address, toWei("1"));
     await expect(polygonTokenBridger.connect(owner).retrieve(weth.address)).to.be.revertedWith(
+      "Cannot run method on this chain"
+    );
+
+    await expect(polygonTokenBridger.connect(owner).callExit("0x")).to.be.revertedWith(
       "Cannot run method on this chain"
     );
   });
@@ -259,7 +275,7 @@ describe("Polygon Spoke Pool", function () {
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, polygonRegistry.address, weth.address, l1ChainId, l2ChainId);
 
     await weth.connect(owner).approve(polygonTokenBridger.address, toWei("1"));
 
@@ -267,5 +283,24 @@ describe("Polygon Spoke Pool", function () {
     await expect(polygonTokenBridger.connect(owner).send(weth.address, toWei("1"), false)).to.be.revertedWith(
       "Cannot run method on this chain"
     );
+  });
+
+  it.only("PolygonTokenBridger correctly forwards the exit call", async function () {
+    const l1ChainId = await owner.getChainId();
+
+    // Make sure the L1 chain is different from the chainId where this is deployed.
+    const l2ChainId = randomBigNumber();
+
+    const polygonTokenBridger = await (
+      await getContractFactory("PolygonTokenBridger", owner)
+    ).deploy(hubPool.address, polygonRegistry.address, weth.address, l1ChainId, l2ChainId);
+
+    // Cannot call send on the contract on L1.
+    const exitBytes = "0x" + randomBytes(100).toString("hex");
+    await polygonTokenBridger.connect(owner).callExit(exitBytes);
+
+    expect(polygonRegistry.erc20Predicate).to.have.been.calledOnce; // Should call into the registry.
+    expect(erc20Predicate.startExitWithBurntTokens).to.have.been.calledOnce; // Should call start exit.
+    expect(erc20Predicate.startExitWithBurntTokens).to.have.been.calledWith(exitBytes); // Bytes should have been forwarded.
   });
 });
