@@ -1,13 +1,9 @@
-import * as typeChain from "../typechain";
 import * as deployments from "../deployments/deployments.json";
 
-export function getContractArtifact(contractName: string, networkId: number) {
+export function getDeployedAddress(contractName: string, networkId: number): string {
   try {
-    return {
-      artifact: [typeChain[`${contractName}__factory`]],
-      address: deployments[networkId.toString()][contractName],
-    };
-  } catch (error) {
+    return (deployments as any)[networkId.toString()][contractName];
+  } catch (_) {
     throw new Error(`Contract ${contractName} not found on ${networkId} in export.json`);
   }
 }
