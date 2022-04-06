@@ -149,9 +149,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     event ProposeRootBundle(
         uint32 challengePeriodEndTimestamp,
         uint64 poolRebalanceLeafCount,
-        uint256[] bundleEvaluationBlockNumbers,
+        uint256[] indexed bundleEvaluationBlockNumbers,
         bytes32 indexed poolRebalanceRoot,
-        bytes32 indexed relayerRefundRoot,
+        bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot,
         address indexed proposer
     );
