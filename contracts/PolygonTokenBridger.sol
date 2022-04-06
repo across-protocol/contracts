@@ -7,6 +7,16 @@ import "./interfaces/WETH9.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Polygon Registry contract that stores their addresses.
+interface PolygonRegistry {
+    function erc20Predicate() external returns (address);
+}
+
+// Polygon ERC20Predicate contract that handles Plasma exits (only used for Matic).
+interface PolygonERC20Predicate {
+    function startExitWithBurntTokens(bytes calldata data) external;
+}
+
 // ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
 interface PolygonIERC20 is IERC20 {
     function withdraw(uint256 amount) external;
@@ -38,6 +48,9 @@ contract PolygonTokenBridger is Lockable {
     // Should be set to HubPool on Ethereum, or unused on Polygon.
     address public immutable destination;
 
+    // Registry that stores L1 polygon addresses.
+    PolygonRegistry public immutable l1PolygonRegistry;
+
     // WETH contract on Ethereum.
     WETH9 public immutable l1Weth;
 
@@ -59,15 +72,21 @@ contract PolygonTokenBridger is Lockable {
     /**
      * @notice Constructs Token Bridger contract.
      * @param _destination Where to send tokens to for this network.
-     * @param _l1Weth Ethereum WETH address.
+     * @param _l1PolygonRegistry L1 registry that stores updated addresses of polygon contracts. This should always be
+     * set to the L1 registry regardless if whether it's deployed on L2 or L1.
+     * @param _l1Weth L1 WETH address.
+     * @param _l1ChainId the chain id for the L1 in this environment.
+     * @param _l2ChainId the chain id for the L2 in this environment.
      */
     constructor(
         address _destination,
+        PolygonRegistry _l1PolygonRegistry,
         WETH9 _l1Weth,
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
         destination = _destination;
+        l1PolygonRegistry = _l1PolygonRegistry;
         l1Weth = _l1Weth;
         l1ChainId = _l1ChainId;
         l2ChainId = _l2ChainId;
@@ -99,18 +118,30 @@ contract PolygonTokenBridger is Lockable {
      * @param token Token to send to destination.
      */
     function retrieve(IERC20 token) public nonReentrant onlyChainId(l1ChainId) {
+        if (address(token) == address(l1Weth)) {
+            // For WETH, there is a pre-deposit step to ensure any ETH that has been sent to the contract is captured.
+            l1Weth.deposit{ value: address(this).balance }();
+        }
         token.safeTransfer(destination, token.balanceOf(address(this)));
     }
 
+    /**
+     * @notice Called to initiate an l1 exit (withdrawal) of matic tokens that have been sent over the plasma bridge.
+     * @param data the proof data to trigger the exit. Can be generated using the maticjs-plasma package.
+     */
+    function callExit(bytes memory data) public nonReentrant onlyChainId(l1ChainId) {
+        PolygonERC20Predicate erc20Predicate = PolygonERC20Predicate(l1PolygonRegistry.erc20Predicate());
+        erc20Predicate.startExitWithBurntTokens(data);
+    }
+
     receive() external payable {
-        if (functionCallStackOriginatesFromOutsideThisContract()) {
-            // This should only happen on the mainnet side where ETH is sent to the contract directly by the bridge.
-            _requireChainId(l1ChainId);
-            l1Weth.deposit{ value: address(this).balance }();
-        } else {
-            // This should only happen on the l2 side where matic is unwrapped by this contract.
-            _requireChainId(l2ChainId);
-        }
+        // This method is empty to avoid any gas expendatures that might cause transfers to fail.
+        // Note: the fact that there is _no_ code in this function means that matic can be erroneously transferred in
+        // to the contract on the polygon side. These tokens would be locked indefinitely since the receive function
+        // cannot be called on the polygon side. While this does have some downsides, the lack of any functionality
+        // in this function means that it has no chance of running out of gas on transfers, which is a much more
+        // important benefit. This just makes the matic token risk similar to that of ERC20s that are erroneously
+        // sent to the contract.
     }
 
     function _requireChainId(uint256 chainId) internal view {

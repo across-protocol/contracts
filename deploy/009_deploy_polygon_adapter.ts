@@ -19,6 +19,9 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       L1_ADDRESS_MAP[chainId].polygonRootChainManager,
       L1_ADDRESS_MAP[chainId].polygonFxRoot,
+      L1_ADDRESS_MAP[chainId].polygonDepositManager,
+      L1_ADDRESS_MAP[chainId].polygonERC20Predicate,
+      L1_ADDRESS_MAP[chainId].matic,
       L1_ADDRESS_MAP[chainId].weth,
     ],
   });
