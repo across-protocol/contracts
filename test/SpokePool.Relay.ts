@@ -105,9 +105,9 @@ describe("SpokePool Relayer Logic", async function () {
               consts.originChainId,
               consts.destinationChainId,
               destErc20.address,
-              consts.amountToDeposit.toString(),
-              toWei("0.5").toString(),
-              consts.depositRelayerFeePct.toString()
+              consts.amountToDeposit,
+              toWei("0.5"),
+              consts.depositRelayerFeePct
             ).relayData,
             consts.amountToRelay,
             consts.repaymentChainId
@@ -126,9 +126,9 @@ describe("SpokePool Relayer Logic", async function () {
               consts.originChainId,
               consts.destinationChainId,
               destErc20.address,
-              consts.amountToDeposit.toString(),
-              consts.realizedLpFeePct.toString(),
-              toWei("0.5").toString()
+              consts.amountToDeposit,
+              consts.realizedLpFeePct,
+              toWei("0.5")
             ).relayData,
             consts.amountToRelay,
             consts.repaymentChainId

@@ -1,4 +1,5 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect, seedContract, seedWallet } from "../utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect } from "../utils";
+import { seedContract, seedWallet, BigNumber } from "../utils";
 import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture, RelayData } from "../fixtures/SpokePool.Fixture";
@@ -28,7 +29,7 @@ async function constructSimpleTree(
   depositor: string,
   recipient: string,
   destinationTokens: string[],
-  universalRelayAmount: string
+  universalRelayAmount: BigNumber
 ) {
   // Each refund amount mapped to one refund address.
   expect(destinationTokens.length).to.equal(LEAF_COUNT);
@@ -39,11 +40,11 @@ async function constructSimpleTree(
       depositor,
       recipient,
       destinationToken: destinationTokens[i],
-      amount: universalRelayAmount,
+      amount: toBN(universalRelayAmount),
       originChainId: ORIGIN_CHAIN_ID,
       destinationChainId: consts.destinationChainId.toString(),
-      realizedLpFeePct: FEE_PCT,
-      relayerFeePct: FEE_PCT,
+      realizedLpFeePct: toBN(FEE_PCT),
+      relayerFeePct: toBN(FEE_PCT),
       depositId: i.toString(),
     });
   }
@@ -88,7 +89,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
         owner.address,
         recipient.address,
         l2Tokens.map((token) => token.address),
-        "1"
+        toBN(1)
       );
 
       // Store new tree.
@@ -114,7 +115,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
         owner.address,
         recipient.address,
         l2Tokens.map((token) => token.address),
-        RELAY_AMOUNT.toString()
+        RELAY_AMOUNT
       );
       leaves = simpleTree.leaves;
       tree = simpleTree.tree;
@@ -206,7 +207,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
         owner.address,
         recipient.address,
         Array(LEAF_COUNT).fill(weth.address),
-        "1"
+        toBN(1)
       );
 
       // Store new tree.
@@ -232,7 +233,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
         owner.address,
         recipient.address,
         Array(LEAF_COUNT).fill(weth.address),
-        RELAY_AMOUNT.toString()
+        RELAY_AMOUNT
       );
       leaves = simpleTree.leaves;
       tree = simpleTree.tree;
