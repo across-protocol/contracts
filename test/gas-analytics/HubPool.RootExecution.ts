@@ -2,7 +2,6 @@ import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre, ex
 import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
-import { ZERO_ADDRESS } from "@uma/common";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves, PoolRebalanceLeaf } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
@@ -96,14 +95,14 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
     const spoke = await (
       await getContractFactory("MockSpokePool", owner)
-    ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
+    ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
     await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
       const spoke = await (
         await getContractFactory("MockSpokePool", owner)
-      ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
+      ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
       await Promise.all(
         l1Tokens.map(async (token) => {

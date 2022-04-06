@@ -1,16 +1,6 @@
-import { TokenRolesEnum, ZERO_ADDRESS } from "@uma/common";
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import {
-  ethers,
-  expect,
-  Contract,
-  SignerWithAddress,
-  getContractFactory,
-  seedContract,
-  toWei,
-  randomBigNumber,
-  seedWallet,
-} from "../utils";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress, TokenRolesEnum } from "../constants";
+import { ethers, expect, Contract, SignerWithAddress, getContractFactory } from "../utils";
+import { seedContract, toWei, randomBigNumber, seedWallet } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
@@ -207,7 +197,7 @@ describe("Polygon Spoke Pool", function () {
     // Checks that there's a burn event from the bridger.
     await expect(polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
       .to.emit(dai, "Transfer")
-      .withArgs(bridger, ZERO_ADDRESS, amountToReturn);
+      .withArgs(bridger, zeroAddress, amountToReturn);
   });
 
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {

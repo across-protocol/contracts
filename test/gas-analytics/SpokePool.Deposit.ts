@@ -1,7 +1,7 @@
 import { toBNWei, SignerWithAddress, Contract, ethers, seedWallet, toBN } from "../utils";
 import { constructDepositParams, sendDeposit, warmSpokePool } from "./utils";
 import * as constants from "../constants";
-import { spokePoolFixture, enableRoutes } from "../fixtures/SpokePool.Fixture";
+import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
 
 require("dotenv").config();
 
