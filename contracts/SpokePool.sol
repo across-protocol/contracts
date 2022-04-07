@@ -98,7 +98,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address recipient,
         bool isSlowRelay
     );
-    event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
+    event RelayedRootBundle(
+        uint32 indexed rootBundleId,
+        bytes32 indexed relayerRefundRoot,
+        bytes32 indexed slowRelayRoot
+    );
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
