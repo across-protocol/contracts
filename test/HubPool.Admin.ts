@@ -3,14 +3,9 @@ import { Contract, ethers, randomAddress, utf8ToHex } from "./utils";
 import { originChainId, destinationChainId, bondAmount, zeroAddress, mockTreeRoot } from "./constants";
 import { mockSlowRelayRoot, finalFeeUsdc, finalFee, totalBond } from "./constants";
 import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
-import { ZERO_ADDRESS } from "@uma/common";
 
-let hubPool: Contract,
-  weth: Contract,
-  usdc: Contract,
-  mockSpoke: Contract,
-  mockAdapter: Contract,
-  identifierWhitelist: Contract;
+let hubPool: Contract, weth: Contract, usdc: Contract;
+let mockSpoke: Contract, mockAdapter: Contract, identifierWhitelist: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
 describe("HubPool Admin functions", function () {
@@ -66,7 +61,7 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.connect(other).relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.reverted;
 
     // Cannot relay admin function if spoke pool is set to zero address or adapter is set to non contract..
-    await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, ZERO_ADDRESS);
+    await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, zeroAddress);
     await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.revertedWith(
       "SpokePool not initialized"
     );

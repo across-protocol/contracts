@@ -1,8 +1,7 @@
 import { toWei, toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
-import { mockTreeRoot, finalFee, bondAmount, amountToLp, refundProposalLiveness } from "./constants";
+import { mockTreeRoot, finalFee, bondAmount, amountToLp, refundProposalLiveness, zeroAddress } from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "./MerkleLib.utils";
-import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, weth: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -34,7 +33,7 @@ describe("HubPool Protocol fees", function () {
     const newPct = toWei("0.1");
 
     // Can't set to 0 address
-    await expect(hubPool.connect(owner).setProtocolFeeCapture(ZERO_ADDRESS, newPct)).to.be.reverted;
+    await expect(hubPool.connect(owner).setProtocolFeeCapture(zeroAddress, newPct)).to.be.reverted;
 
     await hubPool.connect(owner).setProtocolFeeCapture(liquidityProvider.address, newPct);
     expect(await hubPool.callStatic.protocolFeeCaptureAddress()).to.equal(liquidityProvider.address);

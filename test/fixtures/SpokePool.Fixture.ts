@@ -1,6 +1,4 @@
-import { TokenRolesEnum } from "@uma/common";
-import { getContractFactory, SignerWithAddress, Contract, hre } from "../utils";
-import { ethers, BigNumber, defaultAbiCoder, toBN } from "../utils";
+import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "../utils";
 import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
@@ -24,15 +22,15 @@ export async function deploySpokePool(ethers: any): Promise<{
   // Create tokens:
   const weth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
   const erc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("USD Coin", "USDC", 18);
-  await erc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  await erc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const unwhitelistedErc20 = await (
     await getContractFactory("ExpandedERC20", deployerWallet)
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
-  await unwhitelistedErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  await unwhitelistedErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const destErc20 = await (
     await getContractFactory("ExpandedERC20", deployerWallet)
   ).deploy("L2 USD Coin", "L2 USDC", 18);
-  await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
   const spokePool = await (
