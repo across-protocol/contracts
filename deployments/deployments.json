@@ -7,17 +7,19 @@
     "LpTokenFactory": "0x0668ab3839346ebf95d969b3e18B2a96b1CC2b02",
     "Optimism_Adapter": "0x277C7ecB45851dcB49c494fB4D0d9d8228037f0C",
     "PolygonTokenBridger": "0xF92B101f07df74B1f4f3160f9e8a25D48BA5d583",
-    "Polygon_Adapter": "0xd8176EBf6170513Aa232D065042fa480557232A4"
+    "Polygon_Adapter": "0xd8176EBf6170513Aa232D065042fa480557232A4",
+    "RateModelStore": "0x18a200A2427e243154EC8217890Bc08062afc5A2"
   },
   "5": {
-    "Arbitrum_Adapter": "0xc6aFa90Ebf5F7eC9Ce0409a0B2bF7b0E6E81b5F6",
-    "Ethereum_Adapter": "0xbe96050668dECb6FA0ef5Af919f37221658cfbEf",
-    "Ethereum_SpokePool": "0x9a5de999108042946F59848E083e12690ff018C6",
-    "HubPool": "0xe1fC1EB80db9AD0160AEF6998673625bc2a09d14",
-    "LpTokenFactory": "0x56f2c8353049270d3553773E680B0d6c632544b6",
-    "Optimism_Adapter": "0x04Ec0038859943Cf28E49d51821e33c987C4faDD",
-    "PolygonTokenBridger": "0xe9D669a4A28aBF4C77c1c6f98942638b7A9aEaC9",
-    "Polygon_Adapter": "0xD732393f8eC57644675c104Ec8A4661db58CCE41"
+    "Arbitrum_Adapter": "0xb68eDe0098552A5E3d95e8B78974C25e395af45B",
+    "Ethereum_Adapter": "0xc924E28eEaB54E67799890e288c98D5E48242C01",
+    "Ethereum_SpokePool": "0xb2b5C1b17B19d92CC4fC1f026B2133259e3ccd41",
+    "HubPool": "0x69CA24D3084a2eea77E061E2D7aF9b76D107b4f6",
+    "LpTokenFactory": "0x57EE47829369e2EF62fBb423648bec70d0366204",
+    "Optimism_Adapter": "0x52313039f1b849B49dce4bdf6a43AC76995bE366",
+    "PolygonTokenBridger": "0x8D7Eb61CAA4889c152f27Bb8108144DaCC9B01Db",
+    "Polygon_Adapter": "0x9B769e2b1A4936B51870d03902A9e2AeEa6Ee933",
+    "RateModelStore": "0x9C043C139486891D7a67e76E4c31Ac56bBfAF885"
   },
   "42": {
     "Arbitrum_Adapter": "0xD007aB76E36B03853C1F2fE5980069E7ACd38FF8",
@@ -32,8 +34,8 @@
   },
   "69": { "Optimism_SpokePool": "0x2b7b7bAE341089103dD22fa4e8D7E4FA63E11084" },
   "80001": {
-    "PolygonTokenBridger": "0xe9D669a4A28aBF4C77c1c6f98942638b7A9aEaC9",
-    "Polygon_SpokePool": "0xC50c8cEd449321a6c506a5Da409D9eDe7269ac3a"
+    "PolygonTokenBridger": "0x8D7Eb61CAA4889c152f27Bb8108144DaCC9B01Db",
+    "Polygon_SpokePool": "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
   },
   "421611": { "Arbitrum_SpokePool": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b" }
 }
