@@ -82,7 +82,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes depositorSignature
     );
     event FilledRelay(
-        bytes32 indexed relayHash,
         uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
@@ -90,6 +89,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 originChainId,
         uint256 destinationChainId,
         uint64 relayerFeePct,
+        uint64 appliedRelayerFeePct,
         uint64 realizedLpFeePct,
         uint32 depositId,
         address destinationToken,
@@ -795,19 +795,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash,
         uint256 fillAmount,
         uint256 repaymentChainId,
-        uint64 relayerFeePct,
+        uint64 appliedRelayerFeePct,
         RelayData memory relayData,
         bool isSlowRelay
     ) internal {
         emit FilledRelay(
-            relayHash,
             relayData.amount,
             relayFills[relayHash],
             fillAmount,
             repaymentChainId,
             relayData.originChainId,
             relayData.destinationChainId,
-            relayerFeePct,
+            relayData.relayerFeePct,
+            appliedRelayerFeePct,
             relayData.realizedLpFeePct,
             relayData.depositId,
             relayData.destinationToken,
