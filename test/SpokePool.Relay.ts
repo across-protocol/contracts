@@ -34,13 +34,13 @@ describe("SpokePool Relayer Logic", async function () {
     await expect(spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay)))
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
-        relayHash,
         relayData.amount,
         consts.amountToRelayPreFees,
         consts.amountToRelayPreFees,
         consts.repaymentChainId,
         toBN(relayData.originChainId),
         toBN(relayData.destinationChainId),
+        relayData.relayerFeePct,
         relayData.relayerFeePct,
         relayData.realizedLpFeePct,
         toBN(relayData.depositId),
@@ -243,10 +243,30 @@ describe("SpokePool Relayer Logic", async function () {
       relayData.originChainId,
       depositor
     );
-    await spokePool
-      .connect(relayer)
-      .fillRelayWithUpdatedFee(
-        ...getFillRelayUpdatedFeeParams(relayData, consts.amountToRelay, consts.modifiedRelayerFeePct, signature)
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelayWithUpdatedFee(
+          ...getFillRelayUpdatedFeeParams(relayData, consts.amountToRelay, consts.modifiedRelayerFeePct, signature)
+        )
+    )
+      .to.emit(spokePool, "FilledRelay")
+      .withArgs(
+        relayData.amount,
+        consts.amountToRelayPreModifiedFees,
+        consts.amountToRelayPreModifiedFees,
+        consts.repaymentChainId,
+        toBN(relayData.originChainId),
+        toBN(relayData.destinationChainId),
+        relayData.relayerFeePct,
+        consts.modifiedRelayerFeePct, // Applied relayer fee % should be diff from original fee %.
+        relayData.realizedLpFeePct,
+        toBN(relayData.depositId),
+        relayData.destinationToken,
+        relayer.address,
+        relayData.depositor,
+        relayData.recipient,
+        false
       );
 
     // The collateral should have transferred from relayer to recipient.
