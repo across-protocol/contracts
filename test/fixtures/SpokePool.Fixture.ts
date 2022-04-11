@@ -136,13 +136,13 @@ export async function fillRelay(
   const lastEvent = events[events.length - 1];
   if (lastEvent.args)
     return {
-      relayHash: lastEvent.args.relayHash,
       amount: lastEvent.args.amount,
       totalFilledAmount: lastEvent.args.totalFilledAmount,
       fillAmount: lastEvent.args.fillAmount,
       repaymentChainId: Number(lastEvent.args.repaymentChainId),
       originChainId: Number(lastEvent.args.originChainId),
       relayerFeePct: lastEvent.args.relayerFeePct,
+      appliedRelayerFeePct: lastEvent.args.appliedRelayerFeePct,
       realizedLpFeePct: lastEvent.args.realizedLpFeePct,
       depositId: lastEvent.args.depositId,
       destinationToken: lastEvent.args.destinationToken,

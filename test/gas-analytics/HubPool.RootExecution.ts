@@ -30,8 +30,8 @@ const LP_FEE = SEND_AMOUNT.div(toBN(10));
 // `STRESS_TEST_L1_TOKEN_COUNT` number of tokens to send pool rebalances for is not within the
 // [TARGET_GAS_LOWER_BOUND, TARGET_GAS_UPPER_BOUND] gas usage range.
 const TARGET_GAS_UPPER_BOUND = 12_000_000;
-const TARGET_GAS_LOWER_BOUND = 10_000_000;
-const STRESS_TEST_L1_TOKEN_COUNT = 100;
+const TARGET_GAS_LOWER_BOUND = 5_000_000;
+const STRESS_TEST_L1_TOKEN_COUNT = 75;
 
 // Construct tree with REFUND_CHAIN_COUNT leaves, each containing REFUND_TOKEN_COUNT sends
 async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Contract[]) {
