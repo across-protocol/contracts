@@ -112,7 +112,7 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   it("Simple SlowRelay ERC20 FilledRelay event", async function () {
-    const relay = relays.find((relay) => relay.destinationToken === destErc20.address)!;
+    relays.find((relay) => relay.destinationToken === destErc20.address)!;
 
     await expect(
       spokePool
@@ -140,8 +140,8 @@ describe("SpokePool Slow Relay Logic", async function () {
         0, // Repayment chain ID should always be 0 for slow relay fills.
         consts.originChainId,
         consts.destinationChainId,
-        0, // Should not have a relayerFeePct for slow relay fills.
-        0,
+        consts.depositRelayerFeePct,
+        0, // Should not have an applied relayerFeePct for slow relay fills.
         consts.realizedLpFeePct,
         consts.firstDepositId,
         destErc20.address,
