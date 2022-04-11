@@ -2,7 +2,7 @@
   "4": {
     "Arbitrum_Adapter": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49",
     "Ethereum_Adapter": "0x682DEa71e7246910A4dec2396a53B24291EB0AD8",
-    "Ethereum_SpokePool": "0x90743806D7A66b37F31FAfd7b3447210aB55640f",
+    "Ethereum_SpokePool": "0xB078bBb35f8E24c2431b9d2a88C0bC0c26CC1F92",
     "HubPool": "0xa1b6DA4AaE90fA16F3A3338c8d1Dc70B4926FCa7",
     "LpTokenFactory": "0x0668ab3839346ebf95d969b3e18B2a96b1CC2b02",
     "Optimism_Adapter": "0x277C7ecB45851dcB49c494fB4D0d9d8228037f0C",
