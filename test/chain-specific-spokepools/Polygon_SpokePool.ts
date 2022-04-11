@@ -273,7 +273,7 @@ describe("Polygon Spoke Pool", function () {
     );
   });
 
-  it.only("PolygonTokenBridger correctly forwards the exit call", async function () {
+  it("PolygonTokenBridger correctly forwards the exit call", async function () {
     const l1ChainId = await owner.getChainId();
 
     // Make sure the L1 chain is different from the chainId where this is deployed.
