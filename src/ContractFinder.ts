@@ -6,6 +6,6 @@ export function getDeployedAddress(contractName: string, networkId: number): str
   try {
     return (deployments as any)[networkId.toString()][contractName];
   } catch (_) {
-    throw new Error(`Contract ${contractName} not found on ${networkId} in export.json`);
+    throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
 }
