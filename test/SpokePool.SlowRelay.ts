@@ -134,7 +134,6 @@ describe("SpokePool Slow Relay Logic", async function () {
     )
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
-        tree.hashFn(relay),
         consts.amountToRelay,
         consts.amountToRelay,
         consts.amountToRelay,
@@ -142,6 +141,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         consts.originChainId,
         consts.destinationChainId,
         0, // Should not have a relayerFeePct for slow relay fills.
+        0,
         consts.realizedLpFeePct,
         consts.firstDepositId,
         destErc20.address,
