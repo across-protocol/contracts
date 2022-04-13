@@ -56,7 +56,7 @@ interface SpokePoolInterface {
         // Merkle root of relayer refunds for successful relays.
         bytes32 relayerRefundRoot;
         // This is a 2D bitmap tracking which leaves in the relayer refund root have been claimed, with max size of
-        // 256x256 leaves per root.
+        // 256x(2^248) leaves per root.
         mapping(uint256 => uint256) claimedBitmap;
     }
 
