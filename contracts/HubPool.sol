@@ -797,8 +797,12 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit ProtocolFeesCapturedClaimed(l1Token, _unclaimedAccumulatedProtocolFees);
     }
 
-    /**master
+    /**
      * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID.
+     * @dev Admin must be considerate to the compatibility of originToken and destinationToken within the protocol. Some
+     * token implementations will not function correctly within the Across v2 system. For example ERC20s that charge
+     * fees will break internal accounting, ERC777 can cause some functions to revert and upgradable tokens can pose
+     * risks if the implementation is shifted between whitelisting and usage.
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
      * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
