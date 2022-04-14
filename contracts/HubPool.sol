@@ -478,7 +478,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         if (sendEth) {
             weth.withdraw(l1TokensToReturn);
-            payable(msg.sender).transfer(l1TokensToReturn); // This will revert if the caller is a contract that does not implement a fallback function.
+            Address.sendValue(payable(msg.sender), l1TokensToReturn); // This will revert if the caller is a contract that does not implement a fallback function.
         } else {
             IERC20(address(l1Token)).safeTransfer(msg.sender, l1TokensToReturn);
         }
@@ -803,6 +803,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * token implementations will not function correctly within the Across v2 system. For example ERC20s that charge
      * fees will break internal accounting, ERC777 can cause some functions to revert and upgradable tokens can pose
      * risks if the implementation is shifted between whitelisting and usage.
+     * @dev If the pool rebalance route is not whitelisted then this will return address(0).
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
      * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
