@@ -283,7 +283,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         noActiveRequests
         nonReentrant
     {
-        // Bond should not be great than final fee otherwise every proposal will get cancelled in a dispute.
+        // Bond should not equal final fee otherwise every proposal will get cancelled in a dispute.
         // In practice we expect that bond amounts are set >> final fees so this shouldn't be an inconvenience.
         // The only way for the bond amount to be equal to the final fee is if the newBondAmount == 0.
         require(newBondAmount != 0, "bond equal to final fee");
