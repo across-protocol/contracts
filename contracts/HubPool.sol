@@ -478,7 +478,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
         if (sendEth) {
             weth.withdraw(l1TokensToReturn);
-            payable(msg.sender).transfer(l1TokensToReturn); // This will revert if the caller is a contract that does not implement a fallback function.
+            Address.sendValue(payable(msg.sender), l1TokensToReturn); // This will revert if the caller is a contract that does not implement a fallback function.
         } else {
             IERC20(address(l1Token)).safeTransfer(msg.sender, l1TokensToReturn);
         }
@@ -799,6 +799,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**master
      * @notice Conveniently queries which destination token is mapped to the hash of an l1 token + destination chain ID.
+     * @notice If the pool rebalance route is not whitelisted then this will return address(0).
      * @param destinationChainId Where destination token is deployed.
      * @param l1Token Ethereum version token.
      * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
