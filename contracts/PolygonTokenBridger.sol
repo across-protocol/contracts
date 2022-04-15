@@ -88,10 +88,13 @@ contract PolygonTokenBridger is Lockable {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // In the wMatic case, this unwraps. For other ERC20s, this is the burn/send action.
-        token.withdraw(amount);
+        token.withdraw(token.balanceOf(address(this)));
 
         // This takes the token that was withdrawn and calls withdraw on the "native" ERC20.
-        if (isWrappedMatic) maticToken.withdraw{ value: amount }(amount);
+        if (isWrappedMatic) {
+            uint256 balance = address(this).balance;
+            maticToken.withdraw{ value: balance }(balance);
+        }
     }
 
     /**
