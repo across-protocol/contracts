@@ -29,7 +29,7 @@ describe("Polygon Spoke Pool", function () {
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, weth.address, weth.address, l1ChainId, l2ChainId);
 
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
@@ -217,7 +217,7 @@ describe("Polygon Spoke Pool", function () {
     const l2ChainId = randomBigNumber();
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, weth.address, weth.address, l1ChainId, l2ChainId);
 
     await expect(() =>
       owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })
@@ -237,7 +237,7 @@ describe("Polygon Spoke Pool", function () {
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, weth.address, weth.address, l1ChainId, l2ChainId);
 
     // Cannot send ETH directly into the contract on L2.
     await expect(owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })).to.be.revertedWith(
@@ -259,12 +259,12 @@ describe("Polygon Spoke Pool", function () {
 
     const polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
-    ).deploy(hubPool.address, weth.address, l1ChainId, l2ChainId);
+    ).deploy(hubPool.address, weth.address, weth.address, l1ChainId, l2ChainId);
 
     await weth.connect(owner).approve(polygonTokenBridger.address, toWei("1"));
 
     // Cannot call send on the contract on L1.
-    await expect(polygonTokenBridger.connect(owner).send(weth.address, toWei("1"), false)).to.be.revertedWith(
+    await expect(polygonTokenBridger.connect(owner).send(weth.address, toWei("1"))).to.be.revertedWith(
       "Cannot run method on this chain"
     );
   });
