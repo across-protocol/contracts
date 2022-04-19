@@ -126,11 +126,11 @@ async function main() {
         depositor: SLOW_RELAY_RECIPIENT_ADDRESS,
         recipient: SLOW_RELAY_RECIPIENT_ADDRESS,
         destinationToken: L2_TOKEN,
-        amount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS).toString(),
+        amount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS),
         originChainId: SPOKE_POOL_CHAIN_ID.toString(),
         destinationChainId: SPOKE_POOL_CHAIN_ID.toString(),
-        realizedLpFeePct: "0",
-        relayerFeePct: "0",
+        realizedLpFeePct: toBN(0),
+        relayerFeePct: toBN(0),
         depositId: i.toString(),
       });
       console.group();

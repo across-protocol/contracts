@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts-v2",
-  "version": "0.0.33",
+  "version": "0.0.44",
   "author": "UMA Team",
   "license": "AGPL-3.0",
   "repository": {
@@ -24,7 +24,8 @@
     "test:report-gas": "REPORT_GAS=true hardhat test",
     "test:gas-analytics": "GAS_TEST_ENABLED=true hardhat test ./test/gas-analytics/*",
     "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test",
-    "prepublish": "yarn build"
+    "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
+    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
   },
   "dependencies": {
     "@defi-wonderland/smock": "^2.0.7",

@@ -2,7 +2,6 @@ import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, rando
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves } from "./MerkleLib.utils";
-import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -156,7 +155,7 @@ describe("HubPool Root Bundle Execution", function () {
       .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
 
     // Set spoke pool to address 0x0
-    await hubPool.setCrossChainContracts(consts.repaymentChainId, mockAdapter.address, ZERO_ADDRESS);
+    await hubPool.setCrossChainContracts(consts.repaymentChainId, mockAdapter.address, consts.zeroAddress);
 
     // Advance time so the request can be executed and check that executing the request reverts.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
@@ -194,7 +193,7 @@ describe("HubPool Root Bundle Execution", function () {
     );
 
     // Let's set weth pool rebalance route to zero address.
-    await hubPool.setPoolRebalanceRoute(consts.repaymentChainId, weth.address, ZERO_ADDRESS);
+    await hubPool.setPoolRebalanceRoute(consts.repaymentChainId, weth.address, consts.zeroAddress);
 
     // Advance time so the request can be executed and check that executing the request reverts.
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);

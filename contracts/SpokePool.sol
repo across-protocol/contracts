@@ -82,7 +82,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes depositorSignature
     );
     event FilledRelay(
-        bytes32 indexed relayHash,
         uint256 amount,
         uint256 totalFilledAmount,
         uint256 fillAmount,
@@ -90,6 +89,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 originChainId,
         uint256 destinationChainId,
         uint64 relayerFeePct,
+        uint64 appliedRelayerFeePct,
         uint64 realizedLpFeePct,
         uint32 depositId,
         address destinationToken,
@@ -98,7 +98,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address recipient,
         bool isSlowRelay
     );
-    event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 relayerRefundRoot, bytes32 slowRelayRoot);
+    event RelayedRootBundle(
+        uint32 indexed rootBundleId,
+        bytes32 indexed relayerRefundRoot,
+        bytes32 indexed slowRelayRoot
+    );
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
@@ -306,7 +310,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param depositId Deposit to update fee for that originated in this contract.
      * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
      * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
-     * EIP-191 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
+     * EIP-1271 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
     function speedUpDeposit(
         address depositor,
@@ -681,7 +685,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
-        // Note: We purposefully do not support EIP-191 signatures (meaning that multisigs and smart contract wallets
+        // Note: We purposefully do not support EIP-1271 signatures (meaning that multisigs and smart contract wallets
         // like Argent are not supported) because of the possibility that a multisig that signed a message on the origin
         // chain does not have a parallel on this destination chain.
         require(depositor == ECDSA.recover(ethSignedMessageHash, depositorSignature), "invalid signature");
@@ -791,19 +795,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash,
         uint256 fillAmount,
         uint256 repaymentChainId,
-        uint64 relayerFeePct,
+        uint64 appliedRelayerFeePct,
         RelayData memory relayData,
         bool isSlowRelay
     ) internal {
         emit FilledRelay(
-            relayHash,
             relayData.amount,
             relayFills[relayHash],
             fillAmount,
             repaymentChainId,
             relayData.originChainId,
             relayData.destinationChainId,
-            relayerFeePct,
+            relayData.relayerFeePct,
+            appliedRelayerFeePct,
             relayData.realizedLpFeePct,
             relayData.depositId,
             relayData.destinationToken,

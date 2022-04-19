@@ -1,9 +1,8 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
 import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
-import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
@@ -91,7 +90,7 @@ describe("Arbitrum Spoke Pool", function () {
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
     // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
-    await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, ZERO_ADDRESS);
+    await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, zeroAddress);
     await expect(
       arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Uninitialized mainnet token");

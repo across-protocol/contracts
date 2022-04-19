@@ -1,9 +1,6 @@
-import { TokenRolesEnum } from "@uma/common";
 import { getContractFactory, randomAddress, hre, Contract, Signer } from "../utils";
-
 import { originChainId, bondAmount, refundProposalLiveness, finalFee } from "../constants";
-import { repaymentChainId, finalFeeUsdc } from "../constants";
-
+import { repaymentChainId, finalFeeUsdc, TokenRolesEnum } from "../constants";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
 export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {

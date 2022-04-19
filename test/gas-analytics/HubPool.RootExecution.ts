@@ -2,7 +2,6 @@ import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre, ex
 import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
-import { ZERO_ADDRESS } from "@uma/common";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves, PoolRebalanceLeaf } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
@@ -31,8 +30,8 @@ const LP_FEE = SEND_AMOUNT.div(toBN(10));
 // `STRESS_TEST_L1_TOKEN_COUNT` number of tokens to send pool rebalances for is not within the
 // [TARGET_GAS_LOWER_BOUND, TARGET_GAS_UPPER_BOUND] gas usage range.
 const TARGET_GAS_UPPER_BOUND = 12_000_000;
-const TARGET_GAS_LOWER_BOUND = 10_000_000;
-const STRESS_TEST_L1_TOKEN_COUNT = 100;
+const TARGET_GAS_LOWER_BOUND = 5_000_000;
+const STRESS_TEST_L1_TOKEN_COUNT = 75;
 
 // Construct tree with REFUND_CHAIN_COUNT leaves, each containing REFUND_TOKEN_COUNT sends
 async function constructSimpleTree(_destinationChainIds: number[], _l1Tokens: Contract[]) {
@@ -96,14 +95,14 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
     const spoke = await (
       await getContractFactory("MockSpokePool", owner)
-    ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
+    ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
     await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
       const spoke = await (
         await getContractFactory("MockSpokePool", owner)
-      ).deploy(randomAddress(), hubPool.address, randomAddress(), ZERO_ADDRESS);
+      ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
       await Promise.all(
         l1Tokens.map(async (token) => {

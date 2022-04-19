@@ -1,6 +1,4 @@
-import { TokenRolesEnum } from "@uma/common";
-import { getContractFactory, SignerWithAddress, Contract, hre } from "../utils";
-import { ethers, BigNumber, defaultAbiCoder, toBN } from "../utils";
+import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "../utils";
 import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
@@ -24,15 +22,15 @@ export async function deploySpokePool(ethers: any): Promise<{
   // Create tokens:
   const weth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
   const erc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("USD Coin", "USDC", 18);
-  await erc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  await erc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const unwhitelistedErc20 = await (
     await getContractFactory("ExpandedERC20", deployerWallet)
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
-  await unwhitelistedErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  await unwhitelistedErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const destErc20 = await (
     await getContractFactory("ExpandedERC20", deployerWallet)
   ).deploy("L2 USD Coin", "L2 USDC", 18);
-  await destErc20.addMember(TokenRolesEnum.MINTER, deployerWallet.address);
+  await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
   const spokePool = await (
@@ -101,7 +99,7 @@ export async function deposit(
 
 export async function fillRelay(
   spokePool: Contract,
-  destErc20: Contract,
+  destErc20: Contract | string,
   recipient: SignerWithAddress,
   depositor: SignerWithAddress,
   relayer: SignerWithAddress,
@@ -117,15 +115,15 @@ export async function fillRelay(
     .fillRelay(
       ...getFillRelayParams(
         getRelayHash(
-          depositor.address ?? depositor,
-          recipient.address ?? recipient,
+          depositor.address,
+          recipient.address,
           depositId,
           originChainId,
           consts.destinationChainId,
-          destErc20.address ?? destErc20,
-          depositAmount.toString(),
-          realizedLpFeePct.toString(),
-          relayerFeePct.toString()
+          (destErc20 as Contract).address ?? (destErc20 as string),
+          depositAmount,
+          realizedLpFeePct,
+          relayerFeePct
         ).relayData,
         amountToRelay,
         consts.repaymentChainId
@@ -138,13 +136,13 @@ export async function fillRelay(
   const lastEvent = events[events.length - 1];
   if (lastEvent.args)
     return {
-      relayHash: lastEvent.args.relayHash,
       amount: lastEvent.args.amount,
       totalFilledAmount: lastEvent.args.totalFilledAmount,
       fillAmount: lastEvent.args.fillAmount,
       repaymentChainId: Number(lastEvent.args.repaymentChainId),
       originChainId: Number(lastEvent.args.originChainId),
       relayerFeePct: lastEvent.args.relayerFeePct,
+      appliedRelayerFeePct: lastEvent.args.appliedRelayerFeePct,
       realizedLpFeePct: lastEvent.args.realizedLpFeePct,
       depositId: lastEvent.args.depositId,
       destinationToken: lastEvent.args.destinationToken,
@@ -161,9 +159,9 @@ export interface RelayData {
   depositor: string;
   recipient: string;
   destinationToken: string;
-  amount: string;
-  realizedLpFeePct: string;
-  relayerFeePct: string;
+  amount: BigNumber;
+  realizedLpFeePct: BigNumber;
+  relayerFeePct: BigNumber;
   depositId: string;
   originChainId: string;
   destinationChainId: string;
@@ -175,19 +173,19 @@ export function getRelayHash(
   _originChainId: number,
   _destinationChainId: number,
   _destinationToken: string,
-  _amount?: string,
-  _realizedLpFeePct?: string,
-  _relayerFeePct?: string
+  _amount?: BigNumber,
+  _realizedLpFeePct?: BigNumber,
+  _relayerFeePct?: BigNumber
 ): { relayHash: string; relayData: RelayData } {
   const relayData = {
     depositor: _depositor,
     recipient: _recipient,
     destinationToken: _destinationToken,
-    amount: _amount || consts.amountToDeposit.toString(),
+    amount: _amount || consts.amountToDeposit,
     originChainId: _originChainId.toString(),
     destinationChainId: _destinationChainId.toString(),
-    realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct.toString(),
-    relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct.toString(),
+    realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct,
+    relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct,
     depositId: _depositId.toString(),
   };
   const relayHash = ethers.utils.keccak256(
@@ -196,10 +194,7 @@ export function getRelayHash(
       Object.values(relayData)
     )
   );
-  return {
-    relayHash,
-    relayData,
-  };
+  return { relayHash, relayData };
 }
 
 export function getDepositParams(
@@ -229,12 +224,12 @@ export function getFillRelayParams(
     _relayData.depositor,
     _relayData.recipient,
     _relayData.destinationToken,
-    _relayData.amount,
+    _relayData.amount.toString(),
     _maxTokensToSend.toString(),
     _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.originChainId,
-    _relayData.realizedLpFeePct,
-    _relayData.relayerFeePct,
+    _relayData.realizedLpFeePct.toString(),
+    _relayData.relayerFeePct.toString(),
     _relayData.depositId,
   ];
 }
@@ -250,12 +245,12 @@ export function getFillRelayUpdatedFeeParams(
     _relayData.depositor,
     _relayData.recipient,
     _relayData.destinationToken,
-    _relayData.amount,
+    _relayData.amount.toString(),
     _maxTokensToSend.toString(),
     _repaymentChain ? _repaymentChain.toString() : consts.repaymentChainId.toString(),
     _relayData.originChainId,
-    _relayData.realizedLpFeePct,
-    _relayData.relayerFeePct,
+    _relayData.realizedLpFeePct.toString(),
+    _relayData.relayerFeePct.toString(),
     _updatedFee.toString(),
     _relayData.depositId,
     _signature,
