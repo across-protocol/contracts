@@ -41,6 +41,9 @@ contract PolygonTokenBridger is Lockable {
     // WETH contract on Ethereum.
     WETH9 public immutable l1Weth;
 
+    // Wrapped Matic on Polygon
+    address public immutable l2WrappedMatic;
+
     // Chain id for the L1 that this contract is deployed on or communicates with.
     // For example: if this contract were meant to facilitate transfers from polygon to mainnet, this value would be
     // the mainnet chainId 1.
@@ -64,11 +67,13 @@ contract PolygonTokenBridger is Lockable {
     constructor(
         address _destination,
         WETH9 _l1Weth,
+        address _l2WrappedMatic,
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
         destination = _destination;
         l1Weth = _l1Weth;
+        l2WrappedMatic = _l2WrappedMatic;
         l1ChainId = _l1ChainId;
         l2ChainId = _l2ChainId;
     }
@@ -78,20 +83,15 @@ contract PolygonTokenBridger is Lockable {
      * @notice The caller of this function must approve this contract to spend amount of token.
      * @param token Token to bridge.
      * @param amount Amount to bridge.
-     * @param isWrappedMatic True if token is WMATIC.
      */
-    function send(
-        PolygonIERC20 token,
-        uint256 amount,
-        bool isWrappedMatic
-    ) public nonReentrant onlyChainId(l2ChainId) {
+    function send(PolygonIERC20 token, uint256 amount) public nonReentrant onlyChainId(l2ChainId) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // In the wMatic case, this unwraps. For other ERC20s, this is the burn/send action.
         token.withdraw(token.balanceOf(address(this)));
 
         // This takes the token that was withdrawn and calls withdraw on the "native" ERC20.
-        if (isWrappedMatic) {
+        if (address(token) == l2WrappedMatic) {
             uint256 balance = address(this).balance;
             maticToken.withdraw{ value: balance }(balance);
         }
