@@ -91,10 +91,8 @@ contract PolygonTokenBridger is Lockable {
         token.withdraw(token.balanceOf(address(this)));
 
         // This takes the token that was withdrawn and calls withdraw on the "native" ERC20.
-        if (address(token) == l2WrappedMatic) {
-            uint256 balance = address(this).balance;
-            maticToken.withdraw{ value: balance }(balance);
-        }
+        if (address(token) == l2WrappedMatic)
+            maticToken.withdraw{ value: address(this).balance }(address(this).balance);
     }
 
     /**
