@@ -1,3 +1,3 @@
 export * from "./typechain";
-export * from "./src/ContractFinder";
+export * from "./src/DeploymentUtils";
 export * from "./utils/MerkleTree";
