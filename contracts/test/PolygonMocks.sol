@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract RootChainManagerMock {
-    function depositEtherFor(address user) external payable {}
+    function depositEtherFor(address user) external payable {} // solhint-disable-line no-empty-blocks
 
     function depositFor(
         address user,

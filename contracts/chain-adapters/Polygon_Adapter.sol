@@ -37,7 +37,7 @@ interface DepositManager {
  * that call this contract's logic guard against reentrancy.
  */
 
-// solhint-disable-next-linecontract-name-camelcase
+// solhint-disable-next-line contract-name-camelcase
 contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
