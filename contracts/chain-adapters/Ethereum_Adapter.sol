@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * that call this contract's logic guard against reentrancy.
  */
 
-// solhint-disable-next-linecontract-name-camelcase
+// solhint-disable-next-line contract-name-camelcase
 contract Ethereum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
