@@ -550,13 +550,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        uint32 length = uint32(relayerRefundLeaf.refundAmounts.length);
-        for (uint32 i = 0; i < length; ) {
+        uint256 length = relayerRefundLeaf.refundAmounts.length;
+        for (uint256 i = 0; i < length; ) {
             uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
                 IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
 
-            // OK because we assume refund array length won't be > types(uint32).max.
+            // OK because we assume refund array length won't be > types(uint256).max.
             // Based on the stress test results in /test/gas-analytics/SpokePool.RelayerRefundLeaf.ts, the UMIP should
             // limit the refund count in valid proposals to be ~800 so any RelayerRefundLeaves with > 800 refunds should
             // not make it to this stage.
