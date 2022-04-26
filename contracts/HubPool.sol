@@ -11,7 +11,6 @@ import "./interfaces/WETH9.sol";
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@uma/core/contracts/oracle/implementation/Constants.sol";
-import "@uma/core/contracts/common/implementation/AncillaryData.sol";
 import "@uma/core/contracts/common/interfaces/AddressWhitelistInterface.sol";
 import "@uma/core/contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 
