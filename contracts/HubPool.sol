@@ -864,8 +864,8 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         int256[] memory netSendAmounts,
         uint256[] memory bundleLpFees
     ) internal {
-        uint32 length = uint32(l1Tokens.length);
-        for (uint32 i = 0; i < length; ) {
+        uint256 length = l1Tokens.length;
+        for (uint256 i = 0; i < length; ) {
             address l1Token = l1Tokens[i];
             // Validate the L1 -> L2 token route is stored. If it is not then the output of the bridging action
             // could send tokens to the 0x0 address on the L2.
@@ -900,7 +900,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
             // Allocate LP fees and protocol fees from the bundle to the associated pooled token trackers.
             _allocateLpAndProtocolFees(l1Token, bundleLpFees[i]);
 
-            // L1 tokens length won't be > types(uint32).length, so use unchecked block to save gas. Based on the
+            // L1 tokens length won't be > types(uint256).length, so use unchecked block to save gas. Based on the
             // stress test results in /test/gas-analytics/HubPool.RootExecution.ts, the UMIP should limit the L1 token
             // count in valid proposals to be ~100 so any PoolRebalanceLeaves with > 100 l1Tokens should not make it
             // to this stage.
