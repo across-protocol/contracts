@@ -225,15 +225,16 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * indefinitely blocked, migration would be required, and in-progress transfers would never be repaid.
      */
     function emergencyDeleteProposal() public onlyOwner nonReentrant {
-        if (rootBundleProposal.unclaimedPoolRebalanceLeafCount > 0)
-            bondToken.safeTransfer(rootBundleProposal.proposer, bondAmount);
-        emit EmergencyRootBundleDeleted(
-            rootBundleProposal.poolRebalanceRoot,
-            rootBundleProposal.relayerRefundRoot,
-            rootBundleProposal.slowRelayRoot,
-            rootBundleProposal.proposer
-        );
+        RootBundle memory _rootBundleProposal = rootBundleProposal;
         delete rootBundleProposal;
+        if (_rootBundleProposal.unclaimedPoolRebalanceLeafCount > 0)
+            bondToken.safeTransfer(_rootBundleProposal.proposer, bondAmount);
+        emit EmergencyRootBundleDeleted(
+            _rootBundleProposal.poolRebalanceRoot,
+            _rootBundleProposal.relayerRefundRoot,
+            _rootBundleProposal.slowRelayRoot,
+            _rootBundleProposal.proposer
+        );
     }
 
     /**
