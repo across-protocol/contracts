@@ -1,41 +1,43 @@
 {
   "4": {
-    "Arbitrum_Adapter": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49",
-    "Ethereum_Adapter": "0x682DEa71e7246910A4dec2396a53B24291EB0AD8",
-    "Ethereum_SpokePool": "0xB078bBb35f8E24c2431b9d2a88C0bC0c26CC1F92",
-    "HubPool": "0xa1b6DA4AaE90fA16F3A3338c8d1Dc70B4926FCa7",
-    "LpTokenFactory": "0x0668ab3839346ebf95d969b3e18B2a96b1CC2b02",
-    "Optimism_Adapter": "0x277C7ecB45851dcB49c494fB4D0d9d8228037f0C",
-    "PolygonTokenBridger": "0xF92B101f07df74B1f4f3160f9e8a25D48BA5d583",
-    "Polygon_Adapter": "0xd8176EBf6170513Aa232D065042fa480557232A4",
-    "RateModelStore": "0x18a200A2427e243154EC8217890Bc08062afc5A2"
+    "Arbitrum_Adapter": { "address": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49", "blockNumber": 10367195 },
+    "Ethereum_Adapter": { "address": "0x682DEa71e7246910A4dec2396a53B24291EB0AD8", "blockNumber": 10365602 },
+    "Ethereum_SpokePool": { "address": "0xB078bBb35f8E24c2431b9d2a88C0bC0c26CC1F92", "blockNumber": 10485193 },
+    "HubPool": { "address": "0xa1b6DA4AaE90fA16F3A3338c8d1Dc70B4926FCa7", "blockNumber": 10365599 },
+    "LpTokenFactory": { "address": "0x0668ab3839346ebf95d969b3e18B2a96b1CC2b02", "blockNumber": 10365598 },
+    "Optimism_Adapter": { "address": "0x277C7ecB45851dcB49c494fB4D0d9d8228037f0C", "blockNumber": 10365600 },
+    "PolygonTokenBridger": { "address": "0xF92B101f07df74B1f4f3160f9e8a25D48BA5d583", "blockNumber": 10365604 },
+    "Polygon_Adapter": { "address": "0xd8176EBf6170513Aa232D065042fa480557232A4", "blockNumber": 10365605 },
+    "RateModelStore": { "address": "0x18a200A2427e243154EC8217890Bc08062afc5A2", "blockNumber": 10468968 }
   },
   "5": {
-    "Arbitrum_Adapter": "0xb68eDe0098552A5E3d95e8B78974C25e395af45B",
-    "Ethereum_Adapter": "0xc924E28eEaB54E67799890e288c98D5E48242C01",
-    "Ethereum_SpokePool": "0xb2b5C1b17B19d92CC4fC1f026B2133259e3ccd41",
-    "HubPool": "0x69CA24D3084a2eea77E061E2D7aF9b76D107b4f6",
-    "LpTokenFactory": "0x57EE47829369e2EF62fBb423648bec70d0366204",
-    "Optimism_Adapter": "0x52313039f1b849B49dce4bdf6a43AC76995bE366",
-    "PolygonTokenBridger": "0x8D7Eb61CAA4889c152f27Bb8108144DaCC9B01Db",
-    "Polygon_Adapter": "0x9B769e2b1A4936B51870d03902A9e2AeEa6Ee933",
-    "RateModelStore": "0x9C043C139486891D7a67e76E4c31Ac56bBfAF885"
+    "Arbitrum_Adapter": { "address": "0xb68eDe0098552A5E3d95e8B78974C25e395af45B", "blockNumber": 6586185 },
+    "Ethereum_Adapter": { "address": "0xc924E28eEaB54E67799890e288c98D5E48242C01", "blockNumber": 6586186 },
+    "Ethereum_SpokePool": { "address": "0xb2b5C1b17B19d92CC4fC1f026B2133259e3ccd41", "blockNumber": 6586188 },
+    "HubPool": { "address": "0x69CA24D3084a2eea77E061E2D7aF9b76D107b4f6", "blockNumber": 6586182 },
+    "LpTokenFactory": { "address": "0x57EE47829369e2EF62fBb423648bec70d0366204", "blockNumber": 6586180 },
+    "Optimism_Adapter": { "address": "0x52313039f1b849B49dce4bdf6a43AC76995bE366", "blockNumber": 6586183 },
+    "PolygonTokenBridger": { "address": "0x8D7Eb61CAA4889c152f27Bb8108144DaCC9B01Db", "blockNumber": 6637420 },
+    "Polygon_Adapter": { "address": "0x9B769e2b1A4936B51870d03902A9e2AeEa6Ee933", "blockNumber": 6637431 },
+    "RateModelStore": { "address": "0x9C043C139486891D7a67e76E4c31Ac56bBfAF885", "blockNumber": 6637435 }
   },
   "42": {
-    "Arbitrum_Adapter": "0xD007aB76E36B03853C1F2fE5980069E7ACd38FF8",
-    "Ethereum_Adapter": "0x304d7cbD119E356084b6c02542191EA43df5E399",
-    "Ethereum_SpokePool": "0x73549B5639B04090033c1E77a22eE9Aa44C2eBa0",
-    "HubPool": "0xD449Af45a032Df413b497A709EeD3E8C112EbcE3",
-    "LpTokenFactory": "0x2C4f1527Ec183ccD25f65816Cfc3a45b26B626B8",
-    "Optimism_Adapter": "0x7851603f5d6679FC8fFe76bBCb08a88Db34DB4E2",
-    "PolygonTokenBridger": "0x6C9cb9a525aED1f6EEbF5321A1f35DF3ec3dfe84",
-    "Polygon_Adapter": "0x3aa1b039252ee320bd551875213AFA4996c00b85",
-    "RateModelStore": "0x5923929DF7A2D6E038bb005B167c1E8a86cd13C8"
+    "Arbitrum_Adapter": { "address": "0xD007aB76E36B03853C1F2fE5980069E7ACd38FF8", "blockNumber": 30475933 },
+    "Ethereum_Adapter": { "address": "0x304d7cbD119E356084b6c02542191EA43df5E399", "blockNumber": 30475935 },
+    "Ethereum_SpokePool": { "address": "0x73549B5639B04090033c1E77a22eE9Aa44C2eBa0", "blockNumber": 30475937 },
+    "HubPool": { "address": "0xD449Af45a032Df413b497A709EeD3E8C112EbcE3", "blockNumber": 30475928 },
+    "LpTokenFactory": { "address": "0x2C4f1527Ec183ccD25f65816Cfc3a45b26B626B8", "blockNumber": 30475927 },
+    "Optimism_Adapter": { "address": "0x7851603f5d6679FC8fFe76bBCb08a88Db34DB4E2", "blockNumber": 30477031 },
+    "PolygonTokenBridger": { "address": "0x6C9cb9a525aED1f6EEbF5321A1f35DF3ec3dfe84", "blockNumber": 30475940 },
+    "Polygon_Adapter": { "address": "0x3aa1b039252ee320bd551875213AFA4996c00b85", "blockNumber": 30475943 },
+    "RateModelStore": { "address": "0x5923929DF7A2D6E038bb005B167c1E8a86cd13C8", "blockNumber": 30625832 }
   },
-  "69": { "Optimism_SpokePool": "0x2b7b7bAE341089103dD22fa4e8D7E4FA63E11084" },
+  "69": { "Optimism_SpokePool": { "address": "0x2b7b7bAE341089103dD22fa4e8D7E4FA63E11084", "blockNumber": 1618630 } },
   "80001": {
-    "PolygonTokenBridger": "0x8D7Eb61CAA4889c152f27Bb8108144DaCC9B01Db",
-    "Polygon_SpokePool": "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
+    "PolygonTokenBridger": { "address": "0x8D7Eb61CAA4889c152f27Bb8108144DaCC9B01Db", "blockNumber": 25751324 },
+    "Polygon_SpokePool": { "address": "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944", "blockNumber": 25751326 }
   },
-  "421611": { "Arbitrum_SpokePool": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b" }
+  "421611": {
+    "Arbitrum_SpokePool": { "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b", "blockNumber": 10523275 }
+  }
 }

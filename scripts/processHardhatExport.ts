@@ -8,12 +8,14 @@ export async function run(): Promise<void> {
     const deploymentExport = require("../cache/massExport.json");
     const castExport = deploymentExport as any;
     console.log("Generating exports on the following networks(if they have deployments)", Object.keys(castExport));
-    const processedOutput: { [chainid: string]: { [contractName: string]: string } } = {};
+    const processedOutput: { [chainId: string]: { [name: string]: { address: string; blockNumber: number } } } = {};
     Object.keys(castExport).forEach((chainId) => {
       if (castExport[chainId][0])
         Object.keys(castExport[chainId][0].contracts).forEach((contractName) => {
           if (!processedOutput[chainId]) processedOutput[chainId] = {};
-          processedOutput[chainId][contractName] = castExport[chainId][0]?.contracts[contractName].address;
+          const address = castExport[chainId][0]?.contracts[contractName].address;
+          const blockNumber = findDeploymentBlockNumber(castExport[chainId][0].name, contractName);
+          processedOutput[chainId][contractName] = { address, blockNumber };
         });
     });
     console.log("Constructed the following address export for release:\n", processedOutput);
@@ -23,7 +25,17 @@ export async function run(): Promise<void> {
 }
 
 if (require.main === module) {
-  run().then(() => {
-    process.exit(0);
-  });
+  run()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch(async (error) => {
+      console.error("Process exited with", error);
+      process.exit(1);
+    });
+}
+
+function findDeploymentBlockNumber(networkName: string, contractName: string) {
+  const deploymentArtifact = require(`../deployments/${networkName}/${contractName}.json`);
+  return (deploymentArtifact as any).receipt.blockNumber;
 }
