@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @title Allows admin to set and update configuration settings for full contract system. These settings are designed
  * to be consumed by off-chain bots, rather than by other contracts.
  * @dev This contract should not perform any validation on the setting values and should be owned by the governance
- * system of the full contract suite..
+ * system of the full contract suite.
  */
-contract ConfigStore is Ownable, MultiCaller {
+contract TokenConfigStore is Ownable, MultiCaller {
     // This will be queried by off-chain agents that need to compute realized LP fee %'s for deposit quote
     // timestamps. This contract does not validate the shape of the rate model, which is stored as a string to
     // enable arbitrary data encoding via a stringified JSON. Every L1 token enabled in the HubPool will be mapped
@@ -21,13 +21,8 @@ contract ConfigStore is Ownable, MultiCaller {
     // SpokePool via a pool rebalance, or just to save the amount to send in "runningBalances".
     mapping(address => uint256) public l1TokenTransferThresholds;
 
-    // General dictionary where admin can store global uint variables like `MAX_POOL_REBALANCE_LEAF_SIZE` and
-    // `MAX_RELAYER_REPAYMENT_LEAF_SIZE` that off-chain agents can query.
-    mapping(bytes32 => uint256) public uintGlobalConfig;
-
     event UpdatedRateModel(address indexed l1Token, string rateModel);
     event UpdatedTransferThreshold(address indexed l1Token, uint256 transferThreshold);
-    event UpdatedGlobalConfig(bytes32 indexed key, uint256 value);
 
     /**
      * @notice Updates rate model string for L1 token.
@@ -47,15 +42,5 @@ contract ConfigStore is Ownable, MultiCaller {
     function updateTransferThreshold(address l1Token, uint256 transferThresholdPct) external onlyOwner {
         l1TokenTransferThresholds[l1Token] = transferThresholdPct;
         emit UpdatedTransferThreshold(l1Token, transferThresholdPct);
-    }
-
-    /**
-     * @notice Updates global uint config.
-     * @param key Key to update.
-     * @param value Value to update.
-     */
-    function updateUintGlobalConfig(bytes32 key, uint256 value) external onlyOwner {
-        uintGlobalConfig[key] = value;
-        emit UpdatedGlobalConfig(key, value);
     }
 }

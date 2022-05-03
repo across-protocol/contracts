@@ -1,45 +1,46 @@
 import { getContractFactory, SignerWithAddress, utf8ToHex, expect, Contract, ethers, randomAddress } from "./utils";
 import * as constants from "./constants";
 
-let configStore: Contract;
+let tokenConfigStore: Contract, globalConfigStore: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;
 
 describe("Config Store", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
-    configStore = await (await getContractFactory("ConfigStore", owner)).deploy();
+    tokenConfigStore = await (await getContractFactory("TokenConfigStore", owner)).deploy();
+    globalConfigStore = await (await getContractFactory("GlobalConfigStore", owner)).deploy();
   });
 
   it("Updating rate model", async function () {
     const l1Token = randomAddress();
     const stringifiedRateModel = JSON.stringify(constants.sampleRateModel);
-    await expect(configStore.connect(other).updateRateModel(l1Token, stringifiedRateModel)).to.be.revertedWith(
+    await expect(tokenConfigStore.connect(other).updateRateModel(l1Token, stringifiedRateModel)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     );
-    await expect(configStore.connect(owner).updateRateModel(l1Token, stringifiedRateModel))
-      .to.emit(configStore, "UpdatedRateModel")
+    await expect(tokenConfigStore.connect(owner).updateRateModel(l1Token, stringifiedRateModel))
+      .to.emit(tokenConfigStore, "UpdatedRateModel")
       .withArgs(l1Token, stringifiedRateModel);
-    expect(await configStore.l1TokenRateModels(l1Token)).to.equal(stringifiedRateModel);
+    expect(await tokenConfigStore.l1TokenRateModels(l1Token)).to.equal(stringifiedRateModel);
   });
   it("Updating token transfer threshold", async function () {
     const l1Token = randomAddress();
     await expect(
-      configStore.connect(other).updateTransferThreshold(l1Token, constants.l1TokenTransferThreshold)
+      tokenConfigStore.connect(other).updateTransferThreshold(l1Token, constants.l1TokenTransferThreshold)
     ).to.be.revertedWith("Ownable: caller is not the owner");
-    await expect(configStore.connect(owner).updateTransferThreshold(l1Token, constants.l1TokenTransferThreshold))
-      .to.emit(configStore, "UpdatedTransferThreshold")
+    await expect(tokenConfigStore.connect(owner).updateTransferThreshold(l1Token, constants.l1TokenTransferThreshold))
+      .to.emit(tokenConfigStore, "UpdatedTransferThreshold")
       .withArgs(l1Token, constants.l1TokenTransferThreshold.toString());
-    expect(await configStore.l1TokenTransferThresholds(l1Token)).to.equal(constants.l1TokenTransferThreshold);
+    expect(await tokenConfigStore.l1TokenTransferThresholds(l1Token)).to.equal(constants.l1TokenTransferThreshold);
   });
-  it("Updating global uint config", async function () {
+  it("Updating global config", async function () {
     const key = utf8ToHex("MAX_POOL_REBALANCE_LEAF_SIZE");
-    const value = constants.maxRefundsPerRelayerRefundLeaf;
-    await expect(configStore.connect(other).updateUintGlobalConfig(key, value)).to.be.revertedWith(
+    const value = constants.maxRefundsPerRelayerRefundLeaf.toString();
+    await expect(globalConfigStore.connect(other).updateUintGlobalConfig(key, value)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     );
-    await expect(configStore.connect(owner).updateUintGlobalConfig(key, value))
-      .to.emit(configStore, "UpdatedGlobalConfig")
+    await expect(globalConfigStore.connect(owner).updateUintGlobalConfig(key, value))
+      .to.emit(globalConfigStore, "UpdatedGlobalConfig")
       .withArgs(key, value);
-    expect(await configStore.uintGlobalConfig(key)).to.equal(value);
+    expect(await globalConfigStore.uintGlobalConfig(key)).to.equal(value);
   });
 });
