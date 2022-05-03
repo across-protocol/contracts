@@ -26,7 +26,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the Optimism_Adapter logic.
       hubPool.address,
       L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth
-      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000", // timer
     ],
   });
 };

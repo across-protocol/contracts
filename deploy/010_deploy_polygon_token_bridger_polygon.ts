@@ -22,6 +22,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       l1HubPool.address,
       L1_ADDRESS_MAP[l1ChainId].polygonRegistry,
       L1_ADDRESS_MAP[l1ChainId].weth,
+      L1_ADDRESS_MAP[l1ChainId].l2WrappedMatic,
       l1ChainId,
       chainId,
     ],

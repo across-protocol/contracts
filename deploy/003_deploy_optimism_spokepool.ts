@@ -3,10 +3,12 @@ import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
+  console.log("A");
   const { deployments, getNamedAccounts, companionNetworks } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
+  console.log("deployer", deployer);
 
   // Grab L1 addresses:
   const { deployments: l1Deployments } = companionNetworks.l1;
@@ -20,7 +22,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the Optimism_Adapter logic.
       hubPool.address,
-      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000", // timer
     ],
   });
 };

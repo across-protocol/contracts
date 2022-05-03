@@ -21,6 +21,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       hubPool.address,
       L1_ADDRESS_MAP[chainId].polygonRegistry,
       L1_ADDRESS_MAP[chainId].weth,
+      L1_ADDRESS_MAP[chainId].l2WrappedMatic,
       chainId,
       POLYGON_CHAIN_IDS[chainId],
     ],
