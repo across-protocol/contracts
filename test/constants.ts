@@ -82,3 +82,21 @@ export const sampleL2Gas = 2000000;
 export const sampleL2MaxSubmissionCost = toWei("0.01");
 
 export const sampleL2GasPrice = 5e9;
+
+// Max number of refunds in relayer refund leaf for a { repaymentChainId, L2TokenAddress }.
+export const maxRefundsPerRelayerRefundLeaf = 3;
+
+// Max number of L1 tokens for a chain ID in a pool rebalance leaf.
+export const maxL1TokensPerPoolRebalanceLeaf = 3;
+
+// Once running balances hits this number for an L1 token, net send amount should be set to running
+// balances to transfer tokens to the spoke pool.
+export const l1TokenTransferThreshold = toWei(100);
+
+// DAI's Rate model.
+export const sampleRateModel = {
+  UBar: toWei(0.8).toString(),
+  R0: toWei(0.04).toString(),
+  R1: toWei(0.07).toString(),
+  R2: toWei(0.75).toString(),
+};
