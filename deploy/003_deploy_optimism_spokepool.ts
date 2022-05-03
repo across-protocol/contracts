@@ -3,12 +3,10 @@ import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
-  console.log("A");
   const { deployments, getNamedAccounts, companionNetworks } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-  console.log("deployer", deployer);
 
   // Grab L1 addresses:
   const { deployments: l1Deployments } = companionNetworks.l1;
