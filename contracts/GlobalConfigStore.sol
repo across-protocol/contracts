@@ -18,12 +18,12 @@ contract GlobalConfigStore is Ownable, MultiCaller {
     event UpdatedGlobalConfig(bytes32 indexed key, string value);
 
     /**
-     * @notice Updates global uint config.
+     * @notice Updates global config.
      * @param key Key to update.
      * @param value Value to update.
      */
-    function updateGlobalConfig(bytes32 key, string value) external onlyOwner {
-        uintGlobalConfig[key] = value;
+    function updateGlobalConfig(bytes32 key, string calldata value) external onlyOwner {
+        globalConfig[key] = value;
         emit UpdatedGlobalConfig(key, value);
     }
 }

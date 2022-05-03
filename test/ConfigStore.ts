@@ -35,12 +35,12 @@ describe("Config Store", function () {
   it("Updating global config", async function () {
     const key = utf8ToHex("MAX_POOL_REBALANCE_LEAF_SIZE");
     const value = constants.maxRefundsPerRelayerRefundLeaf.toString();
-    await expect(globalConfigStore.connect(other).updateUintGlobalConfig(key, value)).to.be.revertedWith(
+    await expect(globalConfigStore.connect(other).updateGlobalConfig(key, value)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     );
-    await expect(globalConfigStore.connect(owner).updateUintGlobalConfig(key, value))
+    await expect(globalConfigStore.connect(owner).updateGlobalConfig(key, value))
       .to.emit(globalConfigStore, "UpdatedGlobalConfig")
       .withArgs(key, value);
-    expect(await globalConfigStore.uintGlobalConfig(key)).to.equal(value);
+    expect(await globalConfigStore.globalConfig(key)).to.equal(value);
   });
 });
