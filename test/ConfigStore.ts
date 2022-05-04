@@ -7,7 +7,7 @@ let owner: SignerWithAddress, other: SignerWithAddress;
 describe("Config Store", function () {
   beforeEach(async function () {
     [owner, other] = await ethers.getSigners();
-    configStore = await (await getContractFactory("ConfigStore", owner)).deploy();
+    configStore = await (await getContractFactory("AcrossConfigStore", owner)).deploy();
   });
 
   it("Updating token config", async function () {
