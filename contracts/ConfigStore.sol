@@ -10,12 +10,27 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev This contract should not perform any validation on the setting values and should be owned by the governance
  * system of the full contract suite..
  */
-contract GlobalConfigStore is Ownable, MultiCaller {
+contract ConfigStore is Ownable, MultiCaller {
+    // General dictionary where admin can associate variables with specific L1 tokens, like the Rate Model and Token
+    // Transfer Thresholds.
+    mapping(address => string) public l1TokenConfig;
+
     // General dictionary where admin can store global variables like `MAX_POOL_REBALANCE_LEAF_SIZE` and
     // `MAX_RELAYER_REPAYMENT_LEAF_SIZE` that off-chain agents can query.
     mapping(bytes32 => string) public globalConfig;
 
+    event UpdatedTokenConfig(address indexed key, string value);
     event UpdatedGlobalConfig(bytes32 indexed key, string value);
+
+    /**
+     * @notice Updates token config.
+     * @param l1Token the l1 token address to update value for.
+     * @param value Value to update.
+     */
+    function updateTokenConfig(address l1Token, string memory value) external onlyOwner {
+        l1TokenConfig[l1Token] = value;
+        emit UpdatedTokenConfig(l1Token, value);
+    }
 
     /**
      * @notice Updates global config.
