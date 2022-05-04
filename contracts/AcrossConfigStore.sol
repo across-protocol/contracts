@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev This contract should not perform any validation on the setting values and should be owned by the governance
  * system of the full contract suite..
  */
-contract ConfigStore is Ownable, MultiCaller {
+contract AcrossConfigStore is Ownable, MultiCaller {
     // General dictionary where admin can associate variables with specific L1 tokens, like the Rate Model and Token
     // Transfer Thresholds.
     mapping(address => string) public l1TokenConfig;
