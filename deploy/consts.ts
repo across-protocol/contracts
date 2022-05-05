@@ -2,6 +2,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   1: {
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments
     optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
+    bobaCrossDomainMessenger: "0x6D4528d192dB72E282265D6092F4B872f9Dff69e",
+    bobaStandardBridge: "0xdc1664458d2f0B6090bEa60A8793A4E66c2F1c00",
     weth: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
     l1ArbitrumInbox: "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",

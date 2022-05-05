@@ -11,18 +11,18 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
   const chainId = parseInt(await getChainId());
 
-  await deploy("Optimism_Adapter", {
+  await deploy("Boba_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
       L1_ADDRESS_MAP[chainId].weth,
-      L1_ADDRESS_MAP[chainId].optimismCrossDomainMessenger,
-      L1_ADDRESS_MAP[chainId].optimismStandardBridge,
+      L1_ADDRESS_MAP[chainId].bobaCrossDomainMessenger,
+      L1_ADDRESS_MAP[chainId].bobaStandardBridge,
     ],
   });
 };
 
 module.exports = func;
 func.dependencies = ["HubPool"];
-func.tags = ["OptimismAdapter", "mainnet"];
+func.tags = ["BobaAdapter", "mainnet"];

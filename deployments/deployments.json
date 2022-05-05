@@ -1,6 +1,7 @@
 {
   "1": {
     "Arbitrum_Adapter": { "address": "0x937958992799bF4A9a656E6596FD10d7Da5c2216", "blockNumber": 14704380 },
+    "Boba_Adapter": { "address": "0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3", "blockNumber": 14716798 },
     "Ethereum_Adapter": { "address": "0x527E872a5c3f0C7c24Fe33F2593cFB890a285084", "blockNumber": 14704381 },
     "Ethereum_SpokePool": { "address": "0x931A43528779034ac9eb77df799d133557406176", "blockNumber": 14704425 },
     "HubPool": { "address": "0x6Bb9910c5529Cb3b32c4f0e13E8bC38F903b2534", "blockNumber": 14704308 },
@@ -49,7 +50,9 @@
     "PolygonTokenBridger": { "address": "0x48d990AbDA20afa1fD1da713AbC041B60a922c65", "blockNumber": 27875886 },
     "Polygon_SpokePool": { "address": "0xD3ddAcAe5aFb00F9B9cD36EF0Ed7115d7f0b584c", "blockNumber": 27875891 }
   },
-  "288": { "Optimism_SpokePool": { "address": "0x2918236893EC1ec739a96C381e00403d52ac560F", "blockNumber": 545696 } },
+  "288": {
+    "Boba_SpokePool": { "address": "0x7229405a2f0c550Ce35182EE1658302B65672443", "blockNumber": 551955 }
+  },
   "42161": {
     "Arbitrum_SpokePool": { "address": "0xe1C367e2b576Ac421a9f46C9cC624935730c36aa", "blockNumber": 11102271 }
   },

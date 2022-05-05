@@ -1,10 +1,8 @@
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
-import { L2_ADDRESS_MAP } from "./consts";
-
 const func = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, companionNetworks, getChainId } = hre;
+  const { deployments, getNamedAccounts, companionNetworks } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -14,20 +12,17 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
   const hubPool = await l1Deployments.get("HubPool");
   console.log(`Using l1 hub pool @ ${hubPool.address}`);
 
-  const chainId = parseInt(await getChainId());
-
-  await deploy("Arbitrum_SpokePool", {
+  // Boba Spoke pool uses the same implementation as optimism, with no changes.
+  await deploy("Boba_SpokePool", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
-      L2_ADDRESS_MAP[chainId].l2GatewayRouter, // _l2GatewayRouter
       hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the Optimism_Adapter logic.
       hubPool.address,
-      L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth
       "0x0000000000000000000000000000000000000000", // timer
     ],
   });
 };
 module.exports = func;
-func.tags = ["ArbitrumSpokePool", "arbitrum"];
+func.tags = ["BobaSpokePool", "boba"];

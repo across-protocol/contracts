@@ -10,6 +10,9 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 
+// Custom tasks to add to HRE.
+require("./tasks/enableL1TokenAcrossEcosystem");
+
 dotenv.config();
 
 const solcVersion = "0.8.13";

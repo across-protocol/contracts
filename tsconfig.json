@@ -1,14 +1,21 @@
 {
   "compilerOptions": {
-    "target": "es2018",
+    "target": "es2021",
     "module": "commonjs",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "outDir": "./dist",
     "declaration": true,
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["./scripts", "./test", "./typechain", "./index.ts", "./test-utils.ts"],
+  "include": [
+    "./scripts",
+    "./test",
+    "./typechain",
+    "./index.ts",
+    "./test-utils.ts",
+    "tasks/enableL1TokenAcrossEcosystem.ts"
+  ],
   "files": ["./hardhat.config.ts"]
 }

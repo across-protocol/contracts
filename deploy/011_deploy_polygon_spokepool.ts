@@ -1,4 +1,3 @@
-// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
