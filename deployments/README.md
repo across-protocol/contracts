@@ -13,7 +13,7 @@
 | Ethereum_SpokePool  | [0x931A43528779034ac9eb77df799d133557406176](https://etherscan.io/address/0x931A43528779034ac9eb77df799d133557406176) |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://etherscan.io/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
 | Polygon_Adapter     | [0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A](https://etherscan.io/address/0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A) |
-| RateModelStore      | [0xC9f9780bC4F3c34BAA6D5a92c4f2aac9699D0bd0](https://etherscan.io/address/0xC9f9780bC4F3c34BAA6D5a92c4f2aac9699D0bd0) |
+| AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 
 ## Optimism mainnet (10)
 
