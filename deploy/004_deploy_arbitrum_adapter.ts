@@ -1,8 +1,5 @@
-// l1Arbitrum Inbox and L1ERC20 Gateway taken from: https://developer.offchainlabs.com/docs/public_testnet
-
 import { L1_ADDRESS_MAP } from "./consts";
 
-// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 

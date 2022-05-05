@@ -10,6 +10,9 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 
+// Custom tasks to add to HRE.
+require("./tasks/enableL1TokenAcrossEcosystem");
+
 dotenv.config();
 
 const solcVersion = "0.8.13";
@@ -31,6 +34,12 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" } },
+    mainnet: {
+      url: getNodeUrl("mainnet", true, 1),
+      accounts: { mnemonic },
+      saveDeployments: true,
+      chainId: 1,
+    },
     kovan: {
       url: getNodeUrl("kovan", true, 42),
       accounts: { mnemonic },
@@ -81,6 +90,12 @@ const config: HardhatUserConfig = {
       chainId: 137,
       url: getNodeUrl("polygon-matic", true, 137),
       saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    boba: {
+      chainId: 288,
+      url: getNodeUrl("boba", true, 288),
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },

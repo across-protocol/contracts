@@ -78,6 +78,7 @@ contract PolygonTokenBridger is Lockable {
      * @param _l1PolygonRegistry L1 registry that stores updated addresses of polygon contracts. This should always be
      * set to the L1 registry regardless if whether it's deployed on L2 or L1.
      * @param _l1Weth L1 WETH address.
+     * @param _l2WrappedMatic L2 address of wrapped matic token.
      * @param _l1ChainId the chain id for the L1 in this environment.
      * @param _l2ChainId the chain id for the L2 in this environment.
      */

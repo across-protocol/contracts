@@ -1,4 +1,3 @@
-// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
@@ -22,6 +21,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       l1HubPool.address,
       L1_ADDRESS_MAP[l1ChainId].polygonRegistry,
       L1_ADDRESS_MAP[l1ChainId].weth,
+      L1_ADDRESS_MAP[l1ChainId].l2WrappedMatic,
       l1ChainId,
       chainId,
     ],

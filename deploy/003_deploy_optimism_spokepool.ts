@@ -1,4 +1,3 @@
-// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
@@ -20,7 +19,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the Optimism_Adapter logic.
       hubPool.address,
-      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000", // timer
     ],
   });
 };

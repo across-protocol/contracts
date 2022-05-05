@@ -1,4 +1,3 @@
-// This import is needed to override the definition of the HardhatRuntimeEnvironment type.
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 
@@ -8,7 +7,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("RateModelStore", {
+  await deploy("AcrossConfigStore", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
@@ -16,4 +15,4 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["RateModelStore", "mainnet"];
+func.tags = ["AcrossConfigStore", "mainnet"];
