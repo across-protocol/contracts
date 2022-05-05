@@ -23,7 +23,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       enabledChainIds.slice(1).map((chainId) => findL2TokenForL1Token(chainId, l1Token))
     );
 
-    const tokens = [];
+    const tokens: string[] = [];
     tokens[0] = l1Token;
     enabledChainIds.slice(1).forEach((_, index) => (tokens[index + 1] = autoDetectedTokens[index]));
 
@@ -62,9 +62,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     });
 
     console.log("\n7. Adding calldata to set the pool rebalance route for the respective destination tokens:");
-    i = 0; // reset counter for logging.
     enabledChainIds.forEach((toId, toIndex) => {
-      console.log(`\t 7.${++i}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} for chain ${toId}`);
+      console.log(`\t 7.${toIndex}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} on ${toId}`);
       callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]]));
     });
     console.log("\n8. Calldata to enable desired token! callData🚀:\n", JSON.stringify(callData).replace(/"/g, ""));

@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import { ethers } from "ethers";
 import readline from "readline";
+import { boolean } from "hardhat/internal/core/params/argumentTypes";
 export const zeroAddress = ethers.constants.AddressZero;
 
 export async function findL2TokenForL1Token(l2ChainId: number, l1TokenAddress: string) {
@@ -52,11 +53,11 @@ async function _findL2TokenForOvmChain(l2ChainId: number, l1TokenAddress: string
   const ovmL2StandardERC20 = "0x4200000000000000000000000000000000000010";
   const l2Bridge = new ethers.Contract(ovmL2StandardERC20, ovmBridgeAbi as any, createConnectedVoidSigner(l2ChainId));
 
-  const depositFinalizedEvents = await l2Bridge.queryFilter(
+  const depositFinalizedEvents = (await l2Bridge.queryFilter(
     l2Bridge.filters.DepositFinalized(l1TokenAddress),
     -4999,
     "latest"
-  );
+  )) as any;
 
   if (depositFinalizedEvents.length === 0) return zeroAddress;
   return depositFinalizedEvents[0].args._l2Token;
@@ -84,7 +85,7 @@ export function createConnectedVoidSigner(networkId: number) {
   return new ethers.VoidSigner(zeroAddress).connect(new ethers.providers.JsonRpcProvider(nodeUrl));
 }
 
-async function askQuestion(query) {
+async function askQuestion(query: string) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   return new Promise((resolve) =>
@@ -95,7 +96,7 @@ async function askQuestion(query) {
   );
 }
 
-export async function askYesNoQuestion(query) {
+export async function askYesNoQuestion(query: string): Promise<boolean> {
   const ans = (await askQuestion(`${query} (y/n) `)) as string;
   if (ans.toLowerCase() == "y") return true;
   if (ans.toLowerCase() == "n") return false;
