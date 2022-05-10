@@ -35,17 +35,14 @@
   },
   "10": { "Optimism_SpokePool": { "address": "0x59485d57EEcc4058F7831f46eE83a7078276b4AE", "blockNumber": 6979967 } },
   "42": {
-    "Arbitrum_Adapter": { "address": "0xD007aB76E36B03853C1F2fE5980069E7ACd38FF8", "blockNumber": 30475933 },
-    "Ethereum_Adapter": { "address": "0x304d7cbD119E356084b6c02542191EA43df5E399", "blockNumber": 30475935 },
-    "Ethereum_SpokePool": { "address": "0x73549B5639B04090033c1E77a22eE9Aa44C2eBa0", "blockNumber": 30475937 },
-    "HubPool": { "address": "0xD449Af45a032Df413b497A709EeD3E8C112EbcE3", "blockNumber": 30475928 },
-    "LpTokenFactory": { "address": "0x2C4f1527Ec183ccD25f65816Cfc3a45b26B626B8", "blockNumber": 30475927 },
-    "Optimism_Adapter": { "address": "0x7851603f5d6679FC8fFe76bBCb08a88Db34DB4E2", "blockNumber": 30477031 },
-    "PolygonTokenBridger": { "address": "0x6C9cb9a525aED1f6EEbF5321A1f35DF3ec3dfe84", "blockNumber": 30475940 },
-    "Polygon_Adapter": { "address": "0x3aa1b039252ee320bd551875213AFA4996c00b85", "blockNumber": 30475943 },
-    "RateModelStore": { "address": "0x5923929DF7A2D6E038bb005B167c1E8a86cd13C8", "blockNumber": 30625832 }
+    "AcrossConfigStore": { "address": "0xDd74f7603e3fDA6435aEc91F8960a6b8b40415f3", "blockNumber": 31457380 },
+    "Ethereum_Adapter": { "address": "0x5b0539e0ED5273604bf13b4A30050d475E586a64", "blockNumber": 31457390 },
+    "Ethereum_SpokePool": { "address": "0x90bab3160d417B4cd791Db5f8C4E79704e67bd49", "blockNumber": 31457386 },
+    "HubPool": { "address": "0x8d84F51710dfa9D409027B167371bBd79e0539e5", "blockNumber": 31457369 },
+    "LpTokenFactory": { "address": "0x4E894576a20C61871D53d043953582DDc6a76c5C", "blockNumber": 31457365 },
+    "Optimism_Adapter": { "address": "0x97E35F92a4de9Ec4950EAf7581B3ed54efbFc207", "blockNumber": 31457371 }
   },
-  "69": { "Optimism_SpokePool": { "address": "0x2b7b7bAE341089103dD22fa4e8D7E4FA63E11084", "blockNumber": 1618630 } },
+  "69": { "Optimism_SpokePool": { "address": "0x1954D4A36ac4fD8BEde42E59368565A92290E705", "blockNumber": 2537971 } },
   "137": {
     "PolygonTokenBridger": { "address": "0x48d990AbDA20afa1fD1da713AbC041B60a922c65", "blockNumber": 27875886 },
     "Polygon_SpokePool": { "address": "0xD3ddAcAe5aFb00F9B9cD36EF0Ed7115d7f0b584c", "blockNumber": 27875891 }
