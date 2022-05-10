@@ -1,18 +1,27 @@
-import * as deployments from "../deployments/deployments.json";
+import * as deployments_ from "../deployments/deployments.json";
+interface DeploymentExport {
+  [chainId: string]: { [contractName: string]: { address: string; blockNumber: number } };
+}
+const deployments: DeploymentExport = deployments_ as any;
 
 // Returns the deployed address of any contract on any network.
 export function getDeployedAddress(contractName: string, networkId: number): string {
   try {
-    return (deployments as any)[networkId.toString()][contractName].address;
+    return deployments[networkId.toString()][contractName].address; // First try match directly on the name provided.
   } catch (_) {
+    try {
+      // If this does not match then try search on a Regex on SpokePool to let the caller exclude the chain name.
+      for (const _contractName of Object.keys(deployments[networkId.toString()]))
+        if (/.*_SpokePool/.test(_contractName)) return deployments[networkId.toString()][_contractName].address;
+    } catch (_) {}
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
 }
 
 // Returns the deployment block number of any contract on any network.
-export function getDeployedBlockNumber(contractName: string, networkId: number): string {
+export function getDeployedBlockNumber(contractName: string, networkId: number): number {
   try {
-    return (deployments as any)[networkId.toString()][contractName].blockNumber;
+    return deployments[networkId.toString()][contractName].blockNumber;
   } catch (_) {
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
@@ -21,20 +30,17 @@ export function getDeployedBlockNumber(contractName: string, networkId: number):
 // Returns the chainId and contract name for a given contract address.
 export function getContractInfoFromAddress(contractAddress: string): { chainId: Number; contractName: string } {
   try {
-    let chainId = 0;
-    let contractName = "";
-    const allChainDeployments = deployments as any;
+    let returnValue = { chainId: 0, contractName: "" };
 
-    Object.keys(allChainDeployments).forEach((_chainId) =>
-      Object.keys(allChainDeployments[_chainId]).forEach((_contractName) => {
-        if (allChainDeployments[_chainId][_contractName].address == contractAddress) {
-          chainId = Number(_chainId);
-          contractName = _contractName;
+    Object.keys(deployments).forEach((_chainId) =>
+      Object.keys(deployments[_chainId]).forEach((_contractName) => {
+        if (deployments[_chainId][_contractName].address == contractAddress) {
+          returnValue = { chainId: Number(_chainId), contractName: _contractName };
           return;
         }
       })
     );
-    return { chainId, contractName };
+    return returnValue;
   } catch (_) {
     throw new Error(`Contract ${contractAddress} was not found in deployments.`);
   }
