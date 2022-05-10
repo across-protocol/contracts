@@ -18,7 +18,8 @@ export function getDeployedBlockNumber(contractName: string, networkId: number):
   }
 }
 
-export function getContractInfoFromAddress(searchedForAddress: string): { chainId: Number; contractName: string } {
+// Returns the chainId and contract name for a given contract address.
+export function getContractInfoFromAddress(contractAddress: string): { chainId: Number; contractName: string } {
   try {
     let chainId = 0;
     let contractName = "";
@@ -26,7 +27,7 @@ export function getContractInfoFromAddress(searchedForAddress: string): { chainI
 
     Object.keys(allChainDeployments).forEach((_chainId) =>
       Object.keys(allChainDeployments[_chainId]).forEach((_contractName) => {
-        if (allChainDeployments[_chainId][_contractName].address == searchedForAddress) {
+        if (allChainDeployments[_chainId][_contractName].address == contractAddress) {
           chainId = Number(_chainId);
           contractName = _contractName;
           return;
@@ -35,6 +36,6 @@ export function getContractInfoFromAddress(searchedForAddress: string): { chainI
     );
     return { chainId, contractName };
   } catch (_) {
-    throw new Error(`Contract ${searchedForAddress} was not found in deployments.`);
+    throw new Error(`Contract ${contractAddress} was not found in deployments.`);
   }
 }
