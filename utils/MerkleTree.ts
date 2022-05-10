@@ -3,6 +3,7 @@
 // to take the leaves and conversion functions, so the user never has to work with buffers.
 import { bufferToHex, keccak256 } from "ethereumjs-util";
 
+export const EMPTY_MERKLE_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000";
 export class MerkleTree<T> {
   private readonly elements: Buffer[];
   private readonly bufferElementPositionIndex: { [hexElement: string]: number };
@@ -22,6 +23,10 @@ export class MerkleTree<T> {
 
     // Create layers
     this.layers = this.getLayers(this.elements);
+  }
+
+  isEmpty(): boolean {
+    return this.layers.length === 0;
   }
 
   getLayers(elements: Buffer[]): Buffer[][] {
