@@ -68,6 +68,7 @@ export class MerkleTree<T> {
   }
 
   getRoot(): Buffer {
+    if (this.isEmpty()) return Buffer.from(EMPTY_MERKLE_ROOT, "hex");
     return this.layers[this.layers.length - 1][0];
   }
 
