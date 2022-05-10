@@ -2,9 +2,8 @@
 // https://github.com/Uniswap/merkle-distributor/blob/master/src/merkle-tree.ts with some added convenience methods
 // to take the leaves and conversion functions, so the user never has to work with buffers.
 import { bufferToHex, keccak256 } from "ethereumjs-util";
-import { runInThisContext } from "vm";
 
-export const EMPTY_MERKLE_ROOT = "0x";
+export const EMPTY_MERKLE_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000";
 export class MerkleTree<T> {
   private readonly elements: Buffer[];
   private readonly bufferElementPositionIndex: { [hexElement: string]: number };
@@ -67,11 +66,11 @@ export class MerkleTree<T> {
   }
 
   getRoot(): Buffer {
-    if (this.isEmpty()) return Buffer.from(EMPTY_MERKLE_ROOT, "hex");
     return this.layers[this.layers.length - 1][0];
   }
 
   getHexRoot(): string {
+    if (this.isEmpty()) return EMPTY_MERKLE_ROOT;
     return bufferToHex(this.getRoot());
   }
 
