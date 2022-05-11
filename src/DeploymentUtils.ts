@@ -7,13 +7,8 @@ const deployments: DeploymentExport = deployments_ as any;
 // Returns the deployed address of any contract on any network.
 export function getDeployedAddress(contractName: string, networkId: number): string {
   try {
-    return deployments[networkId.toString()][contractName].address; // First try match directly on the name provided.
+    return deployments[networkId.toString()][contractName].address;
   } catch (_) {
-    try {
-      // If this does not match then try search on a Regex on SpokePool to let the caller exclude the chain name.
-      for (const _contractName of Object.keys(deployments[networkId.toString()]))
-        if (/.*_SpokePool/.test(_contractName)) return deployments[networkId.toString()][_contractName].address;
-    } catch (_) {}
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
 }

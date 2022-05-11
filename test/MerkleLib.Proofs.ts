@@ -1,6 +1,6 @@
 import { PoolRebalanceLeaf, RelayerRefundLeaf } from "./MerkleLib.utils";
 import { merkleLibFixture } from "./fixtures/MerkleLib.Fixture";
-import { MerkleTree } from "../utils/MerkleTree";
+import { MerkleTree, EMPTY_MERKLE_ROOT } from "../utils/MerkleTree";
 import { expect, randomBigNumber, randomAddress, getParamType, defaultAbiCoder } from "./utils";
 import { keccak256, Contract, BigNumber } from "./utils";
 
@@ -11,6 +11,16 @@ describe("MerkleLib Proofs", async function () {
     ({ merkleLibTest } = await merkleLibFixture());
   });
 
+  it("Empty tree", async function () {
+    const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
+    const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+
+    // Can construct empty tree without error.
+    const merkleTree = new MerkleTree<PoolRebalanceLeaf>([], hashFn);
+
+    // Returns hardcoded root for empty tree.
+    expect(merkleTree.getHexRoot()).to.equal(EMPTY_MERKLE_ROOT);
+  });
   it("PoolRebalanceLeaf Proof", async function () {
     const poolRebalanceLeaves: PoolRebalanceLeaf[] = [];
     const numRebalances = 101;
