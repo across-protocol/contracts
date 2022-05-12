@@ -15,6 +15,7 @@ export async function run(): Promise<void> {
           if (!processedOutput[chainId]) processedOutput[chainId] = {};
           const address = castExport[chainId][0]?.contracts[contractName].address;
           const blockNumber = findDeploymentBlockNumber(castExport[chainId][0].name, contractName);
+          if (/.*_SpokePool/.test(contractName)) contractName = "SpokePool"; // Strip the network name from the spoke pool in the contractName.
           processedOutput[chainId][contractName] = { address, blockNumber };
         });
     });
