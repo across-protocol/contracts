@@ -25,7 +25,11 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     const tokens: string[] = [];
     tokens[0] = l1Token;
-    enabledChainIds.slice(1).forEach((_, index) => (tokens[index + 1] = autoDetectedTokens[index]));
+    enabledChainIds
+      .slice(1)
+      .forEach(
+        (chainId, index) => (tokens[index + 1] = taskArguments[`chain${chainId}token`] ?? autoDetectedTokens[index])
+      );
 
     console.table(
       enabledChainIds.map((chainId, index) => {
