@@ -1,7 +1,6 @@
 import fetch from "node-fetch";
 import { ethers } from "ethers";
 import readline from "readline";
-import { boolean } from "hardhat/internal/core/params/argumentTypes";
 export const zeroAddress = ethers.constants.AddressZero;
 
 export async function findL2TokenForL1Token(l2ChainId: number, l1TokenAddress: string) {
@@ -76,6 +75,19 @@ const ovmBridgeAbi = [
     ],
     name: "DepositFinalized",
     type: "event",
+  },
+];
+
+export const minimalSpokePoolInterface = [
+  {
+    inputs: [
+      { internalType: "address", name: "l2Token", type: "address" },
+      { internalType: "address", name: "l1Token", type: "address" },
+    ],
+    name: "whitelistToken",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
 ];
 
