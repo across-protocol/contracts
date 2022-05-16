@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import assert from "assert";
-import { findL2TokenForL1Token, askYesNoQuestion, zeroAddress } from "./utils";
+import { findL2TokenForL1Token, askYesNoQuestion, zeroAddress, minimalSpokePoolInterface } from "./utils";
 
 const enabledChainIds = [1, 10, 137, 288, 42161]; // Supported mainnet chain IDs.
 
@@ -25,7 +25,11 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     const tokens: string[] = [];
     tokens[0] = l1Token;
-    enabledChainIds.slice(1).forEach((_, index) => (tokens[index + 1] = autoDetectedTokens[index]));
+    enabledChainIds
+      .slice(1)
+      .forEach(
+        (chainId, index) => (tokens[index + 1] = taskArguments[`chain${chainId}token`] ?? autoDetectedTokens[index])
+      );
 
     console.table(
       enabledChainIds.map((chainId, index) => {
@@ -66,5 +70,17 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       console.log(`\t 7.${toIndex}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} on ${toId}`);
       callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]]));
     });
-    console.log("\n8. Calldata to enable desired token! callData🚀:\n", JSON.stringify(callData).replace(/"/g, ""));
+
+    console.log("\n8. Adding call data to whitelist L1 token on Arbitrum. This is only needed on this chain");
+
+    const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
+    // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
+    // Arbitrum spoke pool via the relaySpokeAdminFunction call.
+    const arbitrumToken = tokens[enabledChainIds.indexOf(42161)];
+    const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
+    callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [42161, whitelistTokenCallData]));
+
+    console.log(`\n9. ***DONE.***\nCalldata to enable desired token has been constructed!`);
+    console.log(`CallData contains ${callData.length} transactions, which can be sent in one multicall🚀`);
+    console.log(JSON.stringify(callData).replace(/"/g, ""));
   });
