@@ -4,20 +4,23 @@ pragma solidity ^0.8.0;
 import "./Optimism_SpokePool.sol";
 
 /**
- * @notice Boba Spoke pool. Exact copy of the Optimism_SpokePool with no modifications.
+ * @notice Boba Spoke pool. Exact copy of the Optimism_SpokePool with no modifications except for them swapping around
+ * the definition of the l2Eth and wrapped native token to "DifFeRenTaTe ThEmSelfs" (ㆆ _ ㆆ).
  */
 contract Boba_SpokePool is Optimism_SpokePool {
     /**
      * @notice Construct the OVM Boba SpokePool.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wrappedNativeToken Address of the native token on this chain.
      * @param timerAddress Timer address to set.
      */
+
+    address public immutable override l2Eth = address(0x4200000000000000000000000000000000000006);
+    address public immutable override wrappedNativeToken = (0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000);
+
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
-        address _wrappedNativeToken,
         address timerAddress
-    ) Optimism_SpokePool(_crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress) {}
+    ) Optimism_SpokePool(_crossDomainAdmin, _hubPool, timerAddress) {}
 }

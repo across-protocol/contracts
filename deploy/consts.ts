@@ -62,8 +62,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
 };
 
 export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
-  10: { l2Eth: "0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000" },
-  288: { l2Eth: "0x4200000000000000000000000000000000000006" },
   421611: {
     l2GatewayRouter: "0x9413AD42910c1eA60c737dB5f58d1C504498a3cD",
     l2Weth: "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681",
