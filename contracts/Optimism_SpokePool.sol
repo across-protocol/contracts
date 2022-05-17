@@ -31,15 +31,17 @@ contract Optimism_SpokePool is CrossDomainEnabled, SpokePool {
      * @notice Construct the OVM SpokePool.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _wrappedNativeToken Address of the native token on this chain.
      * @param timerAddress Timer address to set.
      */
     constructor(
         address _crossDomainAdmin,
         address _hubPool,
+        address _wrappedNativeToken,
         address timerAddress
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006, timerAddress)
+        SpokePool(_crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress)
     {}
 
     /*******************************************
