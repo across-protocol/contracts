@@ -5,7 +5,7 @@ import "./Optimism_SpokePool.sol";
 
 /**
  * @notice Boba Spoke pool. Exact copy of the Optimism_SpokePool with no modifications except for them swapping around
- * the definition of the l2Eth and wrapped native token to "DifFeRenTaTe ThEmSelfs" (ㆆ _ ㆆ).
+ * the definition of the l2Eth and l2Weth to "DifFeRenTaTe ThEmSelfs" (ㆆ _ ㆆ).
  */
 contract Boba_SpokePool is Optimism_SpokePool {
     /**
