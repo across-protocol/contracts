@@ -934,15 +934,13 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _updateAccumulatedLpFees(pooledToken); // Accumulate all allocated fees from the last time this method was called.
         _sync(l1Token); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees - haircutReserves) / lpTokenSupply
+        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
         // Both utilizedReserves and undistributedLpFees contain assigned LP fees. UndistributedLpFees is gradually
         // decreased over the smear duration using _updateAccumulatedLpFees. This means that the exchange rate will
         // gradually increase over time as undistributedLpFees goes to zero.
         // utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
         // and opposite size. LiquidReserves + utilizedReserves will always be larger than undistributedLpFees so this
         // int will always be positive so there is no risk in underflow in type casting in the return line.
-        // haircutReserves will be 0 in all cases except where funds are lost in the protocol. This value is then used
-        // to offset the exchange rate such that all LPs take on a pro rata loss of funds in a form of the exchangeRate.
         int256 numerator = int256(pooledToken.liquidReserves) +
             pooledToken.utilizedReserves -
             int256(pooledToken.undistributedLpFees);
