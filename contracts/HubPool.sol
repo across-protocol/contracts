@@ -430,7 +430,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param haircutAmount The amount of reserves to haircut the LPs by.
      */
     function haircutReserves(address l1Token, int256 haircutAmount) public onlyOwner nonReentrant {
-        pooledTokens[l1Token].haircutReserves = haircutAmount;
+        // Note that we do not call sync first in this method. The Owner should call this manually before haircutting.
+        // This is done in the event sync is reverting due to too low balanced in the contract relative to bond amount.
+        pooledTokens[l1Token].utilizedReserves += haircutAmount;
     }
 
     /*************************************************
@@ -943,8 +945,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         // to offset the exchange rate such that all LPs take on a pro rata loss of funds in a form of the exchangeRate.
         int256 numerator = int256(pooledToken.liquidReserves) +
             pooledToken.utilizedReserves -
-            int256(pooledToken.undistributedLpFees) -
-            pooledToken.haircutReserves;
+            int256(pooledToken.undistributedLpFees);
         return (uint256(numerator) * 1e18) / lpTokenTotalSupply;
     }
 
