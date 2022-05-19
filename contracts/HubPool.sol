@@ -420,6 +420,19 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
 
+    /**
+     * @notice Enables the owner of the protocol to haircut reserves in the event of an irrecoverable loss of funds on
+     * one of the L2s. Consider funds are leant out onto a L2 that dies irrecoverably. This value will offset the
+     * exchangeRateCurrent such that all LPs receive a pro rata loss of the the reserves. Should be used in conjunction
+     * with pause logic to prevent LPs from adding/withdrawing liquidity during the haircut process.
+     * Callable only by owner.
+     * @param l1Token Token to execute the haircut on.
+     * @param haircutAmount The amount of reserves to haircut the LPs by.
+     */
+    function haircutReserves(address l1Token, int256 haircutAmount) public onlyOwner nonReentrant {
+        pooledTokens[l1Token].haircutReserves = haircutAmount;
+    }
+
     /*************************************************
      *          LIQUIDITY PROVIDER FUNCTIONS         *
      *************************************************/
@@ -436,7 +449,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to deposit into this contract.
      * @param l1TokenAmount Amount of liquidity to provide.
      */
-    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override nonReentrant {
+    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override nonReentrant unpaused {
         require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
@@ -467,7 +480,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address l1Token,
         uint256 lpTokenAmount,
         bool sendEth
-    ) public override nonReentrant {
+    ) public override nonReentrant unpaused {
         require(address(weth) == l1Token || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
@@ -919,16 +932,19 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         _updateAccumulatedLpFees(pooledToken); // Accumulate all allocated fees from the last time this method was called.
         _sync(l1Token); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
+        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees - haircutReserves) / lpTokenSupply
         // Both utilizedReserves and undistributedLpFees contain assigned LP fees. UndistributedLpFees is gradually
         // decreased over the smear duration using _updateAccumulatedLpFees. This means that the exchange rate will
         // gradually increase over time as undistributedLpFees goes to zero.
         // utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
         // and opposite size. LiquidReserves + utilizedReserves will always be larger than undistributedLpFees so this
         // int will always be positive so there is no risk in underflow in type casting in the return line.
+        // haircutReserves will be 0 in all cases except where funds are lost in the protocol. This value is then used
+        // to offset the exchange rate such that all LPs take on a pro rata loss of funds in a form of the exchangeRate.
         int256 numerator = int256(pooledToken.liquidReserves) +
             pooledToken.utilizedReserves -
-            int256(pooledToken.undistributedLpFees);
+            int256(pooledToken.undistributedLpFees) -
+            pooledToken.haircutReserves;
         return (uint256(numerator) * 1e18) / lpTokenTotalSupply;
     }
 

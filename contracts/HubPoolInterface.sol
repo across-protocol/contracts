@@ -82,6 +82,8 @@ interface HubPoolInterface {
         // Number of LP funds sent via pool rebalances to SpokePools and are expected to be sent
         // back later.
         int256 utilizedReserves;
+        // In the event an L2 has an irrecoverable loss of funds introduce a haircut that offsets the loss to LPs.
+        int256 haircutReserves;
         // Number of LP funds held in contract less utilized reserves.
         uint256 liquidReserves;
         // Number of LP funds reserved to pay out to LPs as fees.
