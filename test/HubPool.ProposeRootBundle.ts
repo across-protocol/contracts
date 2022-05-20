@@ -69,6 +69,6 @@ describe("HubPool Root Bundle Proposal", function () {
     await hubPool.connect(owner).setPaused(true);
     await expect(
       hubPool.proposeRootBundle([1, 2, 3], 5, consts.mockTreeRoot, consts.mockTreeRoot, consts.mockSlowRelayRoot)
-    ).to.be.revertedWith("Proposal process has been paused");
+    ).to.be.revertedWith("Contract is paused");
   });
 });

@@ -176,7 +176,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     modifier unpaused() {
-        require(!paused, "Proposal process has been paused");
+        require(!paused, "Contract is paused");
         _;
     }
 
@@ -432,7 +432,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     function haircutReserves(address l1Token, int256 haircutAmount) public onlyOwner nonReentrant {
         // Note that we do not call sync first in this method. The Owner should call this manually before haircutting.
         // This is done in the event sync is reverting due to too low balanced in the contract relative to bond amount.
-        pooledTokens[l1Token].utilizedReserves += haircutAmount;
+        pooledTokens[l1Token].utilizedReserves -= haircutAmount;
     }
 
     /*************************************************
