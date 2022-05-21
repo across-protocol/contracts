@@ -118,4 +118,14 @@ describe("HubPool Liquidity Provision", function () {
     expect(await usdc.balanceOf(liquidityProvider.address)).to.equal(amountToSeedWallets.sub(scaledAmountToLp.div(2)));
     expect(await usdc.balanceOf(hubPool.address)).to.equal(scaledAmountToLp.div(2));
   });
+  it("Pause disables any liquidity action", async function () {
+    await hubPool.connect(owner).setPaused(true);
+    await weth.connect(liquidityProvider).approve(hubPool.address, amountToLp);
+    await expect(hubPool.connect(liquidityProvider).addLiquidity(weth.address, amountToLp)).to.be.revertedWith(
+      "Contract is paused"
+    );
+    await expect(
+      hubPool.connect(liquidityProvider).removeLiquidity(weth.address, amountToLp, false)
+    ).to.be.revertedWith("Contract is paused");
+  });
 });
