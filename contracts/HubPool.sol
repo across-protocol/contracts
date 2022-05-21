@@ -176,7 +176,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     modifier unpaused() {
-        require(!paused, "Proposal process has been paused");
+        require(!paused, "Contract is paused");
         _;
     }
 
@@ -420,6 +420,21 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         emit L2TokenDisabledForLiquidityProvision(l1Token, pooledTokens[l1Token].lpToken);
     }
 
+    /**
+     * @notice Enables the owner of the protocol to haircut reserves in the event of an irrecoverable loss of funds on
+     * one of the L2s. Consider funds are leant out onto a L2 that dies irrecoverably. This value will offset the
+     * exchangeRateCurrent such that all LPs receive a pro rata loss of the the reserves. Should be used in conjunction
+     * with pause logic to prevent LPs from adding/withdrawing liquidity during the haircut process.
+     * Callable only by owner.
+     * @param l1Token Token to execute the haircut on.
+     * @param haircutAmount The amount of reserves to haircut the LPs by.
+     */
+    function haircutReserves(address l1Token, int256 haircutAmount) public onlyOwner nonReentrant {
+        // Note that we do not call sync first in this method. The Owner should call this manually before haircutting.
+        // This is done in the event sync is reverting due to too low balanced in the contract relative to bond amount.
+        pooledTokens[l1Token].utilizedReserves -= haircutAmount;
+    }
+
     /*************************************************
      *          LIQUIDITY PROVIDER FUNCTIONS         *
      *************************************************/
@@ -436,7 +451,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param l1Token Token to deposit into this contract.
      * @param l1TokenAmount Amount of liquidity to provide.
      */
-    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override nonReentrant {
+    function addLiquidity(address l1Token, uint256 l1TokenAmount) public payable override nonReentrant unpaused {
         require(pooledTokens[l1Token].isEnabled, "Token not enabled");
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
@@ -467,7 +482,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         address l1Token,
         uint256 lpTokenAmount,
         bool sendEth
-    ) public override nonReentrant {
+    ) public override nonReentrant unpaused {
         require(address(weth) == l1Token || !sendEth, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
