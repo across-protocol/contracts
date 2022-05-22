@@ -4,46 +4,73 @@ import readline from "readline";
 export const zeroAddress = ethers.constants.AddressZero;
 
 export async function findL2TokenForL1Token(l2ChainId: number, l1TokenAddress: string) {
-  if (l2ChainId == 10) {
+  if (l2ChainId === 10) {
     const foundOnChain = await _findL2TokenForOvmChain(l2ChainId, l1TokenAddress);
-    if (foundOnChain != zeroAddress) return foundOnChain;
+    if (foundOnChain !== zeroAddress) return foundOnChain;
     else return await _findL2TokenFromTokenList(l2ChainId, l1TokenAddress);
   }
-  if (l2ChainId == 137) return await _findL2TokenFromTokenList(l2ChainId, l1TokenAddress);
-  if (l2ChainId == 288) return await _findL2TokenForOvmChain(l2ChainId, l1TokenAddress);
-  if (l2ChainId == 42161) return await _findL2TokenFromTokenList(l2ChainId, l1TokenAddress);
+  if (l2ChainId === 137) return await _findL2TokenFromTokenList(l2ChainId, l1TokenAddress);
+  if (l2ChainId === 288) {
+    const foundOnChain = await _findL2TokenForOvmChain(l2ChainId, l1TokenAddress);
+    if (foundOnChain !== zeroAddress) return foundOnChain;
+    else return await _findL2TokenFromTokenList(l2ChainId, l1TokenAddress);
+  }
+  if (l2ChainId === 42161) return await _findL2TokenFromTokenList(l2ChainId, l1TokenAddress);
 }
 
 async function _findL2TokenFromTokenList(l2ChainId: number, l1TokenAddress: string) {
-  if (l2ChainId == 10) {
+  if (l2ChainId === 10) {
     const response = await fetch("https://static.optimism.io/optimism.tokenlist.json");
     const body = await response.text();
     const tokenList = JSON.parse(body).tokens;
     const searchSymbol = tokenList.find(
-      (element: any) => element.chainId == 1 && element.address == l1TokenAddress.toLocaleLowerCase()
+      (element: any) => element.chainId === 1 && element.address.toLowerCase() === l1TokenAddress.toLocaleLowerCase()
     )?.symbol;
     if (!searchSymbol) return zeroAddress;
-    return tokenList.find((element: any) => element.chainId == 10 && element.symbol == searchSymbol).address;
+    return tokenList.find((element: any) => element.chainId === 10 && element.symbol === searchSymbol).address;
   }
-  if (l2ChainId == 137) {
+  if (l2ChainId === 137) {
     const response = await fetch(
       "https://raw.githubusercontent.com/maticnetwork/polygon-token-list/master/src/tokens/allTokens.json"
     );
     const body = await response.text();
     const tokenList = JSON.parse(body);
     const l2Address = tokenList.find(
-      (element: any) => element.extensions.rootAddress == l1TokenAddress.toLowerCase()
+      (element: any) => element?.extensions?.rootAddress?.toLowerCase() === l1TokenAddress.toLowerCase()
     )?.address;
     return l2Address ?? zeroAddress;
   }
-  if (l2ChainId == 42161) {
+  if (l2ChainId === 42161) {
     const response = await fetch("https://bridge.arbitrum.io/token-list-42161.json");
     const body = await response.text();
     const tokenList = JSON.parse(body).tokens;
     const l2Address = tokenList.find(
-      (element: any) => element.extensions.l1Address == l1TokenAddress.toLowerCase()
+      (element: any) => element?.extensions?.l1Address?.toLowerCase() === l1TokenAddress.toLowerCase()
     )?.address;
     return l2Address ?? zeroAddress;
+  } else if (l2ChainId === 288) {
+    const url =
+      "https://raw.githubusercontent.com/bobanetwork/boba/develop/packages/boba/register/addresses/addressesMainnet_0x8376ac6C3f73a25Dd994E0b0669ca7ee0C02F089.json";
+    const response = await fetch(url);
+    const body = await response.text();
+    const tokenList = JSON.parse(body) as { [name: string]: string };
+    const l1TokenName = Object.entries(tokenList).find(([, address]) => {
+      return address.toLowerCase() === l1TokenAddress.toLowerCase();
+    })?.[0];
+    if (!l1TokenName) return zeroAddress;
+    if (!l1TokenName.includes("L1")) {
+      console.error(
+        `L1 not labeled as expected. Address: ${tokenList[l1TokenName]}, name: ${l1TokenName} at url: ${url}`
+      );
+      return zeroAddress;
+    }
+    const l2TokenName = l1TokenName.replace("L1", "L2");
+    const l2TokenAddress = tokenList[l2TokenName];
+    if (!l2TokenAddress) {
+      console.error(`L2 token address not found. name ${l2TokenName} url: ${url}`);
+      return zeroAddress;
+    }
+    return l2TokenAddress;
   }
   return zeroAddress;
 }
@@ -110,7 +137,7 @@ async function askQuestion(query: string) {
 
 export async function askYesNoQuestion(query: string): Promise<boolean> {
   const ans = (await askQuestion(`${query} (y/n) `)) as string;
-  if (ans.toLowerCase() == "y") return true;
-  if (ans.toLowerCase() == "n") return false;
+  if (ans.toLowerCase() === "y") return true;
+  if (ans.toLowerCase() === "n") return false;
   return askYesNoQuestion(query);
 }

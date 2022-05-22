@@ -1,4 +1,4 @@
-import { task } from "hardhat/config";
+import { task, types } from "hardhat/config";
 import assert from "assert";
 import { findL2TokenForL1Token, askYesNoQuestion, zeroAddress, minimalSpokePoolInterface } from "./utils";
 
@@ -10,38 +10,65 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addOptionalParam("chain137token", "Address of the token on chainID 137. Used to override the auto detect")
   .addOptionalParam("chain288token", "Address of the token on chainID 288. Used to override the auto detect")
   .addOptionalParam("chain42161token", "Address of the token on chainID 42161. Used to override the auto detect")
+  .addOptionalParam("ignorechains", "ChainIds to ignore. Separated by comma.")
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
     const l1Token = taskArguments.chain1token;
     assert(l1Token, "chain1token argument must be provided");
+    const ignoredChainIds: number[] =
+      taskArguments.ignorechains
+        ?.replace(/\s/g, "")
+        ?.split(",")
+        ?.map((chainId: string) => Number(chainId)) || [];
+    if (ignoredChainIds.includes(1)) throw new Error("Cannot ignore chainId 1");
     console.log(`\n0. Running task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1Token}`);
     const { deployments, ethers } = hre;
     const signer = (await hre.ethers.getSigners())[0];
 
+    // Remove chainIds that are in the ignore list.
+    let chainIds = enabledChainIds.filter((chainId) => !ignoredChainIds.includes(chainId));
+
     console.log("\n1. Auto detecting L2 companion token address for provided L1 token.");
     const autoDetectedTokens = await Promise.all(
-      enabledChainIds.slice(1).map((chainId) => findL2TokenForL1Token(chainId, l1Token))
+      chainIds.slice(1).map((chainId) => findL2TokenForL1Token(chainId, l1Token))
     );
 
-    const tokens: string[] = [];
+    let tokens: string[] = [];
     tokens[0] = l1Token;
-    enabledChainIds
+    chainIds
       .slice(1)
       .forEach(
         (chainId, index) => (tokens[index + 1] = taskArguments[`chain${chainId}token`] ?? autoDetectedTokens[index])
       );
 
+    for (let i = 0; i < chainIds.length; i++) {
+      const chainId = chainIds[i];
+      if (
+        tokens[i] === zeroAddress &&
+        !(await askYesNoQuestion(
+          `\nNo address found for chainId: ${chainId}. Would you like to remove routes to and from this chain?`
+        ))
+      ) {
+        console.log(`Please rerun with override address for chainId: ${chainId}`);
+        process.exit(0);
+      }
+    }
+
+    chainIds = chainIds.filter((chainId, index) => tokens[index] !== zeroAddress);
+    tokens = tokens.filter((token) => token !== zeroAddress);
+
+    console.log(chainIds);
+    console.log(tokens);
+
     console.table(
-      enabledChainIds.map((chainId, index) => {
-        return { chainId, address: tokens[index], autoDetected: taskArguments[`chain${chainId}token`] == undefined };
+      chainIds.map((chainId, index) => {
+        return { chainId, address: tokens[index], autoDetected: taskArguments[`chain${chainId}token`] === undefined };
       }),
       ["chainId", "address", "autoDetected"]
     );
 
-    enabledChainIds.forEach((chainId, index) => assert(tokens[index] !== zeroAddress, `Bad address on ${chainId}`));
-
     // Check the user is ok with the token addresses provided. If not, abort.
-    if (!(await askYesNoQuestion("\n2. Do these token addresses match with your expectation?"))) process.exit(0);
+    if (!(await askYesNoQuestion("\n2. Do these token addresses match your expectations?"))) process.exit(0);
 
     // Construct an ethers contract to access the `interface` prop to create encoded function calls.
     const hubPoolDeployment = await deployments.get("HubPool");
@@ -50,14 +77,14 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     console.log("\n4. Constructing calldata to enable these tokens. Using HubPool at address:", hubPool.address);
 
     // Construct calldata to enable these tokens.
-    let callData = [];
+    const callData = [];
     console.log("\n5. Adding calldata to enable liquidity provision on", l1Token);
     callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
 
     console.log("\n6. Adding calldata to enable routes between all chains and tokens:");
     let i = 0; // counter for logging.
-    enabledChainIds.forEach((fromId, fromIndex) => {
-      enabledChainIds.forEach((toId, toIndex) => {
+    chainIds.forEach((fromId, fromIndex) => {
+      chainIds.forEach((toId, toIndex) => {
         if (fromId === toId) return;
 
         console.log(`\t 6.${++i}\t Adding calldata for token ${tokens[fromIndex]} for route ${fromId} -> ${toId}`);
@@ -66,7 +93,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     });
 
     console.log("\n7. Adding calldata to set the pool rebalance route for the respective destination tokens:");
-    enabledChainIds.forEach((toId, toIndex) => {
+    chainIds.forEach((toId, toIndex) => {
       console.log(`\t 7.${toIndex}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} on ${toId}`);
       callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]]));
     });
@@ -76,7 +103,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
     // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
     // Arbitrum spoke pool via the relaySpokeAdminFunction call.
-    const arbitrumToken = tokens[enabledChainIds.indexOf(42161)];
+    const arbitrumToken = tokens[chainIds.indexOf(42161)];
     const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
     callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [42161, whitelistTokenCallData]));
 
