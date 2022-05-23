@@ -38,4 +38,4 @@
 
 | Contract Name      | Address                                                                                                              |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Arbitrum_SpokePool | [0xA44A832B994f796452e4FaF191a041F791AD8A0A](https://arbiscan.io/address/0xA44A832B994f796452e4FaF191a041F791AD8A0A) |
+| Arbitrum_SpokePool | [0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C](https://arbiscan.io/address/0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C) |
