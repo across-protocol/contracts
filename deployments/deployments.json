@@ -46,7 +46,7 @@
     "SpokePool": { "address": "0x69B5c72837769eF1e7C164Abc6515DcFf217F920", "blockNumber": 28604263 }
   },
   "288": { "SpokePool": { "address": "0xcA5BcA331b8137fD15c2fa6BA34655FA58de5a0B", "blockNumber": 616561 } },
-  "42161": { "LpTokenFactory": { "address": "0xA44A832B994f796452e4FaF191a041F791AD8A0A", "blockNumber": 12663312 } },
+  "42161": { "SpokePool": { "address": "0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C", "blockNumber": 12741972 } },
   "80001": {
     "PolygonTokenBridger": { "address": "0x97f102f2f73717e203f964Ad9940e4C2e79b8597", "blockNumber": 26276246 },
     "SpokePool": { "address": "0x45fF03629D024b7763275e732a2d80202c18b31C", "blockNumber": 26276253 }
