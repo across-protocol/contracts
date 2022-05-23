@@ -6,6 +6,7 @@ const enabledChainIds = [1, 10, 137, 288, 42161]; // Supported mainnet chain IDs
 
 task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
   .addParam("chain1token", "Address of the token to enable, as defined on L1")
+  .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
   .addOptionalParam("chain10token", "Address of the token on chainID 10. Used to override the auto detect")
   .addOptionalParam("chain137token", "Address of the token on chainID 137. Used to override the auto detect")
   .addOptionalParam("chain288token", "Address of the token on chainID 288. Used to override the auto detect")
@@ -57,9 +58,6 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     chainIds = chainIds.filter((chainId, index) => tokens[index] !== zeroAddress);
     tokens = tokens.filter((token) => token !== zeroAddress);
 
-    console.log(chainIds);
-    console.log(tokens);
-
     console.table(
       chainIds.map((chainId, index) => {
         return { chainId, address: tokens[index], autoDetected: taskArguments[`chain${chainId}token`] === undefined };
@@ -98,16 +96,26 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]]));
     });
 
-    console.log("\n8. Adding call data to whitelist L1 token on Arbitrum. This is only needed on this chain");
+    if (chainIds.includes(42161)) {
+      console.log("\n8. Adding call data to whitelist L1 token on Arbitrum. This is only needed on this chain");
 
-    const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
-    // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
-    // Arbitrum spoke pool via the relaySpokeAdminFunction call.
-    const arbitrumToken = tokens[chainIds.indexOf(42161)];
-    const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
-    callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [42161, whitelistTokenCallData]));
+      const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
+      // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
+      // Arbitrum spoke pool via the relaySpokeAdminFunction call.
+      const arbitrumToken = tokens[chainIds.indexOf(42161)];
+      const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
+      callData.push(
+        hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [42161, whitelistTokenCallData])
+      );
+    }
 
     console.log(`\n9. ***DONE.***\nCalldata to enable desired token has been constructed!`);
     console.log(`CallData contains ${callData.length} transactions, which can be sent in one multicall🚀`);
     console.log(JSON.stringify(callData).replace(/"/g, ""));
+
+    if (taskArguments.execute && callData.length > 0) {
+      console.log(`\n10. --execute provided. Trying to execute this on mainnet.`);
+      const { hash } = await hubPool.multicall(callData);
+      console.log(`\nTransaction hash: ${hash}`);
+    }
   });
