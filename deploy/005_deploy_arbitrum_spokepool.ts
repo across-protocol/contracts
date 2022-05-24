@@ -30,5 +30,4 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
   });
 };
 module.exports = func;
-func.dependencies = ["HubPool"];
 func.tags = ["ArbitrumSpokePool", "arbitrum"];

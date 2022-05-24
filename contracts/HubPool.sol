@@ -83,7 +83,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     uint32 public liveness = 7200;
 
     // When root bundles are disputed a price request is enqueued with the DVM to resolve the resolution.
-    bytes32 public identifier = "IS_ACROSS_V2_BUNDLE_VALID";
+    bytes32 public identifier = "ACROSS-V2";
 
     // Interest rate payment that scales the amount of pending fees per second paid to LPs. 0.0000015e18 will pay out
     // the full amount of fees entitled to LPs in ~ 7.72 days assuming no contract interactions. If someone interacts
