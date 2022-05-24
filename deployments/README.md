@@ -30,9 +30,9 @@
 
 ## Boba mainnet (288)
 
-| Contract Name  | Address                                                                                                                                       |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Boba_SpokePool | [0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58](https://blockexplorer.boba.network/address/0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58/contracts) |
+| Contract Name  | Address                                                                                                                             |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Boba_SpokePool | [0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58](https://blockexplorer.boba.network/address/0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58) |
 
 ## Arbitrum mainnet (42161)
 
