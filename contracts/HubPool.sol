@@ -422,7 +422,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice Enables the owner of the protocol to haircut reserves in the event of an irrecoverable loss of funds on
-     * one of the L2s. Consider funds are leant out onto a L2 that dies irrecoverably. This value will offset the
+     * one of the L2s. Consider funds are lent out onto a L2 that dies irrecoverably. This value will offset the
      * exchangeRateCurrent such that all LPs receive a pro rata loss of the the reserves. Should be used in conjunction
      * with pause logic to prevent LPs from adding/withdrawing liquidity during the haircut process.
      * Callable only by owner.
@@ -431,7 +431,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      */
     function haircutReserves(address l1Token, int256 haircutAmount) public onlyOwner nonReentrant {
         // Note that we do not call sync first in this method. The Owner should call this manually before haircutting.
-        // This is done in the event sync is reverting due to too low balanced in the contract relative to bond amount.
+        // This is done in the event sync reverts due to too low balance in the contract relative to bond amount.
         pooledTokens[l1Token].utilizedReserves -= haircutAmount;
     }
 
@@ -989,7 +989,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         PooledToken memory pooledL1Token = pooledTokens[l1Token];
         uint256 flooredUtilizedReserves = pooledL1Token.utilizedReserves > 0
             ? uint256(pooledL1Token.utilizedReserves) // If positive: take the uint256 cast utilizedReserves.
-            : 0; // Else, if negative, then the is already captured in liquidReserves and should be ignored.
+            : 0; // Else, if negative, it is already captured in liquidReserves and should be ignored.
         uint256 numerator = relayedAmount + flooredUtilizedReserves;
         uint256 denominator = pooledL1Token.liquidReserves + flooredUtilizedReserves;
 
