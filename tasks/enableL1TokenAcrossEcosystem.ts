@@ -125,6 +125,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [10, setTokenBridgeCallData]));
     }
 
+    // TODO: Set a rate model? Allow user to pass in rate model
+
     console.log(`\n10. ***DONE.***\nCalldata to enable desired token has been constructed!`);
     console.log(
       `CallData contains ${callData.length} transactions, which can be sent in one multicall to hub pool @ ${hubPoolDeployment.address}🚀`
