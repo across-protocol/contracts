@@ -37,7 +37,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     address public immutable dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public immutable daiOptimismBridge = 0x10E6593CDda8c58a1d0f14C5164B376352a55f2F;
     address public immutable snx = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
-    address public immutable snxOptimismBridge = 0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068;
+    address public immutable snxOptimismBridge = 0x39Ea01a0298C315d149a490E34B59Dbf2EC7e48F;
 
     /**
      * @notice Constructs new Adapter.

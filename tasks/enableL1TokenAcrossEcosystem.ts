@@ -109,6 +109,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       );
     }
 
+    // Add optimism setTokenBridge call
+
     console.log(`\n9. ***DONE.***\nCalldata to enable desired token has been constructed!`);
     console.log(`CallData contains ${callData.length} transactions, which can be sent in one multicall🚀`);
     console.log(JSON.stringify(callData).replace(/"/g, ""));
