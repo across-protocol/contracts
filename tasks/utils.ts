@@ -104,7 +104,6 @@ const ovmBridgeAbi = [
     type: "event",
   },
 ];
-
 export const minimalSpokePoolInterface = [
   {
     inputs: [
@@ -112,6 +111,16 @@ export const minimalSpokePoolInterface = [
       { internalType: "address", name: "l1Token", type: "address" },
     ],
     name: "whitelistToken",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "l2Token", type: "address" },
+      { internalType: "address", name: "tokenBridge", type: "address" },
+    ],
+    name: "setTokenBridge",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

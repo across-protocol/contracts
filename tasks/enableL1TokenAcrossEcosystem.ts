@@ -12,7 +12,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addOptionalParam("chain288token", "Address of the token on chainID 288. Used to override the auto detect")
   .addOptionalParam("chain42161token", "Address of the token on chainID 42161. Used to override the auto detect")
   .addOptionalParam(
-    "customOptimismBridge",
+    "customoptimismbridge",
     "Custom token bridge to set for optimism, for example used with SNX and DAI"
   )
   .addOptionalParam("ignorechains", "ChainIds to ignore. Separated by comma.")
@@ -115,7 +115,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     }
 
     // Add optimism setTokenBridge call
-    if (taskArguments.customOptimismBridge) {
+    if (taskArguments.customoptimismbridge) {
       console.log("\n9. Adding call data to set custom Optimism bridge.");
 
       // Address doesn't matter, we only want the interface:
@@ -125,8 +125,10 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [10, setTokenBridgeCallData]));
     }
 
-    console.log(`\n9. ***DONE.***\nCalldata to enable desired token has been constructed!`);
-    console.log(`CallData contains ${callData.length} transactions, which can be sent in one multicall🚀`);
+    console.log(`\n10. ***DONE.***\nCalldata to enable desired token has been constructed!`);
+    console.log(
+      `CallData contains ${callData.length} transactions, which can be sent in one multicall to hub pool @ ${hubPoolDeployment.address}🚀`
+    );
     console.log(JSON.stringify(callData).replace(/"/g, ""));
 
     if (taskArguments.execute && callData.length > 0) {
