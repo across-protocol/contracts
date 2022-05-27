@@ -121,7 +121,10 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       // Address doesn't matter, we only want the interface:
       const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
       const optimismToken = tokens[chainIds.indexOf(10)];
-      const setTokenBridgeCallData = spokePool.interface.encodeFunctionData("setTokenBridge", [optimismToken, l1Token]);
+      const setTokenBridgeCallData = spokePool.interface.encodeFunctionData("setTokenBridge", [
+        optimismToken,
+        taskArguments.customoptimismbridge,
+      ]);
       callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [10, setTokenBridgeCallData]));
     }
 
