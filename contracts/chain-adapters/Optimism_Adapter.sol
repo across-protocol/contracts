@@ -12,6 +12,7 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// SNX Bridge does not implement `depositERC20To`
 interface ISNXBridge {
     function depositTo(address to, uint256 amount) external;
 }
