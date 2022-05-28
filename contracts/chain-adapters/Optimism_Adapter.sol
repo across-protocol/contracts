@@ -12,6 +12,10 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+interface ISNXBridge {
+    function depositTo(address to, uint256 amount) external;
+}
+
 /**
  * @notice Contract containing logic to send messages from L1 to Optimism.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
@@ -82,14 +86,15 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
-            IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+            address _l1Bridge = address(l1StandardBridge);
 
             // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
-            if (l1Token == dai) _l1StandardBridge = IL1StandardBridge(daiOptimismBridge); // 1. DAI
-            if (l1Token == snx) _l1StandardBridge = IL1StandardBridge(snxOptimismBridge); // 2. SNX
+            if (l1Token == dai) _l1Bridge = daiOptimismBridge; // 1. DAI
+            if (l1Token == snx) _l1Bridge = snxOptimismBridge; // 2. SNX
 
-            IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
-            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            IERC20(l1Token).safeIncreaseAllowance(_l1Bridge, amount);
+            if (l1Token == snx) ISNXBridge(_l1Bridge).depositTo(to, amount);
+            else IL1StandardBridge(_l1Bridge).depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
