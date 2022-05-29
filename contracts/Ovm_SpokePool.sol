@@ -20,7 +20,7 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
     address public immutable l2Eth;
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
-    // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
+    // to support non-standard ERC20 tokens on Optimism, such as DAI and SNX which both use custom bridges.
     mapping(address => address) public tokenBridges;
 
     event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
@@ -141,17 +141,23 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
             WETH9(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
         }
-        IL2ERC20Bridge(
-            tokenBridges[relayerRefundLeaf.l2TokenAddress] == address(0)
-                ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
-                : tokenBridges[relayerRefundLeaf.l2TokenAddress]
-        ).withdrawTo(
-                relayerRefundLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                relayerRefundLeaf.amountToReturn, // _amount.
-                l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-                "" // _data. We don't need to send any data for the bridging action.
-            );
+
+        address l2TokenAddress = relayerRefundLeaf.l2TokenAddress;
+        address tokenBridge = tokenBridges[l2TokenAddress] == address(0)
+            ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
+            : tokenBridges[l2TokenAddress];
+        // In some cases such as SNX, the custom token bridge might require approval to transfer the ERC-20 before
+        // it can be burnt. We can grant approval and immediately revoke after the call to ensure there's no residual
+        // approval after bridging.
+        IERC20(l2TokenAddress).approve(tokenBridge, relayerRefundLeaf.amountToReturn);
+        IL2ERC20Bridge(tokenBridge).withdrawTo(
+            l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+            hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+            relayerRefundLeaf.amountToReturn, // _amount.
+            l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
+            "" // _data. We don't need to send any data for the bridging action.
+        );
+        IERC20(l2TokenAddress).approve(tokenBridge, 0); // Revoke approval.
 
         emit OptimismTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn, l1Gas);
     }

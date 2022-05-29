@@ -108,6 +108,7 @@ describe("Optimism Spoke Pool", function () {
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
   });
+
   it("Bridge tokens to hub pool correctly calls an alternative L2 Gateway router", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Dai,
@@ -123,6 +124,7 @@ describe("Optimism Spoke Pool", function () {
     expect(altL2Bridge.withdrawTo).to.have.been.calledOnce;
     expect(altL2Bridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
   });
+
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Weth.address,
@@ -140,5 +142,22 @@ describe("Optimism Spoke Pool", function () {
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Eth, hubPool.address, amountToReturn, 5000000, "0x");
+  });
+
+  it.only("Bridge tokens to hub pool should not leave residual token approval", async function () {
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2Dai,
+      await optimismSpokePool.callStatic.chainId()
+    );
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    const altL2Bridge = await createFake("L2StandardBridge");
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+
+    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
+    expect(dai.approve).to.have.been.calledWith(altL2Bridge, amountToReturn);
+    expect(altL2Bridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
+    expect(dai.approve).to.have.been.calledWith(altL2Bridge, 0);
   });
 });
