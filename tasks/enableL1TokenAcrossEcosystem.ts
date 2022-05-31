@@ -11,6 +11,10 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addOptionalParam("chain137token", "Address of the token on chainID 137. Used to override the auto detect")
   .addOptionalParam("chain288token", "Address of the token on chainID 288. Used to override the auto detect")
   .addOptionalParam("chain42161token", "Address of the token on chainID 42161. Used to override the auto detect")
+  .addOptionalParam(
+    "customoptimismbridge",
+    "Custom token bridge to set for optimism, for example used with SNX and DAI"
+  )
   .addOptionalParam("ignorechains", "ChainIds to ignore. Separated by comma.")
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
@@ -55,7 +59,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       }
     }
 
-    chainIds = chainIds.filter((chainId, index) => tokens[index] !== zeroAddress);
+    chainIds = chainIds.filter((_, index) => tokens[index] !== zeroAddress);
     tokens = tokens.filter((token) => token !== zeroAddress);
 
     console.table(
@@ -82,7 +86,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     console.log("\n6. Adding calldata to enable routes between all chains and tokens:");
     let i = 0; // counter for logging.
     chainIds.forEach((fromId, fromIndex) => {
-      chainIds.forEach((toId, toIndex) => {
+      chainIds.forEach((toId, _) => {
         if (fromId === toId) return;
 
         console.log(`\t 6.${++i}\t Adding calldata for token ${tokens[fromIndex]} for route ${fromId} -> ${toId}`);
@@ -99,6 +103,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     if (chainIds.includes(42161)) {
       console.log("\n8. Adding call data to whitelist L1 token on Arbitrum. This is only needed on this chain");
 
+      // Address doesn't matter, we only want the interface.
       const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
       // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
       // Arbitrum spoke pool via the relaySpokeAdminFunction call.
@@ -109,8 +114,26 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       );
     }
 
-    console.log(`\n9. ***DONE.***\nCalldata to enable desired token has been constructed!`);
-    console.log(`CallData contains ${callData.length} transactions, which can be sent in one multicall🚀`);
+    // Add optimism setTokenBridge call
+    if (taskArguments.customoptimismbridge) {
+      console.log("\n9. Adding call data to set custom Optimism bridge.");
+
+      // Address doesn't matter, we only want the interface:
+      const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
+      const optimismToken = tokens[chainIds.indexOf(10)];
+      const setTokenBridgeCallData = spokePool.interface.encodeFunctionData("setTokenBridge", [
+        optimismToken,
+        taskArguments.customoptimismbridge,
+      ]);
+      callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [10, setTokenBridgeCallData]));
+    }
+
+    // TODO: Set a rate model? Allow user to pass in rate model
+
+    console.log(`\n10. ***DONE.***\nCalldata to enable desired token has been constructed!`);
+    console.log(
+      `CallData contains ${callData.length} transactions, which can be sent in one multicall to hub pool @ ${hubPoolDeployment.address}🚀`
+    );
     console.log(JSON.stringify(callData).replace(/"/g, ""));
 
     if (taskArguments.execute && callData.length > 0) {
