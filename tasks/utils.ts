@@ -116,6 +116,16 @@ export const minimalSpokePoolInterface = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { internalType: "address", name: "l2Token", type: "address" },
+      { internalType: "address", name: "tokenBridge", type: "address" },
+    ],
+    name: "setTokenBridge",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ];
 
 export function createConnectedVoidSigner(networkId: number) {
