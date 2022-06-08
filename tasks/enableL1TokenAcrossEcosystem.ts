@@ -115,7 +115,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     }
 
     // Add optimism setTokenBridge call
-    if (taskArguments.customoptimismbridge) {
+    if (chainIds.includes(10) && taskArguments.customoptimismbridge) {
       console.log("\n9. Adding call data to set custom Optimism bridge.");
 
       // Address doesn't matter, we only want the interface:
