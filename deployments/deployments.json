@@ -24,7 +24,6 @@
   },
   "5": {
     "AcrossConfigStore": { "address": "0x3215e3C91f87081757d0c41EF0CB77738123Be83", "blockNumber": 6860550 },
-    "Ethereum_Adapter": { "address": "0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C", "blockNumber": 6860541 },
     "SpokePool": { "address": "0x1Ae1d80e1725A478f5e653bF79f8Ee4aB5B34719", "blockNumber": 6860543 },
     "HubPool": { "address": "0xA44A832B994f796452e4FaF191a041F791AD8A0A", "blockNumber": 6860535 },
     "LpTokenFactory": { "address": "0xe2a742453614Cb3597bc92242487436A54D1B385", "blockNumber": 6860534 },
