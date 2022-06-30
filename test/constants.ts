@@ -77,11 +77,11 @@ export const amountToReturn = toWei("1");
 export const mockTreeRoot = createRandomBytes32();
 
 // Following should match variables set in Arbitrum_Adapter
-export const sampleL2Gas = 2000000;
+export const sampleL2Gas = 150_000;
 
 export const sampleL2MaxSubmissionCost = toWei("0.01");
 
-export const sampleL2GasPrice = 5e9;
+export const sampleL2GasPrice = 20e9;
 
 // Max number of refunds in relayer refund leaf for a { repaymentChainId, L2TokenAddress }.
 export const maxRefundsPerRelayerRefundLeaf = 3;
