@@ -50,11 +50,7 @@ describe("Optimism Chain Adapter", function () {
     expect(await hubPool.relaySpokePoolAdminFunction(optimismChainId, functionCallData))
       .to.emit(optimismAdapter.attach(hubPool.address), "MessageRelayed")
       .withArgs(mockSpoke.address, functionCallData);
-    expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(
-      mockSpoke.address,
-      functionCallData,
-      sampleL2Gas
-    );
+    expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(mockSpoke.address, functionCallData, 2_000_000);
   });
   it("Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls", async function () {
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
@@ -67,12 +63,12 @@ describe("Optimism Chain Adapter", function () {
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositERC20To).to.have.been.calledOnce; // One token transfer over the bridge.
     expect(l1StandardBridge.depositETHTo).to.have.callCount(0); // No ETH transfers over the bridge.
-    const expectedErc20L1ToL2BridgeParams = [dai.address, l2Dai, mockSpoke.address, tokensSendToL2, sampleL2Gas, "0x"];
+    const expectedErc20L1ToL2BridgeParams = [dai.address, l2Dai, mockSpoke.address, tokensSendToL2, 2_000_000, "0x"];
     expect(l1StandardBridge.depositERC20To).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
     const expectedL2ToL1FunctionCallParams = [
       mockSpoke.address,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockTreeRoot]),
-      sampleL2Gas,
+      2_000_000,
     ];
     expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
   });
@@ -86,11 +82,11 @@ describe("Optimism Chain Adapter", function () {
     // The correct functions should have been called on the optimism contracts.
     expect(l1StandardBridge.depositETHTo).to.have.been.calledOnce; // One eth transfer over the bridge.
     expect(l1StandardBridge.depositERC20To).to.have.callCount(0); // No Token transfers over the bridge.
-    expect(l1StandardBridge.depositETHTo).to.have.been.calledWith(mockSpoke.address, sampleL2Gas, "0x");
+    expect(l1StandardBridge.depositETHTo).to.have.been.calledWith(mockSpoke.address, 2_000_000, "0x");
     const expectedL2ToL1FunctionCallParams = [
       mockSpoke.address,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [mockTreeRoot, mockTreeRoot]),
-      sampleL2Gas,
+      2_000_000,
     ];
     expect(l1CrossDomainMessenger.sendMessage).to.have.been.calledWith(...expectedL2ToL1FunctionCallParams);
   });
