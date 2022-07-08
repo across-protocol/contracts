@@ -26,6 +26,12 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         ?.split(",")
         ?.map((chainId: string) => Number(chainId)) || [];
     if (ignoredChainIds.includes(1)) throw new Error("Cannot ignore chainId 1");
+
+    const hasSetConfigStore = await askYesNoQuestion(
+      `\nHave you setup the ConfigStore for this token? If not then this script will exit because a rate model must be set before the first deposit is sent otherwise the bots will error out`
+    );
+    if (!hasSetConfigStore) process.exit(0);
+
     console.log(`\n0. Running task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1Token}`);
     const { deployments, ethers } = hre;
     const signer = (await hre.ethers.getSigners())[0];
@@ -127,8 +133,6 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       ]);
       callData.push(hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [10, setTokenBridgeCallData]));
     }
-
-    // TODO: Set a rate model? Allow user to pass in rate model
 
     console.log(`\n10. ***DONE.***\nCalldata to enable desired token has been constructed!`);
     console.log(
