@@ -84,20 +84,24 @@ contract Arbitrum_RescueAdapter is AdapterInterface {
      * @param message Data to send to aliased hub pool.
      */
     function relayMessage(address, bytes memory message) external payable override {
+        uint256 valueToReturn = abi.decode(message, (uint256));
+
         uint256 requiredL1CallValue = _contractHasSufficientEthBalance();
 
+        // In the rescue ETH setup, we send the transaction to the refund address, we provide a call value equal to the
+        // amount we want to rescue, and we specify an empty calldata, since it's a simple ETH transfer.
         l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
-            aliasedL2HubPoolAddress, // destAddr destination L2 contract address
-            0, // l2CallValue call value for retryable L2 message
+            l2RefundL2Address, // destAddr destination L2 contract address
+            valueToReturn, // l2CallValue call value for retryable L2 message
             l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
             l2RefundL2Address, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
             l2RefundL2Address, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
             l2GasLimit, // maxGas Max gas deducted from user's L2 balance to cover L2 execution
             l2GasPrice, // gasPriceBid price bid for L2 execution
-            message // data ABI encoded data of L2 message
+            "" // data ABI encoded data of L2 message
         );
 
-        emit MessageRelayed(aliasedL2HubPoolAddress, message);
+        emit MessageRelayed(aliasedL2HubPoolAddress, "");
     }
 
     /**
