@@ -8,6 +8,10 @@ destination for token transfers, and they are all governed by the `HubPool` on E
 This contract set is the second iteration of the [Across smart contracts](https://github.com/across-protocol/across-smart-contracts)
 which facilitate token transfers from any L2 to L1.
 
+These contracts were [audited by OpenZeppelin](https://blog.openzeppelin.com/uma-across-v2-audit/) which is a great resource for understanding the contracts.
+
+[This video](https://www.youtube.com/watch?v=iuxf6Crv8MI) is also useful for understanding the technical architecture.
+
 ## Build
 
 ```shell
