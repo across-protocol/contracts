@@ -31,10 +31,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   5: {
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // dummy: Optimism's testnet is kovan
-    weth: "0x60D4dB9b534EF9260a88b0BED6c486fe13E604Fc",
+    weth: "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
     optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", // dummy: Optimism's testnet is kovan
-    l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
-    l1ERC20GatewayRouter: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380", // dummy: Arbitrum's testnet is rinkeby
+    l1ArbitrumInbox: "0x6BEbC4925716945D46F0Ec336D5C2564F419682C",
+    l1ERC20GatewayRouter: "0x4c7708168395aEa569453Fc36862D2ffcDaC588c",
     finder: "0xDC6b80D38004F495861E081e249213836a2F3217",
     polygonRootChainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
     polygonFxRoot: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA",
@@ -65,6 +65,10 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   421611: {
     l2GatewayRouter: "0x9413AD42910c1eA60c737dB5f58d1C504498a3cD",
     l2Weth: "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681",
+  },
+  421613: {
+    l2GatewayRouter: "0xE5B9d8d42d656d1DcB8065A6c012FE3780246041",
+    l2Weth: "0xe39Ab88f8A4777030A534146A9Ca3B52bd5D43A3",
   },
   42161: {
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",

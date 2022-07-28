@@ -74,6 +74,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "rinkeby" },
     },
+    "arbitrum-goerli": {
+      chainId: 421613,
+      url: "https://goerli-rollup.arbitrum.io/rpc",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
+    },
     rinkeby: {
       chainId: 4,
       url: getNodeUrl("rinkeby", true, 4),
