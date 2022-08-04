@@ -2,35 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
+import "./Arbitrum_Adapter.sol"; // Used to import `ArbitrumL1ERC20GatewayLike` and `ArbitrumL1InboxLike`
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-interface ArbitrumL1InboxLike {
-    function createRetryableTicket(
-        address destAddr,
-        uint256 arbTxCallValue,
-        uint256 maxSubmissionCost,
-        address submissionRefundAddress,
-        address valueRefundAddress,
-        uint256 maxGas,
-        uint256 gasPriceBid,
-        bytes calldata data
-    ) external payable returns (uint256);
-}
-
-interface ArbitrumL1ERC20GatewayLike {
-    function outboundTransfer(
-        address _token,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-
-    function getGateway(address _token) external view returns (address);
-}
 
 /**
  * @notice Meant to copy the Arbitrum_Adapter exactly in how it sends L1 --> L2 messages but is designed only to be
