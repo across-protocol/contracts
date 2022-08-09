@@ -82,6 +82,11 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     wMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
   },
+  280: {
+    zkErc20Bridge: "0x92131f10c54f9b251a5deaf3c05815f7659bbe02",
+    zkEthBridge: "0x2c5d8a991f399089f728f1ae40bd0b11acd0fb62",
+    l2Weth: "0xD3765838f9600Ccff3d01EFA83496599E0984BD2",
+  },
 };
 
 export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
