@@ -29,6 +29,16 @@ interface ArbitrumL1ERC20GatewayLike {
         bytes calldata _data
     ) external payable returns (bytes memory);
 
+    function outboundTransferCustomRefund(
+        address _token,
+        address _refundTo,
+        address _to,
+        uint256 _amount,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
+
     function getGateway(address _token) external view returns (address);
 }
 
@@ -59,7 +69,7 @@ contract Arbitrum_Adapter is AdapterInterface {
     uint32 public immutable l2GasLimit = 2_000_000;
 
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
-    address public immutable l2RefundL2Address = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
+    address public immutable l2RefundL2Address;
 
     ArbitrumL1InboxLike public immutable l1Inbox;
 
@@ -73,6 +83,8 @@ contract Arbitrum_Adapter is AdapterInterface {
     constructor(ArbitrumL1InboxLike _l1ArbitrumInbox, ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
+
+        l2RefundL2Address = msg.sender;
     }
 
     /**
@@ -132,7 +144,7 @@ contract Arbitrum_Adapter is AdapterInterface {
         // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
         // outboundTransfer(). Legacy routers are used for:
         // - DAI
-        if (l1Token == 0x6b175474e89094c44da98b954eedeac495271d0f) {
+        if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
             l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
                 l1Token,
                 to,
