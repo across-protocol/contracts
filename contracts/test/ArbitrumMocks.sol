@@ -14,6 +14,17 @@ contract ArbitrumMockErc20GatewayRouter {
         return _data;
     }
 
+    function outboundTransfer(
+        address,
+        address,
+        uint256,
+        uint256,
+        uint256,
+        bytes calldata _data
+    ) external payable returns (bytes memory) {
+        return _data;
+    }
+
     function getGateway(address) external view returns (address) {
         return address(this);
     }

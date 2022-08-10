@@ -137,14 +137,13 @@ contract Arbitrum_Adapter is AdapterInterface {
         // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
         bytes memory data = abi.encode(l2MaxSubmissionCost, "");
 
-        // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
-        // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
-        // contract address on L2 and lost.
-
         // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
         // outboundTransfer(). Legacy routers are used for:
         // - DAI
         if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
+            // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
+            // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
+            // contract address on L2 and lost.
             l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
                 l1Token,
                 to,
