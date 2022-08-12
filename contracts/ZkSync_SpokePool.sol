@@ -55,6 +55,15 @@ contract ZkSync_SpokePool is SpokePool {
         _;
     }
 
+    /**
+     * @notice Returns chain ID for this network.
+     * @dev ZKSync doesn't yet support the CHAIN_ID opcode so we override this, but it will be supported by mainnet
+     * launch supposedly: https://v2-docs.zksync.io/dev/zksync-v2/temp-limits.html#temporarily-simulated-by-constant-values
+     */
+    function chainId() public pure override returns (uint256) {
+        return 280;
+    }
+
     /********************************************************
      *      ZKSYNC-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
      ********************************************************/
