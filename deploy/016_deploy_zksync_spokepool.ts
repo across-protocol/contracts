@@ -24,15 +24,17 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
   const chainId = parseInt(await getChainId());
 
   const artifact = await deployer.loadArtifact("ZkSync_SpokePool");
-  const contract = await deployer.deploy(artifact, [
+  const args = [
     L2_ADDRESS_MAP[chainId].zkErc20Bridge,
     L2_ADDRESS_MAP[chainId].zkEthBridge,
     hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the ZkSync_Adapter logic.
     hubPool.address,
     L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth
     "0x0000000000000000000000000000000000000000", // timer
-  ]);
+  ];
+  const contract = await deployer.deploy(artifact, args);
   console.log(`${artifact.contractName} was deployed to ${contract.address}`);
+  console.log("args" + contract.interface.encodeDeploy(args));
 };
 module.exports = func;
 func.tags = ["ZkSyncSpokePool", "zksync"];
