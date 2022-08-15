@@ -138,12 +138,13 @@ contract Arbitrum_Adapter is AdapterInterface {
         bytes memory data = abi.encode(l2MaxSubmissionCost, "");
 
         // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
-        // outboundTransfer(). Legacy routers are used for:
+        // outboundTransfer(). Legacy routers are used for the following tokens that are currently enabled:
         // - DAI
         if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
             // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
             // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
-            // contract address on L2 and lost.
+            // contract address on L2, which we'd have to retrieve via a custom adapter
+            // (i.e. the Arbitrum_RescueAdapter).
             l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
                 l1Token,
                 to,
