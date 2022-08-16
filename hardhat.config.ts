@@ -6,7 +6,6 @@ import { getNodeUrl, getMnemonic } from "@uma/common";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
-import "@matterlabs/hardhat-zksync-deploy";
 import "@matterlabs/hardhat-zksync-solc";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
@@ -52,10 +51,6 @@ const config: HardhatUserConfig = {
         tag: "v1.1.0",
       },
     },
-  },
-  zkSyncDeploy: {
-    zkSyncNetwork: "https://zksync2-testnet.zksync.dev",
-    ethNetwork: "goerli", // Can also be the RPC URL of the network (e.g. `https://goerli.infura.io/v3/<API_KEY>`)
   },
   networks: {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },

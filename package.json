@@ -39,7 +39,6 @@
     "arb-bridge-peripherals": "^1.0.5"
   },
   "devDependencies": {
-    "@matterlabs/hardhat-zksync-deploy": "^0.3.6",
     "@matterlabs/hardhat-zksync-solc": "^0.3.6",
     "@matterlabs/zksync-contracts": "^0.2.4",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
@@ -65,7 +64,7 @@
     "ethereumjs-util": "^7.1.4",
     "ethers": "^5.5.4",
     "hardhat": "^2.9.1",
-    "hardhat-deploy": "^0.10.5",
+    "hardhat-deploy": "^0.11.12",
     "hardhat-gas-reporter": "^1.0.8",
     "husky": "^4.2.3",
     "prettier": "^2.3.2",

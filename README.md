@@ -43,14 +43,10 @@ ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license 
 
 ## ZK Sync Adapter
 
-`zksync` does not plug cleanly into `hardhat-deploy` so there are special instructions for compiling and deploying contracts on `zksync`. The compile command will create `artifacts-zk` and `cache-zk` directories.
+These are special instructions for compiling and deploying contracts on `zksync`. The compile command will create `artifacts-zk` and `cache-zk` directories.
 
 ### Compile
 
 This step requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) to be running, as the `solc` docker image is fetched as a prerequisite.
 
 `yarn compile-zksync`
-
-### Deploy
-
-`yarn hardhat deploy-zksync --script 016_deploy_zksync_spokepool.ts --network zksync-goerli`
