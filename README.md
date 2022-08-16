@@ -47,7 +47,7 @@ ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license 
 
 ### Compile
 
-This step requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) to be running, as the `solc` docked image is fetched as a prerequisite.
+This step requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) to be running, as the `solc` docker image is fetched as a prerequisite.
 
 `yarn compile-zksync`
 
