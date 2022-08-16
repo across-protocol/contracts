@@ -29,6 +29,16 @@ interface ArbitrumL1ERC20GatewayLike {
         bytes calldata _data
     ) external payable returns (bytes memory);
 
+    function outboundTransferCustomRefund(
+        address _token,
+        address _refundTo,
+        address _to,
+        uint256 _amount,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
+
     function getGateway(address _token) external view returns (address);
 }
 
@@ -127,17 +137,33 @@ contract Arbitrum_Adapter is AdapterInterface {
         // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
         bytes memory data = abi.encode(l2MaxSubmissionCost, "");
 
-        // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
-        // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
-        // contract address on L2 and lost.
-        l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
-            l1Token,
-            to,
-            amount,
-            l2GasLimit,
-            l2GasPrice,
-            data
-        );
+        // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
+        // outboundTransfer(). Legacy routers are used for the following tokens that are currently enabled:
+        // - DAI
+        if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
+            // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
+            // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
+            // contract address on L2, which we'd have to retrieve via a custom adapter
+            // (i.e. the Arbitrum_RescueAdapter).
+            l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
+                l1Token,
+                to,
+                amount,
+                l2GasLimit,
+                l2GasPrice,
+                data
+            );
+        } else {
+            l1ERC20GatewayRouter.outboundTransferCustomRefund{ value: requiredL1CallValue }(
+                l1Token,
+                l2RefundL2Address,
+                to,
+                amount,
+                l2GasLimit,
+                l2GasPrice,
+                data
+            );
+        }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }

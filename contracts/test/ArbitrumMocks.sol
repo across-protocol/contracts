@@ -2,6 +2,18 @@
 pragma solidity ^0.8.0;
 
 contract ArbitrumMockErc20GatewayRouter {
+    function outboundTransferCustomRefund(
+        address,
+        address,
+        address,
+        uint256,
+        uint256,
+        uint256,
+        bytes calldata _data
+    ) external payable returns (bytes memory) {
+        return _data;
+    }
+
     function outboundTransfer(
         address,
         address,
