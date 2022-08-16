@@ -20,11 +20,15 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
+    // However, this contract is expected to be deployed only once to ZkSync. Therefore, we should consider the cost
+    // of reading mutable vs immutable storage. On Ethereum, mutable storage is more expensive than immutable bytecode.
+    // But, we also want to be able to upgrade certain state variables.
+
     // Bridge used to withdraw ERC20's to L1: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ERC20Bridge.sol
-    address public zkErc20Bridge;
+    ZkBridgeLike public zkErc20Bridge;
 
     // Bridge used to send ETH to L1: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ETHBridge.sol
-    address public zkEthBridge;
+    ZkBridgeLike public zkEthBridge;
 
     event SetZkBridges(address indexed erc20Bridge, address indexed ethBridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
@@ -39,8 +43,8 @@ contract ZkSync_SpokePool is SpokePool {
      * @param timerAddress Timer address to set.
      */
     constructor(
-        address _zkErc20Bridge,
-        address _zkEthBridge,
+        ZkBridgeLike _zkErc20Bridge,
+        ZkBridgeLike _zkEthBridge,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
@@ -73,7 +77,7 @@ contract ZkSync_SpokePool is SpokePool {
      * @param _zkErc20Bridge New address of L2 ERC20 gateway.
      * @param _zkEthBridge New address of L2 ETH gateway.
      */
-    function setZkBridges(address _zkErc20Bridge, address _zkEthBridge) public onlyAdmin nonReentrant {
+    function setZkBridges(ZkBridgeLike _zkErc20Bridge, ZkBridgeLike _zkEthBridge) public onlyAdmin nonReentrant {
         _setZkBridges(_zkErc20Bridge, _zkEthBridge);
     }
 
@@ -82,25 +86,22 @@ contract ZkSync_SpokePool is SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        ZkBridgeLike(relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken) ? zkEthBridge : zkErc20Bridge)
-            .withdraw(
-                hubPool,
-                // Note: If ETH, must use 0x0: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ETHBridge.sol#L57
-                (
-                    relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)
-                        ? address(0)
-                        : relayerRefundLeaf.l2TokenAddress
-                ),
-                relayerRefundLeaf.amountToReturn
-            );
+        (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken) ? zkEthBridge : zkErc20Bridge).withdraw(
+            hubPool,
+            // Note: If ETH, must use 0x0: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ETHBridge.sol#L57
+            relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)
+                ? address(0)
+                : relayerRefundLeaf.l2TokenAddress,
+            relayerRefundLeaf.amountToReturn
+        );
 
         emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
     }
 
-    function _setZkBridges(address _zkErc20Bridge, address _zkEthBridge) internal {
+    function _setZkBridges(ZkBridgeLike _zkErc20Bridge, ZkBridgeLike _zkEthBridge) internal {
         zkErc20Bridge = _zkErc20Bridge;
         zkEthBridge = _zkEthBridge;
-        emit SetZkBridges(_zkErc20Bridge, _zkEthBridge);
+        emit SetZkBridges(address(_zkErc20Bridge), address(_zkEthBridge));
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}

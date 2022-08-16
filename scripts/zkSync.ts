@@ -1,3 +1,7 @@
+// zksync block explorer does not have contract verification yet so calling contracts via GUI is impossible. This file
+// contains useful scripts to interact with zksync goerli contracts. To run, run:
+// yarn hardhat run ./scripts/zksync.ts --network zksync-goerli
+
 import { getContractFactory, ethers, toBN, findArtifactFromPath } from "../test/utils";
 import { Contract, ContractFactory } from "ethers";
 import { assert } from "console";
@@ -32,9 +36,6 @@ export const weth9Abi = [
   },
 ];
 
-// zksync block explorer does not have contract verification yet so calling contracts via GUI is impossible. This file
-// contains useful scripts to interact with zksync goerli contracts. To run, run:
-// yarn hardhat run ./scripts/zksync.ts --network zksync-goerli
 async function main() {
   const [signer] = await ethers.getSigners();
 
@@ -131,21 +132,21 @@ async function main() {
   //   const depositReceipt = await deposit.wait()
   //   console.log(`Deposited ${erc20.address} into SpokePool:`, depositReceipt)
 
-  const execute = await spokePool.executeRelayerRefundLeaf(
-    config.rootBundleIdToExecute,
-    {
-      // Recreating leaf constructed in  './buildSampleTree.ts'
-      amountToReturn: toBN("100000000000000000"), // 0.1
-      chainId: originChainId,
-      refundAmounts: [toBN("100000000000000000")], // -0.1
-      leafId: 0,
-      l2TokenAddress: erc20.address,
-      refundAddresses: ["0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d"],
-    },
-    []
-  );
-  const executeReceipt = await execute.wait();
-  console.log(`Executed RelayerRefundLeaf: `, executeReceipt);
+  // const execute = await spokePool.executeRelayerRefundLeaf(
+  //   config.rootBundleIdToExecute,
+  //   {
+  //     // Recreating leaf constructed in  './buildSampleTree.ts'
+  //     amountToReturn: toBN("100000000000000000"), // 0.1
+  //     chainId: originChainId,
+  //     refundAmounts: [toBN("100000000000000000")], // -0.1
+  //     leafId: 0,
+  //     l2TokenAddress: erc20.address,
+  //     refundAddresses: ["0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d"],
+  //   },
+  //   []
+  // );
+  // const executeReceipt = await execute.wait();
+  // console.log(`Executed RelayerRefundLeaf: `, executeReceipt);
 }
 
 main().then(
