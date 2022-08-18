@@ -6,6 +6,7 @@ import { getNodeUrl, getMnemonic } from "@uma/common";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
+import "@matterlabs/hardhat-zksync-solc";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
@@ -14,6 +15,12 @@ import "hardhat-deploy";
 require("./tasks/enableL1TokenAcrossEcosystem");
 
 dotenv.config();
+
+// To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
+// So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
+// TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
+// the following config is true.
+const compileZk = process.env.COMPILE_ZK === "true";
 
 const solcVersion = "0.8.13";
 const mnemonic = getMnemonic();
@@ -32,13 +39,34 @@ const config: HardhatUserConfig = {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
+  zksolc: {
+    version: "1.1.0",
+    compilerSource: "docker",
+    settings: {
+      optimizer: {
+        enabled: true,
+      },
+      experimental: {
+        dockerImage: "matterlabs/zksolc",
+        tag: "v1.1.0",
+      },
+    },
+  },
   networks: {
-    hardhat: { accounts: { accountsBalance: "1000000000000000000000000" } },
+    hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },
     mainnet: {
       url: getNodeUrl("mainnet", true, 1),
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: 1,
+    },
+    "zksync-goerli": {
+      chainId: 280,
+      url: "https://zksync2-testnet.zksync.dev",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
+      zksync: true,
     },
     kovan: {
       url: getNodeUrl("kovan", true, 42),
