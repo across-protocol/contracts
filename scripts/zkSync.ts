@@ -73,10 +73,9 @@ async function main() {
   const currentTime = await spokePool.getCurrentTime();
   console.log(`SpokePool getCurrentTime(): ${currentTime.toString()}`);
   const wethAddress = await spokePool.wrappedNativeToken();
-  console.log(wethAddress, weth.address);
   assert(wethAddress === weth.address, "SpokePool.wrappedNativeToken !== wethAddress");
   const hubPool = await spokePool.hubPool();
-  console.log(`SpokePool hubPool(): ${hubPool.address}`);
+  console.log(`SpokePool hubPool(): ${hubPool}`);
   const enabled = await spokePool.enabledDepositRoutes(erc20.address, config.depositDestinationChainId);
   console.log(`Deposit route to ${config.depositDestinationChainId} enabled? ${enabled}`);
   const rootBundles = await spokePool.rootBundles(config.rootBundleIdToExecute);
