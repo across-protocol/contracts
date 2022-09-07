@@ -1,4 +1,5 @@
-import { assert } from "chai";
+/* eslint-disable no-unused-expressions */
+
 import SamplePayouts from "./SamplePayout.json";
 import {
   ethers,
@@ -60,14 +61,14 @@ const createRewardRecipientsFromSampleData = (jsonPayouts: any): Recipient[] => 
 
 const assertApproximate = (expectedVal: number, testVal: number, errorPercent = 0.01) => {
   // Asserts `testVal` is within some error bounds of `expectedVal`
-  expect(testVal <= expectedVal * (1 + errorPercent) && testVal >= expectedVal * (1 - errorPercent)).to.be.true;
+  expect(
+    testVal <= expectedVal * (1 + errorPercent) && testVal >= expectedVal * (1 - errorPercent),
+    "recipient does not contain required keys"
+  ).to.be.true;
 };
 
 const createLeaf = (recipient: Recipient) => {
-  assert.isTrue(
-    Object.keys(recipient).every((val) => ["account", "amount", "accountIndex"].includes(val)),
-    "recipient does not contain required keys"
-  );
+  expect(Object.keys(recipient).every((val) => ["account", "amount", "accountIndex"].includes(val))).to.be.true;
 
   return Buffer.from(
     ethers.utils
@@ -254,8 +255,7 @@ describe("MerkleDistributor", () => {
           amount: leaf.amount,
           merkleProof: claimerProof,
         });
-        assert.equal(
-          (await rewardToken.connect(contractCreator).balanceOf(leaf.account)).toString(),
+        expect((await rewardToken.connect(contractCreator).balanceOf(leaf.account)).toString()).to.equal(
           claimerBalanceBefore.add(toBN(leaf.amount)).toString()
         );
         await expect(claimTx)
@@ -323,8 +323,7 @@ describe("MerkleDistributor", () => {
         });
 
         // Balance should have increased by both claimed amounts:
-        assert.equal(
-          (await rewardToken.connect(contractCreator).balanceOf(otherLeaf.account)).toString(),
+        expect((await rewardToken.connect(contractCreator).balanceOf(otherLeaf.account)).toString()).to.equal(
           startingBalance.add(toBN(leaf.amount).add(toBN(otherLeaf.amount))).toString()
         );
       });
@@ -398,7 +397,7 @@ describe("MerkleDistributor", () => {
             merkleProof: claimerProof,
           };
           // Verify that the claim from underfunded window is valid.
-          assert.isTrue(await merkleDistributor.connect(contractCreator).verifyClaim(claim));
+          expect(await merkleDistributor.connect(contractCreator).verifyClaim(claim)).to.be.true;
           const remainingAmount = insufficientTotalRewards.sub(claimedUnderfundedRewards);
           if (remainingAmount.gte(toBN(leaf.amount))) {
             // Claim on underfunded rewards window should succeed as individual claim amount does not
@@ -411,12 +410,11 @@ describe("MerkleDistributor", () => {
           }
         }
         // Verify that tracked successful claimed rewards matches total decrease in contract balance.
-        assert.equal(
-          (await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)).toString(),
+        expect((await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)).toString()).to.equal(
           contractBalanceBefore.sub(claimedUnderfundedRewards).toString()
         );
         // Verify that total claimed amount does not exceed total rewards for the underfunded reward window.
-        assert.isTrue(claimedUnderfundedRewards.lte(insufficientTotalRewards));
+        expect(claimedUnderfundedRewards.lte(insufficientTotalRewards)).to.be.true;
 
         // It should be possible to claim all rewards from the original rewards window.
         for (let i = 0; i < rewardLeafs.length; i++) {
@@ -540,12 +538,10 @@ describe("MerkleDistributor", () => {
           const expectedPayoutAltRewardToken = toBN(rewardLeafs[2][i].amount);
 
           const account = allRecipients[i].account;
-          assert.equal(
-            balancesRewardToken[i].add(expectedPayoutRewardToken).toString(),
+          expect(balancesRewardToken[i].add(expectedPayoutRewardToken).toString()).equal(
             (await rewardToken.connect(contractCreator).balanceOf(account)).toString()
           );
-          assert.equal(
-            balancesAltRewardToken[i].add(expectedPayoutAltRewardToken).toString(),
+          expect(balancesAltRewardToken[i].add(expectedPayoutAltRewardToken).toString()).equal(
             (await alternateRewardToken.connect(contractCreator).balanceOf(account)).toString()
           );
         }
@@ -553,7 +549,7 @@ describe("MerkleDistributor", () => {
         // One Claimed event should have been emitted for each batched claim.
         const eventFilter = merkleDistributor.filters.Claimed;
         const events = await merkleDistributor.queryFilter(eventFilter());
-        assert.equal(events.length, allRecipients.length * 3);
+        expect(events.length).to.equal(allRecipients.length * 3);
       });
       it("gas", async function () {
         const txn = await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
@@ -636,8 +632,7 @@ describe("MerkleDistributor", () => {
 
         // Claiming underfunded rewards should revert and contract balance should remain the same.
         await expect(merkleDistributor.connect(contractCreator).claimMulti(underfundedBatchedClaims)).to.be.reverted;
-        assert.equal(
-          contractBalanceBefore.toString(),
+        expect(contractBalanceBefore.toString()).to.equal(
           await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)
         );
       });
