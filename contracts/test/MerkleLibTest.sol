@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../MerkleLib.sol";
 import "../HubPoolInterface.sol";
-import "../SpokePoolInterface.sol";
+import "../spoke-pools/SpokePoolInterface.sol";
 
 /**
  * @notice Contract to test the MerkleLib.

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./MerkleLib.sol";
-import "./interfaces/WETH9.sol";
-import "./Lockable.sol";
+import "../MerkleLib.sol";
+import "../interfaces/WETH9.sol";
+import "../Lockable.sol";
 import "./SpokePoolInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

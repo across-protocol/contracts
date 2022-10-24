@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "../SpokePool.sol";
-import "../SpokePoolInterface.sol";
+import "../spoke-pools/SpokePool.sol";
+import "../spoke-pools/SpokePoolInterface.sol";
 
 /**
  * @title MockSpokePool

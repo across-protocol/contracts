@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./SpokePoolInterface.sol";
+import "./spoke-pools/SpokePoolInterface.sol";
 import "./HubPoolInterface.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
