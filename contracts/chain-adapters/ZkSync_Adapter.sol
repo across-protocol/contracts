@@ -7,25 +7,30 @@ import "../interfaces/WETH9.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// Importing `Operations` contract which has the `QueueType` type
-import "@matterlabs/zksync-contracts/l1/contracts/zksync/Operations.sol";
-
 interface ZkSyncLike {
+    // Src: https://github.com/matter-labs/v2-testnet-contracts/blob/9fee76e59045df8306576eb09f70ad70b62d0920/l1/contracts/zksync/facets/Mailbox.sol#L95
+    /// @notice Request execution of L2 transaction from L1.
+    /// @param _contractL2 The L2 receiver address
+    /// @param _l2Value `msg.value` of L2 transaction. Please note, this ether is not transferred with requesting priority op,
+    /// but will be taken from the balance in L2 during the execution
+    /// @param _calldata The input of the L2 transaction
+    /// @param _ergsLimit Maximum amount of ergs that transaction can consume during execution on L2
+    /// @param _factoryDeps An array of L2 bytecodes that will be marked as known on L2
+    /// @return canonicalTxHash The hash of the requested L2 transaction. This hash can be used to follow the transaction status
     function requestL2Transaction(
-        address _contractAddressL2,
+        address _contractL2,
+        uint256 _l2Value,
         bytes calldata _calldata,
         uint256 _ergsLimit,
-        bytes[] calldata _factoryDeps,
-        QueueType _queueType
-    ) external payable returns (bytes32 txHash);
+        bytes[] calldata _factoryDeps
+    ) external payable returns (bytes32 canonicalTxHash);
 }
 
 interface ZkBridgeLike {
     function deposit(
         address _to,
         address _l1Token,
-        uint256 _amount,
-        QueueType _queueType
+        uint256 _amount
     ) external payable returns (bytes32 txHash);
 }
 
@@ -61,10 +66,10 @@ contract ZkSync_Adapter is AdapterInterface {
     // redeployed in the event that the following addresses change.
 
     // Main contract used to send L1 --> L2 messages. Fetchable via `zks_getMainContract` method on JSON RPC.
-    ZkSyncLike public immutable zkSync = ZkSyncLike(0xa0F968EbA6Bbd08F28Dc061C7856C15725983395);
+    ZkSyncLike public immutable zkSync = ZkSyncLike(0xcB3D5008e03Bf569dcdf17259Fa30726ED646931);
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
-    ZkBridgeLike public immutable zkErc20Bridge = ZkBridgeLike(0x7786255495348c08F82C09C82352019fAdE3BF29);
-    ZkBridgeLike public immutable zkEthBridge = ZkBridgeLike(0xcbebcD41CeaBBC85Da9bb67527F58d69aD4DfFf5);
+    ZkBridgeLike public immutable zkErc20Bridge = ZkBridgeLike(0xc0543dab6aC5D3e3fF2E5A5E39e15186d0306808);
+    ZkBridgeLike public immutable zkEthBridge = ZkBridgeLike(0xc24215226336d22238a20A72f8E489c005B44C4A);
 
     event ZkSyncMessageRelayed(bytes32 txHash);
 
@@ -80,20 +85,20 @@ contract ZkSync_Adapter is AdapterInterface {
 
         // Parameters passed to requestL2Transaction:
         // _contractAddressL2 is a parameter that defines the address of the contract to be called.
+        // _l2Value is a parameter that defines the amount of ETH you want to pass with the call to L2.
+        //  This number will be used as msg.value for the transaction.
         // _calldata is a parameter that contains the calldata of the transaction call. It can be encoded the
         //  same way as on Ethereum.
         // _ergsLimit is a parameter that contains the ergs limit of the transaction call. You can learn more about
-        //  ergs and the zkSync fee system here: https://v2-docs.zksync.io/dev/zksync-v2/fee-model.html
+        //  ergs and the zkSync fee system here: https://v2-docs.zksync.io/dev/developer-guides/transactions/fee-model.html
         // _factoryDeps is a list of bytecodes. It should contain the bytecode of the contract being deployed.
         //  If the contract being deployed is a factory contract, i.e. it can deploy other contracts, the array should also contain the bytecodes of the contracts that can be deployed by it.
-        // _queueType is a parameter required for the priority mode functionality. For the testnet,
-        //  QueueType.Deque should always be supplied.
         bytes32 txHash = zkSync.requestL2Transaction{ value: txBaseCost }(
             target,
+            txBaseCost,
             message,
             ergsLimit,
-            new bytes[](0),
-            QueueType.Deque
+            new bytes[](0)
         );
 
         emit MessageRelayed(target, message);
@@ -122,11 +127,11 @@ contract ZkSync_Adapter is AdapterInterface {
         bytes32 txHash;
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
-            // Must set L1Token address to 0x0: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l1/contracts/bridge/L1EthBridge.sol#L78
-            txHash = zkEthBridge.deposit{ value: txBaseCost + amount }(to, address(0), amount, QueueType.Deque);
+            // Must set L1Token address to 0x0: https://github.com/matter-labs/v2-testnet-contracts/blob/9fee76e59045df8306576eb09f70ad70b62d0920/l1/contracts/bridge/L1EthBridge.sol#L80
+            txHash = zkEthBridge.deposit{ value: txBaseCost + amount }(to, address(0), amount);
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
-            txHash = zkErc20Bridge.deposit{ value: txBaseCost }(to, l1Token, amount, QueueType.Deque);
+            txHash = zkErc20Bridge.deposit{ value: txBaseCost }(to, l1Token, amount);
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
@@ -135,6 +140,9 @@ contract ZkSync_Adapter is AdapterInterface {
 
     /**
      * @notice Returns required amount of ETH to send a message.
+     * @dev Apparently you can estimate the L2TransactionBaseCost here: https://v2-docs.zksync.io/dev/developer-guides/bridging/l1-l2.html#using-contract-interface-in-your-project
+     *      However, this seems not worth it since the calldata length is fixed
+     * *    and we don't need to be too precise.
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue() public pure returns (uint256) {

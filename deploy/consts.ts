@@ -83,9 +83,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
   },
   280: {
-    zkErc20Bridge: "0x92131f10c54f9b251a5deaf3c05815f7659bbe02",
-    zkEthBridge: "0x2c5d8a991f399089f728f1ae40bd0b11acd0fb62",
-    l2Weth: "0xD3765838f9600Ccff3d01EFA83496599E0984BD2",
+    zkErc20Bridge: "0xc7e0220d02d549c4846a6ec31d89c3b670ebe35c",
+    zkEthBridge: "0x2594cfce1da3652a9948bdd2343cb83375800a29",
+    l2Weth: "0x5c2d4B1C8AB6764CD67c0a9c0f92Ea40aB7a673C",
   },
 };
 
