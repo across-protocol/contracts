@@ -142,6 +142,7 @@ contract MerkleDistributor is Ownable {
         for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
             _verifyAndMarkClaimed(_claim);
+            merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
             batchedAmount += _claim.amount;
 
             // If the next claim is NOT the same account or the same token (or this claim is the last one),
@@ -156,7 +157,6 @@ contract MerkleDistributor is Ownable {
                 merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                merkleWindows[_claim.windowIndex].remainingAmount -= batchedAmount;
                 currentRewardToken.safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
