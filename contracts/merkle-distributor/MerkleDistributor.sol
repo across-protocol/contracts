@@ -194,6 +194,15 @@ contract MerkleDistributor is Ownable {
     }
 
     /**
+     * @notice Returns rewardToken set by admin for windowIndex.
+     * @param windowIndex merkle root to check.
+     * @return address Reward token address
+     */
+    function getRewardTokenForWindow(uint256 windowIndex) public view returns (address) {
+        return address(merkleWindows[windowIndex].rewardToken);
+    }
+
+    /**
      * @notice Returns True if leaf described by {account, amount, accountIndex} is stored in Merkle root at given
      *         window index.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
