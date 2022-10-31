@@ -59,14 +59,6 @@ const createRewardRecipientsFromSampleData = (jsonPayouts: any): Recipient[] => 
   });
 };
 
-const assertApproximate = (expectedVal: number, testVal: number, errorPercent = 0.01) => {
-  // Asserts `testVal` is within some error bounds of `expectedVal`
-  expect(
-    testVal <= expectedVal * (1 + errorPercent) && testVal >= expectedVal * (1 - errorPercent),
-    "recipient does not contain required keys"
-  ).to.be.true;
-};
-
 const createLeaf = (recipient: Recipient) => {
   expect(Object.keys(recipient).every((val) => ["account", "amount", "accountIndex"].includes(val))).to.be.true;
 
