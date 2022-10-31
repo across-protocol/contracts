@@ -173,6 +173,8 @@ contract MerkleDistributor is Ownable {
             if (
                 nextI == claimCount ||
                 // This claim is last claim.
+                claims[nextI].account != _claim.account ||
+                // Next claim account is different than current one.
                 merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
