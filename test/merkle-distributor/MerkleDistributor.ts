@@ -262,6 +262,32 @@ describe("MerkleDistributor", () => {
           })
         ).to.be.reverted;
       });
+      it("Whitelisted claimer can use claimFor to claim on another account's behalf", async function () {
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, true);
+
+        const claimerBalanceBefore = toBN(await rewardToken.balanceOf(leaf.account));
+        const claimTx = await merkleDistributor.connect(otherAddress).claimFor({
+          // Note: use claimFor
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: claimerProof,
+        });
+        expect((await rewardToken.balanceOf(leaf.account)).toString()).to.equal(
+          claimerBalanceBefore.add(toBN(leaf.amount)).toString()
+        );
+        await expect(claimTx)
+          .to.emit(merkleDistributor, "Claimed")
+          .withArgs(
+            otherAddress.address,
+            windowIndex.toString(),
+            ethers.utils.getAddress(leaf.account),
+            leaf.accountIndex.toString(),
+            leaf.amount.toString(),
+            rewardToken.address
+          );
+      });
       it("Cannot double claim rewards", async function () {
         await merkleDistributor.connect(claimer).claim({
           windowIndex: windowIndex,

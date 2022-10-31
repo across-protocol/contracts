@@ -51,9 +51,18 @@ contract MerkleDistributor is Ownable {
     // Index of next created Merkle root.
     uint256 public nextCreatedIndex;
 
+    // Addresses that can claim on user's behalf. Useful to get around the requirement that claim receipient
+    // must also be claimer.
+    mapping(address => bool) public whitelistedClaimers;
+
     // Track which accounts have claimed for each window index.
     // Note: uses a packed array of bools for gas optimization on tracking certain claims. Copied from Uniswap's contract.
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
+
+    modifier onlyWhitelistedClaimer() {
+        require(whitelistedClaimers[msg.sender], "invalid claimer");
+        _;
+    }
 
     /****************************************
      *                EVENTS
@@ -74,6 +83,7 @@ contract MerkleDistributor is Ownable {
     );
     event WithdrawRewards(address indexed owner, uint256 amount, address indexed currency);
     event DeleteWindow(uint256 indexed windowIndex, address owner);
+    event WhitelistedClaimer(address indexed claimer, bool indexed whitelist);
 
     /****************************
      *      ADMIN FUNCTIONS
@@ -123,6 +133,17 @@ contract MerkleDistributor is Ownable {
         emit WithdrawRewards(msg.sender, amount, address(rewardCurrency));
     }
 
+    /**
+     * @notice Updates whitelisted claimer status.
+     * @dev Callable only by owner.
+     * @param newContract Reset claimer contract to this address.
+     * @param whitelist True to whitelist claimer, False otherwise.
+     */
+    function whitelistClaimer(address newContract, bool whitelist) external onlyOwner {
+        whitelistedClaimers[newContract] = whitelist;
+        emit WhitelistedClaimer(newContract, whitelist);
+    }
+
     /****************************
      *    NON-ADMIN FUNCTIONS
      ****************************/
@@ -170,8 +191,16 @@ contract MerkleDistributor is Ownable {
      */
     function claim(Claim memory _claim) external {
         require(_claim.account == msg.sender, "claim account not caller");
-        _verifyAndMarkClaimed(_claim);
-        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
+        _executeClaim(_claim);
+    }
+
+    /**
+     * @notice Claim on behalf of user.
+     * @dev    Designed to be called from trusted contract that can claim on user's behalf.
+     * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
+     */
+    function claimFor(Claim memory _claim) external onlyWhitelistedClaimer {
+        _executeClaim(_claim);
     }
 
     /**
@@ -214,6 +243,11 @@ contract MerkleDistributor is Ownable {
     /****************************
      *     PRIVATE FUNCTIONS
      ****************************/
+
+    function _executeClaim(Claim memory _claim) private {
+        _verifyAndMarkClaimed(_claim);
+        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
+    }
 
     // Mark claim as completed for `accountIndex` for Merkle root at `windowIndex`.
     function _setClaimed(uint256 windowIndex, uint256 accountIndex) private {
