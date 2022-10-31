@@ -1,5 +1,5 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
+import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei, Signer } from "../utils";
 import { getContractFactory, seedContract, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
@@ -37,60 +37,69 @@ describe("Optimism Spoke Pool", function () {
   it("Only cross domain owner can set l1GasLimit", async function () {
     await expect(optimismSpokePool.setL1GasLimit(1337)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet as unknown as Signer).setL1GasLimit(1337);
     expect(await optimismSpokePool.l1Gas()).to.equal(1337);
   });
 
   it("Only cross domain owner can set token bridge address for L2 token", async function () {
     await expect(optimismSpokePool.setTokenBridge(l2Dai, rando.address)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, rando.address);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .setTokenBridge(l2Dai, rando.address);
     expect(await optimismSpokePool.tokenBridges(l2Dai)).to.equal(rando.address);
   });
 
   it("Only cross domain owner can enable a route", async function () {
     await expect(optimismSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setEnableRoute(l2Dai, 1, true);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet as unknown as Signer).setEnableRoute(l2Dai, 1, true);
     expect(await optimismSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only cross domain owner can set the cross domain admin", async function () {
     await expect(optimismSpokePool.setCrossDomainAdmin(rando.address)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setCrossDomainAdmin(rando.address);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .setCrossDomainAdmin(rando.address);
     expect(await optimismSpokePool.crossDomainAdmin()).to.equal(rando.address);
   });
 
   it("Only cross domain owner can set the hub pool address", async function () {
     await expect(optimismSpokePool.setHubPool(rando.address)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setHubPool(rando.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet as unknown as Signer).setHubPool(rando.address);
     expect(await optimismSpokePool.hubPool()).to.equal(rando.address);
   });
 
   it("Only cross domain owner can set the quote time buffer", async function () {
     await expect(optimismSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setDepositQuoteTimeBuffer(12345);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet as unknown as Signer).setDepositQuoteTimeBuffer(12345);
     expect(await optimismSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {
     await expect(optimismSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(mockTreeRoot, mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .relayRootBundle(mockTreeRoot, mockTreeRoot);
     expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(mockTreeRoot);
     expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(mockTreeRoot);
   });
 
   it("Only owner can delete a relayer refund", async function () {
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(mockTreeRoot, mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .relayRootBundle(mockTreeRoot, mockTreeRoot);
     await expect(optimismSpokePool.emergencyDeleteRootBundle(0)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).emergencyDeleteRootBundle(0)).to.not.be
-      .reverted;
+    await expect(
+      optimismSpokePool.connect(crossDomainMessenger.wallet as unknown as Signer).emergencyDeleteRootBundle(0)
+    ).to.not.be.reverted;
     expect((await optimismSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
     expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
   });
@@ -101,7 +110,9 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
@@ -114,9 +125,13 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     const altL2Bridge = await createFake("L2StandardBridge");
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .setTokenBridge(l2Dai, altL2Bridge.address);
     await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
@@ -129,7 +144,9 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await optimismSpokePool
+      .connect(crossDomainMessenger.wallet as unknown as Signer)
+      .relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // When sending l2Weth we should see two differences from the previous test: 1) there should be a call to l2WETH to
