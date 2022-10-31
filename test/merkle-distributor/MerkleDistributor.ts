@@ -237,17 +237,6 @@ describe("MerkleDistributor", () => {
           })
         ).to.be.reverted;
       });
-      it("gas", async function () {
-        const claimTx = await merkleDistributor.connect(otherAddress).claim({
-          windowIndex: windowIndex,
-          account: leaf.account,
-          accountIndex: leaf.accountIndex,
-          amount: leaf.amount,
-          merkleProof: claimerProof,
-        });
-        const receipt = await claimTx.wait();
-        assertApproximate(97002, receipt.gasUsed);
-      });
       it("Can claim on another account's behalf if claimer is whitelisted", async function () {
         const claimerBalanceBefore = toBN(await rewardToken.connect(contractCreator).balanceOf(leaf.account));
 
@@ -624,27 +613,6 @@ describe("MerkleDistributor", () => {
         // const eventFilter = merkleDistributor.filters.Claimed;
         // const events = await merkleDistributor.queryFilter(eventFilter());
         // expect(events.length).to.equal(batchedClaims.length);
-      });
-      it("gas", async function () {
-        const txn = await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
-        const receipt = await txn.wait();
-        assertApproximate(
-          32185,
-          Math.floor(receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.recipients).length)),
-          0.02
-        );
-      });
-      it("gas for making each claim individually", async function () {
-        let totalGas = toBN(0);
-        for (const claim of batchedClaims) {
-          const txn = await merkleDistributor.connect(contractCreator).claim(claim);
-          const receipt = await txn.wait();
-          totalGas = totalGas.add(receipt.gasUsed);
-        }
-        assertApproximate(
-          72760,
-          Math.floor(totalGas.div(rewardLeafs.length * Object.keys(SamplePayouts.recipients).length).toNumber())
-        );
       });
       it("Fails if any individual claim fails", async function () {
         // Push an invalid claim with an incorrect window index.
