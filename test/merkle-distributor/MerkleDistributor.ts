@@ -248,8 +248,22 @@ describe("MerkleDistributor", () => {
         const receipt = await claimTx.wait();
         assertApproximate(97002, receipt.gasUsed);
       });
-      it("Can claim on another account's behalf", async function () {
+      it("Can claim on another account's behalf if claimer is whitelisted", async function () {
         const claimerBalanceBefore = toBN(await rewardToken.connect(contractCreator).balanceOf(leaf.account));
+
+        // Temporarily take off whitelist
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, false);
+        await expect(
+          merkleDistributor.connect(otherAddress).claim({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          })
+        ).to.be.reverted;
+
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, true);
         const claimTx = await merkleDistributor.connect(otherAddress).claim({
           windowIndex: windowIndex,
           account: leaf.account,
@@ -530,6 +544,12 @@ describe("MerkleDistributor", () => {
           balancesRewardToken.push(toBN(await rewardToken.connect(contractCreator).balanceOf(account)));
           balancesAltRewardToken.push(toBN(await alternateRewardToken.connect(contractCreator).balanceOf(account)));
         }
+
+        // Temporarily take off whitelist and show that claimer can't claimMulti a batch including
+        // other recipients, unless they are whitelisted
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(contractCreator.address, false);
+        await expect(merkleDistributor.connect(contractCreator).claimMulti(batchedClaims)).to.be.reverted;
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(contractCreator.address, true);
 
         // Batch claim and check balances.
         await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
