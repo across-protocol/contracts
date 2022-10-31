@@ -162,7 +162,7 @@ contract MerkleDistributor is Ownable {
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
-            require(_claim.account == msg.sender, "claim account not caller");
+            require(whitelistedClaimers[msg.sender] || _claim.account == msg.sender, "invalid claimer");
             _verifyAndMarkClaimed(_claim);
             batchedAmount += _claim.amount;
 
@@ -190,16 +190,7 @@ contract MerkleDistributor is Ownable {
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
     function claim(Claim memory _claim) external {
-        require(_claim.account == msg.sender, "claim account not caller");
-        _executeClaim(_claim);
-    }
-
-    /**
-     * @notice Claim on behalf of user.
-     * @dev    Designed to be called from trusted contract that can claim on user's behalf.
-     * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
-     */
-    function claimFor(Claim memory _claim) external onlyWhitelistedClaimer {
+        require(whitelistedClaimers[msg.sender] || _claim.account == msg.sender, "invalid claimer");
         _executeClaim(_claim);
     }
 
