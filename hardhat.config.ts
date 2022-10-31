@@ -158,6 +158,10 @@ const config: HardhatUserConfig = {
     },
   },
   namedAccounts: { deployer: 0 },
+  typechain: {
+    outDir: "typechain",
+    target: "ethers-v5",
+  },
 };
 
 export default config;

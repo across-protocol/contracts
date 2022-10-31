@@ -28,7 +28,7 @@
     "test:report-gas": "REPORT_GAS=true hardhat test",
     "test:gas-analytics": "GAS_TEST_ENABLED=true hardhat test ./test/gas-analytics/*",
     "test:all": "GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test",
-    "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
+    "generate-contract-types": "rm -rf typechain && yarn hardhat typechain",
     "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
   },
   "dependencies": {
@@ -48,7 +48,7 @@
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
-    "@typechain/ethers-v5": "^10.0.0",
+    "@typechain/ethers-v5": "^10.1.0",
     "@typechain/hardhat": "^6.1.3",
     "@types/chai": "^4.2.21",
     "@types/mocha": "^9.0.0",
