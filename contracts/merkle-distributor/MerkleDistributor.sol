@@ -141,6 +141,7 @@ contract MerkleDistributor is Ownable {
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
+            require(_claim.account == msg.sender, "claim account not caller");
             _verifyAndMarkClaimed(_claim);
             batchedAmount += _claim.amount;
 
@@ -151,8 +152,6 @@ contract MerkleDistributor is Ownable {
             if (
                 nextI == claimCount ||
                 // This claim is last claim.
-                claims[nextI].account != _claim.account ||
-                // Next claim account is different than current one.
                 merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
@@ -170,6 +169,7 @@ contract MerkleDistributor is Ownable {
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
     function claim(Claim memory _claim) external {
+        require(_claim.account == msg.sender, "claim account not caller");
         _verifyAndMarkClaimed(_claim);
         merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }

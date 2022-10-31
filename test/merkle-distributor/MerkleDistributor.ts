@@ -38,6 +38,7 @@ let rewardToken: Contract;
 let accounts: SignerWithAddress[];
 let contractCreator: SignerWithAddress;
 let otherAddress: SignerWithAddress;
+let claimer: SignerWithAddress;
 
 // Test variables
 let rewardRecipients: Recipient[];
@@ -84,7 +85,7 @@ const createLeaf = (recipient: Recipient) => {
 describe("MerkleDistributor", () => {
   beforeEach(async () => {
     accounts = await ethers.getSigners();
-    [contractCreator, otherAddress] = accounts;
+    [contractCreator, otherAddress, claimer] = accounts;
     merkleDistributor = await (await getContractFactory("MerkleDistributor", contractCreator)).deploy();
     rewardToken = await deployErc20(contractCreator, `Test Token #1`, `T1`);
     await rewardToken.connect(contractCreator).mint(contractCreator.address, MAX_UINT_VAL);
@@ -101,9 +102,9 @@ describe("MerkleDistributor", () => {
   describe("Basic lifecycle", () => {
     it("should create a single, simple tree, seed the distributor and claim rewards", async () => {
       const _rewardRecipients: [SignerWithAddress, BigNumber, number][] = [
-        [accounts[3], toBN(toWei("100")), 3],
-        [accounts[4], toBN(toWei("200")), 4],
-        [accounts[5], toBN(toWei("300")), 5],
+        [claimer, toBN(toWei("100")), 3],
+        [claimer, toBN(toWei("200")), 4],
+        [claimer, toBN(toWei("300")), 5],
       ];
       let totalRewardAmount = toBN(0);
       rewardRecipients = _rewardRecipients.map((_rewardObj) => {
@@ -144,7 +145,7 @@ describe("MerkleDistributor", () => {
         const remainingAmountBefore = toBN((await merkleDistributor.merkleWindows(windowIndex)).remainingAmount);
         // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
         // Note: Anyone can claim on behalf of anyone else.
-        let claimTx = merkleDistributor.connect(contractCreator).claim({
+        let claimTx = merkleDistributor.connect(claimer).claim({
           windowIndex,
           account: recipient.account,
           accountIndex: recipient.accountIndex,
@@ -154,7 +155,7 @@ describe("MerkleDistributor", () => {
         await expect(claimTx)
           .to.emit(merkleDistributor, "Claimed")
           .withArgs(
-            contractCreator.address,
+            claimer.address,
             windowIndex.toString(),
             recipient.account,
             recipient.accountIndex.toString(),
@@ -196,7 +197,11 @@ describe("MerkleDistributor", () => {
         rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
 
         // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
-        rewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
+        rewardLeafs = rewardRecipients.map((item) => {
+          // Make every recipient same as claimer
+          item.account = claimer.address;
+          return { ...item, leaf: createLeaf(item) };
+        });
         merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
 
         // Seed the merkleDistributor with the root of the tree and additional information.
@@ -215,7 +220,7 @@ describe("MerkleDistributor", () => {
 
         // Claim should fail:
         await expect(
-          merkleDistributor.connect(contractCreator).withdrawRewards({
+          merkleDistributor.connect(claimer).claim({
             windowIndex,
             account: leaf.account,
             accountIndex: leaf.accountIndex,
@@ -226,7 +231,7 @@ describe("MerkleDistributor", () => {
       });
       it("Cannot claim for invalid window index", async function () {
         await expect(
-          merkleDistributor.connect(contractCreator).claim({
+          merkleDistributor.connect(claimer).claim({
             windowIndex: windowIndex + 1,
             account: leaf.account,
             accountIndex: leaf.accountIndex,
@@ -236,7 +241,7 @@ describe("MerkleDistributor", () => {
         ).to.be.reverted;
       });
       it("gas", async function () {
-        const claimTx = await merkleDistributor.connect(otherAddress).claim({
+        const claimTx = await merkleDistributor.connect(claimer).claim({
           windowIndex: windowIndex,
           account: leaf.account,
           accountIndex: leaf.accountIndex,
@@ -244,33 +249,21 @@ describe("MerkleDistributor", () => {
           merkleProof: claimerProof,
         });
         const receipt = await claimTx.wait();
-        assertApproximate(97002, receipt.gasUsed);
+        assertApproximate(96834, receipt.gasUsed);
       });
-      it("Can claim on another account's behalf", async function () {
-        const claimerBalanceBefore = toBN(await rewardToken.connect(contractCreator).balanceOf(leaf.account));
-        const claimTx = await merkleDistributor.connect(otherAddress).claim({
-          windowIndex: windowIndex,
-          account: leaf.account,
-          accountIndex: leaf.accountIndex,
-          amount: leaf.amount,
-          merkleProof: claimerProof,
-        });
-        expect((await rewardToken.connect(contractCreator).balanceOf(leaf.account)).toString()).to.equal(
-          claimerBalanceBefore.add(toBN(leaf.amount)).toString()
-        );
-        await expect(claimTx)
-          .to.emit(merkleDistributor, "Claimed")
-          .withArgs(
-            otherAddress.address,
-            windowIndex.toString(),
-            ethers.utils.getAddress(leaf.account),
-            leaf.accountIndex.toString(),
-            leaf.amount.toString(),
-            rewardToken.address
-          );
+      it("Cannot claim on another account's behalf", async function () {
+        await expect(
+          merkleDistributor.connect(otherAddress).withdrawRewards({
+            windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          })
+        ).to.be.reverted;
       });
       it("Cannot double claim rewards", async function () {
-        await merkleDistributor.connect(contractCreator).claim({
+        await merkleDistributor.connect(claimer).claim({
           windowIndex: windowIndex,
           account: leaf.account,
           accountIndex: leaf.accountIndex,
@@ -278,7 +271,7 @@ describe("MerkleDistributor", () => {
           merkleProof: claimerProof,
         });
         await expect(
-          merkleDistributor.connect(contractCreator).claim({
+          merkleDistributor.connect(claimer).claim({
             windowIndex: windowIndex,
             account: leaf.account,
             accountIndex: leaf.accountIndex,
@@ -291,7 +284,10 @@ describe("MerkleDistributor", () => {
         // Create another duplicate Merkle root. `setWindowMerkleRoot` will dynamically
         // increment the index for this new root.
         rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
-        const otherRewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
+        const otherRewardLeafs = rewardRecipients.map((item) => {
+          item.account = claimer.address;
+          return { ...item, leaf: createLeaf(item) };
+        });
         const otherMerkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
         await merkleDistributor
           .connect(contractCreator)
@@ -300,12 +296,12 @@ describe("MerkleDistributor", () => {
         // Assumption: otherLeaf and leaf are claims for the same account.
         const otherLeaf = otherRewardLeafs[0];
         const otherClaimerProof = otherMerkleTree.getProof(leaf.leaf);
-        const startingBalance = toBN(await rewardToken.connect(contractCreator).balanceOf(otherLeaf.account));
+        const startingBalance = toBN(await rewardToken.connect(claimer).balanceOf(otherLeaf.account));
 
         // Create a claim for original tree and show that it does not affect the claim for the same
         // proof for this tree. This effectively tests that the `claimed` mapping correctly
         // tracks claims across window indices.
-        await merkleDistributor.connect(contractCreator).claim({
+        await merkleDistributor.connect(claimer).claim({
           windowIndex: windowIndex,
           account: leaf.account,
           accountIndex: leaf.accountIndex,
@@ -314,7 +310,7 @@ describe("MerkleDistributor", () => {
         });
 
         // Can claim for other window index.
-        await merkleDistributor.connect(contractCreator).claim({
+        await merkleDistributor.connect(claimer).claim({
           windowIndex: windowIndex + 1,
           account: otherLeaf.account,
           accountIndex: otherLeaf.accountIndex,
@@ -323,7 +319,7 @@ describe("MerkleDistributor", () => {
         });
 
         // Balance should have increased by both claimed amounts:
-        expect((await rewardToken.connect(contractCreator).balanceOf(otherLeaf.account)).toString()).to.equal(
+        expect((await rewardToken.connect(claimer).balanceOf(otherLeaf.account)).toString()).to.equal(
           startingBalance.add(toBN(leaf.amount).add(toBN(otherLeaf.amount))).toString()
         );
       });
@@ -332,8 +328,8 @@ describe("MerkleDistributor", () => {
         const isInvalidProof = async (claim: any) => {
           // 1) Claim should revert
           // 2) verifyClaim should return false
-          await expect(merkleDistributor.connect(contractCreator).claim(claim)).to.be.reverted;
-          expect((await merkleDistributor.connect(contractCreator).verifyClaim(claim)) === false).to.eq(true);
+          await expect(merkleDistributor.connect(claimer).claim(claim)).to.be.reverted;
+          expect((await merkleDistributor.verifyClaim(claim)) === false).to.eq(true);
         };
         // Incorrect account:
         await isInvalidProof({
@@ -382,9 +378,7 @@ describe("MerkleDistributor", () => {
 
         // Track claimed rewards and change in contract balance for the underfunded rewards window.
         let claimedUnderfundedRewards = toBN("0");
-        const contractBalanceBefore = toBN(
-          await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)
-        );
+        const contractBalanceBefore = toBN(await rewardToken.balanceOf(merkleDistributor.address));
         // Process all claims for the underfunded rewards window.
         for (let i = 0; i < rewardLeafs.length; i++) {
           leaf = rewardLeafs[i];
@@ -397,20 +391,20 @@ describe("MerkleDistributor", () => {
             merkleProof: claimerProof,
           };
           // Verify that the claim from underfunded window is valid.
-          expect(await merkleDistributor.connect(contractCreator).verifyClaim(claim)).to.be.true;
+          expect(await merkleDistributor.verifyClaim(claim)).to.be.true;
           const remainingAmount = insufficientTotalRewards.sub(claimedUnderfundedRewards);
           if (remainingAmount.gte(toBN(leaf.amount))) {
             // Claim on underfunded rewards window should succeed as individual claim amount does not
             // yet exceed the `remainingAmount`.
-            await merkleDistributor.connect(contractCreator).claim(claim);
+            await merkleDistributor.connect(claimer).claim(claim);
             claimedUnderfundedRewards = claimedUnderfundedRewards.add(toBN(leaf.amount));
           } else {
             // `remainingAmount` is less than claim amount thus the claim should fail.
-            await expect(merkleDistributor.connect(contractCreator).claim(claim)).to.be.reverted;
+            await expect(merkleDistributor.connect(claimer).claim(claim)).to.be.reverted;
           }
         }
         // Verify that tracked successful claimed rewards matches total decrease in contract balance.
-        expect((await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)).toString()).to.equal(
+        expect((await rewardToken.balanceOf(merkleDistributor.address)).toString()).to.equal(
           contractBalanceBefore.sub(claimedUnderfundedRewards).toString()
         );
         // Verify that total claimed amount does not exceed total rewards for the underfunded reward window.
@@ -427,7 +421,7 @@ describe("MerkleDistributor", () => {
             amount: leaf.amount,
             merkleProof: claimerProof,
           };
-          await merkleDistributor.connect(contractCreator).claim(claim);
+          await merkleDistributor.connect(claimer).claim(claim);
         }
       });
     });
@@ -469,8 +463,14 @@ describe("MerkleDistributor", () => {
         );
         // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
         rewardRecipients.forEach((_rewardRecipients) => {
-          rewardLeafs.push(_rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) })));
+          rewardLeafs.push(
+            _rewardRecipients.map((item) => {
+              item.account = claimer.address;
+              return { ...item, leaf: createLeaf(item) };
+            })
+          );
         });
+
         rewardLeafs.forEach((_rewardLeafs) => {
           merkleTrees.push(new MerkleTree(_rewardLeafs.map((item) => item.leaf)));
         });
@@ -518,38 +518,19 @@ describe("MerkleDistributor", () => {
         }
       });
       it("Can make multiple claims in one transaction", async function () {
-        // The same accounts make claims on all three trees, we will track their balances. This allows
-        // us to query the recipients from the first window (index 0) to track all of the recipients.
-        const allRecipients = rewardRecipients[0];
-        const balancesRewardToken = [];
-        const balancesAltRewardToken = [];
-        for (const recipient of allRecipients) {
-          const account = recipient.account;
-          balancesRewardToken.push(toBN(await rewardToken.connect(contractCreator).balanceOf(account)));
-          balancesAltRewardToken.push(toBN(await alternateRewardToken.connect(contractCreator).balanceOf(account)));
-        }
-
         // Batch claim and check balances.
-        await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
-        for (let i = 0; i < allRecipients.length; i++) {
-          // Trees 0 and 1 payout in rewardToken.
-          const expectedPayoutRewardToken = toBN(rewardLeafs[0][i].amount).add(toBN(rewardLeafs[1][i].amount));
-          // Trees 2 payout in altRewardToken
-          const expectedPayoutAltRewardToken = toBN(rewardLeafs[2][i].amount);
+        await merkleDistributor.connect(claimer).claimMulti(batchedClaims);
 
-          const account = allRecipients[i].account;
-          expect(balancesRewardToken[i].add(expectedPayoutRewardToken).toString()).equal(
-            (await rewardToken.connect(contractCreator).balanceOf(account)).toString()
-          );
-          expect(balancesAltRewardToken[i].add(expectedPayoutAltRewardToken).toString()).equal(
-            (await alternateRewardToken.connect(contractCreator).balanceOf(account)).toString()
-          );
-        }
+        // Window 1 + 2 pays out in reward tokens. Window 2 is 2x window 1's rewards.
+        const totalRewards = Number(SamplePayouts.totalRewardsDistributed) * 3;
+        expect(totalRewards.toString()).equal((await rewardToken.balanceOf(claimer.address)).toString());
+        const totalAltRewards = Number(SamplePayouts.totalRewardsDistributed) * 4;
+        expect(totalAltRewards.toString()).equal((await alternateRewardToken.balanceOf(claimer.address)).toString());
 
         // One Claimed event should have been emitted for each batched claim.
         const eventFilter = merkleDistributor.filters.Claimed;
         const events = await merkleDistributor.queryFilter(eventFilter());
-        expect(events.length).to.equal(allRecipients.length * 3);
+        expect(events.length).to.equal(batchedClaims.length);
       });
       it("Can make multiple claims for one token across multiple windows with single leaf trees", async function () {
         // This tests that claimMulti correctly decrements `remainingAmount` for each merkle window.
@@ -559,14 +540,14 @@ describe("MerkleDistributor", () => {
         // Set two windows with trivial one leaf trees.
         const reward1Recipients = [
           {
-            account: accounts[3].address,
+            account: contractCreator.address,
             amount: window1RewardAmount.toString(),
             accountIndex: 1,
           },
         ];
         const reward2Recipients = [
           {
-            account: accounts[3].address,
+            account: contractCreator.address,
             amount: window2RewardAmount.toString(),
             accountIndex: 1,
           },
@@ -604,10 +585,10 @@ describe("MerkleDistributor", () => {
         // expect(events.length).to.equal(batchedClaims.length);
       });
       it("gas", async function () {
-        const txn = await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
+        const txn = await merkleDistributor.connect(claimer).claimMulti(batchedClaims);
         const receipt = await txn.wait();
         assertApproximate(
-          32185,
+          16562,
           Math.floor(receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.recipients).length)),
           0.02
         );
@@ -615,12 +596,12 @@ describe("MerkleDistributor", () => {
       it("gas for making each claim individually", async function () {
         let totalGas = toBN(0);
         for (const claim of batchedClaims) {
-          const txn = await merkleDistributor.connect(contractCreator).claim(claim);
+          const txn = await merkleDistributor.connect(claimer).claim(claim);
           const receipt = await txn.wait();
           totalGas = totalGas.add(receipt.gasUsed);
         }
         assertApproximate(
-          72760,
+          63477,
           Math.floor(totalGas.div(rewardLeafs.length * Object.keys(SamplePayouts.recipients).length).toNumber())
         );
       });
@@ -633,7 +614,7 @@ describe("MerkleDistributor", () => {
           amount: rewardLeafs[0][0].amount,
           merkleProof: merkleTrees[0].getProof(rewardLeafs[0][0].leaf),
         });
-        await expect(merkleDistributor.connect(contractCreator).claimMulti(batchedClaims)).to.be.reverted;
+        await expect(merkleDistributor.connect(claimer).claimMulti(batchedClaims)).to.be.reverted;
       });
       it("Underfunded window fails", async function () {
         // Claims will be batched separately for the underfunded reward window.
@@ -678,15 +659,11 @@ describe("MerkleDistributor", () => {
         });
 
         // Track contract balance for primary reward token.
-        const contractBalanceBefore = toBN(
-          await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)
-        );
+        const contractBalanceBefore = toBN(await rewardToken.balanceOf(merkleDistributor.address));
 
         // Claiming underfunded rewards should revert and contract balance should remain the same.
-        await expect(merkleDistributor.connect(contractCreator).claimMulti(underfundedBatchedClaims)).to.be.reverted;
-        expect(contractBalanceBefore.toString()).to.equal(
-          await rewardToken.connect(contractCreator).balanceOf(merkleDistributor.address)
-        );
+        await expect(merkleDistributor.connect(claimer).claimMulti(underfundedBatchedClaims)).to.be.reverted;
+        expect(contractBalanceBefore.toString()).to.equal(await rewardToken.balanceOf(merkleDistributor.address));
       });
     });
   });
