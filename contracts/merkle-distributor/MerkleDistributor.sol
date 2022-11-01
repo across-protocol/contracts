@@ -59,11 +59,6 @@ contract MerkleDistributor is Ownable {
     // Note: uses a packed array of bools for gas optimization on tracking certain claims. Copied from Uniswap's contract.
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
 
-    modifier onlyWhitelistedClaimer() {
-        require(whitelistedClaimers[msg.sender], "invalid claimer");
-        _;
-    }
-
     /****************************************
      *                EVENTS
      ****************************************/
