@@ -59,14 +59,6 @@ const createRewardRecipientsFromSampleData = (jsonPayouts: any): Recipient[] => 
   });
 };
 
-const assertApproximate = (expectedVal: number, testVal: number, errorPercent = 0.01) => {
-  // Asserts `testVal` is within some error bounds of `expectedVal`
-  expect(
-    testVal <= expectedVal * (1 + errorPercent) && testVal >= expectedVal * (1 - errorPercent),
-    "recipient does not contain required keys"
-  ).to.be.true;
-};
-
 const createLeaf = (recipient: Recipient) => {
   expect(Object.keys(recipient).every((val) => ["account", "amount", "accountIndex"].includes(val))).to.be.true;
 
@@ -85,10 +77,12 @@ describe("MerkleDistributor", () => {
   beforeEach(async () => {
     accounts = await ethers.getSigners();
     [contractCreator, otherAddress] = accounts;
-    merkleDistributor = await (await getContractFactory("MerkleDistributor", contractCreator)).deploy();
+    merkleDistributor = await (await getContractFactory("AcrossMerkleDistributor", contractCreator)).deploy();
     rewardToken = await deployErc20(contractCreator, `Test Token #1`, `T1`);
     await rewardToken.connect(contractCreator).mint(contractCreator.address, MAX_UINT_VAL);
     await rewardToken.connect(contractCreator).approve(merkleDistributor.address, MAX_UINT_VAL);
+    await merkleDistributor.connect(contractCreator).whitelistClaimer(contractCreator.address, true);
+    await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, true);
   });
 
   describe("Deployment", () => {
@@ -99,6 +93,9 @@ describe("MerkleDistributor", () => {
   });
 
   describe("Basic lifecycle", () => {
+    it("Only admin can whitelist claimers", async function () {
+      await expect(merkleDistributor.connect(otherAddress).whitelistClaimer(otherAddress.address, true)).to.be.reverted;
+    });
     it("should create a single, simple tree, seed the distributor and claim rewards", async () => {
       const _rewardRecipients: [SignerWithAddress, BigNumber, number][] = [
         [accounts[3], toBN(toWei("100")), 3],
@@ -235,19 +232,22 @@ describe("MerkleDistributor", () => {
           })
         ).to.be.reverted;
       });
-      it("gas", async function () {
-        const claimTx = await merkleDistributor.connect(otherAddress).claim({
-          windowIndex: windowIndex,
-          account: leaf.account,
-          accountIndex: leaf.accountIndex,
-          amount: leaf.amount,
-          merkleProof: claimerProof,
-        });
-        const receipt = await claimTx.wait();
-        assertApproximate(97002, receipt.gasUsed);
-      });
-      it("Can claim on another account's behalf", async function () {
+      it("Can claim on another account's behalf if claimer is whitelisted", async function () {
         const claimerBalanceBefore = toBN(await rewardToken.connect(contractCreator).balanceOf(leaf.account));
+
+        // Temporarily take off whitelist
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, false);
+        await expect(
+          merkleDistributor.connect(otherAddress).claim({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          })
+        ).to.be.reverted;
+
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, true);
         const claimTx = await merkleDistributor.connect(otherAddress).claim({
           windowIndex: windowIndex,
           account: leaf.account,
@@ -529,6 +529,12 @@ describe("MerkleDistributor", () => {
           balancesAltRewardToken.push(toBN(await alternateRewardToken.connect(contractCreator).balanceOf(account)));
         }
 
+        // Temporarily take off whitelist and show that claimer can't claimMulti a batch including
+        // other recipients, unless they are whitelisted
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(contractCreator.address, false);
+        await expect(merkleDistributor.connect(contractCreator).claimMulti(batchedClaims)).to.be.reverted;
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(contractCreator.address, true);
+
         // Batch claim and check balances.
         await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
         for (let i = 0; i < allRecipients.length; i++) {
@@ -602,27 +608,6 @@ describe("MerkleDistributor", () => {
         // const eventFilter = merkleDistributor.filters.Claimed;
         // const events = await merkleDistributor.queryFilter(eventFilter());
         // expect(events.length).to.equal(batchedClaims.length);
-      });
-      it("gas", async function () {
-        const txn = await merkleDistributor.connect(contractCreator).claimMulti(batchedClaims);
-        const receipt = await txn.wait();
-        assertApproximate(
-          32185,
-          Math.floor(receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.recipients).length)),
-          0.02
-        );
-      });
-      it("gas for making each claim individually", async function () {
-        let totalGas = toBN(0);
-        for (const claim of batchedClaims) {
-          const txn = await merkleDistributor.connect(contractCreator).claim(claim);
-          const receipt = await txn.wait();
-          totalGas = totalGas.add(receipt.gasUsed);
-        }
-        assertApproximate(
-          72760,
-          Math.floor(totalGas.div(rewardLeafs.length * Object.keys(SamplePayouts.recipients).length).toNumber())
-        );
       });
       it("Fails if any individual claim fails", async function () {
         // Push an invalid claim with an incorrect window index.

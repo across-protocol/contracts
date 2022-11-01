@@ -1,4 +1,6 @@
-import { toWei, utf8ToHex, toBN, createRandomBytes32, ethers, hre } from "./utils";
+import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "./utils";
+
+import { ethers } from "ethers";
 
 export { TokenRolesEnum } from "@uma/common";
 
