@@ -8,7 +8,7 @@ import "@uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.
  * @notice Adds additional constraints governing who can claim leaves from merkle windows.
  */
 contract AcrossMerkleDistributor is MerkleDistributor {
-    // Addresses that can claim on user's behalf. Useful to get around the requirement that claim receipient
+    // Addresses that can claim on user's behalf. Useful to get around the requirement that claim recipient
     // must also be claimer.
     mapping(address => bool) public whitelistedClaimers;
 
