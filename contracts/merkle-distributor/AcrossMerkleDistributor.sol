@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
 
 /**
- *
  * @title  Extended MerkleDistributor contract.
  * @notice Adds additional constraints governing who can claim leaves from merkle windows.
  */
