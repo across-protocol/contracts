@@ -77,7 +77,7 @@ describe("MerkleDistributor", () => {
   beforeEach(async () => {
     accounts = await ethers.getSigners();
     [contractCreator, otherAddress] = accounts;
-    merkleDistributor = await (await getContractFactory("MerkleDistributor", contractCreator)).deploy();
+    merkleDistributor = await (await getContractFactory("AcrossMerkleDistributor", contractCreator)).deploy();
     rewardToken = await deployErc20(contractCreator, `Test Token #1`, `T1`);
     await rewardToken.connect(contractCreator).mint(contractCreator.address, MAX_UINT_VAL);
     await rewardToken.connect(contractCreator).approve(merkleDistributor.address, MAX_UINT_VAL);
@@ -93,6 +93,9 @@ describe("MerkleDistributor", () => {
   });
 
   describe("Basic lifecycle", () => {
+    it("Only admin can whitelist claimers", async function () {
+      await expect(merkleDistributor.connect(otherAddress).whitelistClaimer(otherAddress.address, true)).to.be.reverted;
+    });
     it("should create a single, simple tree, seed the distributor and claim rewards", async () => {
       const _rewardRecipients: [SignerWithAddress, BigNumber, number][] = [
         [accounts[3], toBN(toWei("100")), 3],

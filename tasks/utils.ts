@@ -31,7 +31,7 @@ async function _findL2TokenFromTokenList(l2ChainId: number, l1TokenAddress: stri
   }
   if (l2ChainId === 137) {
     const response = await fetch(
-      "https://raw.githubusercontent.com/maticnetwork/polygon-token-list/master/src/tokens/allTokens.json"
+      "https://raw.githubusercontent.com/maticnetwork/polygon-token-list/master/src/tokens/polygonTokens.json"
     );
     const body = await response.text();
     const tokenList = JSON.parse(body);

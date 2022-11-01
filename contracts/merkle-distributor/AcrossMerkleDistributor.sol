@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@umaprotocol/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
+import "@uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
 
 /**
  *
@@ -43,11 +43,11 @@ contract AcrossMerkleDistributor is MerkleDistributor {
      * @dev    All claim recipients must be equal to msg.sender or claimer must be whitelisted.
      * @param claims array of claims to claim.
      */
-    function claimMulti(Claim[] memory claims) external override {
+    function claimMulti(Claim[] memory claims) public override {
         if (!whitelistedClaimers[msg.sender]) {
             uint256 claimCount = claims.length;
             for (uint256 i = 0; i < claimCount; i++) {
-                require(_claim.account == msg.sender, "invalid claimer");
+                require(claims[i].account == msg.sender, "invalid claimer");
             }
         }
         super.claimMulti(claims);
@@ -58,7 +58,7 @@ contract AcrossMerkleDistributor is MerkleDistributor {
      * @dev    Claim recipient must be equal to msg.sender or caller must be whitelisted.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
-    function claim(Claim memory _claim) external override {
+    function claim(Claim memory _claim) public override {
         require(whitelistedClaimers[msg.sender] || _claim.account == msg.sender, "invalid claimer");
         super.claim(_claim);
     }
