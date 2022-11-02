@@ -2,12 +2,16 @@
 pragma solidity ^0.8.0;
 
 import "@uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title  Extended MerkleDistributor contract.
  * @notice Adds additional constraints governing who can claim leaves from merkle windows.
  */
 contract AcrossMerkleDistributor is MerkleDistributor {
+    using SafeERC20 for IERC20;
+
     // Addresses that can claim on user's behalf. Useful to get around the requirement that claim recipient
     // must also be claimer.
     mapping(address => bool) public whitelistedClaimers;
@@ -16,6 +20,14 @@ contract AcrossMerkleDistributor is MerkleDistributor {
      *                EVENTS
      ****************************************/
     event WhitelistedClaimer(address indexed claimer, bool indexed whitelist);
+    event ClaimFor(
+        address indexed caller,
+        uint256 windowIndex,
+        address indexed account,
+        uint256 accountIndex,
+        uint256 amount,
+        address indexed rewardToken
+    );
 
     /****************************
      *      ADMIN FUNCTIONS
@@ -60,5 +72,28 @@ contract AcrossMerkleDistributor is MerkleDistributor {
     function claim(Claim memory _claim) public override {
         require(whitelistedClaimers[msg.sender] || _claim.account == msg.sender, "invalid claimer");
         super.claim(_claim);
+    }
+
+    /**
+     * @notice Executes merkle leaf claim on behaf of user. This can only be called by a trusted
+     *         claimer address. This function is designed to be called atomically with other transactions
+     *         that ultimately return the claimed amount to the rightful recipient. For example,
+     *         AcceleratingDistributor could call this function and then stake atomically on behalf of the user.
+     * @dev    Caller must be in whitelistedClaimers struct set to "true".
+     * @param _claim leaf to claim.
+     */
+
+    function claimFor(Claim memory _claim) public {
+        require(whitelistedClaimers[msg.sender], "unwhitelisted claimer");
+        _verifyAndMarkClaimed(_claim);
+        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(msg.sender, _claim.amount);
+        emit ClaimFor(
+            msg.sender,
+            _claim.windowIndex,
+            _claim.account,
+            _claim.accountIndex,
+            _claim.amount,
+            address(merkleWindows[_claim.windowIndex].rewardToken)
+        );
     }
 }

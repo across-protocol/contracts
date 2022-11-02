@@ -269,6 +269,63 @@ describe("MerkleDistributor", () => {
             rewardToken.address
           );
       });
+      it("Whitelisted caller can claim on behalf of beneficiary", async function () {
+        const claimerBalanceBefore = toBN(await rewardToken.connect(contractCreator).balanceOf(otherAddress.address));
+        expect(otherAddress.address.toLowerCase() !== leaf.account.toLowerCase()).to.be.true;
+
+        // Temporarily take off whitelist
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, false);
+        await expect(
+          merkleDistributor.connect(otherAddress).claimFor({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          })
+        ).to.be.reverted;
+
+        await merkleDistributor.connect(contractCreator).whitelistClaimer(otherAddress.address, true);
+        const claimTx = await merkleDistributor.connect(otherAddress).claimFor({
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: claimerProof,
+        });
+        expect((await rewardToken.balanceOf(otherAddress.address)).toString()).to.equal(
+          claimerBalanceBefore.add(toBN(leaf.amount)).toString()
+        );
+
+        // Can't claim again.
+        await expect(
+          merkleDistributor.connect(otherAddress).claimFor({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          })
+        ).to.be.reverted;
+
+        expect((await rewardToken.balanceOf(leaf.account)).toString()).to.equal(toBN(0));
+        await expect(claimTx)
+          .to.emit(merkleDistributor, "Claimed")
+          .withArgs(
+            otherAddress.address,
+            windowIndex.toString(),
+            ethers.utils.getAddress(leaf.account),
+            leaf.accountIndex.toString(),
+            leaf.amount.toString(),
+            rewardToken.address
+          );
+        const eventFilter = merkleDistributor.filters.ClaimFor;
+        const events = await merkleDistributor.queryFilter(eventFilter());
+        expect(
+          events[0]?.args?.caller.toLowerCase() === otherAddress.address.toLowerCase() &&
+            events[0]?.args?.account.toLowerCase() === leaf.account.toLowerCase()
+        ).to.be.true;
+      });
       it("Cannot double claim rewards", async function () {
         await merkleDistributor.connect(contractCreator).claim({
           windowIndex: windowIndex,
