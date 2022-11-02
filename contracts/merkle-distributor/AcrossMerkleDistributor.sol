@@ -12,8 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract AcrossMerkleDistributor is MerkleDistributor {
     using SafeERC20 for IERC20;
 
-    // Addresses that can claim on user's behalf. Useful to get around the requirement that claim recipient
-    // must also be claimer.
+    // Addresses that can claim on user's behalf.
     mapping(address => bool) public whitelistedClaimers;
 
     /****************************************
@@ -51,26 +50,24 @@ contract AcrossMerkleDistributor is MerkleDistributor {
     /**
      * @notice Batch claims to reduce gas versus individual submitting all claims. Method will fail
      *         if any individual claims within the batch would fail.
-     * @dev    All claim recipients must be equal to msg.sender or claimer must be whitelisted.
+     * @dev    All claim recipients must be equal to msg.sender.
      * @param claims array of claims to claim.
      */
     function claimMulti(Claim[] memory claims) public override {
-        if (!whitelistedClaimers[msg.sender]) {
-            uint256 claimCount = claims.length;
-            for (uint256 i = 0; i < claimCount; i++) {
-                require(claims[i].account == msg.sender, "invalid claimer");
-            }
+        uint256 claimCount = claims.length;
+        for (uint256 i = 0; i < claimCount; i++) {
+            require(claims[i].account == msg.sender, "invalid claimer");
         }
         super.claimMulti(claims);
     }
 
     /**
      * @notice Claim amount of reward tokens for account, as described by Claim input object.
-     * @dev    Claim recipient must be equal to msg.sender or caller must be whitelisted.
+     * @dev    Claim recipient must be equal to msg.sender.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
     function claim(Claim memory _claim) public override {
-        require(whitelistedClaimers[msg.sender] || _claim.account == msg.sender, "invalid claimer");
+        require(_claim.account == msg.sender, "invalid claimer");
         super.claim(_claim);
     }
 
