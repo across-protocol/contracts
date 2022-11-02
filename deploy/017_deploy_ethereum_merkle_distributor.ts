@@ -7,7 +7,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("MerkleDistributor", {
+  await deploy("AcrossMerkleDistributor", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
