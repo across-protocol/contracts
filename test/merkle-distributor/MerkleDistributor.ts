@@ -78,6 +78,8 @@ describe("AcrossMerkleDistributor", () => {
         })
       ).to.be.revertedWith("invalid claimer");
 
+      const balanceBefore = await rewardToken.balanceOf(otherAddress.address);
+
       // Claimer can claim:
       await expect(
         merkleDistributor.connect(otherAddress).claim({
@@ -90,6 +92,9 @@ describe("AcrossMerkleDistributor", () => {
       )
         .to.emit(merkleDistributor, "Claimed")
         .withArgs(otherAddress.address, 0, otherAddress.address, 0, totalRewardAmount, rewardToken.address);
+
+      // Balance should be sent to claim recipient.
+      expect((await rewardToken.balanceOf(otherAddress.address)).sub(balanceBefore)).to.equal(totalRewardAmount);
 
       // Cannot claim again
       await expect(
@@ -141,11 +146,18 @@ describe("AcrossMerkleDistributor", () => {
         "invalid claimer"
       );
 
+      const balanceBefore = await rewardToken.balanceOf(otherAddress.address);
+
       // Claimer can claim:
       await expect(() => merkleDistributor.connect(otherAddress).claimMulti([claim1, claim2])).to.changeTokenBalances(
         rewardToken,
         [otherAddress],
         [toBN(totalRewardAmount).mul(2)]
+      );
+
+      // Balance should be sent to claim recipient.
+      expect((await rewardToken.balanceOf(otherAddress.address)).sub(balanceBefore)).to.equal(
+        toBN(totalRewardAmount).mul(2)
       );
 
       // Cannot claim again
