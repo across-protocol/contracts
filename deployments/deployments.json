@@ -23,7 +23,7 @@
     "RateModelStore": { "address": "0x18a200A2427e243154EC8217890Bc08062afc5A2", "blockNumber": 10468968 }
   },
   "5": {
-    "AcrossMerkleDistributor": { "address": "0x279e7fF866e45f2354e58cEC9E4071354635B527", "blockNumber": 7878989 },
+    "AcrossMerkleDistributor": { "address": "0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D", "blockNumber": 7884371 },
     "Arbitrum_Adapter": { "address": "0xc169D58df5fdF52fC47d7b67d570449feE47BfE9", "blockNumber": 7306652 },
     "Ethereum_Adapter": { "address": "0x7b1D5aEA5b1b8C325711AA4b4AaAacD5E1ea1994", "blockNumber": 7371150 },
     "SpokePool": { "address": "0xEc88d3C08E2939562Ff8188B4e30A52236C3FF09", "blockNumber": 7371157 },
