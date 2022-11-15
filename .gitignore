@@ -11,3 +11,6 @@ cache
 artifacts
 cache-zk
 artifacts-zk
+
+# IDE
+.idea
