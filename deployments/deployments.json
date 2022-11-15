@@ -1,6 +1,7 @@
 {
   "1": {
     "AcrossConfigStore": { "address": "0x3B03509645713718B78951126E0A6de6f10043f5", "blockNumber": 14717196 },
+    "AcrossMerkleDistributor": { "address": "0x36cF4d172c2bad4a238d812CA6c211993ADa41c2", "blockNumber": 15976646 },
     "Arbitrum_Adapter": { "address": "0x937958992799bF4A9a656E6596FD10d7Da5c2216", "blockNumber": 14704380 },
     "Boba_Adapter": { "address": "0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3", "blockNumber": 14716798 },
     "Ethereum_Adapter": { "address": "0x527E872a5c3f0C7c24Fe33F2593cFB890a285084", "blockNumber": 14704381 },
