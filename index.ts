@@ -1,3 +1,4 @@
 export * from "./typechain";
 export * from "./src/DeploymentUtils";
-export * from "./utils/MerkleTree";
+export * from "./src/MerkleTree";
+export { MerkleTree } from "./src/MerkleTree";

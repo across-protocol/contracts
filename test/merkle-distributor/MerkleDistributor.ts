@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-expressions */
 
 import { ethers, getContractFactory, SignerWithAddress, Contract, toWei, toBN, expect } from "../utils";
-import { MerkleTree } from "@uma/merkle-distributor";
+import { MerkleTree } from "../../src/MerkleTree";
 import { deployErc20 } from "../gas-analytics/utils";
 import { MAX_UINT_VAL } from "@uma/common";
 
