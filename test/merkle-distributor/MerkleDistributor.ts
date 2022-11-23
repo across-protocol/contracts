@@ -1,9 +1,8 @@
 /* eslint-disable no-unused-expressions */
 
 import { ethers, getContractFactory, SignerWithAddress, Contract, toWei, toBN, expect } from "../utils";
-import { MerkleTree } from "@uma/merkle-distributor";
 import { deployErc20 } from "../gas-analytics/utils";
-import { MAX_UINT_VAL } from "@uma/common";
+import { MAX_UINT_VAL, MerkleTree } from "@uma/common";
 
 type Recipient = {
   account: string;
