@@ -1,2 +1,1 @@
-export { MerkleTree } from "@uma/common";
-export const EMPTY_MERKLE_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000";
+export { MerkleTree, EMPTY_MERKLE_ROOT } from "@uma/common";
