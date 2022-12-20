@@ -22,6 +22,25 @@ describe("SpokePool Depositor Logic", async function () {
   });
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function () {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
+
+    // Can't deposit when paused:
+    await spokePool.connect(depositor).setPaused(true);
+    await expect(
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime
+          )
+        )
+    ).to.be.reverted;
+    await spokePool.connect(depositor).setPaused(false);
+
     await expect(
       spokePool
         .connect(depositor)

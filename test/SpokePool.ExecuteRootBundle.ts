@@ -3,7 +3,7 @@ import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";
 
-let spokePool: Contract, destErc20: Contract, weth: Contract;
+let spokePool: Contract, destErc20: Contract, weth: Contract, mockSpokeAdapter: Contract, hubPool: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
 let destinationChainId: number;
@@ -26,7 +26,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
 describe("SpokePool Root Bundle Execution", function () {
   beforeEach(async function () {
     [dataWorker, relayer, rando] = await ethers.getSigners();
-    ({ destErc20, spokePool, weth } = await spokePoolFixture());
+    ({ destErc20, spokePool, weth, mockSpokeAdapter, hubPool } = await spokePoolFixture());
     destinationChainId = Number(await spokePool.chainId());
 
     // Send funds to SpokePool.
@@ -63,6 +63,17 @@ describe("SpokePool Root Bundle Execution", function () {
     // Should emit TokensBridged event if amountToReturn is positive.
     let tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
     expect(tokensBridgedEvents.length).to.equal(1);
+
+    // Since the mock spoke adapter is delegatecalled, when querying, its address should be the hubPool address.
+    const mockAdapterAtSpokePool = mockSpokeAdapter.attach(spokePool.address);
+
+    // Check the mockAdapter was called with the correct arguments for each method.
+    const spokeAdapterEvents = await mockAdapterAtSpokePool.queryFilter(
+      mockAdapterAtSpokePool.filters.BridgeTokensToHubPoolCalled()
+    );
+    expect(spokeAdapterEvents.length).to.equal(1); // Exactly one message sent from L2->L1.
+    expect(spokeAdapterEvents[spokeAdapterEvents.length - 1].args?.amountToReturn).to.equal(consts.amountToReturn);
+    expect(spokeAdapterEvents[spokeAdapterEvents.length - 1].args?.l2TokenAddress).to.equal(destErc20.address);
 
     // Does not attempt to bridge tokens if amountToReturn is 0. Execute a leaf where amountToReturn is 0.
     await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[1], tree.getHexProof(leaves[1]));

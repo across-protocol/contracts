@@ -9,6 +9,8 @@ let l2Dai: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2Weth: FakeContract;
 
+const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
+
 describe("Optimism Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
@@ -30,15 +32,12 @@ describe("Optimism Spoke Pool", function () {
     optimismSpokePool = await (
       await getContractFactory("Optimism_SpokePool", owner)
     ).deploy(owner.address, hubPool.address, timer.address);
+    const ovmSpokeAdapter = await (
+      await getContractFactory("OVM_SpokeAdapter", owner)
+    ).deploy(optimismSpokePool.address, l2Eth);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setBridgeAdapter(ovmSpokeAdapter.address);
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
-  });
-
-  it("Only cross domain owner can set l1GasLimit", async function () {
-    await expect(optimismSpokePool.setL1GasLimit(1337)).to.be.reverted;
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
-    expect(await optimismSpokePool.l1Gas()).to.equal(1337);
   });
 
   it("Only cross domain owner can set token bridge address for L2 token", async function () {
@@ -138,7 +137,6 @@ describe("Optimism Spoke Pool", function () {
     expect(l2Weth.withdraw).to.have.been.calledOnce;
     expect(l2Weth.withdraw).to.have.been.calledWith(amountToReturn);
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
-    const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Eth, hubPool.address, amountToReturn, 5000000, "0x");
   });
 });

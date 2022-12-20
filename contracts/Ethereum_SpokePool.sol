@@ -25,12 +25,8 @@ contract Ethereum_SpokePool is SpokePool, Ownable {
     ) SpokePool(msg.sender, _hubPool, _wethAddress, timerAddress) {}
 
     /**************************************
-     *          INTERNAL FUNCTIONS           *
+     *          INTERNAL FUNCTIONS        *
      **************************************/
-
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(hubPool, relayerRefundLeaf.amountToReturn);
-    }
 
     // Admin is simply owner which should be same account that owns the HubPool deployed on this network. A core
     // assumption of this contract system is that the HubPool is deployed on Ethereum.

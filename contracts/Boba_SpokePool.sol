@@ -17,13 +17,5 @@ contract Boba_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool,
         address timerAddress
-    )
-        Ovm_SpokePool(
-            _crossDomainAdmin,
-            _hubPool,
-            0x4200000000000000000000000000000000000006,
-            0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000,
-            timerAddress
-        )
-    {}
+    ) Ovm_SpokePool(_crossDomainAdmin, _hubPool, 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000, timerAddress) {}
 }

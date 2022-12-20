@@ -1,6 +1,6 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
-import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
+import { getContractFactory, seedContract, avmL1ToL2Alias, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
@@ -25,16 +25,14 @@ describe("Arbitrum Spoke Pool", function () {
 
     arbitrumSpokePool = await (
       await getContractFactory("Arbitrum_SpokePool", owner)
-    ).deploy(l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
+    ).deploy(owner.address, hubPool.address, l2Weth, timer.address);
+    const arbitrumSpokeAdapter = await (
+      await getContractFactory("Arbitrum_SpokeAdapter", owner)
+    ).deploy(arbitrumSpokePool.address, l2GatewayRouter.address);
+    await arbitrumSpokePool.connect(crossDomainAlias).setBridgeAdapter(arbitrumSpokeAdapter.address);
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
-  });
-
-  it("Only cross domain owner can set L2GatewayRouter", async function () {
-    await expect(arbitrumSpokePool.setL2GatewayRouter(rando.address)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).setL2GatewayRouter(rando.address);
-    expect(await arbitrumSpokePool.l2GatewayRouter()).to.equal(rando.address);
   });
 
   it("Only cross domain owner can enable a route", async function () {
@@ -91,9 +89,7 @@ describe("Arbitrum Spoke Pool", function () {
 
     // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, zeroAddress);
-    await expect(
-      arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.be.revertedWith("Uninitialized mainnet token");
+    await expect(arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
 
     await arbitrumSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));

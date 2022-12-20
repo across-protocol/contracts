@@ -27,17 +27,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
 
-    // Contract deployed on L1 and L2 processes all cross-chain transfers between this contract and the the HubPool.
-    // Required because bridging tokens from Polygon to Ethereum has special constraints.
-    PolygonTokenBridger public polygonTokenBridger;
-
     // Internal variable that only flips temporarily to true upon receiving messages from L1. Used to authenticate that
     // the caller is the fxChild AND that the fxChild called processMessageFromRoot
     bool private callValidated = false;
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
-    event SetPolygonTokenBridger(address indexed polygonTokenBridger);
 
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
@@ -62,7 +57,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     /**
      * @notice Construct the Polygon SpokePool.
-     * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
@@ -70,14 +64,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param timerAddress Timer address to set.
      */
     constructor(
-        PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
         address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
         address _fxChild,
         address timerAddress
     ) SpokePool(_crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress) {
-        polygonTokenBridger = _polygonTokenBridger;
         fxChild = _fxChild;
     }
 
@@ -92,15 +84,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
         fxChild = newFxChild;
         emit SetFxChild(newFxChild);
-    }
-
-    /**
-     * @notice Change polygonTokenBridger address. Callable only by admin via processMessageFromRoot.
-     * @param newPolygonTokenBridger New Polygon Token Bridger contract.
-     */
-    function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
-        polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
-        emit SetPolygonTokenBridger(address(newPolygonTokenBridger));
     }
 
     /**
@@ -204,18 +187,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
-
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        PolygonIERC20(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
-            address(polygonTokenBridger),
-            relayerRefundLeaf.amountToReturn
-        );
-
-        // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
-        polygonTokenBridger.send(PolygonIERC20(relayerRefundLeaf.l2TokenAddress), relayerRefundLeaf.amountToReturn);
-
-        emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
-    }
 
     function _wrap() internal {
         uint256 balance = address(this).balance;

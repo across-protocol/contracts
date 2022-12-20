@@ -19,9 +19,6 @@ contract MockSpokePool is SpokePool {
         address timerAddress
     ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {} // solhint-disable-line no-empty-blocks
 
-    // solhint-disable-next-line no-empty-blocks
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}
-
     function _requireAdminSender() internal override {} // solhint-disable-line no-empty-blocks
 
     function chainId() public view override(SpokePool) returns (uint256) {

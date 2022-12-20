@@ -31,6 +31,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // then this address should be set to the same owner as the HubPool and the whole system.
     address public crossDomainAdmin;
 
+    // Address of the contract that will send tokens to the HubPool on L1.
+    address public bridgeAdapter;
+
     // Address of the L1 contract that will send tokens to and receive tokens from this contract to fund relayer
     // refunds and slow relays.
     address public hubPool;
@@ -123,6 +126,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address indexed l2TokenAddress,
         address caller
     );
+    event BridgeAdapterSet(address indexed newBridgeAdapter);
     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
     event Paused(bool indexed isPaused);
 
@@ -165,13 +169,21 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      **************************************/
 
     /**
+     * @notice Sets helper contract that will send tokens crosschain to HubPool. Callable only by owner.
+     * @param adapter Adapter used to relay tokens to hub pool. Deployed on current chain.
+     */
+
+    function setBridgeAdapter(address adapter) public override onlyAdmin nonReentrant {
+        bridgeAdapter = adapter;
+        emit BridgeAdapterSet(adapter);
+    }
+
+    /**
      * @notice Pauses deposit and fillfunctions. This is intended to be used during upgrades or when
      * something goes awry.
-     * @notice This is not an `override` function because `setPaused` was added to this contract following its initial
-     * deployment.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
-    function setPaused(bool pause) public onlyAdmin nonReentrant {
+    function setPaused(bool pause) public override onlyAdmin nonReentrant {
         paused = pause;
         emit Paused(pause);
     }
@@ -590,8 +602,17 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
         if (relayerRefundLeaf.amountToReturn > 0) {
-            _bridgeTokensToHubPool(relayerRefundLeaf);
-
+            // We are ok with this low-level call since the adapter address is set by the admin and we've
+            // already checked that its a contract.
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = _getInitializedBridgeAdapter().delegatecall(
+                abi.encodeWithSignature(
+                    "bridgeTokensToHubPool(uint256,address)",
+                    relayerRefundLeaf.amountToReturn,
+                    relayerRefundLeaf.l2TokenAddress
+                )
+            );
+            require(success, "delegatecall failed");
             emit TokensBridged(
                 relayerRefundLeaf.amountToReturn,
                 relayerRefundLeaf.chainId,
@@ -668,9 +689,6 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         hubPool = newHubPool;
         emit SetHubPool(newHubPool);
     }
-
-    // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
-    function _bridgeTokensToHubPool(SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf) internal virtual;
 
     function _verifyUpdateRelayerFeeMessage(
         address depositor,
@@ -867,6 +885,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // certain admin functions. For L2 contracts, the cross chain admin refers to some L1 address or contract, and for
     // L1, this would just be the same admin of the HubPool.
     function _requireAdminSender() internal virtual;
+
+    function _getInitializedBridgeAdapter() internal view returns (address adapter) {
+        adapter = bridgeAdapter;
+        require(adapter.isContract(), "Adapter not initialized");
+    }
 
     // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}

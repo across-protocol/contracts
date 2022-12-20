@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, getContractFactory } from "./utils";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
 
@@ -22,6 +22,22 @@ describe("SpokePool Admin Functions", async function () {
       .withArgs(60);
 
     expect(await spokePool.depositQuoteTimeBuffer()).to.equal(60);
+  });
+  it("Set bridge adapter", async function () {
+    const newAdapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
+
+    await expect(spokePool.connect(owner).setBridgeAdapter(newAdapter.address))
+      .to.emit(spokePool, "BridgeAdapterSet")
+      .withArgs(newAdapter.address);
+
+    expect(await spokePool.bridgeAdapter()).to.equal(newAdapter.address);
+  });
+  it("Pause deposits and fills", async function () {
+    expect(await spokePool.paused()).to.equal(false);
+    await expect(spokePool.connect(owner).setPaused(true)).to.emit(spokePool, "Paused").withArgs(true);
+    expect(await spokePool.paused()).to.equal(true);
+    await spokePool.connect(owner).setPaused(false);
+    expect(await spokePool.paused()).to.equal(false);
   });
 
   it("Delete rootBundle", async function () {

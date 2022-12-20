@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./interfaces/WETH9.sol";
+
 /**
  * @notice Contains common data structures and functions used by all SpokePool implementations.
  */
@@ -76,6 +78,10 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
+    function setBridgeAdapter(address adapter) external;
+
+    function setPaused(bool pause) external;
+
     function deposit(
         address recipient,
         address originToken,
@@ -140,4 +146,8 @@ interface SpokePoolInterface {
     ) external;
 
     function chainId() external view returns (uint256);
+
+    function hubPool() external view returns (address);
+
+    function wrappedNativeToken() external view returns (WETH9);
 }

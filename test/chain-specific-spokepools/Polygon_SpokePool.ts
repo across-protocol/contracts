@@ -6,7 +6,7 @@ import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
 
 let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract, l2Dai: string;
-let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
+let polygonRegistry: FakeContract, erc20Predicate: FakeContract, polygonTokenBridger: Contract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
@@ -24,7 +24,7 @@ describe("Polygon Spoke Pool", function () {
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 
-    const polygonTokenBridger = await (
+    polygonTokenBridger = await (
       await getContractFactory("PolygonTokenBridger", owner)
     ).deploy(hubPool.address, polygonRegistry.address, weth.address, weth.address, l1ChainId, l2ChainId);
 
@@ -33,7 +33,15 @@ describe("Polygon Spoke Pool", function () {
 
     polygonSpokePool = await (
       await getContractFactory("Polygon_SpokePool", owner)
-    ).deploy(polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address);
+    ).deploy(owner.address, hubPool.address, weth.address, fxChild.address, timer.address);
+
+    const polygonSpokeAdapter = await (
+      await getContractFactory("Polygon_SpokeAdapter", owner)
+    ).deploy(polygonSpokePool.address, polygonTokenBridger.address);
+    const setBridgeData = polygonSpokePool.interface.encodeFunctionData("setBridgeAdapter", [
+      polygonSpokeAdapter.address,
+    ]);
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setBridgeData);
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
     await seedWallet(owner, [], weth, toWei("1"));
@@ -206,12 +214,11 @@ describe("Polygon Spoke Pool", function () {
     ]);
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
-    const bridger = await polygonSpokePool.polygonTokenBridger();
 
     // Checks that there's a burn event from the bridger.
     await expect(polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
       .to.emit(dai, "Transfer")
-      .withArgs(bridger, zeroAddress, amountToReturn);
+      .withArgs(polygonTokenBridger.address, zeroAddress, amountToReturn);
   });
 
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {

@@ -16,9 +16,6 @@ interface StandardBridgeLike {
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  */
 contract Arbitrum_SpokePool is SpokePool {
-    // Address of the Arbitrum L2 token gateway to send funds to L1.
-    address public l2GatewayRouter;
-
     // Admin controlled mapping of arbitrum tokens to L1 counterpart. L1 counterpart addresses
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
@@ -29,21 +26,17 @@ contract Arbitrum_SpokePool is SpokePool {
 
     /**
      * @notice Construct the AVM SpokePool.
-     * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
      * @param timerAddress Timer address to set.
      */
     constructor(
-        address _l2GatewayRouter,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {
-        _setL2GatewayRouter(_l2GatewayRouter);
-    }
+    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {}
 
     modifier onlyFromCrossDomainAdmin() {
         require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
@@ -53,14 +46,6 @@ contract Arbitrum_SpokePool is SpokePool {
     /********************************************************
      *    ARBITRUM-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
      ********************************************************/
-
-    /**
-     * @notice Change L2 gateway router. Callable only by admin.
-     * @param newL2GatewayRouter New L2 gateway router.
-     */
-    function setL2GatewayRouter(address newL2GatewayRouter) public onlyAdmin nonReentrant {
-        _setL2GatewayRouter(newL2GatewayRouter);
-    }
 
     /**
      * @notice Add L2 -> L1 token mapping. Callable only by admin.
@@ -74,24 +59,6 @@ contract Arbitrum_SpokePool is SpokePool {
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
-
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        // Check that the Ethereum counterpart of the L2 token is stored on this contract.
-        address ethereumTokenToBridge = whitelistedTokens[relayerRefundLeaf.l2TokenAddress];
-        require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
-        StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            relayerRefundLeaf.amountToReturn, // _amount.
-            "" // _data. We don't need to send any data for the bridging action.
-        );
-        emit ArbitrumTokensBridged(address(0), hubPool, relayerRefundLeaf.amountToReturn);
-    }
-
-    function _setL2GatewayRouter(address _l2GatewayRouter) internal {
-        l2GatewayRouter = _l2GatewayRouter;
-        emit SetL2GatewayRouter(l2GatewayRouter);
-    }
 
     function _whitelistToken(address _l2Token, address _l1Token) internal {
         whitelistedTokens[_l2Token] = _l1Token;
