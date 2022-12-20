@@ -21,7 +21,6 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
-      L2_ADDRESS_MAP[chainId].l2GatewayRouter, // _l2GatewayRouter
       hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the Optimism_Adapter logic.
       hubPool.address,
       L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth

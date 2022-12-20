@@ -21,8 +21,6 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
-      L2_ADDRESS_MAP[chainId].zkErc20Bridge,
-      L2_ADDRESS_MAP[chainId].zkEthBridge,
       hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the ZkSync_Adapter logic.
       hubPool.address,
       L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth

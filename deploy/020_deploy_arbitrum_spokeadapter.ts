@@ -1,7 +1,7 @@
+import { L2_ADDRESS_MAP } from "./consts";
+
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-
-import { L2_ADDRESS_MAP } from "./consts";
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -10,22 +10,17 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = parseInt(await getChainId());
-  const l1HubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
+  const spokePool = await deployments.get("Arbitrum_SpokePool");
+  console.log(`Using spoke pool @ ${spokePool.address}`);
 
-  await deploy("Polygon_SpokePool", {
+  await deploy("Arbitrum_SpokeAdapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [
-      l1HubPool.address,
-      l1HubPool.address,
-      L2_ADDRESS_MAP[chainId].wMatic,
-      L2_ADDRESS_MAP[chainId].fxChild,
-      "0x0000000000000000000000000000000000000000",
-    ],
+    args: [spokePool.address, L2_ADDRESS_MAP[chainId].l2GatewayRouter],
   });
 };
 
 module.exports = func;
-func.dependencies = ["PolygonTokenBridgerL2"];
-func.tags = ["PolygonSpokePool", "polygon"];
+func.dependencies = ["ArbitrumSpokePool"];
+func.tags = ["ArbitrumSpokeAdapter", "arbitrum"];

@@ -87,6 +87,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkEthBridge: "0x2c5d8a991f399089f728f1ae40bd0b11acd0fb62",
     l2Weth: "0xD3765838f9600Ccff3d01EFA83496599E0984BD2",
   },
+  10: {
+    l2Eth: "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+  },
+  288: {
+    l2Eth: "0x4200000000000000000000000000000000000006",
+  },
 };
 
 export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
