@@ -31,6 +31,12 @@ describe("SpokePool Relayer Logic", async function () {
       destErc20.address
     );
 
+    // Can't fill when paused:
+    await spokePool.connect(depositor).pauseFills(true);
+    await expect(spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay))).to.be
+      .reverted;
+    await spokePool.connect(depositor).pauseFills(false);
+
     await expect(spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay)))
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
