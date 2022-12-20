@@ -127,6 +127,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address caller
     );
     event BridgeAdapterSet(address indexed newBridgeAdapter);
+    event IncrementedDepositId(uint256 amount);
     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
     event Paused(bool indexed isPaused);
 
@@ -167,6 +168,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
+
+    /**
+     * @notice Adds `offset` to the deposit count. This is intended to be used following a spoke pool upgrade
+     * to avoid repeated deposit IDs.
+     * @param offset Number to add to the deposit count.
+     */
+    function incrementDepositId(uint32 offset) public onlyAdmin nonReentrant {
+        numberOfDeposits += offset;
+        emit IncrementedDepositId(offset);
+    }
 
     /**
      * @notice Sets helper contract that will send tokens crosschain to HubPool. Callable only by owner.

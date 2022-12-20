@@ -32,6 +32,11 @@ describe("SpokePool Admin Functions", async function () {
 
     expect(await spokePool.bridgeAdapter()).to.equal(newAdapter.address);
   });
+  it("Increment deposit ID", async function () {
+    await expect(spokePool.connect(owner).incrementDepositId(5)).to.emit(spokePool, "IncrementedDepositId").withArgs(5);
+
+    expect(await spokePool.numberOfDeposits()).to.equal(5);
+  });
   it("Pause deposits and fills", async function () {
     expect(await spokePool.paused()).to.equal(false);
     await expect(spokePool.connect(owner).setPaused(true)).to.emit(spokePool, "Paused").withArgs(true);

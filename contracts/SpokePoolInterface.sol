@@ -74,6 +74,8 @@ interface SpokePoolInterface {
 
     function setDepositQuoteTimeBuffer(uint32 buffer) external;
 
+    function incrementDepositId(uint32 offset) external;
+
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) external;
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
