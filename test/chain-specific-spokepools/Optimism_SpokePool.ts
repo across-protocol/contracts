@@ -35,6 +35,7 @@ describe("Optimism Spoke Pool", function () {
     const ovmSpokeAdapter = await (
       await getContractFactory("OVM_SpokeAdapter", owner)
     ).deploy(optimismSpokePool.address, l2Eth);
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setBridgeAdapter(ovmSpokeAdapter.address);
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
