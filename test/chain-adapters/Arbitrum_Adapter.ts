@@ -68,8 +68,8 @@ describe("Arbitrum Chain Adapter", function () {
       mockSpoke.address,
       0,
       consts.sampleL2MaxSubmissionCost,
-      owner.address,
-      owner.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       functionCallData
@@ -110,8 +110,8 @@ describe("Arbitrum Chain Adapter", function () {
       mockSpoke.address,
       0,
       consts.sampleL2MaxSubmissionCost,
-      owner.address,
-      owner.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
