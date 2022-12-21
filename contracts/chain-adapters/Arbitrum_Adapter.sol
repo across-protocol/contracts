@@ -49,10 +49,13 @@ contract Arbitrum_Adapter is AdapterInterface {
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    uint256 public immutable l2MaxSubmissionCost = 0.01e18;
+    uint256 public constant l2MaxSubmissionCost = 0.01e18;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    uint256 public immutable l2GasPrice = 5e9; // 5 gWei
+    uint256 public constant l2GasPrice = 5e9; // 5 gWei
+
+    uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
+    uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable l2RefundL2Address;
@@ -81,7 +84,7 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes memory message) external payable override {
-        uint256 requiredL1CallValue = _contractHasSufficientEthBalance(2_000_000);
+        uint256 requiredL1CallValue = _contractHasSufficientEthBalance(RELAY_MESSAGE_L2_GAS_LIMIT);
 
         l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
             target, // destAddr destination L2 contract address
@@ -89,7 +92,7 @@ contract Arbitrum_Adapter is AdapterInterface {
             l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
             l2RefundL2Address, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
             l2RefundL2Address, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
-            2_000_000, // maxGas Max gas deducted from user's L2 balance to cover L2 execution
+            RELAY_MESSAGE_L2_GAS_LIMIT, // maxGas Max gas deducted from user's L2 balance to cover L2 execution
             l2GasPrice, // gasPriceBid price bid for L2 execution
             message // data ABI encoded data of L2 message
         );
@@ -112,7 +115,7 @@ contract Arbitrum_Adapter is AdapterInterface {
         uint256 amount,
         address to
     ) external payable override {
-        uint256 requiredL1CallValue = _contractHasSufficientEthBalance(300_000);
+        uint256 requiredL1CallValue = _contractHasSufficientEthBalance(RELAY_TOKENS_L2_GAS_LIMIT);
 
         // Approve the gateway, not the router, to spend the hub pool's balance. The gateway, which is different
         // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
@@ -130,7 +133,7 @@ contract Arbitrum_Adapter is AdapterInterface {
             l1Token,
             to,
             amount,
-            300_000,
+            RELAY_TOKENS_L2_GAS_LIMIT,
             l2GasPrice,
             data
         );
