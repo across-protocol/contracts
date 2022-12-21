@@ -125,5 +125,5 @@ export async function buildSlowRelayTree(relays: RelayData[]) {
   const hashFn = (input: RelayData) => {
     return keccak256(defaultAbiCoder.encode([paramType!], [input]));
   };
-  return new MerkleTree(relays, hashFn);
+  return new MerkleTree<RelayData>(relays, hashFn);
 }

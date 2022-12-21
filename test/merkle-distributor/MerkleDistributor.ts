@@ -1,6 +1,16 @@
 /* eslint-disable no-unused-expressions */
 
-import { ethers, getContractFactory, SignerWithAddress, Contract, toWei, toBN, expect } from "../utils";
+import {
+  ethers,
+  getContractFactory,
+  SignerWithAddress,
+  Contract,
+  toWei,
+  toBN,
+  expect,
+  keccak256,
+  defaultAbiCoder,
+} from "../utils";
 import { deployErc20 } from "../gas-analytics/utils";
 import { MAX_UINT_VAL, MerkleTree } from "@uma/common";
 
@@ -19,7 +29,9 @@ let contractCreator: SignerWithAddress;
 let otherAddress: SignerWithAddress;
 
 // Test variables
-let merkleTree: MerkleTree;
+let merkleTree: MerkleTree<Buffer>;
+const hashFn = (input: Buffer) => input.toString("hex");
+
 let windowIndex: number;
 const sampleIpfsHash = "";
 
@@ -58,7 +70,8 @@ describe("AcrossMerkleDistributor", () => {
         amount: totalRewardAmount,
         accountIndex: 0,
       });
-      merkleTree = new MerkleTree([leaf]);
+
+      merkleTree = new MerkleTree<Buffer>([leaf], hashFn);
       // Expect this merkle root to be at the first index.
       windowIndex = 0;
       // Seed the merkleDistributor with the root of the tree and additional information.
@@ -118,7 +131,7 @@ describe("AcrossMerkleDistributor", () => {
         amount: totalRewardAmount,
         accountIndex: 1,
       });
-      merkleTree = new MerkleTree([leaf1, leaf2]);
+      merkleTree = new MerkleTree<Buffer>([leaf1, leaf2], hashFn);
       // Expect this merkle root to be at the first index.
       windowIndex = 0;
       // Seed the merkleDistributor with the root of the tree and additional information.
@@ -171,7 +184,7 @@ describe("AcrossMerkleDistributor", () => {
         amount: totalRewardAmount,
         accountIndex: 0,
       });
-      merkleTree = new MerkleTree([leaf]);
+      merkleTree = new MerkleTree<Buffer>([leaf], hashFn);
       // Expect this merkle root to be at the first index.
       windowIndex = 0;
       // Seed the merkleDistributor with the root of the tree and additional information.
