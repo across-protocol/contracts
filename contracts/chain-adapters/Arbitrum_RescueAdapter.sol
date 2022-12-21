@@ -65,7 +65,9 @@ contract Arbitrum_RescueAdapter is AdapterInterface {
 
         // In the rescue ETH setup, we send the transaction to the refund address, we provide a call value equal to the
         // amount we want to rescue, and we specify an empty calldata, since it's a simple ETH transfer.
-        l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
+        // Note: we use the unsafe version of createRetryableTicket because it doesn't require the msg.sender to pass
+        // in arbTxCallValue in addition to maxSubmissionCost + maxGas * gasPriceBid.
+        l1Inbox.createRetryableTicketNoRefundAliasRewrite{ value: requiredL1CallValue }(
             l2RefundL2Address, // destAddr destination L2 contract address
             valueToReturn, // l2CallValue call value for retryable L2 message
             l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
