@@ -101,7 +101,7 @@ describe("Arbitrum Chain Adapter", function () {
       dai.address,
       mockSpoke.address,
       tokensSendToL2,
-      consts.sampleL2Gas,
+      consts.sampleL2GasSendTokens,
       consts.sampleL2GasPrice,
       message
     );
