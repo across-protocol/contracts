@@ -91,13 +91,13 @@ describe("Arbitrum Chain Adapter", function () {
     );
 
     // The correct functions should have been called on the arbitrum contracts.
-    expect(l1ERC20GatewayRouter.outboundTransfer).to.have.been.calledOnce; // One token transfer over the canonical bridge.
+    expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledOnce; // One token transfer over the canonical bridge.
 
     // Adapter should have approved gateway to spend its ERC20.
     expect(await dai.allowance(hubPool.address, gatewayAddress)).to.equal(tokensSendToL2);
 
     const message = defaultAbiCoder.encode(["uint256", "bytes"], [consts.sampleL2MaxSubmissionCost, "0x"]);
-    expect(l1ERC20GatewayRouter.outboundTransfer).to.have.been.calledWith(
+    expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledWith(
       dai.address,
       mockSpoke.address,
       tokensSendToL2,
