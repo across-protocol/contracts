@@ -99,6 +99,7 @@ describe("Arbitrum Chain Adapter", function () {
     const message = defaultAbiCoder.encode(["uint256", "bytes"], [consts.sampleL2MaxSubmissionCost, "0x"]);
     expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledWith(
       dai.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       mockSpoke.address,
       tokensSendToL2,
       consts.sampleL2GasSendTokens,
