@@ -18,7 +18,7 @@ interface ArbitrumL1InboxLike {
         bytes calldata data
     ) external payable returns (uint256);
 
-    function createRetryableTicketNoRefundAliasRewrite(
+    function unsafeCreateRetryableTicket(
         address destAddr,
         uint256 arbTxCallValue,
         uint256 maxSubmissionCost,
