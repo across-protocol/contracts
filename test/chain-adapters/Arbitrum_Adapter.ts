@@ -68,8 +68,8 @@ describe("Arbitrum Chain Adapter", function () {
       mockSpoke.address,
       0,
       consts.sampleL2MaxSubmissionCost,
-      owner.address,
-      owner.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       functionCallData
@@ -99,10 +99,10 @@ describe("Arbitrum Chain Adapter", function () {
     const message = defaultAbiCoder.encode(["uint256", "bytes"], [consts.sampleL2MaxSubmissionCost, "0x"]);
     expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledWith(
       dai.address,
-      owner.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       mockSpoke.address,
       tokensSendToL2,
-      consts.sampleL2Gas,
+      consts.sampleL2GasSendTokens,
       consts.sampleL2GasPrice,
       message
     );
@@ -111,8 +111,8 @@ describe("Arbitrum Chain Adapter", function () {
       mockSpoke.address,
       0,
       consts.sampleL2MaxSubmissionCost,
-      owner.address,
-      owner.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [
