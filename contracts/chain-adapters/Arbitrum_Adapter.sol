@@ -136,12 +136,15 @@ contract Arbitrum_Adapter is AdapterInterface {
 
         // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
         // outboundTransfer(). Legacy routers are used for the following tokens that are currently enabled:
-        // - DAI
+        // - DAI: the implementation of `outboundTransfer` at the current DAI custom gateway
+        //        (https://etherscan.io/address/0xD3B5b60020504bc3489D6949d545893982BA3011#writeContract) sets the
+        //        sender as the refund address so the aliased HubPool should receive excess funds. Implementation here:
+        //        https://github.com/makerdao/arbitrum-dai-bridge/blob/11a80385e2622968069c34d401b3d54a59060e87/contracts/l1/L1DaiGateway.sol#L109
         if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
-            // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
-            // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
-            // contract address on L2, which we'd have to retrieve via a custom adapter
-            // (i.e. the Arbitrum_RescueAdapter).
+            // This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
+            // contract address on L2, which we'd have to retrieve via a custom adapter, the Arbitrum_RescueAdapter.
+            // To do so, in a single transaction: 1) setCrossChainContracts to Arbitrum_RescueAdapter, 2) relayMessage
+            // with function data = abi.encode(amountToRescue), 3) setCrossChainContracts back to this adapter.
             l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
                 l1Token,
                 to,
