@@ -178,12 +178,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      */
     function pauseDeposits(bool pause) public override onlyAdmin nonReentrant {
         pausedDeposits = pause;
-        emit PausedDeposits(pausedDeposits);
+        emit PausedDeposits(pause);
     }
 
     function pauseFills(bool pause) public override onlyAdmin nonReentrant {
         pausedFills = pause;
-        emit PausedFills(pausedDeposits);
+        emit PausedFills(pause);
     }
 
     /**
