@@ -12,6 +12,10 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+interface SynthetixBridgeToOptimism is IL1StandardBridge {
+    function depositTo(address to, uint256 amount) external;
+}
+
 /**
  * @notice Contract containing logic to send messages from L1 to Optimism.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
@@ -37,7 +41,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     address public immutable dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public immutable daiOptimismBridge = 0x10E6593CDda8c58a1d0f14C5164B376352a55f2F;
     address public immutable snx = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
-    address public immutable snxOptimismBridge = 0xCd9D4988C0AE61887B075bA77f08cbFAd2b65068;
+    address public immutable snxOptimismBridge = 0x39Ea01a0298C315d149a490E34B59Dbf2EC7e48F;
 
     /**
      * @notice Constructs new Adapter.
@@ -82,14 +86,15 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         } else {
-            IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+            address bridgeToUse = address(l1StandardBridge);
 
             // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
-            if (l1Token == dai) _l1StandardBridge = IL1StandardBridge(daiOptimismBridge); // 1. DAI
-            if (l1Token == snx) _l1StandardBridge = IL1StandardBridge(snxOptimismBridge); // 2. SNX
+            if (l1Token == dai) bridgeToUse = daiOptimismBridge; // 1. DAI
+            if (l1Token == snx) bridgeToUse = snxOptimismBridge; // 2. SNX
 
-            IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
-            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            IERC20(l1Token).safeIncreaseAllowance(bridgeToUse, amount);
+            if (l1Token == snx) SynthetixBridgeToOptimism(bridgeToUse).depositTo(to, amount);
+            else IL1StandardBridge(bridgeToUse).depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
