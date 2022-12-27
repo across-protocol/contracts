@@ -6,9 +6,15 @@ import "../SpokePoolInterface.sol";
 import "../interfaces/WETH9.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
+import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
 interface OVMSpokePoolInterface is SpokePoolInterface {
     function tokenBridges(address) external view returns (address);
+}
+
+// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
+interface SynthetixBridgeToBase {
+    function withdrawTo(address to, uint256 amount) external;
 }
 
 /**
@@ -43,18 +49,24 @@ contract OVM_SpokeAdapter is SpokeAdapterInterface {
             WETH9(_l2TokenAddressToUse).withdraw(amountToReturn); // Unwrap into ETH.
             _l2TokenAddressToUse = l2Eth; // Set the l2TokenAddress to ETH.
         }
-        IL2ERC20Bridge(
-            OVMSpokePoolInterface(spokePool).tokenBridges(_l2TokenAddressToUse) == address(0)
-                ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
-                : OVMSpokePoolInterface(spokePool).tokenBridges(_l2TokenAddressToUse)
-        ).withdrawTo(
-                _l2TokenAddressToUse, // _l2Token. Address of the L2 token to bridge over.
+        // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
+        if (l2TokenAddress == 0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4)
+            SynthetixBridgeToBase(0x136b1EC699c62b0606854056f02dC7Bb80482d63).withdrawTo(
                 SpokePoolInterface(spokePool).hubPool(), // _to. Withdraw, over the bridge, to the l1 pool contract.
-                amountToReturn, // _amount.
-                l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-                "" // _data. We don't need to send any data for the bridging action.
+                amountToReturn // _amount.
             );
-
+        else
+            IL2ERC20Bridge(
+                OVMSpokePoolInterface(spokePool).tokenBridges(l2TokenAddress) == address(0)
+                    ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
+                    : OVMSpokePoolInterface(spokePool).tokenBridges(l2TokenAddress)
+            ).withdrawTo(
+                    l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+                    SpokePoolInterface(spokePool).hubPool(), // _to. Withdraw, over the bridge, to the l1 pool contract.
+                    amountToReturn, // _amount.
+                    l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
+                    "" // _data. We don't need to send any data for the bridging action.
+                );
         emit OptimismTokensBridged(
             _l2TokenAddressToUse,
             SpokePoolInterface(spokePool).hubPool(),
