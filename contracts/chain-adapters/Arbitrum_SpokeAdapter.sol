@@ -3,10 +3,18 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/SpokeAdapterInterface.sol";
 import "../SpokePoolInterface.sol";
-import "../Arbitrum_SpokePool.sol";
 
 interface ArbitrumSpokePoolInterface is SpokePoolInterface {
     function whitelistedTokens(address) external view returns (address);
+}
+
+interface StandardBridgeLike {
+    function outboundTransfer(
+        address _l1Token,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
 }
 
 /**

@@ -2,16 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./interfaces/WETH9.sol";
-
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
-import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
-
-// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
-interface SynthetixBridgeToBase {
-    function withdrawTo(address to, uint256 amount) external;
-}
 
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.

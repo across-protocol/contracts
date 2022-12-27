@@ -3,15 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 
-interface StandardBridgeLike {
-    function outboundTransfer(
-        address _l1Token,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-}
-
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  */

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/SpokeAdapterInterface.sol";
 import "../SpokePoolInterface.sol";
-import "../SpokePool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
