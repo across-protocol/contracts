@@ -3,11 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Ethereum L1 specific SpokePool. Used on Ethereum L1 to facilitate L2->L1 transfers.
  */
 contract Ethereum_SpokePool is SpokePool, Ownable {
+    using SafeERC20 for IERC20;
+
     /**
      * @notice Construct the Ethereum SpokePool.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
@@ -25,7 +29,7 @@ contract Ethereum_SpokePool is SpokePool, Ownable {
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        IERC20(relayerRefundLeaf.l2TokenAddress).transfer(hubPool, relayerRefundLeaf.amountToReturn);
+        IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(hubPool, relayerRefundLeaf.amountToReturn);
     }
 
     // Admin is simply owner which should be same account that owns the HubPool deployed on this network. A core
