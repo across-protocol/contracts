@@ -28,11 +28,11 @@ contract Arbitrum_RescueAdapter is AdapterInterface {
     uint256 public immutable l2MaxSubmissionCost = 0.01e18;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    uint256 public immutable l2GasPrice = 150e9;
+    uint256 public immutable l2GasPrice = 5e9; // 5 gWei
 
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
-    uint32 public immutable l2GasLimit = 160_000;
+    uint32 public immutable l2GasLimit = 2_000_000;
 
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable l2RefundL2Address;
@@ -65,7 +65,9 @@ contract Arbitrum_RescueAdapter is AdapterInterface {
 
         // In the rescue ETH setup, we send the transaction to the refund address, we provide a call value equal to the
         // amount we want to rescue, and we specify an empty calldata, since it's a simple ETH transfer.
-        l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
+        // Note: we use the unsafe version of createRetryableTicket because it doesn't require the msg.sender to pass
+        // in arbTxCallValue in addition to maxSubmissionCost + maxGas * gasPriceBid.
+        l1Inbox.unsafeCreateRetryableTicket{ value: requiredL1CallValue }(
             l2RefundL2Address, // destAddr destination L2 contract address
             valueToReturn, // l2CallValue call value for retryable L2 message
             l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee

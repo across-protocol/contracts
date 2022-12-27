@@ -17,6 +17,17 @@ interface ArbitrumL1InboxLike {
         uint256 gasPriceBid,
         bytes calldata data
     ) external payable returns (uint256);
+
+    function unsafeCreateRetryableTicket(
+        address destAddr,
+        uint256 arbTxCallValue,
+        uint256 maxSubmissionCost,
+        address submissionRefundAddress,
+        address valueRefundAddress,
+        uint256 maxGas,
+        uint256 gasPriceBid,
+        bytes calldata data
+    ) external payable returns (uint256);
 }
 
 interface ArbitrumL1ERC20GatewayLike {
