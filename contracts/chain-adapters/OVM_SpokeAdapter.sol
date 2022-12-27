@@ -61,7 +61,7 @@ contract OVM_SpokeAdapter is SpokeAdapterInterface {
                     ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
                     : OVMSpokePoolInterface(spokePool).tokenBridges(l2TokenAddress)
             ).withdrawTo(
-                    l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+                    _l2TokenAddressToUse, // _l2Token. Address of the L2 token to bridge over.
                     SpokePoolInterface(spokePool).hubPool(), // _to. Withdraw, over the bridge, to the l1 pool contract.
                     amountToReturn, // _amount.
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
