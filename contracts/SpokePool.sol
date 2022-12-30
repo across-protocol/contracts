@@ -46,6 +46,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
+    // Whether deposits and fills are disabled.
+    bool public pausedFills;
+    bool public pausedDeposits;
+
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
 
@@ -121,6 +125,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address caller
     );
     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
+    event PausedDeposits(bool isPaused);
+    event PausedFills(bool isPaused);
 
     /**
      * @notice Construct the base SpokePool.
@@ -151,9 +157,34 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         _;
     }
 
+    modifier unpausedDeposits() {
+        require(!pausedDeposits, "Paused deposits");
+        _;
+    }
+
+    modifier unpausedFills() {
+        require(!pausedFills, "Paused fills");
+        _;
+    }
+
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
+
+    /**
+     * @notice Pauses deposit and fill functions. This is intended to be used during upgrades or when
+     * something goes awry.
+     * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
+     */
+    function pauseDeposits(bool pause) public override onlyAdmin nonReentrant {
+        pausedDeposits = pause;
+        emit PausedDeposits(pause);
+    }
+
+    function pauseFills(bool pause) public override onlyAdmin nonReentrant {
+        pausedFills = pause;
+        emit PausedFills(pause);
+    }
 
     /**
      * @notice Change cross domain admin address. Callable by admin only.
@@ -250,7 +281,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 destinationChainId,
         uint64 relayerFeePct,
         uint32 quoteTimestamp
-    ) public payable override nonReentrant {
+    ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled.
         require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
 
@@ -303,6 +334,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice This function will revert if the depositor did not sign a message containing the updated fee for the
      * deposit ID stored in this contract. If the deposit ID is for another contract, or the depositor address is
      * incorrect, or the updated fee is incorrect, then the signature will not match and this function will revert.
+     * @notice This function is not subject to a deposit pause on the off chance that deposits sent before all deposits
+     * are paused have very low fees and the user wants to entice a relayer to fill them with a higher fee.
      * @param depositor Signer of the update fee message who originally submitted the deposit. If the deposit doesn't
      * exist, then the relayer will not be able to fill any relay, so the caller should validate that the depositor
      * did in fact submit a relay.
@@ -367,7 +400,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
         uint32 depositId
-    ) public nonReentrant {
+    ) public nonReentrant unpausedFills {
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
@@ -423,7 +456,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) public override nonReentrant {
+    ) public override nonReentrant unpausedFills {
         _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
 
         // Now follow the default fillRelay flow with the updated fee and the original relay hash.

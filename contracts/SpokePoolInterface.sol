@@ -70,6 +70,10 @@ interface SpokePoolInterface {
         bool enable
     ) external;
 
+    function pauseDeposits(bool pause) external;
+
+    function pauseFills(bool pause) external;
+
     function setDepositQuoteTimeBuffer(uint32 buffer) external;
 
     function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot) external;

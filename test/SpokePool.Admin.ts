@@ -24,6 +24,22 @@ describe("SpokePool Admin Functions", async function () {
     expect(await spokePool.depositQuoteTimeBuffer()).to.equal(60);
   });
 
+  it("Pause deposits", async function () {
+    expect(await spokePool.pausedDeposits()).to.equal(false);
+    await expect(spokePool.connect(owner).pauseDeposits(true)).to.emit(spokePool, "PausedDeposits").withArgs(true);
+    expect(await spokePool.pausedDeposits()).to.equal(true);
+    await expect(spokePool.connect(owner).pauseDeposits(false)).to.emit(spokePool, "PausedDeposits").withArgs(false);
+    expect(await spokePool.pausedDeposits()).to.equal(false);
+  });
+
+  it("Pause fills", async function () {
+    expect(await spokePool.pausedFills()).to.equal(false);
+    await expect(spokePool.connect(owner).pauseFills(true)).to.emit(spokePool, "PausedFills").withArgs(true);
+    expect(await spokePool.pausedFills()).to.equal(true);
+    await expect(spokePool.connect(owner).pauseFills(false)).to.emit(spokePool, "PausedFills").withArgs(false);
+    expect(await spokePool.pausedFills()).to.equal(false);
+  });
+
   it("Delete rootBundle", async function () {
     await spokePool.connect(owner).relayRootBundle(mockRelayerRefundRoot, mockSlowRelayRoot);
 
