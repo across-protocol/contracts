@@ -125,8 +125,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address caller
     );
     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
-    event PausedDeposits(bool indexed isPaused);
-    event PausedFills(bool indexed isPaused);
+    event PausedDeposits(bool isPaused);
+    event PausedFills(bool isPaused);
 
     /**
      * @notice Construct the base SpokePool.
@@ -334,6 +334,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @notice This function will revert if the depositor did not sign a message containing the updated fee for the
      * deposit ID stored in this contract. If the deposit ID is for another contract, or the depositor address is
      * incorrect, or the updated fee is incorrect, then the signature will not match and this function will revert.
+     * @notice This function is not subject to a deposit pause on the off chance that deposits sent before all deposits
+     * are paused have very low fees and the user wants to entice a relayer to fill them with a higher fee.
      * @param depositor Signer of the update fee message who originally submitted the deposit. If the deposit doesn't
      * exist, then the relayer will not be able to fill any relay, so the caller should validate that the depositor
      * did in fact submit a relay.
@@ -348,7 +350,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
-    ) public override nonReentrant unpausedDeposits {
+    ) public override nonReentrant {
         require(newRelayerFeePct < 0.5e18, "invalid relayer fee");
 
         _verifyUpdateRelayerFeeMessage(depositor, chainId(), newRelayerFeePct, depositId, depositorSignature);
