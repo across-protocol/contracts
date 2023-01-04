@@ -10,6 +10,7 @@ import "@matterlabs/hardhat-zksync-solc";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
+import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
 require("./tasks/enableL1TokenAcrossEcosystem");

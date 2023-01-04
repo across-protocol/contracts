@@ -33,7 +33,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     // Internal variable that only flips temporarily to true upon receiving messages from L1. Used to authenticate that
     // the caller is the fxChild AND that the fxChild called processMessageFromRoot
-    bool private callValidated = false;
+    bool private callValidated;
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
@@ -67,16 +67,18 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
      * @param _fxChild FxChild contract, changeable by Admin.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function initialize(
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
         address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
         address _fxChild,
-        address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress) {
+        address _timerAddress
+    ) public initializer {
+        callValidated = false;
+        __SpokePool_init(_crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
         polygonTokenBridger = _polygonTokenBridger;
         fxChild = _fxChild;
     }

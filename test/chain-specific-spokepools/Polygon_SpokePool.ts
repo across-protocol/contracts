@@ -1,6 +1,6 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress, TokenRolesEnum } from "../constants";
 import { ethers, expect, Contract, SignerWithAddress, getContractFactory, createFake } from "../utils";
-import { seedContract, toWei, randomBigNumber, seedWallet, FakeContract } from "../utils";
+import { seedContract, toWei, randomBigNumber, seedWallet, FakeContract, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
@@ -31,9 +31,11 @@ describe("Polygon Spoke Pool", function () {
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
 
-    polygonSpokePool = await (
-      await getContractFactory("Polygon_SpokePool", owner)
-    ).deploy(polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address);
+    polygonSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Polygon_SpokePool", owner),
+      [polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address],
+      { unsafeAllow: ["delegatecall"] }
+    );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
     await seedWallet(owner, [], weth, toWei("1"));

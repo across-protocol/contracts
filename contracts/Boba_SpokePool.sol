@@ -11,19 +11,19 @@ contract Boba_SpokePool is Ovm_SpokePool {
      * @notice Construct the OVM Boba SpokePool.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function initialize(
         address _crossDomainAdmin,
         address _hubPool,
-        address timerAddress
-    )
-        Ovm_SpokePool(
+        address _timerAddress
+    ) public initializer {
+        __OvmSpokePool_init(
             _crossDomainAdmin,
             _hubPool,
             0x4200000000000000000000000000000000000006,
             0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000,
-            timerAddress
-        )
-    {}
+            _timerAddress
+        );
+    }
 }

@@ -1,5 +1,5 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, SignerWithAddress } from "../utils";
+import { ethers, expect, Contract, SignerWithAddress, hre } from "../utils";
 import { getContractFactory, seedContract } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
@@ -13,9 +13,11 @@ describe("Ethereum Spoke Pool", function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, dai, hubPool, timer } = await hubPoolFixture());
 
-    spokePool = await (
-      await getContractFactory("Ethereum_SpokePool", owner)
-    ).deploy(hubPool.address, weth.address, timer.address);
+    spokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Ethereum_SpokePool", owner),
+      [hubPool.address, weth.address, timer.address],
+      { unsafeAllow: ["delegatecall"] }
+    );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
     // via the _bridgeTokensToHubPool() internal call.

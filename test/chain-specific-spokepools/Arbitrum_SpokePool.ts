@@ -1,6 +1,6 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
-import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
+import { getContractFactory, seedContract, avmL1ToL2Alias, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
@@ -23,9 +23,11 @@ describe("Arbitrum Spoke Pool", function () {
 
     l2GatewayRouter = await createFake("L2GatewayRouter");
 
-    arbitrumSpokePool = await (
-      await getContractFactory("Arbitrum_SpokePool", owner)
-    ).deploy(l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
+    arbitrumSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Arbitrum_SpokePool", owner),
+      [l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address],
+      { unsafeAllow: ["delegatecall"] }
+    );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);

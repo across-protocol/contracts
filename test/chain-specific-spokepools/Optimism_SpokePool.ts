@@ -27,9 +27,11 @@ describe("Optimism Spoke Pool", function () {
     });
     await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
-    optimismSpokePool = await (
-      await getContractFactory("Optimism_SpokePool", owner)
-    ).deploy(owner.address, hubPool.address, timer.address);
+    optimismSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Optimism_SpokePool", owner),
+      [owner.address, hubPool.address, timer.address],
+      { unsafeAllow: ["delegatecall"] }
+    );
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
   });

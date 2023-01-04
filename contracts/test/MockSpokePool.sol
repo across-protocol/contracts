@@ -11,13 +11,16 @@ import "../SpokePoolInterface.sol";
 contract MockSpokePool is SpokePool {
     uint256 private chainId_;
 
+    // Note: function must be renamed because it uses same params as BaseContract.initialize().
     // solhint-disable-next-line no-empty-blocks
-    constructor(
+    function initialize(
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {} // solhint-disable-line no-empty-blocks
+        address _timerAddress
+    ) public initializer {
+        __SpokePool_init(_crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
+    }
 
     // solhint-disable-next-line no-empty-blocks
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}

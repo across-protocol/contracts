@@ -3,16 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./interfaces/WETH9.sol";
-import "./Lockable.sol";
 import "./SpokePoolInterface.sol";
+import "./upgradeable/TestableUpgradeable.sol";
+import "./upgradeable/LockableUpgradeable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
 /**
  * @title SpokePool
@@ -23,7 +22,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
-abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
+abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, LockableUpgradeable, MulticallUpgradeable {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -37,11 +36,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9 public immutable wrappedNativeToken;
+    WETH9 public wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
-    uint32 public depositQuoteTimeBuffer = 600;
+    uint32 public depositQuoteTimeBuffer;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
@@ -133,14 +132,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function __SpokePool_init(
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
-        address timerAddress
-    ) Testable(timerAddress) {
+        address _timerAddress
+    ) public onlyInitializing {
+        __Lockable_init();
+        __Multicall_init();
+        depositQuoteTimeBuffer = 600;
+        __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         wrappedNativeToken = WETH9(_wrappedNativeTokenAddress);
@@ -882,4 +885,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}
+
+    // TODO:
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain. OZ adds this to all of their base contracts
+     * to allow for variables to be added to them without having to add them to each child contract. They have added
+     * a __gap such that each contract has the same 50 slots of uint256 slots.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    // uint256[50] private __gap;
 }
