@@ -95,7 +95,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint64 relayerFeePct,
         uint64 appliedRelayerFeePct,
         uint64 realizedLpFeePct,
-        uint32 depositId,
+        uint32 indexed depositId,
         address destinationToken,
         address indexed relayer,
         address indexed depositor,
