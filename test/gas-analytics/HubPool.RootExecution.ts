@@ -93,16 +93,20 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     }
 
     const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
-    const spoke = await (
-      await getContractFactory("MockSpokePool", owner)
-    ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
-    await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address);
+    const spokeMainnet = await hre.upgrades.deployProxy(
+      await getContractFactory("MockSpokePool", owner),
+      [randomAddress(), hubPool.address, randomAddress(), timer.address],
+      { unsafeAllow: ["delegatecall"] }
+    );
+    await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spokeMainnet.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
-      const spoke = await (
-        await getContractFactory("MockSpokePool", owner)
-      ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
+      const spoke = await hre.upgrades.deployProxy(
+        await getContractFactory("MockSpokePool", owner),
+        [randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress],
+        { unsafeAllow: ["delegatecall"] }
+      );
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
       await Promise.all(
         l1Tokens.map(async (token) => {

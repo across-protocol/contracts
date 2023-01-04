@@ -12,5 +12,8 @@ artifacts
 cache-zk
 artifacts-zk
 
+# Upgradeability files
+.openzeppelin
+
 # IDE
 .idea
