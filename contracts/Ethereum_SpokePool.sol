@@ -14,6 +14,7 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
 
     /**
      * @notice Construct the Ethereum SpokePool.
+     * @dev crossDomainAdmin is unused on this contract.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
      * @param _timerAddress Timer address to set.
@@ -24,7 +25,7 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
         address _timerAddress
     ) public initializer {
         __Ownable_init();
-        __SpokePool_init(msg.sender, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_hubPool, _hubPool, _wethAddress, _timerAddress);
     }
 
     /**************************************
@@ -35,7 +36,7 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
         IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(hubPool, relayerRefundLeaf.amountToReturn);
     }
 
-    // Admin is simply owner which should be same account that owns the HubPool deployed on this network. A core
-    // assumption of this contract system is that the HubPool is deployed on Ethereum.
+    // The SpokePool deployed to the same network as the HubPool must be owned by the HubPool.
+    // A core assumption of this contract system is that the HubPool is deployed on Ethereum.
     function _requireAdminSender() internal override onlyOwner {}
 }
