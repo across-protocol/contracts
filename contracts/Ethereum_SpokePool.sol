@@ -14,6 +14,7 @@ contract Ethereum_SpokePool is SpokePool, Ownable {
 
     /**
      * @notice Construct the Ethereum SpokePool.
+     * @dev crossDomainAdmin is unused on Ethereum.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
      * @param timerAddress Timer address to set.

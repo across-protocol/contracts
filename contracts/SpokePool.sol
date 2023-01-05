@@ -27,8 +27,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     using SafeERC20 for IERC20;
     using Address for address;
 
-    // Address of the L1 contract that acts as the owner of this SpokePool. If this contract is deployed on Ethereum,
-    // then this address should be set to the same owner as the HubPool and the whole system.
+    // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
+    // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
     address public crossDomainAdmin;
 
     // Address of the L1 contract that will send tokens to and receive tokens from this contract to fund relayer
