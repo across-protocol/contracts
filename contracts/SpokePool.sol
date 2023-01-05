@@ -24,7 +24,7 @@ import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
  */
 abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, LockableUpgradeable, MulticallUpgradeable {
     using SafeERC20 for IERC20;
-    using Address for address;
+    using AddressUpgradeable for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. If this contract is deployed on Ethereum,
     // then this address should be set to the same owner as the HubPool and the whole system.
