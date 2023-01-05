@@ -95,14 +95,14 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
     const spoke = await (
       await getContractFactory("MockSpokePool", owner)
-    ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
+    ).deploy(0, randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
     await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spoke.address);
 
     for (let i = 0; i < REFUND_CHAIN_COUNT; i++) {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
       const spoke = await (
         await getContractFactory("MockSpokePool", owner)
-      ).deploy(randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
+      ).deploy(0, randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress);
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);
       await Promise.all(
         l1Tokens.map(async (token) => {

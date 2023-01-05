@@ -29,7 +29,7 @@ describe("Optimism Spoke Pool", function () {
 
     optimismSpokePool = await (
       await getContractFactory("Optimism_SpokePool", owner)
-    ).deploy(owner.address, hubPool.address, timer.address);
+    ).deploy(0, owner.address, hubPool.address, timer.address);
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
   });

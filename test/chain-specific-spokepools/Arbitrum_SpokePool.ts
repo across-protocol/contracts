@@ -25,7 +25,7 @@ describe("Arbitrum Spoke Pool", function () {
 
     arbitrumSpokePool = await (
       await getContractFactory("Arbitrum_SpokePool", owner)
-    ).deploy(l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
+    ).deploy(0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);

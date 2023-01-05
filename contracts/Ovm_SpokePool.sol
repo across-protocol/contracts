@@ -34,11 +34,14 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
 
     /**
      * @notice Construct the OVM SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param timerAddress Timer address to set.
      */
     constructor(
+        uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _l2Eth,
@@ -46,7 +49,7 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
         address timerAddress
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress)
+        SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress)
     {
         l2Eth = _l2Eth;
     }

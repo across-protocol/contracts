@@ -35,7 +35,7 @@ export async function deploySpokePool(ethers: any): Promise<{
   // Deploy the pool
   const spokePool = await (
     await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(crossChainAdmin.address, hubPool.address, weth.address, timer.address);
+  ).deploy(0, crossChainAdmin.address, hubPool.address, weth.address, timer.address);
   await spokePool.setChainId(consts.destinationChainId);
 
   return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };

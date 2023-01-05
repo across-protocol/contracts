@@ -13,11 +13,12 @@ contract MockSpokePool is SpokePool {
 
     // solhint-disable-next-line no-empty-blocks
     constructor(
+        uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {} // solhint-disable-line no-empty-blocks
+    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {} // solhint-disable-line no-empty-blocks
 
     // solhint-disable-next-line no-empty-blocks
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}

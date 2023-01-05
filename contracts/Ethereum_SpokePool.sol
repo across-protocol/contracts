@@ -14,15 +14,18 @@ contract Ethereum_SpokePool is SpokePool, Ownable {
 
     /**
      * @notice Construct the Ethereum SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
      * @param timerAddress Timer address to set.
      */
     constructor(
+        uint32 _initialDepositId,
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(msg.sender, _hubPool, _wethAddress, timerAddress) {}
+    ) SpokePool(_initialDepositId, msg.sender, _hubPool, _wethAddress, timerAddress) {}
 
     /**************************************
      *          INTERNAL FUNCTIONS           *
