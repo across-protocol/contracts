@@ -38,6 +38,8 @@ const config: HardhatUserConfig = {
     compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/test/MockSpokePoolV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {

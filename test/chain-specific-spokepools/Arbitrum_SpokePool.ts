@@ -26,11 +26,23 @@ describe("Arbitrum Spoke Pool", function () {
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
       [l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address],
-      { unsafeAllow: ["delegatecall"] }
+      { unsafeAllow: ["delegatecall"], kind: "uups" }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
+  });
+
+  it("Only cross domain owner upgrade logic contract", async function () {
+    // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("Arbitrum_SpokePool", owner),
+      { unsafeAllow: ["delegatecall"], kind: "uups" }
+    );
+
+    // upgradeTo fails unless called by cross domain admin
+    await expect(arbitrumSpokePool.upgradeTo(implementation)).to.be.reverted;
+    await arbitrumSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
   });
 
   it("Only cross domain owner can set L2GatewayRouter", async function () {

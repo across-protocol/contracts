@@ -36,7 +36,7 @@ export async function deploySpokePool(ethers: any): Promise<{
   const spokePool = await hre.upgrades.deployProxy(
     await getContractFactory("MockSpokePool", deployerWallet),
     [crossChainAdmin.address, hubPool.address, weth.address, timer.address],
-    { unsafeAllow: ["delegatecall"] }
+    { unsafeAllow: ["delegatecall"], kind: "uups" }
   );
   await spokePool.setChainId(consts.destinationChainId);
 

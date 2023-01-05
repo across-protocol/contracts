@@ -11,7 +11,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 /**
  * @title SpokePool
@@ -22,7 +23,13 @@ import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
-abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, LockableUpgradeable, MulticallUpgradeable {
+abstract contract SpokePool is
+    SpokePoolInterface,
+    UUPSUpgradeable,
+    TestableUpgradeable,
+    LockableUpgradeable,
+    MultiCaller
+{
     using SafeERC20 for IERC20;
     using AddressUpgradeable for address;
 
@@ -128,6 +135,16 @@ abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, Lockable
     event PausedFills(bool isPaused);
 
     /**
+     * Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
+     * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
+     * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
+     * it is deployed: */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
      * @notice Construct the base SpokePool.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
@@ -140,8 +157,8 @@ abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, Lockable
         address _wrappedNativeTokenAddress,
         address _timerAddress
     ) public onlyInitializing {
+        __UUPSUpgradeable_init();
         __Lockable_init();
-        __Multicall_init();
         depositQuoteTimeBuffer = 600;
         __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
@@ -153,8 +170,11 @@ abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, Lockable
      *               MODIFIERS              *
      ****************************************/
 
-    // Implementing contract needs to override _requireAdminSender() to ensure that admin functions are protected
-    // appropriately.
+    /**
+     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+     * {upgradeTo} and {upgradeToAndCall}.
+     * @dev This should be set to cross domain admin for specific SpokePool.
+     */
     modifier onlyAdmin() {
         _requireAdminSender();
         _;
@@ -173,6 +193,9 @@ abstract contract SpokePool is SpokePoolInterface, TestableUpgradeable, Lockable
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
+
+    // Allows cross domain admin to upgrade UUPS proxy implementation.
+    function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 
     /**
      * @notice Pauses deposit and fill functions. This is intended to be used during upgrades or when

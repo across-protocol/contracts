@@ -16,12 +16,24 @@ describe("Ethereum Spoke Pool", function () {
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),
       [hubPool.address, weth.address, timer.address],
-      { unsafeAllow: ["delegatecall"] }
+      { unsafeAllow: ["delegatecall"], kind: "uups" }
     );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
     // via the _bridgeTokensToHubPool() internal call.
     await seedContract(spokePool, relayer, [dai], weth, amountHeldByPool);
+  });
+
+  it("Only cross domain owner upgrade logic contract", async function () {
+    // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("Ethereum_SpokePool", owner),
+      { unsafeAllow: ["delegatecall"], kind: "uups" }
+    );
+
+    // upgradeTo fails unless called by cross domain admin
+    await expect(spokePool.connect(rando).upgradeTo(implementation)).to.be.reverted;
+    await spokePool.connect(owner).upgradeTo(implementation);
   });
 
   it("Only owner can set the cross domain admin", async function () {
