@@ -698,7 +698,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
         // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
         bytes32 expectedDepositorMessageHash = keccak256(
-            abi.encode("ACROSS-V2-FEE-1.0", newRelayerFeePct, depositId, originChainId)
+            abi.encode("ACROSS-V2-FEE-2.0", newRelayerFeePct, depositId, originChainId)
         );
 
         // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[eth_sign]
