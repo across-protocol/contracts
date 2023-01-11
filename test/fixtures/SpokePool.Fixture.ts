@@ -297,7 +297,7 @@ export async function modifyRelayHelper(
   const messageHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
       ["string", "uint64", "uint32", "uint32"],
-      ["ACROSS-V2-FEE-1.0", modifiedRelayerFeePct, depositId, originChainId]
+      ["ACROSS-V2-FEE-2.0", modifiedRelayerFeePct, depositId, originChainId]
     )
   );
   const signature = await depositor.signMessage(ethers.utils.arrayify(messageHash));
