@@ -130,17 +130,21 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     /**
      * @notice Construct the base SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param timerAddress Timer address to set.
      */
     constructor(
+        uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
         address timerAddress
     ) Testable(timerAddress) {
+        numberOfDeposits = _initialDepositId;
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         wrappedNativeToken = WETH9(_wrappedNativeTokenAddress);

@@ -33,7 +33,15 @@ describe("Polygon Spoke Pool", function () {
 
     polygonSpokePool = await (
       await getContractFactory("Polygon_SpokePool", owner)
-    ).deploy(polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address);
+    ).deploy(
+      0,
+      polygonTokenBridger.address,
+      owner.address,
+      hubPool.address,
+      weth.address,
+      fxChild.address,
+      timer.address
+    );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
     await seedWallet(owner, [], weth, toWei("1"));
