@@ -14,6 +14,7 @@ export async function deploySpokePool(ethers: any): Promise<{
   spokePool: Contract;
   unwhitelistedErc20: Contract;
   destErc20: Contract;
+  erc1271: Contract;
 }> {
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
   // Useful contracts.
@@ -38,7 +39,10 @@ export async function deploySpokePool(ethers: any): Promise<{
   ).deploy(0, crossChainAdmin.address, hubPool.address, weth.address, timer.address);
   await spokePool.setChainId(consts.destinationChainId);
 
-  return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
+  // ERC1271
+  const erc1271 = await (await getContractFactory("MockERC1271", deployerWallet)).deploy(deployerWallet.address);
+
+  return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20, erc1271 };
 }
 
 export interface DepositRoute {

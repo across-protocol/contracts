@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
@@ -722,10 +723,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
-        // Note: We purposefully do not support EIP-1271 signatures (meaning that multisigs and smart contract wallets
-        // like Argent are not supported) because of the possibility that a multisig that signed a message on the origin
-        // chain does not have a parallel on this destination chain.
-        require(depositor == ECDSA.recover(ethSignedMessageHash, depositorSignature), "invalid signature");
+        bool isValid = SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature);
+        require(isValid, "invalid signature");
     }
 
     function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
