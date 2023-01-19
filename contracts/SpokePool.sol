@@ -908,14 +908,4 @@ abstract contract SpokePool is
 
     // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}
-
-    // TODO:
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain. OZ adds this to all of their base contracts
-     * to allow for variables to be added to them without having to add them to each child contract. They have added
-     * a __gap such that each contract has the same 50 slots of uint256 slots.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    // uint256[50] private __gap;
 }
