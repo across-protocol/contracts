@@ -723,6 +723,13 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
+        // Note:
+        // - We don't need to worry about reentrancy from a contract deployed at the depositor address since the method
+        //   `SignatureChecker.isValidSignatureNow` is a view method. Re-entrancy can happen, but it cannot affect state.
+        // - EIP-1271 signatures are supported. This means that a signature valid now, may not be valid later and vice-versa.
+        // - For an EIP-1271 signature to work, the depositor contract address must map to a deployed contract on the destination
+        //   chain that can validate the signature.
+        // - Regular signatures from an EOA are also supported.
         bool isValid = SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature);
         require(isValid, "invalid signature");
     }
