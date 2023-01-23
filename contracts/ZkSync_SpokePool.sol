@@ -52,7 +52,7 @@ contract ZkSync_SpokePool is SpokePool {
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {
+    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress, "ACROSS-V2", "1.0.0") {
         _setZkBridges(_zkErc20Bridge, _zkEthBridge);
     }
 

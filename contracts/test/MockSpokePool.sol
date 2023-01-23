@@ -18,7 +18,7 @@ contract MockSpokePool is SpokePool {
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {} // solhint-disable-line no-empty-blocks
+    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress, "ACROSS-V2", "1.0.0") {} // solhint-disable-line no-empty-blocks
 
     // solhint-disable-next-line no-empty-blocks
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}

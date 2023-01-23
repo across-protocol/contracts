@@ -79,7 +79,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
         address _fxChild,
         address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress) {
+    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress, "ACROSS-V2", "1.0.0") {
         polygonTokenBridger = _polygonTokenBridger;
         fxChild = _fxChild;
     }

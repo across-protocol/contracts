@@ -26,7 +26,7 @@ contract Ethereum_SpokePool is SpokePool, Ownable {
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_initialDepositId, _hubPool, _hubPool, _wethAddress, timerAddress) {}
+    ) SpokePool(_initialDepositId, _hubPool, _hubPool, _wethAddress, timerAddress, "ACROSS-V2", "1.0.0") {}
 
     /**************************************
      *          INTERNAL FUNCTIONS           *

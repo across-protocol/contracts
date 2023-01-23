@@ -42,7 +42,15 @@ export async function deploySpokePool(ethers: any): Promise<{
   // ERC1271
   const erc1271 = await (await getContractFactory("MockERC1271", deployerWallet)).deploy(deployerWallet.address);
 
-  return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20, erc1271 };
+  return {
+    timer,
+    weth,
+    erc20,
+    spokePool,
+    unwhitelistedErc20,
+    destErc20,
+    erc1271,
+  };
 }
 
 export interface DepositRoute {
@@ -297,17 +305,29 @@ export async function modifyRelayHelper(
   depositId: string,
   originChainId: string,
   depositor: SignerWithAddress
-): Promise<{ messageHash: string; signature: string }> {
-  const messageHash = ethers.utils.keccak256(
-    defaultAbiCoder.encode(
-      ["string", "uint64", "uint32", "uint32"],
-      ["ACROSS-V2-FEE-2.0", modifiedRelayerFeePct, depositId, originChainId]
-    )
-  );
-  const signature = await depositor.signMessage(ethers.utils.arrayify(messageHash));
-
+): Promise<{ signature: string }> {
+  const typedData = {
+    types: {
+      UpdateRelayerFeeMessage: [
+        { name: "newRelayerFeePct", type: "uint64" },
+        { name: "depositId", type: "uint32" },
+        { name: "originChainId", type: "uint256" },
+      ],
+    },
+    domain: {
+      name: "ACROSS-V2",
+      version: "1.0.0",
+      chainId: Number(originChainId),
+      verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+    },
+    message: {
+      newRelayerFeePct: modifiedRelayerFeePct,
+      depositId,
+      originChainId,
+    },
+  };
+  const signature = await depositor._signTypedData(typedData.domain, typedData.types, typedData.message);
   return {
-    messageHash,
     signature,
   };
 }

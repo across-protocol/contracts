@@ -5,11 +5,11 @@ import "./MerkleLib.sol";
 import "./interfaces/WETH9.sol";
 import "./Lockable.sol";
 import "./SpokePoolInterface.sol";
+import "./EIP712CrossChain.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@uma/core/contracts/common/implementation/Testable.sol";
@@ -24,7 +24,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
-abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller {
+abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller, EIP712CrossChain {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -137,14 +137,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param timerAddress Timer address to set.
+     * @param eip712DomainName User readable name of the signing domain, i.e. the name of the DApp or the protocol.
+     * @param eip712DomainVersion The current major version of the signing domain.
      */
     constructor(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
-        address timerAddress
-    ) Testable(timerAddress) {
+        address timerAddress,
+        string memory eip712DomainName,
+        string memory eip712DomainVersion
+    ) Testable(timerAddress) EIP712CrossChain(eip712DomainName, eip712DomainVersion) {
         numberOfDeposits = _initialDepositId;
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
@@ -348,7 +352,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param depositId Deposit to update fee for that originated in this contract.
      * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
      * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
-     * EIP-1271 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
+     * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
     function speedUpDeposit(
         address depositor,
@@ -446,7 +450,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param relayerFeePct Original fee % to keep as relayer set by depositor.
      * @param newRelayerFeePct New fee % to keep as relayer also specified by depositor.
      * @param depositId Unique deposit ID on origin spoke pool.
-     * @param depositorSignature Depositor-signed message containing updated fee %.
+     * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
+     * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
+     * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
     function fillRelayWithUpdatedFee(
         address depositor,
@@ -698,20 +704,26 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     ) internal view {
         // A depositor can request to speed up an un-relayed deposit by signing a hash containing the relayer
         // fee % to update to and information uniquely identifying the deposit to relay. This information ensures
-        // that this signature cannot be re-used for other deposits. The version string is included as a precaution
-        // in case this contract is upgraded.
-        // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
-        // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
-        bytes32 expectedDepositorMessageHash = keccak256(
-            abi.encode("ACROSS-V2-FEE-2.0", newRelayerFeePct, depositId, originChainId)
+        // that this signature cannot be re-used for other deposits.
+        // Note: We use the EIP-712 (https://eips.ethereum.org/EIPS/eip-712) standard for hashing and signing typed data.
+        // Specifically, we use the version of the encoding known as "v4", as implemented by the JSON RPC method
+        // `eth_signedTypedDataV4` in MetaMask (https://docs.metamask.io/guide/signing-data.html).
+        bytes32 expectedTypedDataV4Hash = _hashTypedDataV4(
+            // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "UpdateRelayerFeeMessage(uint64 newRelayerFeePct,uint32 depositId,uint256 originChainId)"
+                    ),
+                    newRelayerFeePct,
+                    depositId,
+                    originChainId
+                )
+            ),
+            // By passing in the origin chain id, we enable the verification of the signature on a different chain
+            originChainId
         );
-
-        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[eth_sign]
-        // If the depositor signed a message with a different updated fee (or any other param included in the
-        // above keccak156 hash), then this will revert.
-        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
-
-        _verifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
+        _verifyDepositorUpdateFeeMessage(depositor, expectedTypedDataV4Hash, depositorSignature);
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of

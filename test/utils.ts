@@ -11,9 +11,7 @@ import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 import { FactoryOptions } from "hardhat/types";
 
-export interface SignerWithAddress extends Signer {
-  address: string;
-}
+export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
   return "signer" in signerOrFactoryOptions || "libraries" in signerOrFactoryOptions;
