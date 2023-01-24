@@ -44,7 +44,7 @@ contract Arbitrum_SpokePool is SpokePool {
         address _hubPool,
         address _wethAddress,
         address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress, "ACROSS-V2", "1.0.0") {
+    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 

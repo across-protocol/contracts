@@ -137,18 +137,14 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param timerAddress Timer address to set.
-     * @param eip712DomainName User readable name of the signing domain, i.e. the name of the DApp or the protocol.
-     * @param eip712DomainVersion The current major version of the signing domain.
      */
     constructor(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
-        address timerAddress,
-        string memory eip712DomainName,
-        string memory eip712DomainVersion
-    ) Testable(timerAddress) EIP712CrossChain(eip712DomainName, eip712DomainVersion) {
+        address timerAddress
+    ) Testable(timerAddress) EIP712CrossChain("ACROSS-V2", "1.0.0") {
         numberOfDeposits = _initialDepositId;
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
