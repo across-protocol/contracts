@@ -26,7 +26,7 @@ describe("Arbitrum Spoke Pool", function () {
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
       [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address],
-      { unsafeAllow: ["delegatecall"], kind: "uups" }
+      { kind: "uups" }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -37,7 +37,7 @@ describe("Arbitrum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      { unsafeAllow: ["delegatecall"], kind: "uups" }
+      { kind: "uups" }
     );
 
     // upgradeTo fails unless called by cross domain admin

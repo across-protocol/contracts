@@ -6,9 +6,6 @@ import "./PolygonTokenBridger.sol";
 import "./interfaces/WETH9.sol";
 import "./SpokePoolInterface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 // IFxMessageProcessor represents interface to process messages.
 interface IFxMessageProcessor {
     function processMessageFromRoot(
@@ -22,7 +19,7 @@ interface IFxMessageProcessor {
  * @notice Polygon specific SpokePool.
  */
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
-    using SafeERC20 for PolygonIERC20;
+    using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
 
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
@@ -128,6 +125,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         require(rootMessageSender == crossDomainAdmin, "Not from mainnet admin");
 
         // This uses delegatecall to take the information in the message and process it as a function call on this contract.
+        /// This is a safe delegatecall because its made to address(this) so there is no risk of delegating to a
+        /// selfdestruct().
+        /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(data);
         require(success, "delegatecall failed");
     }
@@ -211,13 +211,16 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        PolygonIERC20(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
+        PolygonIERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
             address(polygonTokenBridger),
             relayerRefundLeaf.amountToReturn
         );
 
         // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
-        polygonTokenBridger.send(PolygonIERC20(relayerRefundLeaf.l2TokenAddress), relayerRefundLeaf.amountToReturn);
+        polygonTokenBridger.send(
+            PolygonIERC20Upgradeable(relayerRefundLeaf.l2TokenAddress),
+            relayerRefundLeaf.amountToReturn
+        );
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }

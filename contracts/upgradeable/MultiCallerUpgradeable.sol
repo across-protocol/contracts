@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+
+/**
+ * @title MockSpokePool
+ * @notice Logic is 100% copied from "@uma/core/contracts/common/implementation/MultiCaller.sol" but one
+ * comment is added to clarify why we allow delegatecall() in this contract, which is typically unsafe for use in
+ * upgradeable implementation contracts.
+ * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
+ */
+contract MultiCallerUpgradeable {
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            // Typically, implementation contracts used in the upgradeable proxy pattern shouldn't call `delegatecall`
+            // because it could allow a malicious actor to call this implementation contract directly (rather than
+            // through a proxy contract) and then selfdestruct() the contract, thereby freezing the upgradeable
+            // proxy. However, since we're only delegatecall-ing into this contract, then we can consider this
+            // use of delegatecall() safe.
+            /// @custom:oz-upgrades-unsafe-allow delegatecall
+            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
+
+            if (!success) {
+                // Next 5 lines from https://ethereum.stackexchange.com/a/83577
+                if (result.length < 68) revert();
+                assembly {
+                    result := add(result, 0x04)
+                }
+                revert(abi.decode(result, (string)));
+            }
+
+            results[i] = result;
+        }
+    }
+}

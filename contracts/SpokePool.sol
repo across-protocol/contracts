@@ -6,16 +6,14 @@ import "./interfaces/WETH9.sol";
 import "./SpokePoolInterface.sol";
 import "./upgradeable/TestableUpgradeable.sol";
 import "./upgradeable/LockableUpgradeable.sol";
+import "./upgradeable/MultiCallerUpgradeable.sol";
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 /**
  * @title SpokePool
@@ -31,9 +29,9 @@ abstract contract SpokePool is
     UUPSUpgradeable,
     TestableUpgradeable,
     LockableUpgradeable,
-    MultiCaller
+    MultiCallerUpgradeable
 {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressUpgradeable for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
@@ -338,7 +336,7 @@ abstract contract SpokePool is
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         _emitDeposit(
             amount,
@@ -620,7 +618,10 @@ abstract contract SpokePool is
         for (uint256 i = 0; i < length; ) {
             uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
-                IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
+                IERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeTransfer(
+                    relayerRefundLeaf.refundAddresses[i],
+                    amount
+                );
 
             // OK because we assume refund array length won't be > types(uint256).max.
             // Based on the stress test results in /test/gas-analytics/SpokePool.RelayerRefundLeaf.ts, the UMIP should
@@ -777,7 +778,7 @@ abstract contract SpokePool is
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(address(wrappedNativeToken)).safeTransfer(to, amount);
+            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
             to.transfer(amount);
@@ -850,14 +851,18 @@ abstract contract SpokePool is
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
             if (!useContractFunds)
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(relayData.recipient), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!useContractFunds)
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
-            else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
+                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+                    msg.sender,
+                    relayData.recipient,
+                    amountToSend
+                );
+            else IERC20Upgradeable(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
         }
     }
 

@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./Lockable.sol";
 import "./interfaces/WETH9.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 // Polygon Registry contract that stores their addresses.
 interface PolygonRegistry {
@@ -18,7 +18,7 @@ interface PolygonERC20Predicate {
 }
 
 // ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
-interface PolygonIERC20 is IERC20 {
+interface PolygonIERC20Upgradeable is IERC20Upgradeable {
     function withdraw(uint256 amount) external;
 }
 
@@ -39,8 +39,8 @@ interface MaticToken {
  * sender.
  */
 contract PolygonTokenBridger is Lockable {
-    using SafeERC20 for PolygonIERC20;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Gas token for Polygon.
     MaticToken public constant maticToken = MaticToken(0x0000000000000000000000000000000000001010);
@@ -104,7 +104,7 @@ contract PolygonTokenBridger is Lockable {
      * @param token Token to bridge.
      * @param amount Amount to bridge.
      */
-    function send(PolygonIERC20 token, uint256 amount) public nonReentrant onlyChainId(l2ChainId) {
+    function send(PolygonIERC20Upgradeable token, uint256 amount) public nonReentrant onlyChainId(l2ChainId) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // In the wMatic case, this unwraps. For other ERC20s, this is the burn/send action.
@@ -119,7 +119,7 @@ contract PolygonTokenBridger is Lockable {
      * @notice Called by someone to send tokens to the destination, which should be set to the HubPool.
      * @param token Token to send to destination.
      */
-    function retrieve(IERC20 token) public nonReentrant onlyChainId(l1ChainId) {
+    function retrieve(IERC20Upgradeable token) public nonReentrant onlyChainId(l1ChainId) {
         if (address(token) == address(l1Weth)) {
             // For WETH, there is a pre-deposit step to ensure any ETH that has been sent to the contract is captured.
             l1Weth.deposit{ value: address(this).balance }();
