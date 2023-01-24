@@ -49,15 +49,7 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
         address timerAddress
     )
         CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(
-            _initialDepositId,
-            _crossDomainAdmin,
-            _hubPool,
-            _wrappedNativeToken,
-            timerAddress,
-            "ACROSS-V2",
-            "1.0.0"
-        )
+        SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress)
     {
         l2Eth = _l2Eth;
     }
