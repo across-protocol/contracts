@@ -58,13 +58,27 @@ this section in the [Foundry book](https://book.getfoundry.sh/config/hardhat?hig
 
 ### Forge Compile
 
-`forge build` outputs contracts and other data in `out/` and `forge-cache/`. If you've used `forge` before then you're
+Outputs contracts and other data in `out/` and `forge-cache/`. If you've used `forge` before then you're
 accustomed to seeing data in `cache/` however `hardhat` already outputs to `cache/`.
+
+```sh
+forge build
+```
+
+Show file sizes.
+
+```sh
+forge build --sizes
+```
 
 ### Forge Test
 
-`forge test` runs tests in `test/foundry/`. Add the `-vv` or `-vvvv` to see `console.log's` and stack traces
+Runs tests in `test/foundry/`. Add the `-vvvv` flag to see and stack traces.
 respectively.
+
+```sh
+forge test -vv
+```
 
 ## ZK Sync Adapter
 
