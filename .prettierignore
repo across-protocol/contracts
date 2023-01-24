@@ -5,3 +5,10 @@ coverage*
 gasReporterOutput.json
 typechain
 dist
+
+# Foundry files
+out
+lib
+
+# Hardhat files
+deployments
