@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, getContractFactory } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, getContractFactory, hre } from "./utils";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
 
@@ -11,9 +11,11 @@ describe("SpokePool Admin Functions", async function () {
     ({ spokePool, erc20 } = await spokePoolFixture());
   });
   it("Can set initial deposit ID", async function () {
-    const spokePool = await (
-      await getContractFactory("MockSpokePool", owner)
-    ).deploy(1, owner.address, owner.address, owner.address, owner.address);
+    const spokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("MockSpokePool", owner),
+      [1, owner.address, owner.address, owner.address, owner.address],
+      { unsafeAllow: ["delegatecall"], kind: "uups" }
+    );
     expect(await spokePool.numberOfDeposits()).to.equal(1);
   });
   it("Enable token path", async function () {
