@@ -14,3 +14,7 @@ artifacts-zk
 
 # IDE
 .idea
+
+#Foundry files
+out
+forge-cache
