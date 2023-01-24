@@ -9,6 +9,9 @@ import "./upgradeable/LockableUpgradeable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -146,17 +149,21 @@ abstract contract SpokePool is
 
     /**
      * @notice Construct the base SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _timerAddress Timer address to set.
      */
     function __SpokePool_init(
+        uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
         address _timerAddress
     ) public onlyInitializing {
+        numberOfDeposits = _initialDepositId;
         __UUPSUpgradeable_init();
         __Lockable_init();
         depositQuoteTimeBuffer = 600;
@@ -724,7 +731,7 @@ abstract contract SpokePool is
         // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
         // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
         bytes32 expectedDepositorMessageHash = keccak256(
-            abi.encode("ACROSS-V2-FEE-1.0", newRelayerFeePct, depositId, originChainId)
+            abi.encode("ACROSS-V2-FEE-2.0", newRelayerFeePct, depositId, originChainId)
         );
 
         // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[eth_sign]
@@ -744,10 +751,15 @@ abstract contract SpokePool is
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
-        // Note: We purposefully do not support EIP-1271 signatures (meaning that multisigs and smart contract wallets
-        // like Argent are not supported) because of the possibility that a multisig that signed a message on the origin
-        // chain does not have a parallel on this destination chain.
-        require(depositor == ECDSA.recover(ethSignedMessageHash, depositorSignature), "invalid signature");
+        // Note:
+        // - We don't need to worry about reentrancy from a contract deployed at the depositor address since the method
+        //   `SignatureChecker.isValidSignatureNow` is a view method. Re-entrancy can happen, but it cannot affect state.
+        // - EIP-1271 signatures are supported. This means that a signature valid now, may not be valid later and vice-versa.
+        // - For an EIP-1271 signature to work, the depositor contract address must map to a deployed contract on the destination
+        //   chain that can validate the signature.
+        // - Regular signatures from an EOA are also supported.
+        bool isValid = SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature);
+        require(isValid, "invalid signature");
     }
 
     function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {

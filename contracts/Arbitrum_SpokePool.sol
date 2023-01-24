@@ -29,6 +29,8 @@ contract Arbitrum_SpokePool is SpokePool {
 
     /**
      * @notice Construct the AVM SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
@@ -36,13 +38,14 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _timerAddress Timer address to set.
      */
     function initialize(
+        uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address _timerAddress
     ) public initializer {
-        __SpokePool_init(_crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 

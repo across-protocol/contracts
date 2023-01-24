@@ -35,6 +35,8 @@ contract ZkSync_SpokePool is SpokePool {
 
     /**
      * @notice Construct the ZkSync SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _zkEthBridge Address of L2 ETH gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
@@ -43,6 +45,7 @@ contract ZkSync_SpokePool is SpokePool {
      * @param _timerAddress Timer address to set.
      */
     function initialize(
+        uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
         ZkBridgeLike _zkEthBridge,
         address _crossDomainAdmin,
@@ -50,7 +53,7 @@ contract ZkSync_SpokePool is SpokePool {
         address _wethAddress,
         address _timerAddress
     ) public initializer {
-        __SpokePool_init(_crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
         _setZkBridges(_zkErc20Bridge, _zkEthBridge);
     }
 

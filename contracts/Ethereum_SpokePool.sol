@@ -15,17 +15,20 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
     /**
      * @notice Construct the Ethereum SpokePool.
      * @dev crossDomainAdmin is unused on this contract.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
      * @param _timerAddress Timer address to set.
      */
     function initialize(
+        uint32 _initialDepositId,
         address _hubPool,
         address _wethAddress,
         address _timerAddress
     ) public initializer {
         __Ownable_init();
-        __SpokePool_init(_hubPool, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _hubPool, _hubPool, _wethAddress, _timerAddress);
     }
 
     /**************************************

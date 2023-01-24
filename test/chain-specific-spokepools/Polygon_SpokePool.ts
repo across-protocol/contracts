@@ -33,7 +33,7 @@ describe("Polygon Spoke Pool", function () {
 
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
-      [polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address],
+      [0, polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address],
       { unsafeAllow: ["delegatecall"], kind: "uups" }
     );
 

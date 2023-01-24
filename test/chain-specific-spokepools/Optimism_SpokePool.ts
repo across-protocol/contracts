@@ -29,7 +29,7 @@ describe("Optimism Spoke Pool", function () {
 
     optimismSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Optimism_SpokePool", owner),
-      [owner.address, hubPool.address, timer.address],
+      [0, owner.address, hubPool.address, timer.address],
       { unsafeAllow: ["delegatecall"], kind: "uups" }
     );
 

@@ -12,13 +12,14 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
     uint256 private chainId_;
 
     function initialize(
+        uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
         address _timerAddress
     ) public initializer {
         __Ownable_init();
-        __SpokePool_init(_crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
     }
 
     // solhint-disable-next-line no-empty-blocks

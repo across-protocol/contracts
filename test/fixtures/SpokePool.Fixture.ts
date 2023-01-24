@@ -14,6 +14,7 @@ export async function deploySpokePool(ethers: any): Promise<{
   spokePool: Contract;
   unwhitelistedErc20: Contract;
   destErc20: Contract;
+  erc1271: Contract;
 }> {
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
   // Useful contracts.
@@ -35,12 +36,15 @@ export async function deploySpokePool(ethers: any): Promise<{
   // Deploy the pool
   const spokePool = await hre.upgrades.deployProxy(
     await getContractFactory("MockSpokePool", deployerWallet),
-    [crossChainAdmin.address, hubPool.address, weth.address, timer.address],
+    [0, crossChainAdmin.address, hubPool.address, weth.address, timer.address],
     { unsafeAllow: ["delegatecall"], kind: "uups" }
   );
   await spokePool.setChainId(consts.destinationChainId);
 
-  return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20 };
+  // ERC1271
+  const erc1271 = await (await getContractFactory("MockERC1271", deployerWallet)).deploy(deployerWallet.address);
+
+  return { timer, weth, erc20, spokePool, unwhitelistedErc20, destErc20, erc1271 };
 }
 
 export interface DepositRoute {
@@ -299,7 +303,7 @@ export async function modifyRelayHelper(
   const messageHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
       ["string", "uint64", "uint32", "uint32"],
-      ["ACROSS-V2-FEE-1.0", modifiedRelayerFeePct, depositId, originChainId]
+      ["ACROSS-V2-FEE-2.0", modifiedRelayerFeePct, depositId, originChainId]
     )
   );
   const signature = await depositor.signMessage(ethers.utils.arrayify(messageHash));

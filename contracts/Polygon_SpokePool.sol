@@ -62,6 +62,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     /**
      * @notice Construct the Polygon SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
      * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
@@ -70,6 +72,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _timerAddress Timer address to set.
      */
     function initialize(
+        uint32 _initialDepositId,
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
@@ -78,7 +81,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         address _timerAddress
     ) public initializer {
         callValidated = false;
-        __SpokePool_init(_crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
         polygonTokenBridger = _polygonTokenBridger;
         fxChild = _fxChild;
     }

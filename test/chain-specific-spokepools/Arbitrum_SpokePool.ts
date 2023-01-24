@@ -25,7 +25,7 @@ describe("Arbitrum Spoke Pool", function () {
 
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      [l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address],
+      [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address],
       { unsafeAllow: ["delegatecall"], kind: "uups" }
     );
 
