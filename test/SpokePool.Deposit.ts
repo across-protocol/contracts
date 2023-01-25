@@ -227,7 +227,7 @@ describe("SpokePool Depositor Logic", async function () {
           amountToDeposit,
           destinationChainId,
           depositRelayerFeePct,
-          toBN(currentSpokePoolTime).add(toBN("700")) // > 10 mins in future
+          toBN(currentSpokePoolTime).add(toBN("3700")) // > 60 mins in future
         )
       )
     ).to.be.reverted;
