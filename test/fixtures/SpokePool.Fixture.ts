@@ -318,7 +318,6 @@ export async function modifyRelayHelper(
       name: "ACROSS-V2",
       version: "1.0.0",
       chainId: Number(originChainId),
-      verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
     },
     message: {
       newRelayerFeePct: modifiedRelayerFeePct,

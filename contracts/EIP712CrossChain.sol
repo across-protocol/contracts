@@ -19,8 +19,6 @@ abstract contract EIP712CrossChain {
     bytes32 private immutable _HASHED_NAME;
     bytes32 private immutable _HASHED_VERSION;
     bytes32 private immutable _TYPE_HASH;
-    // NOTE: We use a hardcoded address to allow cross-chain verification
-    address public immutable _VERIFYING_CONTRACT = 0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC;
 
     /* solhint-enable var-name-mixedcase */
 
@@ -39,9 +37,7 @@ abstract contract EIP712CrossChain {
     constructor(string memory name, string memory version) {
         bytes32 hashedName = keccak256(bytes(name));
         bytes32 hashedVersion = keccak256(bytes(version));
-        bytes32 typeHash = keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
+        bytes32 typeHash = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
         _HASHED_NAME = hashedName;
         _HASHED_VERSION = hashedVersion;
         _TYPE_HASH = typeHash;
@@ -59,8 +55,8 @@ abstract contract EIP712CrossChain {
         bytes32 nameHash,
         bytes32 versionHash,
         uint256 originChainId
-    ) private view returns (bytes32) {
-        return keccak256(abi.encode(typeHash, nameHash, versionHash, originChainId, _VERIFYING_CONTRACT));
+    ) private pure returns (bytes32) {
+        return keccak256(abi.encode(typeHash, nameHash, versionHash, originChainId));
     }
 
     /**
