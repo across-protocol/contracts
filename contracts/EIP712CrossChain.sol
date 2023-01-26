@@ -47,16 +47,7 @@ abstract contract EIP712CrossChain {
      * @dev Returns the domain separator depending on the `originChainId`.
      */
     function _domainSeparatorV4(uint256 originChainId) internal view returns (bytes32) {
-        return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION, originChainId);
-    }
-
-    function _buildDomainSeparator(
-        bytes32 typeHash,
-        bytes32 nameHash,
-        bytes32 versionHash,
-        uint256 originChainId
-    ) private pure returns (bytes32) {
-        return keccak256(abi.encode(typeHash, nameHash, versionHash, originChainId));
+        return keccak256(abi.encode(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION, originChainId));
     }
 
     /**
