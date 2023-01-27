@@ -45,6 +45,8 @@ abstract contract EIP712CrossChain {
 
     /**
      * @dev Returns the domain separator depending on the `originChainId`.
+     * @param originChainId Chain id of network where message originates from.
+     * @return bytes32 EIP-712-compliant domain separator.
      */
     function _domainSeparatorV4(uint256 originChainId) internal view returns (bytes32) {
         return keccak256(abi.encode(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION, originChainId));
@@ -65,6 +67,9 @@ abstract contract EIP712CrossChain {
      * bytes32 digest = _hashTypedDataV4(structHash, originChainId);
      * address signer = ECDSA.recover(digest, signature);
      * ```
+     * @param structHash Hashed struct as defined in https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
+     * @param originChainId Chain id of network where message originates from.
+     * @return bytes32 Hash digest that is recoverable via `EDCSA.recover`.
      */
     function _hashTypedDataV4(bytes32 structHash, uint256 originChainId) internal view virtual returns (bytes32) {
         return ECDSA.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
