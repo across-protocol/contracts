@@ -47,7 +47,7 @@ abstract contract SpokePool is
     WETH9 public wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
+    // caller to use an approximately "current" realized fee. Defaults to 1 hour.
     uint32 public depositQuoteTimeBuffer;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
@@ -164,7 +164,7 @@ abstract contract SpokePool is
         numberOfDeposits = _initialDepositId;
         __UUPSUpgradeable_init();
         __Lockable_init();
-        depositQuoteTimeBuffer = 600;
+        depositQuoteTimeBuffer = 3600;
         __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
