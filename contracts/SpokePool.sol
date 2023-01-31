@@ -139,7 +139,8 @@ abstract contract SpokePool is
      * Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
      * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
-     * it is deployed: */
+     * it is deployed:
+     */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
