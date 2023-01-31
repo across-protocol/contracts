@@ -41,8 +41,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     WETH9 public immutable wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an approximately "current" realized fee. Defaults to 10 minutes.
-    uint32 public depositQuoteTimeBuffer = 600;
+    // caller to use an approximately "current" realized fee. Defaults to 1 hour.
+    uint32 public depositQuoteTimeBuffer = 3600;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
