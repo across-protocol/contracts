@@ -5,7 +5,6 @@ import "./MerkleLib.sol";
 import "./interfaces/WETH9.sol";
 import "./SpokePoolInterface.sol";
 import "./upgradeable/TestableUpgradeable.sol";
-import "./upgradeable/LockableUpgradeable.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -14,6 +13,7 @@ import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 /**
  * @title SpokePool
@@ -28,7 +28,7 @@ abstract contract SpokePool is
     SpokePoolInterface,
     UUPSUpgradeable,
     TestableUpgradeable,
-    LockableUpgradeable,
+    ReentrancyGuardUpgradeable,
     MultiCallerUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -163,7 +163,7 @@ abstract contract SpokePool is
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
         __UUPSUpgradeable_init();
-        __Lockable_init();
+        __ReentrancyGuard_init();
         depositQuoteTimeBuffer = 3600;
         __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
