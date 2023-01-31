@@ -32,7 +32,9 @@ describe("Ethereum Spoke Pool", function () {
     );
 
     // upgradeTo fails unless called by cross domain admin
-    await expect(spokePool.connect(rando).upgradeTo(implementation)).to.be.reverted;
+    await expect(spokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
     await spokePool.connect(owner).upgradeTo(implementation);
   });
 

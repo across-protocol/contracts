@@ -176,8 +176,6 @@ contract Ovm_SpokePool is SpokePool {
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
-        require(LibOptimismUpgradeable.isCrossChain(messenger), "OVM_XCHAIN: messenger contract unauthenticated");
-
         require(
             LibOptimismUpgradeable.crossChainSender(messenger) == crossDomainAdmin,
             "OVM_XCHAIN: wrong sender of cross-domain message"

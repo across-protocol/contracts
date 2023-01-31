@@ -52,11 +52,14 @@ describe("Polygon Spoke Pool", function () {
     const upgradeData = polygonSpokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
 
     // Wrong rootMessageSender address.
-    await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, upgradeData)).to.be
-      .reverted;
+    await expect(
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, upgradeData)
+    ).to.be.revertedWith("Not from mainnet admin");
 
     // Wrong calling address.
-    await expect(polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, upgradeData)).to.be.reverted;
+    await expect(
+      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, upgradeData)
+    ).to.be.revertedWith("Not from fxChild");
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, upgradeData);
   });

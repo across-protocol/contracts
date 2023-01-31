@@ -43,8 +43,11 @@ describe("Optimism Spoke Pool", function () {
       { kind: "uups" }
     );
 
-    // upgradeTo fails unless called by cross domain admin
-    await expect(optimismSpokePool.upgradeTo(implementation)).to.be.reverted;
+    // upgradeTo fails unless called by cross domain admin via messenger contract
+    await expect(optimismSpokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith("NotCrossChainCall");
+    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).upgradeTo(implementation)).to.be.revertedWith(
+      "OVM_XCHAIN: wrong sender of cross-domain message"
+    );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).upgradeTo(implementation);
   });

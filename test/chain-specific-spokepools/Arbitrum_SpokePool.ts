@@ -41,7 +41,7 @@ describe("Arbitrum Spoke Pool", function () {
     );
 
     // upgradeTo fails unless called by cross domain admin
-    await expect(arbitrumSpokePool.upgradeTo(implementation)).to.be.reverted;
+    await expect(arbitrumSpokePool.upgradeTo(implementation)).to.be.revertedWith("ONLY_COUNTERPART_GATEWAY");
     await arbitrumSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
   });
 
