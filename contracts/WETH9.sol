@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Copyright (C) 2015, 2016, 2017 Dapphub
@@ -24,6 +23,9 @@ pragma solidity ^0.8.0;
  * Updated with the following changes post-import:
  * - Marked transferFrom() as virtual
  */
+
+pragma solidity ^0.8.0;
+
 contract WETH9 {
     string public name = "Wrapped Ether";
     string public symbol = "WETH";
