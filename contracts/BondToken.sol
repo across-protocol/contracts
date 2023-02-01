@@ -62,6 +62,9 @@ contract BondToken is WETH9, Ownable {
      * - The src address is not a pre-approved proposer, *and*
      * - The src address is the current proposer of a HubPool root bundle.
      * Falls back to the base implementation after verifying that the transfer is permitted.
+     * @dev The require(..., "Transfer not permitted") statement is dependent on the internal ordering of HubPool
+     * proposedRootBundle state variable updates, relative to calling bondToken.safeTransferFrom(). Changing the order
+     * of HubPool actions may invalidate this verification. BondToken tests are implemented to detect this.
      * @param src Source address.
      * @param dst Destination address.
      * @param amt Amount to transfer.
