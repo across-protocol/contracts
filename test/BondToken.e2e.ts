@@ -1,5 +1,5 @@
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
-import { Contract, ethers, getContractFactory, randomAddress, seedWallet, SignerWithAddress, expect } from "./utils";
+import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "./utils";
 import * as consts from "./constants";
 
 let bondToken: Contract;
