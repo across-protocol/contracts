@@ -1,12 +1,29 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * Copyright (C) 2015, 2016, 2017 Dapphub
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Imported as at commit 33d01d471437e1ab6861e4545ea4bb3895fd4d74 from:
+ * UMAprotocol/protocol/packages/core/contracts/financial-templates/common/WETH9.sol
+ */
+
 pragma solidity ^0.8.0;
 
-// Copied from the verified code from Etherscan:
-// https://etherscan.io/address/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2#code
-// And then updated for Solidity version 0.6. Specific changes:
-// * Change `function() public` into `receive() external` and `fallback() external`
-// * Change `this.balance` to `address(this).balance`
-// * Ran prettier
 contract WETH9 {
     string public name = "Wrapped Ether";
     string public symbol = "WETH";
