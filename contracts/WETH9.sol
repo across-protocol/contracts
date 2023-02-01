@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-// Copied from the verified code from Etherscan:
-// https://etherscan.io/address/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2#code
-// And then updated for Solidity version 0.6. Specific changes:
-// * Change `function() public` into `receive() external` and `fallback() external`
-// * Change `this.balance` to `address(this).balance`
-// * Ran prettier
-// * Marked transferFrom() as virtual
+/**
+ * Imported as at commit 33d01d471437e1ab6861e4545ea4bb3895fd4d74 from:
+ * UMAprotocol/protocol/packages/core/contracts/financial-templates/common/WETH9.sol
+ * Updated with the following changes post-import:
+ * - Marked transferFrom() as virtual
+ */
 contract WETH9 {
     string public name = "Wrapped Ether";
     string public symbol = "WETH";
