@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9.sol";
+import "../interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

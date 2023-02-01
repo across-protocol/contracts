@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./interfaces/WETH9.sol";
+import "./interfaces/WETH9Interface.sol";
 
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";

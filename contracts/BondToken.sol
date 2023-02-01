@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./HubPoolInterface.sol";
-import "./WETH9.sol";
+import "./external/WETH9.sol";
 
 interface ExtendedHubPoolInterface is HubPoolInterface {
     // Specify the automatically-implemented rootBundleProposer() getter.

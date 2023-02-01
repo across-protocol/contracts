@@ -20,8 +20,6 @@
 /**
  * Imported as at commit 33d01d471437e1ab6861e4545ea4bb3895fd4d74 from:
  * UMAprotocol/protocol/packages/core/contracts/financial-templates/common/WETH9.sol
- * Updated with the following changes post-import:
- * - Marked transferFrom() as virtual
  */
 
 pragma solidity ^0.8.0;
@@ -77,7 +75,7 @@ contract WETH9 {
         address src,
         address dst,
         uint256 wad
-    ) public virtual returns (bool) {
+    ) public returns (bool) {
         require(balanceOf[src] >= wad);
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
