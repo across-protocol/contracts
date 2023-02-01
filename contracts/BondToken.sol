@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./HubPoolInterface.sol";
 import "./WETH9.sol";
 
-interface _HubPool is HubPoolInterface {
+interface ExtendedHubPoolInterface is HubPoolInterface {
     // Specify the automatically-implemented rootBundleProposer() getter.
     function rootBundleProposal() external pure returns (HubPoolInterface.RootBundle memory);
 }
@@ -24,7 +24,7 @@ interface _HubPool is HubPoolInterface {
 contract BondToken is WETH9, Ownable {
     using Address for address;
 
-    _HubPool public immutable hubPool;
+    ExtendedHubPoolInterface public immutable hubPool;
 
     /**
      * @notice Addresses that are permitted to make HubPool root bundle proposals.
@@ -40,7 +40,7 @@ contract BondToken is WETH9, Ownable {
      * @notice BondToken constructor.
      * @param _hubPool Address of the target HubPool contract.
      */
-    constructor(_HubPool _hubPool) {
+    constructor(ExtendedHubPoolInterface _hubPool) {
         name = "Across v2 Bond Token";
         symbol = "ABT";
         hubPool = _hubPool;
