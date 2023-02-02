@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9.sol";
+import "../interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -55,7 +55,7 @@ contract ZkSync_Adapter is AdapterInterface {
     uint32 public immutable ergsLimit = 1_000_000;
 
     // Hardcode WETH address for L1 since it will not change:
-    WETH9 public immutable l1Weth = WETH9(0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6);
+    WETH9Interface public immutable l1Weth = WETH9Interface(0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6);
 
     // Hardcode the following ZkSync system contract addresses to save gas on construction. This adapter can be
     // redeployed in the event that the following addresses change.
