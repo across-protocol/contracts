@@ -29,7 +29,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 2_000_000;
 
-    WETH9 public immutable l1Weth;
+    WETH9Interface public immutable l1Weth;
 
     IL1StandardBridge public immutable l1StandardBridge;
 
@@ -50,7 +50,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
      * @param _l1StandardBridge Standard bridge contract.
      */
     constructor(
-        WETH9 _l1Weth,
+        WETH9Interface _l1Weth,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge
     ) CrossDomainEnabled(_crossDomainMessenger) {

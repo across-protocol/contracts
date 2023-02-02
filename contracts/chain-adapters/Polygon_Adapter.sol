@@ -45,7 +45,7 @@ contract Polygon_Adapter is AdapterInterface {
     DepositManager public immutable depositManager;
     address public immutable erc20Predicate;
     address public immutable l1Matic;
-    WETH9 public immutable l1Weth;
+    WETH9Interface public immutable l1Weth;
 
     /**
      * @notice Constructs new Adapter.
@@ -62,7 +62,7 @@ contract Polygon_Adapter is AdapterInterface {
         DepositManager _depositManager,
         address _erc20Predicate,
         address _l1Matic,
-        WETH9 _l1Weth
+        WETH9Interface _l1Weth
     ) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
