@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Lockable.sol";
-import "./interfaces/WETH9.sol";
+import "./interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -52,7 +52,7 @@ contract PolygonTokenBridger is Lockable {
     PolygonRegistry public immutable l1PolygonRegistry;
 
     // WETH contract on Ethereum.
-    WETH9 public immutable l1Weth;
+    WETH9Interface public immutable l1Weth;
 
     // Wrapped Matic on Polygon
     address public immutable l2WrappedMatic;
@@ -85,7 +85,7 @@ contract PolygonTokenBridger is Lockable {
     constructor(
         address _destination,
         PolygonRegistry _l1PolygonRegistry,
-        WETH9 _l1Weth,
+        WETH9Interface _l1Weth,
         address _l2WrappedMatic,
         uint256 _l1ChainId,
         uint256 _l2ChainId

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./interfaces/WETH9.sol";
+import "./interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
@@ -154,7 +154,7 @@ contract Ovm_SpokePool is SpokePool {
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
         if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
-            WETH9(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
+            WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
         }
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.

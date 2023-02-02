@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
-import "./interfaces/WETH9.sol";
+import "./interfaces/WETH9Interface.sol";
 import "./SpokePoolInterface.sol";
 import "./upgradeable/TestableUpgradeable.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
@@ -44,7 +44,7 @@ abstract contract SpokePool is
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9 public wrappedNativeToken;
+    WETH9Interface public immutable wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 1 hour.
@@ -174,7 +174,7 @@ abstract contract SpokePool is
         __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        wrappedNativeToken = WETH9(_wrappedNativeTokenAddress);
+        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
     }
 
     /****************************************
