@@ -64,7 +64,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     bool public paused;
 
     // WETH contract for Ethereum.
-    WETH9 public immutable weth;
+    WETH9Interface public immutable weth;
 
     // Helper factory to deploy new LP tokens for enabled L1 tokens
     LpTokenFactoryInterface public immutable lpTokenFactory;
@@ -195,7 +195,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     constructor(
         LpTokenFactoryInterface _lpTokenFactory,
         FinderInterface _finder,
-        WETH9 _weth,
+        WETH9Interface _weth,
         address _timer
     ) Testable(_timer) {
         lpTokenFactory = _lpTokenFactory;
@@ -463,7 +463,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         pooledTokens[l1Token].liquidReserves += l1TokenAmount;
         ExpandedIERC20(pooledTokens[l1Token].lpToken).mint(msg.sender, lpTokensToMint);
 
-        if (address(weth) == l1Token && msg.value > 0) WETH9(address(l1Token)).deposit{ value: msg.value }();
+        if (address(weth) == l1Token && msg.value > 0) WETH9Interface(address(l1Token)).deposit{ value: msg.value }();
         else IERC20(l1Token).safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         emit LiquidityAdded(l1Token, l1TokenAmount, lpTokensToMint, msg.sender);

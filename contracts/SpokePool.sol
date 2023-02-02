@@ -38,7 +38,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9 public immutable wrappedNativeToken;
+    WETH9Interface public immutable wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 1 hour.
@@ -148,7 +148,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         numberOfDeposits = _initialDepositId;
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        wrappedNativeToken = WETH9(_wrappedNativeTokenAddress);
+        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
     }
 
     /****************************************

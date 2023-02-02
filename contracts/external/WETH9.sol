@@ -21,6 +21,7 @@
  * Imported as at commit 33d01d471437e1ab6861e4545ea4bb3895fd4d74 from:
  * UMAprotocol/protocol/packages/core/contracts/financial-templates/common/WETH9.sol
  * Changes applied post-import:
+ * - Corrected SPDX-License-Identifier & reinstated GPLv3 license header.
  * - Permit transferFrom() to be overridden by marking it virtual.
  */
 
