@@ -1,6 +1,7 @@
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
-import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
+import { enableTokensForLP, hubPoolFixture } from "./fixtures/HubPool.Fixture";
 import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "./utils";
+import { constructSimpleTree } from "./HubPool.ExecuteRootBundle";
 import * as consts from "./constants";
 
 let bondToken: Contract, hubPool: Contract, timer: Contract;
@@ -72,6 +73,33 @@ describe("BondToken HubPool interactions", function () {
         expect((await bondToken.balanceOf(dataworker.address)).eq(dataworkerBal.sub(consts.bondAmount))).to.be.true;
       }
     }
+  });
+
+  // This test is duplicated from test/HubPool.executeRootBundle(), but uses the custom bond token instead.
+  it("Bonds from undisputed proposals can be refunded to the proposer", async function () {
+    await seedWallet(lp, [dai], weth, consts.amountToLp.mul(10));
+
+    await enableTokensForLP(owner, hubPool, weth, [weth, dai]);
+    await weth.connect(lp).approve(hubPool.address, consts.amountToLp);
+    await hubPool.connect(lp).addLiquidity(weth.address, consts.amountToLp);
+    await dai.connect(lp).approve(hubPool.address, consts.amountToLp.mul(10)); // LP with 10000 DAI.
+    await hubPool.connect(lp).addLiquidity(dai.address, consts.amountToLp.mul(10));
+
+    const { leaves, tree } = await constructSimpleTree();
+
+    await hubPool
+      .connect(dataworker)
+      .proposeRootBundle([3117, 3118], 2, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+
+    // Advance time so the request can be executed and execute both leaves.
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+    await hubPool.connect(dataworker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // Second execution sends bond back to data worker.
+    const bondAmount = consts.bondAmount.add(consts.finalFee);
+    expect(
+      await hubPool.connect(dataworker).executeRootBundle(...Object.values(leaves[1]), tree.getHexProof(leaves[1]))
+    ).to.changeTokenBalances(bondToken, [dataworker, hubPool], [bondAmount, bondAmount.mul(-1)]);
   });
 
   it("Proposers can self-dispute", async function () {
