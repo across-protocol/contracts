@@ -63,7 +63,7 @@ abstract contract SpokePool is
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added.
-    uint256[50] __gap;
+    uint256[1000] __gap;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
