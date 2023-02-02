@@ -30,7 +30,7 @@ contract Ovm_SpokePool is SpokePool {
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added.
-    uint256[100] __gap;
+    uint256[100] private __gap;
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
