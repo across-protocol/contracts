@@ -7,7 +7,6 @@ const bondTokenSymbol = "ABT";
 const bondTokenDecimals = 18;
 
 let bondToken: Contract;
-let hubPool: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress, rando: SignerWithAddress;
 
 // Most of this functionality falls through to the underlying WETH9 implementation.
@@ -15,7 +14,7 @@ let owner: SignerWithAddress, other: SignerWithAddress, rando: SignerWithAddress
 describe("BondToken ERC20 functions", function () {
   beforeEach(async function () {
     [owner, other, rando] = await ethers.getSigners();
-    ({ bondToken, hubPool } = await bondTokenFixture());
+    ({ bondToken } = await bondTokenFixture());
   });
 
   it("Verify name, symbol and decimals", async function () {

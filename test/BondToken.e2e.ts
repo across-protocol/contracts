@@ -1,10 +1,11 @@
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
+import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "./utils";
 import * as consts from "./constants";
 
-let bondToken: Contract;
-let hubPool: Contract;
-let owner: SignerWithAddress, dataworker: SignerWithAddress, other: SignerWithAddress;
+let bondToken: Contract, hubPool: Contract, timer: Contract;
+let owner: SignerWithAddress, dataworker: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
+let weth: Contract, dai: Contract;
 
 const proposeRootBundle = (hubPool: Contract, dataworker: SignerWithAddress) => {
   return hubPool
@@ -20,8 +21,12 @@ const proposeRootBundle = (hubPool: Contract, dataworker: SignerWithAddress) => 
 
 describe("BondToken HubPool interactions", function () {
   beforeEach(async function () {
-    [owner, dataworker, other] = await ethers.getSigners();
-    ({ bondToken, hubPool } = await bondTokenFixture());
+    let collateralWhitelist: Contract;
+
+    [owner, dataworker, other, lp] = await ethers.getSigners();
+    ({ hubPool, timer, collateralWhitelist, weth, dai } = await hubPoolFixture());
+    ({ bondToken } = await bondTokenFixture(hubPool));
+    await collateralWhitelist.addToWhitelist(bondToken.address);
 
     // Pre-seed the dataworker, because it always needs bondToken.
     await seedWallet(dataworker, [], bondToken, consts.bondAmount.mul(3));
