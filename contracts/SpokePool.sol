@@ -6,6 +6,7 @@ import "./interfaces/WETH9Interface.sol";
 import "./SpokePoolInterface.sol";
 import "./upgradeable/TestableUpgradeable.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
+import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -29,7 +30,8 @@ abstract contract SpokePool is
     UUPSUpgradeable,
     TestableUpgradeable,
     ReentrancyGuardUpgradeable,
-    MultiCallerUpgradeable
+    MultiCallerUpgradeable,
+    EIP712CrossChainUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -168,6 +170,7 @@ abstract contract SpokePool is
         address _timerAddress
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
+        __EIP712_init("ACROSS-V2", "1.0.0");
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         depositQuoteTimeBuffer = 3600;
@@ -380,7 +383,7 @@ abstract contract SpokePool is
      * @param depositId Deposit to update fee for that originated in this contract.
      * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
      * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
-     * EIP-1271 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
+     * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
     function speedUpDeposit(
         address depositor,
@@ -478,7 +481,9 @@ abstract contract SpokePool is
      * @param relayerFeePct Original fee % to keep as relayer set by depositor.
      * @param newRelayerFeePct New fee % to keep as relayer also specified by depositor.
      * @param depositId Unique deposit ID on origin spoke pool.
-     * @param depositorSignature Depositor-signed message containing updated fee %.
+     * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
+     * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
+     * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
     function fillRelayWithUpdatedFee(
         address depositor,
@@ -733,20 +738,26 @@ abstract contract SpokePool is
     ) internal view {
         // A depositor can request to speed up an un-relayed deposit by signing a hash containing the relayer
         // fee % to update to and information uniquely identifying the deposit to relay. This information ensures
-        // that this signature cannot be re-used for other deposits. The version string is included as a precaution
-        // in case this contract is upgraded.
-        // Note: we use encode instead of encodePacked because it is more secure, more in the "warning" section
-        // here: https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#non-standard-packed-mode
-        bytes32 expectedDepositorMessageHash = keccak256(
-            abi.encode("ACROSS-V2-FEE-2.0", newRelayerFeePct, depositId, originChainId)
+        // that this signature cannot be re-used for other deposits.
+        // Note: We use the EIP-712 (https://eips.ethereum.org/EIPS/eip-712) standard for hashing and signing typed data.
+        // Specifically, we use the version of the encoding known as "v4", as implemented by the JSON RPC method
+        // `eth_signedTypedDataV4` in MetaMask (https://docs.metamask.io/guide/signing-data.html).
+        bytes32 expectedTypedDataV4Hash = _hashTypedDataV4(
+            // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "UpdateRelayerFeeMessage(uint64 newRelayerFeePct,uint32 depositId,uint256 originChainId)"
+                    ),
+                    newRelayerFeePct,
+                    depositId,
+                    originChainId
+                )
+            ),
+            // By passing in the origin chain id, we enable the verification of the signature on a different chain
+            originChainId
         );
-
-        // Check the hash corresponding to the https://eth.wiki/json-rpc/API#eth_sign[eth_sign]
-        // If the depositor signed a message with a different updated fee (or any other param included in the
-        // above keccak156 hash), then this will revert.
-        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(expectedDepositorMessageHash);
-
-        _verifyDepositorUpdateFeeMessage(depositor, ethSignedMessageHash, depositorSignature);
+        _verifyDepositorUpdateFeeMessage(depositor, expectedTypedDataV4Hash, depositorSignature);
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
