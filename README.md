@@ -58,6 +58,8 @@ slither contracts/SpokePool.sol
 \ --exclude naming-convention
 ```
 
+You can replace `SpokePool.sol` with the specific contract you want to analyze.
+
 ## ZK Sync Adapter
 
 These are special instructions for compiling and deploying contracts on `zksync`. The compile command will create `artifacts-zk` and `cache-zk` directories.
