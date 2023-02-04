@@ -8,5 +8,5 @@ interface WETH9Interface {
 
     function balanceOf(address guy) external view returns (uint256 wad);
 
-    function transfer(address guy, uint256 wad) external;
+    function transfer(address guy, uint256 wad) external returns (bool);
 }

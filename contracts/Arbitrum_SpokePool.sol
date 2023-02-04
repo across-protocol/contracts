@@ -83,6 +83,7 @@ contract Arbitrum_SpokePool is SpokePool {
         // Check that the Ethereum counterpart of the L2 token is stored on this contract.
         address ethereumTokenToBridge = whitelistedTokens[relayerRefundLeaf.l2TokenAddress];
         require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
+        //slither-disable-next-line unused-return
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
             ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.

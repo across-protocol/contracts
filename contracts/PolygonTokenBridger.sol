@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./Lockable.sol";
 import "./interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // Polygon Registry contract that stores their addresses.
 interface PolygonRegistry {
@@ -38,7 +38,7 @@ interface MaticToken {
  *  This ultimately allows create2 to generate deterministic addresses that don't depend on the transaction count of the
  * sender.
  */
-contract PolygonTokenBridger is Lockable {
+contract PolygonTokenBridger is ReentrancyGuard {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -90,6 +90,8 @@ contract PolygonTokenBridger is Lockable {
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
+        require(_destination != address(0), "invalid dest address");
+        require(_l2WrappedMatic != address(0), "invalid wmatic address");
         destination = _destination;
         l1PolygonRegistry = _l1PolygonRegistry;
         l1Weth = _l1Weth;
@@ -122,6 +124,7 @@ contract PolygonTokenBridger is Lockable {
     function retrieve(IERC20Upgradeable token) public nonReentrant onlyChainId(l1ChainId) {
         if (address(token) == address(l1Weth)) {
             // For WETH, there is a pre-deposit step to ensure any ETH that has been sent to the contract is captured.
+            //slither-disable-next-line arbitrary-send-eth
             l1Weth.deposit{ value: address(this).balance }();
         }
         token.safeTransfer(destination, token.balanceOf(address(this)));
