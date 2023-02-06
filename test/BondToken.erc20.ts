@@ -2,7 +2,7 @@ import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
 import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "./utils";
 import { bondAmount } from "./constants";
 
-const bondTokenName = "Across v2 Bond Token";
+const bondTokenName = "Across Bond Token";
 const bondTokenSymbol = "ABT";
 const bondTokenDecimals = 18;
 
