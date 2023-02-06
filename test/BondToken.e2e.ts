@@ -8,7 +8,7 @@ let bondToken: Contract, hubPool: Contract, timer: Contract;
 let owner: SignerWithAddress, dataworker: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 let weth: Contract, dai: Contract;
 
-const proposeRootBundle = (hubPool: Contract, dataworker: SignerWithAddress) => {
+export const proposeRootBundle = (hubPool: Contract, dataworker: SignerWithAddress) => {
   return hubPool
     .connect(dataworker)
     .proposeRootBundle(
