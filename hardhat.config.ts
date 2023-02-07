@@ -22,19 +22,19 @@ dotenv.config();
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.13";
+const solcVersion = "0.8.18";
 const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 200 } },
+  settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
 };
 
 const config: HardhatUserConfig = {
   solidity: {
-    compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
+    compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true } }],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },

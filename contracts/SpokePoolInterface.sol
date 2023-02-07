@@ -86,7 +86,10 @@ interface SpokePoolInterface {
         uint256 amount,
         uint256 destinationChainId,
         uint64 relayerFeePct,
-        uint32 quoteTimestamp
+        uint32 quoteTimestamp,
+        uint256 quoteId,
+        int256 reward,
+        bytes memory sequencerSignature
     ) external payable;
 
     function speedUpDeposit(

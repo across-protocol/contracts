@@ -62,6 +62,8 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // relay, the fees, and the agents are all parameters included in the hash key.
     mapping(bytes32 => uint256) public relayFills;
 
+    address public sequencer;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -285,7 +287,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 destinationChainId,
         uint64 relayerFeePct,
-        uint32 quoteTimestamp
+        uint32 quoteTimestamp,
+        uint256 quoteId,
+        int256 reward,
+        bytes memory sequencerSignature
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled.
         require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
@@ -302,6 +307,31 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
                 getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
+
+        // Stack too deep.
+        require(
+            ECDSA.recover(
+                ECDSA.toEthSignedMessageHash(
+                    keccak256(
+                        abi.encode(
+                            recipient,
+                            originToken,
+                            amount,
+                            destinationChainId,
+                            relayerFeePct,
+                            quoteTimestamp,
+                            quoteId,
+                            reward
+                        )
+                    )
+                ),
+                sequencerSignature
+            ) == sequencer,
+            "Signature from invalid sequencer"
+        );
+
+        require(amount < uint256(type(int256).max) && int256(amount) + reward > 0, "invalid amount");
+
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
@@ -313,7 +343,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         _emitDeposit(
-            amount,
+            uint256(int256(amount) + reward),
             chainId(),
             destinationChainId,
             relayerFeePct,
