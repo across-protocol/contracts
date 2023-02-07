@@ -24,6 +24,13 @@ abstract contract EIP712CrossChainUpgradeable is Initializable {
     /* solhint-enable var-name-mixedcase */
 
     /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[1000] private __gap;
+
+    /**
      * @dev Initializes the domain separator and parameter caches.
      *
      * The meaning of `name` and `version` is specified in
@@ -77,11 +84,4 @@ abstract contract EIP712CrossChainUpgradeable is Initializable {
     function _hashTypedDataV4(bytes32 structHash, uint256 originChainId) internal view virtual returns (bytes32) {
         return ECDSAUpgradeable.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[1000] private __gap;
 }
