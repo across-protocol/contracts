@@ -822,6 +822,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
         relayFills[relayHash] += fillAmountPreFees;
 
+        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
+        // net movement of funds.
+        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
+        // way (no need to have funds on the destination).
+        if (msg.sender == relayData.recipient) return fillAmountPreFees;
+
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (relayData.destinationToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
