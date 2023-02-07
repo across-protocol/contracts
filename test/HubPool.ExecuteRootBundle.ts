@@ -9,7 +9,7 @@ let l2Weth: string, l2Dai: string;
 
 // Construct the leaves that will go into the merkle tree. For this function create a simple set of leaves that will
 // repay two token to one chain Id with simple lpFee, netSend and running balance amounts.
-async function constructSimpleTree() {
+export async function constructSimpleTree() {
   const wethToSendToL2 = toBNWei(100);
   const daiToSend = toBNWei(1000);
   const leaves = buildPoolRebalanceLeaves(
