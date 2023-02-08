@@ -90,11 +90,11 @@ contract PolygonTokenBridger is ReentrancyGuard {
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
-        require(_destination != address(0), "invalid dest address");
-        require(_l2WrappedMatic != address(0), "invalid wmatic address");
+        //slither-disable-next-line missing-zero-check
         destination = _destination;
         l1PolygonRegistry = _l1PolygonRegistry;
         l1Weth = _l1Weth;
+        //slither-disable-next-line missing-zero-check
         l2WrappedMatic = _l2WrappedMatic;
         l1ChainId = _l1ChainId;
         l2ChainId = _l2ChainId;

@@ -59,7 +59,7 @@ contract Ovm_SpokePool is SpokePool {
         l1Gas = 5_000_000;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, _timerAddress);
         messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
-        require(_l2Eth != address(0), "Invalid L2 ETH address");
+        //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
     }
 

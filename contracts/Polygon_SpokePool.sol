@@ -77,10 +77,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         address _fxChild,
         address _timerAddress
     ) public initializer {
-        require(_fxChild != address(0), "invalid fChild address");
         callValidated = false;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
         polygonTokenBridger = _polygonTokenBridger;
+        //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
     }
 
@@ -93,7 +93,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param newFxChild New FxChild.
      */
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
-        require(newFxChild != address(0), "invalid fChild address");
+        //slither-disable-next-line missing-zero-check
         fxChild = newFxChild;
         emit SetFxChild(newFxChild);
     }
