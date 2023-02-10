@@ -3,17 +3,18 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./interfaces/WETH9Interface.sol";
-import "./Lockable.sol";
 import "./SpokePoolInterface.sol";
-import "./EIP712CrossChain.sol";
+import "./upgradeable/TestableUpgradeable.sol";
+import "./upgradeable/MultiCallerUpgradeable.sol";
+import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 /**
  * @title SpokePool
@@ -24,9 +25,16 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
-abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller, EIP712CrossChain {
-    using SafeERC20 for IERC20;
-    using Address for address;
+abstract contract SpokePool is
+    SpokePoolInterface,
+    UUPSUpgradeable,
+    TestableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    MultiCallerUpgradeable,
+    EIP712CrossChainUpgradeable
+{
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
     // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
@@ -38,11 +46,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9Interface public immutable wrappedNativeToken;
+    WETH9Interface public wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 1 hour.
-    uint32 public depositQuoteTimeBuffer = 3600;
+    uint32 public depositQuoteTimeBuffer;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
@@ -53,6 +61,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added.
+    uint256[1000] private __gap;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
@@ -130,22 +143,38 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     event PausedFills(bool isPaused);
 
     /**
+     * Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
+     * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
+     * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
+     * it is deployed:
+     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
      * @notice Construct the base SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
-        address timerAddress
-    ) Testable(timerAddress) EIP712CrossChain("ACROSS-V2", "1.0.0") {
+        address _timerAddress
+    ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
+        __EIP712_init("ACROSS-V2", "1.0.0");
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+        depositQuoteTimeBuffer = 3600;
+        __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
@@ -155,8 +184,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *               MODIFIERS              *
      ****************************************/
 
-    // Implementing contract needs to override _requireAdminSender() to ensure that admin functions are protected
-    // appropriately.
+    /**
+     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+     * {upgradeTo} and {upgradeToAndCall}.
+     * @dev This should be set to cross domain admin for specific SpokePool.
+     */
     modifier onlyAdmin() {
         _requireAdminSender();
         _;
@@ -175,6 +207,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
+
+    // Allows cross domain admin to upgrade UUPS proxy implementation.
+    function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 
     /**
      * @notice Pauses deposit and fill functions. This is intended to be used during upgrades or when
@@ -310,7 +345,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         _emitDeposit(
             amount,
@@ -594,7 +629,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         for (uint256 i = 0; i < length; ) {
             uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
-                IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
+                IERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeTransfer(
+                    relayerRefundLeaf.refundAddresses[i],
+                    amount
+                );
 
             // OK because we assume refund array length won't be > types(uint256).max.
             // Based on the stress test results in /test/gas-analytics/SpokePool.RelayerRefundLeaf.ts, the UMIP should
@@ -757,7 +795,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(address(wrappedNativeToken)).safeTransfer(to, amount);
+            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
             to.transfer(amount);
@@ -830,14 +868,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
             if (!useContractFunds)
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(relayData.recipient), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!useContractFunds)
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
-            else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
+                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+                    msg.sender,
+                    relayData.recipient,
+                    amountToSend
+                );
+            else IERC20Upgradeable(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
         }
     }
 

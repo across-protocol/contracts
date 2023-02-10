@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./interfaces/WETH9Interface.sol";
 
-import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
+import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
 
@@ -16,13 +16,21 @@ interface SynthetixBridgeToBase {
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  */
-contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
+contract Ovm_SpokePool is SpokePool {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
-    uint32 public l1Gas = 5_000_000;
+    uint32 public l1Gas;
 
     // ETH is an ERC20 on OVM.
-    address public immutable l2Eth;
+    address public l2Eth;
+
+    // Address of the Optimism L2 messenger.
+    address public messenger;
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added.
+    uint256[1000] private __gap;
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
@@ -38,19 +46,19 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function __OvmSpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _l2Eth,
         address _wrappedNativeToken,
-        address timerAddress
-    )
-        CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress)
-    {
+        address _timerAddress
+    ) public onlyInitializing {
+        l1Gas = 5_000_000;
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, _timerAddress);
+        messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         l2Eth = _l2Eth;
     }
 
@@ -172,5 +180,10 @@ contract Ovm_SpokePool is CrossDomainEnabled, SpokePool {
     }
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
-    function _requireAdminSender() internal override onlyFromCrossDomainAccount(crossDomainAdmin) {}
+    function _requireAdminSender() internal view override {
+        require(
+            LibOptimismUpgradeable.crossChainSender(messenger) == crossDomainAdmin,
+            "OVM_XCHAIN: wrong sender of cross-domain message"
+        );
+    }
 }

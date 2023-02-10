@@ -27,11 +27,29 @@ describe("Optimism Spoke Pool", function () {
     });
     await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
-    optimismSpokePool = await (
-      await getContractFactory("Optimism_SpokePool", owner)
-    ).deploy(0, owner.address, hubPool.address, timer.address);
+    optimismSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Optimism_SpokePool", owner),
+      [0, owner.address, hubPool.address, timer.address],
+      { kind: "uups" }
+    );
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
+  });
+
+  it("Only cross domain owner upgrade logic contract", async function () {
+    // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("Optimism_SpokePool", owner),
+      { kind: "uups" }
+    );
+
+    // upgradeTo fails unless called by cross domain admin via messenger contract
+    await expect(optimismSpokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith("NotCrossChainCall");
+    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).upgradeTo(implementation)).to.be.revertedWith(
+      "OVM_XCHAIN: wrong sender of cross-domain message"
+    );
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).upgradeTo(implementation);
   });
 
   it("Only cross domain owner can set l1GasLimit", async function () {
