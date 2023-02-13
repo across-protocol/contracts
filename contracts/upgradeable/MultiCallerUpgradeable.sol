@@ -9,8 +9,16 @@ pragma solidity ^0.8.0;
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
  */
 contract MultiCallerUpgradeable {
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[1000] private __gap;
+
     function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
         results = new bytes[](data.length);
+
         //slither-disable-start calls-loop
         for (uint256 i = 0; i < data.length; i++) {
             // Typically, implementation contracts used in the upgradeable proxy pattern shouldn't call `delegatecall`
@@ -38,11 +46,4 @@ contract MultiCallerUpgradeable {
         }
         //slither-disable-end calls-loop
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[1000] private __gap;
 }
