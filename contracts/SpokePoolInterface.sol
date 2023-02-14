@@ -41,11 +41,16 @@ interface SpokePoolInterface {
         uint256 destinationChainId;
         // The LP Fee percentage computed by the relayer based on the deposit's quote timestamp
         // and the HubPool's utilization.
-        uint64 realizedLpFeePct;
+        int64 realizedLpFeePct;
         // The relayer fee percentage specified in the deposit.
-        uint64 relayerFeePct;
+        int64 relayerFeePct;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
+    }
+
+    struct SlowFill {
+        RelayData relayData;
+        int256 payoutAdjustment;
     }
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
@@ -85,8 +90,9 @@ interface SpokePoolInterface {
         address originToken,
         uint256 amount,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
-        uint32 quoteTimestamp
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        uint256 maxCount
     ) external payable;
 
     function speedUpDeposit(
@@ -106,7 +112,8 @@ interface SpokePoolInterface {
         uint256 originChainId,
         uint64 realizedLpFeePct,
         uint64 relayerFeePct,
-        uint32 depositId
+        uint32 depositId,
+        uint256 maxCount
     ) external;
 
     function fillRelayWithUpdatedFee(
@@ -121,7 +128,8 @@ interface SpokePoolInterface {
         uint64 relayerFeePct,
         uint64 newRelayerFeePct,
         uint32 depositId,
-        bytes memory depositorSignature
+        bytes memory depositorSignature,
+        uint256 maxCount
     ) external;
 
     function executeSlowRelayLeaf(
@@ -134,6 +142,7 @@ interface SpokePoolInterface {
         uint64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) external;
 
