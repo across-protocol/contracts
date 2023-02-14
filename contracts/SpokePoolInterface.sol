@@ -97,7 +97,7 @@ interface SpokePoolInterface {
 
     function speedUpDeposit(
         address depositor,
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
     ) external;
@@ -110,8 +110,8 @@ interface SpokePoolInterface {
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint256 maxCount
     ) external;
@@ -124,9 +124,9 @@ interface SpokePoolInterface {
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
-        uint64 newRelayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature,
         uint256 maxCount
@@ -138,8 +138,8 @@ interface SpokePoolInterface {
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
         int256 payoutAdjustment,
