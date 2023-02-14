@@ -876,7 +876,10 @@ abstract contract SpokePool is
         // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
         // fees are just magic numbers. The important point is to prevent the total fee from being 100%, otherwise
         // computing the amount pre fees runs into divide-by-0 issues.
-        require(updatableRelayerFeePct < 0.5e18 && relayData.realizedLpFeePct < 0.5e18, "invalid fees");
+        require(
+            SignedMath.abs(updatableRelayerFeePct) < 0.5e18 && SignedMath.abs(relayData.realizedLpFeePct) < 0.5e18,
+            "invalid fees"
+        );
 
         // Check that the relay has not already been completely filled. Note that the relays mapping will point to
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
