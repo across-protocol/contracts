@@ -1,6 +1,6 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
 import { ethers, expect, Contract, FakeContract, SignerWithAddress, createFake, toWei } from "../utils";
-import { getContractFactory, seedContract, avmL1ToL2Alias, hre, toBN, toBNWei } from "../utils";
+import { getContractFactory, seedContract, avmL1ToL2Alias, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
@@ -23,12 +23,26 @@ describe("Arbitrum Spoke Pool", function () {
 
     l2GatewayRouter = await createFake("L2GatewayRouter");
 
-    arbitrumSpokePool = await (
-      await getContractFactory("Arbitrum_SpokePool", owner)
-    ).deploy(0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address);
+    arbitrumSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Arbitrum_SpokePool", owner),
+      [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth, timer.address],
+      { kind: "uups" }
+    );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
+  });
+
+  it("Only cross domain owner upgrade logic contract", async function () {
+    // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("Arbitrum_SpokePool", owner),
+      { kind: "uups" }
+    );
+
+    // upgradeTo fails unless called by cross domain admin
+    await expect(arbitrumSpokePool.upgradeTo(implementation)).to.be.revertedWith("ONLY_COUNTERPART_GATEWAY");
+    await arbitrumSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
   });
 
   it("Only cross domain owner can set L2GatewayRouter", async function () {

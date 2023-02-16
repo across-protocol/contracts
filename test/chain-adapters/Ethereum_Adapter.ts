@@ -35,6 +35,10 @@ describe("Ethereum Chain Adapter", function () {
     await hubPool.setPoolRebalanceRoute(l1ChainId, weth.address, weth.address);
 
     await hubPool.setPoolRebalanceRoute(l1ChainId, dai.address, dai.address);
+
+    // HubPool must own MockSpoke to call it via the Ethereum_Adapter who's requireAdminSender has an onlyOwner
+    // modifier.
+    await mockSpoke.connect(owner).transferOwnership(hubPool.address);
   });
 
   it("relayMessage calls spoke pool functions", async function () {

@@ -34,9 +34,11 @@ export async function deploySpokePool(ethers: any): Promise<{
   await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
-  const spokePool = await (
-    await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(0, crossChainAdmin.address, hubPool.address, weth.address, timer.address);
+  const spokePool = await hre.upgrades.deployProxy(
+    await getContractFactory("MockSpokePool", deployerWallet),
+    [0, crossChainAdmin.address, hubPool.address, weth.address, timer.address],
+    { kind: "uups" }
+  );
   await spokePool.setChainId(consts.destinationChainId);
 
   // ERC1271

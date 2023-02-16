@@ -42,17 +42,18 @@ contract ZkSync_SpokePool is SpokePool {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function initialize(
         uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
         ZkBridgeLike _zkEthBridge,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {
+        address _timerAddress
+    ) public initializer {
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
         _setZkBridges(_zkErc20Bridge, _zkEthBridge);
     }
 

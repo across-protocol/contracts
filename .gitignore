@@ -12,8 +12,8 @@ artifacts
 cache-zk
 artifacts-zk
 
-# Open zeppelin proxy files
-.openzeppelin/
+# Upgradeability files
+.openzeppelin
 
 # IDE
 .idea

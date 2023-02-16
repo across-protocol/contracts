@@ -93,7 +93,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       );
 
       // Store new tree.
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
 
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
@@ -122,14 +122,14 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
     });
 
     it("Relay proposal", async function () {
-      const txn = await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      const txn = await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
       console.log(`relayRootBundle-gasUsed: ${(await txn.wait()).gasUsed}`);
     });
 
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       // Execute second root bundle with index 1:
       const txn = await spokePool
@@ -150,7 +150,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       console.log(`executeSlowRelayLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       const txns = [];
       for (let i = 0; i < LEAF_COUNT; i++) {
@@ -179,7 +179,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
     });
 
     it("Executing all leaves using multicall", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       const multicallData = leaves.map((leaf, i) => {
         return spokePool.interface.encodeFunctionData("executeSlowRelayLeaf", [
@@ -211,7 +211,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       );
 
       // Store new tree.
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
 
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
@@ -242,7 +242,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       // Execute second root bundle with index 1:
       const txn = await spokePool

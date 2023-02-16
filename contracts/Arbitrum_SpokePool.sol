@@ -35,16 +35,17 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress,
-        address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, timerAddress) {
+        address _timerAddress
+    ) public initializer {
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
@@ -82,6 +83,7 @@ contract Arbitrum_SpokePool is SpokePool {
         // Check that the Ethereum counterpart of the L2 token is stored on this contract.
         address ethereumTokenToBridge = whitelistedTokens[relayerRefundLeaf.l2TokenAddress];
         require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
+        //slither-disable-next-line unused-return
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
             ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.

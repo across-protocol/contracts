@@ -6,9 +6,6 @@ import "./PolygonTokenBridger.sol";
 import "./interfaces/WETH9Interface.sol";
 import "./SpokePoolInterface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 // IFxMessageProcessor represents interface to process messages.
 interface IFxMessageProcessor {
     function processMessageFromRoot(
@@ -22,7 +19,7 @@ interface IFxMessageProcessor {
  * @notice Polygon specific SpokePool.
  */
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
-    using SafeERC20 for PolygonIERC20;
+    using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
 
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
@@ -33,7 +30,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     // Internal variable that only flips temporarily to true upon receiving messages from L1. Used to authenticate that
     // the caller is the fxChild AND that the fxChild called processMessageFromRoot
-    bool private callValidated = false;
+    bool private callValidated;
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
@@ -69,18 +66,21 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
      * @param _fxChild FxChild contract, changeable by Admin.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function initialize(
         uint32 _initialDepositId,
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
         address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
         address _fxChild,
-        address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, timerAddress) {
+        address _timerAddress
+    ) public initializer {
+        callValidated = false;
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
         polygonTokenBridger = _polygonTokenBridger;
+        //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
     }
 
@@ -93,6 +93,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param newFxChild New FxChild.
      */
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
+        //slither-disable-next-line missing-zero-check
         fxChild = newFxChild;
         emit SetFxChild(newFxChild);
     }
@@ -126,7 +127,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         require(rootMessageSender == crossDomainAdmin, "Not from mainnet admin");
 
         // This uses delegatecall to take the information in the message and process it as a function call on this contract.
+        /// This is a safe delegatecall because its made to address(this) so there is no risk of delegating to a
+        /// selfdestruct().
+        //slither-disable-start low-level-calls
+        /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(data);
+        //slither-disable-end low-level-calls
         require(success, "delegatecall failed");
     }
 
@@ -209,19 +215,23 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        PolygonIERC20(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
+        PolygonIERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
             address(polygonTokenBridger),
             relayerRefundLeaf.amountToReturn
         );
 
         // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
-        polygonTokenBridger.send(PolygonIERC20(relayerRefundLeaf.l2TokenAddress), relayerRefundLeaf.amountToReturn);
+        polygonTokenBridger.send(
+            PolygonIERC20Upgradeable(relayerRefundLeaf.l2TokenAddress),
+            relayerRefundLeaf.amountToReturn
+        );
 
         emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
     }
 
     function _wrap() internal {
         uint256 balance = address(this).balance;
+        //slither-disable-next-line arbitrary-send-eth
         if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
     }
 
