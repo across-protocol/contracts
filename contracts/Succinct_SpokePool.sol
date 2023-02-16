@@ -15,6 +15,27 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
 
     uint16 public hubChainId;
 
+    // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be misinterpreted.
+    // Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
+    // All calls that have admin privileges must be fired from within the handleTelepathy method that's gone
+    // through validation where the sender is checked and the sender from the other chain is also validated.
+    // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
+    modifier validateInternalCalls() {
+        // Make sure callValidated is set to True only once at beginning of processMessageFromRoot, which prevents
+        // processMessageFromRoot from being re-entered.
+        require(!adminCallValidated, "adminCallValidated already set");
+
+        // This sets a variable indicating that we're now inside a validated call.
+        // Note: this is used by other methods to ensure that this call has been validated by this method and is not
+        // spoofed.
+        adminCallValidated = true;
+
+        _;
+
+        // Reset callValidated to false to disallow admin calls after this method exits.
+        adminCallValidated = false;
+    }
+
     function initialize(
         uint16 _hubChainId,
         address _succinctTargetAmb,
@@ -38,7 +59,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         uint16 _sourceChainId,
         address _senderAddress,
         bytes memory _data
-    ) external override {
+    ) external override validateInternalCalls {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
         require(
@@ -46,17 +67,9 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
             "Invalid message"
         );
 
-        // This operates similarly to a re-entrancy guard. It is set after validation to tell methods called by this
-        // method that the call has been validated as an admin and is safe.
-        require(!adminCallValidated, "Re-entered handleTelepathy");
-        adminCallValidated = true;
-
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
         require(success, "delegatecall failed");
-
-        // Reset to false before returning to ensure no calls outside of the delegatecall above can assume admin priviledges.
-        adminCallValidated = false;
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory) internal override {
