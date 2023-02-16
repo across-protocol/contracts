@@ -11,11 +11,11 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
     // private. Leaving it set to true can permanently disable admin calls.
-    bool private adminCallValidated = false;
+    bool private adminCallValidated;
 
-    uint16 public immutable hubChainId;
+    uint16 public hubChainId;
 
-    constructor(
+    function initialize(
         uint16 _hubChainId,
         address _succinctTargetAmb,
         uint32 _initialDepositId,
@@ -23,9 +23,10 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         address _hubPool,
         address _wrappedNativeToken,
         address timerAddress
-    ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress) {
-        hubChainId = _hubChainId;
+    ) public initializer {
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress);
         succinctTargetAmb = _succinctTargetAmb;
+        hubChainId = _hubChainId;
     }
 
     // Admin can reset the succinct contract address.

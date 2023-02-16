@@ -1,21 +1,5 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress, TokenRolesEnum } from "../constants";
-import {
-  ethers,
-  expect,
-  Contract,
-  SignerWithAddress,
-  getContractFactory,
-  createFake,
-  seedContract,
-  toWei,
-  randomBigNumber,
-  seedWallet,
-  FakeContract,
-  BigNumber,
-} from "../utils";
+import { ethers, expect, Contract, SignerWithAddress, getContractFactory, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
-import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
-import { randomBytes } from "crypto";
 
 let succinctSpokePool: Contract, timer: Contract, weth: Contract;
 
@@ -30,9 +14,11 @@ describe("Succinct Spoke Pool", function () {
     [hubPool, succinctTargetAmb, rando] = await ethers.getSigners();
     ({ timer, weth } = await hubPoolFixture());
 
-    succinctSpokePool = await (
-      await getContractFactory("Succinct_SpokePool", owner)
-    ).deploy(l1ChainId, succinctTargetAmb.address, 0, hubPool.address, hubPool.address, weth.address, timer.address);
+    succinctSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Succinct_SpokePool", owner),
+      [l1ChainId, succinctTargetAmb.address, 0, hubPool.address, hubPool.address, weth.address, timer.address],
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
+    );
   });
 
   it("Only correct caller can set the cross domain admin", async function () {
