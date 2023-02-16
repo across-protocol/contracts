@@ -81,6 +81,8 @@ abstract contract SpokePool is
     // frontrunning that might change their worst-case quote.
     mapping(address => uint256) public depositCounter;
 
+    uint256 public constant MAX_TRANSFER_SIZE = 1e36;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -339,7 +341,7 @@ abstract contract SpokePool is
 
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
-        require(amount < 1e36, "Amount too large");
+        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
         require(depositCounter[originToken] <= maxCount, "Above max count");
 
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
@@ -881,6 +883,8 @@ abstract contract SpokePool is
             SignedMath.abs(updatableRelayerFeePct) < 0.5e18 && SignedMath.abs(relayData.realizedLpFeePct) < 0.5e18,
             "invalid fees"
         );
+
+        require(relayData.amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // Check that the relay has not already been completely filled. Note that the relays mapping will point to
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
