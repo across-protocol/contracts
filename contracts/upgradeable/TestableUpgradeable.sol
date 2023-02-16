@@ -19,6 +19,7 @@ abstract contract TestableUpgradeable is Initializable {
      * Must be set to 0x0 for production environments that use live time.
      */
     function __Testable_init(address _timerAddress) public onlyInitializing {
+        //slither-disable-next-line missing-zero-check
         timerAddress = _timerAddress;
     }
 

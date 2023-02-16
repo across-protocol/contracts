@@ -90,9 +90,11 @@ contract PolygonTokenBridger is Lockable {
         uint256 _l1ChainId,
         uint256 _l2ChainId
     ) {
+        //slither-disable-next-line missing-zero-check
         destination = _destination;
         l1PolygonRegistry = _l1PolygonRegistry;
         l1Weth = _l1Weth;
+        //slither-disable-next-line missing-zero-check
         l2WrappedMatic = _l2WrappedMatic;
         l1ChainId = _l1ChainId;
         l2ChainId = _l2ChainId;
@@ -122,6 +124,7 @@ contract PolygonTokenBridger is Lockable {
     function retrieve(IERC20Upgradeable token) public nonReentrant onlyChainId(l1ChainId) {
         if (address(token) == address(l1Weth)) {
             // For WETH, there is a pre-deposit step to ensure any ETH that has been sent to the contract is captured.
+            //slither-disable-next-line arbitrary-send-eth
             l1Weth.deposit{ value: address(this).balance }();
         }
         token.safeTransfer(destination, token.balanceOf(address(this)));

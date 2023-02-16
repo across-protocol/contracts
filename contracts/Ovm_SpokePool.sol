@@ -54,6 +54,7 @@ contract Ovm_SpokePool is SpokePool {
         l1Gas = 5_000_000;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, _timerAddress);
         messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
+        //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
     }
 
@@ -142,6 +143,7 @@ contract Ovm_SpokePool is SpokePool {
     // this logic inside a fallback method that executes when this contract receives ETH because ETH is an ERC20
     // on the OVM.
     function _depositEthToWeth() internal {
+        //slither-disable-next-line arbitrary-send-eth
         if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
