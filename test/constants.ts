@@ -32,6 +32,8 @@ export const amountToRelayPreFees = toBN(amountToRelay).mul(toBN(oneHundredPct))
 
 export const amountToRelayPreModifiedFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostModifiedFeesPct);
 
+export const amountToRelayPreLPFee = amountToRelayPreFees.mul(oneHundredPct.sub(realizedLpFeePct)).div(oneHundredPct);
+
 export const destinationChainId = 1337; // Should be equal to MockSpokePool.chainId() return value.
 
 export const originChainId = 666;
