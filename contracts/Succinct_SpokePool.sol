@@ -13,7 +13,10 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated = false;
 
+    uint16 public immutable hubChainId;
+
     constructor(
+        uint16 _hubChainId,
         address _succinctTargetAmb,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
@@ -21,6 +24,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         address _wrappedNativeToken,
         address timerAddress
     ) SpokePool(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress) {
+        hubChainId = _hubChainId;
         succinctTargetAmb = _succinctTargetAmb;
     }
 
@@ -36,7 +40,10 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     ) external override {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
-        require(msg.sender == succinctTargetAmb && _senderAddress == hubPool && _sourceChainId == 1, "Invalid message");
+        require(
+            msg.sender == succinctTargetAmb && _senderAddress == hubPool && _sourceChainId == hubChainId,
+            "Invalid message"
+        );
 
         // This operates similarly to a re-entrancy guard. It is set after validation to tell methods called by this
         // method that the call has been validated as an admin and is safe.

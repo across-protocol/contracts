@@ -6,11 +6,14 @@ typechain
 dist
 typechain-types
 
-#Hardhat files
+# Hardhat files
 cache
 artifacts
 cache-zk
 artifacts-zk
+
+# Open zeppelin proxy files
+.openzeppelin/
 
 # IDE
 .idea
