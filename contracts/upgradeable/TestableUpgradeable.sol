@@ -14,18 +14,12 @@ abstract contract TestableUpgradeable is Initializable {
     address public timerAddress;
 
     /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[1000] private __gap;
-
-    /**
      * @notice Constructs the Testable contract. Called by child contracts.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
     function __Testable_init(address _timerAddress) public onlyInitializing {
+        //slither-disable-next-line missing-zero-check
         timerAddress = _timerAddress;
     }
 
@@ -58,4 +52,9 @@ abstract contract TestableUpgradeable is Initializable {
             return block.timestamp; // solhint-disable-line not-rely-on-time
         }
     }
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[1000] private __gap;
 }

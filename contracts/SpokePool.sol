@@ -63,11 +63,6 @@ abstract contract SpokePool is
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
 
-    // Reserve storage slots for future versions of this base contract to add state variables without
-    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added.
-    uint256[1000] private __gap;
-
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
@@ -301,6 +296,11 @@ abstract contract SpokePool is
      * to ensure that a small input range doesn't limit which indices this method is able to reach.
      */
     function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin nonReentrant {
+        // Deleting a struct containing a mapping does not delete the mapping in Solidity, therefore the bitmap's
+        // data will still remain potentially leading to vulnerabilities down the line. The way around this would
+        // be to iterate through every key in the mapping and resetting the value to 0, but this seems expensive and
+        // would require a new list in storage to keep track of keys.
+        //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
         emit EmergencyDeleteRootBundle(rootBundleId);
     }
@@ -347,11 +347,18 @@ abstract contract SpokePool is
         // buffer of this contract's block time to allow for this variance.
         // Note also that quoteTimestamp cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
+
+        //slither-disable-next-line timestamp
         require(
             getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer &&
                 getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
+
+        // Increment count of deposits so that deposit ID for this spoke pool is unique.
+        uint32 newDepositId = numberOfDeposits++;
+        depositCounter[originToken] += amount;
+
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
@@ -367,19 +374,12 @@ abstract contract SpokePool is
             chainId(),
             destinationChainId,
             relayerFeePct,
-            numberOfDeposits,
+            newDepositId,
             quoteTimestamp,
             originToken,
             recipient,
             msg.sender
         );
-
-        // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        // @dev: Use pre-increment to save gas:
-        // i++ --> Load, Store, Add, Store
-        // ++i --> Load, Add, Store
-        ++numberOfDeposits;
-        depositCounter[originToken] += amount;
     }
 
     /**
@@ -849,6 +849,7 @@ abstract contract SpokePool is
             IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
+            //slither-disable-next-line arbitrary-send-eth
             to.transfer(amount);
         }
     }
@@ -1046,4 +1047,9 @@ abstract contract SpokePool is
 
     // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[1000] private __gap;
 }

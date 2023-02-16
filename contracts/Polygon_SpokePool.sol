@@ -80,6 +80,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         callValidated = false;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
         polygonTokenBridger = _polygonTokenBridger;
+        //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
     }
 
@@ -92,6 +93,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param newFxChild New FxChild.
      */
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
+        //slither-disable-next-line missing-zero-check
         fxChild = newFxChild;
         emit SetFxChild(newFxChild);
     }
@@ -127,8 +129,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         // This uses delegatecall to take the information in the message and process it as a function call on this contract.
         /// This is a safe delegatecall because its made to address(this) so there is no risk of delegating to a
         /// selfdestruct().
+        //slither-disable-start low-level-calls
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(data);
+        //slither-disable-end low-level-calls
         require(success, "delegatecall failed");
     }
 
@@ -229,6 +233,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     function _wrap() internal {
         uint256 balance = address(this).balance;
+        //slither-disable-next-line arbitrary-send-eth
         if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
     }
 
