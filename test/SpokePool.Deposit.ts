@@ -82,6 +82,9 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Deposit nonce should increment.
     expect(await spokePool.numberOfDeposits()).to.equal(1);
+
+    // Count is correctly incremented.
+    expect(await spokePool.depositCounter(erc20.address)).to.equal(amountToDeposit);
   });
   it("Depositing ETH correctly wraps into WETH", async function () {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
@@ -258,6 +261,35 @@ describe("SpokePool Depositor Logic", async function () {
           depositRelayerFeePct,
           toBN(currentSpokePoolTime).sub(toBN("3700")), // > 60 mins in past
           maxUint256
+        )
+      )
+    ).to.be.reverted;
+
+    // Setting max count to be smaller than the sum of previous deposits should fail.
+    await spokePool
+      .connect(depositor)
+      .deposit(
+        ...getDepositParams(
+          recipient.address,
+          erc20.address,
+          amountToDeposit,
+          destinationChainId,
+          depositRelayerFeePct,
+          toBN(currentSpokePoolTime),
+          maxUint256
+        )
+      );
+
+    await expect(
+      spokePool.connect(depositor).deposit(
+        ...getDepositParams(
+          recipient.address,
+          erc20.address,
+          amountToDeposit,
+          destinationChainId,
+          depositRelayerFeePct,
+          toBN(currentSpokePoolTime),
+          amountToDeposit.sub(1) // Less than the previous transaction's deposit amount.
         )
       )
     ).to.be.reverted;
