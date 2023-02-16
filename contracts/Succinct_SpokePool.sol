@@ -51,6 +51,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         require(!adminCallValidated, "Re-entered handleTelepathy");
         adminCallValidated = true;
 
+        /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
         require(success, "delegatecall failed");
 
