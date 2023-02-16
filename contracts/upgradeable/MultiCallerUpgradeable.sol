@@ -9,13 +9,6 @@ pragma solidity ^0.8.0;
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
  */
 contract MultiCallerUpgradeable {
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[1000] private __gap;
-
     function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
@@ -39,4 +32,9 @@ contract MultiCallerUpgradeable {
             results[i] = result;
         }
     }
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[1000] private __gap;
 }

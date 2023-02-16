@@ -62,11 +62,6 @@ abstract contract SpokePool is
     // This contract can store as many root bundles as the HubPool chooses to publish here.
     RootBundle[] public rootBundles;
 
-    // Reserve storage slots for future versions of this base contract to add state variables without
-    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added.
-    uint256[1000] private __gap;
-
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
@@ -942,4 +937,9 @@ abstract contract SpokePool is
 
     // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[1000] private __gap;
 }
