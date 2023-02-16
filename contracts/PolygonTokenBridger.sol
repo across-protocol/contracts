@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "./Lockable.sol";
 import "./interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // Polygon Registry contract that stores their addresses.
 interface PolygonRegistry {
@@ -38,7 +38,7 @@ interface MaticToken {
  *  This ultimately allows create2 to generate deterministic addresses that don't depend on the transaction count of the
  * sender.
  */
-contract PolygonTokenBridger is ReentrancyGuard {
+contract PolygonTokenBridger is Lockable {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
