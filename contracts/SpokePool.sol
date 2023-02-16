@@ -340,7 +340,7 @@ abstract contract SpokePool is
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
         require(amount < 1e36, "Amount too large");
-        require(maxCount >= depositCounter[originToken], "Above max count");
+        require(depositCounter[originToken] <= maxCount, "Above max count");
 
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // block.timestamp is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
@@ -886,7 +886,7 @@ abstract contract SpokePool is
         require(relayFills[relayHash] < relayData.amount, "relay filled");
 
         // This allows the caller to add in frontrunning protection for quote validity.
-        require(maxCount <= fillCounter[relayData.destinationToken], "Above max count");
+        require(fillCounter[relayData.destinationToken] <= maxCount, "Above max count");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (maxTokensToSend == 0) return 0;
