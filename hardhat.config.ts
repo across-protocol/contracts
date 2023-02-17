@@ -44,17 +44,9 @@ const config: HardhatUserConfig = {
     },
   },
   zksolc: {
-    version: "1.1.0",
-    compilerSource: "docker",
-    settings: {
-      optimizer: {
-        enabled: true,
-      },
-      experimental: {
-        dockerImage: "matterlabs/zksolc",
-        tag: "v1.1.0",
-      },
-    },
+    version: "1.3.1",
+    compilerSource: "binary",
+    settings: {},
   },
   networks: {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },
@@ -64,7 +56,7 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       chainId: 1,
     },
-    "zksync-goerli": {
+    zkSyncTestnet: {
       chainId: 280,
       url: "https://zksync2-testnet.zksync.dev",
       saveDeployments: true,
