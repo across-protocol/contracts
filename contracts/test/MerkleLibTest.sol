@@ -31,10 +31,10 @@ contract MerkleLibTest {
 
     function verifySlowRelayFulfillment(
         bytes32 root,
-        SpokePoolInterface.RelayData memory slowRelayFulfillment,
+        SpokePoolInterface.SlowFill memory slowFill,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifySlowRelayFulfillment(root, slowRelayFulfillment, proof);
+        return MerkleLib.verifySlowRelayFulfillment(root, slowFill, proof);
     }
 
     function isClaimed(uint256 index) public view returns (bool) {

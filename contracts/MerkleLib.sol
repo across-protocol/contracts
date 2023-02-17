@@ -49,7 +49,7 @@ library MerkleLib {
      */
     function verifySlowRelayFulfillment(
         bytes32 root,
-        SpokePoolInterface.RelayData memory slowRelayFulfillment,
+        SpokePoolInterface.SlowFill memory slowRelayFulfillment,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));

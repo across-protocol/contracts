@@ -96,10 +96,11 @@ contract Ovm_SpokePool is SpokePool {
         address destinationToken,
         uint256 totalRelayAmount,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
         if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
@@ -115,6 +116,7 @@ contract Ovm_SpokePool is SpokePool {
             relayerFeePct,
             depositId,
             rootBundleId,
+            payoutAdjustment,
             proof
         );
     }

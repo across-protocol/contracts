@@ -188,10 +188,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
         _wrap();
@@ -206,6 +207,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
             relayerFeePct,
             depositId,
             rootBundleId,
+            payoutAdjustment,
             proof
         );
     }

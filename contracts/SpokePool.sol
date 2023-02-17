@@ -15,6 +15,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool
@@ -70,6 +71,18 @@ abstract contract SpokePool is
     // relay, the fees, and the agents are all parameters included in the hash key.
     mapping(bytes32 => uint256) public relayFills;
 
+    // This keeps track of the worst-case liabilities due to fills.
+    // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between
+    // two points. This is used to provide frontrunning protection to ensure the relayer's assumptions about the state
+    // upon which their expected repayments are based will not change before their transaction is mined.
+    mapping(address => uint256) public fillCounter;
+
+    // This keeps track of the total running deposits for each token. This allows depositors to protect themselves from
+    // frontrunning that might change their worst-case quote.
+    mapping(address => uint256) public depositCounter;
+
+    uint256 public constant MAX_TRANSFER_SIZE = 1e36;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -81,7 +94,7 @@ abstract contract SpokePool is
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
+        int64 relayerFeePct,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         address indexed originToken,
@@ -89,7 +102,7 @@ abstract contract SpokePool is
         address indexed depositor
     );
     event RequestedSpeedUpDeposit(
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 indexed depositId,
         address indexed depositor,
         bytes depositorSignature
@@ -101,9 +114,9 @@ abstract contract SpokePool is
         uint256 repaymentChainId,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
-        uint64 appliedRelayerFeePct,
-        uint64 realizedLpFeePct,
+        int64 relayerFeePct,
+        int64 appliedRelayerFeePct,
+        int64 realizedLpFeePct,
         uint32 indexed depositId,
         address destinationToken,
         address indexed relayer,
@@ -319,14 +332,18 @@ abstract contract SpokePool is
         address originToken,
         uint256 amount,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
-        uint32 quoteTimestamp
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        uint256 maxCount
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled.
         require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
 
         // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(relayerFeePct < 0.5e18, "invalid relayer fee");
+        require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
+        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        require(depositCounter[originToken] <= maxCount, "Above max count");
+
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // block.timestamp is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
         // buffer of this contract's block time to allow for this variance.
@@ -342,6 +359,7 @@ abstract contract SpokePool is
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
+        depositCounter[originToken] += amount;
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
@@ -387,7 +405,7 @@ abstract contract SpokePool is
      */
     function speedUpDeposit(
         address depositor,
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
     ) public override nonReentrant {
@@ -437,10 +455,12 @@ abstract contract SpokePool is
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
-        uint32 depositId
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        uint256 maxCount
     ) public nonReentrant unpausedFills {
+        uint256 thisChain = chainId();
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
@@ -453,11 +473,20 @@ abstract contract SpokePool is
             relayerFeePct: relayerFeePct,
             depositId: depositId,
             originChainId: originChainId,
-            destinationChainId: chainId()
+            destinationChainId: thisChain
         });
         bytes32 relayHash = _getRelayHash(relayData);
 
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, relayerFeePct, false);
+        uint256 fillAmountPreFees = _fillRelay(
+            relayHash,
+            relayData,
+            maxTokensToSend,
+            relayerFeePct,
+            false,
+            repaymentChainId == thisChain,
+            maxCount,
+            0
+        );
 
         _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData, false);
     }
@@ -493,13 +522,16 @@ abstract contract SpokePool is
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
-        uint64 newRelayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
-        bytes memory depositorSignature
+        bytes memory depositorSignature,
+        uint256 maxCount
     ) public override nonReentrant unpausedFills {
         _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
+
+        uint256 thisChain = chainId();
 
         // Now follow the default fillRelay flow with the updated fee and the original relay hash.
         RelayData memory relayData = RelayData({
@@ -511,10 +543,19 @@ abstract contract SpokePool is
             relayerFeePct: relayerFeePct,
             depositId: depositId,
             originChainId: originChainId,
-            destinationChainId: chainId()
+            destinationChainId: thisChain
         });
         bytes32 relayHash = _getRelayHash(relayData);
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
+        uint256 fillAmountPreFees = _fillRelay(
+            relayHash,
+            relayData,
+            maxTokensToSend,
+            newRelayerFeePct,
+            false,
+            repaymentChainId == thisChain,
+            maxCount,
+            0
+        );
 
         _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData, false);
     }
@@ -547,10 +588,11 @@ abstract contract SpokePool is
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
         _executeSlowRelayLeaf(
@@ -564,6 +606,7 @@ abstract contract SpokePool is
             relayerFeePct,
             depositId,
             rootBundleId,
+            payoutAdjustment,
             proof
         );
     }
@@ -678,10 +721,11 @@ abstract contract SpokePool is
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) internal {
         RelayData memory relayData = RelayData({
@@ -696,8 +740,10 @@ abstract contract SpokePool is
             depositId: depositId
         });
 
+        SlowFill memory slowFill = SlowFill({ relayData: relayData, payoutAdjustment: payoutAdjustment });
+
         require(
-            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, relayData, proof),
+            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
             "Invalid proof"
         );
 
@@ -706,7 +752,16 @@ abstract contract SpokePool is
         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
         // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
         // relayer component of the relayerFee thereby only charging the depositor the LpFee.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, 0, true);
+        uint256 fillAmountPreFees = _fillRelay(
+            relayHash,
+            relayData,
+            relayData.amount,
+            0,
+            true,
+            true,
+            type(uint256).max,
+            payoutAdjustment
+        );
 
         // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
         // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
@@ -732,7 +787,7 @@ abstract contract SpokePool is
     function _verifyUpdateRelayerFeeMessage(
         address depositor,
         uint256 originChainId,
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
     ) internal view {
@@ -746,9 +801,7 @@ abstract contract SpokePool is
             // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
             keccak256(
                 abi.encode(
-                    keccak256(
-                        "UpdateRelayerFeeMessage(uint64 newRelayerFeePct,uint32 depositId,uint256 originChainId)"
-                    ),
+                    keccak256("UpdateRelayerFeeMessage(int64 newRelayerFeePct,uint32 depositId,uint256 originChainId)"),
                     newRelayerFeePct,
                     depositId,
                     originChainId
@@ -780,12 +833,12 @@ abstract contract SpokePool is
         require(isValid, "invalid signature");
     }
 
-    function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
-        return (1e18 * amount) / (1e18 - feesPct);
+    function _computeAmountPreFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
+        return (1e18 * amount) / uint256((int256(1e18) - feesPct));
     }
 
-    function _computeAmountPostFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
-        return (amount * (1e18 - feesPct)) / 1e18;
+    function _computeAmountPostFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
+        return (amount * uint256(int256(1e18) - feesPct)) / 1e18;
     }
 
     function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
@@ -817,17 +870,28 @@ abstract contract SpokePool is
         bytes32 relayHash,
         RelayData memory relayData,
         uint256 maxTokensToSend,
-        uint64 updatableRelayerFeePct,
-        bool useContractFunds
+        int64 updatableRelayerFeePct,
+        bool useContractFunds,
+        bool localRepayment,
+        uint256 maxCount,
+        int256 payoutAdjustment
     ) internal returns (uint256 fillAmountPreFees) {
         // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
         // fees are just magic numbers. The important point is to prevent the total fee from being 100%, otherwise
         // computing the amount pre fees runs into divide-by-0 issues.
-        require(updatableRelayerFeePct < 0.5e18 && relayData.realizedLpFeePct < 0.5e18, "invalid fees");
+        require(
+            SignedMath.abs(updatableRelayerFeePct) < 0.5e18 && SignedMath.abs(relayData.realizedLpFeePct) < 0.5e18,
+            "invalid fees"
+        );
+
+        require(relayData.amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // Check that the relay has not already been completely filled. Note that the relays mapping will point to
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
         require(relayFills[relayHash] < relayData.amount, "relay filled");
+
+        // This allows the caller to add in frontrunning protection for quote validity.
+        require(fillCounter[relayData.destinationToken] <= maxCount, "Above max count");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (maxTokensToSend == 0) return 0;
@@ -854,7 +918,23 @@ abstract contract SpokePool is
                 fillAmountPreFees,
                 relayData.realizedLpFeePct + updatableRelayerFeePct
             );
+
+            if (payoutAdjustment != 0) {
+                require(int256(amountToSend) + payoutAdjustment >= 0, "payoutAdjustment too small");
+                amountToSend = uint256(int256(amountToSend) + payoutAdjustment);
+            }
         }
+
+        // Update fill counter.
+        _updateCountFromFill(
+            relayFills[relayHash],
+            relayFills[relayHash] + fillAmountPreFees,
+            relayData.amount,
+            relayData.realizedLpFeePct,
+            relayData.destinationToken,
+            localRepayment,
+            useContractFunds
+        );
 
         // relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
         // numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
@@ -884,12 +964,40 @@ abstract contract SpokePool is
         }
     }
 
+    function _updateCountFromFill(
+        uint256 startingFillAmount,
+        uint256 endingFillAmount,
+        uint256 totalFillAmount,
+        int64 realizedLPFeePct,
+        address token,
+        bool localRepayment,
+        bool useContractFunds
+    ) internal {
+        // If this is a slow fill or it's an initial 0-fill, do nothing, as these should not impact the count.
+        if (useContractFunds || endingFillAmount == 0) return;
+
+        // If this is the first fill and it's partial, assume the rest of the fill will be slow filled (refunded on this chain).
+        if (startingFillAmount == 0 && totalFillAmount - endingFillAmount > 0) {
+            fillCounter[token] += _computeAmountPostFees(totalFillAmount - endingFillAmount, realizedLPFeePct);
+        }
+
+        // If this is not the first fill, remove the partial fill that was previously assumed.
+        if (startingFillAmount != 0) {
+            fillCounter[token] -= _computeAmountPostFees(endingFillAmount - startingFillAmount, realizedLPFeePct);
+        }
+
+        // If the repayment is local, add the fill amount to the running fill count.
+        if (localRepayment) {
+            fillCounter[token] += _computeAmountPostFees(endingFillAmount - startingFillAmount, realizedLPFeePct);
+        }
+    }
+
     // The following internal methods emit events with many params to overcome solidity stack too deep issues.
     function _emitFillRelay(
         bytes32 relayHash,
         uint256 fillAmount,
         uint256 repaymentChainId,
-        uint64 appliedRelayerFeePct,
+        int64 appliedRelayerFeePct,
         RelayData memory relayData,
         bool isSlowRelay
     ) internal {
@@ -916,7 +1024,7 @@ abstract contract SpokePool is
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 quoteTimestamp,
         address originToken,

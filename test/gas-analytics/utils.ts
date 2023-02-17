@@ -12,20 +12,24 @@ export function constructDepositParams(
   depositor: string,
   depositTokenAddress: string,
   quoteTime: BigNumber,
-  depositAmount: BigNumber
+  depositAmount: BigNumber,
+  maxCount?: BigNumber
 ) {
-  return getDepositParams(depositor, depositTokenAddress, depositAmount, 1, toBN("0"), quoteTime);
+  return getDepositParams(depositor, depositTokenAddress, depositAmount, 1, toBN("0"), quoteTime, maxCount);
 }
 export async function sendDeposit(
   _spokePool: Contract,
   _depositor: SignerWithAddress,
   tokenAddress: string,
-  depositAmount: BigNumber
+  depositAmount: BigNumber,
+  maxCount?: BigNumber
 ) {
   const currentSpokePoolTime = await _spokePool.getCurrentTime();
   return await _spokePool
     .connect(_depositor)
-    .deposit(...constructDepositParams(_depositor.address, tokenAddress, currentSpokePoolTime, depositAmount));
+    .deposit(
+      ...constructDepositParams(_depositor.address, tokenAddress, currentSpokePoolTime, depositAmount, maxCount)
+    );
 }
 export function constructRelayParams(
   depositor: string,

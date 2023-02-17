@@ -2,7 +2,7 @@ import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect } from "../u
 import { seedContract, seedWallet, BigNumber } from "../utils";
 import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
-import { spokePoolFixture, RelayData } from "../fixtures/SpokePool.Fixture";
+import { spokePoolFixture, RelayData, SlowFill } from "../fixtures/SpokePool.Fixture";
 import { buildSlowRelayTree } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
@@ -13,8 +13,8 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, recipient: SignerWi
 
 // Associates an array of L2 tokens to fill relays with.
 let l2Tokens: Contract[];
-let leaves: RelayData[];
-let tree: MerkleTree<RelayData>;
+let leaves: SlowFill[];
+let tree: MerkleTree<SlowFill>;
 
 // Relay params that do not affect tests and we can conveniently hardcode:
 const ORIGIN_CHAIN_ID = "0";
@@ -34,23 +34,26 @@ async function constructSimpleTree(
   // Each refund amount mapped to one refund address.
   expect(destinationTokens.length).to.equal(LEAF_COUNT);
 
-  const relays: RelayData[] = [];
+  const slowFills: SlowFill[] = [];
   for (let i = 0; i < LEAF_COUNT; i++) {
-    relays.push({
-      depositor,
-      recipient,
-      destinationToken: destinationTokens[i],
-      amount: toBN(universalRelayAmount),
-      originChainId: ORIGIN_CHAIN_ID,
-      destinationChainId: consts.destinationChainId.toString(),
-      realizedLpFeePct: toBN(FEE_PCT),
-      relayerFeePct: toBN(FEE_PCT),
-      depositId: i.toString(),
+    slowFills.push({
+      relayData: {
+        depositor,
+        recipient,
+        destinationToken: destinationTokens[i],
+        amount: toBN(universalRelayAmount),
+        originChainId: ORIGIN_CHAIN_ID,
+        destinationChainId: consts.destinationChainId.toString(),
+        realizedLpFeePct: toBN(FEE_PCT),
+        relayerFeePct: toBN(FEE_PCT),
+        depositId: i.toString(),
+      },
+      payoutAdjustment: "0",
     });
   }
-  const tree = await buildSlowRelayTree(relays);
+  const tree = await buildSlowRelayTree(slowFills);
 
-  return { leaves: relays, tree };
+  return { leaves: slowFills, tree };
 }
 
 describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
@@ -108,6 +111,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "0",
+          "0",
           initTree.tree.getHexProof(initTree.leaves[0])
         );
 
@@ -144,6 +148,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "1",
+          "0",
           tree.getHexProof(leaves[leafIndexToExecute])
         );
       const receipt = await txn.wait();
@@ -167,6 +172,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
               FEE_PCT,
               i,
               "1",
+              "0",
               tree.getHexProof(leaves[i])
             )
         );
@@ -192,6 +198,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           i,
           "1",
+          "0",
           tree.getHexProof(leaf),
         ]);
       });
@@ -226,6 +233,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "0",
+          "0",
           initTree.tree.getHexProof(initTree.leaves[0])
         );
 
@@ -257,6 +265,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "1",
+          "0",
           tree.getHexProof(leaves[leafIndexToExecute])
         );
       const receipt = await txn.wait();
