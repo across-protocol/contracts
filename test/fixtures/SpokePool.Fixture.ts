@@ -8,7 +8,6 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
 export async function deploySpokePool(ethers: any): Promise<{
-  timer: Contract;
   weth: Contract;
   erc20: Contract;
   spokePool: Contract;
@@ -17,8 +16,6 @@ export async function deploySpokePool(ethers: any): Promise<{
   erc1271: Contract;
 }> {
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
-  // Useful contracts.
-  const timer = await (await getContractFactory("Timer", deployerWallet)).deploy();
 
   // Create tokens:
   const weth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
@@ -36,7 +33,7 @@ export async function deploySpokePool(ethers: any): Promise<{
   // Deploy the pool
   const spokePool = await hre.upgrades.deployProxy(
     await getContractFactory("MockSpokePool", deployerWallet),
-    [0, crossChainAdmin.address, hubPool.address, weth.address, timer.address],
+    [0, crossChainAdmin.address, hubPool.address, weth.address],
     { kind: "uups" }
   );
   await spokePool.setChainId(consts.destinationChainId);
@@ -45,7 +42,6 @@ export async function deploySpokePool(ethers: any): Promise<{
   const erc1271 = await (await getContractFactory("MockERC1271", deployerWallet)).deploy(deployerWallet.address);
 
   return {
-    timer,
     weth,
     erc20,
     spokePool,

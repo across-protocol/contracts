@@ -66,7 +66,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
      * @param _fxChild FxChild contract, changeable by Admin.
-     * @param _timerAddress Timer address to set.
      */
     function initialize(
         uint32 _initialDepositId,
@@ -74,11 +73,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         address _crossDomainAdmin,
         address _hubPool,
         address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
-        address _fxChild,
-        address _timerAddress
+        address _fxChild
     ) public initializer {
         callValidated = false;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress);
         polygonTokenBridger = _polygonTokenBridger;
         //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
