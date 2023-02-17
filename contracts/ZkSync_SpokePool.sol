@@ -83,7 +83,8 @@ contract ZkSync_SpokePool is SpokePool {
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken) ? zkEthBridge : zkErc20Bridge).withdraw(
             hubPool,
-            // Note: If ETH, must use 0x0: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ETHBridge.sol#L57
+            // Note: Not sure what to set for ETH address, see here
+            // https://era.zksync.io/docs/api/js/utils.html#the-address-of-ether
             relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)
                 ? address(0)
                 : relayerRefundLeaf.l2TokenAddress,

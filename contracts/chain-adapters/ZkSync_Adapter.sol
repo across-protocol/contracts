@@ -17,7 +17,7 @@ interface ZkSyncInterface {
     /// @param _factoryDeps An array of L2 bytecodes that will be marked as known on L2
     /// @param _refundRecipient The address on L2 that will receive the refund for the transaction. If the transaction fails,
     /// it will also be the address to receive `_l2Value`.
-    /// @return canonicalTxHash The hash of the requested L2 transaction. This hash can be used to follow the transaction status
+    /// @return txHash The hash of the requested L2 transaction. This hash can be used to follow the transaction status
     function requestL2Transaction(
         address _contractL2,
         uint256 _l2Value,
@@ -26,7 +26,7 @@ interface ZkSyncInterface {
         uint256 _l2GasPerPubdataByteLimit,
         bytes[] calldata _factoryDeps,
         address _refundRecipient
-    ) external payable returns (bytes memory txHash);
+    ) external payable returns (bytes32 txHash);
 }
 
 interface ZkBridgeLike {
@@ -44,7 +44,7 @@ interface ZkBridgeLike {
         uint256 _amount,
         uint256 _l2TxGasLimit,
         uint256 _l2TxGasPerPubdataByte
-    ) external payable returns (bytes32 memory txHash);
+    ) external payable returns (bytes32 txHash);
 }
 
 /**
@@ -68,6 +68,12 @@ contract ZkSync_Adapter is AdapterInterface {
 
     uint32 public immutable gasLimit = 300_000;
 
+    // The large L2 gas per pubdata to sign. This gas is enough to ensure that
+    // any reasonable limit will be accepted. Note, that the operator is NOT required to
+    // use the honest value of gas per pubdata and it can use any value up to the one signed by the user.
+    // In the future releases, we will provide a way to estimate the current gasPerPubdata.
+    uint32 DEFAULT_GAS_PER_PUBDATA_LIMIT = 50_000;
+
     address public constant l2RefundAddress = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
 
     // TODO: Change following addresses for Mainnet
@@ -78,9 +84,9 @@ contract ZkSync_Adapter is AdapterInterface {
     // redeployed in the event that the following addresses change.
 
     // Main contract used to send L1 --> L2 messages. Fetchable via `zks_getMainContract` method on JSON RPC.
-    ZkSyncInterface public immutable zkSync = ZkSyncInterface(0x1908e2bf4a88f91e4ef0dc72f02b8ea36bea2319);
+    ZkSyncInterface public immutable zkSync = ZkSyncInterface(0x1908e2BF4a88F91E4eF0DC72f02b8Ea36BEa2319);
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
-    ZkBridgeLike public immutable zkErc20Bridge = ZkBridgeLike(0x927ddfcc55164a59e0f33918d13a2d559bc10ce7);
+    ZkBridgeLike public immutable zkErc20Bridge = ZkBridgeLike(0x927DdFcc55164a59E0F33918D13a2D559bC10ce7);
     ZkBridgeLike public immutable zkEthBridge = ZkBridgeLike(0xcbebcD41CeaBBC85Da9bb67527F58d69aD4DfFf5);
 
     event ZkSyncMessageRelayed(bytes32 txHash);
@@ -95,23 +101,13 @@ contract ZkSync_Adapter is AdapterInterface {
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _contractHasSufficientEthBalance();
 
-        // Parameters passed to requestL2Transaction:
-        // _contractAddressL2 is a parameter that defines the address of the contract to be called.
-        // _l2Value is a parameter that defines the amount of ETH you want to pass with the call to L2. This number
-        // will be used as msg.value for the transaction.
-        // _calldata is a parameter that contains the calldata of the transaction call. It can be encoded the
-        //  same way as on Ethereum.
-        // _gasLimit is a parameter that contains the gas limit of the transaction call. Can learn more about zkSync
-        // fee system here https://era.zksync.io/docs/dev/developer-guides/transactions/fee-model.html
-        // _factoryDeps is a list of bytecodes. It should contain the bytecode of the contract being deployed.
-        //  If the contract being deployed is a factory contract, i.e. it can deploy other contracts, the array should also contain the bytecodes of the contracts that can be deployed by it.
         bytes32 txHash = zkSync.requestL2Transaction{ value: txBaseCost }(
             target,
             // We pass no ETH with the call
             0,
             message,
             gasLimit,
-            gasLimit,
+            DEFAULT_GAS_PER_PUBDATA_LIMIT,
             new bytes[](0),
             l2RefundAddress
         );
@@ -145,10 +141,22 @@ contract ZkSync_Adapter is AdapterInterface {
         bytes32 txHash;
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
-            txHash = zkEthBridge.deposit{ value: txBaseCost + amount }(to, address(0), amount, gasLimit, gasLimit);
+            txHash = zkEthBridge.deposit{ value: txBaseCost + amount }(
+                to,
+                address(0),
+                amount,
+                gasLimit,
+                DEFAULT_GAS_PER_PUBDATA_LIMIT
+            );
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
-            txHash = zkErc20Bridge.deposit{ value: txBaseCost }(to, l1Token, amount, gasLimit, gasLimit);
+            txHash = zkErc20Bridge.deposit{ value: txBaseCost }(
+                to,
+                l1Token,
+                amount,
+                gasLimit,
+                DEFAULT_GAS_PER_PUBDATA_LIMIT
+            );
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
