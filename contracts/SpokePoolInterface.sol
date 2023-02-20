@@ -46,6 +46,8 @@ interface SpokePoolInterface {
         int64 relayerFeePct;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
+        // Data that is forwarded to the recipient.
+        bytes data;
     }
 
     struct SlowFill {
