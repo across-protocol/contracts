@@ -132,17 +132,14 @@ abstract contract SpokePool is
         uint256 originChainId,
         uint256 destinationChainId,
         int64 relayerFeePct,
-        int64 appliedRelayerFeePct,
         int64 realizedLpFeePct,
         uint32 indexed depositId,
         address destinationToken,
         address indexed relayer,
         address indexed depositor,
         address recipient,
-        address appliedRecipient,
         bytes message,
-        bytes appliedMessage,
-        bool isSlowRelay
+        RelayExecutionInfo updatableRelayData
     );
     event RelayedRootBundle(
         uint32 indexed rootBundleId,
@@ -181,6 +178,13 @@ abstract contract SpokePool is
         uint256 maxCount;
         bool slowFill;
         int256 payoutAdjustment;
+    }
+
+    struct RelayExecutionInfo {
+        address recipient;
+        bytes message;
+        int64 relayerFeePct;
+        bool isSlowRelay;
     }
 
     /**
@@ -1079,27 +1083,36 @@ abstract contract SpokePool is
 
     // The following internal methods emit events with many params to overcome solidity stack too deep issues.
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
-        // Stack too deep -- working on a fix.
-        // emit FilledRelay(
-        //     relayExecution.relay.amount,
-        //     relayFills[relayExecution.relayHash],
-        //     fillAmountPreFees,
-        //     relayExecution.repaymentChainId,
-        //     relayExecution.relay.originChainId,
-        //     relayExecution.relay.destinationChainId,
-        //     relayExecution.relay.relayerFeePct,
-        //     relayExecution.updatedRelayerFeePct,
-        //     relayExecution.relay.realizedLpFeePct,
-        //     relayExecution.relay.depositId,
-        //     relayExecution.relay.destinationToken,
-        //     msg.sender,
-        //     relayExecution.relay.depositor,
-        //     relayExecution.relay.recipient,
-        //     relayExecution.updatedRecipient,
-        //     relayExecution.relay.message,
-        //     relayExecution.updatedMessage,
-        //     relayExecution.slowFill
-        // );
+        RelayExecutionInfo memory relayExecutionInfo;
+        // Stack too deep
+        {
+            relayExecutionInfo = RelayExecutionInfo({
+                relayerFeePct: relayExecution.updatedRelayerFeePct,
+                recipient: relayExecution.updatedRecipient,
+                message: relayExecution.updatedMessage,
+                isSlowRelay: relayExecution.slowFill
+            });
+        }
+
+        {
+            emit FilledRelay(
+                relayExecution.relay.amount,
+                relayFills[relayExecution.relayHash],
+                fillAmountPreFees,
+                relayExecution.repaymentChainId,
+                relayExecution.relay.originChainId,
+                relayExecution.relay.destinationChainId,
+                relayExecution.relay.relayerFeePct,
+                relayExecution.relay.realizedLpFeePct,
+                relayExecution.relay.depositId,
+                relayExecution.relay.destinationToken,
+                msg.sender,
+                relayExecution.relay.depositor,
+                relayExecution.relay.recipient,
+                relayExecution.relay.message,
+                relayExecutionInfo
+            );
+        }
     }
 
     function _emitDeposit(
