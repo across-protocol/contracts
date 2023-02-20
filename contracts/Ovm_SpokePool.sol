@@ -100,6 +100,7 @@ contract Ovm_SpokePool is SpokePool {
         int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        bytes memory message,
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
@@ -116,6 +117,7 @@ contract Ovm_SpokePool is SpokePool {
             relayerFeePct,
             depositId,
             rootBundleId,
+            message,
             payoutAdjustment,
             proof
         );
