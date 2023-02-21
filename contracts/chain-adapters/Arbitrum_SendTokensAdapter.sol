@@ -17,7 +17,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
 
     uint256 public immutable l2MaxSubmissionCost = 0.01e18;
     uint256 public immutable l2GasPrice = 5e9;
-    uint32 public immutable l2GasLimit = 2_000_000;
+    uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
 
@@ -57,7 +57,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
             l1Token,
             target,
             amount,
-            l2GasLimit,
+            RELAY_TOKENS_L2_GAS_LIMIT,
             l2GasPrice,
             data
         );
