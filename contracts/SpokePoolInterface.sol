@@ -46,11 +46,13 @@ interface SpokePoolInterface {
         int64 relayerFeePct;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
+        // Data that is forwarded to the recipient.
+        bytes message;
     }
 
     struct SlowFill {
         RelayData relayData;
-        int256 payoutAdjustment;
+        int256 payoutAdjustmentPct;
     }
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
@@ -92,13 +94,16 @@ interface SpokePoolInterface {
         uint256 destinationChainId,
         int64 relayerFeePct,
         uint32 quoteTimestamp,
+        bytes memory message,
         uint256 maxCount
     ) external payable;
 
     function speedUpDeposit(
         address depositor,
-        int64 newRelayerFeePct,
+        int64 updatedRelayerFeePct,
         uint32 depositId,
+        address updatedRecipient,
+        bytes memory updatedMessage,
         bytes memory depositorSignature
     ) external;
 
@@ -113,12 +118,14 @@ interface SpokePoolInterface {
         int64 realizedLpFeePct,
         int64 relayerFeePct,
         uint32 depositId,
+        bytes memory message,
         uint256 maxCount
     ) external;
 
-    function fillRelayWithUpdatedFee(
+    function fillRelayWithUpdatedDeposit(
         address depositor,
         address recipient,
+        address updatedRecipient,
         address destinationToken,
         uint256 amount,
         uint256 maxTokensToSend,
@@ -126,8 +133,10 @@ interface SpokePoolInterface {
         uint256 originChainId,
         int64 realizedLpFeePct,
         int64 relayerFeePct,
-        int64 newRelayerFeePct,
+        int64 updatedRelayerFeePct,
         uint32 depositId,
+        bytes memory message,
+        bytes memory updatedMessage,
         bytes memory depositorSignature,
         uint256 maxCount
     ) external;
@@ -142,6 +151,7 @@ interface SpokePoolInterface {
         int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        bytes memory message,
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) external;

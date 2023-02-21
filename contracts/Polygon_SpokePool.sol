@@ -190,6 +190,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        bytes memory message,
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
@@ -205,6 +206,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
             relayerFeePct,
             depositId,
             rootBundleId,
+            message,
             payoutAdjustment,
             proof
         );
