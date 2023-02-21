@@ -83,7 +83,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue() public pure returns (uint256) {
-        return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
+        return l2MaxSubmissionCost + l2GasPrice * RELAY_TOKENS_L2_GAS_LIMIT;
     }
 
     function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {
