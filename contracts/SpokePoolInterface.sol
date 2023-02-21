@@ -52,7 +52,7 @@ interface SpokePoolInterface {
 
     struct SlowFill {
         RelayData relayData;
-        int256 payoutAdjustment;
+        int256 payoutAdjustmentPct;
     }
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
@@ -102,8 +102,8 @@ interface SpokePoolInterface {
         address depositor,
         int64 updatedRelayerFeePct,
         uint32 depositId,
-        bytes memory updatedMessage,
         address updatedRecipient,
+        bytes memory updatedMessage,
         bytes memory depositorSignature
     ) external;
 

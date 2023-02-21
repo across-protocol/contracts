@@ -47,8 +47,9 @@ async function constructSimpleTree(
         realizedLpFeePct: toBN(FEE_PCT),
         relayerFeePct: toBN(FEE_PCT),
         depositId: i.toString(),
+        message: "0x",
       },
-      payoutAdjustment: "0",
+      payoutAdjustmentPct: "0",
     });
   }
   const tree = await buildSlowRelayTree(slowFills);
@@ -111,6 +112,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "0",
+          "0x",
           "0",
           initTree.tree.getHexProof(initTree.leaves[0])
         );
@@ -148,6 +150,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "1",
+          "0x",
           "0",
           tree.getHexProof(leaves[leafIndexToExecute])
         );
@@ -172,6 +175,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
               FEE_PCT,
               i,
               "1",
+              "0x",
               "0",
               tree.getHexProof(leaves[i])
             )
@@ -198,6 +202,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           i,
           "1",
+          "0x",
           "0",
           tree.getHexProof(leaf),
         ]);
@@ -233,6 +238,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "0",
+          "0x",
           "0",
           initTree.tree.getHexProof(initTree.leaves[0])
         );
@@ -265,6 +271,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "1",
+          "0x",
           "0",
           tree.getHexProof(leaves[leafIndexToExecute])
         );

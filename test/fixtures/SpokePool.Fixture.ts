@@ -179,11 +179,12 @@ export interface RelayData {
   depositId: string;
   originChainId: string;
   destinationChainId: string;
+  message: string;
 }
 
 export interface SlowFill {
   relayData: RelayData;
-  payoutAdjustment: string;
+  payoutAdjustmentPct: string;
 }
 
 export function getRelayHash(
@@ -195,7 +196,8 @@ export function getRelayHash(
   _destinationToken: string,
   _amount?: BigNumber,
   _realizedLpFeePct?: BigNumber,
-  _relayerFeePct?: BigNumber
+  _relayerFeePct?: BigNumber,
+  _message?: string
 ): { relayHash: string; relayData: RelayData } {
   const relayData = {
     depositor: _depositor,
@@ -207,11 +209,15 @@ export function getRelayHash(
     realizedLpFeePct: _realizedLpFeePct || consts.realizedLpFeePct,
     relayerFeePct: _relayerFeePct || consts.depositRelayerFeePct,
     depositId: _depositId.toString(),
+    message: _message || "0x",
   };
+
   const relayHash = ethers.utils.keccak256(
     defaultAbiCoder.encode(
-      ["address", "address", "address", "uint256", "uint256", "uint256", "uint64", "uint64", "uint32"],
-      Object.values(relayData)
+      [
+        "tuple(address depositor, address recipient, address destinationToken, uint256 amount, uint256 originChainId, uint256 destinationChainId, int64 realizedLpFeePct, int64 relayerFeePct, uint32 depositId, bytes message)",
+      ],
+      [relayData]
     )
   );
   return { relayHash, relayData };
@@ -233,6 +239,7 @@ export function getDepositParams(
     _destinationChainId.toString(),
     _relayerFeePct.toString(),
     _quoteTime.toString(),
+    "0x",
     _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
 }
@@ -254,6 +261,7 @@ export function getFillRelayParams(
     _relayData.realizedLpFeePct.toString(),
     _relayData.relayerFeePct.toString(),
     _relayData.depositId,
+    _relayData.message || "0x",
     _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
 }
@@ -264,11 +272,14 @@ export function getFillRelayUpdatedFeeParams(
   _updatedFee: BigNumber,
   _signature: string,
   _repaymentChain?: number,
+  _updatedRecipient?: string,
+  _updatedMessage?: string,
   _maxCount?: BigNumber
 ): string[] {
   return [
     _relayData.depositor,
     _relayData.recipient,
+    _updatedRecipient || _relayData.recipient,
     _relayData.destinationToken,
     _relayData.amount.toString(),
     _maxTokensToSend.toString(),
@@ -278,6 +289,8 @@ export function getFillRelayUpdatedFeeParams(
     _relayData.relayerFeePct.toString(),
     _updatedFee.toString(),
     _relayData.depositId,
+    _relayData.message,
+    _updatedMessage || _relayData.message,
     _signature,
     _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
@@ -293,6 +306,7 @@ export function getExecuteSlowRelayParams(
   _relayerFeePct: BigNumber,
   _depositId: number,
   _relayerRefundId: number,
+  _message: string,
   _payoutAdjustment: BigNumber,
   _proof: string[]
 ): (string | string[])[] {
@@ -306,6 +320,7 @@ export function getExecuteSlowRelayParams(
     _relayerFeePct.toString(),
     _depositId.toString(),
     _relayerRefundId.toString(),
+    _message,
     _payoutAdjustment.toString(),
     _proof,
   ];
@@ -320,14 +335,18 @@ export async function modifyRelayHelper(
   modifiedRelayerFeePct: BigNumber,
   depositId: string,
   originChainId: string,
-  depositor: SignerWithAddress
+  depositor: SignerWithAddress,
+  updatedRecipient: string,
+  updatedMessage: string
 ): Promise<{ signature: string }> {
   const typedData = {
     types: {
-      UpdateRelayerFeeMessage: [
-        { name: "newRelayerFeePct", type: "int64" },
+      UpdateDepositDetails: [
         { name: "depositId", type: "uint32" },
         { name: "originChainId", type: "uint256" },
+        { name: "updatedRelayerFeePct", type: "int64" },
+        { name: "updatedRecipient", type: "address" },
+        { name: "updatedMessage", type: "bytes" },
       ],
     },
     domain: {
@@ -336,9 +355,11 @@ export async function modifyRelayHelper(
       chainId: Number(originChainId),
     },
     message: {
-      newRelayerFeePct: modifiedRelayerFeePct,
       depositId,
       originChainId,
+      updatedRelayerFeePct: modifiedRelayerFeePct,
+      updatedRecipient,
+      updatedMessage,
     },
   };
   const signature = await depositor._signTypedData(typedData.domain, typedData.types, typedData.message);
