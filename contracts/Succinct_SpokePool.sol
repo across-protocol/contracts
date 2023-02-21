@@ -58,7 +58,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         uint16 _sourceChainId,
         address _senderAddress,
         bytes memory _data
-    ) external override validateInternalCalls {
+    ) external override validateInternalCalls returns (bytes4) {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
         require(
@@ -69,6 +69,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
         require(success, "delegatecall failed");
+        return ITelepathyHandler.handleTelepathy.selector;
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory) internal override {
