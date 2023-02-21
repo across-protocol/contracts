@@ -60,7 +60,7 @@ describe("Arbitrum Chain SendTokens Emergency Adapter", function () {
       weth.address,
       mockSpoke.address,
       tokensToSendToL2,
-      consts.sampleL2Gas,
+      consts.sampleL2GasSendTokens,
       consts.sampleL2GasPrice,
       maxSubmissionCostMessage
     );
