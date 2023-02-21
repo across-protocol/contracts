@@ -155,6 +155,27 @@ describe("SpokePool Relayer Logic", async function () {
     // The collateral should have not unwrapped to ETH and then transferred to recipient.
     expect(await weth.balanceOf(acrossMessageHandler.address)).to.equal(consts.amountToRelay);
   });
+  it("Self-relay transfers no tokens", async function () {
+    const largeRelayAmount = consts.amountToSeedWallets.mul(100);
+    const { relayHash, relayData } = getRelayHash(
+      depositor.address,
+      relayer.address,
+      consts.firstDepositId,
+      consts.originChainId,
+      consts.destinationChainId,
+      weth.address,
+      largeRelayAmount
+    );
+
+    // This should work, despite the amount being quite large.
+    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, largeRelayAmount));
+
+    // Balance should be the same as before.
+    expect(await weth.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets);
+
+    // Fill amount should be set.
+    expect(await spokePool.relayFills(relayHash)).to.equal(largeRelayAmount);
+  });
   it("General failure cases", async function () {
     // Fees set too high.
     await expect(

@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 import "./interfaces/WETH9Interface.sol";
 import "./SpokePoolInterface.sol";
-import "./upgradeable/TestableUpgradeable.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 
@@ -38,7 +37,6 @@ interface AcrossMessageHandler {
 abstract contract SpokePool is
     SpokePoolInterface,
     UUPSUpgradeable,
-    TestableUpgradeable,
     ReentrancyGuardUpgradeable,
     MultiCallerUpgradeable,
     EIP712CrossChainUpgradeable
@@ -215,21 +213,18 @@ abstract contract SpokePool is
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param _timerAddress Timer address to set.
      */
     function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
-        address _wrappedNativeTokenAddress,
-        address _timerAddress
+        address _wrappedNativeTokenAddress
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
         __EIP712_init("ACROSS-V2", "1.0.0");
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         depositQuoteTimeBuffer = 3600;
-        __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
@@ -732,6 +727,14 @@ abstract contract SpokePool is
         return block.chainid;
     }
 
+    /**
+     * @notice Gets the current time.
+     * @return uint for the current timestamp.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp; // solhint-disable-line not-rely-on-time
+    }
+
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
@@ -1048,6 +1051,12 @@ abstract contract SpokePool is
         // numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
         // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
         relayFills[relayExecution.relayHash] += fillAmountPreFees;
+
+        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
+        // net movement of funds.
+        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
+        // way (no need to have funds on the destination).
+        if (msg.sender == relayData.recipient) return fillAmountPreFees;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (relayData.destinationToken == address(wrappedNativeToken)) {

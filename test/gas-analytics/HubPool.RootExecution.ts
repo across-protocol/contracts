@@ -95,7 +95,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
     const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
     const spokeMainnet = await hre.upgrades.deployProxy(
       await getContractFactory("MockSpokePool", owner),
-      [0, randomAddress(), hubPool.address, randomAddress(), timer.address],
+      [0, randomAddress(), hubPool.address, randomAddress()],
       { kind: "uups" }
     );
     await hubPool.setCrossChainContracts(hubPoolChainId, adapter.address, spokeMainnet.address);
@@ -104,7 +104,7 @@ describe("Gas Analytics: HubPool Root Bundle Execution", function () {
       const adapter = await (await getContractFactory("Mock_Adapter", owner)).deploy();
       const spoke = await hre.upgrades.deployProxy(
         await getContractFactory("MockSpokePool", owner),
-        [0, randomAddress(), hubPool.address, randomAddress(), consts.zeroAddress],
+        [0, randomAddress(), hubPool.address, randomAddress()],
         { kind: "uups" }
       );
       await hubPool.setCrossChainContracts(i, adapter.address, spoke.address);

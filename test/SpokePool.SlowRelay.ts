@@ -9,13 +9,7 @@ import {
   randomBigNumber,
   BigNumber,
 } from "./utils";
-import {
-  spokePoolFixture,
-  enableRoutes,
-  RelayData,
-  getExecuteSlowRelayParams,
-  SlowFill,
-} from "./fixtures/SpokePool.Fixture";
+import { spokePoolFixture, enableRoutes, getExecuteSlowRelayParams, SlowFill } from "./fixtures/SpokePool.Fixture";
 import { getFillRelayParams, getRelayHash } from "./fixtures/SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import { buildSlowRelayTree } from "./MerkleLib.utils";
