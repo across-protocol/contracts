@@ -2,7 +2,7 @@ import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect } from "../u
 import { seedContract, seedWallet, BigNumber } from "../utils";
 import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
-import { spokePoolFixture, RelayData } from "../fixtures/SpokePool.Fixture";
+import { spokePoolFixture, RelayData, SlowFill } from "../fixtures/SpokePool.Fixture";
 import { buildSlowRelayTree } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
 
@@ -13,8 +13,8 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, recipient: SignerWi
 
 // Associates an array of L2 tokens to fill relays with.
 let l2Tokens: Contract[];
-let leaves: RelayData[];
-let tree: MerkleTree<RelayData>;
+let leaves: SlowFill[];
+let tree: MerkleTree<SlowFill>;
 
 // Relay params that do not affect tests and we can conveniently hardcode:
 const ORIGIN_CHAIN_ID = "0";
@@ -34,23 +34,26 @@ async function constructSimpleTree(
   // Each refund amount mapped to one refund address.
   expect(destinationTokens.length).to.equal(LEAF_COUNT);
 
-  const relays: RelayData[] = [];
+  const slowFills: SlowFill[] = [];
   for (let i = 0; i < LEAF_COUNT; i++) {
-    relays.push({
-      depositor,
-      recipient,
-      destinationToken: destinationTokens[i],
-      amount: toBN(universalRelayAmount),
-      originChainId: ORIGIN_CHAIN_ID,
-      destinationChainId: consts.destinationChainId.toString(),
-      realizedLpFeePct: toBN(FEE_PCT),
-      relayerFeePct: toBN(FEE_PCT),
-      depositId: i.toString(),
+    slowFills.push({
+      relayData: {
+        depositor,
+        recipient,
+        destinationToken: destinationTokens[i],
+        amount: toBN(universalRelayAmount),
+        originChainId: ORIGIN_CHAIN_ID,
+        destinationChainId: consts.destinationChainId.toString(),
+        realizedLpFeePct: toBN(FEE_PCT),
+        relayerFeePct: toBN(FEE_PCT),
+        depositId: i.toString(),
+      },
+      payoutAdjustment: "0",
     });
   }
-  const tree = await buildSlowRelayTree(relays);
+  const tree = await buildSlowRelayTree(slowFills);
 
-  return { leaves: relays, tree };
+  return { leaves: slowFills, tree };
 }
 
 describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
@@ -93,7 +96,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       );
 
       // Store new tree.
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
 
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
@@ -106,6 +109,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           ORIGIN_CHAIN_ID,
           FEE_PCT,
           FEE_PCT,
+          "0",
           "0",
           "0",
           initTree.tree.getHexProof(initTree.leaves[0])
@@ -122,14 +126,14 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
     });
 
     it("Relay proposal", async function () {
-      const txn = await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      const txn = await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
       console.log(`relayRootBundle-gasUsed: ${(await txn.wait()).gasUsed}`);
     });
 
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       // Execute second root bundle with index 1:
       const txn = await spokePool
@@ -144,13 +148,14 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "1",
+          "0",
           tree.getHexProof(leaves[leafIndexToExecute])
         );
       const receipt = await txn.wait();
       console.log(`executeSlowRelayLeaf-gasUsed: ${receipt.gasUsed}`);
     });
     it("Executing all leaves", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       const txns = [];
       for (let i = 0; i < LEAF_COUNT; i++) {
@@ -167,6 +172,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
               FEE_PCT,
               i,
               "1",
+              "0",
               tree.getHexProof(leaves[i])
             )
         );
@@ -179,7 +185,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
     });
 
     it("Executing all leaves using multicall", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       const multicallData = leaves.map((leaf, i) => {
         return spokePool.interface.encodeFunctionData("executeSlowRelayLeaf", [
@@ -192,6 +198,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           i,
           "1",
+          "0",
           tree.getHexProof(leaf),
         ]);
       });
@@ -211,7 +218,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
       );
 
       // Store new tree.
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, initTree.tree.getHexRoot());
 
       // Execute 1 leaf from initial tree to warm state storage.
       await spokePool
@@ -224,6 +231,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           ORIGIN_CHAIN_ID,
           FEE_PCT,
           FEE_PCT,
+          "0",
           "0",
           "0",
           initTree.tree.getHexProof(initTree.leaves[0])
@@ -242,7 +250,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
     it("Executing 1 leaf", async function () {
       const leafIndexToExecute = 0;
 
-      await spokePool.connect(dataWorker).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
+      await spokePool.connect(owner).relayRootBundle(consts.mockRelayerRefundRoot, tree.getHexRoot());
 
       // Execute second root bundle with index 1:
       const txn = await spokePool
@@ -257,6 +265,7 @@ describe("Gas Analytics: SpokePool Slow Relay Root Execution", function () {
           FEE_PCT,
           "0",
           "1",
+          "0",
           tree.getHexProof(leaves[leafIndexToExecute])
         );
       const receipt = await txn.wait();

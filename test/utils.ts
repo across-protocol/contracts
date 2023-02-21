@@ -147,8 +147,10 @@ export async function seedContract(
   if (weth) await weth.connect(walletToFund).transfer(contract.address, amountToSeedWith);
 }
 
-export function randomBigNumber(bytes = 31) {
-  return ethers.BigNumber.from(ethers.utils.randomBytes(bytes));
+export function randomBigNumber(bytes = 32, signed = false) {
+  const sign = signed && Math.random() < 0.5 ? "-" : "";
+  const byteString = "0x" + Buffer.from(ethers.utils.randomBytes(signed ? bytes - 1 : bytes)).toString("hex");
+  return ethers.BigNumber.from(sign + byteString);
 }
 
 export function randomAddress() {
@@ -163,7 +165,7 @@ export async function getParamType(contractName: string, functionName: string, p
 
 export async function createFake(contractName: string, targetAddress: string = "") {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  return targetAddress != "" ? smock.fake(contractFactory, { address: targetAddress }) : smock.fake(contractFactory);
+  return targetAddress !== "" ? smock.fake(contractFactory, { address: targetAddress }) : smock.fake(contractFactory);
 }
 
 function avmL1ToL2Alias(l1Address: string) {

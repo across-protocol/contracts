@@ -41,6 +41,25 @@ NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --n
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
 ```
 
+## Slither
+
+[Slither](https://github.com/crytic/slither) is a Solidity static analysis framework written in Python 3. It runs a
+suite of vulnerability detectors, prints visual information about contract details, and provides an API to easily write
+custom analyses. Slither enables developers to find vulnerabilities, enhance their code comprehension, and quickly
+prototype custom analyses.
+
+Spire-Contracts has been analyzed using `Slither@0.9.2` and no major bugs was found. To rerun the analytics, run:
+
+```sh
+slither contracts/SpokePool.sol
+\ --solc-remaps @=node_modules/@
+\ --solc-args "--optimize --optimize-runs 1000000"
+\ --filter-paths "node_modules"
+\ --exclude naming-convention
+```
+
+You can replace `SpokePool.sol` with the specific contract you want to analyze.
+
 ## ZK Sync Adapter
 
 These are special instructions for compiling and deploying contracts on `zksync`. The compile command will create `artifacts-zk` and `cache-zk` directories.

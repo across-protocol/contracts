@@ -34,9 +34,11 @@ export async function deploySpokePool(ethers: any): Promise<{
   await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 
   // Deploy the pool
-  const spokePool = await (
-    await getContractFactory("MockSpokePool", deployerWallet)
-  ).deploy(0, crossChainAdmin.address, hubPool.address, weth.address, timer.address);
+  const spokePool = await hre.upgrades.deployProxy(
+    await getContractFactory("MockSpokePool", deployerWallet),
+    [0, crossChainAdmin.address, hubPool.address, weth.address, timer.address],
+    { kind: "uups" }
+  );
   await spokePool.setChainId(consts.destinationChainId);
 
   // ERC1271
@@ -178,6 +180,12 @@ export interface RelayData {
   originChainId: string;
   destinationChainId: string;
 }
+
+export interface SlowFill {
+  relayData: RelayData;
+  payoutAdjustment: string;
+}
+
 export function getRelayHash(
   _depositor: string,
   _recipient: string,
@@ -215,7 +223,8 @@ export function getDepositParams(
   _amount: BigNumber,
   _destinationChainId: number,
   _relayerFeePct: BigNumber,
-  _quoteTime: BigNumber
+  _quoteTime: BigNumber,
+  _maxCount?: BigNumber
 ): string[] {
   return [
     _recipient,
@@ -224,13 +233,15 @@ export function getDepositParams(
     _destinationChainId.toString(),
     _relayerFeePct.toString(),
     _quoteTime.toString(),
+    _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
 }
 
 export function getFillRelayParams(
   _relayData: RelayData,
   _maxTokensToSend: BigNumber,
-  _repaymentChain?: number
+  _repaymentChain?: number,
+  _maxCount?: BigNumber
 ): string[] {
   return [
     _relayData.depositor,
@@ -243,6 +254,7 @@ export function getFillRelayParams(
     _relayData.realizedLpFeePct.toString(),
     _relayData.relayerFeePct.toString(),
     _relayData.depositId,
+    _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
 }
 
@@ -251,7 +263,8 @@ export function getFillRelayUpdatedFeeParams(
   _maxTokensToSend: BigNumber,
   _updatedFee: BigNumber,
   _signature: string,
-  _repaymentChain?: number
+  _repaymentChain?: number,
+  _maxCount?: BigNumber
 ): string[] {
   return [
     _relayData.depositor,
@@ -266,6 +279,7 @@ export function getFillRelayUpdatedFeeParams(
     _updatedFee.toString(),
     _relayData.depositId,
     _signature,
+    _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
 }
 
@@ -279,6 +293,7 @@ export function getExecuteSlowRelayParams(
   _relayerFeePct: BigNumber,
   _depositId: number,
   _relayerRefundId: number,
+  _payoutAdjustment: BigNumber,
   _proof: string[]
 ): (string | string[])[] {
   return [
@@ -291,6 +306,7 @@ export function getExecuteSlowRelayParams(
     _relayerFeePct.toString(),
     _depositId.toString(),
     _relayerRefundId.toString(),
+    _payoutAdjustment.toString(),
     _proof,
   ];
 }
@@ -309,7 +325,7 @@ export async function modifyRelayHelper(
   const typedData = {
     types: {
       UpdateRelayerFeeMessage: [
-        { name: "newRelayerFeePct", type: "uint64" },
+        { name: "newRelayerFeePct", type: "int64" },
         { name: "depositId", type: "uint32" },
         { name: "originChainId", type: "uint256" },
       ],

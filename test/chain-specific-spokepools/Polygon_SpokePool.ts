@@ -1,6 +1,6 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress, TokenRolesEnum } from "../constants";
 import { ethers, expect, Contract, SignerWithAddress, getContractFactory, createFake } from "../utils";
-import { seedContract, toWei, randomBigNumber, seedWallet, FakeContract } from "../utils";
+import { seedContract, toWei, randomBigNumber, seedWallet, FakeContract, hre } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
@@ -31,20 +31,37 @@ describe("Polygon Spoke Pool", function () {
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
 
-    polygonSpokePool = await (
-      await getContractFactory("Polygon_SpokePool", owner)
-    ).deploy(
-      0,
-      polygonTokenBridger.address,
-      owner.address,
-      hubPool.address,
-      weth.address,
-      fxChild.address,
-      timer.address
+    polygonSpokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Polygon_SpokePool", owner),
+      [0, polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address, timer.address],
+      { kind: "uups" }
     );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
     await seedWallet(owner, [], weth, toWei("1"));
+  });
+
+  it("Only cross domain owner upgrade logic contract", async function () {
+    // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("Polygon_SpokePool", owner),
+      { kind: "uups" }
+    );
+
+    // upgradeTo fails unless called by cross domain admin
+    const upgradeData = polygonSpokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
+
+    // Wrong rootMessageSender address.
+    await expect(
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, upgradeData)
+    ).to.be.revertedWith("Not from mainnet admin");
+
+    // Wrong calling address.
+    await expect(
+      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, upgradeData)
+    ).to.be.revertedWith("Not from fxChild");
+
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, upgradeData);
   });
 
   it("Only correct caller can set the cross domain admin", async function () {

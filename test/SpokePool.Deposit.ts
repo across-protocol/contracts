@@ -1,6 +1,12 @@
 import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei } from "./utils";
 import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
-import { amountToSeedWallets, amountToDeposit, destinationChainId, depositRelayerFeePct } from "./constants";
+import {
+  amountToSeedWallets,
+  amountToDeposit,
+  destinationChainId,
+  depositRelayerFeePct,
+  maxUint256,
+} from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress;
@@ -35,7 +41,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           )
         )
     ).to.be.reverted;
@@ -51,7 +58,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           )
         )
     )
@@ -74,6 +82,9 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Deposit nonce should increment.
     expect(await spokePool.numberOfDeposits()).to.equal(1);
+
+    // Count is correctly incremented.
+    expect(await spokePool.depositCounter(erc20.address)).to.equal(amountToDeposit);
   });
   it("Depositing ETH correctly wraps into WETH", async function () {
     const currentSpokePoolTime = await spokePool.getCurrentTime();
@@ -89,7 +100,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           ),
           { value: 1 }
         )
@@ -105,7 +117,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           ),
           { value: amountToDeposit }
         )
@@ -127,7 +140,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           ),
           { value: 0 }
         )
@@ -148,7 +162,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           )
         )
     ).to.be.reverted;
@@ -165,7 +180,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           )
         )
     ).to.be.reverted;
@@ -182,7 +198,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           )
         )
     ).to.be.reverted;
@@ -199,7 +216,8 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            currentSpokePoolTime
+            currentSpokePoolTime,
+            maxUint256
           )
         )
     ).to.be.ok;
@@ -213,7 +231,8 @@ describe("SpokePool Depositor Logic", async function () {
           amountToDeposit,
           destinationChainId,
           toWei("1"), // Fee > 50%
-          currentSpokePoolTime
+          currentSpokePoolTime,
+          maxUint256
         )
       )
     ).to.be.reverted;
@@ -227,7 +246,8 @@ describe("SpokePool Depositor Logic", async function () {
           amountToDeposit,
           destinationChainId,
           depositRelayerFeePct,
-          toBN(currentSpokePoolTime).add(toBN("3700")) // > 60 mins in future
+          toBN(currentSpokePoolTime).add(toBN("3700")), // > 60 mins in future
+          maxUint256
         )
       )
     ).to.be.reverted;
@@ -239,7 +259,37 @@ describe("SpokePool Depositor Logic", async function () {
           amountToDeposit,
           destinationChainId,
           depositRelayerFeePct,
-          toBN(currentSpokePoolTime).sub(toBN("3700")) // > 60 mins in past
+          toBN(currentSpokePoolTime).sub(toBN("3700")), // > 60 mins in past
+          maxUint256
+        )
+      )
+    ).to.be.reverted;
+
+    // Setting max count to be smaller than the sum of previous deposits should fail.
+    await spokePool
+      .connect(depositor)
+      .deposit(
+        ...getDepositParams(
+          recipient.address,
+          erc20.address,
+          amountToDeposit,
+          destinationChainId,
+          depositRelayerFeePct,
+          toBN(currentSpokePoolTime),
+          maxUint256
+        )
+      );
+
+    await expect(
+      spokePool.connect(depositor).deposit(
+        ...getDepositParams(
+          recipient.address,
+          erc20.address,
+          amountToDeposit,
+          destinationChainId,
+          depositRelayerFeePct,
+          toBN(currentSpokePoolTime),
+          amountToDeposit.sub(1) // Less than the previous transaction's deposit amount.
         )
       )
     ).to.be.reverted;

@@ -3,17 +3,19 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./interfaces/WETH9Interface.sol";
-import "./Lockable.sol";
 import "./SpokePoolInterface.sol";
-import "./EIP712CrossChain.sol";
+import "./upgradeable/TestableUpgradeable.sol";
+import "./upgradeable/MultiCallerUpgradeable.sol";
+import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool
@@ -24,9 +26,16 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
-abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCaller, EIP712CrossChain {
-    using SafeERC20 for IERC20;
-    using Address for address;
+abstract contract SpokePool is
+    SpokePoolInterface,
+    UUPSUpgradeable,
+    TestableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    MultiCallerUpgradeable,
+    EIP712CrossChainUpgradeable
+{
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
     // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
@@ -38,11 +47,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9Interface public immutable wrappedNativeToken;
+    WETH9Interface public wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee. Defaults to 1 hour.
-    uint32 public depositQuoteTimeBuffer = 3600;
+    uint32 public depositQuoteTimeBuffer;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
@@ -62,6 +71,18 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // relay, the fees, and the agents are all parameters included in the hash key.
     mapping(bytes32 => uint256) public relayFills;
 
+    // This keeps track of the worst-case liabilities due to fills.
+    // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between
+    // two points. This is used to provide frontrunning protection to ensure the relayer's assumptions about the state
+    // upon which their expected repayments are based will not change before their transaction is mined.
+    mapping(address => uint256) public fillCounter;
+
+    // This keeps track of the total running deposits for each token. This allows depositors to protect themselves from
+    // frontrunning that might change their worst-case quote.
+    mapping(address => uint256) public depositCounter;
+
+    uint256 public constant MAX_TRANSFER_SIZE = 1e36;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -73,7 +94,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
+        int64 relayerFeePct,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         address indexed originToken,
@@ -81,7 +102,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address indexed depositor
     );
     event RequestedSpeedUpDeposit(
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 indexed depositId,
         address indexed depositor,
         bytes depositorSignature
@@ -93,9 +114,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 repaymentChainId,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
-        uint64 appliedRelayerFeePct,
-        uint64 realizedLpFeePct,
+        int64 relayerFeePct,
+        int64 appliedRelayerFeePct,
+        int64 realizedLpFeePct,
         uint32 indexed depositId,
         address destinationToken,
         address indexed relayer,
@@ -130,22 +151,38 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     event PausedFills(bool isPaused);
 
     /**
+     * Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
+     * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
+     * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
+     * it is deployed:
+     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
      * @notice Construct the base SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param timerAddress Timer address to set.
+     * @param _timerAddress Timer address to set.
      */
-    constructor(
+    function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _wrappedNativeTokenAddress,
-        address timerAddress
-    ) Testable(timerAddress) EIP712CrossChain("ACROSS-V2", "1.0.0") {
+        address _timerAddress
+    ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
+        __EIP712_init("ACROSS-V2", "1.0.0");
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+        depositQuoteTimeBuffer = 3600;
+        __Testable_init(_timerAddress);
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
@@ -155,8 +192,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      *               MODIFIERS              *
      ****************************************/
 
-    // Implementing contract needs to override _requireAdminSender() to ensure that admin functions are protected
-    // appropriately.
+    /**
+     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+     * {upgradeTo} and {upgradeToAndCall}.
+     * @dev This should be set to cross domain admin for specific SpokePool.
+     */
     modifier onlyAdmin() {
         _requireAdminSender();
         _;
@@ -175,6 +215,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
+
+    // Allows cross domain admin to upgrade UUPS proxy implementation.
+    function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 
     /**
      * @notice Pauses deposit and fill functions. This is intended to be used during upgrades or when
@@ -255,6 +298,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      * to ensure that a small input range doesn't limit which indices this method is able to reach.
      */
     function emergencyDeleteRootBundle(uint256 rootBundleId) public override onlyAdmin nonReentrant {
+        // Deleting a struct containing a mapping does not delete the mapping in Solidity, therefore the bitmap's
+        // data will still remain potentially leading to vulnerabilities down the line. The way around this would
+        // be to iterate through every key in the mapping and resetting the value to 0, but this seems expensive and
+        // would require a new list in storage to keep track of keys.
+        //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
         emit EmergencyDeleteRootBundle(rootBundleId);
     }
@@ -284,24 +332,35 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address originToken,
         uint256 amount,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
-        uint32 quoteTimestamp
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        uint256 maxCount
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled.
         require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
 
         // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(relayerFeePct < 0.5e18, "invalid relayer fee");
+        require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
+        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        require(depositCounter[originToken] <= maxCount, "Above max count");
+
         // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
         // block.timestamp is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
         // buffer of this contract's block time to allow for this variance.
         // Note also that quoteTimestamp cannot be less than the buffer otherwise the following arithmetic can result
         // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
+
+        //slither-disable-next-line timestamp
         require(
             getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer &&
                 getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
             "invalid quote time"
         );
+
+        // Increment count of deposits so that deposit ID for this spoke pool is unique.
+        uint32 newDepositId = numberOfDeposits++;
+        depositCounter[originToken] += amount;
+
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
@@ -310,25 +369,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         _emitDeposit(
             amount,
             chainId(),
             destinationChainId,
             relayerFeePct,
-            numberOfDeposits,
+            newDepositId,
             quoteTimestamp,
             originToken,
             recipient,
             msg.sender
         );
-
-        // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        // @dev: Use pre-increment to save gas:
-        // i++ --> Load, Store, Add, Store
-        // ++i --> Load, Add, Store
-        ++numberOfDeposits;
     }
 
     /**
@@ -352,7 +405,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
      */
     function speedUpDeposit(
         address depositor,
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
     ) public override nonReentrant {
@@ -402,10 +455,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
-        uint32 depositId
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        uint256 maxCount
     ) public nonReentrant unpausedFills {
+        uint256 thisChain = chainId();
         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
@@ -418,11 +473,20 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayerFeePct: relayerFeePct,
             depositId: depositId,
             originChainId: originChainId,
-            destinationChainId: chainId()
+            destinationChainId: thisChain
         });
         bytes32 relayHash = _getRelayHash(relayData);
 
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, relayerFeePct, false);
+        uint256 fillAmountPreFees = _fillRelay(
+            relayHash,
+            relayData,
+            maxTokensToSend,
+            relayerFeePct,
+            false,
+            repaymentChainId == thisChain,
+            maxCount,
+            0
+        );
 
         _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, relayerFeePct, relayData, false);
     }
@@ -458,13 +522,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
-        uint64 newRelayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
-        bytes memory depositorSignature
+        bytes memory depositorSignature,
+        uint256 maxCount
     ) public override nonReentrant unpausedFills {
         _verifyUpdateRelayerFeeMessage(depositor, originChainId, newRelayerFeePct, depositId, depositorSignature);
+
+        uint256 thisChain = chainId();
 
         // Now follow the default fillRelay flow with the updated fee and the original relay hash.
         RelayData memory relayData = RelayData({
@@ -476,10 +543,19 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayerFeePct: relayerFeePct,
             depositId: depositId,
             originChainId: originChainId,
-            destinationChainId: chainId()
+            destinationChainId: thisChain
         });
         bytes32 relayHash = _getRelayHash(relayData);
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, maxTokensToSend, newRelayerFeePct, false);
+        uint256 fillAmountPreFees = _fillRelay(
+            relayHash,
+            relayData,
+            maxTokensToSend,
+            newRelayerFeePct,
+            false,
+            repaymentChainId == thisChain,
+            maxCount,
+            0
+        );
 
         _emitFillRelay(relayHash, fillAmountPreFees, repaymentChainId, newRelayerFeePct, relayData, false);
     }
@@ -512,10 +588,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) public virtual override nonReentrant {
         _executeSlowRelayLeaf(
@@ -529,6 +606,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             relayerFeePct,
             depositId,
             rootBundleId,
+            payoutAdjustment,
             proof
         );
     }
@@ -594,7 +672,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         for (uint256 i = 0; i < length; ) {
             uint256 amount = relayerRefundLeaf.refundAmounts[i];
             if (amount > 0)
-                IERC20(relayerRefundLeaf.l2TokenAddress).safeTransfer(relayerRefundLeaf.refundAddresses[i], amount);
+                IERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeTransfer(
+                    relayerRefundLeaf.refundAddresses[i],
+                    amount
+                );
 
             // OK because we assume refund array length won't be > types(uint256).max.
             // Based on the stress test results in /test/gas-analytics/SpokePool.RelayerRefundLeaf.ts, the UMIP should
@@ -640,10 +721,11 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 realizedLpFeePct,
-        uint64 relayerFeePct,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        int256 payoutAdjustment,
         bytes32[] memory proof
     ) internal {
         RelayData memory relayData = RelayData({
@@ -658,8 +740,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             depositId: depositId
         });
 
+        SlowFill memory slowFill = SlowFill({ relayData: relayData, payoutAdjustment: payoutAdjustment });
+
         require(
-            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, relayData, proof),
+            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
             "Invalid proof"
         );
 
@@ -668,7 +752,16 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
         // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
         // relayer component of the relayerFee thereby only charging the depositor the LpFee.
-        uint256 fillAmountPreFees = _fillRelay(relayHash, relayData, relayData.amount, 0, true);
+        uint256 fillAmountPreFees = _fillRelay(
+            relayHash,
+            relayData,
+            relayData.amount,
+            0,
+            true,
+            true,
+            type(uint256).max,
+            payoutAdjustment
+        );
 
         // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
         // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
@@ -694,7 +787,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     function _verifyUpdateRelayerFeeMessage(
         address depositor,
         uint256 originChainId,
-        uint64 newRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 depositId,
         bytes memory depositorSignature
     ) internal view {
@@ -708,9 +801,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
             keccak256(
                 abi.encode(
-                    keccak256(
-                        "UpdateRelayerFeeMessage(uint64 newRelayerFeePct,uint32 depositId,uint256 originChainId)"
-                    ),
+                    keccak256("UpdateRelayerFeeMessage(int64 newRelayerFeePct,uint32 depositId,uint256 originChainId)"),
                     newRelayerFeePct,
                     depositId,
                     originChainId
@@ -742,12 +833,12 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         require(isValid, "invalid signature");
     }
 
-    function _computeAmountPreFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
-        return (1e18 * amount) / (1e18 - feesPct);
+    function _computeAmountPreFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
+        return (1e18 * amount) / uint256((int256(1e18) - feesPct));
     }
 
-    function _computeAmountPostFees(uint256 amount, uint64 feesPct) private pure returns (uint256) {
-        return (amount * (1e18 - feesPct)) / 1e18;
+    function _computeAmountPostFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
+        return (amount * uint256(int256(1e18) - feesPct)) / 1e18;
     }
 
     function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
@@ -757,9 +848,10 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20(address(wrappedNativeToken)).safeTransfer(to, amount);
+            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
+            //slither-disable-next-line arbitrary-send-eth
             to.transfer(amount);
         }
     }
@@ -778,17 +870,28 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash,
         RelayData memory relayData,
         uint256 maxTokensToSend,
-        uint64 updatableRelayerFeePct,
-        bool useContractFunds
+        int64 updatableRelayerFeePct,
+        bool useContractFunds,
+        bool localRepayment,
+        uint256 maxCount,
+        int256 payoutAdjustment
     ) internal returns (uint256 fillAmountPreFees) {
         // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
         // fees are just magic numbers. The important point is to prevent the total fee from being 100%, otherwise
         // computing the amount pre fees runs into divide-by-0 issues.
-        require(updatableRelayerFeePct < 0.5e18 && relayData.realizedLpFeePct < 0.5e18, "invalid fees");
+        require(
+            SignedMath.abs(updatableRelayerFeePct) < 0.5e18 && SignedMath.abs(relayData.realizedLpFeePct) < 0.5e18,
+            "invalid fees"
+        );
+
+        require(relayData.amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // Check that the relay has not already been completely filled. Note that the relays mapping will point to
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
         require(relayFills[relayHash] < relayData.amount, "relay filled");
+
+        // This allows the caller to add in frontrunning protection for quote validity.
+        require(fillCounter[relayData.destinationToken] <= maxCount, "Above max count");
 
         // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (maxTokensToSend == 0) return 0;
@@ -815,7 +918,23 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
                 fillAmountPreFees,
                 relayData.realizedLpFeePct + updatableRelayerFeePct
             );
+
+            if (payoutAdjustment != 0) {
+                require(int256(amountToSend) + payoutAdjustment >= 0, "payoutAdjustment too small");
+                amountToSend = uint256(int256(amountToSend) + payoutAdjustment);
+            }
         }
+
+        // Update fill counter.
+        _updateCountFromFill(
+            relayFills[relayHash],
+            relayFills[relayHash] + fillAmountPreFees,
+            relayData.amount,
+            relayData.realizedLpFeePct,
+            relayData.destinationToken,
+            localRepayment,
+            useContractFunds
+        );
 
         // relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
         // numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
@@ -836,14 +955,46 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
             if (!useContractFunds)
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(relayData.recipient), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!useContractFunds)
-                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, relayData.recipient, amountToSend);
-            else IERC20(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
+                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+                    msg.sender,
+                    relayData.recipient,
+                    amountToSend
+                );
+            else IERC20Upgradeable(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
+        }
+    }
+
+    function _updateCountFromFill(
+        uint256 startingFillAmount,
+        uint256 endingFillAmount,
+        uint256 totalFillAmount,
+        int64 realizedLPFeePct,
+        address token,
+        bool localRepayment,
+        bool useContractFunds
+    ) internal {
+        // If this is a slow fill or it's an initial 0-fill, do nothing, as these should not impact the count.
+        if (useContractFunds || endingFillAmount == 0) return;
+
+        // If this is the first fill and it's partial, assume the rest of the fill will be slow filled (refunded on this chain).
+        if (startingFillAmount == 0 && totalFillAmount - endingFillAmount > 0) {
+            fillCounter[token] += _computeAmountPostFees(totalFillAmount - endingFillAmount, realizedLPFeePct);
+        }
+
+        // If this is not the first fill, remove the partial fill that was previously assumed.
+        if (startingFillAmount != 0) {
+            fillCounter[token] -= _computeAmountPostFees(endingFillAmount - startingFillAmount, realizedLPFeePct);
+        }
+
+        // If the repayment is local, add the fill amount to the running fill count.
+        if (localRepayment) {
+            fillCounter[token] += _computeAmountPostFees(endingFillAmount - startingFillAmount, realizedLPFeePct);
         }
     }
 
@@ -852,7 +1003,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         bytes32 relayHash,
         uint256 fillAmount,
         uint256 repaymentChainId,
-        uint64 appliedRelayerFeePct,
+        int64 appliedRelayerFeePct,
         RelayData memory relayData,
         bool isSlowRelay
     ) internal {
@@ -879,7 +1030,7 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
-        uint64 relayerFeePct,
+        int64 relayerFeePct,
         uint32 depositId,
         uint32 quoteTimestamp,
         address originToken,
@@ -906,4 +1057,9 @@ abstract contract SpokePool is SpokePoolInterface, Testable, Lockable, MultiCall
 
     // Added to enable the this contract to receive native token (ETH). Used when unwrapping wrappedNativeToken.
     receive() external payable {}
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[1000] private __gap;
 }

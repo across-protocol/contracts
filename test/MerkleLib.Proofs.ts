@@ -33,8 +33,8 @@ describe("MerkleLib Proofs", async function () {
       for (let j = 0; j < numTokens; j++) {
         l1Tokens.push(randomAddress());
         bundleLpFees.push(randomBigNumber());
-        netSendAmounts.push(randomBigNumber());
-        runningBalances.push(randomBigNumber());
+        netSendAmounts.push(randomBigNumber(undefined, true));
+        runningBalances.push(randomBigNumber(undefined, true));
       }
       poolRebalanceLeaves.push({
         leafId: BigNumber.from(i),

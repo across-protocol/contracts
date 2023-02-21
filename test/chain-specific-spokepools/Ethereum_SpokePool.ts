@@ -1,5 +1,5 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, SignerWithAddress } from "../utils";
+import { ethers, expect, Contract, SignerWithAddress, hre } from "../utils";
 import { getContractFactory, seedContract } from "../utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
@@ -13,13 +13,29 @@ describe("Ethereum Spoke Pool", function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, dai, hubPool, timer } = await hubPoolFixture());
 
-    spokePool = await (
-      await getContractFactory("Ethereum_SpokePool", owner)
-    ).deploy(0, hubPool.address, weth.address, timer.address);
+    spokePool = await hre.upgrades.deployProxy(
+      await getContractFactory("Ethereum_SpokePool", owner),
+      [0, hubPool.address, weth.address, timer.address],
+      { kind: "uups" }
+    );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
     // via the _bridgeTokensToHubPool() internal call.
     await seedContract(spokePool, relayer, [dai], weth, amountHeldByPool);
+  });
+
+  it("Only cross domain owner upgrade logic contract", async function () {
+    // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("Ethereum_SpokePool", owner),
+      { kind: "uups" }
+    );
+
+    // upgradeTo fails unless called by cross domain admin
+    await expect(spokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await spokePool.connect(owner).upgradeTo(implementation);
   });
 
   it("Only owner can set the cross domain admin", async function () {

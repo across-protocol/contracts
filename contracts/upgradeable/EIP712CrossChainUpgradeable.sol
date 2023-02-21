@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of typed structured data.
  *
  * This contract is based on OpenZeppelin's implementation:
- * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.8.0/contracts/utils/cryptography/EIP712.sol
+ * https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/utils/cryptography/EIP712Upgradeable.sol
  *
  * NOTE: Modified version that allows to build a domain separator that relies on a different chain id than the chain this
  * contract is deployed to. An example use case we want to support is:
  * - User A signs a message on chain with id = 1
  * - User B executes a method by verifying user A's EIP-712 compliant signature on a chain with id != 1
  */
-abstract contract EIP712CrossChain {
+abstract contract EIP712CrossChainUpgradeable is Initializable {
     /* solhint-disable var-name-mixedcase */
-    bytes32 private immutable _HASHED_NAME;
-    bytes32 private immutable _HASHED_VERSION;
-    bytes32 private immutable _TYPE_HASH;
+    bytes32 private _HASHED_NAME;
+    bytes32 private _HASHED_VERSION;
+    bytes32 private constant _TYPE_HASH = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
 
     /* solhint-enable var-name-mixedcase */
 
@@ -34,13 +35,15 @@ abstract contract EIP712CrossChain {
      * NOTE: These parameters cannot be changed except through a xref:learn::upgrading-smart-contracts.adoc[smart
      * contract upgrade].
      */
-    constructor(string memory name, string memory version) {
+    function __EIP712_init(string memory name, string memory version) internal onlyInitializing {
+        __EIP712_init_unchained(name, version);
+    }
+
+    function __EIP712_init_unchained(string memory name, string memory version) internal onlyInitializing {
         bytes32 hashedName = keccak256(bytes(name));
         bytes32 hashedVersion = keccak256(bytes(version));
-        bytes32 typeHash = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
         _HASHED_NAME = hashedName;
         _HASHED_VERSION = hashedVersion;
-        _TYPE_HASH = typeHash;
     }
 
     /**
@@ -72,6 +75,11 @@ abstract contract EIP712CrossChain {
      * @return bytes32 Hash digest that is recoverable via `EDCSA.recover`.
      */
     function _hashTypedDataV4(bytes32 structHash, uint256 originChainId) internal view virtual returns (bytes32) {
-        return ECDSA.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
+        return ECDSAUpgradeable.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
     }
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[1000] private __gap;
 }
