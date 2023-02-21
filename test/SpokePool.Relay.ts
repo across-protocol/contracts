@@ -69,10 +69,9 @@ describe("SpokePool Relayer Logic", async function () {
     // Fill amount should be set.
     expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreFees);
 
-    // Fill count should be set. Note: because the refund is not taken on this chain, this will only include the amount
-    // left _after_ the fill, which is assumed to be a slow fill.
+    // Fill count should be set. Note: even though this is a partial fill, the fill count should be set to the full
+    // amount because we don't know if the rest of the relay will be slow filled or not.
     const fillCountIncrement = relayData.amount
-      .sub(consts.amountToRelayPreFees)
       .mul(consts.oneHundredPct.sub(relayData.realizedLpFeePct))
       .div(consts.oneHundredPct);
     expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);

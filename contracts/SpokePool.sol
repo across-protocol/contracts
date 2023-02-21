@@ -1041,7 +1041,6 @@ abstract contract SpokePool is
             relayData.amount,
             relayData.realizedLpFeePct,
             relayData.destinationToken,
-            relayData.destinationChainId == relayExecution.repaymentChainId,
             relayExecution.slowFill
         );
 
@@ -1087,26 +1086,12 @@ abstract contract SpokePool is
         uint256 totalFillAmount,
         int64 realizedLPFeePct,
         address token,
-        bool localRepayment,
         bool useContractFunds
     ) internal {
-        // If this is a slow fill or it's an initial 0-fill, do nothing, as these should not impact the count.
-        if (useContractFunds || endingFillAmount == 0) return;
-
-        // If this is the first fill and it's partial, assume the rest of the fill will be slow filled (refunded on this chain).
-        if (startingFillAmount == 0 && totalFillAmount - endingFillAmount > 0) {
-            fillCounter[token] += _computeAmountPostFees(totalFillAmount - endingFillAmount, realizedLPFeePct);
-        }
-
-        // If this is not the first fill, remove the partial fill that was previously assumed.
-        if (startingFillAmount != 0) {
-            fillCounter[token] -= _computeAmountPostFees(endingFillAmount - startingFillAmount, realizedLPFeePct);
-        }
-
-        // If the repayment is local, add the fill amount to the running fill count.
-        if (localRepayment) {
-            fillCounter[token] += _computeAmountPostFees(endingFillAmount - startingFillAmount, realizedLPFeePct);
-        }
+        // If this is a slow fill, it's an initial 0-fill, or a partial fill has already happened, do nothing, as these
+        // should not impact the count.
+        if (useContractFunds || endingFillAmount == 0 || startingFillAmount > 0) return;
+        fillCounter[token] += _computeAmountPostFees(totalFillAmount, realizedLPFeePct);
     }
 
     // The following internal methods emit events with many params to overcome solidity stack too deep issues.
