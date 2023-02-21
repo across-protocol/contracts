@@ -8,7 +8,7 @@ interface ITelepathyHandler {
         uint16 _sourceChainId,
         address _senderAddress,
         bytes memory _data
-    ) external;
+    ) external returns (bytes4);
 }
 
 // This interface represents the contract that we call into to send messages over the Succinct AMB.
