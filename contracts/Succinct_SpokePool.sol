@@ -42,10 +42,9 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
-        address _wrappedNativeToken,
-        address timerAddress
+        address _wrappedNativeToken
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken);
         succinctTargetAmb = _succinctTargetAmb;
         hubChainId = _hubChainId;
     }

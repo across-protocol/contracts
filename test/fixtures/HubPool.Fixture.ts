@@ -44,7 +44,7 @@ export async function deployHubPool(ethers: any) {
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpoke = await hre.upgrades.deployProxy(
     await getContractFactory("MockSpokePool", signer),
-    [0, crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address],
+    [0, crossChainAdmin.address, hubPool.address, weth.address],
     { kind: "uups" }
   );
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
@@ -55,7 +55,7 @@ export async function deployHubPool(ethers: any) {
   const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpokeMainnet = await hre.upgrades.deployProxy(
     await getContractFactory("MockSpokePool", signer),
-    [0, crossChainAdmin.address, hubPool.address, weth.address, parentFixture.timer.address],
+    [0, crossChainAdmin.address, hubPool.address, weth.address],
     { kind: "uups" }
   );
   await hubPool.setCrossChainContracts(mainnetChainId, mockAdapterMainnet.address, mockSpokeMainnet.address);
