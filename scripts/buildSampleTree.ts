@@ -132,6 +132,7 @@ async function main() {
         realizedLpFeePct: toBN(0),
         relayerFeePct: toBN(0),
         depositId: i.toString(),
+        message: "0x",
       });
       console.group();
       console.log(`- slowRelayLeaf ID#${i}: `, leaves[i]);

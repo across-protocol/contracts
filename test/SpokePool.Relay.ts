@@ -147,7 +147,6 @@ describe("SpokePool Relayer Logic", async function () {
 
     await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay));
 
-    expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnce;
     expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
       weth.address,
       consts.amountToRelay,
