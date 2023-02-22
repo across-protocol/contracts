@@ -26,3 +26,11 @@ If SpokePool is not an upgradeable proxy, then upgrading is more involved.
 
 3. Each of the above calldata's needs to be loaded into a HubPool call to `relaySpokePoolAdminFunction(uint256 chainId,bytes calldata)`.
 4. Add all of the transactions (i.e. each of the `relaySpokePoolAdminFunctions`) into an atomic transaction that is executed to finalize the "upgrade".
+
+## Addendum:
+
+### Adding new tokens to SpokePools
+
+This process has some overlap with upgrading spoke pools in that each new spoke pool address needs to be aware of other L2 chains and tokens that it can have deposit paths to/from.
+
+Adding new tokens is enabled mostly via the script [enableL1TokenAcrossEcosystem.ts](./tasks/enableL1TokenAcrossEcosystem.ts).
