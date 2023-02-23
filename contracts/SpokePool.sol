@@ -115,7 +115,7 @@ abstract contract SpokePool is
         bytes message
     );
     event RequestedSpeedUpDeposit(
-        int64 updatedRelayerFeePct,
+        int64 newRelayerFeePct,
         uint32 indexed depositId,
         address indexed depositor,
         address updatedRecipient,
