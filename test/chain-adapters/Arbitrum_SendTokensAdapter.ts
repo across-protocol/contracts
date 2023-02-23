@@ -50,14 +50,15 @@ describe("Arbitrum Chain SendTokens Emergency Adapter", function () {
       [l1ERC20GatewayRouter],
       [toBN(consts.sampleL2MaxSubmissionCost).add(toBN(consts.sampleL2Gas).mul(consts.sampleL2GasPrice))]
     );
-    expect(l1ERC20GatewayRouter.outboundTransfer).to.have.been.calledOnce;
+    expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledOnce;
     expect(await weth.allowance(hubPool.address, gatewayAddress)).to.equal(tokensToSendToL2);
     const maxSubmissionCostMessage = defaultAbiCoder.encode(
       ["uint256", "bytes"],
       [consts.sampleL2MaxSubmissionCost, "0x"]
     );
-    expect(l1ERC20GatewayRouter.outboundTransfer).to.have.been.calledWith(
+    expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledWith(
       weth.address,
+      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
       mockSpoke.address,
       tokensToSendToL2,
       consts.sampleL2GasSendTokens,
