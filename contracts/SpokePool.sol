@@ -1105,37 +1105,31 @@ abstract contract SpokePool is
 
     // The following internal methods emit events with many params to overcome solidity stack too deep issues.
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
-        RelayExecutionInfo memory relayExecutionInfo;
-        // This separate struct is created entirely to avoid stack too deep errors.
-        {
-            relayExecutionInfo = RelayExecutionInfo({
-                relayerFeePct: relayExecution.updatedRelayerFeePct,
-                recipient: relayExecution.updatedRecipient,
-                message: relayExecution.updatedMessage,
-                isSlowRelay: relayExecution.slowFill,
-                payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
-            });
-        }
+        RelayExecutionInfo memory relayExecutionInfo = RelayExecutionInfo({
+            relayerFeePct: relayExecution.updatedRelayerFeePct,
+            recipient: relayExecution.updatedRecipient,
+            message: relayExecution.updatedMessage,
+            isSlowRelay: relayExecution.slowFill,
+            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
+        });
 
-        {
-            emit FilledRelay(
-                relayExecution.relay.amount,
-                relayFills[relayExecution.relayHash],
-                fillAmountPreFees,
-                relayExecution.repaymentChainId,
-                relayExecution.relay.originChainId,
-                relayExecution.relay.destinationChainId,
-                relayExecution.relay.relayerFeePct,
-                relayExecution.relay.realizedLpFeePct,
-                relayExecution.relay.depositId,
-                relayExecution.relay.destinationToken,
-                msg.sender,
-                relayExecution.relay.depositor,
-                relayExecution.relay.recipient,
-                relayExecution.relay.message,
-                relayExecutionInfo
-            );
-        }
+        emit FilledRelay(
+            relayExecution.relay.amount,
+            relayFills[relayExecution.relayHash],
+            fillAmountPreFees,
+            relayExecution.repaymentChainId,
+            relayExecution.relay.originChainId,
+            relayExecution.relay.destinationChainId,
+            relayExecution.relay.relayerFeePct,
+            relayExecution.relay.realizedLpFeePct,
+            relayExecution.relay.depositId,
+            relayExecution.relay.destinationToken,
+            msg.sender,
+            relayExecution.relay.depositor,
+            relayExecution.relay.recipient,
+            relayExecution.relay.message,
+            relayExecutionInfo
+        );
     }
 
     function _emitDeposit(
