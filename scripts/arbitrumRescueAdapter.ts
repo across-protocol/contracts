@@ -6,7 +6,10 @@ import { defaultAbiCoder, toWei } from "../test/utils";
 async function main() {
   const amountOfEth = toWei("2.9");
 
-  const message = defaultAbiCoder.encode(["uint256"], [amountOfEth]);
+  const message = defaultAbiCoder.encode(
+    ["address", "uint256"],
+    ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "365901230909"]
+  );
   console.log(`Message to include in call to relaySpokePoolAdminFunction: `, message);
 }
 
