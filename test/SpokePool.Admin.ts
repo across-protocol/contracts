@@ -13,7 +13,7 @@ describe("SpokePool Admin Functions", async function () {
   it("Can set initial deposit ID", async function () {
     const spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("MockSpokePool", owner),
-      [1, owner.address, owner.address, owner.address, owner.address],
+      [1, owner.address, owner.address, owner.address],
       { kind: "uups" }
     );
     expect(await spokePool.numberOfDeposits()).to.equal(1);

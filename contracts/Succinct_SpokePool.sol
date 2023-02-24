@@ -5,15 +5,19 @@ import "./SpokePool.sol";
 import "./interfaces/WETH9Interface.sol";
 import "./external/SuccinctInterfaces.sol";
 
+/**
+ * @notice Succinct Spoke pool.
+ */
 contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
-    // Address of the succinct contract.
+    // Address of the succinct AMB contract.
     address public succinctTargetAmb;
+
+    // Chain where HubPool is deployed that is linked to this SpokePool.
+    uint16 public hubChainId;
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated;
-
-    uint16 public hubChainId;
 
     // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be misinterpreted.
     // Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
@@ -36,30 +40,47 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         adminCallValidated = false;
     }
 
+    /**
+     * @notice Construct the Succinct SpokePool.
+     * @param _hubChainId Chain ID of the chain where the HubPool is deployed.
+     * @param _succinctTargetAmb Address of the succinct AMB contract.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
+     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _wrappedNativeToken Address of the wrapped native token.
+     */
     function initialize(
         uint16 _hubChainId,
         address _succinctTargetAmb,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
-        address _wrappedNativeToken,
-        address timerAddress
+        address _wrappedNativeToken
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken);
         succinctTargetAmb = _succinctTargetAmb;
         hubChainId = _hubChainId;
     }
 
-    // Admin can reset the succinct contract address.
+    /**
+     * @notice Admin can reset the succinct contract address.
+     * @param _succinctTargetAmb Address of the succinct AMB contract.
+     */
     function setSuccinctTargetAmb(address _succinctTargetAmb) external onlyAdmin {
         succinctTargetAmb = _succinctTargetAmb;
     }
 
+    /**
+     * @notice This will be called by Succinct AMB on this network to relay a message sent from the HubPool.
+     * @param _sourceChainId Chain ID of the chain where the message originated.
+     * @param _senderAddress Address of the sender on the chain where the message originated.
+     * @param _data Data to be received and executed on this contract.
+     */
     function handleTelepathy(
         uint16 _sourceChainId,
         address _senderAddress,
         bytes memory _data
-    ) external override validateInternalCalls {
+    ) external override validateInternalCalls returns (bytes4) {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
         require(
@@ -70,6 +91,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
         require(success, "delegatecall failed");
+        return ITelepathyHandler.handleTelepathy.selector;
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory) internal override {

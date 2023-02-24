@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
-import "./Arbitrum_Adapter.sol"; // Used to import `ArbitrumL1ERC20GatewayLike`
+import { ArbitrumL1ERC20GatewayLike } from "./Arbitrum_Adapter.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -17,7 +17,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
 
     uint256 public immutable l2MaxSubmissionCost = 0.01e18;
     uint256 public immutable l2GasPrice = 5e9;
-    uint32 public immutable l2GasLimit = 2_000_000;
+    uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
 
@@ -57,7 +57,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
             l1Token,
             target,
             amount,
-            l2GasLimit,
+            RELAY_TOKENS_L2_GAS_LIMIT,
             l2GasPrice,
             data
         );
@@ -83,7 +83,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue() public pure returns (uint256) {
-        return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
+        return l2MaxSubmissionCost + l2GasPrice * RELAY_TOKENS_L2_GAS_LIMIT;
     }
 
     function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {

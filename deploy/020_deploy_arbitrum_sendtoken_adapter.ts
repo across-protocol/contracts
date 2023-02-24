@@ -11,13 +11,13 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
   const chainId = parseInt(await getChainId());
 
-  await deploy("Arbitrum_RescueAdapter", {
+  await deploy("Arbitrum_SendTokensAdapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [L1_ADDRESS_MAP[chainId].l1ArbitrumInbox],
+    args: [L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter],
   });
 };
 
 module.exports = func;
-func.tags = ["ArbitrumRescueAdapter", "mainnet"];
+func.tags = ["ArbitrumSendTokensAdapter", "mainnet"];

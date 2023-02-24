@@ -41,18 +41,16 @@ contract Ovm_SpokePool is SpokePool {
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _timerAddress Timer address to set.
      */
     function __OvmSpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
         address _l2Eth,
-        address _wrappedNativeToken,
-        address _timerAddress
+        address _wrappedNativeToken
     ) public onlyInitializing {
         l1Gas = 5_000_000;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken);
         messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
@@ -100,6 +98,7 @@ contract Ovm_SpokePool is SpokePool {
         int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        bytes memory message,
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
@@ -116,6 +115,7 @@ contract Ovm_SpokePool is SpokePool {
             relayerFeePct,
             depositId,
             rootBundleId,
+            message,
             payoutAdjustment,
             proof
         );

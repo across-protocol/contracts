@@ -35,17 +35,15 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
-     * @param _timerAddress Timer address to set.
      */
     function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
         address _hubPool,
-        address _wethAddress,
-        address _timerAddress
+        address _wethAddress
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
