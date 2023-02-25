@@ -73,7 +73,8 @@ export async function deposit(
   depositor: SignerWithAddress,
   destinationChainId: number = consts.destinationChainId,
   amountToDeposit: BigNumber = consts.amountToDeposit,
-  depositRelayerFeePct: BigNumber = consts.depositRelayerFeePct
+  depositRelayerFeePct: BigNumber = consts.depositRelayerFeePct,
+  quoteTimestamp?: number
 ) {
   await spokePool
     .connect(depositor)
@@ -84,7 +85,7 @@ export async function deposit(
         amountToDeposit,
         destinationChainId,
         depositRelayerFeePct,
-        await spokePool.getCurrentTime()
+        quoteTimestamp ?? (await spokePool.getCurrentTime())
       )
     );
   const [events, originChainId] = await Promise.all([
