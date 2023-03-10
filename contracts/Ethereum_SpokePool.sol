@@ -17,16 +17,14 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      * relay hash collisions.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
-     * @param _timerAddress Timer address to set.
      */
     function initialize(
         uint32 _initialDepositId,
         address _hubPool,
-        address _wethAddress,
-        address _timerAddress
+        address _wethAddress
     ) public initializer {
         __Ownable_init();
-        __SpokePool_init(_initialDepositId, _hubPool, _hubPool, _wethAddress, _timerAddress);
+        __SpokePool_init(_initialDepositId, _hubPool, _hubPool, _wethAddress);
     }
 
     /**************************************

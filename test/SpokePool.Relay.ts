@@ -1,6 +1,11 @@
-import { expect, Contract, ethers, SignerWithAddress, seedWallet, toWei, toBN, BigNumber } from "./utils";
-import { spokePoolFixture, getRelayHash, modifyRelayHelper } from "./fixtures/SpokePool.Fixture";
-import { getFillRelayParams, getFillRelayUpdatedFeeParams } from "./fixtures/SpokePool.Fixture";
+import { expect, Contract, ethers, SignerWithAddress, seedWallet, toWei, toBN, BigNumber, createFake } from "./utils";
+import {
+  spokePoolFixture,
+  getRelayHash,
+  modifyRelayHelper,
+  getFillRelayParams,
+  getFillRelayUpdatedFeeParams,
+} from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract, erc1271: Contract;
@@ -47,14 +52,14 @@ describe("SpokePool Relayer Logic", async function () {
         toBN(relayData.originChainId),
         toBN(relayData.destinationChainId),
         relayData.relayerFeePct,
-        relayData.relayerFeePct,
         relayData.realizedLpFeePct,
         toBN(relayData.depositId),
         relayData.destinationToken,
         relayer.address,
         relayData.depositor,
         relayData.recipient,
-        false
+        relayData.message,
+        [relayData.recipient, relayData.message, relayData.relayerFeePct, false]
       );
 
     // The collateral should have transferred from relayer to recipient.
@@ -64,10 +69,9 @@ describe("SpokePool Relayer Logic", async function () {
     // Fill amount should be set.
     expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreFees);
 
-    // Fill count should be set. Note: because the refund is not taken on this chain, this will only include the amount
-    // left _after_ the fill, which is assumed to be a slow fill.
+    // Fill count should be set. Note: even though this is a partial fill, the fill count should be set to the full
+    // amount because we don't know if the rest of the relay will be slow filled or not.
     const fillCountIncrement = relayData.amount
-      .sub(consts.amountToRelayPreFees)
       .mul(consts.oneHundredPct.sub(relayData.realizedLpFeePct))
       .div(consts.oneHundredPct);
     expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
@@ -124,6 +128,53 @@ describe("SpokePool Relayer Logic", async function () {
 
     // Fill amount should be set.
     expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreFees);
+  });
+  it("Relaying to contract recipient correctly calls contract and sends tokens", async function () {
+    const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
+    const { relayData } = getRelayHash(
+      depositor.address,
+      acrossMessageHandler.address,
+      consts.firstDepositId,
+      consts.originChainId,
+      consts.destinationChainId,
+      weth.address,
+      undefined,
+      undefined,
+      undefined,
+      "0x1234"
+    );
+
+    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay));
+
+    expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
+      weth.address,
+      consts.amountToRelay,
+      "0x1234"
+    );
+
+    // The collateral should have not unwrapped to ETH and then transferred to recipient.
+    expect(await weth.balanceOf(acrossMessageHandler.address)).to.equal(consts.amountToRelay);
+  });
+  it("Self-relay transfers no tokens", async function () {
+    const largeRelayAmount = consts.amountToSeedWallets.mul(100);
+    const { relayHash, relayData } = getRelayHash(
+      depositor.address,
+      relayer.address,
+      consts.firstDepositId,
+      consts.originChainId,
+      consts.destinationChainId,
+      weth.address,
+      largeRelayAmount
+    );
+
+    // This should work, despite the amount being quite large.
+    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, largeRelayAmount));
+
+    // Balance should be the same as before.
+    expect(await weth.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets);
+
+    // Fill amount should be set.
+    expect(await spokePool.relayFills(relayHash)).to.equal(largeRelayAmount);
   });
   it("General failure cases", async function () {
     // Fees set too high.
@@ -226,10 +277,10 @@ describe("SpokePool Relayer Logic", async function () {
     await testUpdatedFeeSignaling(erc1271.address);
   });
   it("Can fill relay with updated fee by including proof of depositor's agreement", async function () {
-    await testFillRelayWithUpdatedFee(depositor.address);
+    await testfillRelayWithUpdatedDeposit(depositor.address);
   });
   it("EIP1271 - Can fill relay with updated fee by including proof of depositor's agreement", async function () {
-    await testFillRelayWithUpdatedFee(erc1271.address);
+    await testfillRelayWithUpdatedDeposit(erc1271.address);
   });
   it("Updating relayer fee signature verification failure cases", async function () {
     await testUpdatedFeeSignatureFailCases(depositor.address);
@@ -241,49 +292,105 @@ describe("SpokePool Relayer Logic", async function () {
 
 async function testUpdatedFeeSignaling(depositorAddress: string) {
   const spokePoolChainId = await spokePool.chainId();
+  const updatedMessage = "0x1234";
+  const updatedRecipient = depositor.address;
   const { signature } = await modifyRelayHelper(
     consts.modifiedRelayerFeePct,
     consts.firstDepositId.toString(),
     spokePoolChainId.toString(),
-    depositor
+    depositor,
+    updatedRecipient,
+    updatedMessage
   );
 
   // Cannot set new relayer fee pct >= 50%
   await expect(
-    spokePool.connect(relayer).speedUpDeposit(depositorAddress, toWei("0.5"), consts.firstDepositId, signature)
+    spokePool
+      .connect(relayer)
+      .speedUpDeposit(
+        depositorAddress,
+        toWei("0.5"),
+        consts.firstDepositId,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      )
   ).to.be.revertedWith("invalid relayer fee");
 
   await expect(
     spokePool
       .connect(relayer)
-      .speedUpDeposit(depositorAddress, consts.modifiedRelayerFeePct, consts.firstDepositId, signature)
+      .speedUpDeposit(
+        depositorAddress,
+        consts.modifiedRelayerFeePct,
+        consts.firstDepositId,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      )
   )
     .to.emit(spokePool, "RequestedSpeedUpDeposit")
-    .withArgs(consts.modifiedRelayerFeePct, consts.firstDepositId, depositorAddress, signature);
+    .withArgs(
+      consts.modifiedRelayerFeePct,
+      consts.firstDepositId,
+      depositorAddress,
+      updatedRecipient,
+      updatedMessage,
+      signature
+    );
 
   // Reverts if any param passed to function is changed.
   await expect(
     spokePool
       .connect(relayer)
-      .speedUpDeposit(relayer.address, consts.modifiedRelayerFeePct, consts.firstDepositId, signature)
+      .speedUpDeposit(
+        relayer.address,
+        consts.modifiedRelayerFeePct,
+        consts.firstDepositId,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      )
   ).to.be.reverted;
-  await expect(spokePool.connect(relayer).speedUpDeposit(depositorAddress, "0", consts.firstDepositId, signature)).to.be
-    .reverted;
+
   await expect(
     spokePool
       .connect(relayer)
-      .speedUpDeposit(depositorAddress, consts.modifiedRelayerFeePct, consts.firstDepositId + 1, signature)
+      .speedUpDeposit(depositorAddress, "0", consts.firstDepositId, updatedRecipient, updatedMessage, signature)
   ).to.be.reverted;
+
   await expect(
     spokePool
       .connect(relayer)
-      .speedUpDeposit(depositorAddress, consts.modifiedRelayerFeePct, consts.firstDepositId, "0xrandombytes")
+      .speedUpDeposit(
+        depositorAddress,
+        consts.modifiedRelayerFeePct,
+        consts.firstDepositId + 1,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      )
+  ).to.be.reverted;
+
+  await expect(
+    spokePool
+      .connect(relayer)
+      .speedUpDeposit(
+        depositorAddress,
+        consts.modifiedRelayerFeePct,
+        consts.firstDepositId,
+        updatedRecipient,
+        updatedMessage,
+        "0xrandombytes"
+      )
   ).to.be.reverted;
   const { signature: incorrectOriginChainIdSignature } = await modifyRelayHelper(
     consts.modifiedRelayerFeePct,
     consts.firstDepositId.toString(),
     consts.originChainId.toString(),
-    depositor
+    depositor,
+    updatedRecipient,
+    updatedMessage
   );
   await expect(
     spokePool
@@ -292,12 +399,14 @@ async function testUpdatedFeeSignaling(depositorAddress: string) {
         depositorAddress,
         consts.modifiedRelayerFeePct,
         consts.firstDepositId,
+        updatedRecipient,
+        updatedMessage,
         incorrectOriginChainIdSignature
       )
   ).to.be.reverted;
 }
 
-async function testFillRelayWithUpdatedFee(depositorAddress: string) {
+async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
   // The relay should succeed just like before with the same amount of tokens pulled from the relayer's wallet,
   // however the filled amount should have increased since the proportion of the relay filled would increase with a
   // higher fee.
@@ -309,17 +418,31 @@ async function testFillRelayWithUpdatedFee(depositorAddress: string) {
     consts.destinationChainId,
     destErc20.address
   );
+
+  const updatedRecipient = depositor.address;
+  const updatedMessage = "0x1234";
+
   const { signature } = await modifyRelayHelper(
     consts.modifiedRelayerFeePct,
     relayData.depositId,
     relayData.originChainId,
-    depositor
+    depositor,
+    updatedRecipient,
+    updatedMessage
   );
   await expect(
     spokePool
       .connect(relayer)
-      .fillRelayWithUpdatedFee(
-        ...getFillRelayUpdatedFeeParams(relayData, consts.amountToRelay, consts.modifiedRelayerFeePct, signature)
+      .fillRelayWithUpdatedDeposit(
+        ...getFillRelayUpdatedFeeParams(
+          relayData,
+          consts.amountToRelay,
+          consts.modifiedRelayerFeePct,
+          signature,
+          undefined,
+          updatedRecipient,
+          updatedMessage
+        )
       )
   )
     .to.emit(spokePool, "FilledRelay")
@@ -331,15 +454,36 @@ async function testFillRelayWithUpdatedFee(depositorAddress: string) {
       toBN(relayData.originChainId),
       toBN(relayData.destinationChainId),
       relayData.relayerFeePct,
-      consts.modifiedRelayerFeePct, // Applied relayer fee % should be diff from original fee %.
       relayData.realizedLpFeePct,
       toBN(relayData.depositId),
       relayData.destinationToken,
       relayer.address,
       relayData.depositor,
       relayData.recipient,
-      false
+      relayData.message,
+      [
+        updatedRecipient,
+        updatedMessage,
+        consts.modifiedRelayerFeePct, // Applied relayer fee % should be diff from original fee %.
+        false,
+      ]
     );
+
+  // relayExecution.relay.amount,
+  // relayFills[relayExecution.relayHash],
+  // fillAmountPreFees,
+  // relayExecution.repaymentChainId,
+  // relayExecution.relay.originChainId,
+  // relayExecution.relay.destinationChainId,
+  // relayExecution.relay.relayerFeePct,
+  // relayExecution.relay.realizedLpFeePct,
+  // relayExecution.relay.depositId,
+  // relayExecution.relay.destinationToken,
+  // msg.sender,
+  // relayExecution.relay.depositor,
+  // relayExecution.relay.recipient,
+  // relayExecution.relay.message,
+  // relayExecutionInfo
 
   // The collateral should have transferred from relayer to recipient.
   expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets.sub(consts.amountToRelay));
@@ -359,22 +503,30 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
     destErc20.address
   );
 
+  const updatedRecipient = depositor.address;
+  const updatedMessage = "0x1234";
+
   // Message hash doesn't contain the modified fee passed as a function param.
   const { signature: incorrectFeeSignature } = await modifyRelayHelper(
     consts.incorrectModifiedRelayerFeePct,
     relayData.depositId,
     relayData.originChainId,
-    depositor
+    depositor,
+    updatedRecipient,
+    updatedMessage
   );
   await expect(
     spokePool
       .connect(relayer)
-      .fillRelayWithUpdatedFee(
+      .fillRelayWithUpdatedDeposit(
         ...getFillRelayUpdatedFeeParams(
           relayData,
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
-          incorrectFeeSignature
+          incorrectFeeSignature,
+          undefined,
+          updatedRecipient,
+          updatedMessage
         )
       )
   ).to.be.revertedWith("invalid signature");
@@ -384,17 +536,22 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
     consts.modifiedRelayerFeePct,
     relayData.depositId + "1",
     relayData.originChainId,
-    depositor
+    depositor,
+    updatedRecipient,
+    updatedMessage
   );
   await expect(
     spokePool
       .connect(relayer)
-      .fillRelayWithUpdatedFee(
+      .fillRelayWithUpdatedDeposit(
         ...getFillRelayUpdatedFeeParams(
           relayData,
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
-          incorrectDepositIdSignature
+          incorrectDepositIdSignature,
+          undefined,
+          updatedRecipient,
+          updatedMessage
         )
       )
   ).to.be.revertedWith("invalid signature");
@@ -402,17 +559,22 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
     consts.modifiedRelayerFeePct,
     relayData.depositId,
     relayData.originChainId + "1",
-    depositor
+    depositor,
+    updatedRecipient,
+    updatedMessage
   );
   await expect(
     spokePool
       .connect(relayer)
-      .fillRelayWithUpdatedFee(
+      .fillRelayWithUpdatedDeposit(
         ...getFillRelayUpdatedFeeParams(
           relayData,
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
-          incorrectChainIdSignature
+          incorrectChainIdSignature,
+          undefined,
+          updatedRecipient,
+          updatedMessage
         )
       )
   ).to.be.revertedWith("invalid signature");
@@ -422,17 +584,22 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
     consts.modifiedRelayerFeePct,
     relayData.depositId,
     relayData.originChainId,
-    relayer
+    relayer,
+    updatedRecipient,
+    updatedMessage
   );
   await expect(
     spokePool
       .connect(relayer)
-      .fillRelayWithUpdatedFee(
+      .fillRelayWithUpdatedDeposit(
         ...getFillRelayUpdatedFeeParams(
           relayData,
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
-          incorrectSignerSignature
+          incorrectSignerSignature,
+          undefined,
+          updatedRecipient,
+          updatedMessage
         )
       )
   ).to.be.revertedWith("invalid signature");

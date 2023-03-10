@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/AdapterInterface.sol";
-import "./Arbitrum_Adapter.sol"; // Used to import `ArbitrumL1ERC20GatewayLike`
+import { ArbitrumL1ERC20GatewayLike } from "./Arbitrum_Adapter.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -17,9 +17,11 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
 
     uint256 public immutable l2MaxSubmissionCost = 0.01e18;
     uint256 public immutable l2GasPrice = 5e9;
-    uint32 public immutable l2GasLimit = 2_000_000;
+    uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
+
+    address public constant l2RefundL2Address = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
 
     /**
      * @notice Constructs new Adapter.
@@ -50,14 +52,12 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
         // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
         bytes memory data = abi.encode(l2MaxSubmissionCost, "");
 
-        // Note: outboundTransfer() will ultimately create a retryable ticket and set this contract's address as the
-        // refund address. This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
-        // contract address on L2 and lost.
-        l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
+        l1ERC20GatewayRouter.outboundTransferCustomRefund{ value: requiredL1CallValue }(
             l1Token,
+            l2RefundL2Address,
             target,
             amount,
-            l2GasLimit,
+            RELAY_TOKENS_L2_GAS_LIMIT,
             l2GasPrice,
             data
         );
@@ -83,7 +83,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue() public pure returns (uint256) {
-        return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
+        return l2MaxSubmissionCost + l2GasPrice * RELAY_TOKENS_L2_GAS_LIMIT;
     }
 
     function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {

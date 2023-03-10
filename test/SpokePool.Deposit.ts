@@ -73,7 +73,8 @@ describe("SpokePool Depositor Logic", async function () {
         currentSpokePoolTime,
         erc20.address,
         recipient.address,
-        depositor.address
+        depositor.address,
+        "0x"
       );
 
     // The collateral should have transferred from depositor to contract.
