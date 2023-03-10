@@ -1,7 +1,6 @@
 {
   "1": {
     "AcrossConfigStore": { "address": "0x3B03509645713718B78951126E0A6de6f10043f5", "blockNumber": 14717196 },
-    "AcrossMerkleDistributor": { "address": "0xE50b2cEAC4f60E840Ae513924033E753e2366487", "blockNumber": 15976846 },
     "Arbitrum_Adapter": { "address": "0x29528780E29abb8Af95a5e5a125b94766987543F", "blockNumber": 16243583 },
     "Arbitrum_RescueAdapter": { "address": "0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375", "blockNumber": 16233939 },
     "Arbitrum_SendTokensAdapter": { "address": "0xC06A68DF12376271817FcEBfb45Be996B0e1593E", "blockNumber": 16691987 },

@@ -6,7 +6,8 @@ import { getNodeUrl, getMnemonic } from "@uma/common";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
-import "@matterlabs/hardhat-zksync-solc";
+import "@matterlabs/hardhat-zksync-toolbox";
+import "@matterlabs/hardhat-zksync-verify";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
@@ -22,8 +23,9 @@ dotenv.config();
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
-
-const solcVersion = "0.8.18";
+const zkSyncSolcVersion = "0.8.16";
+// TODO: Figure out better solution for this but if using zksync-solc, only supports up to 0.8.16
+const solcVersion = compileZk ? zkSyncSolcVersion : "0.8.18";
 const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
@@ -37,6 +39,10 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true } }],
     overrides: {
+      "contracts/ZkSync_SpokePool.sol": {
+        version: zkSyncSolcVersion,
+        settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true },
+      },
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Boba_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -46,7 +52,6 @@ const config: HardhatUserConfig = {
   zksolc: {
     version: "1.3.1",
     compilerSource: "binary",
-    settings: {},
   },
   networks: {
     hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },
@@ -63,6 +68,8 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
       zksync: true,
+      // Verification endpoint for Goerli
+      verifyURL: "https://zksync2-testnet-explorer.zksync.dev/contract_verification",
     },
     kovan: {
       url: getNodeUrl("kovan", true, 42),

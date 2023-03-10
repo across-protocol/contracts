@@ -93,6 +93,7 @@ contract ZkSync_SpokePool is SpokePool {
         int64 relayerFeePct,
         uint32 depositId,
         uint32 rootBundleId,
+        bytes memory message,
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
@@ -109,6 +110,7 @@ contract ZkSync_SpokePool is SpokePool {
             relayerFeePct,
             depositId,
             rootBundleId,
+            message,
             payoutAdjustment,
             proof
         );
@@ -128,6 +130,11 @@ contract ZkSync_SpokePool is SpokePool {
 
         _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
+
+    // function _verifyDepositorSignature() {
+    //     // We may need to override the signature recovery logic for ZkSync but I think it supports EIP1271:
+    //     // https://era.zksync.io/docs/dev/developer-guides/aa.html#example-of-using-the-library
+    // }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
