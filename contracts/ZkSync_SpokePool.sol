@@ -60,8 +60,7 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        // Formal msg.sender of L1 --> L2 message will be L1 sender.
-        require(msg.sender == crossDomainAdmin, "Invalid sender");
+        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
@@ -78,8 +77,73 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     /**************************************
+     *         DATA WORKER FUNCTIONS      *
+     **************************************/
+
+    /**
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
+     * ETH over the canonical token bridge instead of WETH.
+     * @inheritdoc SpokePool
+     */
+    function executeSlowRelayLeaf(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 totalRelayAmount,
+        uint256 originChainId,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        int256 payoutAdjustment,
+        bytes32[] memory proof
+    ) public override(SpokePool) nonReentrant {
+        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
+
+        _executeSlowRelayLeaf(
+            depositor,
+            recipient,
+            destinationToken,
+            totalRelayAmount,
+            originChainId,
+            chainId(),
+            realizedLpFeePct,
+            relayerFeePct,
+            depositId,
+            rootBundleId,
+            payoutAdjustment,
+            proof
+        );
+    }
+
+    /**
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
+     * ETH over the canonical token bridge instead of WETH.
+     * @inheritdoc SpokePool
+     */
+    function executeRelayerRefundLeaf(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) public override(SpokePool) nonReentrant {
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+
+        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
+    }
+
+    /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+
+    // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because
+    // this SpokePool will receive ETH from the canonical token bridge instead of WETH. This may not be neccessary
+    // if ETH on ZkSync is treated as ETH and the fallback() function is triggered when this contract receives
+    // ETH. We will have to test this but this function for now allows the contract to safely convert all of its
+    // held ETH into WETH at the cost of higher gas costs.
+    function _depositEthToWeth() internal {
+        //slither-disable-next-line arbitrary-send-eth
+        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
+    }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         // TODO: Figure out whether SpokePool will receive L1-->L2 deposits in ETH or WETH and whether ETH or WETH
@@ -98,6 +162,14 @@ contract ZkSync_SpokePool is SpokePool {
     function _setZkBridges(ZkBridgeLike _zkErc20Bridge) internal {
         zkErc20Bridge = _zkErc20Bridge;
         emit SetZkBridges(address(_zkErc20Bridge));
+    }
+
+    // L1 addresses are transformed during l1->l2 calls.
+    // See https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#mailboxfacet for more information.
+    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
+        unchecked {
+            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
+        }
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}

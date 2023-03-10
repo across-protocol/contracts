@@ -45,6 +45,9 @@ interface ZkBridgeLike {
         uint256 _l2TxGasLimit,
         uint256 _l2TxGasPerPubdataByte
     ) external payable returns (bytes32 txHash);
+
+    /// @return The L2 token address that would be minted for deposit of the given L1 token
+    function l2TokenAddress(address _l1Token) external view returns (address);
 }
 
 /**
@@ -134,6 +137,14 @@ contract ZkSync_Adapter is AdapterInterface {
         uint256 amount,
         address to
     ) external payable override {
+        // This could revert if the relay amount is over the ZkSync deposit
+        // limit: https://github.com/matter-labs/era-contracts/blob/main/ethereum/contracts/common/AllowList.sol#L150
+        // We should make sure that the limit is either set very high or we need to do logic
+        // that splits the amount to deposit into multiple chunks. We can't have
+        // this function revert or the HubPool will not be able to proceed to the
+        // next bundle. See more here:
+        // https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#deposit-limitation
+        // require(zkErc20Bridge.l2TokenAddress(l1Token) == l2Token, "incorrect l2Token address");
         uint256 txBaseCost = _contractHasSufficientEthBalance();
 
         // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
@@ -141,13 +152,23 @@ contract ZkSync_Adapter is AdapterInterface {
         bytes32 txHash;
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
-            txHash = zkEthBridge.deposit{ value: txBaseCost + amount }(
+            // We cannot call the standard ERC20 bridge because
+            // it disallows ETH deposits.
+            txHash = zkSync.requestL2Transaction{ value: txBaseCost + amount }(
                 to,
-                address(0),
                 amount,
+                "0x",
                 gasLimit,
-                DEFAULT_GAS_PER_PUBDATA_LIMIT
+                DEFAULT_GAS_PER_PUBDATA_LIMIT,
+                new bytes[](0),
+                l2RefundAddress
             );
+
+            /**
+                A successful L1 -> L2 message produces an L2Log with 
+                key = l2TxHash, and value = bytes32(1) whereas a failed L1 -> L2 message produces an L2Log with 
+                key = l2TxHash, and value = bytes32(0). 
+            */
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
             txHash = zkErc20Bridge.deposit{ value: txBaseCost }(
