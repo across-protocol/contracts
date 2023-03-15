@@ -24,7 +24,7 @@ contract Succinct_Adapter is AdapterInterface {
 
     /**
      * @notice Send cross-chain message to target on the destination.
-     * @param target Contract on the destinatipn that will receive the message..
+     * @param target Contract on the destination that will receive the message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {

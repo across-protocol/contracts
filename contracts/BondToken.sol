@@ -8,7 +8,7 @@ import "./HubPoolInterface.sol";
 import "./external/WETH9.sol";
 
 interface ExtendedHubPoolInterface is HubPoolInterface {
-    // Specify the automatically-implemented rootBundleProposer() getter.
+    // Specify the automatically-implemented rootBundleProposal() getter.
     function rootBundleProposal() external pure returns (HubPoolInterface.RootBundle memory);
 }
 
@@ -18,7 +18,7 @@ interface ExtendedHubPoolInterface is HubPoolInterface {
  * imposes address-based permissioning on the WETH9 transferFrom() function in order to constrain the movement of ABT
  * into the Across v2 HubPool contract. When configured as the required HubPool bond token, ABT can dramatically reduce
  * the attack surface of the HubPool by requiring that addresses are explicitly approved before they can successfully
- * submit a root bundle proposal. The address-based permissiong does not constrain transfers that are needed to dispute
+ * submit a root bundle proposal. The address-based permissioning does not constrain transfers that are needed to dispute
  * a root bundle proposal, so the ability of decentralised/unknown actors to dispute is unaffected.
  */
 contract BondToken is WETH9, Ownable {

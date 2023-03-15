@@ -19,13 +19,13 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated;
 
-    // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be misinterpreted.
-    // Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
+    // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be
+    // misinterpreted. Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
     // All calls that have admin privileges must be fired from within the handleTelepathy method that's gone
     // through validation where the sender is checked and the sender from the other chain is also validated.
-    // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
+    // This modifier sets the adminCallValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {
-        // Make sure callValidated is set to True only once at beginning of processMessageFromRoot, which prevents
+        // Make sure adminCallValidated is set to True only once at beginning of processMessageFromRoot, which prevents
         // processMessageFromRoot from being re-entered.
         require(!adminCallValidated, "adminCallValidated already set");
 
@@ -36,7 +36,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
 
         _;
 
-        // Reset callValidated to false to disallow admin calls after this method exits.
+        // Reset adminCallValidated to false to disallow admin calls after this method exits.
         adminCallValidated = false;
     }
 
