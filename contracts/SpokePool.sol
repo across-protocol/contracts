@@ -1008,6 +1008,12 @@ abstract contract SpokePool is
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[relayData.destinationToken] <= relayExecution.maxCount, "Above max count");
 
+        // If the max tokens to send is 0, then the fillAmountPreFees will be 0 so we exit early.
+        // This also means that if the ending filled amount is 0, then we won't enter the
+        // function _updateCountFromFill. Therefore, _updateCountFromFill doesn't explicilty check
+        // that the ending fill amount is 0 (i.e. that the fillAmountPreFees is 0).
+        // If this if statement were to be removed, then _updateCountFromFill would need to be updated to
+        // check that the ending fill amount is 0.
         if (relayExecution.maxTokensToSend == 0) return 0;
 
         // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
@@ -1048,7 +1054,6 @@ abstract contract SpokePool is
         // Update fill counter.
         _updateCountFromFill(
             relayFills[relayExecution.relayHash],
-            relayFills[relayExecution.relayHash] + fillAmountPreFees,
             relayData.amount,
             relayData.realizedLpFeePct,
             relayData.destinationToken,
@@ -1099,15 +1104,15 @@ abstract contract SpokePool is
 
     function _updateCountFromFill(
         uint256 startingFillAmount,
-        uint256 endingFillAmount,
         uint256 totalFillAmount,
         int64 realizedLPFeePct,
         address token,
         bool useContractFunds
     ) internal {
         // If this is a slow fill, it's an initial 0-fill, or a partial fill has already happened, do nothing, as these
-        // should not impact the count.
-        if (useContractFunds || endingFillAmount == 0 || startingFillAmount > 0) return;
+        // should not impact the count. If this is an initial 0-fill where ending fill amount is equal to
+        // starting fill amount, then this function will not be entered so we don't explicitly check for it.
+        if (useContractFunds || startingFillAmount > 0) return;
         fillCounter[token] += _computeAmountPostFees(totalFillAmount, realizedLPFeePct);
     }
 
