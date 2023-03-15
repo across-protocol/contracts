@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Lockable.sol";
-import "./interfaces/WETH9Interface.sol";
+import "./external/interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
