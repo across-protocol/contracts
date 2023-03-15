@@ -104,8 +104,8 @@ abstract contract SpokePool is
     event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
-        uint256 indexed originChainId,
-        uint256 destinationChainId,
+        uint256 originChainId,
+        uint256 indexed destinationChainId,
         int64 relayerFeePct,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
