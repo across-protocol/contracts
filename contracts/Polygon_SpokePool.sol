@@ -35,6 +35,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
     event SetPolygonTokenBridger(address indexed polygonTokenBridger);
+    event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
 
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
@@ -132,6 +133,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         (bool success, ) = address(this).delegatecall(data);
         //slither-disable-end low-level-calls
         require(success, "delegatecall failed");
+
+        emit ReceivedMessageFromL1(msg.sender, rootMessageSender);
     }
 
     /**
