@@ -166,6 +166,21 @@ abstract contract SpokePool is
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
 
+    /**
+     * @notice Represents data used to fill a deposit.
+     * @param relay Relay containing original data linked to deposit. Contains fields that can be
+     * overridden by other parametersin the RelayExecution struct.
+     * @param relayHash Hash of the relay data.
+     * @param updatedRelayerFeePct Actual relayer fee pct to use for this relay.
+     * @param updatedRecipient Actual recipient to use for this relay.
+     * @param updatedMessage Actual message to use for this relay.
+     * @param repaymentChainId Chain ID of the network that the relayer will receive refunds on.
+     * @param maxTokensToSend Max number of tokens to pull from relayer.
+     * @param maxCount Max count to protect the relayer from frontrunning.
+     * @param slowFill Whether this is a slow fill.
+     * @param payoutAdjustment Adjustment to the payout amount. Can be used to increase or decrease the payout to allow
+     * for rewards or penalties. Used in slow fills.
+     */
     struct RelayExecution {
         RelayData relay;
         bytes32 relayHash;
@@ -179,20 +194,22 @@ abstract contract SpokePool is
         int256 payoutAdjustmentPct;
     }
 
+    /**
+     * @notice Packs together information to include in FilledRelay event.
+     * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
+     * parameters in an event.
+     * @param recipient Recipient of the relayed funds.
+     * @param message Message included in the relay.
+     * @param relayerFeePct Relayer fee pct used for this relay.
+     * @param isSlowRelay Whether this is a slow relay.
+     * @param payoutAdjustmentPct Adjustment to the payout amount.
+     */
     struct RelayExecutionInfo {
         address recipient;
         bytes message;
         int64 relayerFeePct;
         bool isSlowRelay;
         int256 payoutAdjustmentPct;
-    }
-
-    struct DepositUpdate {
-        uint32 depositId;
-        uint256 originChainId;
-        int64 updatedRelayerFeePct;
-        address updatedRecipient;
-        bytes updatedMessage;
     }
 
     /**
