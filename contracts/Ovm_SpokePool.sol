@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./interfaces/WETH9Interface.sol";
+import "./external/interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";

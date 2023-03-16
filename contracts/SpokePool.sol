@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
-import "./interfaces/WETH9Interface.sol";
-import "./SpokePoolInterface.sol";
+import "./external/interfaces/WETH9Interface.sol";
+import "./interfaces/SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9Interface.sol";
+import "./interfaces/AdapterInterface.sol";
+import "../external/interfaces/WETH9Interface.sol";
 
 // @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
 // this contract's state variables to be `immutable` because of the delegateCall call.

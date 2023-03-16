@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./interfaces/WETH9Interface.sol";
-import "./external/SuccinctInterfaces.sol";
+import "./external/interfaces/WETH9Interface.sol";
+import "./external/interfaces/SuccinctInterfaces.sol";
 
 /**
  * @notice Succinct Spoke pool.

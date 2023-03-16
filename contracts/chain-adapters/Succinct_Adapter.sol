@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/AdapterInterface.sol";
-import "../external/SuccinctInterfaces.sol";
+import "./interfaces/AdapterInterface.sol";
+import "../external/interfaces/SuccinctInterfaces.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 contract Succinct_Adapter is AdapterInterface {

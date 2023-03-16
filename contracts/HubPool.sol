@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
-import "./HubPoolInterface.sol";
+import "./interfaces/HubPoolInterface.sol";
 import "./Lockable.sol";
 
 import "./interfaces/LpTokenFactoryInterface.sol";
-import "./interfaces/WETH9Interface.sol";
+import "./external/interfaces/WETH9Interface.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";

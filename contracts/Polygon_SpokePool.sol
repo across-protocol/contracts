@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
-import "./interfaces/WETH9Interface.sol";
-import "./SpokePoolInterface.sol";
+import "./external/interfaces/WETH9Interface.sol";
+import "./interfaces/SpokePoolInterface.sol";
 
 /**
  * @notice IFxMessageProcessor represents interface to process messages.
