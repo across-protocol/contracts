@@ -166,6 +166,21 @@ abstract contract SpokePool is
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
 
+    /**
+     * @notice Represents data used to fill a deposit.
+     * @param relay Relay containing original data linked to deposit. Contains fields that can be
+     * overridden by other parametersin the RelayExecution struct.
+     * @param relayHash Hash of the relay data.
+     * @param updatedRelayerFeePct Actual relayer fee pct to use for this relay.
+     * @param updatedRecipient Actual recipient to use for this relay.
+     * @param updatedMessage Actual message to use for this relay.
+     * @param repaymentChainId Chain ID of the network that the relayer will receive refunds on.
+     * @param maxTokensToSend Max number of tokens to pull from relayer.
+     * @param maxCount Max count to protect the relayer from frontrunning.
+     * @param slowFill Whether this is a slow fill.
+     * @param payoutAdjustment Adjustment to the payout amount. Can be used to increase or decrease the payout to allow
+     * for rewards or penalties. Used in slow fills.
+     */
     struct RelayExecution {
         RelayData relay;
         bytes32 relayHash;
@@ -179,20 +194,22 @@ abstract contract SpokePool is
         int256 payoutAdjustmentPct;
     }
 
+    /**
+     * @notice Packs together information to include in FilledRelay event.
+     * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
+     * parameters in an event.
+     * @param recipient Recipient of the relayed funds.
+     * @param message Message included in the relay.
+     * @param relayerFeePct Relayer fee pct used for this relay.
+     * @param isSlowRelay Whether this is a slow relay.
+     * @param payoutAdjustmentPct Adjustment to the payout amount.
+     */
     struct RelayExecutionInfo {
         address recipient;
         bytes message;
         int64 relayerFeePct;
         bool isSlowRelay;
         int256 payoutAdjustmentPct;
-    }
-
-    struct DepositUpdate {
-        uint32 depositId;
-        uint256 originChainId;
-        int64 updatedRelayerFeePct;
-        address updatedRecipient;
-        bytes updatedMessage;
     }
 
     /**
@@ -262,8 +279,10 @@ abstract contract SpokePool is
     function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 
     /**
-     * @notice Pauses deposit and fill functions. This is intended to be used during upgrades or when
+     * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
+     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
     function pauseDeposits(bool pause) public override onlyAdmin nonReentrant {
@@ -271,6 +290,12 @@ abstract contract SpokePool is
         emit PausedDeposits(pause);
     }
 
+    /**
+     * @notice Pauses fill-related functions. This is intended to be used if this contract is deprecated or when
+     * something goes awry.
+     * @dev Affects fillRelayWithUpdatedDeposit() and fillRelay().
+     * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
+     */
     function pauseFills(bool pause) public override onlyAdmin nonReentrant {
         pausedFills = pause;
         emit PausedFills(pause);
@@ -460,7 +485,7 @@ abstract contract SpokePool is
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) public override nonReentrant {
-        require(updatedRelayerFeePct < 0.5e18, "invalid relayer fee");
+        require(SignedMath.abs(updatedRelayerFeePct) < 0.5e18, "Invalid relayer fee");
 
         _verifyUpdateDepositMessage(
             depositor,
@@ -1000,13 +1025,13 @@ abstract contract SpokePool is
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[relayData.destinationToken] <= relayExecution.maxCount, "Above max count");
 
-        // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (relayExecution.maxTokensToSend == 0) return 0;
 
         // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
         // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
         // is 100, and the fee %'s total 5%, then this computation would return ~10.5, meaning that to fill 10.5/100
         // of the full relay size, the caller would need to send 10 tokens to the user.
+        // This is equivalent to the amount to be sent by the relayer before fees have been taken out.
         fillAmountPreFees = _computeAmountPreFees(
             relayExecution.maxTokensToSend,
             (relayData.realizedLpFeePct + relayExecution.updatedRelayerFeePct)

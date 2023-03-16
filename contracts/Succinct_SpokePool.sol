@@ -19,6 +19,9 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated;
 
+    event SetSuccinctTargetAmb(address indexed newSuccinctTargetAmb);
+    event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
+
     // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be
     // misinterpreted. Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
     // All calls that have admin privileges must be fired from within the handleTelepathy method that's gone
@@ -68,6 +71,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
      */
     function setSuccinctTargetAmb(address _succinctTargetAmb) external onlyAdmin {
         succinctTargetAmb = _succinctTargetAmb;
+        emit SetSuccinctTargetAmb(_succinctTargetAmb);
     }
 
     /**
@@ -83,14 +87,15 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     ) external override validateInternalCalls returns (bytes4) {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
-        require(
-            msg.sender == succinctTargetAmb && _senderAddress == hubPool && _sourceChainId == hubChainId,
-            "Invalid message"
-        );
+        require(msg.sender == succinctTargetAmb, "caller not succinct AMB");
+        require(_senderAddress == hubPool, "sender not hubPool");
+        require(_sourceChainId == hubChainId, "source chain not hub chain");
 
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
         require(success, "delegatecall failed");
+
+        emit ReceivedMessageFromL1(msg.sender, _senderAddress);
         return ITelepathyHandler.handleTelepathy.selector;
     }
 
