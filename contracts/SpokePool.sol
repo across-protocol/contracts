@@ -262,8 +262,10 @@ abstract contract SpokePool is
     function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 
     /**
-     * @notice Pauses deposit and fill functions. This is intended to be used during upgrades or when
+     * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
+     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
     function pauseDeposits(bool pause) public override onlyAdmin nonReentrant {
@@ -271,6 +273,12 @@ abstract contract SpokePool is
         emit PausedDeposits(pause);
     }
 
+    /**
+     * @notice Pauses fill-related functions. This is intended to be used if this contract is deprecated or when
+     * something goes awry.
+     * @dev Affects fillRelayWithUpdatedDeposit() and fillRelay().
+     * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
+     */
     function pauseFills(bool pause) public override onlyAdmin nonReentrant {
         pausedFills = pause;
         emit PausedFills(pause);
@@ -1000,13 +1008,13 @@ abstract contract SpokePool is
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[relayData.destinationToken] <= relayExecution.maxCount, "Above max count");
 
-        // Stores the equivalent amount to be sent by the relayer before fees have been taken out.
         if (relayExecution.maxTokensToSend == 0) return 0;
 
         // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
         // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
         // is 100, and the fee %'s total 5%, then this computation would return ~10.5, meaning that to fill 10.5/100
         // of the full relay size, the caller would need to send 10 tokens to the user.
+        // This is equivalent to the amount to be sent by the relayer before fees have been taken out.
         fillAmountPreFees = _computeAmountPreFees(
             relayExecution.maxTokensToSend,
             (relayData.realizedLpFeePct + relayExecution.updatedRelayerFeePct)
