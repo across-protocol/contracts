@@ -4,3 +4,5 @@ cache
 coverage*
 gasReporterOutput.json
 typechain
+artifacts-zk
+cache-zk

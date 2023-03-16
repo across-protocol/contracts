@@ -6,8 +6,20 @@ import "./PolygonTokenBridger.sol";
 import "./interfaces/WETH9Interface.sol";
 import "./SpokePoolInterface.sol";
 
-// IFxMessageProcessor represents interface to process messages.
+/**
+ * @notice IFxMessageProcessor represents interface to process messages.
+ */
 interface IFxMessageProcessor {
+    /**
+     * @notice Called by FxChild upon receiving L1 message that targets this contract. Performs an additional check
+     * that the L1 caller was the expected cross domain admin, and then delegate calls.
+     * @notice Polygon bridge only executes this external function on the target Polygon contract when relaying
+     * messages from L1, so all functions on this SpokePool are expected to originate via this call.
+     * @dev stateId value isn't used because it isn't relevant for this method. It doesn't care what state sync
+     * triggered this call.
+     * @param rootMessageSender Original L1 sender of data.
+     * @param data ABI encoded function call to execute on this contract.
+     */
     function processMessageFromRoot(
         uint256 stateId,
         address rootMessageSender,
@@ -35,6 +47,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
     event SetPolygonTokenBridger(address indexed polygonTokenBridger);
+    event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
 
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
@@ -132,6 +145,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         (bool success, ) = address(this).delegatecall(data);
         //slither-disable-end low-level-calls
         require(success, "delegatecall failed");
+
+        emit ReceivedMessageFromL1(msg.sender, rootMessageSender);
     }
 
     /**
