@@ -5,3 +5,5 @@ coverage*
 gasReporterOutput.json
 typechain
 dist
+artifacts-zk
+cache-zk

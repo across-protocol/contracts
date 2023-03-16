@@ -102,6 +102,6 @@ library MerkleLib {
      * @return uint256 representing the modified input claimedBitMap with the index set to true.
      */
     function setClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (uint256) {
-        return claimedBitMap | (1 << index % 256);
+        return claimedBitMap | (1 << index);
     }
 }

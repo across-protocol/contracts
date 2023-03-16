@@ -12,7 +12,15 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Interface for Synthetix custom bridge to Optimism.
+ */
 interface SynthetixBridgeToOptimism is IL1StandardBridge {
+    /**
+     * @notice Send tokens to Optimism.
+     * @param to Address to send tokens to on L2.
+     * @param amount Amount of tokens to send.
+     */
     function depositTo(address to, uint256 amount) external;
 }
 

@@ -303,7 +303,7 @@ async function testUpdatedFeeSignaling(depositorAddress: string) {
     updatedMessage
   );
 
-  // Cannot set new relayer fee pct >= 50%
+  // Cannot set new relayer fee pct >= 50% or <= -50%
   await expect(
     spokePool
       .connect(relayer)
@@ -315,7 +315,19 @@ async function testUpdatedFeeSignaling(depositorAddress: string) {
         updatedMessage,
         signature
       )
-  ).to.be.revertedWith("invalid relayer fee");
+  ).to.be.revertedWith("Invalid relayer fee");
+  await expect(
+    spokePool
+      .connect(relayer)
+      .speedUpDeposit(
+        depositorAddress,
+        toWei("0.5").mul(-1),
+        consts.firstDepositId,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      )
+  ).to.be.revertedWith("Invalid relayer fee");
 
   await expect(
     spokePool
