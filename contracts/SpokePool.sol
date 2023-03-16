@@ -485,7 +485,7 @@ abstract contract SpokePool is
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) public override nonReentrant {
-        require(updatedRelayerFeePct < 0.5e18, "invalid relayer fee");
+        require(SignedMath.abs(updatedRelayerFeePct) < 0.5e18, "Invalid relayer fee");
 
         _verifyUpdateDepositMessage(
             depositor,
