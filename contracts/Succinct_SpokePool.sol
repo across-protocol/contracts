@@ -87,10 +87,9 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     ) external override validateInternalCalls returns (bytes4) {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
-        require(
-            msg.sender == succinctTargetAmb && _senderAddress == hubPool && _sourceChainId == hubChainId,
-            "Invalid message"
-        );
+        require(msg.sender == succinctTargetAmb, "caller not succinct AMB");
+        require(_senderAddress == hubPool, "sender not hubPool");
+        require(_sourceChainId == hubChainId, "source chain not hub chain");
 
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
