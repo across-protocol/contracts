@@ -589,7 +589,7 @@ abstract contract SpokePool is
     /**
      * @notice Called by relayer to execute same logic as calling fillRelay except that relayer is using an updated
      * relayer fee %. The fee % must have been emitted in a message cryptographically signed by the depositor.
-     * @notice By design, the depositor probably emitted the message with the updated fee by calling speedUpRelay().
+     * @notice By design, the depositor probably emitted the message with the updated fee by calling speedUpDeposit().
      * @param depositor Depositor on origin chain who set this chain as the destination chain.
      * @param recipient Specified recipient on this chain.
      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
@@ -1193,6 +1193,6 @@ abstract contract SpokePool is
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    // are added. This is at bottom of contract to make sure it's always at the end of storage.
     uint256[1000] private __gap;
 }

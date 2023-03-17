@@ -61,7 +61,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
         // This sets a variable indicating that we're now inside a validated call.
         // Note: this is used by other methods to ensure that this call has been validated by this method and is not
-        // spoofed. See
+        // spoofed. See comment for `_requireAdminSender` for more details.
         callValidated = true;
 
         _;
@@ -151,8 +151,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     /**
      * @notice Allows the caller to trigger the wrapping of any unwrapped matic tokens.
-     * @dev Matic sends via L1 -> L2 bridging actions don't call into the contract receiving the tokens, so wrapping
-     * must be done via a separate transaction.
+     * @dev Unlike other ERC20 transfers, Matic transfers from L1 -> L2 bridging don't result in an L2 call into
+     * the contract receiving the tokens, so wrapping must be done via a separate transaction. In other words,
+     * we can't rely upon a `fallback()` method being triggered to wrap MATIC upon receiving it.
      */
     function wrap() public nonReentrant {
         _wrap();
