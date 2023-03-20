@@ -139,7 +139,21 @@ abstract contract SpokePool is
         bytes message,
         RelayExecutionInfo updatableRelayData
     );
-
+    event Refund(
+        uint256 fillAmount,
+        uint256 totalFilledAmount,
+        address relayer,
+        uint256 amount,
+        uint256 indexed originChainId,
+        uint256 indexed destinationChainId,
+        int64 relayerFeePct,
+        int64 realizedLpFeePct,
+        uint32 indexed depositId,
+        address destinationToken,
+        address depositor,
+        address recipient,
+        bytes message
+    );
     event RelayedRootBundle(
         uint32 indexed rootBundleId,
         bytes32 indexed relayerRefundRoot,
@@ -668,6 +682,95 @@ abstract contract SpokePool is
         _emitFillRelay(relayExecution, fillAmountPreFees);
     }
 
+    /**
+     * @notice Caller signals to the system that they want a refund on this chain, which they set as the
+     * `repaymentChainId` on the original fillRelay() call on the `destinationChainId`. All of the
+     * deposit data should match the originally filled deposit data as well as some information about the fill itself.
+     * @dev This function is designed to be used by an off-chain builder of relayer refund leaves to figure out
+     * how much to refund relayers who took repayment away from the destination chain. Therefore, the refund
+     * request should 1-to-1 match with the fill, including setting the fillAmount and totalFilledAmount
+     * that were emitted in the FilledRelay event.
+     * @dev This function could be used to artificially inflate the `fillCounter`, allowing the caller to "frontrun"
+     * and cancel pending fills in the mempool. This would worst case censor fills at the cost of the caller's
+     * gas costs. We don't view this as a major issue as the fill can be resubmitted and obtain the same incentive,
+     * since incentives are based on validated refunds and would ignore these censoring attempts. This is no
+     * different from calling `fillRelay` and setting msg.sender = recipient.
+     * @param depositor Original depositor.
+     * @param recipient Original recipient.
+     * @param relayer Relayer on FilledRelay event on destinationChain we want to match with this Refund.
+     * This should be account receiving any refund stemming from this event.
+     * @param destinationToken Original destination token.
+     * @param amount Original deposit amount.
+     * @param fillAmount Amount that deposit was filled in destination SpokePool.
+     * @param totalFilledAmount Amount of deposit that was filled after the fill was sent on destination SpokePool.
+     * @param originChainId Original origin chain ID.
+     * @param destinationChainId Original destination chain ID.
+     * @param realizedLpFeePct Original realized LP fee %.
+     * @param depositId Original deposit ID.
+     * @param message Original message.
+     * @param maxCount Max count to protect the refund recipient from frontrunning.
+     */
+    function requestRefund(
+        address depositor,
+        address recipient,
+        address relayer,
+        address destinationToken,
+        uint256 amount,
+        uint256 fillAmount,
+        uint256 totalFilledAmount,
+        uint256 originChainId,
+        uint256 destinationChainId,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        bytes memory message,
+        uint256 maxCount
+    ) external nonReentrant {
+        // This allows the caller to add in frontrunning protection for quote validity.
+        require(fillCounter[destinationToken] <= maxCount, "Above max count");
+
+        SpokePoolInterface.RelayData memory relay = SpokePoolInterface.RelayData({
+            depositor: depositor,
+            recipient: recipient,
+            destinationToken: destinationToken,
+            amount: amount,
+            realizedLpFeePct: realizedLpFeePct,
+            relayerFeePct: relayerFeePct,
+            depositId: depositId,
+            originChainId: originChainId,
+            destinationChainId: destinationChainId,
+            message: message
+        });
+        bytes32 relayHash = _getRelayHash(relay);
+
+        // Refund will take tokens out of this pool, increment the fill counter.
+        _updateCountFromFill(
+            relayFills[relayHash],
+            relayFills[relayHash] + fillAmount,
+            amount,
+            realizedLpFeePct,
+            destinationToken,
+            false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
+        );
+
+        // TODO: Add in some limit to `fillAmount` to mitigate censor attacks on the fill counter.
+        emit Refund(
+            fillAmount,
+            totalFilledAmount, // This uniquely identifies partial fill for deposit hash
+            relayer,
+            amount,
+            originChainId,
+            destinationChainId,
+            relayerFeePct,
+            realizedLpFeePct,
+            depositId,
+            destinationToken,
+            depositor,
+            recipient,
+            message
+        );
+    }
+
     /**************************************
      *         DATA WORKER FUNCTIONS      *
      **************************************/
@@ -1062,6 +1165,7 @@ abstract contract SpokePool is
             }
         }
 
+        // TODO: Add in some limit to `fillAmount` to mitigate censor attacks on the fill counter.
         // Update fill counter.
         _updateCountFromFill(
             relayFills[relayExecution.relayHash],
