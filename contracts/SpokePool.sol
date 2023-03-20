@@ -139,7 +139,7 @@ abstract contract SpokePool is
         bytes message,
         RelayExecutionInfo updatableRelayData
     );
-    event Refund(
+    event RequestRefund(
         uint256 fillAmount,
         uint256 totalFilledAmount,
         address relayer,
@@ -726,6 +726,9 @@ abstract contract SpokePool is
         bytes memory message,
         uint256 maxCount
     ) external nonReentrant {
+        // Prevent unrealistic amounts from increasing fill counter too high.
+        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
+
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[destinationToken] <= maxCount, "Above max count");
 
@@ -753,8 +756,7 @@ abstract contract SpokePool is
             false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
         );
 
-        // TODO: Add in some limit to `fillAmount` to mitigate censor attacks on the fill counter.
-        emit Refund(
+        emit RequestRefund(
             fillAmount,
             totalFilledAmount, // This uniquely identifies partial fill for deposit hash
             relayer,
@@ -1160,12 +1162,11 @@ abstract contract SpokePool is
                 // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
                 require(relayExecution.payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
 
-                // Note: since _computeAmountPostFees is typicaly intended for fees, the signage must be reversed.
+                // Note: since _computeAmountPostFees is typically intended for fees, the signage must be reversed.
                 amountToSend = _computeAmountPostFees(amountToSend, -relayExecution.payoutAdjustmentPct);
             }
         }
 
-        // TODO: Add in some limit to `fillAmount` to mitigate censor attacks on the fill counter.
         // Update fill counter.
         _updateCountFromFill(
             relayFills[relayExecution.relayHash],
