@@ -42,9 +42,17 @@ describe("MintableERC1155", () => {
       );
     });
 
-    it("set token uri", async () => {
+    it("revert if uri already set", async () => {
       await mintableErc1155.connect(contractCreator).setTokenURI(0, "test");
-      expect(await mintableErc1155.uri(0)).to.equal("test");
+
+      await expect(mintableErc1155.connect(contractCreator).setTokenURI(0, "new uri")).to.be.revertedWith(
+        "uri already set"
+      );
+    });
+
+    it("set token uri", async () => {
+      await mintableErc1155.connect(contractCreator).setTokenURI(1, "test");
+      expect(await mintableErc1155.uri(1)).to.equal("test");
     });
   });
 });
