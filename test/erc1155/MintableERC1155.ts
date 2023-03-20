@@ -18,34 +18,27 @@ describe("MintableERC1155", () => {
 
   describe("#airdrop()", () => {
     const tokenId = 0;
-    const amounts = [1, 2];
 
-    it("revert if not called by minter role", async () => {
-      await expect(mintableErc1155.connect(otherAccount1).airdrop(tokenId, recipients, amounts)).to.be.revertedWith(
-        "ERC1155PresetMinterPauser: must have minter role to mint"
-      );
-    });
-
-    it("revert if recipients length mismatch amounts", async () => {
-      await expect(mintableErc1155.connect(contractCreator).airdrop(tokenId, recipients, [1])).to.be.revertedWith(
-        "MintableERC1155: recipients and amounts length mismatch"
+    it("revert if not called by owner", async () => {
+      await expect(mintableErc1155.connect(otherAccount1).airdrop(tokenId, recipients, 1)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
       );
     });
 
     it("mint token to recipients", async () => {
-      expect(await mintableErc1155.connect(contractCreator).airdrop(tokenId, recipients, amounts))
+      expect(await mintableErc1155.connect(contractCreator).airdrop(tokenId, recipients, 1))
         .to.emit(mintableErc1155, "Airdrop")
-        .withArgs(contractCreator.address, tokenId, recipients, amounts);
+        .withArgs(contractCreator.address, tokenId, recipients, 1);
 
-      expect(await mintableErc1155.balanceOf(otherAccount1.address, tokenId)).to.equal(amounts[0]);
-      expect(await mintableErc1155.balanceOf(otherAccount2.address, tokenId)).to.equal(amounts[1]);
+      expect(await mintableErc1155.balanceOf(otherAccount1.address, tokenId)).to.equal(1);
+      expect(await mintableErc1155.balanceOf(otherAccount2.address, tokenId)).to.equal(1);
     });
   });
 
   describe("#setTokenURI() + #uri()", () => {
-    it("revert if not called by minter role", async () => {
+    it("revert if not called by owner", async () => {
       await expect(mintableErc1155.connect(otherAccount1).setTokenURI(0, "uri")).to.be.revertedWith(
-        "ERC1155PresetMinterPauser: must have minter role to set uri"
+        "Ownable: caller is not the owner"
       );
     });
 

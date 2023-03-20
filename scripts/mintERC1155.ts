@@ -22,7 +22,7 @@ async function main() {
 
   for (let i = 0; i < validRecipients.length; i = i + RECIPIENTS_CHUNK_SIZE) {
     const recipientsChunk = validRecipients.slice(i, i + RECIPIENTS_CHUNK_SIZE);
-    const airdropTx = await erc1155.airdrop(TOKEN_ID, recipientsChunk, Array(recipientsChunk.length).fill(1));
+    const airdropTx = await erc1155.airdrop(TOKEN_ID, recipientsChunk, 1);
     console.log(
       `Minting token with id ${TOKEN_ID} to ${recipientsChunk.length} recipients in index range ${i} - ${
         i + RECIPIENTS_CHUNK_SIZE - 1
