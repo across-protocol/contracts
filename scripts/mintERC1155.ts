@@ -36,9 +36,7 @@ async function main() {
 
 function parseAndValidateRecipients() {
   if (!process.env.RECIPIENTS) {
-    throw new Error(
-      "Missing path to a JSON file with the list of recipients needs to be provided. Pass it via env var RECIPIENTS=<PATH>"
-    );
+    throw new Error("Missing path to a JSON file with the list of recipients. Pass it via env var RECIPIENTS=<PATH>");
   }
   const recipientsFilePath = path.join(__dirname, "..", process.env.RECIPIENTS);
   const recipientsFromFile: string[] = JSON.parse(readFileSync(recipientsFilePath, "utf8"));

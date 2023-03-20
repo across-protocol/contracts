@@ -4,11 +4,18 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
+/**
+ * @title MintableERC1155
+ * @notice Ownable contract enabling owner to airdrop many recipients the same token ID at once
+ */
 contract MintableERC1155 is ERC1155, Ownable {
+    // Maps `tokenId` to metadata URI `tokenURI`
     mapping(uint256 => string) public _tokenURIs;
 
     event Airdrop(address caller, uint256 tokenId, address[] recipients, uint256 amount);
 
+    // We are passing an empty string as the `baseURI` because we use `_tokenURIs` instead
+    // to allow for IPFS URIs.
     // solhint-disable-next-line
     constructor() ERC1155("") {}
 
