@@ -51,7 +51,9 @@ describe("MintableERC1155", () => {
     });
 
     it("set token uri", async () => {
-      await mintableErc1155.connect(contractCreator).setTokenURI(1, "test");
+      expect(await mintableErc1155.connect(contractCreator).setTokenURI(1, "test"))
+        .to.emit(mintableErc1155, "URI")
+        .withArgs(1, "test");
       expect(await mintableErc1155.uri(1)).to.equal("test");
     });
   });
