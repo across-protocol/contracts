@@ -10,11 +10,13 @@ const RECIPIENTS_CHUNK_SIZE = 100; // TODO: Still need to figure out which size 
  * ```
  * TOKEN_ID=<TOKEN_ID> \
  * RECIPIENTS=<PATH> \
+ * SKIP=<NUMBER> \
  * yarn hardhat run ./scripts/mintERC1155.ts --network polygon-mumbai
  * ```
  */
 async function main() {
   const tokenId = parseInt(process.env.TOKEN_ID || "0");
+  const skip = parseInt(process.env.SKIP || "0");
   const validRecipients = await parseAndValidateRecipients();
 
   const [signer] = await ethers.getSigners();
@@ -22,7 +24,7 @@ async function main() {
   const erc1155Deployment = await hre.deployments.get("MintableERC1155");
   const erc1155 = (await getContractFactory("MintableERC1155", { signer })).attach(erc1155Deployment.address);
 
-  for (let i = 0; i < validRecipients.length; i = i + RECIPIENTS_CHUNK_SIZE) {
+  for (let i = skip; i < validRecipients.length; i = i + RECIPIENTS_CHUNK_SIZE) {
     const recipientsChunk = validRecipients.slice(i, i + RECIPIENTS_CHUNK_SIZE);
     const airdropTx = await erc1155.airdrop(tokenId, recipientsChunk, 1);
     console.log(
