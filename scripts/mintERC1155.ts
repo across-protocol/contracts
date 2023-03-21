@@ -1,18 +1,19 @@
-/**
- * Script to airdrop ERC1155 tokens to a list of recipients. The list of recipients need to be passed via a JSON file.
- * ```
- * RECIPIENTS=<PATH> yarn hardhat run ./scripts/mintERC1155.ts --network polygon-mumbai
- * ```
- */
-
 import { getContractFactory, ethers, hre } from "../test/utils";
 import { readFileSync } from "fs";
 import path from "path";
 
-const TOKEN_ID = 0;
 const RECIPIENTS_CHUNK_SIZE = 100; // TODO: Still need to figure out which size is optimal
 
+/**
+ * Script to airdrop ERC1155 tokens to a list of recipients. The list of recipients need to be passed via a JSON file.
+ * ```
+ * TOKEN_ID=<TOKEN_ID> \
+ * RECIPIENTS=<PATH> \
+ * yarn hardhat run ./scripts/mintERC1155.ts --network polygon-mumbai
+ * ```
+ */
 async function main() {
+  const tokenId = parseInt(process.env.TOKEN_ID || "0");
   const validRecipients = parseAndValidateRecipients();
 
   const [signer] = await ethers.getSigners();
@@ -22,13 +23,13 @@ async function main() {
 
   for (let i = 0; i < validRecipients.length; i = i + RECIPIENTS_CHUNK_SIZE) {
     const recipientsChunk = validRecipients.slice(i, i + RECIPIENTS_CHUNK_SIZE);
-    const airdropTx = await erc1155.airdrop(TOKEN_ID, recipientsChunk, 1);
+    const airdropTx = await erc1155.airdrop(tokenId, recipientsChunk, 1);
     console.log(
-      `Minting token with id ${TOKEN_ID} to ${recipientsChunk.length} recipients in index range ${i} - ${
+      `Minting token with id ${tokenId} to ${recipientsChunk.length} recipients in index range ${i} - ${
         i + RECIPIENTS_CHUNK_SIZE - 1
-      }: `,
-      airdropTx.hash
+      }...`
     );
+    console.log("Tx hash:", airdropTx.hash);
     await airdropTx.wait();
     console.log(`Successfully minted token to:`, recipientsChunk);
   }
