@@ -7,6 +7,7 @@ import {
   getFillRelayUpdatedFeeParams,
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
+import { MAX_UINT_VAL } from "@uma/common";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract, erc1271: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -108,6 +109,137 @@ describe("SpokePool Relayer Logic", async function () {
       .mul(consts.oneHundredPct.sub(relayData.realizedLpFeePct))
       .div(consts.oneHundredPct);
     expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
+  });
+  it("Requested refund increments fill count", async function () {
+    const { relayData } = getRelayHash(
+      depositor.address,
+      recipient.address,
+      consts.firstDepositId,
+      consts.originChainId,
+      consts.destinationChainId,
+      destErc20.address
+    );
+
+    const fillAmount = relayData.amount.div(4);
+    const totalFilledAmount = fillAmount;
+    const maxFillCount = relayData.amount;
+
+    await expect(
+      spokePool
+        .connect(relayer)
+        .requestRefund(
+          depositor.address,
+          recipient.address,
+          relayer.address,
+          destErc20.address,
+          relayData.amount,
+          fillAmount,
+          totalFilledAmount,
+          consts.originChainId,
+          consts.destinationChainId,
+          relayData.realizedLpFeePct,
+          relayData.relayerFeePct,
+          relayData.depositId,
+          relayData.message,
+          maxFillCount
+        )
+    )
+      .to.emit(spokePool, "RequestRefund")
+      .withArgs(
+        fillAmount,
+        totalFilledAmount,
+        relayer.address,
+        relayData.amount,
+        consts.originChainId,
+        consts.destinationChainId,
+        relayData.relayerFeePct,
+        relayData.realizedLpFeePct,
+        toBN(relayData.depositId),
+        destErc20.address,
+        depositor.address,
+        recipient.address,
+        relayData.message
+      );
+
+    // Fill count should be set because this was the first fill for a deposit.
+    const fillCountIncrement = relayData.amount
+      .mul(consts.oneHundredPct.sub(relayData.realizedLpFeePct))
+      .div(consts.oneHundredPct);
+    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
+
+    // Fill counter doesn't increase if this was not first fill for a deposit or if it was an initial 0 fill.
+    await spokePool.connect(relayer).requestRefund(
+      depositor.address,
+      recipient.address,
+      relayer.address,
+      destErc20.address,
+      relayData.amount,
+      fillAmount,
+      totalFilledAmount.mul(2), // By making totalFilledAmount > fillAmount, we are simulating a second fill
+      consts.originChainId,
+      consts.destinationChainId,
+      relayData.realizedLpFeePct,
+      relayData.relayerFeePct,
+      relayData.depositId,
+      relayData.message,
+      maxFillCount
+    );
+    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
+    await spokePool.connect(relayer).requestRefund(
+      depositor.address,
+      recipient.address,
+      relayer.address,
+      destErc20.address,
+      relayData.amount,
+      0, // 0 wei fill
+      0, // Simulate initial 0 fill
+      consts.originChainId,
+      consts.destinationChainId,
+      relayData.realizedLpFeePct,
+      relayData.relayerFeePct,
+      relayData.depositId,
+      relayData.message,
+      maxFillCount
+    );
+    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
+
+    // Reverts if max fill count or max fill amount is exceeded
+    await expect(
+      spokePool.connect(relayer).requestRefund(
+        depositor.address,
+        recipient.address,
+        relayer.address,
+        destErc20.address,
+        MAX_UINT_VAL, // Too large
+        fillAmount,
+        totalFilledAmount,
+        consts.originChainId,
+        consts.destinationChainId,
+        relayData.realizedLpFeePct,
+        relayData.relayerFeePct,
+        relayData.depositId,
+        relayData.message,
+        maxFillCount
+      )
+    ).to.be.revertedWith("Amount too large");
+    await expect(
+      spokePool.connect(relayer).requestRefund(
+        depositor.address,
+        recipient.address,
+        relayer.address,
+        destErc20.address,
+        relayData.amount,
+        fillAmount,
+        totalFilledAmount,
+        consts.originChainId,
+        consts.destinationChainId,
+        relayData.realizedLpFeePct,
+        relayData.relayerFeePct,
+        relayData.depositId,
+        relayData.message,
+        fillCountIncrement.sub(1) // Can't be less than existing fill counter
+      )
+    ).to.be.revertedWith("Above max count");
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
     const { relayHash, relayData } = getRelayHash(

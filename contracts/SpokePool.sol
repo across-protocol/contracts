@@ -699,7 +699,7 @@ abstract contract SpokePool is
      * @param recipient Original recipient.
      * @param relayer Relayer on FilledRelay event on destinationChain we want to match with this Refund.
      * This should be account receiving any refund stemming from this event.
-     * @param destinationToken Original destination token.
+     * @param destinationToken This chain's destination token equivalent for original deposit destination token.
      * @param amount Original deposit amount.
      * @param fillAmount Amount that deposit was filled in destination SpokePool.
      * @param totalFilledAmount Amount of deposit that was filled after the fill was sent on destination SpokePool.
@@ -732,24 +732,10 @@ abstract contract SpokePool is
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[destinationToken] <= maxCount, "Above max count");
 
-        SpokePoolInterface.RelayData memory relay = SpokePoolInterface.RelayData({
-            depositor: depositor,
-            recipient: recipient,
-            destinationToken: destinationToken,
-            amount: amount,
-            realizedLpFeePct: realizedLpFeePct,
-            relayerFeePct: relayerFeePct,
-            depositId: depositId,
-            originChainId: originChainId,
-            destinationChainId: destinationChainId,
-            message: message
-        });
-        bytes32 relayHash = _getRelayHash(relay);
-
         // Refund will take tokens out of this pool, increment the fill counter.
         _updateCountFromFill(
-            relayFills[relayHash],
-            relayFills[relayHash] + fillAmount,
+            totalFilledAmount - fillAmount, // Starting fill amount for fill on destination chain
+            totalFilledAmount, // Ending fill amount
             amount,
             realizedLpFeePct,
             destinationToken,
