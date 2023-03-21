@@ -19,7 +19,7 @@ async function main() {
   console.log(`Setting ERC1155 metadata for:`, { tokenId, metadata });
 
   const pinata = new PinataSDK({ pinataJWTKey: process.env.PINATA_JWT });
-  const pinResult = await pinata.pinJSONToIPFS(metadata);
+  const pinResult = await pinata.pinJSONToIPFS(metadata, { pinataMetadata: { name: `${tokenId}-metadata.json` } });
   const metadataIpfsLink = `ipfs://${pinResult.IpfsHash}`;
   console.log(`Successfully uploaded metadata to IPFS:`, metadataIpfsLink);
 
@@ -39,21 +39,26 @@ function parseAndValidateMetadata() {
   }
   const metadataFilePath = path.join(__dirname, "..", process.env.METADATA);
   const metadataFromFile: Record<string, string> = JSON.parse(readFileSync(metadataFilePath, "utf8"));
-  const requiredKeys = ["name", "description", "image"];
+  const requiredKeys = ["name", "description", "image", "animation_url"];
 
   if (!requiredKeys.every((k) => k in metadataFromFile)) {
     throw new Error(`Invalid metadata: required keys ${requiredKeys}`);
   }
 
-  // Make sure the image is an IPFS link
-  if (!metadataFromFile.image.startsWith("ipfs://")) {
-    throw new Error(`Invalid metadata: 'image' must be an IPFS link ipfs://<CID>`);
-  }
-  const cid = metadataFromFile.image.split("ipfs://")[1];
-
-  CID.parse(cid); // throws if invalid
+  requireIpfsLink(metadataFromFile.image, "image");
+  requireIpfsLink(metadataFromFile.animation_url, "animation_url");
 
   return metadataFromFile;
+}
+
+function requireIpfsLink(ipfsLink: string, key: string) {
+  // Make sure the image is an IPFS link
+  if (!ipfsLink.startsWith("ipfs://")) {
+    throw new Error(`Invalid metadata: '${key}' must be an IPFS link ipfs://<CID>`);
+  }
+  const cid = ipfsLink.split("ipfs://")[1];
+
+  CID.parse(cid); // throws if invalid
 }
 
 main().then(
