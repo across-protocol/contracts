@@ -69,11 +69,17 @@ async function parseAndValidateRecipients() {
     throw new Error(`Invalid recipients: ${invalidRecipients}`);
   }
 
-  if (new Set(resolvedRecipients).size !== resolvedRecipients.length) {
-    throw new Error("Recipients list contains duplicates");
+  const duplicateAddresses = getDuplicateAddresses(resolvedRecipients);
+  if (duplicateAddresses.length > 0) {
+    throw new Error(`Recipients list contains duplicates ${Array.from(duplicateAddresses)}`);
   }
 
   return resolvedRecipients.map((r) => ethers.utils.getAddress(r));
+}
+
+function getDuplicateAddresses(addresses: string[]) {
+  const checksummedAddresses = addresses.map((address) => ethers.utils.getAddress(address));
+  return checksummedAddresses.filter((item, index) => checksummedAddresses.indexOf(item) !== index);
 }
 
 main().then(
