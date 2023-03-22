@@ -45,6 +45,7 @@
   },
   "69": { "SpokePool": { "address": "0x1954D4A36ac4fD8BEde42E59368565A92290E705", "blockNumber": 2537971 } },
   "137": {
+    "MintableERC1155": { "address": "0xA15a90E7936A2F8B70E181E955760860D133e56B", "blockNumber": 40600414 },
     "PolygonTokenBridger": { "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57", "blockNumber": 28604258 },
     "SpokePool": { "address": "0x69B5c72837769eF1e7C164Abc6515DcFf217F920", "blockNumber": 28604263 }
   },
