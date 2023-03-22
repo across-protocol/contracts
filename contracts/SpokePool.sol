@@ -10,7 +10,6 @@ import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -105,11 +104,11 @@ abstract contract SpokePool is
     event FundsDeposited(
         uint256 amount,
         uint256 originChainId,
-        uint256 destinationChainId,
+        uint256 indexed destinationChainId,
         int64 relayerFeePct,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
-        address indexed originToken,
+        address originToken,
         address recipient,
         address indexed depositor,
         bytes message
@@ -127,13 +126,13 @@ abstract contract SpokePool is
         uint256 totalFilledAmount,
         uint256 fillAmount,
         uint256 repaymentChainId,
-        uint256 originChainId,
+        uint256 indexed originChainId,
         uint256 destinationChainId,
         int64 relayerFeePct,
         int64 realizedLpFeePct,
         uint32 indexed depositId,
         address destinationToken,
-        address indexed relayer,
+        address relayer,
         address indexed depositor,
         address recipient,
         bytes message,
@@ -449,7 +448,7 @@ abstract contract SpokePool is
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        _emitDeposit(
+        emit FundsDeposited(
             amount,
             chainId(),
             destinationChainId,
@@ -1201,7 +1200,6 @@ abstract contract SpokePool is
         fillCounter[token] += _computeAmountPostFees(totalFillAmount, realizedLPFeePct);
     }
 
-    // The following internal methods emit events with many params to overcome solidity stack too deep issues.
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
         RelayExecutionInfo memory relayExecutionInfo = RelayExecutionInfo({
             relayerFeePct: relayExecution.updatedRelayerFeePct,
@@ -1227,32 +1225,6 @@ abstract contract SpokePool is
             relayExecution.relay.recipient,
             relayExecution.relay.message,
             relayExecutionInfo
-        );
-    }
-
-    function _emitDeposit(
-        uint256 amount,
-        uint256 originChainId,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 quoteTimestamp,
-        address originToken,
-        address recipient,
-        address depositor,
-        bytes memory message
-    ) internal {
-        emit FundsDeposited(
-            amount,
-            originChainId,
-            destinationChainId,
-            relayerFeePct,
-            depositId,
-            quoteTimestamp,
-            originToken,
-            recipient,
-            depositor,
-            message
         );
     }
 
