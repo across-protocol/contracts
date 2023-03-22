@@ -37,19 +37,32 @@ describe("SpokePool Relayer Logic", async function () {
       destErc20.address
     );
 
+    // Partial relay:
+
     // Can't fill when paused:
     await spokePool.connect(depositor).pauseFills(true);
     await expect(spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay))).to.be
       .reverted;
     await spokePool.connect(depositor).pauseFills(false);
 
-    await expect(spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay)))
+    // Must set repayment chain == destination chain for partial fills:
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(...getFillRelayParams(relayData, consts.amountToRelay, consts.repaymentChainId))
+    ).to.be.revertedWith("invalid repayment chain");
+
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(...getFillRelayParams(relayData, consts.amountToRelay, consts.destinationChainId))
+    )
       .to.emit(spokePool, "FilledRelay")
       .withArgs(
         relayData.amount,
         consts.amountToRelayPreFees,
         consts.amountToRelayPreFees,
-        consts.repaymentChainId,
+        consts.destinationChainId,
         toBN(relayData.originChainId),
         toBN(relayData.destinationChainId),
         relayData.relayerFeePct,
@@ -81,7 +94,9 @@ describe("SpokePool Relayer Logic", async function () {
     // pulls exactly enough tokens to complete the relay.
     const fullRelayAmount = consts.amountToDeposit;
     const fullRelayAmountPostFees = fullRelayAmount.mul(consts.totalPostFeesPct).div(toBN(consts.oneHundredPct));
-    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, fullRelayAmount));
+    await spokePool
+      .connect(relayer)
+      .fillRelay(...getFillRelayParams(relayData, fullRelayAmount, consts.destinationChainId));
     expect(await destErc20.balanceOf(relayer.address)).to.equal(
       consts.amountToSeedWallets.sub(fullRelayAmountPostFees)
     );
@@ -89,6 +104,40 @@ describe("SpokePool Relayer Logic", async function () {
 
     // Fill amount should be equal to full relay amount.
     expect(await spokePool.relayFills(relayHash)).to.equal(fullRelayAmount);
+  });
+  it("Repayment chain is set correctly", async function () {
+    // Can set repayment chain if full fill.
+    const { relayData } = getRelayHash(
+      depositor.address,
+      recipient.address,
+      consts.firstDepositId,
+      consts.originChainId,
+      consts.destinationChainId,
+      destErc20.address
+    );
+
+    // Changed consts.amountToRelay to relayData.amount to make it a full fill
+    await expect(
+      spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, relayData.amount, consts.repaymentChainId))
+    )
+      .to.emit(spokePool, "FilledRelay")
+      .withArgs(
+        relayData.amount,
+        relayData.amount,
+        relayData.amount,
+        consts.repaymentChainId,
+        toBN(relayData.originChainId),
+        toBN(relayData.destinationChainId),
+        relayData.relayerFeePct,
+        relayData.realizedLpFeePct,
+        toBN(relayData.depositId),
+        relayData.destinationToken,
+        relayer.address,
+        relayData.depositor,
+        relayData.recipient,
+        relayData.message,
+        [relayData.recipient, relayData.message, relayData.relayerFeePct, false]
+      );
   });
   it("Fill count increment local repayment", async function () {
     const { relayData } = getRelayHash(
@@ -128,115 +177,51 @@ describe("SpokePool Relayer Logic", async function () {
       spokePool
         .connect(relayer)
         .requestRefund(
-          depositor.address,
-          recipient.address,
           relayer.address,
           destErc20.address,
           relayData.amount,
-          fillAmount,
-          totalFilledAmount,
           consts.originChainId,
-          consts.destinationChainId,
           relayData.realizedLpFeePct,
-          relayData.relayerFeePct,
           relayData.depositId,
-          relayData.message,
           maxFillCount
         )
     )
       .to.emit(spokePool, "RequestRefund")
       .withArgs(
-        fillAmount,
-        totalFilledAmount,
         relayer.address,
+        destErc20.address,
         relayData.amount,
         consts.originChainId,
-        consts.destinationChainId,
-        relayData.relayerFeePct,
         relayData.realizedLpFeePct,
-        toBN(relayData.depositId),
-        destErc20.address,
-        depositor.address,
-        recipient.address,
-        relayData.message
+        toBN(relayData.depositId)
       );
 
-    // Fill count should be set because this was the first fill for a deposit.
+    // Fill count should be set.
     const fillCountIncrement = relayData.amount
       .mul(consts.oneHundredPct.sub(relayData.realizedLpFeePct))
       .div(consts.oneHundredPct);
     expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
 
-    // Fill counter doesn't increase if this was not first fill for a deposit or if it was an initial 0 fill.
-    await spokePool.connect(relayer).requestRefund(
-      depositor.address,
-      recipient.address,
-      relayer.address,
-      destErc20.address,
-      relayData.amount,
-      fillAmount,
-      totalFilledAmount.mul(2), // By making totalFilledAmount > fillAmount, we are simulating a second fill
-      consts.originChainId,
-      consts.destinationChainId,
-      relayData.realizedLpFeePct,
-      relayData.relayerFeePct,
-      relayData.depositId,
-      relayData.message,
-      maxFillCount
-    );
-    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
-    await spokePool.connect(relayer).requestRefund(
-      depositor.address,
-      recipient.address,
-      relayer.address,
-      destErc20.address,
-      relayData.amount,
-      0, // 0 wei fill
-      0, // Simulate initial 0 fill
-      consts.originChainId,
-      consts.destinationChainId,
-      relayData.realizedLpFeePct,
-      relayData.relayerFeePct,
-      relayData.depositId,
-      relayData.message,
-      maxFillCount
-    );
-    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
-
     // Reverts if max fill count or max fill amount is exceeded
     await expect(
       spokePool.connect(relayer).requestRefund(
-        depositor.address,
-        recipient.address,
         relayer.address,
         destErc20.address,
         MAX_UINT_VAL, // Too large
-        fillAmount,
-        totalFilledAmount,
         consts.originChainId,
-        consts.destinationChainId,
         relayData.realizedLpFeePct,
-        relayData.relayerFeePct,
         relayData.depositId,
-        relayData.message,
         maxFillCount
       )
     ).to.be.revertedWith("Amount too large");
     await expect(
       spokePool.connect(relayer).requestRefund(
-        depositor.address,
-        recipient.address,
         relayer.address,
         destErc20.address,
         relayData.amount,
-        fillAmount,
-        totalFilledAmount,
         consts.originChainId,
-        consts.destinationChainId,
         relayData.realizedLpFeePct,
-        relayData.relayerFeePct,
         relayData.depositId,
-        relayData.message,
         fillCountIncrement.sub(1) // Can't be less than existing fill counter
       )
     ).to.be.revertedWith("Above max count");
@@ -252,7 +237,9 @@ describe("SpokePool Relayer Logic", async function () {
     );
 
     const startingRecipientBalance = await recipient.getBalance();
-    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay));
+    await spokePool
+      .connect(relayer)
+      .fillRelay(...getFillRelayParams(relayData, consts.amountToRelay, consts.destinationChainId));
 
     // The collateral should have unwrapped to ETH and then transferred to recipient.
     expect(await weth.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets.sub(consts.amountToRelay));
@@ -276,7 +263,9 @@ describe("SpokePool Relayer Logic", async function () {
       "0x1234"
     );
 
-    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, consts.amountToRelay));
+    await spokePool
+      .connect(relayer)
+      .fillRelay(...getFillRelayParams(relayData, consts.amountToRelay, consts.destinationChainId));
 
     expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
       weth.address,
@@ -300,7 +289,9 @@ describe("SpokePool Relayer Logic", async function () {
     );
 
     // This should work, despite the amount being quite large.
-    await spokePool.connect(relayer).fillRelay(...getFillRelayParams(relayData, largeRelayAmount));
+    await spokePool
+      .connect(relayer)
+      .fillRelay(...getFillRelayParams(relayData, largeRelayAmount, consts.destinationChainId));
 
     // Balance should be the same as before.
     expect(await weth.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets);
@@ -327,7 +318,7 @@ describe("SpokePool Relayer Logic", async function () {
               consts.depositRelayerFeePct
             ).relayData,
             consts.amountToRelay,
-            consts.repaymentChainId
+            consts.destinationChainId
           )
         )
     ).to.be.revertedWith("invalid fees");
@@ -348,7 +339,7 @@ describe("SpokePool Relayer Logic", async function () {
               toWei("0.5")
             ).relayData,
             consts.amountToRelay,
-            consts.repaymentChainId
+            consts.destinationChainId
           )
         )
     ).to.be.revertedWith("invalid fees");
@@ -380,7 +371,7 @@ describe("SpokePool Relayer Logic", async function () {
             destErc20.address
           ).relayData,
           toBN("1"), // relay any amount
-          consts.repaymentChainId
+          consts.destinationChainId
         )
       )
     ).to.be.revertedWith("relay filled");
@@ -396,7 +387,7 @@ describe("SpokePool Relayer Logic", async function () {
             destErc20.address
           ).relayData,
           toBN("1"), // relay any amount
-          consts.repaymentChainId,
+          consts.destinationChainId,
           BigNumber.from(0)
         )
       )
@@ -583,7 +574,7 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
           signature,
-          undefined,
+          consts.destinationChainId,
           updatedRecipient,
           updatedMessage
         )
@@ -594,7 +585,7 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
       relayData.amount,
       consts.amountToRelayPreModifiedFees,
       consts.amountToRelayPreModifiedFees,
-      consts.repaymentChainId,
+      consts.destinationChainId,
       toBN(relayData.originChainId),
       toBN(relayData.destinationChainId),
       relayData.relayerFeePct,
@@ -612,22 +603,6 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
         false,
       ]
     );
-
-  // relayExecution.relay.amount,
-  // relayFills[relayExecution.relayHash],
-  // fillAmountPreFees,
-  // relayExecution.repaymentChainId,
-  // relayExecution.relay.originChainId,
-  // relayExecution.relay.destinationChainId,
-  // relayExecution.relay.relayerFeePct,
-  // relayExecution.relay.realizedLpFeePct,
-  // relayExecution.relay.depositId,
-  // relayExecution.relay.destinationToken,
-  // msg.sender,
-  // relayExecution.relay.depositor,
-  // relayExecution.relay.recipient,
-  // relayExecution.relay.message,
-  // relayExecutionInfo
 
   // The collateral should have transferred from relayer to recipient.
   expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets.sub(consts.amountToRelay));
@@ -668,7 +643,7 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
           incorrectFeeSignature,
-          undefined,
+          consts.destinationChainId,
           updatedRecipient,
           updatedMessage
         )
@@ -693,7 +668,7 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
           incorrectDepositIdSignature,
-          undefined,
+          consts.destinationChainId,
           updatedRecipient,
           updatedMessage
         )
@@ -716,7 +691,7 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
           incorrectChainIdSignature,
-          undefined,
+          consts.destinationChainId,
           updatedRecipient,
           updatedMessage
         )
@@ -741,7 +716,7 @@ async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {
           consts.amountToRelay,
           consts.modifiedRelayerFeePct,
           incorrectSignerSignature,
-          undefined,
+          consts.destinationChainId,
           updatedRecipient,
           updatedMessage
         )
