@@ -144,7 +144,8 @@ abstract contract SpokePool is
         uint256 amount,
         uint256 indexed originChainId,
         int64 realizedLpFeePct,
-        uint32 indexed depositId
+        uint32 indexed depositId,
+        uint256 fillBlock
     );
     event RelayedRootBundle(
         uint32 indexed rootBundleId,
@@ -679,10 +680,12 @@ abstract contract SpokePool is
      * `repaymentChainId` on the original fillRelay() call on the `destinationChainId`. An observer should be
      * be able to 1-to-1 match the emitted RequestRefund event with the FilledRelay event on the `destinationChainId`.
      * @dev This function could be used to artificially inflate the `fillCounter`, allowing the caller to "frontrun"
-     * and cancel pending fills in the mempool. This would worst case censor fills at the cost of the caller's
+     * and cancel pending fills in the mempool. This would in the worst case censor fills at the cost of the caller's
      * gas costs. We don't view this as a major issue as the fill can be resubmitted and obtain the same incentive,
      * since incentives are based on validated refunds and would ignore these censoring attempts. This is no
      * different from calling `fillRelay` and setting msg.sender = recipient.
+     * @dev Caller needs to pass in `fillBlock` that the FilledRelay event was emitted on the `destinationChainId`.
+     * This is to prevent someone from requesting a refund before a corresponding fill has been mined.
      * @param relayer Relayer on FilledRelay event on destinationChain we want to match with this Refund.
      * This should be account receiving any refund stemming from this event.
      * @param destinationToken This chain's destination token equivalent for original deposit destination token.
@@ -691,6 +694,7 @@ abstract contract SpokePool is
      * @param realizedLpFeePct Original realized LP fee %.
      * @param depositId Original deposit ID.
      * @param maxCount Max count to protect the refund recipient from frontrunning.
+     * @param fillBlock Block number of FilledRelay event on destinationChain we want to match with this Refund.
      */
     function requestRefund(
         address relayer,
@@ -699,12 +703,9 @@ abstract contract SpokePool is
         uint256 originChainId,
         int64 realizedLpFeePct,
         uint32 depositId,
-        uint256 maxCount
+        uint256 maxCount,
+        uint256 fillBlock
     ) external nonReentrant {
-        // TODO: We don't check for `amount > 0` but maybe we should? `fillRelay` reverts
-        // if fillAmountPreFees rounds to 0, which would also effectively prevent filling any deposit
-        // with amount == 0. We also might just want to block deposits with amount == 0.
-
         // Prevent unrealistic amounts from increasing fill counter too high.
         require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
@@ -714,7 +715,9 @@ abstract contract SpokePool is
         // Refund will take tokens out of this pool, increment the fill counter. This function should only be
         // called if a relayer from destinationChainId wants to take a refund on this chain, a different chain.
         // This type of repayment should only be possible for full fills, so the starting fill amount should
-        // always be 0.
+        // always be 0. Also, just like in _fillRelay we should revert if the first fill pre fees rounds to 0,
+        // and in this case `amount` == `fillAmountPreFees`.
+        require(amount > 0, "Amount must be > 0");
         _updateCountFromFill(
             0,
             amount,
@@ -723,7 +726,7 @@ abstract contract SpokePool is
             false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
         );
 
-        emit RequestRefund(relayer, destinationToken, amount, originChainId, realizedLpFeePct, depositId);
+        emit RequestRefund(relayer, destinationToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock);
     }
 
     /**************************************
@@ -1082,8 +1085,6 @@ abstract contract SpokePool is
 
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[relayData.destinationToken] <= relayExecution.maxCount, "Above max count");
-
-        if (relayExecution.maxTokensToSend == 0) return 0;
 
         // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
         // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
