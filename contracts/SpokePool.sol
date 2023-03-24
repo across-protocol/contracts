@@ -87,6 +87,11 @@ abstract contract SpokePool is
     // frontrunning that might change their worst-case quote.
     mapping(address => uint256) public depositCounter;
 
+    // This tracks the number of identical refunds that have been requested.
+    // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
+    // requests are known and accounted for.
+    mapping(bytes32 => uint256) public refundsRequested;
+
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
@@ -145,7 +150,8 @@ abstract contract SpokePool is
         uint256 indexed originChainId,
         int64 realizedLpFeePct,
         uint32 indexed depositId,
-        uint256 fillBlock
+        uint256 fillBlock,
+        uint256 previousIdenticalRequests
     );
     event RelayedRootBundle(
         uint32 indexed rootBundleId,
@@ -685,7 +691,8 @@ abstract contract SpokePool is
      * since incentives are based on validated refunds and would ignore these censoring attempts. This is no
      * different from calling `fillRelay` and setting msg.sender = recipient.
      * @dev Caller needs to pass in `fillBlock` that the FilledRelay event was emitted on the `destinationChainId`.
-     * This is to prevent someone from requesting a refund before a corresponding fill has been mined.
+     * This is to make it hard to request a refund before a fill has been mined and to make lookups of the original
+     * fill as simple as possible.
      * @param relayer Relayer on FilledRelay event on destinationChain we want to match with this Refund.
      * This should be account receiving any refund stemming from this event.
      * @param destinationToken This chain's destination token equivalent for original deposit destination token.
@@ -694,7 +701,6 @@ abstract contract SpokePool is
      * @param realizedLpFeePct Original realized LP fee %.
      * @param depositId Original deposit ID.
      * @param maxCount Max count to protect the refund recipient from frontrunning.
-     * @param fillBlock Block number of FilledRelay event on destinationChain we want to match with this Refund.
      */
     function requestRefund(
         address relayer,
@@ -703,14 +709,25 @@ abstract contract SpokePool is
         uint256 originChainId,
         int64 realizedLpFeePct,
         uint32 depositId,
-        uint256 maxCount,
-        uint256 fillBlock
+        uint256 fillBlock,
+        uint256 maxCount
     ) external nonReentrant {
         // Prevent unrealistic amounts from increasing fill counter too high.
         require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[destinationToken] <= maxCount, "Above max count");
+
+        // Track duplicate refund requests.
+        bytes32 refundHash = keccak256(
+            abi.encode(relayer, destinationToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock)
+        );
+
+        // Track duplicate requests so that an offchain actor knows if an identical request has already been made.
+        // If so, it can check to ensure that that request was thrown out as invalid before honoring the duplicate.
+        // In particular, this is meant to handle odd cases where an initial request is invalidated based on
+        // timing, but can be validated by a later, identical request.
+        uint256 previousIdenticalRequests = refundsRequested[refundHash]++;
 
         // Refund will take tokens out of this pool, increment the fill counter. This function should only be
         // called if a relayer from destinationChainId wants to take a refund on this chain, a different chain.
@@ -720,13 +737,23 @@ abstract contract SpokePool is
         require(amount > 0, "Amount must be > 0");
         _updateCountFromFill(
             0,
+            true, // The refund is being requested here, so it is local.
             amount,
             realizedLpFeePct,
             destinationToken,
             false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
         );
 
-        emit RequestRefund(relayer, destinationToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock);
+        emit RequestRefund(
+            relayer,
+            destinationToken,
+            amount,
+            originChainId,
+            realizedLpFeePct,
+            depositId,
+            fillBlock,
+            previousIdenticalRequests
+        );
     }
 
     /**************************************
@@ -1127,19 +1154,20 @@ abstract contract SpokePool is
 
         // Since the first partial fill is used to update the fill counter for the entire refund amount, we don't have
         // a simple way to handle the case where follow-up partial fills take repayment on different chains. We'd
-        // need a way to decrement the fill counter in this case (or increase deposit counter). Instead of adding
-        // complexity, we require that all partial fills set repayment chain equal to destination chain.
+        // need a way to decrement the fill counter in this case (or increase deposit counter) to ensure that users
+        // have adequate frontrunning protections.
+        // Instead of adding complexity, we require that all partial fills set repayment chain equal to destination chain.
         // Note: .slowFill is checked because slow fills set repaymentChainId to 0.
+        bool localRepayment = relayExecution.repaymentChainId == relayExecution.relay.destinationChainId;
         require(
-            relayExecution.repaymentChainId == relayExecution.relay.destinationChainId ||
-                relayExecution.relay.amount == fillAmountPreFees ||
-                relayExecution.slowFill,
+            localRepayment || relayExecution.relay.amount == fillAmountPreFees || relayExecution.slowFill,
             "invalid repayment chain"
         );
 
         // Update fill counter.
         _updateCountFromFill(
             relayFills[relayExecution.relayHash],
+            localRepayment,
             relayData.amount,
             relayData.realizedLpFeePct,
             relayData.destinationToken,
@@ -1190,6 +1218,7 @@ abstract contract SpokePool is
 
     function _updateCountFromFill(
         uint256 startingFillAmount,
+        bool localRepayment,
         uint256 totalFillAmount,
         int64 realizedLPFeePct,
         address token,
@@ -1197,7 +1226,7 @@ abstract contract SpokePool is
     ) internal {
         // If this is a slow fill, or a partial fill has already happened, do nothing, as these
         // should not impact the count. Initial 0-fills will not reach this part of the code.
-        if (useContractFunds || startingFillAmount > 0) return;
+        if (useContractFunds || startingFillAmount > 0 || !localRepayment) return;
         fillCounter[token] += _computeAmountPostFees(totalFillAmount, realizedLPFeePct);
     }
 

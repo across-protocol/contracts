@@ -179,8 +179,8 @@ describe("SpokePool Relayer Logic", async function () {
         consts.originChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
-        maxFillCount,
-        11 // Use any block number for this test.
+        11, // Use any block number for this test.
+        maxFillCount
       )
     )
       .to.emit(spokePool, "RequestRefund")
@@ -191,7 +191,8 @@ describe("SpokePool Relayer Logic", async function () {
         consts.originChainId,
         relayData.realizedLpFeePct,
         toBN(relayData.depositId),
-        11
+        11,
+        0
       );
 
     // Fill count should be set.
@@ -209,8 +210,8 @@ describe("SpokePool Relayer Logic", async function () {
         consts.originChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
-        maxFillCount,
-        0
+        0,
+        maxFillCount
       )
     ).to.be.revertedWith("Amount too large");
     await expect(
@@ -221,8 +222,8 @@ describe("SpokePool Relayer Logic", async function () {
         consts.originChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
-        fillCountIncrement.sub(1), // Can't be less than existing fill counter
-        0
+        0,
+        fillCountIncrement.sub(1) // Can't be less than existing fill counter
       )
     ).to.be.revertedWith("Above max count");
     await expect(
@@ -233,10 +234,34 @@ describe("SpokePool Relayer Logic", async function () {
         consts.originChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
-        maxFillCount,
-        0
+        0,
+        maxFillCount
       )
     ).to.be.revertedWith("Amount must be > 0");
+
+    await expect(
+      spokePool.connect(relayer).requestRefund(
+        relayer.address,
+        destErc20.address,
+        relayData.amount,
+        consts.originChainId,
+        relayData.realizedLpFeePct,
+        relayData.depositId,
+        11, // Use any block number for this test.
+        maxFillCount
+      )
+    )
+      .to.emit(spokePool, "RequestRefund")
+      .withArgs(
+        relayer.address,
+        destErc20.address,
+        relayData.amount,
+        consts.originChainId,
+        relayData.realizedLpFeePct,
+        toBN(relayData.depositId),
+        11,
+        1 // Incremented refund count.
+      );
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
     const { relayHash, relayData } = getRelayHash(
