@@ -95,6 +95,8 @@ abstract contract SpokePool is
     // 1e40 * 2e18 = 2e58 << 2^255 ~= 5e76
     uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
 
+    // Set max payout adjustment to something
+
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
@@ -1057,16 +1059,24 @@ abstract contract SpokePool is
             );
         }
 
-        // This can only happen in a slow fill, where the contract is funding the relay, so the maxTokensToSend can be ignored.
-        // This is why we don't check that the amountToSend is less than or equal to maxTokensToSend.
+        // This can only happen in a slow fill, where the contract is funding the relay.
         if (relayExecution.payoutAdjustmentPct != 0) {
             // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
             // were originally expecting. If it is negative, then the recipient will receive less.
             // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
             require(relayExecution.payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
 
+            // Allow the payout adjustment to go up to 1000% (i.e. 11x).
+            // This is a sanity check to ensure the payouts do not grow too large via some sort of issue in bundle
+            // construction.
+            require(relayExecution.payoutAdjustmentPct <= 100e18, "payoutAdjustmentPct too large");
+
             // Note: since _computeAmountPostFees is typicaly intended for fees, the signage must be reversed.
             amountToSend = _computeAmountPostFees(amountToSend, -relayExecution.payoutAdjustmentPct);
+
+            // Note: this error should never happen, since the maxTokensToSend is expected to be set much higher than
+            // the amount, but it is here as a sanity check.
+            require(amountToSend <= relayExecution.maxTokensToSend, "payoutAdjustmentPct too large");
         }
 
         // Update fill counter.
