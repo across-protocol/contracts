@@ -1076,7 +1076,7 @@ abstract contract SpokePool is
 
             // Note: this error should never happen, since the maxTokensToSend is expected to be set much higher than
             // the amount, but it is here as a sanity check.
-            require(amountToSend <= relayExecution.maxTokensToSend, "payoutAdjustmentPct too large");
+            require(amountToSend <= relayExecution.maxTokensToSend, "Somehow hit maxTokensToSend!");
         }
 
         // Update fill counter.
