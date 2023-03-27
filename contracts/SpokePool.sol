@@ -1224,7 +1224,7 @@ abstract contract SpokePool is
         address token,
         bool useContractFunds
     ) internal {
-        // If this is a slow fill, or a partial fill has already happened, do nothing, as these
+        // If this is a slow fill, a first partial fill with repayment on another chain, or a partial fill has already happened, do nothing, as these
         // should not impact the count. Initial 0-fills will not reach this part of the code.
         if (useContractFunds || startingFillAmount > 0 || !localRepayment) return;
         fillCounter[token] += _computeAmountPostFees(totalFillAmount, realizedLPFeePct);
