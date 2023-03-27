@@ -251,6 +251,7 @@ describe("SpokePool Relayer Logic", async function () {
     )
       .to.emit(spokePool, "RefundRequest")
       .withArgs(
+        relayer.address,
         destErc20.address,
         relayData.amount,
         consts.originChainId,
