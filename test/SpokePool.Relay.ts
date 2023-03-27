@@ -183,7 +183,7 @@ describe("SpokePool Relayer Logic", async function () {
         maxFillCount
       )
     )
-      .to.emit(spokePool, "RequestRefund")
+      .to.emit(spokePool, "RefundRequest")
       .withArgs(
         relayer.address,
         destErc20.address,
@@ -251,7 +251,7 @@ describe("SpokePool Relayer Logic", async function () {
         maxFillCount
       )
     )
-      .to.emit(spokePool, "RequestRefund")
+      .to.emit(spokePool, "RefundRequest")
       .withArgs(
         relayer.address,
         destErc20.address,
