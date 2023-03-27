@@ -693,8 +693,6 @@ abstract contract SpokePool is
      * @dev Caller needs to pass in `fillBlock` that the FilledRelay event was emitted on the `destinationChainId`.
      * This is to make it hard to request a refund before a fill has been mined and to make lookups of the original
      * fill as simple as possible.
-     * @param relayer Relayer on FilledRelay event on destinationChain we want to match with this Refund.
-     * This should be account receiving any refund stemming from this event.
      * @param destinationToken This chain's destination token equivalent for original deposit destination token.
      * @param amount Original deposit amount.
      * @param originChainId Original origin chain ID.
@@ -703,7 +701,6 @@ abstract contract SpokePool is
      * @param maxCount Max count to protect the refund recipient from frontrunning.
      */
     function requestRefund(
-        address relayer,
         address destinationToken,
         uint256 amount,
         uint256 originChainId,
@@ -720,7 +717,7 @@ abstract contract SpokePool is
 
         // Track duplicate refund requests.
         bytes32 refundHash = keccak256(
-            abi.encode(relayer, destinationToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock)
+            abi.encode(msg.sender, destinationToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock)
         );
 
         // Track duplicate requests so that an offchain actor knows if an identical request has already been made.
@@ -745,7 +742,9 @@ abstract contract SpokePool is
         );
 
         emit RefundRequest(
-            relayer,
+            // Set caller as relayer. If caller is not relayer from destination chain that originally sent
+            // fill, then off-chain validator should discard this refund attempt.
+            msg.sender,
             destinationToken,
             amount,
             originChainId,

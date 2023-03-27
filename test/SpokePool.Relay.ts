@@ -138,6 +138,9 @@ describe("SpokePool Relayer Logic", async function () {
         relayData.message,
         [relayData.recipient, relayData.message, relayData.relayerFeePct, false]
       );
+
+    // Repayment on another chain doesn't increment fill counter.
+    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(0);
   });
   it("Fill count increment local repayment", async function () {
     const { relayData } = getRelayHash(
@@ -173,7 +176,6 @@ describe("SpokePool Relayer Logic", async function () {
 
     await expect(
       spokePool.connect(relayer).requestRefund(
-        relayer.address,
         destErc20.address,
         relayData.amount,
         consts.originChainId,
@@ -204,7 +206,6 @@ describe("SpokePool Relayer Logic", async function () {
     // Reverts if max fill count or max fill amount is exceeded
     await expect(
       spokePool.connect(relayer).requestRefund(
-        relayer.address,
         destErc20.address,
         MAX_UINT_VAL, // Too large
         consts.originChainId,
@@ -216,7 +217,6 @@ describe("SpokePool Relayer Logic", async function () {
     ).to.be.revertedWith("Amount too large");
     await expect(
       spokePool.connect(relayer).requestRefund(
-        relayer.address,
         destErc20.address,
         relayData.amount,
         consts.originChainId,
@@ -228,7 +228,6 @@ describe("SpokePool Relayer Logic", async function () {
     ).to.be.revertedWith("Above max count");
     await expect(
       spokePool.connect(relayer).requestRefund(
-        relayer.address,
         destErc20.address,
         0, // Too small
         consts.originChainId,
@@ -241,7 +240,6 @@ describe("SpokePool Relayer Logic", async function () {
 
     await expect(
       spokePool.connect(relayer).requestRefund(
-        relayer.address,
         destErc20.address,
         relayData.amount,
         consts.originChainId,
@@ -253,7 +251,6 @@ describe("SpokePool Relayer Logic", async function () {
     )
       .to.emit(spokePool, "RefundRequest")
       .withArgs(
-        relayer.address,
         destErc20.address,
         relayData.amount,
         consts.originChainId,
