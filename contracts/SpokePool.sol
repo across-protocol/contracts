@@ -89,6 +89,14 @@ abstract contract SpokePool is
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
+    // Note: this needs to be larger than the max transfer size to ensure that all slow fills are fillable, even if
+    // their fees are negative.
+    // It's important that it isn't too large, however, as it should be multipliable by ~2e18 without overflowing.
+    // 1e40 * 2e18 = 2e58 << 2^255 ~= 5e76
+    uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
+
+    // Set max payout adjustment to something
+
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
@@ -867,7 +875,7 @@ abstract contract SpokePool is
             updatedRecipient: recipient,
             updatedMessage: message,
             repaymentChainId: 0,
-            maxTokensToSend: amount,
+            maxTokensToSend: SLOW_FILL_MAX_TOKENS_TO_SEND,
             slowFill: true,
             payoutAdjustmentPct: payoutAdjustmentPct,
             maxCount: type(uint256).max
@@ -1049,16 +1057,26 @@ abstract contract SpokePool is
                 fillAmountPreFees,
                 relayData.realizedLpFeePct + relayExecution.updatedRelayerFeePct
             );
+        }
 
-            if (relayExecution.payoutAdjustmentPct != 0) {
-                // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
-                // were originally expecting. If it is negative, then the recipient will receive less.
-                // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
-                require(relayExecution.payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
+        // This can only happen in a slow fill, where the contract is funding the relay.
+        if (relayExecution.payoutAdjustmentPct != 0) {
+            // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
+            // were originally expecting. If it is negative, then the recipient will receive less.
+            // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
+            require(relayExecution.payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
 
-                // Note: since _computeAmountPostFees is typicaly intended for fees, the signage must be reversed.
-                amountToSend = _computeAmountPostFees(amountToSend, -relayExecution.payoutAdjustmentPct);
-            }
+            // Allow the payout adjustment to go up to 1000% (i.e. 11x).
+            // This is a sanity check to ensure the payouts do not grow too large via some sort of issue in bundle
+            // construction.
+            require(relayExecution.payoutAdjustmentPct <= 100e18, "payoutAdjustmentPct too large");
+
+            // Note: since _computeAmountPostFees is typicaly intended for fees, the signage must be reversed.
+            amountToSend = _computeAmountPostFees(amountToSend, -relayExecution.payoutAdjustmentPct);
+
+            // Note: this error should never happen, since the maxTokensToSend is expected to be set much higher than
+            // the amount, but it is here as a sanity check.
+            require(amountToSend <= relayExecution.maxTokensToSend, "Somehow hit maxTokensToSend!");
         }
 
         // Update fill counter.

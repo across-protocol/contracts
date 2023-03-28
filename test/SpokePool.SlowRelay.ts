@@ -47,8 +47,8 @@ describe("SpokePool Slow Relay Logic", async function () {
     await seedWallet(relayer, [destErc20], weth, consts.amountToSeedWallets);
 
     // Send tokens to the spoke pool for repayment.
-    await destErc20.connect(depositor).transfer(spokePool.address, fullRelayAmountPostFees);
-    await weth.connect(depositor).transfer(spokePool.address, fullRelayAmountPostFees);
+    await destErc20.connect(depositor).transfer(spokePool.address, fullRelayAmountPostFees.mul(10));
+    await weth.connect(depositor).transfer(spokePool.address, fullRelayAmountPostFees.div(2));
 
     // Approve spoke pool to take relayer's tokens.
     await destErc20.connect(relayer).approve(spokePool.address, fullRelayAmountPostFees);
@@ -91,7 +91,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositId: consts.firstDepositId.toString(),
         message: erc20Message,
       },
-      payoutAdjustmentPct: "0",
+      payoutAdjustmentPct: ethers.utils.parseEther("9").toString(), // 10x payout.
     });
 
     // WETH
@@ -108,7 +108,41 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositId: consts.firstDepositId.toString(),
         message: wethMessage,
       },
-      payoutAdjustmentPct: "0",
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5").toString(), // 50% payout.
+    });
+
+    // Broken payout adjustment, too small.
+    slowFills.push({
+      relayData: {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        destinationToken: weth.address,
+        amount: consts.amountToRelay,
+        originChainId: consts.originChainId.toString(),
+        destinationChainId: consts.destinationChainId.toString(),
+        realizedLpFeePct: consts.realizedLpFeePct,
+        relayerFeePct: consts.depositRelayerFeePct,
+        depositId: consts.firstDepositId.toString(),
+        message: wethMessage,
+      },
+      payoutAdjustmentPct: ethers.utils.parseEther("-1.01").toString(), // Over -100% payout.
+    });
+
+    // Broken payout adjustment, too large.
+    slowFills.push({
+      relayData: {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        destinationToken: destErc20.address,
+        amount: consts.amountToRelay,
+        originChainId: consts.originChainId.toString(),
+        destinationChainId: consts.destinationChainId.toString(),
+        realizedLpFeePct: consts.realizedLpFeePct,
+        relayerFeePct: consts.depositRelayerFeePct,
+        depositId: consts.firstDepositId.toString(),
+        message: erc20Message,
+      },
+      payoutAdjustmentPct: ethers.utils.parseEther("101").toString(), // 10000% payout is the limit.
     });
 
     tree = await buildSlowRelayTree(slowFills);
@@ -131,14 +165,14 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             erc20Message,
-            ZERO,
+            ethers.utils.parseEther("9"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === destErc20.address)!)
           )
         )
     ).to.changeTokenBalances(
       destErc20,
       [spokePool, recipient],
-      [fullRelayAmountPostFees.mul(-1), fullRelayAmountPostFees]
+      [fullRelayAmountPostFees.mul(10).mul(-1), fullRelayAmountPostFees.mul(10)]
     );
   });
 
@@ -160,7 +194,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             erc20Message,
-            ZERO,
+            ethers.utils.parseEther("9"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === destErc20.address)!)
           )
         )
@@ -206,11 +240,11 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             wethMessage,
-            ZERO,
+            ethers.utils.parseEther("-0.5"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === weth.address)!)
           )
         )
-    ).to.changeTokenBalances(weth, [spokePool], [fullRelayAmountPostFees.mul(-1)]);
+    ).to.changeTokenBalances(weth, [spokePool], [fullRelayAmountPostFees.div(2).mul(-1)]);
   });
 
   it("Simple SlowRelay ETH balance", async function () {
@@ -229,11 +263,11 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             wethMessage,
-            ZERO,
+            ethers.utils.parseEther("-0.5"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === weth.address)!)
           )
         )
-    ).to.changeEtherBalance(recipient, fullRelayAmountPostFees);
+    ).to.changeEtherBalance(recipient, fullRelayAmountPostFees.div(2));
   });
 
   it("Partial SlowRelay ERC20 balances", async function () {
@@ -278,11 +312,15 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             erc20Message,
-            ZERO,
+            ethers.utils.parseEther("9"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === destErc20.address)!)
           )
         )
-    ).to.changeTokenBalances(destErc20, [spokePool, recipient], [leftoverPostFees.mul(-1), leftoverPostFees]);
+    ).to.changeTokenBalances(
+      destErc20,
+      [spokePool, recipient],
+      [leftoverPostFees.mul(10).mul(-1), leftoverPostFees.mul(10)]
+    );
   });
 
   it("Partial SlowRelay WETH balance", async function () {
@@ -326,11 +364,11 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             wethMessage,
-            ZERO,
+            ethers.utils.parseEther("-0.5"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === weth.address)!)
           )
         )
-    ).to.changeTokenBalances(weth, [spokePool], [leftoverPostFees.mul(-1)]);
+    ).to.changeTokenBalances(weth, [spokePool], [leftoverPostFees.div(2).mul(-1)]);
   });
 
   it("Partial SlowRelay ETH balance", async function () {
@@ -374,11 +412,69 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.firstDepositId,
             0,
             wethMessage,
-            ZERO,
+            ethers.utils.parseEther("-0.5"),
             tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === weth.address)!)
           )
         )
-    ).to.changeEtherBalance(recipient, leftoverPostFees);
+    ).to.changeEtherBalance(recipient, leftoverPostFees.div(2));
+  });
+
+  it("Payout adjustment too large", async function () {
+    await expect(
+      spokePool
+        .connect(relayer)
+        .executeSlowRelayLeaf(
+          ...getExecuteSlowRelayParams(
+            depositor.address,
+            recipient.address,
+            destErc20.address,
+            consts.amountToRelay,
+            consts.originChainId,
+            consts.realizedLpFeePct,
+            consts.depositRelayerFeePct,
+            consts.firstDepositId,
+            0,
+            erc20Message,
+            ethers.utils.parseEther("101"),
+            tree.getHexProof(
+              slowFills.find(
+                (slowFill) =>
+                  slowFill.relayData.destinationToken === destErc20.address &&
+                  slowFill.payoutAdjustmentPct === ethers.utils.parseEther("101").toString()
+              )!
+            )
+          )
+        )
+    ).to.revertedWith("payoutAdjustmentPct too large");
+  });
+
+  it("Payout adjustment too small", async function () {
+    await expect(
+      spokePool
+        .connect(relayer)
+        .executeSlowRelayLeaf(
+          ...getExecuteSlowRelayParams(
+            depositor.address,
+            recipient.address,
+            weth.address,
+            consts.amountToRelay,
+            consts.originChainId,
+            consts.realizedLpFeePct,
+            consts.depositRelayerFeePct,
+            consts.firstDepositId,
+            0,
+            wethMessage,
+            ethers.utils.parseEther("-1.01"),
+            tree.getHexProof(
+              slowFills.find(
+                (slowFill) =>
+                  slowFill.relayData.destinationToken === weth.address &&
+                  slowFill.payoutAdjustmentPct === ethers.utils.parseEther("-1.01").toString()
+              )!
+            )
+          )
+        )
+    ).to.revertedWith("payoutAdjustmentPct too small");
   });
 
   it("Bad proof: Relay data is correct except that destination chain ID doesn't match spoke pool's", async function () {
