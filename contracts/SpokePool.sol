@@ -143,7 +143,7 @@ abstract contract SpokePool is
         bytes message,
         RelayExecutionInfo updatableRelayData
     );
-    event RefundRequest(
+    event RefundRequested(
         address indexed relayer,
         address destinationToken,
         uint256 amount,
@@ -684,7 +684,7 @@ abstract contract SpokePool is
     /**
      * @notice Caller signals to the system that they want a refund on this chain, which they set as the
      * `repaymentChainId` on the original fillRelay() call on the `destinationChainId`. An observer should be
-     * be able to 1-to-1 match the emitted RefundRequest event with the FilledRelay event on the `destinationChainId`.
+     * be able to 1-to-1 match the emitted RefundRequested event with the FilledRelay event on the `destinationChainId`.
      * @dev This function could be used to artificially inflate the `fillCounter`, allowing the caller to "frontrun"
      * and cancel pending fills in the mempool. This would in the worst case censor fills at the cost of the caller's
      * gas costs. We don't view this as a major issue as the fill can be resubmitted and obtain the same incentive,
@@ -741,7 +741,7 @@ abstract contract SpokePool is
             false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
         );
 
-        emit RefundRequest(
+        emit RefundRequested(
             // Set caller as relayer. If caller is not relayer from destination chain that originally sent
             // fill, then off-chain validator should discard this refund attempt.
             msg.sender,
