@@ -148,6 +148,7 @@ abstract contract SpokePool is
         address refundToken,
         uint256 amount,
         uint256 indexed originChainId,
+        uint256 destinationChainId,
         int64 realizedLpFeePct,
         uint32 indexed depositId,
         uint256 fillBlock,
@@ -696,6 +697,7 @@ abstract contract SpokePool is
      * @param refundToken This chain's token equivalent for original fill destination token.
      * @param amount Original deposit amount.
      * @param originChainId Original origin chain ID.
+     * @param destinationChainId Original destination chain ID.
      * @param realizedLpFeePct Original realized LP fee %.
      * @param depositId Original deposit ID.
      * @param maxCount Max count to protect the refund recipient from frontrunning.
@@ -704,6 +706,7 @@ abstract contract SpokePool is
         address refundToken,
         uint256 amount,
         uint256 originChainId,
+        uint256 destinationChainId,
         int64 realizedLpFeePct,
         uint32 depositId,
         uint256 fillBlock,
@@ -748,6 +751,7 @@ abstract contract SpokePool is
             refundToken,
             amount,
             originChainId,
+            destinationChainId,
             realizedLpFeePct,
             depositId,
             fillBlock,
