@@ -179,6 +179,7 @@ describe("SpokePool Relayer Logic", async function () {
         destErc20.address,
         relayData.amount,
         consts.originChainId,
+        consts.destinationChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
         11, // Use any block number for this test.
@@ -210,6 +211,7 @@ describe("SpokePool Relayer Logic", async function () {
         destErc20.address,
         MAX_UINT_VAL, // Too large
         consts.originChainId,
+        consts.destinationChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
         0,
@@ -221,6 +223,7 @@ describe("SpokePool Relayer Logic", async function () {
         destErc20.address,
         relayData.amount,
         consts.originChainId,
+        consts.destinationChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
         0,
@@ -232,6 +235,7 @@ describe("SpokePool Relayer Logic", async function () {
         destErc20.address,
         0, // Too small
         consts.originChainId,
+        consts.destinationChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
         0,
@@ -244,6 +248,7 @@ describe("SpokePool Relayer Logic", async function () {
         destErc20.address,
         relayData.amount,
         consts.originChainId,
+        consts.destinationChainId,
         relayData.realizedLpFeePct,
         relayData.depositId,
         11, // Use any block number for this test.
