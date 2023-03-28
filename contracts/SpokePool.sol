@@ -145,7 +145,7 @@ abstract contract SpokePool is
     );
     event RefundRequested(
         address indexed relayer,
-        address destinationToken,
+        address refundToken,
         uint256 amount,
         uint256 indexed originChainId,
         int64 realizedLpFeePct,
@@ -693,7 +693,7 @@ abstract contract SpokePool is
      * @dev Caller needs to pass in `fillBlock` that the FilledRelay event was emitted on the `destinationChainId`.
      * This is to make it hard to request a refund before a fill has been mined and to make lookups of the original
      * fill as simple as possible.
-     * @param destinationToken This chain's destination token equivalent for original deposit destination token.
+     * @param refundToken This chain's token equivalent for original fill destination token.
      * @param amount Original deposit amount.
      * @param originChainId Original origin chain ID.
      * @param realizedLpFeePct Original realized LP fee %.
@@ -701,7 +701,7 @@ abstract contract SpokePool is
      * @param maxCount Max count to protect the refund recipient from frontrunning.
      */
     function requestRefund(
-        address destinationToken,
+        address refundToken,
         uint256 amount,
         uint256 originChainId,
         int64 realizedLpFeePct,
@@ -713,11 +713,11 @@ abstract contract SpokePool is
         require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // This allows the caller to add in frontrunning protection for quote validity.
-        require(fillCounter[destinationToken] <= maxCount, "Above max count");
+        require(fillCounter[refundToken] <= maxCount, "Above max count");
 
         // Track duplicate refund requests.
         bytes32 refundHash = keccak256(
-            abi.encode(msg.sender, destinationToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock)
+            abi.encode(msg.sender, refundToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock)
         );
 
         // Track duplicate requests so that an offchain actor knows if an identical request has already been made.
@@ -737,7 +737,7 @@ abstract contract SpokePool is
             true, // The refund is being requested here, so it is local.
             amount,
             realizedLpFeePct,
-            destinationToken,
+            refundToken,
             false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
         );
 
@@ -745,7 +745,7 @@ abstract contract SpokePool is
             // Set caller as relayer. If caller is not relayer from destination chain that originally sent
             // fill, then off-chain validator should discard this refund attempt.
             msg.sender,
-            destinationToken,
+            refundToken,
             amount,
             originChainId,
             realizedLpFeePct,
