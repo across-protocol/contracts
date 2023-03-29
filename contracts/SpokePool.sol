@@ -728,7 +728,16 @@ abstract contract SpokePool is
 
         // Track duplicate refund requests.
         bytes32 refundHash = keccak256(
-            abi.encode(msg.sender, refundToken, amount, originChainId, realizedLpFeePct, depositId, fillBlock)
+            abi.encode(
+                msg.sender,
+                refundToken,
+                amount,
+                originChainId,
+                destinationChainId,
+                realizedLpFeePct,
+                depositId,
+                fillBlock
+            )
         );
 
         // Track duplicate requests so that an offchain actor knows if an identical request has already been made.
