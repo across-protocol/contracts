@@ -1148,19 +1148,18 @@ abstract contract SpokePool is
 
         // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
         // we'll pull exactly enough tokens to complete the relay.
-        uint256 amountToSend = relayExecution.maxTokensToSend;
         uint256 amountRemainingInRelay = relayData.amount - relayFills[relayExecution.relayHash];
         if (amountRemainingInRelay < fillAmountPreFees) {
             fillAmountPreFees = amountRemainingInRelay;
-
-            // The user will fulfill the remainder of the relay, so we need to compute exactly how many tokens post-fees
-            // that they need to send to the recipient. Note that if the relayer is filled using contract funds then
-            // this is a slow relay.
-            amountToSend = _computeAmountPostFees(
-                fillAmountPreFees,
-                relayData.realizedLpFeePct + relayExecution.updatedRelayerFeePct
-            );
         }
+
+        // Apply post-fees computation to amount that relayer will send to user. Rounding errors are possible
+        // when computing fillAmountPreFees and then amountToSend, and we just want to enforce that
+        // the error added to amountToSend is consistently applied to partial and full fills.
+        uint256 amountToSend = _computeAmountPostFees(
+            fillAmountPreFees,
+            relayData.realizedLpFeePct + relayExecution.updatedRelayerFeePct
+        );
 
         // This can only happen in a slow fill, where the contract is funding the relay.
         if (relayExecution.payoutAdjustmentPct != 0) {
