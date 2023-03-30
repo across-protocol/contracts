@@ -191,7 +191,7 @@ abstract contract SpokePool is
     /**
      * @notice Represents data used to fill a deposit.
      * @param relay Relay containing original data linked to deposit. Contains fields that can be
-     * overridden by other parametersin the RelayExecution struct.
+     * overridden by other parameters in the RelayExecution struct.
      * @param relayHash Hash of the relay data.
      * @param updatedRelayerFeePct Actual relayer fee pct to use for this relay.
      * @param updatedRecipient Actual recipient to use for this relay.
@@ -200,8 +200,8 @@ abstract contract SpokePool is
      * @param maxTokensToSend Max number of tokens to pull from relayer.
      * @param maxCount Max count to protect the relayer from frontrunning.
      * @param slowFill Whether this is a slow fill.
-     * @param payoutAdjustment Adjustment to the payout amount. Can be used to increase or decrease the payout to allow
-     * for rewards or penalties. Used in slow fills.
+     * @param payoutAdjustmentPct Adjustment to the payout amount. Can be used to increase or decrease the payout to
+     * allow for rewards or penalties. Used in slow fills.
      */
     struct RelayExecution {
         RelayData relay;
