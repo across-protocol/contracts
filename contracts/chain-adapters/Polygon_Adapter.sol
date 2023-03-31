@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 interface IRootChainManager {
     /**
      * @notice Send msg.value of ETH to Polygon
-     * @dev Recipient of ETH on Polygon.
+     * @param user Recipient of ETH on Polygon.
      */
     function depositEtherFor(address user) external payable;
 
