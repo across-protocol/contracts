@@ -12,7 +12,40 @@ jobs:
         with:
           node-version: "16.x"
           registry-url: "https://registry.npmjs.org"
+      # Grab information about this npm release.
+      # Note we set an `id` called `release`. We'll use that later...
+      - name: Validate and extract release information
+        id: release
+        uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
       - run: yarn
-      - run: yarn publish
+      # Perform installs, run tests, run a build step, etc. here, as needed.
+
+      # The last two steps will publish the package. Note that we're using
+      # information from the `release` step above (I told you we'd use it
+      # later). Notice the `if` statements on both steps...
+      #
+      # If there *is* a tag (ie. `beta`, `canary`, etc.), we publish a
+      # "pre-release" or "tagged" version of a package (ie. 1.2.3-beta.1).
+      #
+      # If there *is not* a tag (ie. `beta`, `canary`, etc.), we publish a
+      # version of a package (ie. 1.2.3).
+      #
+      # This example is using npm to publish, but you could just as easily
+      # use yarn, if you prefer. It's also publishing to the NPM registry,
+      # thus, it's using `NPM_TOKEN`, but you could just as easily use
+      # `GITHUB_TOKEN` if you were publishing to the GitHub Package registry.
+
+      # This will publish a "pre-release" or "tagged" version of a package.
+
+      # This will publish a version of a package.
+      - name: Publish version
+        if: steps.release.outputs.tag == ''
+        run: yarn publish
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish tagged version
+        if: steps.release.outputs.tag != ''
+        run: yarn publish --tag ${{ steps.release.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
