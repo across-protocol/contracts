@@ -18,13 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v2
-        with:
-          node-version: "16.x"
-          registry-url: "https://registry.npmjs.org"
-
-      # Grab information about this npm release using bespoke package.
       # Note we set an `id` called `release`. We'll use that later...
       - name: Validate and extract release information
         id: release
@@ -32,6 +25,13 @@ jobs:
 
       # Perform installs, run tests, run a build step, etc. here, as needed.
       - run: yarn
+
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16.x"
+          always-auth: true
+          registry-url: "https://registry.npmjs.org"
 
       # The last two steps will publish the package. Note that we're using
       # information from the `release` step above (I told you we'd use it
@@ -55,10 +55,10 @@ jobs:
         if: steps.release.outputs.tag == ''
         run: yarn publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish tagged version
         if: steps.release.outputs.tag != ''
         run: yarn publish --tag ${{ steps.release.outputs.tag }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
