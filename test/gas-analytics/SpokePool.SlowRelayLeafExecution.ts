@@ -49,7 +49,7 @@ async function constructSimpleTree(
         depositId: i.toString(),
         message: "0x",
       },
-      payoutAdjustmentPct: "0",
+      payoutAdjustmentPct: toBN(0),
     });
   }
   const tree = await buildSlowRelayTree(slowFills);
