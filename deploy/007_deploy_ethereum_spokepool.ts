@@ -33,6 +33,8 @@ const func = async function () {
   await run("verify:verify", {
     address: instance.address,
   });
+
+  // Transfer ownership to hub pool.
 };
 module.exports = func;
 func.tags = ["EthereumSpokePool", "mainnet"];
