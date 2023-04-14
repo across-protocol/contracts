@@ -181,7 +181,7 @@ export interface RelayData {
 
 export interface SlowFill {
   relayData: RelayData;
-  payoutAdjustmentPct: string;
+  payoutAdjustmentPct: BigNumber;
 }
 
 export function getRelayHash(
