@@ -30,7 +30,7 @@
     "AcrossMerkleDistributor": { "address": "0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D", "blockNumber": 7884371 },
     "Arbitrum_Adapter": { "address": "0xc169D58df5fdF52fC47d7b67d570449feE47BfE9", "blockNumber": 7306652 },
     "Ethereum_Adapter": { "address": "0x7b1D5aEA5b1b8C325711AA4b4AaAacD5E1ea1994", "blockNumber": 7371150 },
-    "SpokePool": { "address": "0x063fFa6C9748e3f0b9bA8ee3bbbCEe98d92651f7", "blockNumber": 8824778 },
+    "SpokePool": { "address": "0x063fFa6C9748e3f0b9bA8ee3bbbCEe98d92651f7", "blockNumber": 8825017 },
     "HubPool": { "address": "0x0e2817C49698cc0874204AeDf7c72Be2Bb7fCD5d", "blockNumber": 7370152 },
     "LpTokenFactory": { "address": "0xD4B978681B55A94CF44a21ac9B1352e641D0838C", "blockNumber": 7370151 },
     "ZkSync_Adapter": { "address": "0xAEED2E2FB1EFDc5aD10A7FB4d6bA6D71ce8aFA1F", "blockNumber": 7375174 }
