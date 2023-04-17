@@ -34,7 +34,7 @@
   "dependencies": {
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.11",
-    "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts": "^4.8.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.3",
     "@uma/common": "^2.29.0",
     "@uma/contracts-node": "^0.3.18",
