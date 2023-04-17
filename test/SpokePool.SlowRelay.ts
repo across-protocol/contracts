@@ -456,7 +456,7 @@ describe("SpokePool Slow Relay Logic", async function () {
               slowFills.find(
                 (slowFill) =>
                   slowFill.relayData.destinationToken === destErc20.address &&
-                  slowFill.payoutAdjustmentPct.toString() === ethers.utils.parseEther("101").toString()
+                  slowFill.payoutAdjustmentPct.eq(ethers.utils.parseEther("101"))
               )!
             )
           )
