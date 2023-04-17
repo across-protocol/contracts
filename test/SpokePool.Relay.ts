@@ -584,20 +584,23 @@ async function testUpdatedFeeSignaling(depositorAddress: string) {
 }
 
 async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
+  const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
+  const updatedRecipient = acrossMessageHandler.address;
+  const updatedMessage = "0x1234";
+
   // The relay should succeed just like before with the same amount of tokens pulled from the relayer's wallet,
   // however the filled amount should have increased since the proportion of the relay filled would increase with a
   // higher fee.
   const { relayHash, relayData } = getRelayHash(
     depositorAddress,
-    recipient.address,
+    depositor.address,
     consts.firstDepositId,
     consts.originChainId,
     consts.destinationChainId,
     destErc20.address
   );
-
-  const updatedRecipient = depositor.address;
-  const updatedMessage = "0x1234";
+  expect(relayData.message).to.not.equal(updatedMessage);
+  expect(relayData.recipient).to.not.equal(updatedRecipient);
 
   const { signature } = await modifyRelayHelper(
     consts.modifiedRelayerFeePct,
@@ -646,6 +649,14 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
       ]
     );
 
+  // Check that updated message and recipient are used with executed fill:
+  const amountActuallySent = await destErc20.balanceOf(acrossMessageHandler.address);
+  expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
+    relayData.destinationToken,
+    amountActuallySent,
+    updatedMessage
+  );
+
   // The collateral should have transferred from relayer to recipient.
   const relayerBalance = await destErc20.balanceOf(relayer.address);
   const expectedRelayerBalance = consts.amountToSeedWallets.sub(consts.amountToRelay);
@@ -654,7 +665,7 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
   // of rounding errors with the modified fees. The unmodified fees result in clean numbers but the modified fee does not.
   expect(relayerBalance.gte(expectedRelayerBalance.sub(1)) || relayerBalance.lte(expectedRelayerBalance.add(1))).to.be
     .true;
-  const recipientBalance = await destErc20.balanceOf(recipient.address);
+  const recipientBalance = amountActuallySent;
   const expectedRecipientBalance = consts.amountToRelay;
   expect(recipientBalance.gte(expectedRecipientBalance.sub(1)) || recipientBalance.lte(expectedRecipientBalance.add(1)))
     .to.be.true;
