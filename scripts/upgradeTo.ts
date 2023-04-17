@@ -1,4 +1,4 @@
-import { ethers, getContractFactory } from "../test/utils";
+import { ethers, getContractFactory } from "../utils/utils";
 
 async function main() {
   const [signer] = await ethers.getSigners();

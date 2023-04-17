@@ -9,7 +9,7 @@ import {
   randomBigNumber,
   BigNumber,
   toWei,
-} from "./utils";
+} from "../utils/utils";
 import { spokePoolFixture, enableRoutes, getExecuteSlowRelayParams, SlowFill } from "./fixtures/SpokePool.Fixture";
 import { getFillRelayParams, getRelayHash } from "./fixtures/SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";

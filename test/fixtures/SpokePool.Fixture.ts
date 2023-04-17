@@ -1,4 +1,12 @@
-import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "../utils";
+import {
+  getContractFactory,
+  SignerWithAddress,
+  Contract,
+  hre,
+  ethers,
+  BigNumber,
+  defaultAbiCoder,
+} from "../../utils/utils";
 import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {

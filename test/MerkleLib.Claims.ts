@@ -1,5 +1,5 @@
 import { merkleLibFixture } from "./fixtures/MerkleLib.Fixture";
-import { BigNumber, expect, Contract } from "./utils";
+import { BigNumber, expect, Contract } from "../utils/utils";
 
 let merkleLibTest: Contract;
 

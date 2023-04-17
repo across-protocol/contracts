@@ -1,4 +1,12 @@
-import { getContractFactory, SignerWithAddress, utf8ToHex, expect, Contract, ethers, randomAddress } from "./utils";
+import {
+  getContractFactory,
+  SignerWithAddress,
+  utf8ToHex,
+  expect,
+  Contract,
+  ethers,
+  randomAddress,
+} from "../utils/utils";
 import * as constants from "./constants";
 
 let configStore: Contract;

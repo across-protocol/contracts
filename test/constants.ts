@@ -1,4 +1,4 @@
-import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "./utils";
+import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "../utils/utils";
 
 import { ethers } from "ethers";
 

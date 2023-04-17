@@ -1,6 +1,6 @@
 // @notice Logs ABI-encoded function data that can be relayed from HubPool to OptimismSpokePool to set it up.
 
-import { getContractFactory, ethers, hre } from "../test/utils";
+import { getContractFactory, ethers, hre } from "../utils/utils";
 import * as consts from "../test/constants";
 
 async function main() {

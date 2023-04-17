@@ -1,4 +1,4 @@
-import { getContractFactory } from "../utils";
+import { getContractFactory } from "../../utils/utils";
 import hre from "hardhat";
 
 export const merkleLibFixture = hre.deployments.createFixture(async ({ deployments }) => {

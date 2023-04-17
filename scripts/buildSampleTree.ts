@@ -2,7 +2,7 @@
 //         test net.
 // @dev    Modify constants to modify merkle leaves. Command: `yarn hardhat run ./scripts/buildSampleTree.ts`
 
-import { toBN, getParamType, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../test/utils";
+import { toBN, getParamType, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
 import { SlowFill } from "../test/fixtures/SpokePool.Fixture";
 

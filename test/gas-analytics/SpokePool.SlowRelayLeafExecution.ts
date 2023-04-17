@@ -1,5 +1,5 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect } from "../utils";
-import { seedContract, seedWallet, BigNumber } from "../utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, toBN, expect } from "../../utils/utils";
+import { seedContract, seedWallet, BigNumber } from "../../utils/utils";
 import { deployErc20, warmSpokePool } from "./utils";
 import * as consts from "../constants";
 import { spokePoolFixture, RelayData, SlowFill } from "../fixtures/SpokePool.Fixture";

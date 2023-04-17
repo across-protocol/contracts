@@ -1,4 +1,14 @@
-import { expect, Contract, ethers, SignerWithAddress, seedWallet, toWei, toBN, BigNumber, createFake } from "./utils";
+import {
+  expect,
+  Contract,
+  ethers,
+  SignerWithAddress,
+  seedWallet,
+  toWei,
+  toBN,
+  BigNumber,
+  createFake,
+} from "../utils/utils";
 import {
   spokePoolFixture,
   getRelayHash,
