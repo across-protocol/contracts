@@ -17,7 +17,7 @@ const func = async function () {
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
-  const constructorArgs = [100_000, hubPool.address, L1_ADDRESS_MAP[chainId].weth];
+  const constructorArgs = [1_000_000, hubPool.address, L1_ADDRESS_MAP[chainId].weth];
   const spokePool = await upgrades.deployProxy(await getContractFactory("Ethereum_SpokePool"), constructorArgs, {
     kind: "uups",
   });
