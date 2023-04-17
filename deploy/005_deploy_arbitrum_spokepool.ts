@@ -31,13 +31,6 @@ const func = async function () {
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);
   console.log(`Implementation deployed @ ${implementationAddress}`);
 
-  // Deploy new implementation and validate that it can be used in upgrade.
-  const newImplementation = await upgrades.prepareUpgrade(
-    instance.address,
-    await getContractFactory("Arbitrum_SpokePool")
-  );
-  console.log(`Can upgrade to new implementation @ ${newImplementation}`);
-
   // hardhat-upgrades overrides the `verify` task that ships with `hardhat` so that if the address passed
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
   // to the implementation's ABI on etherscan.
