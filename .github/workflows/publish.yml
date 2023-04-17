@@ -27,7 +27,7 @@ jobs:
       - run: yarn
 
       # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v2
         with:
           node-version: "16.x"
           always-auth: true
