@@ -1212,7 +1212,7 @@ abstract contract SpokePool is
         // net movement of funds.
         // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
         // way (no need to have funds on the destination).
-        if (msg.sender == relayData.recipient) return fillAmountPreFees;
+        if (msg.sender == relayExecution.updatedRecipient) return fillAmountPreFees;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (relayData.destinationToken == address(wrappedNativeToken)) {
@@ -1223,24 +1223,28 @@ abstract contract SpokePool is
             // need to unwrap it to native token before sending to the user.
             if (!relayExecution.slowFill)
                 IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapwrappedNativeTokenTo(payable(relayData.recipient), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!relayExecution.slowFill)
                 IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
                     msg.sender,
-                    relayData.recipient,
+                    relayExecution.updatedRecipient,
                     amountToSend
                 );
-            else IERC20Upgradeable(relayData.destinationToken).safeTransfer(relayData.recipient, amountToSend);
+            else
+                IERC20Upgradeable(relayData.destinationToken).safeTransfer(
+                    relayExecution.updatedRecipient,
+                    amountToSend
+                );
         }
 
-        if (relayData.recipient.isContract() && relayData.message.length > 0) {
-            AcrossMessageHandler(relayData.recipient).handleAcrossMessage(
+        if (relayExecution.updatedRecipient.isContract() && relayExecution.updatedMessage.length > 0) {
+            AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
-                relayData.message
+                relayExecution.updatedMessage
             );
         }
     }
