@@ -1,7 +1,7 @@
 import "hardhat-deploy";
 import hre from "hardhat";
 import { L2_ADDRESS_MAP } from "./consts";
-import { getContractFactory } from "../test/utils";
+import { getContractFactory } from "../utils";
 
 const func = async function () {
   const { upgrades, companionNetworks, run, getChainId } = hre;

@@ -1,6 +1,6 @@
 import "hardhat-deploy";
 import hre from "hardhat";
-import { getContractFactory } from "../test/utils";
+import { getContractFactory } from "../utils";
 
 const func = async function () {
   const { upgrades, companionNetworks, run } = hre;

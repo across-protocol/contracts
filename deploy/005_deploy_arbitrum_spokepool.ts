@@ -1,7 +1,7 @@
 import "hardhat-deploy";
 import hre from "hardhat";
 import { L2_ADDRESS_MAP } from "./consts";
-import { getContractFactory } from "../test/utils";
+import { getContractFactory } from "../utils";
 
 const func = async function () {
   const { upgrades, companionNetworks, run, getChainId } = hre;
@@ -30,6 +30,13 @@ const func = async function () {
   console.log(`SpokePool deployed @ ${instance.address}`);
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);
   console.log(`Implementation deployed @ ${implementationAddress}`);
+
+  // Deploy new implementation and validate that it can be used in upgrade.
+  const newImplementation = await upgrades.prepareUpgrade(
+    instance.address,
+    await getContractFactory("Arbitrum_SpokePool")
+  );
+  console.log(`Can upgrade to new implementation @ ${newImplementation}`);
 
   // hardhat-upgrades overrides the `verify` task that ships with `hardhat` so that if the address passed
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy

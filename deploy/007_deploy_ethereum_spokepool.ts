@@ -1,7 +1,7 @@
 import "hardhat-deploy";
 
 import hre from "hardhat";
-import { getContractFactory } from "../test/utils";
+import { getContractFactory } from "../utils";
 
 import { L1_ADDRESS_MAP } from "./consts";
 
