@@ -4,18 +4,19 @@ import { L2_ADDRESS_MAP } from "./consts";
 import { getContractFactory } from "../utils";
 
 const func = async function () {
-  const { upgrades, run, getChainId, deployments } = hre;
+  const { upgrades, run, getChainId } = hre;
 
   const chainId = parseInt(await getChainId());
   const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
-  const polygonTokenBridger = await deployments.get("PolygonTokenBridger");
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const constructorArgs = [
     1_000_000,
-    polygonTokenBridger.address,
+    // The same token bridger must be deployed on mainnet and polygon, so its easier
+    // to reuse it.
+    "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
     hubPool.address,
     hubPool.address,
     L2_ADDRESS_MAP[chainId].wMatic,
