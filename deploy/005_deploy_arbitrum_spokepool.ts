@@ -4,7 +4,7 @@ import { L2_ADDRESS_MAP } from "./consts";
 import { getContractFactory } from "../utils";
 
 const func = async function () {
-  const { upgrades, companionNetworks, run, getChainId } = hre;
+  const { upgrades, companionNetworks, run, getChainId, getNamedAccounts } = hre;
 
   // Grab L1 addresses:
   const { deployments: l1Deployments } = companionNetworks.l1;
@@ -12,6 +12,7 @@ const func = async function () {
   console.log(`Using l1 hub pool @ ${hubPool.address}`);
 
   const chainId = parseInt(await getChainId());
+  const { deployer } = await getNamedAccounts();
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
@@ -23,9 +24,13 @@ const func = async function () {
     hubPool.address,
     L2_ADDRESS_MAP[chainId].l2Weth,
   ];
-  const spokePool = await upgrades.deployProxy(await getContractFactory("Arbitrum_SpokePool"), constructorArgs, {
-    kind: "uups",
-  });
+  const spokePool = await upgrades.deployProxy(
+    await getContractFactory("Arbitrum_SpokePool", deployer),
+    constructorArgs,
+    {
+      kind: "uups",
+    }
+  );
   const instance = await spokePool.deployed();
   console.log(`SpokePool deployed @ ${instance.address}`);
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);

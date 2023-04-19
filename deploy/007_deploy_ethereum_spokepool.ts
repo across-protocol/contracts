@@ -8,9 +8,10 @@ import { L1_ADDRESS_MAP } from "./consts";
 export async function printProxyVerificationInstructions() {}
 
 const func = async function () {
-  const { deployments, getChainId, upgrades, run } = hre;
+  const { deployments, getChainId, upgrades, run, getNamedAccounts } = hre;
 
   const chainId = parseInt(await getChainId());
+  const { deployer } = await getNamedAccounts();
 
   const hubPool = await deployments.get("HubPool");
   console.log(`Using l1 hub pool @ ${hubPool.address}`);
@@ -18,9 +19,13 @@ const func = async function () {
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
   const constructorArgs = [1_000_000, hubPool.address, L1_ADDRESS_MAP[chainId].weth];
-  const spokePool = await upgrades.deployProxy(await getContractFactory("Ethereum_SpokePool"), constructorArgs, {
-    kind: "uups",
-  });
+  const spokePool = await upgrades.deployProxy(
+    await getContractFactory("Ethereum_SpokePool", deployer),
+    constructorArgs,
+    {
+      kind: "uups",
+    }
+  );
   const instance = await spokePool.deployed();
   console.log(`SpokePool deployed @ ${instance.address}`);
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);

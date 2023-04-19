@@ -3,7 +3,8 @@ import hre from "hardhat";
 import { getContractFactory } from "../utils";
 
 const func = async function () {
-  const { upgrades, companionNetworks, run } = hre;
+  const { upgrades, companionNetworks, run, getNamedAccounts } = hre;
+  const { deployer } = await getNamedAccounts();
 
   // Grab L1 addresses:
   const { deployments: l1Deployments } = companionNetworks.l1;
@@ -14,9 +15,13 @@ const func = async function () {
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const constructorArgs = [1_000_000, hubPool.address, hubPool.address];
-  const spokePool = await upgrades.deployProxy(await getContractFactory("Optimism_SpokePool"), constructorArgs, {
-    kind: "uups",
-  });
+  const spokePool = await upgrades.deployProxy(
+    await getContractFactory("Optimism_SpokePool", deployer),
+    constructorArgs,
+    {
+      kind: "uups",
+    }
+  );
   const instance = await spokePool.deployed();
   console.log(`SpokePool deployed @ ${instance.address}`);
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);

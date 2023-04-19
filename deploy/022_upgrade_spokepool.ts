@@ -4,7 +4,8 @@ import { getContractFactory } from "../utils";
 import * as deployments from "../deployments/deployments.json";
 
 const func = async function () {
-  const { upgrades, run, getChainId } = hre;
+  const { upgrades, run, getChainId, getNamedAccounts } = hre;
+  const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
   const spokePool = await deployments[chainId].SpokePool;
@@ -13,7 +14,7 @@ const func = async function () {
   // Deploy new implementation and validate that it can be used in upgrade, without actually upgrading it.
   const newImplementation = await upgrades.prepareUpgrade(
     spokePool.address,
-    await getContractFactory("Arbitrum_SpokePool")
+    await getContractFactory("Arbitrum_SpokePool", deployer)
   );
   console.log(`Can upgrade to new implementation @ ${newImplementation}`);
 

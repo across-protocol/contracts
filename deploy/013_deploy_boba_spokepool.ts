@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { getContractFactory } from "../utils";
 
 const func = async function () {
-  const { upgrades, companionNetworks, run } = hre;
+  const { upgrades, companionNetworks, run, getNamedAccounts } = hre;
 
   // Grab L1 addresses:
   const { deployments: l1Deployments } = companionNetworks.l1;
@@ -13,8 +13,9 @@ const func = async function () {
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
+  const { deployer } = await getNamedAccounts();
   const constructorArgs = [1_000_000, hubPool.address, hubPool.address];
-  const spokePool = await upgrades.deployProxy(await getContractFactory("Boba_SpokePool"), constructorArgs, {
+  const spokePool = await upgrades.deployProxy(await getContractFactory("Boba_SpokePool", deployer), constructorArgs, {
     kind: "uups",
   });
   const instance = await spokePool.deployed();
