@@ -315,18 +315,24 @@ describe("SpokePool Relayer Logic", async function () {
       "0x1234"
     );
 
+    // Partial fills fail with a message:
+    await expect(
+      spokePool
+        .connect(relayer)
+        .fillRelay(...getFillRelayParams(relayData, consts.amountToRelay, consts.destinationChainId))
+    ).to.be.revertedWith("invalid partial fill message");
     await spokePool
       .connect(relayer)
-      .fillRelay(...getFillRelayParams(relayData, consts.amountToRelay, consts.destinationChainId));
+      .fillRelay(...getFillRelayParams(relayData, relayData.amount, consts.destinationChainId));
 
     expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
       weth.address,
-      consts.amountToRelay,
+      consts.amountToDepositPostFees,
       "0x1234"
     );
 
     // The collateral should have not unwrapped to ETH and then transferred to recipient.
-    expect(await weth.balanceOf(acrossMessageHandler.address)).to.equal(consts.amountToRelay);
+    expect(await weth.balanceOf(acrossMessageHandler.address)).to.equal(consts.amountToDepositPostFees);
   });
   it("Self-relay transfers no tokens", async function () {
     const largeRelayAmount = consts.amountToSeedWallets.mul(100);
@@ -626,7 +632,7 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
       .fillRelayWithUpdatedDeposit(
         ...getFillRelayUpdatedFeeParams(
           relayData,
-          consts.amountToRelay,
+          relayData.amount,
           consts.modifiedRelayerFeePct,
           signature,
           consts.destinationChainId,
@@ -638,8 +644,8 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
     .to.emit(spokePool, "FilledRelay")
     .withArgs(
       relayData.amount,
-      consts.amountToRelayPreModifiedFees,
-      consts.amountToRelayPreModifiedFees,
+      relayData.amount,
+      relayData.amount,
       consts.destinationChainId,
       toBN(relayData.originChainId),
       toBN(relayData.destinationChainId),
@@ -669,19 +675,19 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
 
   // The collateral should have transferred from relayer to recipient.
   const relayerBalance = await destErc20.balanceOf(relayer.address);
-  const expectedRelayerBalance = consts.amountToSeedWallets.sub(consts.amountToRelay);
+  const expectedRelayerBalance = consts.amountToSeedWallets.sub(consts.amountToDepositPostFees);
 
   // Note: We need to add an error bound of 1 wei to the expected balance because of the possibility
   // of rounding errors with the modified fees. The unmodified fees result in clean numbers but the modified fee does not.
   expect(relayerBalance.gte(expectedRelayerBalance.sub(1)) || relayerBalance.lte(expectedRelayerBalance.add(1))).to.be
     .true;
   const recipientBalance = amountActuallySent;
-  const expectedRecipientBalance = consts.amountToRelay;
+  const expectedRecipientBalance = consts.amountToDepositPostFees;
   expect(recipientBalance.gte(expectedRecipientBalance.sub(1)) || recipientBalance.lte(expectedRecipientBalance.add(1)))
     .to.be.true;
 
   // Fill amount should be be set taking into account modified fees.
-  expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreModifiedFees);
+  expect(await spokePool.relayFills(relayHash)).to.equal(relayData.amount);
 }
 
 async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {

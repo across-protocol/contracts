@@ -79,36 +79,46 @@ describe("SpokePool Slow Relay Logic", async function () {
     }
 
     // ERC20
+    const erc20LeafRelayData = {
+      depositor: depositor.address,
+      recipient: recipient.address,
+      destinationToken: destErc20.address,
+      amount: consts.amountToRelay,
+      originChainId: consts.originChainId.toString(),
+      destinationChainId: consts.destinationChainId.toString(),
+      realizedLpFeePct: consts.realizedLpFeePct,
+      relayerFeePct: consts.depositRelayerFeePct,
+      depositId: consts.firstDepositId.toString(),
+      message: erc20Message,
+    };
     slowFills.push({
-      relayData: {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        destinationToken: destErc20.address,
-        amount: consts.amountToRelay,
-        originChainId: consts.originChainId.toString(),
-        destinationChainId: consts.destinationChainId.toString(),
-        realizedLpFeePct: consts.realizedLpFeePct,
-        relayerFeePct: consts.depositRelayerFeePct,
-        depositId: consts.firstDepositId.toString(),
-        message: erc20Message,
-      },
+      relayData: erc20LeafRelayData,
+      payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
+    });
+    slowFills.push({
+      relayData: { ...erc20LeafRelayData, message: "0x" },
       payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
     });
 
     // WETH
+    const wethLeafRelayData = {
+      depositor: depositor.address,
+      recipient: recipient.address,
+      destinationToken: weth.address,
+      amount: consts.amountToRelay,
+      originChainId: consts.originChainId.toString(),
+      destinationChainId: consts.destinationChainId.toString(),
+      realizedLpFeePct: consts.realizedLpFeePct,
+      relayerFeePct: consts.depositRelayerFeePct,
+      depositId: consts.firstDepositId.toString(),
+      message: wethMessage,
+    };
     slowFills.push({
-      relayData: {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        destinationToken: weth.address,
-        amount: consts.amountToRelay,
-        originChainId: consts.originChainId.toString(),
-        destinationChainId: consts.destinationChainId.toString(),
-        realizedLpFeePct: consts.realizedLpFeePct,
-        relayerFeePct: consts.depositRelayerFeePct,
-        depositId: consts.firstDepositId.toString(),
-        message: wethMessage,
-      },
+      relayData: wethLeafRelayData,
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
+    });
+    slowFills.push({
+      relayData: { ...wethLeafRelayData, message: "0x" },
       payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
     });
 
@@ -296,7 +306,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           consts.amountToRelay,
           undefined,
           undefined,
-          erc20Message
+          "0x"
         ).relayData,
         partialAmountPostFees, // Set post fee amount as max amount to send so that relay filled amount is
         // decremented by exactly the `partialAmount`.
@@ -317,9 +327,14 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.depositRelayerFeePct,
             consts.firstDepositId,
             0,
-            erc20Message,
+            "0x",
             ethers.utils.parseEther("9"),
-            tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === destErc20.address)!)
+            tree.getHexProof(
+              slowFills.find(
+                (slowFill) =>
+                  slowFill.relayData.destinationToken === destErc20.address && slowFill.relayData.message === "0x"
+              )!
+            )
           )
         )
     ).to.changeTokenBalances(
@@ -353,7 +368,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.amountToRelay,
             undefined,
             undefined,
-            wethMessage
+            "0x"
           ).relayData,
           partialAmountPostFees,
           consts.destinationChainId
@@ -374,9 +389,14 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.depositRelayerFeePct,
             consts.firstDepositId,
             0,
-            wethMessage,
+            "0x",
             ethers.utils.parseEther("-0.5"),
-            tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === weth.address)!)
+            tree.getHexProof(
+              slowFills.find(
+                (slowFill) =>
+                  slowFill.relayData.destinationToken === weth.address && slowFill.relayData.message === "0x"
+              )!
+            )
           )
         )
     ).to.changeTokenBalances(weth, [spokePool], [slowFillAmountPostFees.div(2).mul(-1)]);
@@ -406,7 +426,7 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.amountToRelay,
             undefined,
             undefined,
-            wethMessage
+            "0x"
           ).relayData,
           partialAmountPostFees,
           consts.destinationChainId
@@ -427,9 +447,14 @@ describe("SpokePool Slow Relay Logic", async function () {
             consts.depositRelayerFeePct,
             consts.firstDepositId,
             0,
-            wethMessage,
+            "0x",
             ethers.utils.parseEther("-0.5"),
-            tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === weth.address)!)
+            tree.getHexProof(
+              slowFills.find(
+                (slowFill) =>
+                  slowFill.relayData.destinationToken === weth.address && slowFill.relayData.message === "0x"
+              )!
+            )
           )
         )
     ).to.changeEtherBalance(recipient, slowFillAmountPostFees.div(2));

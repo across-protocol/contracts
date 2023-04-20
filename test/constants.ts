@@ -30,6 +30,8 @@ export const totalPostModifiedFeesPct = toBN(oneHundredPct).sub(toBN(modifiedRel
 
 export const amountToRelayPreFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostFeesPct);
 
+export const amountToDepositPostFees = toBN(amountToDeposit).mul(toBN(totalPostFeesPct)).div(oneHundredPct);
+
 export const amountToRelayPreModifiedFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostModifiedFeesPct);
 
 export const amountToRelayPreLPFee = amountToRelayPreFees.mul(oneHundredPct.sub(realizedLpFeePct)).div(oneHundredPct);
