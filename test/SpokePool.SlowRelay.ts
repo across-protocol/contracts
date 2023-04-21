@@ -92,19 +92,12 @@ describe("SpokePool Slow Relay Logic", async function () {
       message: erc20Message,
     };
     slowFills.push({
-      relayData: {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        destinationToken: destErc20.address,
-        amount: consts.amountToRelay,
-        originChainId: consts.originChainId.toString(),
-        destinationChainId: consts.destinationChainId.toString(),
-        realizedLpFeePct: consts.realizedLpFeePct,
-        relayerFeePct: consts.depositRelayerFeePct,
-        depositId: consts.firstDepositId.toString(),
-        message: erc20Message,
-      },
-      payoutAdjustmentPct: ethers.utils.parseEther("9").toString(), // 10x payout.
+      relayData: erc20LeafRelayData,
+      payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
+    });
+    slowFills.push({
+      relayData: { ...erc20LeafRelayData, message: "0x" },
+      payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
     });
 
     // WETH
@@ -121,19 +114,12 @@ describe("SpokePool Slow Relay Logic", async function () {
       message: wethMessage,
     };
     slowFills.push({
-      relayData: {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        destinationToken: weth.address,
-        amount: consts.amountToRelay,
-        originChainId: consts.originChainId.toString(),
-        destinationChainId: consts.destinationChainId.toString(),
-        realizedLpFeePct: consts.realizedLpFeePct,
-        relayerFeePct: consts.depositRelayerFeePct,
-        depositId: consts.firstDepositId.toString(),
-        message: wethMessage,
-      },
-      payoutAdjustmentPct: ethers.utils.parseEther("-0.5").toString(), // 50% payout.
+      relayData: wethLeafRelayData,
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
+    });
+    slowFills.push({
+      relayData: { ...wethLeafRelayData, message: "0x" },
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
     });
 
     // Broken payout adjustment, too small.
