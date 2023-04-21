@@ -14,7 +14,7 @@ const func = async function () {
   // Deploy new implementation and validate that it can be used in upgrade, without actually upgrading it.
   const newImplementation = await upgrades.prepareUpgrade(
     spokePool.address,
-    await getContractFactory("Arbitrum_SpokePool", deployer)
+    await getContractFactory("Ethereum_SpokePool", deployer)
   );
   console.log(`Can upgrade to new implementation @ ${newImplementation}`);
 
