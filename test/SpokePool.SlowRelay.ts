@@ -93,11 +93,11 @@ describe("SpokePool Slow Relay Logic", async function () {
     };
     slowFills.push({
       relayData: erc20LeafRelayData,
-      payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
+      payoutAdjustmentPct: ethers.utils.parseEther("9").toString(), // 10x payout.
     });
     slowFills.push({
       relayData: { ...erc20LeafRelayData, message: "0x" },
-      payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
+      payoutAdjustmentPct: ethers.utils.parseEther("9").toString(), // 10x payout.
     });
 
     // WETH
@@ -115,11 +115,11 @@ describe("SpokePool Slow Relay Logic", async function () {
     };
     slowFills.push({
       relayData: wethLeafRelayData,
-      payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5").toString(), // 50% payout.
     });
     slowFills.push({
       relayData: { ...wethLeafRelayData, message: "0x" },
-      payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5").toString(), // 50% payout.
     });
 
     // Broken payout adjustment, too small.
