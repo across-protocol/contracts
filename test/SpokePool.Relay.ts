@@ -680,6 +680,8 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
   expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
     relayData.destinationToken,
     amountActuallySent,
+    false,
+    relayer.address,
     updatedMessage
   );
 
