@@ -92,7 +92,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositId: consts.firstDepositId.toString(),
         message: erc20Message,
       },
-      payoutAdjustmentPct: ethers.utils.parseEther("9").toString(), // 10x payout.
+      payoutAdjustmentPct: ethers.utils.parseEther("9"), // 10x payout.
     });
 
     // WETH
@@ -109,7 +109,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         depositId: consts.firstDepositId.toString(),
         message: wethMessage,
       },
-      payoutAdjustmentPct: ethers.utils.parseEther("-0.5").toString(), // 50% payout.
+      payoutAdjustmentPct: ethers.utils.parseEther("-0.5"), // 50% payout.
     });
 
     // Broken payout adjustment, too small.
