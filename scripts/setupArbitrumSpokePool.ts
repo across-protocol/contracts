@@ -1,25 +1,40 @@
 // @notice Logs ABI-encoded function data that can be relayed from HubPool to ArbitrumSpokePool to set it up.
 
-import { getContractFactory, ethers, hre } from "../utils/utils";
-import * as consts from "../test/constants";
+import { getContractFactory, ethers } from "../utils/utils";
+import { constants } from "@across-protocol/sdk-v2";
+const { CHAIN_IDs, TOKEN_SYMBOLS_MAP } = constants;
 
 async function main() {
   const [signer] = await ethers.getSigners();
 
-  // We need to whitelist L2 --> L1 token mappings
   const spokePool = await getContractFactory("Arbitrum_SpokePool", { signer });
-  const whitelistWeth = spokePool.interface.encodeFunctionData("whitelistToken", [
-    "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681", // L2 WETH
-    "0xc778417e063141139fce010982780140aa0cd5ab", // L1 WETH
-  ]);
-  console.log(`(WETH) whitelistToken: `, whitelistWeth);
+  const hubPool = await getContractFactory("HubPool", { signer });
 
-  // USDC is also not verified on the rinkeby explorer so we should approve it to be spent by the spoke pool.
-  const ERC20 = await getContractFactory("ExpandedERC20", { signer });
-  const usdc = await ERC20.attach("0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b");
-  const deployedHubPool = await hre.deployments.get("HubPool");
-  const approval = await usdc.approve(deployedHubPool.address, consts.maxUint256);
-  console.log(`Approved USDC to be spent by HubPool @ ${deployedHubPool.address}: `, approval.hash);
+  // We need to whitelist all L2 --> L1 token mappings
+  // We'll use this to store all the call data we need to pass to HubPool#multicall.
+  const callData: string[] = [];
+
+  const tokenSymbols = Object.values(TOKEN_SYMBOLS_MAP);
+  for (const token of tokenSymbols) {
+    // Setup Arbitrum: We need to call whitelistToken on Arbitrum SpokePool so that SpokePool
+    // is aware of L1 to L2 mappings.
+    const l1Token = token.addresses[CHAIN_IDs.MAINNET];
+    const arbitrumToken = token.addresses[CHAIN_IDs.ARBITRUM];
+    if (!l1Token || !arbitrumToken) {
+      console.log(`Token ${token.symbol} does not exist on both Arbitrum and Mainnet. Skipping...`);
+      continue;
+    }
+    const _callData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
+    console.log(`Whitelisting mapping for ${token.symbol} on Arbitrum SpokePool: ${_callData}`);
+    const relayRootCallData = hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [
+      CHAIN_IDs.ARBITRUM,
+      _callData,
+    ]);
+    callData.push(relayRootCallData);
+  }
+
+  const multicallData = hubPool.interface.encodeFunctionData("multicall", [callData]);
+  console.log("Data to pass to HubPool#multicall()", multicallData);
 }
 
 main().then(
