@@ -20,6 +20,8 @@ interface AcrossMessageHandler {
     function handleAcrossMessage(
         address tokenSent,
         uint256 amount,
+        bool fillCompleted,
+        address relayer,
         bytes memory message
     ) external;
 }
@@ -1244,6 +1246,8 @@ abstract contract SpokePool is
             AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
+                relayFills[relayExecution.relayHash] >= relayData.amount,
+                msg.sender,
                 relayExecution.updatedMessage
             );
         }
