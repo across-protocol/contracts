@@ -1195,13 +1195,6 @@ abstract contract SpokePool is
             "invalid repayment chain"
         );
 
-        // If this is a partial fill, require that the fill has no message. This prevents situations in which
-        // a message is sent multiple times for multiple partial fills.
-        require(
-            relayExecution.relay.amount == fillAmountPreFees || relayExecution.updatedMessage.length == 0,
-            "invalid partial fill message"
-        );
-
         // Update fill counter.
         _updateCountFromFill(
             relayFills[relayExecution.relayHash],
