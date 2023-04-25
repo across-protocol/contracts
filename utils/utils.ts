@@ -35,36 +35,16 @@ export async function getContractFactory(
       try {
         return await optimismContracts.getContractFactory(name, signerOrFactoryOptions as Signer);
       } catch (_) {
-        // If that also fails, then try getting it from the Arbitrum package.
+        // Finally, try importing the package from the local path. This would be the case when running these utils
+        // from node modules which breaks using the hardhat getContractFactory function.
         try {
-          const arbitrumArtifact = getArbitrumArtifact(name);
-          return new ContractFactory(arbitrumArtifact.abi, arbitrumArtifact.bytecode, signerOrFactoryOptions as Signer);
+          const localArtifact = getLocalArtifact(name);
+          return new ContractFactory(localArtifact.abi, localArtifact.bytecode, signerOrFactoryOptions as Signer);
         } catch (_) {
-          // Finally, try importing the package from the local path. This would be the case when running these utils
-          // from node modules which breaks using the hardhat getContractFactory function.
-          try {
-            const localArtifact = getLocalArtifact(name);
-            return new ContractFactory(localArtifact.abi, localArtifact.bytecode, signerOrFactoryOptions as Signer);
-          } catch (_) {
-            throw new Error(`Could not find the artifact for ${name}!`);
-          }
+          throw new Error(`Could not find the artifact for ${name}!`);
         }
       }
     }
-  }
-}
-
-// Arbitrum does not export any of their artifacts nicely, so we have to do this manually. The methods that follow can
-// be re-used if we end up requiring to import contract artifacts from other projects that dont export cleanly.
-function getArbitrumArtifact(contractName: string) {
-  try {
-    // First, try find the contract from their main package.
-    const artifactsPath = `${findPathToRootOfPackage("arb-bridge-eth")}build/contracts/contracts`;
-    return findArtifactFromPath(contractName, artifactsPath);
-  } catch (error) {
-    // If that fails then try from the peripheral package.
-    const artifactsPath = `${findPathToRootOfPackage("arb-bridge-peripherals")}build/contracts/contracts`;
-    return findArtifactFromPath(contractName, artifactsPath);
   }
 }
 
@@ -72,11 +52,6 @@ function getArbitrumArtifact(contractName: string) {
 function getLocalArtifact(contractName: string) {
   const artifactsPath = `${__dirname}/../../artifacts/contracts`;
   return findArtifactFromPath(contractName, artifactsPath);
-}
-
-function findPathToRootOfPackage(packageName: string) {
-  const packagePath = require.resolve(`${packageName}/package.json`);
-  return packagePath.slice(0, packagePath.indexOf("package.json"));
 }
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {

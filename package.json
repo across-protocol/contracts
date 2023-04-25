@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts-v2",
-  "version": "2.1.0-beta.19",
+  "version": "2.1.0-beta.21",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -55,8 +55,6 @@
     "@types/node": "^12.0.0",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
-    "arb-bridge-eth": "^0.7.4",
-    "arb-bridge-peripherals": "^1.0.5",
     "chai": "^4.2.0",
     "dotenv": "^10.0.0",
     "eslint": "^7.29.0",
