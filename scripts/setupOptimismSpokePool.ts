@@ -1,8 +1,7 @@
 // @notice Logs ABI-encoded function data that can be relayed from HubPool to OptimismSpokePool to set it up.
 
 import { getContractFactory, ethers } from "../utils/utils";
-import { constants } from "@across-protocol/sdk-v2";
-const { CHAIN_IDs } = constants;
+import { CHAIN_IDs } from "../utils/constants";
 
 const customOptimismTokenBridges: Record<string, string> = {
   // DAI
