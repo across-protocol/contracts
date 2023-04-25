@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, getContractFactory, hre } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, getContractFactory, hre } from "../utils/utils";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
 

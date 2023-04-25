@@ -1,7 +1,7 @@
 // @notice Prints bytes input you'll need to send ETH from L2 aliased HubPool address to l2 recipient address via
 // Arbitrum_RescueAdapter.
 
-import { defaultAbiCoder, toWei } from "../test/utils";
+import { defaultAbiCoder, toWei } from "../utils/utils";
 
 async function main() {
   const amountOfEth = toWei("2.9");

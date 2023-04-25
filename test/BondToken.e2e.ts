@@ -1,6 +1,6 @@
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
 import { enableTokensForLP, hubPoolFixture } from "./fixtures/HubPool.Fixture";
-import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "./utils";
+import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "../utils/utils";
 import { constructSimpleTree } from "./HubPool.ExecuteRootBundle";
 import * as consts from "./constants";
 

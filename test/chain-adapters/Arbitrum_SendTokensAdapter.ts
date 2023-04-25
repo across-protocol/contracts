@@ -9,8 +9,8 @@ import {
   toWei,
   defaultAbiCoder,
   toBN,
-} from "../utils";
-import { getContractFactory, seedWallet, randomAddress } from "../utils";
+} from "../../utils/utils";
+import { getContractFactory, seedWallet, randomAddress } from "../../utils/utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 
 let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, mockSpoke: Contract;

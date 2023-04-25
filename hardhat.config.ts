@@ -3,7 +3,7 @@ import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import { getNodeUrl, getMnemonic } from "@uma/common";
 
-import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-etherscan"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "@matterlabs/hardhat-zksync-solc";
@@ -127,7 +127,7 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       chainId: 137,
-      url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: getNodeUrl("polygon-matic", true, 137),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -156,7 +156,7 @@ const config: HardhatUserConfig = {
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
-      arbitrumTestnet: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
+      arbitrumGoerli: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
     },

@@ -1,5 +1,5 @@
-import { ethers, expect, Contract, FakeContract, SignerWithAddress } from "../utils";
-import { createFake, getContractFactory, randomAddress } from "../utils";
+import { ethers, expect, Contract, FakeContract, SignerWithAddress } from "../../utils/utils";
+import { createFake, getContractFactory, randomAddress } from "../../utils/utils";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 
 let hubPool: Contract, succinctAdapter: Contract, mockSpoke: Contract;

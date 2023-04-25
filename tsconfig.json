@@ -15,7 +15,8 @@
     "./typechain",
     "./index.ts",
     "./test-utils.ts",
-    "tasks/enableL1TokenAcrossEcosystem.ts"
+    "tasks/enableL1TokenAcrossEcosystem.ts",
+    "utils/utils.ts"
   ],
   "files": ["./hardhat.config.ts"]
 }

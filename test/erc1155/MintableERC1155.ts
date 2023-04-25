@@ -1,4 +1,4 @@
-import { ethers, getContractFactory, SignerWithAddress, Contract, expect } from "../utils";
+import { ethers, getContractFactory, SignerWithAddress, Contract, expect } from "../../utils/utils";
 
 let mintableErc1155: Contract;
 

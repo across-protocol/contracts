@@ -10,7 +10,7 @@ import {
   expect,
   keccak256,
   defaultAbiCoder,
-} from "../utils";
+} from "../../utils/utils";
 import { deployErc20 } from "../gas-analytics/utils";
 import { MAX_UINT_VAL, MerkleTree } from "@uma/common";
 

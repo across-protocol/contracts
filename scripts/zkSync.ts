@@ -2,7 +2,7 @@
 // contains useful scripts to interact with zksync goerli contracts. To run, run:
 // yarn hardhat run ./scripts/zksync.ts --network zksync-goerli
 
-import { getContractFactory, ethers, toBN, findArtifactFromPath } from "../test/utils";
+import { getContractFactory, ethers, toBN, findArtifactFromPath } from "../utils/utils";
 import { Contract, ContractFactory } from "ethers";
 import { assert } from "console";
 

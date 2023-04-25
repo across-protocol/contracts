@@ -23,15 +23,15 @@ jobs:
         id: release
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
 
-      # Perform installs, run tests, run a build step, etc. here, as needed.
-      - run: yarn
-
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v3
         with:
           node-version: "16.x"
           always-auth: true
           registry-url: "https://registry.npmjs.org"
+
+      # Perform installs, run tests, run a build step, etc. here, as needed.
+      - run: yarn
 
       # The last two steps will publish the package. Note that we're using
       # information from the `release` step above (I told you we'd use it

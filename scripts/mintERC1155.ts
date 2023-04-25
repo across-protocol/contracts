@@ -1,4 +1,4 @@
-import { getContractFactory, ethers, hre } from "../test/utils";
+import { getContractFactory, ethers, hre } from "../utils/utils";
 import { readFileSync } from "fs";
 import path from "path";
 import { getNodeUrl } from "@uma/common";

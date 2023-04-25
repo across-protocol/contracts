@@ -2,9 +2,9 @@
 //         test net.
 // @dev    Modify constants to modify merkle leaves. Command: `yarn hardhat run ./scripts/buildSampleTree.ts`
 
-import { toBN, getParamType, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../test/utils";
+import { toBN, getParamType, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
-import { RelayData } from "../test/fixtures/SpokePool.Fixture";
+import { SlowFill } from "../test/fixtures/SpokePool.Fixture";
 
 import { PoolRebalanceLeaf, RelayerRefundLeaf } from "../test/MerkleLib.utils";
 
@@ -15,14 +15,14 @@ const RELAYER_REFUND_LEAF_COUNT = 1;
 const SLOW_RELAY_LEAF_COUNT = 1;
 const POOL_REBALANCE_NET_SEND_AMOUNT = 0.1; // Amount of tokens to send from HubPool to SpokePool
 const RELAYER_REFUND_AMOUNT_TO_RETURN = 0.1; // Amount of tokens to send from SpokePool to HubPool
-const L1_TOKEN = "0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b";
-const L2_TOKEN = "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d";
-const DECIMALS = 6;
+const L1_TOKEN = "0x40153ddfad90c49dbe3f5c9f96f2a5b25ec67461";
+const L2_TOKEN = "0x40153ddfad90c49dbe3f5c9f96f2a5b25ec67461";
+const DECIMALS = 18;
 const RELAYER_REFUND_ADDRESS_TO_REFUND = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 const RELAYER_REFUND_AMOUNT_TO_REFUND = 0.1; // Amount of tokens to send out of SpokePool to relayer refund recipient
 const SLOW_RELAY_RECIPIENT_ADDRESS = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 const SLOW_RELAY_AMOUNT = 0.1; // Amount of tokens to send out of SpokePool to slow relay recipient address
-const SPOKE_POOL_CHAIN_ID = 421611;
+const SPOKE_POOL_CHAIN_ID = 5;
 
 function tuplelifyLeaf(leaf: Object) {
   return JSON.stringify(
@@ -120,19 +120,22 @@ async function main() {
         SLOW_RELAY_LEAF_COUNT > 1 ? "ves" : "f"
       }`
     );
-    const leaves: RelayData[] = [];
+    const leaves: SlowFill[] = [];
     for (let i = 0; i < SLOW_RELAY_LEAF_COUNT; i++) {
       leaves.push({
-        depositor: SLOW_RELAY_RECIPIENT_ADDRESS,
-        recipient: SLOW_RELAY_RECIPIENT_ADDRESS,
-        destinationToken: L2_TOKEN,
-        amount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS),
-        originChainId: SPOKE_POOL_CHAIN_ID.toString(),
-        destinationChainId: SPOKE_POOL_CHAIN_ID.toString(),
-        realizedLpFeePct: toBN(0),
-        relayerFeePct: toBN(0),
-        depositId: i.toString(),
-        message: "0x",
+        relayData: {
+          depositor: SLOW_RELAY_RECIPIENT_ADDRESS,
+          recipient: SLOW_RELAY_RECIPIENT_ADDRESS,
+          destinationToken: L2_TOKEN,
+          amount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS),
+          originChainId: SPOKE_POOL_CHAIN_ID.toString(),
+          destinationChainId: SPOKE_POOL_CHAIN_ID.toString(),
+          realizedLpFeePct: toBN(0),
+          relayerFeePct: toBN(0),
+          depositId: i.toString(),
+          message: "0x",
+        },
+        payoutAdjustmentPct: toBN(0),
       });
       console.group();
       console.log(`- slowRelayLeaf ID#${i}: `, leaves[i]);
@@ -146,9 +149,9 @@ async function main() {
       } amount of ${L2_TOKEN} to fulfill ${SLOW_RELAY_LEAF_COUNT} relays`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifySlowRelayFulfillment", "slowRelayFulfillment");
-    const hashFn = (input: RelayData) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const tree = new MerkleTree<RelayData>(leaves, hashFn);
+    const paramType = await getParamType("MerkleLibTest", "verifySlowRelayFulfillment", "slowFill");
+    const hashFn = (input: SlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const tree = new MerkleTree<SlowFill>(leaves, hashFn);
     console.log("- Slow relay root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < SLOW_RELAY_LEAF_COUNT; i++) {

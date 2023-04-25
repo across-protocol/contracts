@@ -1,5 +1,5 @@
-import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre, expect } from "../utils";
-import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
+import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre, expect } from "../../utils/utils";
+import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../../utils/utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";

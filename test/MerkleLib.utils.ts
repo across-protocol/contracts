@@ -1,4 +1,4 @@
-import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "./utils";
+import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "../utils/utils";
 import { repaymentChainId, amountToReturn } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
 import { RelayData, SlowFill } from "./fixtures/SpokePool.Fixture";

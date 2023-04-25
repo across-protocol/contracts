@@ -1,4 +1,4 @@
-import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers } from "./utils";
+import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers } from "../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";

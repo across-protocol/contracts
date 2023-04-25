@@ -1,4 +1,4 @@
-import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract } from "../utils";
+import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract } from "../../utils/utils";
 import * as consts from "../constants";
 import { getDepositParams, getRelayHash, getFillRelayParams, enableRoutes } from "../fixtures/SpokePool.Fixture";
 
