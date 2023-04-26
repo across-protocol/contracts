@@ -12,7 +12,6 @@ const func = async function () {
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const constructorArgs = [1_000_000, hubPool.address, hubPool.address];
   await deployNewProxy("Optimism_SpokePool", constructorArgs);
-
 };
 module.exports = func;
 func.tags = ["OptimismSpokePool", "optimism"];
