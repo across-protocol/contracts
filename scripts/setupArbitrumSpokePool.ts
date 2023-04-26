@@ -1,6 +1,6 @@
 // @notice Logs ABI-encoded function data that can be relayed from HubPool to ArbitrumSpokePool to set it up.
 
-import { getContractFactory, ethers, hre } from "../utils/utils";
+import { getContractFactory, ethers } from "../utils/utils";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
 async function main() {
