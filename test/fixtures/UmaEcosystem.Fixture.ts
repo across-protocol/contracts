@@ -1,8 +1,16 @@
-import { getContractFactory, utf8ToHex, hre } from "../../utils/utils";
+import { getContractFactory, utf8ToHex, hre, Contract } from "../../utils/utils";
 import { refundProposalLiveness, zeroRawValue, identifier } from "../constants";
 import { interfaceName } from "@uma/common";
 
-export const umaEcosystemFixture = hre.deployments.createFixture(async ({ ethers }) => {
+export const umaEcosystemFixture: () => Promise<{
+  timer: Contract;
+  finder: Contract;
+  collateralWhitelist: Contract;
+  identifierWhitelist: Contract;
+  store: Contract;
+  optimisticOracle: Contract;
+  mockOracle: Contract;
+}> = hre.deployments.createFixture(async ({ ethers }) => {
   const [signer] = await ethers.getSigners();
 
   // Deploy the UMA ecosystem contracts.

@@ -1,8 +1,6 @@
 import "hardhat-deploy";
-
 import hre from "hardhat";
 import { deployNewProxy } from "../utils";
-
 import { L1_ADDRESS_MAP } from "./consts";
 
 export async function printProxyVerificationInstructions() {}

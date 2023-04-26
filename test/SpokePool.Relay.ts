@@ -322,11 +322,37 @@ describe("SpokePool Relayer Logic", async function () {
     expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
       weth.address,
       consts.amountToRelay,
+      false,
+      relayer.address,
+      "0x1234"
+    );
+  });
+  it("Handler is called with correct params", async function () {
+    const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
+    const { relayData } = getRelayHash(
+      depositor.address,
+      acrossMessageHandler.address,
+      consts.firstDepositId,
+      consts.originChainId,
+      consts.destinationChainId,
+      weth.address,
+      undefined,
+      undefined,
+      undefined,
       "0x1234"
     );
 
-    // The collateral should have not unwrapped to ETH and then transferred to recipient.
-    expect(await weth.balanceOf(acrossMessageHandler.address)).to.equal(consts.amountToRelay);
+    // Handler is called with full fill and relayer address.
+    await spokePool
+      .connect(depositor)
+      .fillRelay(...getFillRelayParams(relayData, relayData.amount, consts.destinationChainId));
+    expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
+      weth.address,
+      relayData.amount.mul(consts.totalPostFeesPct).div(toBN(consts.oneHundredPct)),
+      true, // True because fill completed deposit.
+      depositor.address, // Custom relayer
+      "0x1234"
+    );
   });
   it("Self-relay transfers no tokens", async function () {
     const largeRelayAmount = consts.amountToSeedWallets.mul(100);
@@ -664,6 +690,8 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
   expect(acrossMessageHandler.handleAcrossMessage).to.have.been.calledOnceWith(
     relayData.destinationToken,
     amountActuallySent,
+    false,
+    relayer.address,
     updatedMessage
   );
 

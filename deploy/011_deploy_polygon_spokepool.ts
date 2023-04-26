@@ -25,5 +25,4 @@ const func = async function () {
 };
 
 module.exports = func;
-func.dependencies = ["PolygonTokenBridgerL2"];
 func.tags = ["PolygonSpokePool", "polygon"];

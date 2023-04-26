@@ -4,7 +4,7 @@ async function main() {
   const [signer] = await ethers.getSigners();
 
   const spokePool = await getContractFactory("Arbitrum_SpokePool", { signer });
-  const upgradeTo = spokePool.interface.encodeFunctionData("upgradeTo", ["0x50039fAEfebef707cFD94D6d462fE6D10B39207a"]);
+  const upgradeTo = spokePool.interface.encodeFunctionData("upgradeTo", ["0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F"]);
   console.log(`upgradeTo bytes: `, upgradeTo);
 
   console.log(
