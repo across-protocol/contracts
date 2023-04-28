@@ -1,9 +1,7 @@
-import "hardhat-deploy";
-import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-
+import { DeployFunction } from "hardhat-deploy/types";
 import { L1_ADDRESS_MAP, POLYGON_CHAIN_IDS } from "./consts";
 
-const func = async function (hre: HardhatRuntimeEnvironment) {
+const func: DeployFunction = async function (hre: any) {
   const { deployments, getNamedAccounts, getChainId } = hre;
   const { deploy } = deployments;
 

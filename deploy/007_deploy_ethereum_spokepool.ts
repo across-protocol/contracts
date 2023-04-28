@@ -1,11 +1,8 @@
-import "hardhat-deploy";
-import hre from "hardhat";
+import { DeployFunction } from "hardhat-deploy/types";
 import { deployNewProxy } from "../utils";
 import { L1_ADDRESS_MAP } from "./consts";
 
-export async function printProxyVerificationInstructions() {}
-
-const func = async function () {
+const func: DeployFunction = async function () {
   const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
   const chainId = await hre.getChainId();
   console.log(`Using L1 (chainId ${chainId}) hub pool @ ${hubPool.address}`);

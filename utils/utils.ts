@@ -5,11 +5,11 @@ import * as chai from "chai";
 import { getBytecode, getAbi } from "@uma/contracts-node";
 import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
-chai.use(smock.matchers);
-import hre from "hardhat";
-import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 import { FactoryOptions } from "hardhat/types";
+import { ethers, hre } from "..";
+
+chai.use(smock.matchers);
+const { BigNumber, Signer, Contract, ContractFactory } = ethers;
 
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
