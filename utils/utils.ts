@@ -6,11 +6,10 @@ import { getBytecode, getAbi } from "@uma/contracts-node";
 import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
-import { ethers, hre } from "..";
-
 chai.use(smock.matchers);
-const { BigNumber, Signer, Contract, ContractFactory } = ethers;
-
+import hre from "hardhat";
+import { ethers } from "hardhat";
+import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
