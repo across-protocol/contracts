@@ -5,13 +5,13 @@ import * as chai from "chai";
 import { getBytecode, getAbi } from "@uma/contracts-node";
 import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
-chai.use(smock.matchers);
+import { FactoryOptions } from "hardhat/types";
 import hre from "hardhat";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
-import { FactoryOptions } from "hardhat/types";
-
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
+chai.use(smock.matchers);
 
 function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
   return "signer" in signerOrFactoryOptions || "libraries" in signerOrFactoryOptions;

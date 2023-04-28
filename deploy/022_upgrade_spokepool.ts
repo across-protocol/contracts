@@ -1,9 +1,9 @@
-import "hardhat-deploy";
-import hre from "hardhat";
+import { DeployFunction } from "hardhat-deploy/types";
 import { getContractFactory } from "../utils";
 import * as deployments from "../deployments/deployments.json";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-const func = async function () {
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { upgrades, run, getChainId, getNamedAccounts } = hre;
   const { deployer } = await getNamedAccounts();
 
