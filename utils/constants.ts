@@ -6,6 +6,8 @@ export const CHAIN_IDs = {
   POLYGON: 137,
   GOERLI: 5,
   MUMBAI: 80001,
+  ARBITRUM_GOERLI: 421613,
+  OPTIMISM_GOERLI: 420,
 };
 
 // NOTE: All addresses should be checksummed
@@ -87,6 +89,18 @@ export const TOKEN_SYMBOLS_MAP = {
       [CHAIN_IDs.MAINNET]: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
       [CHAIN_IDs.GOERLI]: "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae",
       [CHAIN_IDs.MUMBAI]: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
+    },
+  },
+  SNX: {
+    name: "Synthetix",
+    symbol: "SNX",
+    decimals: 18,
+    // Based on https://github.com/Synthetixio/synthetix-docs/blob/fe83d0757977b1cb7f69796126e71a66295bf264/content/addresses.md
+    addresses: {
+      [CHAIN_IDs.MAINNET]: "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+      [CHAIN_IDs.OPTIMISM]: "0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4",
+      [CHAIN_IDs.GOERLI]: "0x51f44ca59b867E005e48FA573Cb8df83FC7f7597",
+      [CHAIN_IDs.OPTIMISM_GOERLI]: "0x2E5ED97596a8368EB9E44B1f3F25B2E813845303",
     },
   },
   UMA: {
