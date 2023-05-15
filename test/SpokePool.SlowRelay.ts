@@ -221,6 +221,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           erc20Message,
           0, // Should not have an applied relayerFeePct for slow relay fills.
           true,
+          "9000000000000000000",
         ]
       );
   });
