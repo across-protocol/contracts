@@ -183,7 +183,7 @@ export async function getParamType(contractName: string, functionName: string, p
 
 export async function createFake(contractName: string, targetAddress: string = "") {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  return smock.fake(contractFactory, {
+  return smock.fake(contractFactory.interface.fragments, {
     address: targetAddress === "" ? undefined : targetAddress,
     provider: contractFactory.signer.provider,
   });
