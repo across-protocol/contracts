@@ -1,4 +1,4 @@
-import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers } from "../utils/utils";
+import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";
@@ -56,7 +56,9 @@ describe("SpokePool Root Bundle Execution", function () {
     expect(relayTokensEvents[0].args?.leafId).to.equal(0);
     expect(relayTokensEvents[0].args?.chainId).to.equal(destinationChainId);
     expect(relayTokensEvents[0].args?.amountToReturn).to.equal(consts.amountToReturn);
-    expect(relayTokensEvents[0].args?.refundAmounts).to.deep.equal([consts.amountToRelay, consts.amountToRelay]);
+    expect((relayTokensEvents[0].args?.refundAmounts as BigNumber[]).map((v) => v.toString())).to.deep.equal(
+      [consts.amountToRelay, consts.amountToRelay].map((v) => v.toString())
+    );
     expect(relayTokensEvents[0].args?.refundAddresses).to.deep.equal([relayer.address, rando.address]);
     expect(relayTokensEvents[0].args?.caller).to.equal(dataWorker.address);
 

@@ -1,7 +1,17 @@
-import { toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers, randomAddress } from "../utils/utils";
+import { MerkleTree } from "@uma/common";
+import {
+  toBNWei,
+  SignerWithAddress,
+  seedWallet,
+  expect,
+  Contract,
+  ethers,
+  randomAddress,
+  BigNumber,
+} from "../utils/utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
-import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves } from "./MerkleLib.utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves, PoolRebalanceLeaf } from "./MerkleLib.utils";
 
 let hubPool: Contract, mockAdapter: Contract, weth: Contract, dai: Contract, mockSpoke: Contract, timer: Contract;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
@@ -9,7 +19,12 @@ let l2Weth: string, l2Dai: string;
 
 // Construct the leaves that will go into the merkle tree. For this function create a simple set of leaves that will
 // repay two token to one chain Id with simple lpFee, netSend and running balance amounts.
-export async function constructSimpleTree() {
+export async function constructSimpleTree(): Promise<{
+  wethToSendToL2: BigNumber;
+  daiToSend: BigNumber;
+  leaves: PoolRebalanceLeaf[];
+  tree: MerkleTree<PoolRebalanceLeaf>;
+}> {
   const wethToSendToL2 = toBNWei(100);
   const daiToSend = toBNWei(1000);
   const leaves = buildPoolRebalanceLeaves(

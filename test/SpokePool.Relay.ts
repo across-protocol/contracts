@@ -83,7 +83,7 @@ describe("SpokePool Relayer Logic", async function () {
         relayData.depositor,
         relayData.recipient,
         relayData.message,
-        [relayData.recipient, relayData.message, relayData.relayerFeePct, false]
+        [relayData.recipient, relayData.message, relayData.relayerFeePct, false, "0"]
       );
 
     // The collateral should have transferred from relayer to recipient.
@@ -146,7 +146,7 @@ describe("SpokePool Relayer Logic", async function () {
         relayData.depositor,
         relayData.recipient,
         relayData.message,
-        [relayData.recipient, relayData.message, relayData.relayerFeePct, false]
+        [relayData.recipient, relayData.message, relayData.relayerFeePct, false, "0"]
       );
 
     // Repayment on another chain doesn't increment fill counter.
@@ -682,6 +682,7 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
         updatedMessage,
         consts.modifiedRelayerFeePct, // Applied relayer fee % should be diff from original fee %.
         false,
+        "0",
       ]
     );
 
