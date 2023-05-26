@@ -1,4 +1,5 @@
-import { Contract, getContractFactory, hre } from "../../utils/utils";
+import { Contract, getContractFactory } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 
 export const merkleLibFixture: () => Promise<{ merkleLibTest: Contract }> = hre.deployments.createFixture(async () => {
   const [signer] = await hre.ethers.getSigners();

@@ -1,5 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { deployNewProxy } from "../utils";
+import { deployNewProxy } from "../utils/utils.hre";
 import { L1_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 

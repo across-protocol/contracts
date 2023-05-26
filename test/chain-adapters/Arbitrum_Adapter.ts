@@ -9,8 +9,10 @@ import {
   toWei,
   defaultAbiCoder,
   toBN,
+  getContractFactory,
+  seedWallet,
+  randomAddress,
 } from "../../utils/utils";
-import { getContractFactory, seedWallet, randomAddress } from "../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 

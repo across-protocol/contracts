@@ -1,4 +1,5 @@
-import { expect, ethers, Contract, SignerWithAddress, hre, randomAddress } from "../utils/utils";
+import { expect, ethers, Contract, SignerWithAddress, randomAddress } from "../utils/utils";
+import { hre } from "../utils/utils.hre";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 
 let spokePool: Contract;

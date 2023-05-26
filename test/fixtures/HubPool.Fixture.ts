@@ -1,4 +1,5 @@
-import { getContractFactory, randomAddress, hre, Contract, Signer } from "../../utils/utils";
+import { getContractFactory, randomAddress, Contract, Signer } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { originChainId, bondAmount, refundProposalLiveness, finalFee } from "../constants";
 import { repaymentChainId, finalFeeUsdc, TokenRolesEnum } from "../constants";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";

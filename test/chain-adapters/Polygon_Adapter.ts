@@ -1,6 +1,16 @@
 import { amountToLp, mockTreeRoot, refundProposalLiveness, bondAmount, mockSlowRelayRoot } from "./../constants";
-import { ethers, expect, Contract, FakeContract, SignerWithAddress } from "../../utils/utils";
-import { createFake, getContractFactory, seedWallet, randomAddress, hre } from "../../utils/utils";
+import {
+  ethers,
+  expect,
+  Contract,
+  FakeContract,
+  SignerWithAddress,
+  createFake,
+  getContractFactory,
+  seedWallet,
+  randomAddress,
+} from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { TokenRolesEnum } from "@uma/common";

@@ -6,7 +6,6 @@ import { getBytecode, getAbi } from "@uma/contracts-node";
 import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
-import hre from "hardhat";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -54,24 +53,6 @@ export async function getContractFactory(
   }
 }
 
-export async function deployNewProxy(name: string, args: (number | string)[]): Promise<void> {
-  const { run, upgrades } = hre;
-
-  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, { kind: "uups" });
-  const instance = await proxy.deployed();
-  console.log(`New ${name} proxy deployed @ ${instance.address}`);
-  const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);
-  console.log(`${name} implementation deployed @ ${implementationAddress}`);
-
-  // hardhat-upgrades overrides the `verify` task that ships with `hardhat` so that if the address passed
-  // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
-  // to the implementation's ABI on etherscan.
-  // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
-  await run("verify:verify", {
-    address: instance.address,
-  });
-}
-
 // Arbitrum does not export any of their artifacts nicely, so we have to do this manually. The methods that follow can
 // be re-used if we end up requiring to import contract artifacts from other projects that dont export cleanly.
 function getArbitrumArtifact(contractName: string) {
@@ -88,7 +69,7 @@ function getArbitrumArtifact(contractName: string) {
 
 // Fetch the artifact from the publish package's artifacts directory.
 function getLocalArtifact(contractName: string) {
-  const artifactsPath = `${__dirname}/../../artifacts/contracts`;
+  const artifactsPath = path.join(__dirname, "../../artifacts/contracts");
   return findArtifactFromPath(contractName, artifactsPath);
 }
 
@@ -201,4 +182,4 @@ function avmL1ToL2Alias(l1Address: string) {
 
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
-export { avmL1ToL2Alias, expect, Contract, ethers, hre, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
+export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
