@@ -1,4 +1,5 @@
-import { ethers, expect, Contract, SignerWithAddress, getContractFactory, hre } from "../../utils/utils";
+import { ethers, expect, Contract, SignerWithAddress, getContractFactory } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 
 let succinctSpokePool: Contract, timer: Contract, weth: Contract;

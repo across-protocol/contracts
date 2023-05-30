@@ -1,4 +1,5 @@
-import { getContractFactory, utf8ToHex, hre, Contract } from "../../utils/utils";
+import { getContractFactory, utf8ToHex, Contract } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { refundProposalLiveness, zeroRawValue, identifier } from "../constants";
 import { interfaceName } from "@uma/common";
 

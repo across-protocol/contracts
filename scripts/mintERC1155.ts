@@ -1,7 +1,8 @@
-import { getContractFactory, ethers, hre } from "../utils/utils";
+import { getContractFactory, ethers } from "../utils/utils";
 import { readFileSync } from "fs";
 import path from "path";
 import { getNodeUrl } from "@uma/common";
+import { hre } from "../utils/utils.hre";
 
 const RECIPIENTS_CHUNK_SIZE = 100; // TODO: Still need to figure out which size is optimal
 

@@ -1,4 +1,5 @@
-import { Contract, getContractFactory, hre } from "../../utils/utils";
+import { Contract, getContractFactory } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "./HubPool.Fixture";
 
 export const bondTokenFixture = hre.deployments.createFixture(async ({ ethers }, hubPool?: Contract) => {

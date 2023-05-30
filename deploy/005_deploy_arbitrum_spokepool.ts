@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy } from "../utils";
+import { deployNewProxy } from "../utils/utils.hre";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
