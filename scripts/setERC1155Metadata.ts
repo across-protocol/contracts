@@ -1,4 +1,5 @@
-import { getContractFactory, ethers, hre } from "../utils/utils";
+import { getContractFactory, ethers } from "../utils/utils";
+import { hre } from "../utils/utils.hre";
 import { readFileSync } from "fs";
 import path from "path";
 import { CID } from "multiformats/cid";
