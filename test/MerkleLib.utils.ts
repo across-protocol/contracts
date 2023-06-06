@@ -55,11 +55,14 @@ export function buildRelayerRefundLeaves(
 
 export async function buildPoolRebalanceLeafTree(poolRebalanceLeaves: PoolRebalanceLeaf[]) {
   for (let i = 0; i < poolRebalanceLeaves.length; i++) {
-    // The 4 provided parallel arrays must be of equal length.
+    // 3 of the provided parallel arrays must be of equal length.
     expect(poolRebalanceLeaves[i].l1Tokens.length)
       .to.equal(poolRebalanceLeaves[i].bundleLpFees.length)
-      .to.equal(poolRebalanceLeaves[i].netSendAmounts.length)
-      .to.equal(poolRebalanceLeaves[i].runningBalances.length);
+      .to.equal(poolRebalanceLeaves[i].netSendAmounts.length);
+
+    // runningBalances must be 1x or 2x as long as the other arrays (pre/post UBA).
+    expect([1, 2].includes(poolRebalanceLeaves[i].runningBalances.length / poolRebalanceLeaves[i].l1Tokens.length)).to
+      .be.true;
   }
 
   const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
