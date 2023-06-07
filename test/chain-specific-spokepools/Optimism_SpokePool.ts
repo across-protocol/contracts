@@ -27,7 +27,7 @@ describe("Optimism Spoke Pool", function () {
 
     // Create the fake at the optimism cross domain messenger and l2StandardBridge pre-deployment addresses.
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
-    l2StandardBridge = await createFake("L2StandardBridge", "0x4200000000000000000000000000000000000010");
+    l2StandardBridge = await createFake("MockBedrockL2StandardBridge", "0x4200000000000000000000000000000000000010");
 
     // Set l2Weth to the address deployed on the optimism predeploy.
     l2Weth = await createFake("WETH9", "0x4200000000000000000000000000000000000006");
@@ -158,6 +158,11 @@ describe("Optimism Spoke Pool", function () {
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+
+    // SpokePool needs to pass msg.value to L2StandardBridge so drop some ETH on to it to simulate what would happen
+    // when it withdraws the L2 WETH into 0xdeaddead...
+    await owner.sendTransaction({ to: optimismSpokePool.address, value: amountToReturn });
+
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
@@ -169,5 +174,6 @@ describe("Optimism Spoke Pool", function () {
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Eth, hubPool.address, amountToReturn, 5000000, "0x");
+    expect(l2StandardBridge.withdrawTo).to.have.been.calledWithValue(amountToReturn);
   });
 });
