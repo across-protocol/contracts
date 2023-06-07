@@ -118,7 +118,7 @@ contract Ovm_SpokePool is SpokePool {
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth(0);
+        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
 
         _executeSlowRelayLeaf(
             depositor,
@@ -148,8 +148,7 @@ contract Ovm_SpokePool is SpokePool {
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
         // Leave any ETH we need to send back to L1 unwrapped.
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken))
-            _depositEthToWeth(relayerRefundLeaf.amountToReturn);
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
 
         _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
@@ -162,10 +161,9 @@ contract Ovm_SpokePool is SpokePool {
     // this SpokePool will receive ETH from the canonical token bridge instead of WETH. Its not sufficient to execute
     // this logic inside a fallback method that executes when this contract receives ETH because ETH is an ERC20
     // on the OVM.
-    function _depositEthToWeth(uint256 amountToLeaveUnwrapped) internal {
+    function _depositEthToWeth() internal {
         //slither-disable-next-line arbitrary-send-eth
-        if (address(this).balance - amountToLeaveUnwrapped > 0)
-            wrappedNativeToken.deposit{ value: address(this).balance - amountToLeaveUnwrapped }();
+        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
