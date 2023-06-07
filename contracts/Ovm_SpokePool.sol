@@ -12,7 +12,7 @@ interface SynthetixBridgeToBase {
     function withdrawTo(address to, uint256 amount) external;
 }
 
-// https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
+// https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
 interface IL2ERC20Bridge {
     function withdrawTo(
         address _l2Token,
