@@ -147,7 +147,6 @@ contract Ovm_SpokePool is SpokePool {
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        // Leave any ETH we need to send back to L1 unwrapped.
         if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
 
         _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
