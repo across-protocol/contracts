@@ -36,7 +36,7 @@
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/abstract-signer": "5.7.0",
-    "@openzeppelin/contracts": "4.8.3",
+    "@openzeppelin/contracts": "4.9.1",
     "@openzeppelin/contracts-upgradeable": "4.8.3",
     "@uma/common": "^2.29.0",
     "@uma/contracts-node": "^0.3.18",
