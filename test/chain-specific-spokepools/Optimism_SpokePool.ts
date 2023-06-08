@@ -15,22 +15,21 @@ import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, optimismSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, optimismSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Dai: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2Weth: FakeContract;
+let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract;
+
+const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
 
 describe("Optimism Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, dai, l2Dai, hubPool, timer } = await hubPoolFixture());
+    ({ weth, dai, l2Dai, hubPool } = await hubPoolFixture());
 
     // Create the fake at the optimism cross domain messenger and l2StandardBridge pre-deployment addresses.
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
-    l2StandardBridge = await createFake("L2StandardBridge", "0x4200000000000000000000000000000000000010");
-
-    // Set l2Weth to the address deployed on the optimism predeploy.
-    l2Weth = await createFake("WETH9", "0x4200000000000000000000000000000000000006");
+    l2StandardBridge = await createFake("MockBedrockL2StandardBridge", "0x4200000000000000000000000000000000000010");
 
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
@@ -39,8 +38,8 @@ describe("Optimism Spoke Pool", function () {
     await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
     optimismSpokePool = await hre.upgrades.deployProxy(
-      await getContractFactory("Optimism_SpokePool", owner),
-      [0, owner.address, hubPool.address],
+      await getContractFactory("MockOptimism_SpokePool", owner),
+      [weth.address, l2Eth, 0, owner.address, hubPool.address],
       { kind: "uups" }
     );
 
@@ -154,20 +153,25 @@ describe("Optimism Spoke Pool", function () {
   });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
-      l2Weth.address,
+      weth.address,
       await optimismSpokePool.callStatic.chainId()
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // When sending l2Weth we should see two differences from the previous test: 1) there should be a call to l2WETH to
     // unwrap l2WETH to l2ETH. 2) the address in the l2StandardBridge that is withdrawn should no longer be l2WETH but
     // switched to l2ETH as this is what is sent over the canonical Optimism bridge when sending ETH.
-    expect(l2Weth.withdraw).to.have.been.calledOnce;
-    expect(l2Weth.withdraw).to.have.been.calledWith(amountToReturn);
+
+    // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
+    // to the L2StandardBridge. This results in a net decrease in WETH balance.
+    await expect(() =>
+      optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.changeTokenBalance(weth, optimismSpokePool, amountToReturn.mul(-1));
+    expect(l2StandardBridge.withdrawTo).to.have.been.calledWithValue(amountToReturn);
+
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
-    const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Eth, hubPool.address, amountToReturn, 5000000, "0x");
   });
 });

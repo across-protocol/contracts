@@ -6,11 +6,21 @@ import "./external/interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
-import "@eth-optimism/contracts/L2/messaging/IL2ERC20Bridge.sol";
 
 // https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
 interface SynthetixBridgeToBase {
     function withdrawTo(address to, uint256 amount) external;
+}
+
+// https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
+interface IL2ERC20Bridge {
+    function withdrawTo(
+        address _l2Token,
+        address _to,
+        uint256 _amount,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) external payable;
 }
 
 /**
@@ -161,9 +171,18 @@ contract Ovm_SpokePool is SpokePool {
         if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
+            IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{
+                value: relayerRefundLeaf.amountToReturn
+            }(
+                relayerRefundLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                relayerRefundLeaf.amountToReturn, // _amount.
+                l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
+                "" // _data. We don't need to send any data for the bridging action.
+            );
         }
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
-        if (relayerRefundLeaf.l2TokenAddress == SNX)
+        else if (relayerRefundLeaf.l2TokenAddress == SNX)
             SynthetixBridgeToBase(SYNTHETIX_BRIDGE).withdrawTo(
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
                 relayerRefundLeaf.amountToReturn // _amount.
