@@ -32,6 +32,8 @@ contract PermissionSplitter is AccessControl, MultiCaller {
 
     // Maps function signatures to permission tiers, making it convenient to batch change params for multiple
     // functions.
+    // Assumptions: Each function signature is unique, therefore the function signature itself can be used
+    // as the AccessControl.Role identifier.
     mapping(bytes32 => uint8) public permissionTierForFunctionSig;
 
     // Maps permission tiers to their configuration.
