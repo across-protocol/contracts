@@ -31,12 +31,12 @@ contract PermissionSplitterProxy is AccessControl, MultiCaller {
         roleForSelector[selector] = role;
     }
 
-    function _init(address _target) internal {
+    function _init(address _target) internal virtual {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         target = _target;
     }
 
-    function _isCallAllowedToCall(address caller, bytes calldata callData) internal view virtual returns (bool) {
+    function _isAllowedToCall(address caller, bytes calldata callData) internal view virtual returns (bool) {
         bytes4 selector;
         if (callData.length < 4) {
             // This handles any empty callData, which is a call to the fallback function.
@@ -54,7 +54,7 @@ contract PermissionSplitterProxy is AccessControl, MultiCaller {
      * Note: this function is a modified _delegate function here:
      // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/002a7c8812e73c282b91e14541ce9b93a6de1172/contracts/proxy/Proxy.sol#L22-L45
      */
-    function _forward(address _target) internal virtual {
+    function _forward(address _target) internal {
         assembly {
             // Copy msg.data. We take full control of memory in this inline assembly
             // block because it will not return to Solidity code. We overwrite the
@@ -80,8 +80,8 @@ contract PermissionSplitterProxy is AccessControl, MultiCaller {
     }
 
     // Executes an action on the target.
-    function _executeAction() public payable {
-        require(_isCallAllowedToCall(msg.sender, msg.data), "Not allowed to call");
+    function _executeAction() internal virtual {
+        require(_isAllowedToCall(msg.sender, msg.data), "Not allowed to call");
         _forward(target);
     }
 
