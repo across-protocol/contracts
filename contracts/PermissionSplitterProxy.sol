@@ -14,6 +14,9 @@ contract PermissionSplitterProxy is AccessControl, MultiCaller {
 
     address public target;
 
+    event TargetUpdated(address indexed newTarget);
+    event RoleForSelectorSet(bytes4 indexed selector, bytes32 indexed role);
+
     constructor(address _target) {
         _init(_target);
     }
@@ -22,17 +25,19 @@ contract PermissionSplitterProxy is AccessControl, MultiCaller {
     // Note: these have two underscores in front to prevent any collisions with the target contract.
     function __setTarget(address _target) public onlyRole(DEFAULT_ADMIN_ROLE) {
         target = _target;
+        emit TargetUpdated(_target);
     }
 
     // Public function!
     // Note: these have two underscores in front to prevent any collisions with the target contract.
     function __setRoleForSelector(bytes4 selector, bytes32 role) public onlyRole(DEFAULT_ADMIN_ROLE) {
         roleForSelector[selector] = role;
+        emit RoleForSelectorSet(selector, role);
     }
 
     function _init(address _target) internal virtual {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        target = _target;
+        __setTarget(_target);
     }
 
     function _isAllowedToCall(address caller, bytes calldata callData) internal view virtual returns (bool) {
