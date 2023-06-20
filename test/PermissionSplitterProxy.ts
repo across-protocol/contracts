@@ -1,37 +1,16 @@
-import {
-  getContractFactory,
-  SignerWithAddress,
-  seedWallet,
-  expect,
-  Contract,
-  ethers,
-  randomAddress,
-  utf8ToHex,
-} from "../utils/utils";
-import {
-  originChainId,
-  destinationChainId,
-  bondAmount,
-  zeroAddress,
-  mockTreeRoot,
-  mockSlowRelayRoot,
-  finalFeeUsdc,
-  finalFee,
-  totalBond,
-} from "./constants";
+import { getContractFactory, SignerWithAddress, expect, Contract, ethers } from "../utils/utils";
 import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 
 let hubPool: Contract, weth: Contract, usdc: Contract, permissionSplitter: Contract, hubPoolProxy: Contract;
-let mockSpoke: Contract, mockAdapter: Contract, identifierWhitelist: Contract;
-let owner: SignerWithAddress, other: SignerWithAddress, delegate: SignerWithAddress;
+let owner: SignerWithAddress, delegate: SignerWithAddress;
 let delegateRole: string, defaultAdminRole: string;
 
 const enableTokenSelector = "0xb60c2d7d";
 
 describe("PermissionSplitterProxy", function () {
   beforeEach(async function () {
-    [owner, delegate, other] = await ethers.getSigners();
-    ({ weth, hubPool, usdc, mockAdapter, mockSpoke, identifierWhitelist } = await hubPoolFixture());
+    [owner, delegate] = await ethers.getSigners();
+    ({ weth, hubPool, usdc } = await hubPoolFixture());
     const permissionSplitterFactory = await getContractFactory("PermissionSplitterProxy", owner);
     const hubPoolFactory = await getContractFactory("HubPool", owner);
 
