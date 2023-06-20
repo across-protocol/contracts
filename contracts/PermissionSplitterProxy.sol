@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-// TODO: Make upgradeable.
 contract PermissionSplitterProxy is AccessControl, MultiCaller {
     // Inherited admin role from AccessControl. Should be assigned to Across DAO Safe.
     // bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
