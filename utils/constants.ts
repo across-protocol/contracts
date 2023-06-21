@@ -91,6 +91,16 @@ export const TOKEN_SYMBOLS_MAP = {
       [CHAIN_IDs.MUMBAI]: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     },
   },
+  POOL: {
+    name: "PoolTogether",
+    symbol: "POOL",
+    decimals: 18,
+    addresses: {
+      [CHAIN_IDs.MAINNET]: "0x0cEC1A9154Ff802e7934Fc916Ed7Ca50bDE6844e",
+      [CHAIN_IDs.OPTIMISM]: "0x25788a1a171ec66Da6502f9975a15B609fF54CF6",
+      [CHAIN_IDs.POLYGON]: "0x395Ae52bB17aef68C2888d941736A71dC6d4e125",
+    },
+  },
   SNX: {
     name: "Synthetix",
     symbol: "SNX",
