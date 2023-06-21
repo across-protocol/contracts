@@ -27,18 +27,31 @@ async function main() {
 
   for (let i = skip; i < validRecipients.length; i = i + RECIPIENTS_CHUNK_SIZE) {
     const recipientsChunk = validRecipients.slice(i, i + RECIPIENTS_CHUNK_SIZE);
-    const airdropTx = await erc1155.airdrop(tokenId, recipientsChunk, 1);
-    console.log(
-      `Minting token with id ${tokenId} to ${recipientsChunk.length} recipients in index range ${i} - ${
-        i + RECIPIENTS_CHUNK_SIZE - 1
-      }...`
-    );
-    console.log("Tx hash:", airdropTx.hash);
-    await airdropTx.wait();
-    console.log(`Successfully minted token to chunk:`, {
+    console.log(`\nProcessing recipients in index range ${i} - ${i + RECIPIENTS_CHUNK_SIZE - 1}:`, {
       first: recipientsChunk[0],
       last: recipientsChunk[recipientsChunk.length - 1],
+      numRecipients: recipientsChunk.length,
     });
+
+    const balanceOfBatch = await erc1155.balanceOfBatch(recipientsChunk, Array(recipientsChunk.length).fill(tokenId));
+
+    const alreadyMintedRecipients = recipientsChunk.filter((_, i) => balanceOfBatch[i].gt(0));
+    const recipientsToMint = recipientsChunk.filter((_, i) => balanceOfBatch[i].eq(0));
+
+    if (alreadyMintedRecipients.length > 0) {
+      console.log(`Skipping ${alreadyMintedRecipients.length} already minted recipients...`);
+    }
+
+    if (recipientsToMint.length === 0) {
+      console.log(`No recipients to mint for. Skipping chunk...`);
+      continue;
+    }
+
+    const airdropTx = await erc1155.airdrop(tokenId, recipientsToMint, 1);
+    console.log(`Minting token with id ${tokenId} to ${recipientsToMint.length} recipients...`);
+    console.log("Tx hash:", airdropTx.hash);
+    await airdropTx.wait();
+    console.log(`Successfully minted token to ${recipientsToMint.length} recipients in chunk`);
   }
 }
 
@@ -54,11 +67,16 @@ async function parseAndValidateRecipients() {
   const resolvedRecipients = await Promise.all(
     recipientsFromFile.map(async (r) => {
       if (r.toLocaleLowerCase().endsWith(".eth")) {
-        const resolvedAddress = await provider.resolveName(r);
-        if (!resolvedAddress) {
+        try {
+          const resolvedAddress = await provider.resolveName(r);
+          if (!resolvedAddress) {
+            throw new Error(`Could not resolve ENS name: ${r}`);
+          }
+          return resolvedAddress;
+        } catch (error) {
+          console.error(error);
           throw new Error(`Could not resolve ENS name: ${r}`);
         }
-        return resolvedAddress;
       }
       return Promise.resolve(r);
     })
@@ -84,7 +102,7 @@ function getDuplicateAddresses(addresses: string[]) {
 }
 
 main().then(
-  () => console.log("Done"),
+  () => console.log("\nDone"),
   (error) => {
     console.log(error);
     process.exitCode = 1;
