@@ -47,8 +47,8 @@ async function main() {
       continue;
     }
 
-    const airdropTx = await erc1155.airdrop(tokenId, recipientsToMint, 1);
     console.log(`Minting token with id ${tokenId} to ${recipientsToMint.length} recipients...`);
+    const airdropTx = await erc1155.airdrop(tokenId, recipientsToMint, 1);
     console.log("Tx hash:", airdropTx.hash);
     await airdropTx.wait();
     console.log(`Successfully minted token to ${recipientsToMint.length} recipients in chunk`);
