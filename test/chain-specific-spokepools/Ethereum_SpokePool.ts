@@ -4,14 +4,14 @@ import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, spokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, spokePool: Contract, dai: Contract, weth: Contract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
 describe("Ethereum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, dai, hubPool, timer } = await hubPoolFixture());
+    ({ weth, dai, hubPool } = await hubPoolFixture());
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),

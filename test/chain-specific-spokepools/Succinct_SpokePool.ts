@@ -2,7 +2,7 @@ import { ethers, expect, Contract, SignerWithAddress, getContractFactory } from 
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 
-let succinctSpokePool: Contract, timer: Contract, weth: Contract;
+let succinctSpokePool: Contract, weth: Contract;
 
 let owner: SignerWithAddress,
   succinctTargetAmb: SignerWithAddress,
@@ -13,7 +13,7 @@ const l1ChainId = 45;
 describe("Succinct Spoke Pool", function () {
   beforeEach(async function () {
     [hubPool, succinctTargetAmb, rando] = await ethers.getSigners();
-    ({ timer, weth } = await hubPoolFixture());
+    ({ weth } = await hubPoolFixture());
 
     succinctSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Succinct_SpokePool", owner),
