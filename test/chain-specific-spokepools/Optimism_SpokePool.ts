@@ -40,7 +40,7 @@ describe("Optimism Spoke Pool", function () {
     optimismSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("MockOptimism_SpokePool", owner),
       [weth.address, l2Eth, 0, owner.address, hubPool.address],
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);

@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
-import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
-import "./upgradeable/AddressUpgradeable.sol";
 
+import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
@@ -39,7 +39,7 @@ abstract contract SpokePool is
     SpokePoolInterface,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
-    MultiCallerUpgradeable,
+    MultiCaller,
     EIP712CrossChainUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;

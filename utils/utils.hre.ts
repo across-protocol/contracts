@@ -4,7 +4,10 @@ import hre from "hardhat";
 export async function deployNewProxy(name: string, args: (number | string)[]): Promise<void> {
   const { run, upgrades } = hre;
 
-  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, { kind: "uups" });
+  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, {
+    kind: "uups",
+    unsafeAllow: ["delegatecall"],
+  });
   const instance = await proxy.deployed();
   console.log(`New ${name} proxy deployed @ ${instance.address}`);
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);

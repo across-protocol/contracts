@@ -18,7 +18,7 @@ describe("Succinct Spoke Pool", function () {
     succinctSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Succinct_SpokePool", owner),
       [l1ChainId, succinctTargetAmb.address, 0, hubPool.address, hubPool.address, weth.address],
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
   });
 

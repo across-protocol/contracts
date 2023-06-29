@@ -46,7 +46,7 @@ describe("Polygon Spoke Pool", function () {
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
       [0, polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address],
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
