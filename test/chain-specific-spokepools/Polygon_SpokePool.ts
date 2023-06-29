@@ -57,7 +57,7 @@ describe("Polygon Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Polygon_SpokePool", owner),
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     // upgradeTo fails unless called by cross domain admin
