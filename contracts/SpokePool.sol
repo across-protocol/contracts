@@ -1100,8 +1100,7 @@ abstract contract SpokePool is
             IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
-            //slither-disable-next-line arbitrary-send-eth
-            to.transfer(amount);
+            AddressUpgradeable.sendValue(to, amount);
         }
     }
 
