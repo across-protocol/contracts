@@ -1,4 +1,4 @@
-import { expect, Contract, ethers, SignerWithAddress } from "./utils";
+import { expect, Contract, ethers, SignerWithAddress } from "../utils/utils";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
 

@@ -1,15 +1,28 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9Interface.sol";
+import "./interfaces/AdapterInterface.sol";
+import "../external/interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Send tokens to Polygon.
+ */
 interface IRootChainManager {
+    /**
+     * @notice Send msg.value of ETH to Polygon
+     * @param user Recipient of ETH on Polygon.
+     */
     function depositEtherFor(address user) external payable;
 
+    /**
+     * @notice Send ERC20 tokens to Polygon.
+     * @param user Recipient of L2 equivalent tokens on Polygon.
+     * @param rootToken L1 Address of token to send.
+     * @param depositData Data to pass to L2 including amount of tokens to send. Should be abi.encode(amount).
+     */
     function depositFor(
         address user,
         address rootToken,
@@ -17,11 +30,28 @@ interface IRootChainManager {
     ) external;
 }
 
+/**
+ * @notice Send arbitrary messages to Polygon.
+ */
 interface IFxStateSender {
+    /**
+     * @notice Send arbitrary message to Polygon.
+     * @param _receiver Address on Polygon to receive message.
+     * @param _data Message to send to `_receiver` on Polygon.
+     */
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
 }
 
+/**
+ * @notice Similar to RootChainManager, but for Matic (Plasma) bridge.
+ */
 interface DepositManager {
+    /**
+     * @notice Send tokens to Polygon. Only used to send MATIC in this Polygon_Adapter.
+     * @param token L1 token to send. Should be MATIC.
+     * @param user Recipient of L2 equivalent tokens on Polygon.
+     * @param amount Amount of `token` to send.
+     */
     function depositERC20ForUser(
         address token,
         address user,

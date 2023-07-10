@@ -1,27 +1,17 @@
-import "hardhat-deploy";
-import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
+import { deployNewProxy } from "../utils/utils.hre";
+import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-const func = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, companionNetworks } = hre;
-  const { deploy } = deployments;
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
+  const chainId = await hre.getChainId();
+  console.log(`Using L1 (chainId ${chainId}) hub pool @ ${hubPool.address}`);
 
-  const { deployer } = await getNamedAccounts();
-
-  // Grab L1 addresses:
-  const { deployments: l1Deployments } = companionNetworks.l1;
-  const hubPool = await l1Deployments.get("HubPool");
-  console.log(`Using l1 hub pool @ ${hubPool.address}`);
-
-  await deploy("Optimism_SpokePool", {
-    from: deployer,
-    log: true,
-    skipIfAlreadyDeployed: true,
-    args: [
-      hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the Optimism_Adapter logic.
-      hubPool.address,
-      "0x0000000000000000000000000000000000000000", // timer
-    ],
-  });
+  // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
+  // with deprecated spoke pool.
+  // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
+  const constructorArgs = [1_000_000, hubPool.address, hubPool.address];
+  await deployNewProxy("Optimism_SpokePool", constructorArgs);
 };
 module.exports = func;
 func.tags = ["OptimismSpokePool", "optimism"];

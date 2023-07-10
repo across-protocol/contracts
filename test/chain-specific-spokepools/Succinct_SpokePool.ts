@@ -1,4 +1,5 @@
-import { ethers, expect, Contract, SignerWithAddress, getContractFactory, hre } from "../utils";
+import { ethers, expect, Contract, SignerWithAddress, getContractFactory } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 
 let succinctSpokePool: Contract, timer: Contract, weth: Contract;
@@ -32,16 +33,17 @@ describe("Succinct Spoke Pool", function () {
     // Wrong origin chain id address.
     await expect(
       succinctSpokePool.connect(succinctTargetAmb).handleTelepathy(44, hubPool.address, setCrossDomainAdminData)
-    ).to.be.reverted;
+    ).to.be.revertedWith("source chain not hub chain");
 
     // Wrong rootMessageSender address.
     await expect(
       succinctSpokePool.connect(succinctTargetAmb).handleTelepathy(l1ChainId, rando.address, setCrossDomainAdminData)
-    ).be.reverted;
+    ).be.revertedWith("sender not hubPool");
 
     // Wrong calling address.
-    await expect(succinctSpokePool.connect(rando).handleTelepathy(l1ChainId, hubPool.address, setCrossDomainAdminData))
-      .to.be.reverted;
+    await expect(
+      succinctSpokePool.connect(rando).handleTelepathy(l1ChainId, hubPool.address, setCrossDomainAdminData)
+    ).to.be.revertedWith("caller not succinct AMB");
 
     await succinctSpokePool
       .connect(succinctTargetAmb)

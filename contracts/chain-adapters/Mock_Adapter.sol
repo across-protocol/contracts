@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../interfaces/AdapterInterface.sol";
+import "./interfaces/AdapterInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**

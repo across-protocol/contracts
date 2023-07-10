@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../interfaces/AdapterInterface.sol";
-import "../external/SuccinctInterfaces.sol";
+import "./interfaces/AdapterInterface.sol";
+import "../external/interfaces/SuccinctInterfaces.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 contract Succinct_Adapter is AdapterInterface {
@@ -24,7 +24,7 @@ contract Succinct_Adapter is AdapterInterface {
 
     /**
      * @notice Send cross-chain message to target on the destination.
-     * @param target Contract on the destinatipn that will receive the message..
+     * @param target Contract on the destination that will receive the message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {

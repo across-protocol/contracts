@@ -5,13 +5,12 @@ import * as chai from "chai";
 import { getBytecode, getAbi } from "@uma/contracts-node";
 import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
-chai.use(smock.matchers);
-import hre from "hardhat";
+import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
-import { FactoryOptions } from "hardhat/types";
-
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
+chai.use(smock.matchers);
 
 function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
   return "signer" in signerOrFactoryOptions || "libraries" in signerOrFactoryOptions;
@@ -70,7 +69,7 @@ function getArbitrumArtifact(contractName: string) {
 
 // Fetch the artifact from the publish package's artifacts directory.
 function getLocalArtifact(contractName: string) {
-  const artifactsPath = `${__dirname}/../../artifacts/contracts`;
+  const artifactsPath = path.join(__dirname, "../../artifacts/contracts");
   return findArtifactFromPath(contractName, artifactsPath);
 }
 
@@ -165,7 +164,10 @@ export async function getParamType(contractName: string, functionName: string, p
 
 export async function createFake(contractName: string, targetAddress: string = "") {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  return targetAddress !== "" ? smock.fake(contractFactory, { address: targetAddress }) : smock.fake(contractFactory);
+  return smock.fake(contractFactory.interface.fragments, {
+    address: targetAddress === "" ? undefined : targetAddress,
+    provider: contractFactory.signer.provider,
+  });
 }
 
 function avmL1ToL2Alias(l1Address: string) {
@@ -180,4 +182,4 @@ function avmL1ToL2Alias(l1Address: string) {
 
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
-export { avmL1ToL2Alias, expect, Contract, ethers, hre, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
+export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };

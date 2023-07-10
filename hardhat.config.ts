@@ -3,7 +3,7 @@ import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import { getNodeUrl, getMnemonic } from "@uma/common";
 
-import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-etherscan"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "@matterlabs/hardhat-zksync-toolbox";
@@ -14,6 +14,7 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
+// eslint-disable-next-line node/no-missing-require
 require("./tasks/enableL1TokenAcrossEcosystem");
 
 dotenv.config();
@@ -47,6 +48,7 @@ const config: HardhatUserConfig = {
       "contracts/Boba_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockSpokePoolV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/test/MockOptimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -148,19 +150,23 @@ const config: HardhatUserConfig = {
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
     apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY,
-      kovan: process.env.ETHERSCAN_API_KEY,
-      rinkeby: process.env.ETHERSCAN_API_KEY,
-      goerli: process.env.ETHERSCAN_API_KEY,
-      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY,
-      optimisticKovan: process.env.OPTIMISM_ETHERSCAN_API_KEY,
-      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY,
-      arbitrumTestnet: process.env.ARBITRUM_ETHERSCAN_API_KEY,
-      polygon: process.env.POLYGON_ETHERSCAN_API_KEY,
-      polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY,
+      mainnet: process.env.ETHERSCAN_API_KEY!,
+      kovan: process.env.ETHERSCAN_API_KEY!,
+      rinkeby: process.env.ETHERSCAN_API_KEY!,
+      goerli: process.env.ETHERSCAN_API_KEY!,
+      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
+      optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
+      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
+      arbitrumGoerli: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
+      polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
+      polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
     },
   },
   namedAccounts: { deployer: 0 },
+  typechain: {
+    outDir: "./typechain",
+    target: "ethers-v5",
+  },
 };
 
 export default config;

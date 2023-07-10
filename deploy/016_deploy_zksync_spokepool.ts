@@ -1,34 +1,23 @@
-import "hardhat-deploy";
-import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-
+import { DeployFunction } from "hardhat-deploy/types";
 import { L2_ADDRESS_MAP } from "./consts";
+import { deployNewProxy } from "../utils/utils.hre";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-const func = async function (hre: HardhatRuntimeEnvironment) {
-  const { companionNetworks, getChainId, getNamedAccounts, deployments } = hre;
-  const { deploy } = deployments;
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
+  const chainId = await hre.getChainId();
+  console.log(`Using L1 (chainId ${chainId}) hub pool @ ${hubPool.address}`);
 
-  const { deployer } = await getNamedAccounts();
-
-  // Grab L1 addresses:
-  const { deployments: l1Deployments } = companionNetworks.l1;
-  const hubPool = await l1Deployments.get("HubPool");
-  console.log(`Using l1 hub pool @ ${hubPool.address}`);
-
-  const chainId = parseInt(await getChainId());
-
-  await deploy("ZkSync_SpokePool", {
-    from: deployer,
-    log: true,
-    skipIfAlreadyDeployed: true,
-    args: [
-      L2_ADDRESS_MAP[chainId].zkErc20Bridge,
-      L2_ADDRESS_MAP[chainId].zkEthBridge,
-      hubPool.address, // Set hub pool as cross domain admin since it delegatecalls the ZkSync_Adapter logic.
-      hubPool.address,
-      L2_ADDRESS_MAP[chainId].l2Weth, // l2Weth
-      "0x0000000000000000000000000000000000000000", // timer
-    ],
-  });
+  // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
+  const constructorArgs = [
+    0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
+    L2_ADDRESS_MAP[chainId].zkErc20Bridge,
+    L2_ADDRESS_MAP[chainId].zkEthBridge,
+    hubPool.address,
+    hubPool.address,
+    L2_ADDRESS_MAP[chainId].l2Weth,
+  ];
+  await deployNewProxy("ZkSync_SpokePool", constructorArgs);
 };
 module.exports = func;
 func.tags = ["ZkSyncSpokePool", "zksync"];

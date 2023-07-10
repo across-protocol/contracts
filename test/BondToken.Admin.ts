@@ -1,5 +1,5 @@
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
-import { Contract, ethers, SignerWithAddress, expect } from "./utils";
+import { Contract, ethers, SignerWithAddress, expect } from "../utils/utils";
 
 let bondToken: Contract;
 let owner: SignerWithAddress, other: SignerWithAddress;

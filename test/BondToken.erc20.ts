@@ -1,5 +1,5 @@
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
-import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "./utils";
+import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "../utils/utils";
 import { bondAmount } from "./constants";
 
 const bondTokenName = "Across Bond Token";

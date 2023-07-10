@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
 /**
- * @title MockSpokePool
+ * @title MultiCallerUpgradeable
  * @notice Logic is 100% copied from "@uma/core/contracts/common/implementation/MultiCaller.sol" but one
  * comment is added to clarify why we allow delegatecall() in this contract, which is typically unsafe for use in
  * upgradeable implementation contracts.

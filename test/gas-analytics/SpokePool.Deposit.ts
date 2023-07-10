@@ -1,4 +1,4 @@
-import { toBNWei, SignerWithAddress, Contract, ethers, seedWallet, toBN } from "../utils";
+import { toBNWei, SignerWithAddress, Contract, ethers, seedWallet, toBN } from "../../utils/utils";
 import { constructDepositParams, sendDeposit, warmSpokePool } from "./utils";
 import * as constants from "../constants";
 import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";

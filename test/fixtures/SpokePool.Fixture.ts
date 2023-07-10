@@ -1,4 +1,6 @@
-import { getContractFactory, SignerWithAddress, Contract, hre, ethers, BigNumber, defaultAbiCoder } from "../utils";
+import { getContractFactory, SignerWithAddress, Contract, ethers, BigNumber, defaultAbiCoder } from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
+
 import * as consts from "../constants";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
@@ -181,7 +183,7 @@ export interface RelayData {
 
 export interface SlowFill {
   relayData: RelayData;
-  payoutAdjustmentPct: string;
+  payoutAdjustmentPct: BigNumber;
 }
 
 export function getRelayHash(

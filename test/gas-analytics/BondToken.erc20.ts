@@ -1,6 +1,6 @@
 import { proposeRootBundle } from "../BondToken.e2e";
 import { bondAmount, maxUint256 } from "../constants";
-import { Contract, ethers, seedWallet, SignerWithAddress, toBN } from "../utils";
+import { Contract, ethers, seedWallet, SignerWithAddress, toBN } from "../../utils/utils";
 import { bondTokenFixture } from "../fixtures/BondToken.Fixture";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 

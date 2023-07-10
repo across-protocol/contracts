@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./SpokePoolInterface.sol";
-import "./HubPoolInterface.sol";
+import "./interfaces/SpokePoolInterface.sol";
+import "./interfaces/HubPoolInterface.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
@@ -102,6 +102,6 @@ library MerkleLib {
      * @return uint256 representing the modified input claimedBitMap with the index set to true.
      */
     function setClaimed1D(uint256 claimedBitMap, uint8 index) internal pure returns (uint256) {
-        return claimedBitMap | (1 << index % 256);
+        return claimedBitMap | (1 << index);
     }
 }

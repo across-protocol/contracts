@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, seedWallet, toWei } from "./utils";
+import { expect, ethers, Contract, SignerWithAddress, seedWallet, toWei } from "../utils/utils";
 import * as consts from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "./MerkleLib.utils";

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../interfaces/AdapterInterface.sol";
-import "../interfaces/WETH9Interface.sol";
+import "./interfaces/AdapterInterface.sol";
+import "../external/interfaces/WETH9Interface.sol";
 
 // @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
 // this contract's state variables to be `immutable` because of the delegateCall call.
@@ -12,7 +12,15 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Interface for Synthetix custom bridge to Optimism.
+ */
 interface SynthetixBridgeToOptimism is IL1StandardBridge {
+    /**
+     * @notice Send tokens to Optimism.
+     * @param to Address to send tokens to on L2.
+     * @param amount Amount of tokens to send.
+     */
     function depositTo(address to, uint256 amount) external;
 }
 
@@ -20,7 +28,7 @@ interface SynthetixBridgeToOptimism is IL1StandardBridge {
  * @notice Contract containing logic to send messages from L1 to Optimism.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
- * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
+ * For example, the HubPool will delegatecall these functions, therefore it's only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
  */
 

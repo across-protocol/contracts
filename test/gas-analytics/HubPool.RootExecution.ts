@@ -1,10 +1,22 @@
-import { toBNWei, toBN, SignerWithAddress, seedWallet, Contract, ethers, hre, expect } from "../utils";
-import { getContractFactory, BigNumber, randomAddress, createRandomBytes32 } from "../utils";
+import {
+  toBNWei,
+  toBN,
+  SignerWithAddress,
+  seedWallet,
+  Contract,
+  ethers,
+  expect,
+  getContractFactory,
+  BigNumber,
+  randomAddress,
+  createRandomBytes32,
+} from "../../utils/utils";
 import { deployErc20 } from "./utils";
 import * as consts from "../constants";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves, PoolRebalanceLeaf } from "../MerkleLib.utils";
 import { MerkleTree } from "../../utils/MerkleTree";
+import { hre } from "../../utils/utils.hre";
 
 require("dotenv").config();
 

@@ -1,4 +1,4 @@
-import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract } from "../utils";
+import { SignerWithAddress, getContractFactory, BigNumber, toBN, Contract } from "../../utils/utils";
 import * as consts from "../constants";
 import { getDepositParams, getRelayHash, getFillRelayParams, enableRoutes } from "../fixtures/SpokePool.Fixture";
 
@@ -39,7 +39,11 @@ export function constructRelayParams(
   relayAmount: BigNumber
 ) {
   const { relayData } = getRelayHash(depositor, recipient, depositId, 1, consts.destinationChainId, relayTokenAddress);
-  return getFillRelayParams(relayData, relayAmount);
+  return getFillRelayParams(
+    relayData,
+    relayAmount,
+    relayAmount.eq(relayData.amount) ? consts.repaymentChainId : consts.destinationChainId
+  );
 }
 export async function sendRelay(
   _spokePool: Contract,

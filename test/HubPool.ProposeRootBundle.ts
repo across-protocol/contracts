@@ -1,4 +1,4 @@
-import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { SignerWithAddress, seedWallet, expect, Contract, ethers } from "../utils/utils";
 import * as consts from "./constants";
 import { hubPoolFixture } from "./fixtures/HubPool.Fixture";
 

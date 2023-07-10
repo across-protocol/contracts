@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./interfaces/WETH9Interface.sol";
-import "./external/SuccinctInterfaces.sol";
+import "./external/interfaces/WETH9Interface.sol";
+import "./external/interfaces/SuccinctInterfaces.sol";
 
 /**
  * @notice Succinct Spoke pool.
@@ -19,13 +19,16 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated;
 
-    // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be misinterpreted.
-    // Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
+    event SetSuccinctTargetAmb(address indexed newSuccinctTargetAmb);
+    event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
+
+    // Note: validating calls this way ensures that strange calls coming from the succinctTargetAmb won't be
+    // misinterpreted. Put differently, just checking that msg.sender == succinctTargetAmb is not sufficient.
     // All calls that have admin privileges must be fired from within the handleTelepathy method that's gone
     // through validation where the sender is checked and the sender from the other chain is also validated.
-    // This modifier sets the callValidated variable so this condition can be checked in _requireAdminSender().
+    // This modifier sets the adminCallValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {
-        // Make sure callValidated is set to True only once at beginning of processMessageFromRoot, which prevents
+        // Make sure adminCallValidated is set to True only once at beginning of processMessageFromRoot, which prevents
         // processMessageFromRoot from being re-entered.
         require(!adminCallValidated, "adminCallValidated already set");
 
@@ -36,7 +39,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
 
         _;
 
-        // Reset callValidated to false to disallow admin calls after this method exits.
+        // Reset adminCallValidated to false to disallow admin calls after this method exits.
         adminCallValidated = false;
     }
 
@@ -68,6 +71,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
      */
     function setSuccinctTargetAmb(address _succinctTargetAmb) external onlyAdmin {
         succinctTargetAmb = _succinctTargetAmb;
+        emit SetSuccinctTargetAmb(_succinctTargetAmb);
     }
 
     /**
@@ -83,14 +87,15 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     ) external override validateInternalCalls returns (bytes4) {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
-        require(
-            msg.sender == succinctTargetAmb && _senderAddress == hubPool && _sourceChainId == hubChainId,
-            "Invalid message"
-        );
+        require(msg.sender == succinctTargetAmb, "caller not succinct AMB");
+        require(_senderAddress == hubPool, "sender not hubPool");
+        require(_sourceChainId == hubChainId, "source chain not hub chain");
 
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(_data);
         require(success, "delegatecall failed");
+
+        emit ReceivedMessageFromL1(msg.sender, _senderAddress);
         return ITelepathyHandler.handleTelepathy.selector;
     }
 

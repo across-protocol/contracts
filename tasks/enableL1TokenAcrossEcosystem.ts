@@ -2,14 +2,13 @@ import { task } from "hardhat/config";
 import assert from "assert";
 import { findL2TokenForL1Token, askYesNoQuestion, zeroAddress, minimalSpokePoolInterface } from "./utils";
 
-const enabledChainIds = [1, 10, 137, 288, 42161]; // Supported mainnet chain IDs.
+const enabledChainIds = [1, 10, 137, 42161]; // Supported mainnet chain IDs.
 
 task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
   .addParam("chain1token", "Address of the token to enable, as defined on L1")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
   .addOptionalParam("chain10token", "Address of the token on chainID 10. Used to override the auto detect")
   .addOptionalParam("chain137token", "Address of the token on chainID 137. Used to override the auto detect")
-  .addOptionalParam("chain288token", "Address of the token on chainID 288. Used to override the auto detect")
   .addOptionalParam("chain42161token", "Address of the token on chainID 42161. Used to override the auto detect")
   .addOptionalParam(
     "customoptimismbridge",

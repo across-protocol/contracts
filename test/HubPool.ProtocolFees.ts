@@ -1,4 +1,4 @@
-import { toWei, toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import { toWei, toBNWei, SignerWithAddress, seedWallet, expect, Contract, ethers } from "../utils/utils";
 import { mockTreeRoot, finalFee, bondAmount, amountToLp, refundProposalLiveness, zeroAddress } from "./constants";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "./MerkleLib.utils";

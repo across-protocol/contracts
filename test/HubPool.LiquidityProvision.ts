@@ -1,4 +1,13 @@
-import { getContractFactory, fromWei, toBN, SignerWithAddress, seedWallet, expect, Contract, ethers } from "./utils";
+import {
+  getContractFactory,
+  fromWei,
+  toBN,
+  SignerWithAddress,
+  seedWallet,
+  expect,
+  Contract,
+  ethers,
+} from "../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "./fixtures/HubPool.Fixture";
 import { amountToSeedWallets, amountToLp } from "./constants";
 

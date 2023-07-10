@@ -1,33 +1,28 @@
-import "hardhat-deploy";
-import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-
+import { DeployFunction } from "hardhat-deploy/types";
 import { L2_ADDRESS_MAP } from "./consts";
+import { deployNewProxy } from "../utils/utils.hre";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-const func = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy } = deployments;
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
+  const chainId = await hre.getChainId();
+  console.log(`Using L1 (chainId ${chainId}) hub pool @ ${hubPool.address}`);
 
-  const { deployer } = await getNamedAccounts();
-
-  const chainId = parseInt(await getChainId());
-  const l1HubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
-  const polygonTokenBridger = await deployments.get("PolygonTokenBridger");
-
-  await deploy("Polygon_SpokePool", {
-    from: deployer,
-    log: true,
-    skipIfAlreadyDeployed: true,
-    args: [
-      polygonTokenBridger.address,
-      l1HubPool.address,
-      l1HubPool.address,
-      L2_ADDRESS_MAP[chainId].wMatic,
-      L2_ADDRESS_MAP[chainId].fxChild,
-      "0x0000000000000000000000000000000000000000",
-    ],
-  });
+  // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
+  // with deprecated spoke pool.
+  // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
+  const constructorArgs = [
+    1_000_000,
+    // The same token bridger must be deployed on mainnet and polygon, so its easier
+    // to reuse it.
+    "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
+    hubPool.address,
+    hubPool.address,
+    L2_ADDRESS_MAP[chainId].wMatic,
+    L2_ADDRESS_MAP[chainId].fxChild,
+  ];
+  await deployNewProxy("Polygon_SpokePool", constructorArgs);
 };
 
 module.exports = func;
-func.dependencies = ["PolygonTokenBridgerL2"];
 func.tags = ["PolygonSpokePool", "polygon"];

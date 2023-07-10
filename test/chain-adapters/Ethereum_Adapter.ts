@@ -1,6 +1,14 @@
 import * as consts from "../constants";
-import { ethers, expect, Contract, SignerWithAddress, randomAddress, hre } from "../utils";
-import { getContractFactory, seedWallet } from "../utils";
+import {
+  ethers,
+  expect,
+  Contract,
+  SignerWithAddress,
+  randomAddress,
+  getContractFactory,
+  seedWallet,
+} from "../../utils/utils";
+import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
