@@ -3,16 +3,18 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 
+// https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/contracts/bridge/L2ERC20Bridge.sol#L101
 interface ZkBridgeLike {
     function withdraw(
-        address _to,
+        address _l1Receiver,
         address _l2Token,
         uint256 _amount
     ) external;
 }
 
+// https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/system-contracts/L2EthToken.sol#L74
 interface IL2ETH {
-    function withdraw(address _receiver) external payable;
+    function withdraw(address _l1Receiver) external payable;
 }
 
 /**
@@ -171,6 +173,7 @@ contract ZkSync_SpokePool is SpokePool {
 
     // L1 addresses are transformed during l1->l2 calls.
     // See https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#mailboxfacet for more information.
+    // Another source: https://github.com/matter-labs/era-contracts/blob/41c25aa16d182f757c3fed1463c78a81896f65e6/ethereum/contracts/vendor/AddressAliasHelper.sol#L28
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
         unchecked {
             l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
