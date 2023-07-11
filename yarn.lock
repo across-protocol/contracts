@@ -2013,6 +2013,17 @@
     fs-extra "^11.1.1"
     semver "^7.5.1"
 
+"@matterlabs/hardhat-zksync-solc@^0.4.1":
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-0.4.1.tgz#e8e67d947098d7bb8925f968544d34e522af5a9c"
+  integrity sha512-fdlGf/2yZR5ihVNc2ubea1R/nNFXRONL29Fgz5FwB3azB13rPb76fkQgcFIg9zSufHsEy6zUUT029NkxLNA9Sw==
+  dependencies:
+    "@nomiclabs/hardhat-docker" "^2.0.0"
+    chalk "4.1.2"
+    dockerode "^3.3.4"
+    fs-extra "^11.1.1"
+    semver "^7.5.1"
+
 "@matterlabs/hardhat-zksync-upgradable@^0.1.0":
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-upgradable/-/hardhat-zksync-upgradable-0.1.0.tgz#f6787161e7be9f8678ce5405dd82b3dc10ed2431"

@@ -68,18 +68,9 @@ const config: HardhatUserConfig = {
       url: "https://testnet.era.zksync.dev",
       saveDeployments: true,
       accounts: { mnemonic },
-      ethNetwork: "goerli",
+      companionNetworks: { l1: "goerli" },
       zksync: true,
       verifyURL: "https://zksync2-testnet-explorer.zksync.dev/contract_verification",
-    },
-    zksync: {
-      chainId: 324,
-      url: "https://mainnet.era.zksync.dev",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      ethNetwork: "mainnet",
-      zksync: true,
-      verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     zksync: {
       chainId: 324,
@@ -88,6 +79,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
       zksync: true,
+      verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     kovan: {
       url: getNodeUrl("kovan", true, 42),
