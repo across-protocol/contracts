@@ -29,15 +29,20 @@ interface ZkSyncInterface {
         address _refundRecipient
     ) external payable returns (bytes32 canonicalTxHash);
 
+    // @notice Estimates the cost in Ether of requesting execution of an L2 transaction from L1
+    // @param _l1GasPrice Effective gas price on L1 (priority fee + base fee)
+    // @param _l2GasLimit Gas limit for the L2 transaction
+    // @param _l2GasPerPubdataByteLimit Gas limit for the L2 transaction per byte of pubdata
+    // @return The estimated L2 gas for the transaction to be paid
     function l2TransactionBaseCost(
-        uint256 _gasPrice,
+        uint256 _l1GasPrice,
         uint256 _l2GasLimit,
         uint256 _l2GasPerPubdataByteLimit
     ) external view returns (uint256);
 }
 
 interface ZkBridgeLike {
-    // @dev: Use ZkSyncInterface.requestL2Transaction to send ETH/WETH
+    // @dev: Use ZkSyncInterface.requestL2Transaction to bridge WETH as ETH to L2.
     function deposit(
         address _l2Receiver,
         address _l1Token,
@@ -65,48 +70,56 @@ contract ZkSync_Adapter is AdapterInterface {
 
     // Generally, the following params are a bit hard to set and may change in the future once ZkSync
     // goes live. For now, we'll hardcode these and use aggressive values to ensure inclusion.
-    uint256 public immutable l2GasPrice = 5e9;
 
     // Limit on L2 gas to spend.
-    uint256 public immutable l2GasLimit = 300_000;
+    uint256 public constant l2GasLimit = 300_000;
 
-    // How much gas is required to publish a byte of data from L1 to L2
-    uint256 public immutable l1GasToL2GasPerPubDataLimit = 50_000;
+    // How much gas is required to publish a byte of data from L1 to L2. 800 is the required value
+    // as set here https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L226
+    // Note, this value can change and will require an updated adapter.
+    uint256 public constant l1GasToL2GasPerPubDataLimit = 800;
 
     // This address receives any remaining fee after an L1 to L2 transaction completes.
-    // If recipient = address(0) then L2 msg.sender is used.
+    // If refund recipient = address(0) then L2 msg.sender is used, unelss msg.sender is a contract then its address
+    // gets aliased.
     address public constant l2RefundAddress = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
-
-    // TODO: Change following addresses for Mainnet
-    // Hardcode WETH address for L1 since it will not change:
-    WETH9Interface public immutable l1Weth = WETH9Interface(0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6);
-    // WETH9Interface public immutable l1Weth = WETH9Interface(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     // Hardcode the following ZkSync system contract addresses to save gas on construction. This adapter can be
     // redeployed in the event that the following addresses change.
 
     // Main contract used to send L1 --> L2 messages. Fetchable via `zks_getMainContract` method on JSON RPC.
-    ZkSyncInterface public immutable zkSync = ZkSyncInterface(0x1908e2bf4a88f91e4ef0dc72f02b8ea36bea2319);
-    // ZkSyncInterface public immutable zkSync = ZkSyncInterface(0x32400084c286cf3e17e7b677ea9583e60a000324);
+    ZkSyncInterface public constant zkSync = ZkSyncInterface(0x32400084C286CF3E17e7B677ea9583e60a000324);
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
-    ZkBridgeLike public immutable zkErc20Bridge = ZkBridgeLike(0x927DdFcc55164a59E0F33918D13a2D559bC10ce7);
-    // ZkBridgeLike public immutable zkErc20Bridge = ZkBridgeLike(0x57891966931eb4bb6fb81430e6ce0a03aabde063);
+    ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
+
+    // Set l1Weth at construction time to make testing easier. TODO: Think of some way to be able to hardcode this
+    // while making testing easy.
+    WETH9Interface public immutable l1Weth;
 
     event ZkSyncMessageRelayed(bytes32 canonicalTxHash);
 
     /**
+     * @notice Constructs new Adapter.
+     * @param _l1Weth WETH address on L1.
+     */
+    constructor(WETH9Interface _l1Weth) {
+        l1Weth = _l1Weth;
+    }
+
+    /**
      * @notice Send cross-chain message to target on ZkSync.
      * @notice This contract must hold at least getL1CallValue() amount of ETH to send a message, or the message
-     * will get stuck.
-     * @param target Contract on Arbitrum that will receive message.
+     * will revert.
+     * @param target Contract on L2 that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _contractHasSufficientEthBalance();
 
+        // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
         bytes32 canonicalTxHash = zkSync.requestL2Transaction{ value: txBaseCost }(
             target,
-            // We pass no ETH with the call
+            // We pass no ETH with the call, otherwise we'd need to add to the txBaseCost this value.
             0,
             message,
             l2GasLimit,
@@ -115,9 +128,6 @@ contract ZkSync_Adapter is AdapterInterface {
             l2RefundAddress
         );
 
-        // A successful L1 -> L2 message produces an L2Log with key = l2TxHash, and value = bytes32(1)
-        // whereas a failed L1 -> L2 message produces an L2Log with key = l2TxHash, and value = bytes32(0).
-
         emit MessageRelayed(target, message);
         emit ZkSyncMessageRelayed(canonicalTxHash);
     }
@@ -125,7 +135,7 @@ contract ZkSync_Adapter is AdapterInterface {
     /**
      * @notice Bridge tokens to ZkSync.
      * @notice This contract must hold at least getL1CallValue() amount of ETH to send a message
-     * or the message will get stuck.
+     * or the message will revert.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
@@ -144,31 +154,25 @@ contract ZkSync_Adapter is AdapterInterface {
         // this function revert or the HubPool will not be able to proceed to the
         // next bundle. See more here:
         // https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#deposit-limitation
-        // https://github.com/matter-labs/v2-testnet-contracts/blob/b8449bf9c819098cc8bfee0549ff5094456be51d/l1/contracts/bridge/L1ERC20Bridge.sol#L374
+        // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L230
         uint256 txBaseCost = _contractHasSufficientEthBalance();
 
         // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
-        // cost.
+        // cost. I've tried sending WETH over the erc20Bridge directly but we receive the wrong WETH
+        // on the L2 side. So, we need to unwrap the WETH into ETH and then send.
         bytes32 txHash;
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
-            // We cannot call the standard ERC20 bridge because
-            // it disallows ETH deposits.
+            // We cannot call the standard ERC20 bridge because it disallows ETH deposits.
             txHash = zkSync.requestL2Transaction{ value: txBaseCost + amount }(
                 to,
                 amount,
-                "0x",
+                "",
                 l2GasLimit,
                 l1GasToL2GasPerPubDataLimit,
                 new bytes[](0),
                 l2RefundAddress
             );
-
-            /**
-                A successful L1 -> L2 message produces an L2Log with 
-                key = l2TxHash, and value = bytes32(1) whereas a failed L1 -> L2 message produces an L2Log with 
-                key = l2TxHash, and value = bytes32(0). 
-            */
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
             txHash = zkErc20Bridge.deposit{ value: txBaseCost }(
@@ -189,8 +193,13 @@ contract ZkSync_Adapter is AdapterInterface {
      * @notice Returns required amount of ETH to send a message.
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
-    function getL1CallValue() public pure returns (uint256) {
-        return zkSync.l2TransactionBaseCost(l2GasPrice, l2GasLimit, l1GasToL2GasPerPubDataLimit);
+    function getL1CallValue() public view returns (uint256) {
+        // - tx.gasprice returns effective_gas_price. It's also used by Mailbox contract to estimate L2GasPrice
+        // so using tx.gasprice should always pass this check that msg.value >= baseCost + _l2Value
+        // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L273
+        // - priority_fee_per_gas = min(transaction.max_priority_fee_per_gas, transaction.max_fee_per_gas - block.base_fee_per_gas)
+        // - effective_gas_price = priority_fee_per_gas + block.base_fee_per_gas
+        return zkSync.l2TransactionBaseCost(tx.gasprice, l2GasLimit, l1GasToL2GasPerPubDataLimit);
     }
 
     function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {

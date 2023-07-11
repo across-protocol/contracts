@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 
-// https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/contracts/bridge/L2ERC20Bridge.sol#L101
+// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
     function withdraw(
         address _l1Receiver,
@@ -12,6 +12,8 @@ interface ZkBridgeLike {
     ) external;
 }
 
+// TODO: Find the mainnet source code, can't seem to find it in here:
+// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts
 // https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/system-contracts/L2EthToken.sol#L74
 interface IL2ETH {
     function withdraw(address _l1Receiver) external payable;
@@ -19,24 +21,21 @@ interface IL2ETH {
 
 /**
  * @notice ZkSync specific SpokePool, intended to be compiled with `@matterlabs/hardhat-zksync-solc`.
+ * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
  */
 contract ZkSync_SpokePool is SpokePool {
-    // ETH is an ERC20 on ZkSync.
-    address public l2Eth = 0x000000000000000000000000000000000000800A;
-
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost
     // upon contract deployment. On zkSync the opposite is true: deploying the same bytecode for contracts,
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // However, this contract is expected to be deployed only once to ZkSync. Therefore, we should consider the cost
-    // of reading mutable vs immutable storage. On Ethereum, mutable storage is more expensive than immutable bytecode.
-    // But, we also want to be able to upgrade certain state variables.
+    // ETH is an ERC20 on ZkSync with built in functions to bridge to L1.
+    address public l2Eth;
 
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
 
-    event SetZkBridges(address indexed erc20Bridge);
+    event SetZkBridge(address indexed erc20Bridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /**
@@ -55,8 +54,9 @@ contract ZkSync_SpokePool is SpokePool {
         address _hubPool,
         address _wethAddress
     ) public initializer {
+        l2Eth = 0x000000000000000000000000000000000000800A;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
-        _setZkBridges(_zkErc20Bridge);
+        _setZkBridge(_zkErc20Bridge);
     }
 
     modifier onlyFromCrossDomainAdmin() {
@@ -72,8 +72,8 @@ contract ZkSync_SpokePool is SpokePool {
      * @notice Change L2 token bridge addresses. Callable only by admin.
      * @param _zkErc20Bridge New address of L2 ERC20 gateway.
      */
-    function setZkBridges(ZkBridgeLike _zkErc20Bridge) public onlyAdmin nonReentrant {
-        _setZkBridges(_zkErc20Bridge);
+    function setZkBridge(ZkBridgeLike _zkErc20Bridge) public onlyAdmin nonReentrant {
+        _setZkBridge(_zkErc20Bridge);
     }
 
     /**************************************
@@ -133,11 +133,6 @@ contract ZkSync_SpokePool is SpokePool {
         _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
-    // function _verifyDepositorSignature() {
-    //     // We may need to override the signature recovery logic for ZkSync but I think it supports EIP1271:
-    //     // https://era.zksync.io/docs/dev/developer-guides/aa.html#example-of-using-the-library
-    // }
-
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
@@ -153,9 +148,8 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        // TODO: Figure out whether SpokePool will receive L1-->L2 deposits in ETH or WETH and whether ETH or WETH
-        // can be withdrawn. If ETH is received and must be withdrawn, then we need to wrap it upon receiving it and
-        // unwrap it when withdrawing.
+        // SpokePool is expected to receive ETH from the L1 HubPool and currently, withdrawing ETH directly
+        // over the ERC20 Bridge is blocked at the contract level. Therefore, we need to unwrap it before withdrawing.
         emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
         if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
@@ -166,9 +160,9 @@ contract ZkSync_SpokePool is SpokePool {
         }
     }
 
-    function _setZkBridges(ZkBridgeLike _zkErc20Bridge) internal {
+    function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
         zkErc20Bridge = _zkErc20Bridge;
-        emit SetZkBridges(address(_zkErc20Bridge));
+        emit SetZkBridge(address(_zkErc20Bridge));
     }
 
     // L1 addresses are transformed during l1->l2 calls.

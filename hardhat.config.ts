@@ -46,15 +46,12 @@ const config: HardhatUserConfig = {
     },
   },
   zksolc: {
-    version: "1.1.0",
+    version: "latest",
     compilerSource: "docker",
     settings: {
       optimizer: {
-        enabled: true,
-      },
-      experimental: {
-        dockerImage: "matterlabs/zksolc",
-        tag: "v1.1.0",
+        enabled: true, // optional. True by default
+        mode: "3", // optional. 3 by default. Mode "z" reduces bytecode size for large projects that make heavy use of keccak and far calls.
       },
     },
   },
@@ -68,10 +65,18 @@ const config: HardhatUserConfig = {
     },
     "zksync-goerli": {
       chainId: 280,
-      url: "https://zksync2-testnet.zksync.dev",
+      url: "https://testnet.era.zksync.dev",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
+      zksync: true,
+    },
+    zksync: {
+      chainId: 324,
+      url: "https://mainnet.era.zksync.io",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
       zksync: true,
     },
     kovan: {
