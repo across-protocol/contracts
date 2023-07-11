@@ -17,7 +17,7 @@ import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
 
-let hubPool: Contract, polygonSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract, l2Dai: string;
+let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string;
 let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
@@ -25,7 +25,7 @@ let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddre
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
-    ({ weth, hubPool, timer, l2Dai } = await hubPoolFixture());
+    ({ weth, hubPool, l2Dai } = await hubPoolFixture());
 
     // The spoke pool exists on l2, so add a random chainId for L1 to ensure that the L2's block.chainid will not match.
     const l1ChainId = randomBigNumber();
@@ -46,7 +46,7 @@ describe("Polygon Spoke Pool", function () {
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
       [0, polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address],
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -57,7 +57,7 @@ describe("Polygon Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Polygon_SpokePool", owner),
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     // upgradeTo fails unless called by cross domain admin

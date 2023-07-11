@@ -6,11 +6,11 @@ import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
+import "./upgradeable/AddressLibUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
@@ -43,7 +43,7 @@ abstract contract SpokePool is
     EIP712CrossChainUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using AddressUpgradeable for address;
+    using AddressLibUpgradeable for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
     // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
@@ -1100,8 +1100,7 @@ abstract contract SpokePool is
             IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
-            //slither-disable-next-line arbitrary-send-eth
-            to.transfer(amount);
+            AddressLibUpgradeable.sendValue(to, amount);
         }
     }
 

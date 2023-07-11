@@ -15,7 +15,7 @@ import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, arbitrumSpokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
@@ -24,7 +24,7 @@ let l2GatewayRouter: FakeContract;
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, l2Weth, dai, l2Dai, hubPool, timer } = await hubPoolFixture());
+    ({ weth, l2Weth, dai, l2Dai, hubPool } = await hubPoolFixture());
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
     crossDomainAliasAddress = avmL1ToL2Alias(owner.address);
@@ -37,7 +37,7 @@ describe("Arbitrum Spoke Pool", function () {
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
       [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth],
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -48,7 +48,7 @@ describe("Arbitrum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     // upgradeTo fails unless called by cross domain admin

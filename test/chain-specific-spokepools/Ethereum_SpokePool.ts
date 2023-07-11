@@ -4,19 +4,19 @@ import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
-let hubPool: Contract, spokePool: Contract, timer: Contract, dai: Contract, weth: Contract;
+let hubPool: Contract, spokePool: Contract, dai: Contract, weth: Contract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
 describe("Ethereum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, dai, hubPool, timer } = await hubPoolFixture());
+    ({ weth, dai, hubPool } = await hubPoolFixture());
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),
       [0, hubPool.address, weth.address],
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
@@ -28,7 +28,7 @@ describe("Ethereum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Ethereum_SpokePool", owner),
-      { kind: "uups" }
+      { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
     // upgradeTo fails unless called by cross domain admin
