@@ -59,6 +59,12 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     matic: "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae", // Dummy: Polygon's testnet is goerli
     l2WrappedMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889", // Dummy: Polygon's testnet is goerli
   },
+  280: {
+    weth: "0x20b28B1e4665FFf290650586ad76E977EAb90c5D",
+  },
+  324: {
+    weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
+  },
 };
 
 export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
