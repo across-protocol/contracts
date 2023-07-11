@@ -69,3 +69,10 @@ These are special instructions for compiling and deploying contracts on `zksync`
 This step requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) to be running, as the `solc` docker image is fetched as a prerequisite.
 
 `yarn compile-zksync`
+
+## License
+
+All code in this repository is licensed under BUSL-1.1 unless specified differently in the file.
+Individual exceptions to this license can be made by Risk Labs, which holds the rights to this
+software and design. If you are interested in using the code or designs in a derivative work,
+feel free to reach out to licensing@risklabs.foundation.

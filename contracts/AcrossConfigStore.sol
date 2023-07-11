@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
