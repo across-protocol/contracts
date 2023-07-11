@@ -3,10 +3,12 @@ import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import { getNodeUrl, getMnemonic } from "@uma/common";
 
-import "@nomiclabs/hardhat-etherscan"; // Must be above hardhat-upgrades
+import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "@matterlabs/hardhat-zksync-solc";
+import "@matterlabs/hardhat-zksync-verify";
+import "@matterlabs/hardhat-zksync-upgradable";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
@@ -46,15 +48,10 @@ const config: HardhatUserConfig = {
     },
   },
   zksolc: {
-    version: "1.1.0",
-    compilerSource: "docker",
+    version: "latest",
     settings: {
       optimizer: {
         enabled: true,
-      },
-      experimental: {
-        dockerImage: "matterlabs/zksolc",
-        tag: "v1.1.0",
       },
     },
   },
@@ -68,11 +65,21 @@ const config: HardhatUserConfig = {
     },
     "zksync-goerli": {
       chainId: 280,
-      url: "https://zksync2-testnet.zksync.dev",
+      url: "https://testnet.era.zksync.dev",
       saveDeployments: true,
       accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
+      ethNetwork: "goerli",
       zksync: true,
+      verifyURL: "https://zksync2-testnet-explorer.zksync.dev/contract_verification",
+    },
+    zksync: {
+      chainId: 324,
+      url: "https://mainnet.era.zksync.dev",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      ethNetwork: "mainnet",
+      zksync: true,
+      verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     kovan: {
       url: getNodeUrl("kovan", true, 42),
@@ -156,12 +163,11 @@ const config: HardhatUserConfig = {
       rinkeby: process.env.ETHERSCAN_API_KEY!,
       goerli: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
-      arbitrumGoerli: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
     },
+    customChains: [],
   },
   namedAccounts: { deployer: 0 },
   typechain: {

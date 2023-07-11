@@ -41,13 +41,17 @@
     "@openzeppelin/contracts-upgradeable": "4.9.2",
     "@uma/common": "^2.29.0",
     "@uma/contracts-node": "^0.3.18",
-    "@uma/core": "^2.41.0"
+    "@uma/core": "^2.41.0",
+    "zksync-web3": "^0.14.3"
   },
   "devDependencies": {
-    "@matterlabs/hardhat-zksync-solc": "^0.3.6",
+    "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
+    "@matterlabs/hardhat-zksync-solc": "^0.4.0",
+    "@matterlabs/hardhat-zksync-upgradable": "^0.1.0",
+    "@matterlabs/hardhat-zksync-verify": "^0.2.0",
     "@matterlabs/zksync-contracts": "^0.2.4",
+    "@nomicfoundation/hardhat-verify": "^1.0.3",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
-    "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@nomiclabs/hardhat-waffle": "2.0.3",
     "@openzeppelin/hardhat-upgrades": "^1.22.0",
     "@pinata/sdk": "^2.1.0",
