@@ -13,7 +13,6 @@ describe("SpokePool Upgrade Functions", async function () {
   it("Can upgrade", async function () {
     const spokePoolV2 = await hre.upgrades.deployImplementation(await ethers.getContractFactory("MockSpokePoolV2"), {
       kind: "uups",
-      unsafeAllow: ["delegatecall"],
     });
     const spokePoolV2Contract = (await ethers.getContractFactory("MockSpokePoolV2")).attach(spokePoolV2 as string);
 

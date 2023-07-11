@@ -6,7 +6,6 @@ export async function deployNewProxy(name: string, args: (number | string)[]): P
 
   const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, {
     kind: "uups",
-    unsafeAllow: ["delegatecall"],
   });
   const instance = await proxy.deployed();
   console.log(`New ${name} proxy deployed @ ${instance.address}`);

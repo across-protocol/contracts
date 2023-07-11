@@ -15,7 +15,7 @@ describe("SpokePool Admin Functions", async function () {
     const spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("MockSpokePool", owner),
       [1, owner.address, owner.address, owner.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups" }
     );
     expect(await spokePool.numberOfDeposits()).to.equal(1);
   });

@@ -46,7 +46,7 @@ describe("Polygon Spoke Pool", function () {
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
       [0, polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups" }
     );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -57,7 +57,7 @@ describe("Polygon Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Polygon_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups" }
     );
 
     // upgradeTo fails unless called by cross domain admin
