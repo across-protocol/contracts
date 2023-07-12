@@ -93,7 +93,7 @@ contract ZkSync_Adapter is AdapterInterface {
     ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
 
     // Set l1Weth at construction time to make testing easier. TODO: Think of some way to be able to hardcode this
-    // while making testing easy.
+    // while keeping unit tests easy to write with custom WETH that we can mint/transfer.
     WETH9Interface public immutable l1Weth;
 
     event ZkSyncMessageRelayed(bytes32 canonicalTxHash);
