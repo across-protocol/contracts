@@ -3,16 +3,25 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 
+// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
     function withdraw(
-        address _to,
+        address _l1Receiver,
         address _l2Token,
         uint256 _amount
     ) external;
 }
 
+// TODO: Find the mainnet source code, can't seem to find it in here:
+// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts
+// https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/system-contracts/L2EthToken.sol#L74
+interface IL2ETH {
+    function withdraw(address _l1Receiver) external payable;
+}
+
 /**
  * @notice ZkSync specific SpokePool, intended to be compiled with `@matterlabs/hardhat-zksync-solc`.
+ * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
  */
 contract ZkSync_SpokePool is SpokePool {
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost
@@ -20,17 +29,13 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // However, this contract is expected to be deployed only once to ZkSync. Therefore, we should consider the cost
-    // of reading mutable vs immutable storage. On Ethereum, mutable storage is more expensive than immutable bytecode.
-    // But, we also want to be able to upgrade certain state variables.
+    // ETH is an ERC20 on ZkSync with built in functions to bridge to L1.
+    address public l2Eth;
 
-    // Bridge used to withdraw ERC20's to L1: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ERC20Bridge.sol
+    // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
 
-    // Bridge used to send ETH to L1: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ETHBridge.sol
-    ZkBridgeLike public zkEthBridge;
-
-    event SetZkBridges(address indexed erc20Bridge, address indexed ethBridge);
+    event SetZkBridge(address indexed erc20Bridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /**
@@ -38,7 +43,6 @@ contract ZkSync_SpokePool is SpokePool {
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
-     * @param _zkEthBridge Address of L2 ETH gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _wethAddress Weth address for this network to set.
@@ -46,28 +50,18 @@ contract ZkSync_SpokePool is SpokePool {
     function initialize(
         uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
-        ZkBridgeLike _zkEthBridge,
         address _crossDomainAdmin,
         address _hubPool,
         address _wethAddress
     ) public initializer {
+        l2Eth = 0x000000000000000000000000000000000000800A;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
-        _setZkBridges(_zkErc20Bridge, _zkEthBridge);
+        _setZkBridge(_zkErc20Bridge);
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        // Formal msg.sender of L1 --> L2 message will be L1 sender.
-        require(msg.sender == crossDomainAdmin, "Invalid sender");
+        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
-    }
-
-    /**
-     * @notice Returns chain ID for this network.
-     * @dev ZKSync doesn't yet support the CHAIN_ID opcode so we override this, but it will be supported by mainnet
-     * launch supposedly: https://v2-docs.zksync.io/dev/zksync-v2/temp-limits.html#temporarily-simulated-by-constant-values
-     */
-    function chainId() public pure override returns (uint256) {
-        return 280;
     }
 
     /********************************************************
@@ -77,33 +71,107 @@ contract ZkSync_SpokePool is SpokePool {
     /**
      * @notice Change L2 token bridge addresses. Callable only by admin.
      * @param _zkErc20Bridge New address of L2 ERC20 gateway.
-     * @param _zkEthBridge New address of L2 ETH gateway.
      */
-    function setZkBridges(ZkBridgeLike _zkErc20Bridge, ZkBridgeLike _zkEthBridge) public onlyAdmin nonReentrant {
-        _setZkBridges(_zkErc20Bridge, _zkEthBridge);
+    function setZkBridge(ZkBridgeLike _zkErc20Bridge) public onlyAdmin nonReentrant {
+        _setZkBridge(_zkErc20Bridge);
+    }
+
+    /**************************************
+     *         DATA WORKER FUNCTIONS      *
+     **************************************/
+
+    /**
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
+     * ETH over the canonical token bridge instead of WETH.
+     * @inheritdoc SpokePool
+     */
+    function executeSlowRelayLeaf(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 totalRelayAmount,
+        uint256 originChainId,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        bytes memory message,
+        int256 payoutAdjustment,
+        bytes32[] memory proof
+    ) public override(SpokePool) nonReentrant {
+        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
+
+        _executeSlowRelayLeaf(
+            depositor,
+            recipient,
+            destinationToken,
+            totalRelayAmount,
+            originChainId,
+            chainId(),
+            realizedLpFeePct,
+            relayerFeePct,
+            depositId,
+            rootBundleId,
+            message,
+            payoutAdjustment,
+            proof
+        );
+    }
+
+    /**
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
+     * ETH over the canonical token bridge instead of WETH.
+     * @inheritdoc SpokePool
+     */
+    function executeRelayerRefundLeaf(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) public override(SpokePool) nonReentrant {
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+
+        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken) ? zkEthBridge : zkErc20Bridge).withdraw(
-            hubPool,
-            // Note: If ETH, must use 0x0: https://github.com/matter-labs/v2-testnet-contracts/blob/3a0651357bb685751c2163e4cc65a240b0f602ef/l2/contracts/bridge/L2ETHBridge.sol#L57
-            relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)
-                ? address(0)
-                : relayerRefundLeaf.l2TokenAddress,
-            relayerRefundLeaf.amountToReturn
-        );
-
-        emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
+    // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because
+    // this SpokePool will receive ETH from the canonical token bridge instead of WETH. This may not be neccessary
+    // if ETH on ZkSync is treated as ETH and the fallback() function is triggered when this contract receives
+    // ETH. We will have to test this but this function for now allows the contract to safely convert all of its
+    // held ETH into WETH at the cost of higher gas costs.
+    function _depositEthToWeth() internal {
+        //slither-disable-next-line arbitrary-send-eth
+        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
-    function _setZkBridges(ZkBridgeLike _zkErc20Bridge, ZkBridgeLike _zkEthBridge) internal {
+    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
+        // SpokePool is expected to receive ETH from the L1 HubPool and currently, withdrawing ETH directly
+        // over the ERC20 Bridge is blocked at the contract level. Therefore, we need to unwrap it before withdrawing.
+        emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
+            WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
+            // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
+            IL2ETH(l2Eth).withdraw{ value: relayerRefundLeaf.amountToReturn }(hubPool);
+        } else {
+            zkErc20Bridge.withdraw(hubPool, relayerRefundLeaf.l2TokenAddress, relayerRefundLeaf.amountToReturn);
+        }
+    }
+
+    function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
         zkErc20Bridge = _zkErc20Bridge;
-        zkEthBridge = _zkEthBridge;
-        emit SetZkBridges(address(_zkErc20Bridge), address(_zkEthBridge));
+        emit SetZkBridge(address(_zkErc20Bridge));
+    }
+
+    // L1 addresses are transformed during l1->l2 calls.
+    // See https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#mailboxfacet for more information.
+    // Another source: https://github.com/matter-labs/era-contracts/blob/41c25aa16d182f757c3fed1463c78a81896f65e6/ethereum/contracts/vendor/AddressAliasHelper.sol#L28
+    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
+        unchecked {
+            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
+        }
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
