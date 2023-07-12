@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -6,6 +6,7 @@ import "./interfaces/SpokePoolInterface.sol";
 
 /**
  * @notice SpokePoolVerifier is a contract that verifies that the SpokePool exists on this chain before sending ETH to it.
+ * @dev
  */
 contract SpokePoolVerifier {
     using Address for address;
