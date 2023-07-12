@@ -6,7 +6,6 @@ import "./interfaces/SpokePoolInterface.sol";
 
 /**
  * @notice SpokePoolVerifier is a contract that verifies that the SpokePool exists on this chain before sending ETH to it.
- * @dev
  */
 contract SpokePoolVerifier {
     using Address for address;
