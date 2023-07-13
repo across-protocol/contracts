@@ -120,7 +120,7 @@ const config: HardhatUserConfig = {
       url: "https://goerli-rollup.arbitrum.io/rpc",
       saveDeployments: true,
       accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
+      companionNetworks: { l1: "sepolia" },
     },
     rinkeby: {
       chainId: 4,
@@ -133,6 +133,12 @@ const config: HardhatUserConfig = {
       url: getNodeUrl("goerli", true, 5),
       saveDeployments: true,
       accounts: { mnemonic },
+    },
+    sepolia: {
+      url: "https://rpc2.sepolia.org",
+      accounts: { mnemonic },
+      saveDeployments: true,
+      chainId: 11155111,
     },
     polygon: {
       chainId: 137,
@@ -162,6 +168,7 @@ const config: HardhatUserConfig = {
       kovan: process.env.ETHERSCAN_API_KEY!,
       rinkeby: process.env.ETHERSCAN_API_KEY!,
       goerli: process.env.ETHERSCAN_API_KEY!,
+      sepolia: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
