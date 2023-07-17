@@ -39,7 +39,7 @@
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.2",
     "@openzeppelin/contracts-upgradeable": "4.9.2",
-    "@uma/common": "^2.29.0",
+    "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.3.18",
     "@uma/core": "^2.41.0",
     "zksync-web3": "^0.14.3"

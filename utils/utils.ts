@@ -7,7 +7,7 @@ import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
+import { BigNumber, Signer, Contract, ContractFactory, utils } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers);
@@ -156,7 +156,12 @@ export function randomAddress() {
   return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
 }
 
-export async function getParamType(contractName: string, functionName: string, paramName: string) {
+// eslint-disable-next-line no-undef
+export async function getParamType(
+  contractName: string,
+  functionName: string,
+  paramName: string
+): Promise<"" | utils.ParamType> {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
   const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
   return fragment!.inputs.find((input) => input.name === paramName) || "";
@@ -180,6 +185,6 @@ function avmL1ToL2Alias(l1Address: string) {
   return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
 }
 
-const { defaultAbiCoder, keccak256 } = ethers.utils;
+const { defaultAbiCoder, keccak256 } = utils;
 
 export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
