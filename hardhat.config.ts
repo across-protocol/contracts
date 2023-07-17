@@ -174,6 +174,7 @@ const config: HardhatUserConfig = {
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
     },
+    customChains: [],
   },
   namedAccounts: { deployer: 0 },
   typechain: {
