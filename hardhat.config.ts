@@ -168,13 +168,12 @@ const config: HardhatUserConfig = {
       kovan: process.env.ETHERSCAN_API_KEY!,
       rinkeby: process.env.ETHERSCAN_API_KEY!,
       goerli: process.env.ETHERSCAN_API_KEY!,
-      sepolia: process.env.ETHERSCAN_API_KEY!,
+      // sepolia: process.env.ETHERSCAN_API_KEY!, hardhat-etherscan is unhappy with custom definitions.
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
     },
-    customChains: [],
   },
   namedAccounts: { deployer: 0 },
   typechain: {
