@@ -65,6 +65,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
   },
+  11155111: {
+    finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
+    weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+  },
 };
 
 export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
