@@ -120,7 +120,7 @@ const config: HardhatUserConfig = {
       url: "https://goerli-rollup.arbitrum.io/rpc",
       saveDeployments: true,
       accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
+      companionNetworks: { l1: "goerli" },
     },
     rinkeby: {
       chainId: 4,
