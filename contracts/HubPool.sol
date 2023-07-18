@@ -10,13 +10,14 @@ import "./external/interfaces/WETH9Interface.sol";
 
 import "@uma/core/contracts/common/implementation/Testable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@uma/core/contracts/oracle/implementation/Constants.sol";
 import "@uma/core/contracts/common/interfaces/AddressWhitelistInterface.sol";
-import "@uma/core/contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 
-import "@uma/core/contracts/oracle/interfaces/FinderInterface.sol";
-import "@uma/core/contracts/oracle/interfaces/StoreInterface.sol";
-import "@uma/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
+import "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
+import "@uma/core/contracts/data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "@uma/core/contracts/data-verification-mechanism/interfaces/StoreInterface.sol";
+import "@uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
+
+import "@uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "@uma/core/contracts/common/interfaces/ExpandedIERC20.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
