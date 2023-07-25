@@ -29,7 +29,7 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // ETH is an ERC20 on ZkSync with built in functions to bridge to L1.
+    // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
     address public l2Eth;
 
     // Bridge used to withdraw ERC20's to L1
