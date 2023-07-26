@@ -150,7 +150,6 @@ contract ZkSync_SpokePool is SpokePool {
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         // SpokePool is expected to receive ETH from the L1 HubPool and currently, withdrawing ETH directly
         // over the ERC20 Bridge is blocked at the contract level. Therefore, we need to unwrap it before withdrawing.
-        emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
         if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
@@ -158,6 +157,7 @@ contract ZkSync_SpokePool is SpokePool {
         } else {
             zkErc20Bridge.withdraw(hubPool, relayerRefundLeaf.l2TokenAddress, relayerRefundLeaf.amountToReturn);
         }
+        emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
     }
 
     function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
