@@ -82,7 +82,7 @@ contract ZkSync_Adapter is AdapterInterface {
     // This address receives any remaining fee after an L1 to L2 transaction completes.
     // If refund recipient = address(0) then L2 msg.sender is used, unelss msg.sender is a contract then its address
     // gets aliased.
-    address public constant l2RefundAddress = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
+    address public immutable l2RefundAddress;
 
     // Hardcode the following ZkSync system contract addresses to save gas on construction. This adapter can be
     // redeployed in the event that the following addresses change.
@@ -101,9 +101,11 @@ contract ZkSync_Adapter is AdapterInterface {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
+     * @param _l2RefundAddress address that recieves excess gas refunds on L2.
      */
-    constructor(WETH9Interface _l1Weth) {
+    constructor(WETH9Interface _l1Weth, address _l2RefundAddress) {
         l1Weth = _l1Weth;
+        l2RefundAddress = _l2RefundAddress;
     }
 
     /**
