@@ -82,7 +82,7 @@ contract ZkSync_Adapter is AdapterInterface {
     // This address receives any remaining fee after an L1 to L2 transaction completes.
     // If refund recipient = address(0) then L2 msg.sender is used, unless msg.sender is a contract then its address
     // gets aliased.
-    address public constant L2_REFUND_ADDRESS = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
+    address public constant l2RefundAddress = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
 
     // Hardcode the following ZkSync system contract addresses to save gas on construction. This adapter can be
     // redeployed in the event that the following addresses change.
@@ -125,7 +125,7 @@ contract ZkSync_Adapter is AdapterInterface {
             L2_GAS_LIMIT,
             L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
             new bytes[](0),
-            L2_REFUND_ADDRESS
+            l2RefundAddress
         );
 
         emit MessageRelayed(target, message);
@@ -171,7 +171,7 @@ contract ZkSync_Adapter is AdapterInterface {
                 L2_GAS_LIMIT,
                 L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                 new bytes[](0),
-                L2_REFUND_ADDRESS
+                l2RefundAddress
             );
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
@@ -181,7 +181,7 @@ contract ZkSync_Adapter is AdapterInterface {
                 amount,
                 L2_GAS_LIMIT,
                 L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
-                L2_REFUND_ADDRESS
+                l2RefundAddress
             );
         }
 
