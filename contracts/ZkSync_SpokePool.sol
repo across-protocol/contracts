@@ -32,7 +32,7 @@ contract ZkSync_SpokePool is SpokePool {
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
 
-    event SetZkBridge(address indexed erc20Bridge);
+    event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /**
@@ -158,8 +158,9 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
+        address oldErc20Bridge = address(zkErc20Bridge);
         zkErc20Bridge = _zkErc20Bridge;
-        emit SetZkBridge(address(_zkErc20Bridge));
+        emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
     }
 
     // L1 addresses are transformed during l1->l2 calls.
