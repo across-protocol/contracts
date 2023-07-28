@@ -42,7 +42,8 @@ interface ZkSyncInterface {
 }
 
 interface ZkBridgeLike {
-    // @dev: Use ZkSyncInterface.requestL2Transaction to bridge WETH as ETH to L2.
+    // @dev: Can use ZkSyncInterface.requestL2Transaction to bridge WETH as ETH to L2. Or, can use the
+    // WETH bridge which has this same interface and results in receiving WETH on the receiving side.
     function deposit(
         address _l2Receiver,
         address _l1Token,
@@ -91,6 +92,7 @@ contract ZkSync_Adapter is AdapterInterface {
     ZkSyncInterface public constant zkSync = ZkSyncInterface(0x32400084C286CF3E17e7B677ea9583e60a000324);
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
     ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
+    ZkBridgeLike public constant zkWETHBridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
 
     // Set l1Weth at construction time to make testing easier. TODO: Think of some way to be able to hardcode this
     // while keeping unit tests easy to write with custom WETH that we can mint/transfer.
@@ -157,24 +159,18 @@ contract ZkSync_Adapter is AdapterInterface {
         // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L230
         uint256 txBaseCost = _contractHasSufficientEthBalance();
 
-        // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
-        // cost. I've tried sending WETH over the erc20Bridge directly but we receive the wrong WETH
-        // on the L2 side. So, we need to unwrap the WETH into ETH and then send.
         bytes32 txHash;
+        IERC20(l1Token).safeIncreaseAllowance(address(zkWETHBridge), amount);
         if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            // We cannot call the standard ERC20 bridge because it disallows ETH deposits.
-            txHash = zkSync.requestL2Transaction{ value: txBaseCost + amount }(
+            txHash = zkWETHBridge.deposit{ value: txBaseCost }(
                 to,
+                l1Token,
                 amount,
-                "",
                 L2_GAS_LIMIT,
                 L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
-                new bytes[](0),
                 l2RefundAddress
             );
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
             txHash = zkErc20Bridge.deposit{ value: txBaseCost }(
                 to,
                 l1Token,
