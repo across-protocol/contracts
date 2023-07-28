@@ -17,7 +17,10 @@ import { smock } from "@defi-wonderland/smock";
 
 let hubPool: Contract, zkSyncAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
 let l2Weth: string, l2Dai: string, mainnetWeth: FakeContract;
-let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
+let owner: SignerWithAddress,
+  dataWorker: SignerWithAddress,
+  liquidityProvider: SignerWithAddress,
+  refundAddress: SignerWithAddress;
 let zkSync: FakeContract, zkSyncErc20Bridge: FakeContract;
 
 const zkSyncChainId = 324;
@@ -73,7 +76,7 @@ const l2TransactionBaseCost = toWei("0.0001");
 
 describe("ZkSync Chain Adapter", function () {
   beforeEach(async function () {
-    [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
+    [owner, dataWorker, liquidityProvider, refundAddress] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, amountToLp.mul(10));
@@ -93,7 +96,9 @@ describe("ZkSync Chain Adapter", function () {
       address: "0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063",
     });
 
-    zkSyncAdapter = await (await getContractFactory("ZkSync_Adapter", owner)).deploy(weth.address);
+    zkSyncAdapter = await (
+      await getContractFactory("ZkSync_Adapter", owner)
+    ).deploy(weth.address, refundAddress.address);
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("100000") });
