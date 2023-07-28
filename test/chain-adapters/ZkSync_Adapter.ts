@@ -113,8 +113,8 @@ describe("ZkSync Chain Adapter", function () {
       mockSpoke.address,
       0,
       functionCallData,
-      await zkSyncAdapter.l2GasLimit(),
-      await zkSyncAdapter.l1GasToL2GasPerPubDataLimit(),
+      await zkSyncAdapter.L2_GAS_LIMIT(),
+      await zkSyncAdapter.L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT(),
       [],
       await zkSyncAdapter.l2RefundAddress()
     );
@@ -133,8 +133,8 @@ describe("ZkSync Chain Adapter", function () {
       mockSpoke.address,
       dai.address,
       tokensSendToL2,
-      await zkSyncAdapter.l2GasLimit(),
-      await zkSyncAdapter.l1GasToL2GasPerPubDataLimit(),
+      await zkSyncAdapter.L2_GAS_LIMIT(),
+      await zkSyncAdapter.L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT(),
       await zkSyncAdapter.l2RefundAddress(),
     ];
     expect(zkSyncErc20Bridge.deposit).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
@@ -156,8 +156,8 @@ describe("ZkSync Chain Adapter", function () {
       mockSpoke.address,
       leaves[0].netSendAmounts[0].toString(),
       "0x",
-      await zkSyncAdapter.l2GasLimit(),
-      await zkSyncAdapter.l1GasToL2GasPerPubDataLimit(),
+      await zkSyncAdapter.L2_GAS_LIMIT(),
+      await zkSyncAdapter.L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT(),
       [],
       await zkSyncAdapter.l2RefundAddress()
     );

@@ -72,15 +72,15 @@ contract ZkSync_Adapter is AdapterInterface {
     // goes live. For now, we'll hardcode these and use aggressive values to ensure inclusion.
 
     // Limit on L2 gas to spend.
-    uint256 public constant l2GasLimit = 300_000;
+    uint256 public constant L2_GAS_LIMIT = 300_000;
 
     // How much gas is required to publish a byte of data from L1 to L2. 800 is the required value
     // as set here https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L226
     // Note, this value can change and will require an updated adapter.
-    uint256 public constant l1GasToL2GasPerPubDataLimit = 800;
+    uint256 public constant L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = 800;
 
     // This address receives any remaining fee after an L1 to L2 transaction completes.
-    // If refund recipient = address(0) then L2 msg.sender is used, unelss msg.sender is a contract then its address
+    // If refund recipient = address(0) then L2 msg.sender is used, unless msg.sender is a contract then its address
     // gets aliased.
     address public constant l2RefundAddress = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
 
@@ -122,8 +122,8 @@ contract ZkSync_Adapter is AdapterInterface {
             // We pass no ETH with the call, otherwise we'd need to add to the txBaseCost this value.
             0,
             message,
-            l2GasLimit,
-            l1GasToL2GasPerPubDataLimit,
+            L2_GAS_LIMIT,
+            L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
             new bytes[](0),
             l2RefundAddress
         );
@@ -168,8 +168,8 @@ contract ZkSync_Adapter is AdapterInterface {
                 to,
                 amount,
                 "",
-                l2GasLimit,
-                l1GasToL2GasPerPubDataLimit,
+                L2_GAS_LIMIT,
+                L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                 new bytes[](0),
                 l2RefundAddress
             );
@@ -179,8 +179,8 @@ contract ZkSync_Adapter is AdapterInterface {
                 to,
                 l1Token,
                 amount,
-                l2GasLimit,
-                l1GasToL2GasPerPubDataLimit,
+                L2_GAS_LIMIT,
+                L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                 l2RefundAddress
             );
         }
@@ -199,7 +199,7 @@ contract ZkSync_Adapter is AdapterInterface {
         // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L273
         // - priority_fee_per_gas = min(transaction.max_priority_fee_per_gas, transaction.max_fee_per_gas - block.base_fee_per_gas)
         // - effective_gas_price = priority_fee_per_gas + block.base_fee_per_gas
-        return zkSync.l2TransactionBaseCost(tx.gasprice, l2GasLimit, l1GasToL2GasPerPubDataLimit);
+        return zkSync.l2TransactionBaseCost(tx.gasprice, L2_GAS_LIMIT, L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT);
     }
 
     function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {
