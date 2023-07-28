@@ -18,14 +18,15 @@ import { constructSingleChainTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, dai: Contract, timer: Contract, mockSpoke: Contract;
 let l2Weth: string, l2Dai: string, gatewayAddress: string;
-let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
+let owner: SignerWithAddress, dataWorker: SignerWithAddress;
+let liquidityProvider: SignerWithAddress, refundAddress: SignerWithAddress;
 let l1ERC20GatewayRouter: FakeContract, l1Inbox: FakeContract;
 
 const arbitrumChainId = 42161;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
-    [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
+    [owner, dataWorker, liquidityProvider, refundAddress] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer } = await hubPoolFixture());
     await seedWallet(dataWorker, [dai], weth, consts.amountToLp);
     await seedWallet(liquidityProvider, [dai], weth, consts.amountToLp.mul(10));
@@ -45,7 +46,7 @@ describe("Arbitrum Chain Adapter", function () {
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
-    ).deploy(l1Inbox.address, l1ERC20GatewayRouter.address);
+    ).deploy(l1Inbox.address, l1ERC20GatewayRouter.address, refundAddress.address);
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
@@ -69,8 +70,8 @@ describe("Arbitrum Chain Adapter", function () {
       mockSpoke.address,
       0,
       consts.sampleL2MaxSubmissionCost,
-      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
-      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      refundAddress.address,
+      refundAddress.address,
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       functionCallData
@@ -100,7 +101,7 @@ describe("Arbitrum Chain Adapter", function () {
     const message = defaultAbiCoder.encode(["uint256", "bytes"], [consts.sampleL2MaxSubmissionCost, "0x"]);
     expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledWith(
       dai.address,
-      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      refundAddress.address,
       mockSpoke.address,
       tokensSendToL2,
       consts.sampleL2GasSendTokens,
@@ -112,8 +113,8 @@ describe("Arbitrum Chain Adapter", function () {
       mockSpoke.address,
       0,
       consts.sampleL2MaxSubmissionCost,
-      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
-      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      refundAddress.address,
+      refundAddress.address,
       consts.sampleL2Gas,
       consts.sampleL2GasPrice,
       mockSpoke.interface.encodeFunctionData("relayRootBundle", [

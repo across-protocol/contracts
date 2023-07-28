@@ -20,15 +20,16 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
 
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
-
-    address public constant l2RefundL2Address = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
+    address public immutable l2RefundL2Address;
 
     /**
      * @notice Constructs new Adapter.
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
+     * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      */
-    constructor(ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter) {
+    constructor(ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter, address _l2RefundL2Address) {
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
+        l2RefundL2Address = _l2RefundL2Address;
     }
 
     /**
