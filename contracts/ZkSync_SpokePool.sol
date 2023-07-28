@@ -29,7 +29,7 @@ contract ZkSync_SpokePool is SpokePool {
     ZkBridgeLike public zkErc20Bridge;
     ZkBridgeLike public zkWETHBridge;
 
-    event SetZkBridge(address indexed erc20Bridge, address indexed wethBridge);
+    event SetZkBridge(address indexed erc20Bridge, address oldErc20Bridge, address indexed wethBridge, address oldWethBridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /**
@@ -99,9 +99,11 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _setZkBridge(ZkBridgeLike _zkErc20Bridge, ZkBridgeLike _zkWETHBridge) internal {
+        address oldZkErc20Bridge = address(zkErc20Bridge);
+        address oldZkWETHBridge = address(zkWETHBridge);
         zkErc20Bridge = _zkErc20Bridge;
         zkWETHBridge = _zkWETHBridge;
-        emit SetZkBridge(address(_zkErc20Bridge), address(_zkWETHBridge));
+        emit SetZkBridge(address(_zkErc20Bridge), oldZkErc20Bridge, address(_zkWETHBridge), oldZkWETHBridge);
     }
 
     // L1 addresses are transformed during l1->l2 calls.

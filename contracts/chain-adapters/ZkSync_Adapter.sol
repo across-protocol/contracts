@@ -54,6 +54,63 @@ interface ZkBridgeLike {
     ) external payable returns (bytes32 txHash);
 }
 
+// Note: this contract just forwards the calls from the HubPool to ZkSync to avoid limits.
+// A modified ZKSync_Adapter should be deployed with this address swapped in for all zkSync addresses.
+contract LimitBypassProxy is ZkSyncInterface, ZkBridgeLike {
+    using SafeERC20 for IERC20;
+    ZkSyncInterface public constant zkSync = ZkSyncInterface(0x32400084C286CF3E17e7B677ea9583e60a000324);
+    ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
+
+    function l2TransactionBaseCost(
+        uint256 _l1GasPrice,
+        uint256 _l2GasLimit,
+        uint256 _l2GasPerPubdataByteLimit
+    ) external view returns (uint256) {
+        return zkSync.l2TransactionBaseCost(_l1GasPrice, _l2GasLimit, _l2GasPerPubdataByteLimit);
+    }
+
+    function requestL2Transaction(
+        address _contractL2,
+        uint256 _l2Value,
+        bytes calldata _calldata,
+        uint256 _l2GasLimit,
+        uint256 _l2GasPerPubdataByteLimit,
+        bytes[] calldata _factoryDeps,
+        address _refundRecipient
+    ) external payable returns (bytes32 canonicalTxHash) {
+        return
+            zkSync.requestL2Transaction{ value: msg.value }(
+                _contractL2,
+                _l2Value,
+                _calldata,
+                _l2GasLimit,
+                _l2GasPerPubdataByteLimit,
+                _factoryDeps,
+                _refundRecipient
+            );
+    }
+
+    function deposit(
+        address _l2Receiver,
+        address _l1Token,
+        uint256 _amount,
+        uint256 _l2TxGasLimit,
+        uint256 _l2TxGasPerPubdataByte,
+        address _refundRecipient
+    ) external payable returns (bytes32 txHash) {
+        IERC20(_l1Token).safeIncreaseAllowance(address(zkErc20Bridge), _amount);
+        return
+            zkErc20Bridge.deposit{ value: msg.value }(
+                _l2Receiver,
+                _l1Token,
+                _amount,
+                _l2TxGasLimit,
+                _l2TxGasPerPubdataByte,
+                _refundRecipient
+            );
+    }
+}
+
 /**
  * @notice Contract containing logic to send messages from L1 to ZkSync.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
@@ -83,19 +140,19 @@ contract ZkSync_Adapter is AdapterInterface {
     // This address receives any remaining fee after an L1 to L2 transaction completes.
     // If refund recipient = address(0) then L2 msg.sender is used, unless msg.sender is a contract then its address
     // gets aliased.
-    address public constant l2RefundAddress = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
+    address public immutable l2RefundAddress;
 
     // Hardcode the following ZkSync system contract addresses to save gas on construction. This adapter can be
     // redeployed in the event that the following addresses change.
 
     // Main contract used to send L1 --> L2 messages. Fetchable via `zks_getMainContract` method on JSON RPC.
-    ZkSyncInterface public constant zkSync = ZkSyncInterface(0x32400084C286CF3E17e7B677ea9583e60a000324);
+    ZkSyncInterface public constant zkSyncMessageBridge = ZkSyncInterface(0x32400084C286CF3E17e7B677ea9583e60a000324);
+
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
     ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
     ZkBridgeLike public constant zkWETHBridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
 
-    // Set l1Weth at construction time to make testing easier. TODO: Think of some way to be able to hardcode this
-    // while keeping unit tests easy to write with custom WETH that we can mint/transfer.
+    // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable l1Weth;
 
     event ZkSyncMessageRelayed(bytes32 canonicalTxHash);
@@ -103,9 +160,11 @@ contract ZkSync_Adapter is AdapterInterface {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
+     * @param _l2RefundAddress address that recieves excess gas refunds on L2.
      */
-    constructor(WETH9Interface _l1Weth) {
+    constructor(WETH9Interface _l1Weth, address _l2RefundAddress) {
         l1Weth = _l1Weth;
+        l2RefundAddress = _l2RefundAddress;
     }
 
     /**
@@ -119,7 +178,7 @@ contract ZkSync_Adapter is AdapterInterface {
         uint256 txBaseCost = _contractHasSufficientEthBalance();
 
         // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
-        bytes32 canonicalTxHash = zkSync.requestL2Transaction{ value: txBaseCost }(
+        bytes32 canonicalTxHash = zkSyncMessageBridge.requestL2Transaction{ value: txBaseCost }(
             target,
             // We pass no ETH with the call, otherwise we'd need to add to the txBaseCost this value.
             0,
@@ -195,7 +254,8 @@ contract ZkSync_Adapter is AdapterInterface {
         // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L273
         // - priority_fee_per_gas = min(transaction.max_priority_fee_per_gas, transaction.max_fee_per_gas - block.base_fee_per_gas)
         // - effective_gas_price = priority_fee_per_gas + block.base_fee_per_gas
-        return zkSync.l2TransactionBaseCost(tx.gasprice, L2_GAS_LIMIT, L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT);
+        return
+            zkSyncMessageBridge.l2TransactionBaseCost(tx.gasprice, L2_GAS_LIMIT, L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT);
     }
 
     function _contractHasSufficientEthBalance() internal view returns (uint256 requiredL1CallValue) {
