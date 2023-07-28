@@ -88,9 +88,9 @@ contract ZkSync_Adapter is AdapterInterface {
     // redeployed in the event that the following addresses change.
 
     // Main contract used to send L1 --> L2 messages. Fetchable via `zks_getMainContract` method on JSON RPC.
-    ZkSyncInterface public constant zkSync = ZkSyncInterface(0x32400084C286CF3E17e7B677ea9583e60a000324);
+    ZkSyncInterface public immutable zkSync;
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
-    ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
+    ZkBridgeLike public immutable zkErc20Bridge;
 
     // Set l1Weth at construction time to make testing easier. TODO: Think of some way to be able to hardcode this
     // while keeping unit tests easy to write with custom WETH that we can mint/transfer.
@@ -101,9 +101,17 @@ contract ZkSync_Adapter is AdapterInterface {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
+     * @param _zkSync zkSync mailbox address on L1.
+     * @param _zkErc20Bridge zkSync ERC20 bridge address on L1.
      */
-    constructor(WETH9Interface _l1Weth) {
+    constructor(
+        WETH9Interface _l1Weth,
+        ZkSyncInterface _zkSync,
+        ZkBridgeLike _zkErc20Bridge
+    ) {
         l1Weth = _l1Weth;
+        zkSync = ZkSyncInterface(_zkSync);
+        zkErc20Bridge = ZkBridgeLike(_zkErc20Bridge);
     }
 
     /**

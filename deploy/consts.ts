@@ -15,6 +15,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
     matic: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    zkSyncMailbox: "0x32400084C286CF3E17e7B677ea9583e60a000324",
+    zkSyncErc20Bridge: "0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
