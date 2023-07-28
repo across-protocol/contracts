@@ -12,9 +12,6 @@ interface ZkBridgeLike {
     ) external;
 }
 
-// TODO: Find the mainnet source code, can't seem to find it in here:
-// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts
-// https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/system-contracts/L2EthToken.sol#L74
 interface IL2ETH {
     function withdraw(address _l1Receiver) external payable;
 }
