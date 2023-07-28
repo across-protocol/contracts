@@ -121,7 +121,7 @@ describe("ZkSync Chain Adapter", function () {
       await zkSyncAdapter.l2GasLimit(),
       await zkSyncAdapter.l1GasToL2GasPerPubDataLimit(),
       [],
-      await zkSyncAdapter.l2RefundAddress()
+      refundAddress.address
     );
     expect(zkSync.requestL2Transaction).to.have.been.calledWithValue(l2TransactionBaseCost);
   });
@@ -140,7 +140,7 @@ describe("ZkSync Chain Adapter", function () {
       tokensSendToL2,
       await zkSyncAdapter.l2GasLimit(),
       await zkSyncAdapter.l1GasToL2GasPerPubDataLimit(),
-      await zkSyncAdapter.l2RefundAddress(),
+      refundAddress.address,
     ];
     expect(zkSyncErc20Bridge.deposit).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
     expect(zkSyncErc20Bridge.deposit).to.have.been.calledWithValue(l2TransactionBaseCost);
@@ -164,7 +164,7 @@ describe("ZkSync Chain Adapter", function () {
       await zkSyncAdapter.l2GasLimit(),
       await zkSyncAdapter.l1GasToL2GasPerPubDataLimit(),
       [],
-      await zkSyncAdapter.l2RefundAddress()
+      refundAddress.address
     );
     expect(zkSync.requestL2Transaction).to.have.been.calledWithValue(
       l2TransactionBaseCost.add(leaves[0].netSendAmounts[0])
