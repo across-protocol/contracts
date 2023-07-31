@@ -22,6 +22,11 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
+    // This variable is deprecated because this contract uses the WETH bridge to bridge ETH. But we can't delete
+    // variables from a proxy implementation contract.
+    // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
+    address public l2Eth;
+
     // Bridges used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
     ZkBridgeLike public zkWETHBridge;
@@ -52,6 +57,7 @@ contract ZkSync_SpokePool is SpokePool {
         address _hubPool,
         address _wethAddress
     ) public initializer {
+        l2Eth = 0x000000000000000000000000000000000000800A;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
         _setZkBridge(_zkErc20Bridge, _zkWETHBridge);
     }
