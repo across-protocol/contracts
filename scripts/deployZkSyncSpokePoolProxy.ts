@@ -28,8 +28,8 @@ async function main() {
       // ZKErc20bridge
       "0x0e2817C49698cc0874204AeDf7c72Be2Bb7fCD5d",
       // ZKWETHBridge
-      // TODO: Fill this in, this is set to the mainnet address for now
-      "0x5aea5775959fbc2557cc8789bc1bf90a239d9a91",
+      // TODO: Update the following address once the WETH bridge is deployed and the address is known.
+      "0x0e2817C49698cc0874204AeDf7c72Be2Bb7fCD5d",
       // Cross domain admin
       zkWallet.address,
       // HubPool

@@ -150,6 +150,7 @@ contract ZkSync_Adapter is AdapterInterface {
 
     // Bridges to send ERC20 and ETH to L2. Fetchable via `zks_getBridgeContracts` method on JSON RPC.
     ZkBridgeLike public constant zkErc20Bridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
+    // TODO: Update the following address once the WETH bridge is deployed and the address is known.
     ZkBridgeLike public constant zkWETHBridge = ZkBridgeLike(0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063);
 
     // Set l1Weth at construction time to make testing easier.
