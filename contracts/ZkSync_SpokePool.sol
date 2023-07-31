@@ -12,9 +12,6 @@ interface ZkBridgeLike {
     ) external;
 }
 
-// TODO: Find the mainnet source code, can't seem to find it in here:
-// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts
-// https://github.com/matter-labs/v2-testnet-contracts/blob/main/l2/system-contracts/L2EthToken.sol#L74
 interface IL2ETH {
     function withdraw(address _l1Receiver) external payable;
 }
@@ -35,7 +32,7 @@ contract ZkSync_SpokePool is SpokePool {
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
 
-    event SetZkBridge(address indexed erc20Bridge);
+    event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /**
@@ -161,8 +158,9 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
+        address oldErc20Bridge = address(zkErc20Bridge);
         zkErc20Bridge = _zkErc20Bridge;
-        emit SetZkBridge(address(_zkErc20Bridge));
+        emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
     }
 
     // L1 addresses are transformed during l1->l2 calls.
