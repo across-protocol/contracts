@@ -29,7 +29,12 @@ contract ZkSync_SpokePool is SpokePool {
     ZkBridgeLike public zkErc20Bridge;
     ZkBridgeLike public zkWETHBridge;
 
-    event SetZkBridge(address indexed erc20Bridge, address oldErc20Bridge, address indexed wethBridge, address oldWethBridge);
+    event SetZkBridge(
+        address indexed erc20Bridge,
+        address oldErc20Bridge,
+        address indexed wethBridge,
+        address oldWethBridge
+    );
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /**
