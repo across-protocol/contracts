@@ -9,17 +9,19 @@ import {
   getContractFactory,
   seedContract,
   avmL1ToL2Alias,
+  randomAddress,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
+import { Event } from "ethers";
 
 let hubPool: Contract, zkSyncSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Dai: string, crossDomainAliasAddress, crossDomainAlias: SignerWithAddress;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-let zkErc20Bridge: FakeContract, l2Eth: FakeContract, zkWethBridge: FakeContract;
+let zkErc20Bridge: FakeContract, zkWethBridge: FakeContract;
 
 // TODO: Grab the following from relayer-v2/CONTRACT_ADDRESSES dictionary?
 const abiData = {
@@ -85,7 +87,6 @@ describe("ZkSync Spoke Pool", function () {
 
     zkErc20Bridge = await smock.fake(abiData.erc20DefaultBridge.abi, { address: abiData.erc20DefaultBridge.address });
     zkWethBridge = await smock.fake(abiData.wethDefaultBridge.abi, { address: abiData.wethDefaultBridge.address });
-    l2Eth = await smock.fake(abiData.eth.abi, { address: abiData.eth.address });
 
     zkSyncSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("ZkSync_SpokePool", owner),
@@ -106,6 +107,33 @@ describe("ZkSync Spoke Pool", function () {
     // upgradeTo fails unless called by cross domain admin
     await expect(zkSyncSpokePool.upgradeTo(implementation)).to.be.revertedWith("ONLY_COUNTERPART_GATEWAY");
     await zkSyncSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
+  });
+  it("Can reinitialize contract after initial deployment", async function () {
+    const v2 = await getContractFactory("ZkSync_SpokePool", owner);
+    const newImpl = await v2.deploy();
+
+    const newBridgeAddress = randomAddress();
+    const reinitializeData = v2.interface.encodeFunctionData("initialize_v2", [newBridgeAddress, newBridgeAddress]);
+
+    // upgradeTo fails unless called by cross domain admin
+    await expect(zkSyncSpokePool.upgradeToAndCall(newImpl.address, reinitializeData)).to.be.revertedWith(
+      "ONLY_COUNTERPART_GATEWAY"
+    );
+    const tx = await zkSyncSpokePool.connect(crossDomainAlias).upgradeToAndCall(newImpl.address, reinitializeData);
+
+    const events: Event[] = (await tx.wait()).events;
+    const initializedEvent = events.find((e: Event) => e.event === "Initialized");
+
+    // Proxy should have been upgraded to version 2.
+    expect(initializedEvent).to.not.be.undefined;
+    expect(initializedEvent.args.version).to.equal(2);
+    expect(await zkSyncSpokePool.zkWETHBridge()).to.equal(newBridgeAddress);
+    expect(await zkSyncSpokePool.zkErc20Bridge()).to.equal(newBridgeAddress);
+
+    // Can't reinitialize again:
+    await expect(
+      zkSyncSpokePool.connect(crossDomainAlias).upgradeToAndCall(newImpl.address, reinitializeData)
+    ).to.be.revertedWith("Initializable: contract is already initialized");
   });
   it("Only cross domain owner can set ZKBridge", async function () {
     await expect(zkSyncSpokePool.setZkBridge(rando.address, relayer.address)).to.be.reverted;

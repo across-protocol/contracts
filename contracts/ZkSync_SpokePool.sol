@@ -22,9 +22,6 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
-    address public l2Eth;
-
     // Bridges used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
     ZkBridgeLike public zkWETHBridge;
@@ -55,8 +52,17 @@ contract ZkSync_SpokePool is SpokePool {
         address _hubPool,
         address _wethAddress
     ) public initializer {
-        l2Eth = 0x000000000000000000000000000000000000800A;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
+        _setZkBridge(_zkErc20Bridge, _zkWETHBridge);
+    }
+
+    /**
+     * Initializes second implementation of this contract that uses a special WETH bridge for more gas efficient
+     * WETH bridging, as opposed to having to unwrap WETH --> ETH before bridging the ETH.
+     * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
+     * @param _zkWETHBridge Address of L2 WETH gateway. Can be reset by admin.
+     */
+    function initialize_v2(ZkBridgeLike _zkErc20Bridge, ZkBridgeLike _zkWETHBridge) public reinitializer(2) {
         _setZkBridge(_zkErc20Bridge, _zkWETHBridge);
     }
 
