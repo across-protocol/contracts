@@ -122,7 +122,7 @@ describe("ZkSync Chain Adapter", function () {
       await zkSyncAdapter.L2_GAS_LIMIT(),
       await zkSyncAdapter.L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT(),
       [],
-      await zkSyncAdapter.l2RefundAddress()
+      refundAddress.address
     );
     expect(zkSync.requestL2Transaction).to.have.been.calledWithValue(l2TransactionBaseCost);
   });
@@ -141,7 +141,7 @@ describe("ZkSync Chain Adapter", function () {
       tokensSendToL2,
       await zkSyncAdapter.L2_GAS_LIMIT(),
       await zkSyncAdapter.L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT(),
-      await zkSyncAdapter.l2RefundAddress(),
+      refundAddress.address,
     ];
     expect(zkSyncErc20Bridge.deposit).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
     expect(zkSyncErc20Bridge.deposit).to.have.been.calledWithValue(l2TransactionBaseCost);
@@ -169,18 +169,5 @@ describe("ZkSync Chain Adapter", function () {
     ];
     expect(zkSyncWethBridge.deposit).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
     expect(zkSyncWethBridge.deposit).to.have.been.calledWithValue(l2TransactionBaseCost);
-
-    // expect(zkSync.requestL2Transaction).to.have.been.calledWith(
-    //   mockSpoke.address,
-    //   leaves[0].netSendAmounts[0].toString(),
-    //   "0x",
-    //   await zkSyncAdapter.L2_GAS_LIMIT(),
-    //   await zkSyncAdapter.L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT(),
-    //   [],
-    //   await zkSyncAdapter.l2RefundAddress()
-    // );
-    // expect(zkSync.requestL2Transaction).to.have.been.calledWithValue(
-    //   l2TransactionBaseCost.add(leaves[0].netSendAmounts[0])
-    // );
   });
 });
