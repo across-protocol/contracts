@@ -12,6 +12,10 @@ interface ZkBridgeLike {
     ) external;
 }
 
+interface IL2ETH {
+    function withdraw(address _l1Receiver) external payable;
+}
+
 /**
  * @notice ZkSync specific SpokePool, intended to be compiled with `@matterlabs/hardhat-zksync-solc`.
  * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
