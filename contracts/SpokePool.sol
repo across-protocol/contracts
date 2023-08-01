@@ -1305,7 +1305,5 @@ abstract contract SpokePool is
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    // @dev This __gap can safely be reset to its original value 1000 if this contract is deployed on a fresh
-    // proxy, however its set to whatever the latest __gap value is for the latest implementation contract.
-    uint256[999] private __gap;
+    uint256[1000] private __gap;
 }
