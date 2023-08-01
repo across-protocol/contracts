@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Deploy new implementation and validate that it can be used in upgrade, without actually upgrading it.
   const newImplementation = await upgrades.prepareUpgrade(
     spokePool.address,
-    await getContractFactory("Ethereum_SpokePool", deployer)
+    await getContractFactory("ZkSync_SpokePool", deployer)
   );
   console.log(`Can upgrade to new implementation @ ${newImplementation}`);
 
