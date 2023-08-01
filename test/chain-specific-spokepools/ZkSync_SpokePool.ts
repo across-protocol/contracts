@@ -126,7 +126,7 @@ describe("ZkSync Spoke Pool", function () {
 
     // Proxy should have been upgraded to version 2.
     expect(initializedEvent).to.not.be.undefined;
-    expect(initializedEvent.args.version).to.equal(2);
+    expect(initializedEvent?.args?.version).to.equal(2);
     expect(await zkSyncSpokePool.zkWETHBridge()).to.equal(newBridgeAddress);
     expect(await zkSyncSpokePool.zkErc20Bridge()).to.equal(newBridgeAddress);
 
