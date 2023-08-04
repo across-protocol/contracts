@@ -29,7 +29,7 @@ const hubPools: { [chainId: number]: string } = {
 
 const spokePools: { [chainId: number]: { adapter: string; spokePool: string } } = {
   324: {
-    adapter: "0x4BA640E1c1C15bE35cB9e778F3A3C5961a9aD130",
+    adapter: "0xE233009838CB898b50e0012a6E783FC9FeE447FB",
     spokePool: "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF",
   },
 };
