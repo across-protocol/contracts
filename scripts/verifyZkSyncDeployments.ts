@@ -10,6 +10,7 @@ import { assert } from "console";
 import { ContractFactory } from "ethers";
 import { Provider as zkProvider, utils as zkUtils } from "zksync-web3";
 import { ethers, toBN, findArtifactFromPath, SignerWithAddress } from "../utils/utils";
+import deployments from "../deployments/deployments.json";
 
 const textPadding = 30;
 
@@ -17,22 +18,6 @@ const textPadding = 30;
  * l2RefundAddress and spokePoolDeploymentBlocks can change per deployment.
  */
 const l2RefundAddress = "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010";
-
-const spokePoolDeploymentBlocks: { [chainId: number]: number } = {
-  324: 10352565,
-};
-
-// For a SpokePool deployed on [chainId], specify the corresponding HubPool address.
-const hubPools: { [chainId: number]: string } = {
-  324: "0xc186fA914353c44b2E33eBE05f21846F1048bEda",
-};
-
-const spokePools: { [chainId: number]: { adapter: string; spokePool: string } } = {
-  324: {
-    adapter: "0xE233009838CB898b50e0012a6E783FC9FeE447FB",
-    spokePool: "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF",
-  },
-};
 
 const tokens: { [chainId: number]: { symbol: string; address: string }[] } = {
   1: [{ symbol: "WETH", address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" }],
@@ -48,7 +33,7 @@ async function verifyAdapter(signer: SignerWithAddress): Promise<void> {
   const provider = new zkProvider(rpcUrl);
 
   const hubChainId = chainId === 1 ? 324 : 280;
-  const adapterAddress = spokePools[hubChainId].adapter;
+  const adapterAddress = deployments[hubChainId.toString()].ZkSync_Adapter.address;
 
   const adapterArtifact = findArtifactFromPath("ZkSync_Adapter", "./artifacts/contracts");
   const adapterFactory = new ContractFactory(adapterArtifact.abi, adapterArtifact.bytecode, signer);
@@ -85,12 +70,14 @@ async function verifyAdapter(signer: SignerWithAddress): Promise<void> {
 
 async function verifySpokePool(signer: SignerWithAddress): Promise<void> {
   const chainId = (await signer.provider.getNetwork()).chainId;
-  assert(chainId === 324, `Unexpected chain ID (${chainId} != 324)`);
+  assert([280, 324].includes(chainId), `Unexpected chain ID (${chainId})`);
+
+  const hubChainId = chainId === 324 ? 1 : 5;
 
   const rpcUrl = chainId === 324 ? "https://mainnet.era.zksync.io" : "https://testnet.era.zksync.dev";
   const provider = new zkProvider(rpcUrl);
 
-  const spokePoolAddress = spokePools[chainId].spokePool;
+  const spokePoolAddress = deployments[chainId.toString()].SpokePool.address;
 
   // Initialize contracts:
   const spokePoolArtifact = findArtifactFromPath("ZkSync_SpokePool", `./artifacts-zk/contracts`);
@@ -110,8 +97,9 @@ async function verifySpokePool(signer: SignerWithAddress): Promise<void> {
   assert(wethAddress === expectedWethAddress, `wrappedNativeToken: ${wethAddress} !== ${expectedWethAddress}`);
 
   const hubPool = await spokePool.hubPool();
+  const expectedHubPool = deployments[hubChainId.toString()].HubPool.address;
   console.log("SpokePool hubPool():".padEnd(textPadding) + hubPool);
-  assert(hubPool === hubPools[chainId], `HubPool: ${hubPool} != ${hubPools[chainId]}`);
+  assert(hubPool === expectedHubPool, `HubPool: ${hubPool} != ${expectedHubPool}`);
 
   const admin = await spokePool.crossDomainAdmin();
   console.log("SpokePool crossDomainAdmin():".padEnd(textPadding) + admin);
@@ -126,8 +114,9 @@ async function verifySpokePool(signer: SignerWithAddress): Promise<void> {
   assert(zkERC20Bridge.toLowerCase() === expectL2Bridge.toLowerCase(), `${zkERC20Bridge} != ${expectL2Bridge}`);
 
   // Log EnabledDepositRoute on SpokePool to test that L1 message arrived to L2:
+  const deploymentBlock = deployments[chainId.toString()].SpokePool.blockNumber;
   const filter = spokePool.filters.EnabledDepositRoute();
-  const events = await spokePool.queryFilter(filter, spokePoolDeploymentBlocks[chainId]);
+  const events = await spokePool.queryFilter(filter, deploymentBlock);
   events.forEach((e) => {
     console.log(`Found EnabledDepositRouteEvent in ${e.transactionHash}: `, e.args);
   });
