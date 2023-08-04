@@ -6,6 +6,7 @@ export async function deployNewProxy(name: string, args: (number | string)[]): P
 
   const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, {
     kind: "uups",
+    unsafeAllow: ["delegatecall"],
   });
   const instance = await proxy.deployed();
   console.log(`New ${name} proxy deployed @ ${instance.address}`);
@@ -16,9 +17,10 @@ export async function deployNewProxy(name: string, args: (number | string)[]): P
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
-  await run("verify:verify", {
-    address: instance.address,
-  });
+  // await run("verify:verify", {
+  //   address: instance.address,
+  //   contract: "contracts/Base_SpokePool.sol:Base_SpokePool",
+  // });
 }
 
 export { hre };

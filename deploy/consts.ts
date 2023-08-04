@@ -15,6 +15,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
     matic: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
+    baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -43,6 +45,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonDepositManager: "0x7850ec290A2e2F40B82Ed962eaf30591bb5f5C96",
     matic: "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae",
     l2WrappedMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
+    baseCrossDomainMessenger: "0x8e5693140eA606bcEB98761d9beB1BC87383706D",
+    baseStandardBridge: "0xfA6D8Ee5BE770F84FC001D098C4bD604Fe01284a",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby

@@ -43,6 +43,7 @@ const config: HardhatUserConfig = {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Boba_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockSpokePoolV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockOptimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
@@ -160,6 +161,20 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    base: {
+      chainId: 8453,
+      url: "https://mainnet.base.org",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "base-goerli": {
+      chainId: 84531,
+      url: "https://goerli.base.org",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -173,8 +188,27 @@ const config: HardhatUserConfig = {
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
+      base: process.env.ETHERSCAN_API_KEY!,
+      "base-goerli": process.env.ETHERSCAN_API_KEY!,
     },
-    customChains: [],
+    customChains: [
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org",
+        },
+      },
+      {
+        network: "base-goerli",
+        chainId: 84531,
+        urls: {
+          apiURL: "https://api-goerli.basescan.org/api",
+          browserURL: "https://goerli.basescan.org",
+        },
+      },
+    ],
   },
   namedAccounts: { deployer: 0 },
   typechain: {
