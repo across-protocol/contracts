@@ -9,7 +9,7 @@
 import { assert } from "console";
 import { ContractFactory } from "ethers";
 import { Provider as zkProvider, utils as zkUtils } from "zksync-web3";
-import { ethers, toBN, findArtifactFromPath } from "../utils/utils";
+import { ethers, toBN, findArtifactFromPath, SignerWithAddress } from "../utils/utils";
 
 const textPadding = 30;
 
