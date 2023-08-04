@@ -2,7 +2,13 @@ import { task } from "hardhat/config";
 import assert from "assert";
 import { findL2TokenForL1Token, askYesNoQuestion, zeroAddress, minimalSpokePoolInterface } from "./utils";
 
-const enabledChainIds = [1, 10, 137, 42161]; // Supported mainnet chain IDs.
+const enabledChainIds = [1, 10, 137, 42161, 324]; // Supported mainnet chain IDs.
+
+const getChainsFromList = (taskArgInput: string): number[] =>
+  taskArgInput
+    ?.replace(/\s/g, "")
+    ?.split(",")
+    ?.map((chainId: string) => Number(chainId)) || [];
 
 task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
   .addParam("chain1token", "Address of the token to enable, as defined on L1")
@@ -10,21 +16,26 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addOptionalParam("chain10token", "Address of the token on chainID 10. Used to override the auto detect")
   .addOptionalParam("chain137token", "Address of the token on chainID 137. Used to override the auto detect")
   .addOptionalParam("chain42161token", "Address of the token on chainID 42161. Used to override the auto detect")
+  .addOptionalParam("chain324token", "Address of the token on chainID 324. Used to override the auto detect")
   .addOptionalParam(
     "customoptimismbridge",
     "Custom token bridge to set for optimism, for example used with SNX and DAI"
   )
   .addOptionalParam("ignorechains", "ChainIds to ignore. Separated by comma.")
+  .addOptionalParam("exclusivechains", "ChainIds to enable exclusively. Separated by comma.")
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
     const l1Token = taskArguments.chain1token;
     assert(l1Token, "chain1token argument must be provided");
-    const ignoredChainIds: number[] =
-      taskArguments.ignorechains
-        ?.replace(/\s/g, "")
-        ?.split(",")
-        ?.map((chainId: string) => Number(chainId)) || [];
+    const ignoredChainIds = getChainsFromList(taskArguments.ignorechains);
     if (ignoredChainIds.includes(1)) throw new Error("Cannot ignore chainId 1");
+
+    // If exclusive chains are provided then we'll only add routes involving these chains. This is used to add new
+    // deposit routes to a new chain for an existing L1 token, so we also won't add a new LP token if this is defined.
+    const exclusiveChains = getChainsFromList(taskArguments.exclusivechains);
+    if (exclusiveChains.length > 0) {
+      console.log(`\n0. Only adding routes involving chains on exclusive list ${exclusiveChains.join(", ")}`);
+    }
 
     const hasSetConfigStore = await askYesNoQuestion(
       `\nHave you setup the ConfigStore for this token? If not then this script will exit because a rate model must be set before the first deposit is sent otherwise the bots will error out`
@@ -85,8 +96,12 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     // Construct calldata to enable these tokens.
     const callData = [];
-    console.log("\n5. Adding calldata to enable liquidity provision on", l1Token);
-    callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
+
+    // If exclusive chain is defined then we don't want to add a new LP token:
+    if (exclusiveChains.length > 0) {
+      console.log("\n5. Adding calldata to enable liquidity provision on", l1Token);
+      callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
+    }
 
     console.log("\n6. Adding calldata to enable routes between all chains and tokens:");
     let i = 0; // counter for logging.
@@ -94,15 +109,32 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       chainIds.forEach((toId, _) => {
         if (fromId === toId) return;
 
-        console.log(`\t 6.${++i}\t Adding calldata for token ${tokens[fromIndex]} for route ${fromId} -> ${toId}`);
-        callData.push(hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, tokens[fromIndex], true]));
+        // If exclusive chains is defined, only add route if it involves a chain on that list
+        if (exclusiveChains.length === 0 || exclusiveChains.includes(toId) || exclusiveChains.includes(fromId)) {
+          console.log(`\t 6.${++i}\t Adding calldata for token ${tokens[fromIndex]} for route ${fromId} -> ${toId}`);
+          callData.push(
+            hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, tokens[fromIndex], true])
+          );
+        } else {
+          console.log(
+            `\t\t Skipping route ${fromId} -> ${toId} because it doesn't involve a chain on the exclusive list`
+          );
+        }
       });
     });
 
     console.log("\n7. Adding calldata to set the pool rebalance route for the respective destination tokens:");
+    let j = 0; // counter for logging.
     chainIds.forEach((toId, toIndex) => {
-      console.log(`\t 7.${toIndex}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} on ${toId}`);
-      callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]]));
+      // If exclusive chains is defined, only add route if it involves a chain on that list
+      if (exclusiveChains.length === 0 || exclusiveChains.includes(toId)) {
+        console.log(`\t 7.${++j}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} on ${toId}`);
+        callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]]));
+      } else {
+        console.log(
+          `\t\t Skipping pool rebalance rout -> ${toId} because it doesn't involve a chain on the exclusive list`
+        );
+      }
     });
 
     if (chainIds.includes(42161)) {
