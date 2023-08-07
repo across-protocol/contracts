@@ -33,6 +33,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);
   await proxy.deployed();
   console.log(`${contractName} deployed to chain ID ${chainId} @ ${proxy.address}.`);
+
+  const verificationId = await hre.run("verify:verify", {
+    address: proxy.address,
+  });
 };
 
 module.exports = func;

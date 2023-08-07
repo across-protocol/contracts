@@ -68,6 +68,7 @@ const config: HardhatUserConfig = {
       url: "https://testnet.era.zksync.dev",
       saveDeployments: true,
       accounts: { mnemonic },
+      ethNetwork: "goerli",
       companionNetworks: { l1: "goerli" },
       zksync: true,
       verifyURL: "https://zksync2-testnet-explorer.zksync.dev/contract_verification",
