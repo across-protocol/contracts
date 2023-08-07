@@ -78,6 +78,7 @@ const config: HardhatUserConfig = {
       url: "https://mainnet.era.zksync.io",
       saveDeployments: true,
       accounts: { mnemonic },
+      ethNetwork: "mainnet",
       companionNetworks: { l1: "mainnet" },
       zksync: true,
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
