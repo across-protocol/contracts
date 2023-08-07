@@ -1,23 +1,39 @@
+import * as zk from "zksync-web3";
+import { Deployer as zkDeployer } from "@matterlabs/hardhat-zksync-deploy";
 import { DeployFunction } from "hardhat-deploy/types";
 import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy } from "../utils/utils.hre";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
-  const chainId = await hre.getChainId();
-  console.log(`Using L1 (chainId ${chainId}) hub pool @ ${hubPool.address}`);
+  const contractName = "ZkSync_SpokePool";
+  const { getChainId, companionNetworks, zkUpgrades } = hre;
 
-  // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
-  const constructorArgs = [
+  const chainId = await getChainId();
+  const hubPool = await companionNetworks.l1.deployments.get("HubPool");
+  console.log(`Using HubPool @ ${hubPool.address}`);
+
+  const mnemonic = hre.network.config.accounts.mnemonic;
+  const wallet = zk.Wallet.fromMnemonic(mnemonic);
+  const deployer = new zkDeployer(hre, wallet);
+
+  const artifact = await deployer.loadArtifact(contractName);
+  const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
     L2_ADDRESS_MAP[chainId].zkErc20Bridge,
-    L2_ADDRESS_MAP[chainId].zkEthBridge,
     hubPool.address,
     hubPool.address,
     L2_ADDRESS_MAP[chainId].l2Weth,
   ];
-  await deployNewProxy("ZkSync_SpokePool", constructorArgs);
+
+  const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
+    initializer: "initialize",
+    kind: "uups",
+    unsafeAllow: ["delegatecall"], // @dev Temporarily necessary, remove when possible.
+  });
+  console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);
+  await proxy.deployed();
+  console.log(`${contractName} deployed to chain ID ${chainId} @ ${proxy.address}.`);
 };
+
 module.exports = func;
 func.tags = ["ZkSyncSpokePool", "zksync"];
