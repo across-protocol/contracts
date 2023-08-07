@@ -93,8 +93,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
   },
   280: {
-    zkErc20Bridge: "0x00ff932A6d70E2B8f1Eb4919e1e09C1923E7e57b",
     l2Weth: "0x20b28B1e4665FFf290650586ad76E977EAb90c5D",
+    zkErc20Bridge: "0x00ff932A6d70E2B8f1Eb4919e1e09C1923E7e57b",
   },
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
