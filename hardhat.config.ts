@@ -62,6 +62,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: 1,
+      companionNetworks: { l1: "mainnet" },
     },
     "zksync-goerli": {
       chainId: 280,
@@ -133,12 +134,14 @@ const config: HardhatUserConfig = {
       url: getNodeUrl("goerli", true, 5),
       saveDeployments: true,
       accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
     },
     sepolia: {
       url: "https://rpc2.sepolia.org",
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: 11155111,
+      companionNetworks: { l1: "sepolia" },
     },
     polygon: {
       chainId: 137,
