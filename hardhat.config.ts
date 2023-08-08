@@ -139,7 +139,6 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: 11155111,
-      companionNetworks: { l1: "sepolia" },
     },
     polygon: {
       chainId: 137,
