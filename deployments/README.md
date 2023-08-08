@@ -13,6 +13,7 @@
 | Ethereum_SpokePool  | [0x4D9079Bb4165aeb4084c526a32695dCfd2F77381](https://etherscan.io/address/0x4D9079Bb4165aeb4084c526a32695dCfd2F77381) |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://etherscan.io/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
 | Polygon_Adapter     | [0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A](https://etherscan.io/address/0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A) |
+| ZkSync_Adapter      | [0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A](https://etherscan.io/address/0xE233009838CB898b50e0012a6E783FC9FeE447FB) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 
 ## Optimism mainnet (10)
@@ -33,6 +34,12 @@
 | Contract Name  | Address                                                                                                                             |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Boba_SpokePool | [0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58](https://blockexplorer.boba.network/address/0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58) |
+
+## zkSync mainnet (324)
+
+| Contract Name    | Address                                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| zkSync_SpokePool | [0xE0B015E54d54fc84a6cB9B666099c46adE9335FF](https://explorer.zksync.io/address/0xE0B015E54d54fc84a6cB9B666099c46adE9335FF) |
 
 ## Arbitrum mainnet (42161)
 
