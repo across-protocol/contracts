@@ -14,6 +14,7 @@ export async function getSpokePoolDeploymentInfo(
 ): Promise<{ hubPool: Deployment; hubChainId: number; spokeChainId: number }> {
   const { companionNetworks, getChainId } = hre;
   const spokeChainId = Number(await getChainId());
+
   const hubChain = companionNetworks.l1;
   const hubPool = await hubChain.deployments.get("HubPool");
   const hubChainId = Number(await hubChain.getChainId());
