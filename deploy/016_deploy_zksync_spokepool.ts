@@ -1,12 +1,12 @@
 import * as zk from "zksync-web3";
 import { Deployer as zkDeployer } from "@matterlabs/hardhat-zksync-deploy";
-import { DeployFunction } from "hardhat-deploy/types";
+import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { L2_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "ZkSync_SpokePool";
-  const { getChainId, companionNetworks, zkUpgrades } = hre;
+  const { companionNetworks, deployments, getChainId, zkUpgrades } = hre;
 
   const chainId = await getChainId();
   const hubPool = await companionNetworks.l1.deployments.get("HubPool");
@@ -28,11 +28,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
     initializer: "initialize",
     kind: "uups",
-    unsafeAllow: ["delegatecall"], // @dev Temporarily necessary, remove when possible.
+    unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
   });
   console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);
   await proxy.deployed();
   console.log(`${contractName} deployed to chain ID ${chainId} @ ${proxy.address}.`);
+
+  // Save the deployment manually because OZ's hardhat-upgrades packages bypasses hardhat-deploy.
+  // See also: https://stackoverflow.com/questions/74870472
+  const extendedArtifact = await deployments.getExtendedArtifact(contractName);
+  const deployment: DeploymentSubmission = {
+    address: proxy.address,
+    ...extendedArtifact,
+  };
+  await deployments.save(contractName, deployment);
 
   // Verify the proxy + implementation contract.
   await hre.run("verify:verify", { address: proxy.address });
