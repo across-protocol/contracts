@@ -1,6 +1,27 @@
 import hre from "hardhat";
-import { DeploymentSubmission } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
 import { getContractFactory } from "./utils";
+
+/**
+ * @description Resolve the HubPool deployment, as well as the HubPool and SpokePool chain IDs for a new deployment.
+ * @dev This function relies on having companionNetworks defined in the HardhatUserConfig.
+ * @dev This should only be used when deploying a SpokePool to a satellite chain (i.e. HubChainId != SpokeChainId).
+ * @returns HubPool instance, HubPool chain ID and SpokePool chain ID.
+ */
+export async function getSpokePoolDeploymentInfo(
+  hre: HardhatRuntimeEnvironment
+): Promise<{ hubPool: Deployment; hubChainId: number; spokeChainId: number }> {
+  const { companionNetworks, getChainId } = hre;
+  const spokeChainId = Number(await getChainId());
+
+  const hubChain = companionNetworks.l1;
+  const hubPool = await hubChain.deployments.get("HubPool");
+  const hubChainId = Number(await hubChain.getChainId());
+  console.log(`Using chain ${hubChainId} HubPool @ ${hubPool.address}`);
+
+  return { hubPool, hubChainId, spokeChainId };
+}
 
 export async function deployNewProxy(name: string, args: (number | string)[]): Promise<void> {
   const { deployments, run, upgrades } = hre;
