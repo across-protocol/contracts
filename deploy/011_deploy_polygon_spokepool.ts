@@ -1,12 +1,10 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy } from "../utils/utils.hre";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const hubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
-  const chainId = await hre.getChainId();
-  console.log(`Using L1 (chainId ${chainId}) hub pool @ ${hubPool.address}`);
+  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
@@ -18,8 +16,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
     hubPool.address,
     hubPool.address,
-    L2_ADDRESS_MAP[chainId].wMatic,
-    L2_ADDRESS_MAP[chainId].fxChild,
+    L2_ADDRESS_MAP[spokeChainId].wMatic,
+    L2_ADDRESS_MAP[spokeChainId].fxChild,
   ];
   await deployNewProxy("Polygon_SpokePool", constructorArgs);
 };
