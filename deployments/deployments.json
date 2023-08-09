@@ -51,7 +51,7 @@
     "PolygonTokenBridger": { "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57", "blockNumber": 28604258 },
     "SpokePool": { "address": "0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096", "blockNumber": 41908657 }
   },
-  "280": { "SpokePool": { "address": "0x467A26E2eAcf5f81b63016Dbb4F0828809e79fF5", "blockNumber": 1114933 } },
+  "280": { "SpokePool": { "address": "0x863859ef502F0Ee9676626ED5B418037252eFeb2", "blockNumber": 10263886 } },
   "288": { "SpokePool": { "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58", "blockNumber": 619993 } },
   "324": { "SpokePool": { "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF", "blockNumber": 10352565 } },
   "42161": { "SpokePool": { "address": "0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A", "blockNumber": 83868041 } },
