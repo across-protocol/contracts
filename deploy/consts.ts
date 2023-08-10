@@ -97,9 +97,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
   },
   280: {
-    zkErc20Bridge: "0x92131f10c54f9b251a5deaf3c05815f7659bbe02",
-    zkEthBridge: "0x2c5d8a991f399089f728f1ae40bd0b11acd0fb62",
-    l2Weth: "0xD3765838f9600Ccff3d01EFA83496599E0984BD2",
+    l2Weth: "0x20b28B1e4665FFf290650586ad76E977EAb90c5D",
+    zkErc20Bridge: "0x00ff932A6d70E2B8f1Eb4919e1e09C1923E7e57b",
+  },
+  324: {
+    l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
+    zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
   },
 };
 

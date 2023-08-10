@@ -129,7 +129,7 @@ contract ZkSync_Adapter is AdapterInterface {
     // goes live. For now, we'll hardcode these and use aggressive values to ensure inclusion.
 
     // Limit on L2 gas to spend.
-    uint256 public constant L2_GAS_LIMIT = 300_000;
+    uint256 public constant L2_GAS_LIMIT = 2_000_000;
 
     // How much gas is required to publish a byte of data from L1 to L2. 800 is the required value
     // as set here https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L226
