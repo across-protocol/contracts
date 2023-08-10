@@ -10,7 +10,7 @@
 | Boba_Adapter        | [0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3](https://etherscan.io/address/0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3) |
 | Arbitrum_Adapter    | [0x937958992799bF4A9a656E6596FD10d7Da5c2216](https://etherscan.io/address/0x937958992799bF4A9a656E6596FD10d7Da5c2216) |
 | Ethereum_Adapter    | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
-| Ethereum_SpokePool  | [0x4D9079Bb4165aeb4084c526a32695dCfd2F77381](https://etherscan.io/address/0x4D9079Bb4165aeb4084c526a32695dCfd2F77381) |
+| Ethereum_SpokePool  | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://etherscan.io/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
 | Polygon_Adapter     | [0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A](https://etherscan.io/address/0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
@@ -19,23 +19,23 @@
 
 | Contract Name      | Address                                                                                                                          |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| Optimism_SpokePool | [0xa420b2d1c0841415A695b81E5B867BCD07Dff8C9](https://optimistic.etherscan.io/address/0xa420b2d1c0841415A695b81E5B867BCD07Dff8C9) |
+| Optimism_SpokePool | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
 
 ## Polygon mainnet(137)
 
 | Contract Name       | Address                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://polygonscan.com/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
-| Polygon_SpokePool   | [0x69B5c72837769eF1e7C164Abc6515DcFf217F920](https://polygonscan.com/address/0x69B5c72837769eF1e7C164Abc6515DcFf217F920) |
-
-## Boba mainnet (288)
-
-| Contract Name  | Address                                                                                                                             |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Boba_SpokePool | [0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58](https://blockexplorer.boba.network/address/0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58) |
+| Polygon_SpokePool   | [0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096](https://polygonscan.com/address/0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096) |
 
 ## Arbitrum mainnet (42161)
 
 | Contract Name      | Address                                                                                                              |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Arbitrum_SpokePool | [0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C](https://arbiscan.io/address/0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C) |
+| Arbitrum_SpokePool | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
+
+## Base mainnet (8453)
+
+| Contract Name  | Address                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Base_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
