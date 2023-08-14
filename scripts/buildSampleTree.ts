@@ -139,7 +139,10 @@ async function main() {
       });
       console.group();
       console.log(`- slowRelayLeaf ID#${i}: `, leaves[i]);
-      console.log("- Tuple representation of leaf that you can input into etherscan.io: \n", tuplelifyLeaf(leaves[i]));
+      console.log(
+        "- Tuple representation of leaf that you can input into etherscan.io: \n",
+        tuplelifyLeaf(leaves[i].relayData)
+      );
       console.groupEnd();
     }
 
