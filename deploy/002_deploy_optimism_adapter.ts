@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy("Optimism_Adapter", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: false,
+    skipIfAlreadyDeployed: true,
     args: [
       L1_ADDRESS_MAP[chainId].weth,
       L1_ADDRESS_MAP[chainId].optimismCrossDomainMessenger,
