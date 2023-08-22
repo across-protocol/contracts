@@ -10,7 +10,7 @@
     "SpokePool": { "address": "0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5", "blockNumber": 17117454 },
     "HubPool": { "address": "0xc186fA914353c44b2E33eBE05f21846F1048bEda", "blockNumber": 14819537 },
     "LpTokenFactory": { "address": "0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d", "blockNumber": 14704307 },
-    "Optimism_Adapter": { "address": "0xAd1b0a86c98703fd5F4E56fff04F6b2D9b9f246F", "blockNumber": 14704379 },
+    "Optimism_Adapter": { "address": "0xAd1b0a86c98703fd5F4E56fff04F6b2D9b9f246F", "blockNumber": 17944184 },
     "PolygonTokenBridger": { "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57", "blockNumber": 14819539 },
     "Polygon_Adapter": { "address": "0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A", "blockNumber": 14704450 },
     "ZkSync_Adapter": { "address": "0xE233009838CB898b50e0012a6E783FC9FeE447FB", "blockNumber": 17842162 },
