@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy("Base_Adapter", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: true,
+    skipIfAlreadyDeployed: false,
     args: [
       L1_ADDRESS_MAP[chainId].weth,
       L1_ADDRESS_MAP[chainId].baseCrossDomainMessenger,
