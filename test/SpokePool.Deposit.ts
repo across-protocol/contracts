@@ -1,3 +1,4 @@
+import { BigNumber } from "ethers";
 import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei } from "../utils/utils";
 import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
 import {
@@ -8,10 +9,11 @@ import {
   maxUint256,
 } from "./constants";
 
-let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
-let depositor: SignerWithAddress, recipient: SignerWithAddress;
-
 describe("SpokePool Depositor Logic", async function () {
+  let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
+  let depositor: SignerWithAddress, recipient: SignerWithAddress;
+  let currentSpokePoolTime: BigNumber;
+
   beforeEach(async function () {
     [depositor, recipient] = await ethers.getSigners();
     ({ weth, erc20, spokePool, unwhitelistedErc20 } = await spokePoolFixture());
@@ -25,9 +27,12 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Whitelist origin token => destination chain ID routes:
     await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
+
+    currentSpokePoolTime = await spokePool.getCurrentTime();
   });
+
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function () {
-    const currentSpokePoolTime = await spokePool.getCurrentTime();
+    const revertReason = "Paused deposits";
 
     // Can't deposit when paused:
     await spokePool.connect(depositor).pauseDeposits(true);
@@ -45,7 +50,8 @@ describe("SpokePool Depositor Logic", async function () {
             maxUint256
           )
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
+
     await spokePool.connect(depositor).pauseDeposits(false);
 
     await expect(
@@ -87,8 +93,9 @@ describe("SpokePool Depositor Logic", async function () {
     // Count is correctly incremented.
     expect(await spokePool.depositCounter(erc20.address)).to.equal(amountToDeposit);
   });
+
   it("Depositing ETH correctly wraps into WETH", async function () {
-    const currentSpokePoolTime = await spokePool.getCurrentTime();
+    const revertReason = "msg.value must match amount";
 
     // Fails if msg.value > 0 but doesn't match amount to deposit.
     await expect(
@@ -106,7 +113,7 @@ describe("SpokePool Depositor Logic", async function () {
           ),
           { value: 1 }
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
 
     await expect(() =>
       spokePool
@@ -129,8 +136,8 @@ describe("SpokePool Depositor Logic", async function () {
     expect(await weth.balanceOf(depositor.address)).to.equal(amountToSeedWallets);
     expect(await weth.balanceOf(spokePool.address)).to.equal(amountToDeposit);
   });
+
   it("Depositing ETH with msg.value = 0 pulls WETH from depositor", async function () {
-    const currentSpokePoolTime = await spokePool.getCurrentTime();
     await expect(() =>
       spokePool
         .connect(depositor)
@@ -148,10 +155,10 @@ describe("SpokePool Depositor Logic", async function () {
         )
     ).to.changeTokenBalances(weth, [depositor, spokePool], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
   });
-  it("General failure cases", async function () {
-    const currentSpokePoolTime = await spokePool.getCurrentTime();
 
-    // Blocked if user hasn't approved token.
+  it("SpokePool is not approved to spend originToken", async function () {
+    const insufficientAllowance = "ERC20: insufficient allowance";
+
     await erc20.connect(depositor).approve(spokePool.address, 0);
     await expect(
       spokePool
@@ -167,10 +174,30 @@ describe("SpokePool Depositor Logic", async function () {
             maxUint256
           )
         )
-    ).to.be.reverted;
-    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
+    ).to.be.revertedWith(insufficientAllowance);
 
-    // Can only deposit whitelisted token.
+    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
+    await expect(
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime,
+            maxUint256
+          )
+        )
+    ).to.emit(spokePool, "FundsDeposited");
+  });
+
+  it("Deposit route is disabled", async function () {
+    const revertReason = "Disabled route";
+
+    // Verify that routes are disabled by default.
     await expect(
       spokePool
         .connect(depositor)
@@ -185,9 +212,26 @@ describe("SpokePool Depositor Logic", async function () {
             maxUint256
           )
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
 
-    // Cannot deposit disabled route.
+    // Verify that the route is enabled.
+    await expect(
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime,
+            maxUint256
+          )
+        )
+    ).to.emit(spokePool, "FundsDeposited");
+
+    // Disable the route.
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
     await expect(
       spokePool
@@ -203,14 +247,15 @@ describe("SpokePool Depositor Logic", async function () {
             maxUint256
           )
         )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
 
-    // Re-enable route and demonstrate that call would work.
+    // Re-enable the route and verify that it works again.
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, true);
+    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
     await expect(
       spokePool
         .connect(depositor)
-        .callStatic.deposit(
+        .deposit(
           ...getDepositParams(
             recipient.address,
             erc20.address,
@@ -221,9 +266,12 @@ describe("SpokePool Depositor Logic", async function () {
             maxUint256
           )
         )
-    ).to.be.ok;
+    ).to.emit(spokePool, "FundsDeposited");
+  });
 
-    // Cannot deposit with invalid relayer fee.
+  it("Relayer fee is invalid", async function () {
+    const revertReason = "Invalid relayer fee";
+
     await expect(
       spokePool.connect(depositor).deposit(
         ...getDepositParams(
@@ -236,50 +284,82 @@ describe("SpokePool Depositor Logic", async function () {
           maxUint256
         )
       )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
+  });
 
-    // Cannot deposit invalid quote fee.
+  it("quoteTimestamp is out of range", async function () {
+    const revertReason = "invalid quote time";
+    const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
+
     await expect(
-      spokePool.connect(depositor).deposit(
-        ...getDepositParams(
-          recipient.address,
-          erc20.address,
-          amountToDeposit,
-          destinationChainId,
-          depositRelayerFeePct,
-          toBN(currentSpokePoolTime).add(toBN("3700")), // > 60 mins in future
-          maxUint256
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            toBN(currentSpokePoolTime).add(quoteTimeBuffer + 1),
+            maxUint256
+          )
         )
-      )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
+
     await expect(
-      spokePool.connect(depositor).deposit(
-        ...getDepositParams(
-          recipient.address,
-          erc20.address,
-          amountToDeposit,
-          destinationChainId,
-          depositRelayerFeePct,
-          toBN(currentSpokePoolTime).sub(toBN("3700")), // > 60 mins in past
-          maxUint256
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            toBN(currentSpokePoolTime).sub(quoteTimeBuffer + 1),
+            maxUint256
+          )
         )
-      )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
+
+    // quoteTimestamp at max age.
+    await expect(
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            currentSpokePoolTime.sub(quoteTimeBuffer),
+            maxUint256
+          )
+        )
+    ).to.emit(spokePool, "FundsDeposited");
+  });
+
+  it("maxCount is too low", async function () {
+    const revertReason = "Above max count";
 
     // Setting max count to be smaller than the sum of previous deposits should fail.
-    await spokePool
-      .connect(depositor)
-      .deposit(
-        ...getDepositParams(
-          recipient.address,
-          erc20.address,
-          amountToDeposit,
-          destinationChainId,
-          depositRelayerFeePct,
-          toBN(currentSpokePoolTime),
-          maxUint256
+    await expect(
+      spokePool
+        .connect(depositor)
+        .deposit(
+          ...getDepositParams(
+            recipient.address,
+            erc20.address,
+            amountToDeposit,
+            destinationChainId,
+            depositRelayerFeePct,
+            toBN(currentSpokePoolTime),
+            maxUint256
+          )
         )
-      );
+    ).to.emit(spokePool, "FundsDeposited");
 
     await expect(
       spokePool.connect(depositor).deposit(
@@ -293,6 +373,6 @@ describe("SpokePool Depositor Logic", async function () {
           amountToDeposit.sub(1) // Less than the previous transaction's deposit amount.
         )
       )
-    ).to.be.reverted;
+    ).to.be.revertedWith(revertReason);
   });
 });
