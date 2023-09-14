@@ -446,10 +446,7 @@ abstract contract SpokePool is
         // quoteTimestamp is less than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(
-            getCurrentTime() >= quoteTimestamp && getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
-            "invalid quoteTimestamp"
-        );
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;

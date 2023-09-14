@@ -305,7 +305,7 @@ describe("SpokePool Depositor Logic", async function () {
             maxUint256
           )
         )
-    ).to.be.revertedWith(revertReason);
+    ).to.be.reverted;
 
     await expect(
       spokePool
