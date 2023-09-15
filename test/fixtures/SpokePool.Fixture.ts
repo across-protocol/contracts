@@ -62,8 +62,8 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   for (const route of routes) {
     await spokePool.setEnableRoute(
       route.originToken,
-      route.destinationChainId ? route.destinationChainId : consts.destinationChainId,
-      route.enabled !== undefined ? route.enabled : true
+      route.destinationChainId ?? consts.destinationChainId,
+      route.enabled ?? true
     );
   }
 }
