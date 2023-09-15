@@ -1213,7 +1213,9 @@ abstract contract SpokePool is
         // net movement of funds.
         // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
         // way (no need to have funds on the destination).
-        if (msg.sender == relayExecution.updatedRecipient) return fillAmountPreFees;
+        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
+        // since there is no "relayer".
+        if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return fillAmountPreFees;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (relayData.destinationToken == address(wrappedNativeToken)) {

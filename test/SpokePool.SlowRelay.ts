@@ -176,6 +176,32 @@ describe("SpokePool Slow Relay Logic", async function () {
       [fullRelayAmountPostFees.mul(10).mul(-1), fullRelayAmountPostFees.mul(10)]
     );
   });
+  it("Recipient should be able to execute their own slow relay", async function () {
+    await expect(() =>
+      spokePool
+        .connect(recipient)
+        .executeSlowRelayLeaf(
+          ...getExecuteSlowRelayParams(
+            depositor.address,
+            recipient.address,
+            destErc20.address,
+            consts.amountToRelay,
+            consts.originChainId,
+            consts.realizedLpFeePct,
+            consts.depositRelayerFeePct,
+            consts.firstDepositId,
+            0,
+            erc20Message,
+            ethers.utils.parseEther("9"),
+            tree.getHexProof(slowFills.find((slowFill) => slowFill.relayData.destinationToken === destErc20.address)!)
+          )
+        )
+    ).to.changeTokenBalances(
+      destErc20,
+      [spokePool, recipient],
+      [fullRelayAmountPostFees.mul(10).mul(-1), fullRelayAmountPostFees.mul(10)]
+    );
+  });
 
   it("Simple SlowRelay ERC20 FilledRelay event", async function () {
     slowFills.find((slowFill) => slowFill.relayData.destinationToken === destErc20.address)!;

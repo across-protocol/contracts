@@ -26,7 +26,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       (symbol) => symbol === taskArguments.token
     ) as keyof typeof TOKEN_SYMBOLS_MAP;
     assert(matchedSymbol !== undefined, `Could not find token with symbol ${taskArguments.token} in TOKEN_SYMBOLS_MAP`);
-    const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol];
+    const hubPoolChainId = await hre.getChainId();
+    const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubPoolChainId];
 
     // If deposit routes chains are provided then we'll only add routes involving these chains. This is used to add new
     // deposit routes to a new chain for an existing L1 token, so we also won't add a new LP token if this is defined.

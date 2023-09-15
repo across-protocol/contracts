@@ -24,15 +24,15 @@ export function getDeployedBlockNumber(contractName: string, networkId: number):
 
 // Returns the chainId and contract name for a given contract address.
 export function getContractInfoFromAddress(contractAddress: string): { chainId: Number; contractName: string } {
-  let returnValue: { chainId: number; contractName: string }[] = [];
+  const returnValue: { chainId: number; contractName: string }[] = [];
 
   Object.keys(deployments).forEach((_chainId) =>
     Object.keys(deployments[_chainId]).forEach((_contractName) => {
-      if (deployments[_chainId][_contractName].address == contractAddress)
+      if (deployments[_chainId][_contractName].address === contractAddress)
         returnValue.push({ chainId: Number(_chainId), contractName: _contractName });
     })
   );
-  if (returnValue.length == 0) throw new Error(`Contract ${contractAddress} not found in deployments.json`);
+  if (returnValue.length === 0) throw new Error(`Contract ${contractAddress} not found in deployments.json`);
   if (returnValue.length > 1) throw new Error(`Multiple deployments found for ${contractAddress}`);
   return returnValue[0];
 }
