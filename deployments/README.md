@@ -16,6 +16,7 @@
 | ZkSync_Adapter      | [0xE233009838CB898b50e0012a6E783FC9FeE447FB](https://etherscan.io/address/0xE233009838CB898b50e0012a6E783FC9FeE447FB) |
 | Base_Adapter        | [0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E](https://etherscan.io/address/0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
+| Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 
 ## Optimism mainnet (10)
 
