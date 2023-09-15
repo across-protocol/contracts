@@ -38,7 +38,7 @@
     "@ethersproject/abstract-signer": "5.7.0",
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.2",
-    "@openzeppelin/contracts-upgradeable": "4.9.2",
+    "@openzeppelin/contracts-upgradeable": "4.9.3",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
     "@uma/core": "^2.56.0",
