@@ -443,7 +443,7 @@ abstract contract SpokePool is
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
         // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
-        // quoteTimestamp is less than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
+        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
         require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
