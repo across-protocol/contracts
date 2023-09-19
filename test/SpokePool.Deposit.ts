@@ -341,6 +341,35 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.emit(spokePool, "FundsDeposited");
   });
 
+  it("quoteTimestamp is set correctly by depositNow()", async function () {
+    await expect(
+      spokePool
+        .connect(depositor)
+        .depositNow(
+          recipient.address,
+          erc20.address,
+          amountToDeposit.toString(),
+          destinationChainId.toString(),
+          depositRelayerFeePct.toString(),
+          "0x",
+          maxUint256
+        )
+    )
+      .to.emit(spokePool, "FundsDeposited")
+      .withArgs(
+        amountToDeposit,
+        destinationChainId,
+        destinationChainId,
+        depositRelayerFeePct,
+        0,
+        currentSpokePoolTime,
+        erc20.address,
+        recipient.address,
+        depositor.address,
+        "0x"
+      );
+  });
+
   it("maxCount is too low", async function () {
     const revertReason = "Above max count";
 
