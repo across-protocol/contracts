@@ -439,18 +439,14 @@ abstract contract SpokePool is
         require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
         require(depositCounter[originToken] <= maxCount, "Above max count");
 
-        // This function assumes that L2 timing cannot be compared accurately and consistently to L1 timing. Therefore,
-        // block.timestamp is different from the L1 EVM's. Therefore, the quoteTimestamp must be within a configurable
-        // buffer of this contract's block time to allow for this variance.
-        // Note also that quoteTimestamp cannot be less than the buffer otherwise the following arithmetic can result
-        // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
+        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
-        //slither-disable-next-line timestamp
-        require(
-            getCurrentTime() >= quoteTimestamp - depositQuoteTimeBuffer &&
-                getCurrentTime() <= quoteTimestamp + depositQuoteTimeBuffer,
-            "invalid quote time"
-        );
+        // slither-disable-next-line timestamp
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;

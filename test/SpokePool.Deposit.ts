@@ -288,7 +288,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
 
   it("quoteTimestamp is out of range", async function () {
-    const revertReason = "invalid quote time";
+    const revertReason = "invalid quoteTimestamp";
     const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
 
     await expect(
@@ -301,11 +301,11 @@ describe("SpokePool Depositor Logic", async function () {
             amountToDeposit,
             destinationChainId,
             depositRelayerFeePct,
-            toBN(currentSpokePoolTime).add(quoteTimeBuffer + 1),
+            toBN(currentSpokePoolTime).add(1),
             maxUint256
           )
         )
-    ).to.be.revertedWith(revertReason);
+    ).to.be.reverted;
 
     await expect(
       spokePool
@@ -323,22 +323,25 @@ describe("SpokePool Depositor Logic", async function () {
         )
     ).to.be.revertedWith(revertReason);
 
-    // quoteTimestamp at max age.
-    await expect(
-      spokePool
-        .connect(depositor)
-        .deposit(
-          ...getDepositParams(
-            recipient.address,
-            erc20.address,
-            amountToDeposit,
-            destinationChainId,
-            depositRelayerFeePct,
-            currentSpokePoolTime.sub(quoteTimeBuffer),
-            maxUint256
+    // quoteTimestamp at the exact margins should succeed.
+    for (const offset of [0, quoteTimeBuffer]) {
+      await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
+      await expect(
+        spokePool
+          .connect(depositor)
+          .deposit(
+            ...getDepositParams(
+              recipient.address,
+              erc20.address,
+              amountToDeposit,
+              destinationChainId,
+              depositRelayerFeePct,
+              currentSpokePoolTime.sub(offset),
+              maxUint256
+            )
           )
-        )
-    ).to.emit(spokePool, "FundsDeposited");
+      ).to.emit(spokePool, "FundsDeposited");
+    }
   });
 
   it("maxCount is too low", async function () {
