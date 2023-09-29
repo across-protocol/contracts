@@ -15,14 +15,14 @@ import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 
 let hubPool: Contract, arbitrumAdapter: Contract, weth: Contract, mockSpoke: Contract;
 let gatewayAddress: string;
-let owner: SignerWithAddress, liquidityProvider: SignerWithAddress;
+let owner: SignerWithAddress, liquidityProvider: SignerWithAddress, refundAddress: SignerWithAddress;
 let l1ERC20GatewayRouter: FakeContract;
 
 const arbitrumChainId = 42161;
 
 describe("Arbitrum Chain SendTokens Emergency Adapter", function () {
   beforeEach(async function () {
-    [owner, liquidityProvider] = await ethers.getSigners();
+    [owner, liquidityProvider, refundAddress] = await ethers.getSigners();
     ({ weth, hubPool, mockSpoke } = await hubPoolFixture());
 
     // Send tokens to HubPool directly.
@@ -35,7 +35,7 @@ describe("Arbitrum Chain SendTokens Emergency Adapter", function () {
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_SendTokensAdapter", owner)
-    ).deploy(l1ERC20GatewayRouter.address);
+    ).deploy(l1ERC20GatewayRouter.address, refundAddress.address);
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
@@ -58,7 +58,7 @@ describe("Arbitrum Chain SendTokens Emergency Adapter", function () {
     );
     expect(l1ERC20GatewayRouter.outboundTransferCustomRefund).to.have.been.calledWith(
       weth.address,
-      "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010",
+      refundAddress.address,
       mockSpoke.address,
       tokensToSendToL2,
       consts.sampleL2GasSendTokens,

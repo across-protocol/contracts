@@ -155,7 +155,7 @@ contract Arbitrum_Adapter is AdapterInterface {
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
-    address public constant l2RefundL2Address = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
+    address public immutable l2RefundL2Address;
 
     ArbitrumL1InboxLike public immutable l1Inbox;
 
@@ -165,10 +165,16 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
+     * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      */
-    constructor(ArbitrumL1InboxLike _l1ArbitrumInbox, ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter) {
+    constructor(
+        ArbitrumL1InboxLike _l1ArbitrumInbox,
+        ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
+        address _l2RefundL2Address
+    ) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
+        l2RefundL2Address = _l2RefundL2Address;
     }
 
     /**
