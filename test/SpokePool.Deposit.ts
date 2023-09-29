@@ -344,6 +344,68 @@ describe("SpokePool Depositor Logic", async function () {
     }
   });
 
+  it("quoteTimestamp is set correctly by depositNow()", async function () {
+    // ERC20 deposit
+    await expect(
+      spokePool
+        .connect(depositor)
+        .depositNow(
+          recipient.address,
+          erc20.address,
+          amountToDeposit.toString(),
+          destinationChainId.toString(),
+          depositRelayerFeePct.toString(),
+          "0x",
+          maxUint256
+        )
+    )
+      .to.emit(spokePool, "FundsDeposited")
+      .withArgs(
+        amountToDeposit,
+        destinationChainId,
+        destinationChainId,
+        depositRelayerFeePct,
+        0,
+        currentSpokePoolTime,
+        erc20.address,
+        recipient.address,
+        depositor.address,
+        "0x"
+      );
+
+    // Native token deposit - amount != msg.value
+    await expect(
+      spokePool
+        .connect(depositor)
+        .depositNow(
+          recipient.address,
+          weth.address,
+          amountToDeposit.toString(),
+          destinationChainId.toString(),
+          depositRelayerFeePct.toString(),
+          "0x",
+          maxUint256,
+          { value: amountToDeposit.add(1) }
+        )
+    ).to.be.revertedWith("msg.value must match amount");
+
+    // Native token deposit - amount == msg.value.
+    await expect(() =>
+      spokePool
+        .connect(depositor)
+        .depositNow(
+          recipient.address,
+          weth.address,
+          amountToDeposit.toString(),
+          destinationChainId.toString(),
+          depositRelayerFeePct.toString(),
+          "0x",
+          maxUint256,
+          { value: amountToDeposit }
+        )
+    ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
+  });
+
   it("maxCount is too low", async function () {
     const revertReason = "Above max count";
 

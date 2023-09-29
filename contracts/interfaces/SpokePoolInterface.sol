@@ -98,6 +98,16 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
+    function depositNow(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        bytes memory message,
+        uint256 maxCount
+    ) external payable;
+
     function speedUpDeposit(
         address depositor,
         int64 updatedRelayerFeePct,

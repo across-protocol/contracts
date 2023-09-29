@@ -477,6 +477,42 @@ abstract contract SpokePool is
     }
 
     /**
+     * @notice This is a simple wrapper for deposit() that sets the quoteTimestamp to the current SpokePool timestamp.
+     * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
+     * the quoteTimestamp buffer constraint.
+     * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
+     * @dev The existing function modifiers are already enforced by deposit(), so no additional modifiers are imposed.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
+     */
+    function depositNow(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        bytes memory message,
+        uint256 maxCount
+    ) public payable {
+        deposit(
+            recipient,
+            originToken,
+            amount,
+            destinationChainId,
+            relayerFeePct,
+            uint32(getCurrentTime()),
+            message,
+            maxCount
+        );
+    }
+
+    /**
      * @notice Convenience method that depositor can use to signal to relayer to use updated fee.
      * @notice Relayer should only use events emitted by this function to submit fills with updated fees, otherwise they
      * risk their fills getting disputed for being invalid, for example if the depositor never actually signed the
