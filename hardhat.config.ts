@@ -191,7 +191,7 @@ const config: HardhatUserConfig = {
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
-      base: process.env.ETHERSCAN_API_KEY!,
+      base: process.env.BASE_ETHERSCAN_API_KEY!,
       "base-goerli": process.env.ETHERSCAN_API_KEY!,
     },
     customChains: [
