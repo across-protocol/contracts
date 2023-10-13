@@ -1,5 +1,13 @@
-import { getContractFactory, SignerWithAddress, Contract, ethers, BigNumber, defaultAbiCoder } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
+import {
+  getContractFactory,
+  randomAddress,
+  SignerWithAddress,
+  Contract,
+  ethers,
+  BigNumber,
+  defaultAbiCoder,
+} from "../../utils/utils";
 
 import * as consts from "../constants";
 
@@ -74,22 +82,23 @@ export async function deposit(
   recipient: SignerWithAddress,
   depositor: SignerWithAddress,
   destinationChainId: number = consts.destinationChainId,
-  amountToDeposit: BigNumber = consts.amountToDeposit,
-  depositRelayerFeePct: BigNumber = consts.depositRelayerFeePct,
-  quoteTimestamp?: number
+  amount = consts.amountToDeposit,
+  relayerFeePct = consts.depositRelayerFeePct,
+  quoteTimestamp?: number,
+  message?: string
 ) {
-  await spokePool
-    .connect(depositor)
-    .deposit(
-      ...getDepositParams(
-        recipient.address,
-        token.address,
-        amountToDeposit,
-        destinationChainId,
-        depositRelayerFeePct,
-        quoteTimestamp ?? (await spokePool.getCurrentTime())
-      )
-    );
+  quoteTimestamp ??= await spokePool.getCurrentTime();
+  await spokePool.connect(depositor).deposit(
+    ...getDepositParams({
+      recipient: recipient.address,
+      originToken: token.address,
+      amount,
+      destinationChainId,
+      relayerFeePct,
+      quoteTimestamp: quoteTimestamp as number,
+      message,
+    })
+  );
   const [events, originChainId] = await Promise.all([
     spokePool.queryFilter(spokePool.filters.FundsDeposited()),
     spokePool.chainId(),
@@ -116,12 +125,12 @@ export async function fillRelay(
   recipient: SignerWithAddress,
   depositor: SignerWithAddress,
   relayer: SignerWithAddress,
-  depositId: number = consts.firstDepositId,
-  originChainId: number = consts.originChainId,
-  depositAmount: BigNumber = consts.amountToDeposit,
-  amountToRelay: BigNumber = consts.amountToRelay,
-  realizedLpFeePct: BigNumber = consts.realizedLpFeePct,
-  relayerFeePct: BigNumber = consts.depositRelayerFeePct
+  depositId = consts.firstDepositId,
+  originChainId = consts.originChainId,
+  depositAmount = consts.amountToDeposit,
+  amountToRelay = consts.amountToRelay,
+  realizedLpFeePct = consts.realizedLpFeePct,
+  relayerFeePct = consts.depositRelayerFeePct
 ) {
   await spokePool
     .connect(relayer)
@@ -222,24 +231,25 @@ export function getRelayHash(
   return { relayHash, relayData };
 }
 
-export function getDepositParams(
-  _recipient: string,
-  _originToken: string,
-  _amount: BigNumber,
-  _destinationChainId: number,
-  _relayerFeePct: BigNumber,
-  _quoteTime: BigNumber,
-  _maxCount?: BigNumber
-): string[] {
+export function getDepositParams(args: {
+  recipient?: string;
+  originToken: string;
+  amount: BigNumber;
+  destinationChainId: number;
+  relayerFeePct: BigNumber;
+  quoteTimestamp: number;
+  message?: string;
+  maxCount?: BigNumber;
+}): string[] {
   return [
-    _recipient,
-    _originToken,
-    _amount.toString(),
-    _destinationChainId.toString(),
-    _relayerFeePct.toString(),
-    _quoteTime.toString(),
-    "0x",
-    _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
+    args.recipient ?? randomAddress(),
+    args.originToken,
+    args.amount.toString(),
+    args.destinationChainId.toString(),
+    args.relayerFeePct.toString(),
+    args.quoteTimestamp.toString(),
+    args.message ?? "0x",
+    args?.maxCount?.toString() ?? consts.maxUint256.toString(),
   ];
 }
 
