@@ -86,7 +86,7 @@ export async function deposit(
   relayerFeePct = consts.depositRelayerFeePct,
   quoteTimestamp?: number,
   message?: string
-) {
+): Promise<Record<string, number | BigNumber | string> | null> {
   await spokePool.connect(depositor).deposit(
     ...getDepositParams({
       recipient: recipient.address,
@@ -102,22 +102,23 @@ export async function deposit(
     spokePool.queryFilter(spokePool.filters.FundsDeposited()),
     spokePool.chainId(),
   ]);
-  const lastEvent = events[events.length - 1];
-  if (lastEvent.args)
-    return {
-      amount: lastEvent.args.amount,
-      destinationChainId: Number(lastEvent.args.destinationChainId),
-      relayerFeePct: lastEvent.args.relayerFeePct,
-      depositId: lastEvent.args.depositId,
-      quoteTimestamp: lastEvent.args.quoteTimestamp,
-      originToken: lastEvent.args.originToken,
-      recipient: lastEvent.args.recipient,
-      depositor: lastEvent.args.depositor,
-      originChainId: Number(originChainId),
-    };
-  return null;
-}
 
+  const lastEvent = events[events.length - 1];
+  return lastEvent.args === undefined
+    ? null
+    : {
+        amount: lastEvent.args.amount,
+        originChainId: Number(originChainId),
+        destinationChainId: Number(lastEvent.args.destinationChainId),
+        relayerFeePct: lastEvent.args.relayerFeePct,
+        depositId: lastEvent.args.depositId,
+        quoteTimestamp: lastEvent.args.quoteTimestamp,
+        originToken: lastEvent.args.originToken,
+        recipient: lastEvent.args.recipient,
+        depositor: lastEvent.args.depositor,
+        message: lastEvent.args.message,
+      };
+}
 export async function fillRelay(
   spokePool: Contract,
   destErc20: Contract | string,
