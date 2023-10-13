@@ -8,28 +8,25 @@ export async function deployErc20(signer: SignerWithAddress, tokenName: string, 
   return erc20;
 }
 
-export function constructDepositParams(
-  depositor: string,
-  depositTokenAddress: string,
-  quoteTime: BigNumber,
-  depositAmount: BigNumber,
-  maxCount?: BigNumber
-) {
-  return getDepositParams(depositor, depositTokenAddress, depositAmount, 1, toBN("0"), quoteTime, maxCount);
-}
 export async function sendDeposit(
-  _spokePool: Contract,
-  _depositor: SignerWithAddress,
-  tokenAddress: string,
-  depositAmount: BigNumber,
+  spokePool: Contract,
+  depositor: SignerWithAddress,
+  originToken: string,
+  amount: BigNumber,
   maxCount?: BigNumber
 ) {
-  const currentSpokePoolTime = await _spokePool.getCurrentTime();
-  return await _spokePool
-    .connect(_depositor)
-    .deposit(
-      ...constructDepositParams(_depositor.address, tokenAddress, currentSpokePoolTime, depositAmount, maxCount)
-    );
+  const quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
+  return await spokePool.connect(depositor).deposit(
+    ...getDepositParams({
+      recipient: depositor.address,
+      originToken,
+      destinationChainId: 1,
+      amount,
+      relayerFeePct: toBN("0"),
+      quoteTimestamp,
+      maxCount,
+    })
+  );
 }
 export function constructRelayParams(
   depositor: string,

@@ -87,7 +87,7 @@ export async function deposit(
   quoteTimestamp?: number,
   message?: string
 ) {
-  quoteTimestamp ??= await spokePool.getCurrentTime();
+  quoteTimestamp ??= (await spokePool.getCurrentTime()).toNumber();
   await spokePool.connect(depositor).deposit(
     ...getDepositParams({
       recipient: recipient.address,

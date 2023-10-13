@@ -1,9 +1,11 @@
 import { toBNWei, SignerWithAddress, Contract, ethers, seedWallet, toBN } from "../../utils/utils";
-import { constructDepositParams, sendDeposit, warmSpokePool } from "./utils";
+import { getDepositParams, spokePoolFixture } from "../fixtures/SpokePool.Fixture";
+import { sendDeposit, warmSpokePool } from "./utils";
 import * as constants from "../constants";
-import { spokePoolFixture } from "../fixtures/SpokePool.Fixture";
 
 require("dotenv").config();
+
+const bnZero = ethers.constants.Zero;
 
 let spokePool: Contract, weth: Contract, erc20: Contract;
 let depositor: SignerWithAddress;
@@ -56,12 +58,19 @@ describe("Gas Analytics: SpokePool Deposits", function () {
     });
 
     it(`${DEPOSIT_COUNT} deposits using multicall`, async function () {
-      const currentSpokePoolTime = await spokePool.getCurrentTime();
+      const quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
 
       const multicallData = Array(DEPOSIT_COUNT).fill(
         spokePool.interface.encodeFunctionData(
           "deposit",
-          constructDepositParams(depositor.address, erc20.address, currentSpokePoolTime, DEPOSIT_AMOUNT)
+          getDepositParams({
+            recipient: depositor.address,
+            destinationChainId: 1,
+            originToken: erc20.address,
+            relayerFeePct: bnZero,
+            quoteTimestamp,
+            amount: DEPOSIT_AMOUNT,
+          })
         )
       );
 
@@ -71,13 +80,19 @@ describe("Gas Analytics: SpokePool Deposits", function () {
   });
   describe(`WETH Deposits`, function () {
     it("1 ETH Deposit", async function () {
-      const currentSpokePoolTime = await spokePool.getCurrentTime();
+      const quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
 
-      const txn = await spokePool
-        .connect(depositor)
-        .deposit(...constructDepositParams(depositor.address, weth.address, currentSpokePoolTime, DEPOSIT_AMOUNT), {
-          value: DEPOSIT_AMOUNT,
-        });
+      const txn = await spokePool.connect(depositor).deposit(
+        ...getDepositParams({
+          recipient: depositor.address,
+          destinationChainId: 1,
+          originToken: weth.address,
+          relayerFeePct: bnZero,
+          quoteTimestamp,
+          amount: DEPOSIT_AMOUNT,
+        }),
+        { value: DEPOSIT_AMOUNT }
+      );
 
       const receipt = await txn.wait();
       console.log(`deposit-gasUsed: ${receipt.gasUsed}`);
