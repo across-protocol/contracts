@@ -15,7 +15,7 @@ contract SpokePoolVerifier {
     using Address for address;
 
     /**
-     * @notice Passthrough function to `deposit()` on the SpokePool contract.
+     * @notice Passthrough function to `depositFor()` on the SpokePool contract.
      * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
@@ -45,7 +45,9 @@ contract SpokePoolVerifier {
     ) external payable {
         require(msg.value == amount, "msg.value != amount");
         require(address(spokePool).isContract(), "spokePool is not a contract");
-        spokePool.deposit{ value: msg.value }(
+        // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
+        spokePool.depositFor{ value: msg.value }(
+            msg.sender,
             recipient,
             originToken,
             amount,
