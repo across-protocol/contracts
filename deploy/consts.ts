@@ -32,9 +32,9 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889", // Dummy: Polygon's testnet is goerli
   },
   5: {
-    optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // dummy: Optimism's testnet is kovan
+    optimismCrossDomainMessenger: "0x5086d1eEF304eb5284A0f6720f79403b4e9bE294",
     weth: "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
-    optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", // dummy: Optimism's testnet is kovan
+    optimismStandardBridge: "0x636Af16bf2f682dD3109e60102b8E1A089FedAa8",
     l1ArbitrumInbox: "0x6BEbC4925716945D46F0Ec336D5C2564F419682C",
     l1ERC20GatewayRouter: "0x4c7708168395aEa569453Fc36862D2ffcDaC588c",
     finder: "0xDC6b80D38004F495861E081e249213836a2F3217",
