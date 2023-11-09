@@ -7,6 +7,7 @@ import "./interfaces/SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
+import "./USSLib.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -617,6 +618,51 @@ abstract contract SpokePool is
         );
     }
 
+    /********************************************
+     *         USS DEPOSITOR FUNCTIONS          *
+     ********************************************/
+
+    function depositUSS(
+        address depositor,
+        address recipient,
+        address depositRefundCallbackAddress,
+        address inputToken,
+        address outputToken,
+        address exclusiveRelayer,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 originChainId,
+        uint256 destinationChainId,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        bytes memory message
+    ) public payable nonReentrant unpausedDeposits {
+        // Validate
+
+        // Increment count of deposits so that deposit ID for this spoke pool is unique.
+        uint32 newDepositId = numberOfDeposits++;
+
+        // Do stuff
+        // - Pull funds from depositor
+
+        emit USSLib.FundsDeposited(
+            originChainId,
+            destinationChainId,
+            inputAmount,
+            outputAmount,
+            newDepositId,
+            quoteTimestamp,
+            fillDeadline,
+            inputToken,
+            outputToken,
+            depositor,
+            recipient,
+            exclusiveRelayer,
+            depositRefundCallbackAddress,
+            message
+        );
+    }
+
     /**************************************
      *         RELAYER FUNCTIONS          *
      **************************************/
@@ -859,6 +905,82 @@ abstract contract SpokePool is
             depositId,
             fillBlock,
             previousIdenticalRequests
+        );
+    }
+
+    /******************************************
+     *         USS RELAYER FUNCTIONS          *
+     ******************************************/
+
+    function fillRelayUSS(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        bytes memory message
+    ) public nonReentrant unpausedFills {
+        USSLib.RelayExecution memory relayExecution = USSLib.RelayExecution({
+            relay: USSLib.RelayData({
+                depositor: depositor,
+                recipient: recipient,
+                relayer: exclusiveRelayer,
+                inputToken: inputToken,
+                outputToken: outputToken,
+                inputAmount: inputAmount,
+                outputAmount: outputAmount,
+                originChainId: originChainId,
+                destinationChainId: chainId(),
+                depositId: depositId,
+                expiryTimestamp: fillDeadline,
+                message: message
+            }),
+            relayHash: bytes32(0),
+            updatedOutputAmount: outputAmount,
+            updatedRecipient: recipient,
+            updatedMessage: message,
+            repaymentChainId: repaymentChainId,
+            executionType: USSLib.RelayExecutionType.FastFill,
+            payoutAdjustmentPct: 0
+        });
+        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
+
+        // Validate
+
+        // Pull output tokens from msg.sender and send to recipient
+
+        // Trigger `message` callback if appropriate.
+
+        // @dev We may not need this RelayExecutionInfo struct if the FilledRelay event is compact enough. This struct
+        // would only be used to fit more params into the FilledRelay event.
+        USSLib.RelayExecutionInfo memory relayExecutionInfo = USSLib.RelayExecutionInfo({
+            recipient: relayExecution.updatedRecipient,
+            executionType: relayExecution.executionType,
+            outputAmount: relayExecution.relay.outputAmount,
+            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct,
+            message: relayExecution.updatedMessage
+        });
+        emit USSLib.FilledRelay(
+            relayExecution.relay.inputAmount,
+            relayExecution.relay.outputAmount,
+            relayExecution.repaymentChainId,
+            relayExecution.relay.originChainId,
+            relayExecution.relay.destinationChainId,
+            relayExecution.relay.depositId,
+            relayExecution.relay.expiryTimestamp,
+            relayExecution.relay.inputToken,
+            relayExecution.relay.outputToken,
+            relayExecution.relay.relayer, // or msg.sender
+            relayExecution.relay.depositor,
+            relayExecution.relay.recipient,
+            relayExecution.relay.message,
+            relayExecutionInfo
         );
     }
 

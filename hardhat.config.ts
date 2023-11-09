@@ -38,7 +38,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
 
 const config: HardhatUserConfig = {
   solidity: {
-    compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true } }],
+    compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 10000 }, viaIR: true } }],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Boba_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
