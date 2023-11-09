@@ -85,6 +85,13 @@ const config: HardhatUserConfig = {
       zksync: true,
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
+    optimism: {
+      url: getNodeUrl("optimism", true, 10),
+      accounts: { mnemonic },
+      saveDeployments: true,
+      chainId: 10,
+      companionNetworks: { l1: "mainnet" },
+    },
     kovan: {
       url: getNodeUrl("kovan", true, 42),
       accounts: { mnemonic },
@@ -98,12 +105,12 @@ const config: HardhatUserConfig = {
       chainId: 69,
       companionNetworks: { l1: "kovan" },
     },
-    optimism: {
-      url: getNodeUrl("optimism", true, 10),
+    "optimism-goerli": {
+      url: getNodeUrl("optimism-goerli", true, 420),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: 10,
-      companionNetworks: { l1: "mainnet" },
+      chainId: 420,
+      companionNetworks: { l1: "goerli" },
     },
     arbitrum: {
       chainId: 42161,
@@ -188,6 +195,7 @@ const config: HardhatUserConfig = {
       goerli: process.env.ETHERSCAN_API_KEY!,
       sepolia: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
+      optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
