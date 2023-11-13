@@ -40,7 +40,7 @@ library USSLib {
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
-        uint32 expiryTimestamp;
+        uint32 fillDeadline;
         // Data that is forwarded to the recipient.
         bytes message;
     }
@@ -83,7 +83,7 @@ library USSLib {
         uint256 outputAmount,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
-        uint32 expiryTimestamp,
+        uint32 fillDeadline,
         address inputToken,
         address outputToken,
         address indexed depositor,

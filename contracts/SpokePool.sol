@@ -938,7 +938,7 @@ abstract contract SpokePool is
                 originChainId: originChainId,
                 destinationChainId: chainId(),
                 depositId: depositId,
-                expiryTimestamp: fillDeadline,
+                fillDeadline: fillDeadline,
                 message: message
             }),
             relayHash: bytes32(0),
@@ -973,7 +973,7 @@ abstract contract SpokePool is
             relayExecution.relay.originChainId,
             relayExecution.relay.destinationChainId,
             relayExecution.relay.depositId,
-            relayExecution.relay.expiryTimestamp,
+            relayExecution.relay.fillDeadline,
             relayExecution.relay.inputToken,
             relayExecution.relay.outputToken,
             relayExecution.relay.relayer, // or msg.sender
