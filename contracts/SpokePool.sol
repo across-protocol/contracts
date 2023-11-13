@@ -924,6 +924,8 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         bytes memory message
     ) public nonReentrant unpausedFills {
+        // Validate input params
+
         USSLib.RelayExecution memory relayExecution = USSLib.RelayExecution({
             relay: USSLib.RelayData({
                 depositor: depositor,
@@ -949,7 +951,7 @@ abstract contract SpokePool is
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
-        // Validate
+        // Validate RelayExecution data
 
         // Pull output tokens from msg.sender and send to recipient
 
