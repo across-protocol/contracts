@@ -631,7 +631,6 @@ abstract contract SpokePool is
         address exclusiveRelayer,
         uint256 inputAmount,
         uint256 outputAmount,
-        uint256 originChainId,
         uint256 destinationChainId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
@@ -646,7 +645,6 @@ abstract contract SpokePool is
         // - Pull funds from depositor
 
         emit USSLib.FundsDeposited(
-            originChainId,
             destinationChainId,
             inputAmount,
             outputAmount,
@@ -971,7 +969,6 @@ abstract contract SpokePool is
             relayExecution.relay.outputAmount,
             relayExecution.repaymentChainId,
             relayExecution.relay.originChainId,
-            relayExecution.relay.destinationChainId,
             relayExecution.relay.depositId,
             relayExecution.relay.fillDeadline,
             relayExecution.relay.inputToken,

@@ -77,7 +77,6 @@ library USSLib {
     // TODO: I know within Solidity we can name this event the same as SpokePool.FundsDeposited but does that make
     // it harder at the typescript level to distinguish the events?
     event FundsDeposited(
-        uint256 originChainId,
         uint256 indexed destinationChainId,
         uint256 inputAmount,
         uint256 outputAmount,
@@ -98,7 +97,6 @@ library USSLib {
         uint256 outputAmount,
         uint256 repaymentChainId,
         uint256 indexed originChainId,
-        uint256 destinationChainId,
         uint32 indexed depositId,
         uint32 fillDeadline,
         address inputToken,
