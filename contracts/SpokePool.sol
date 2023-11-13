@@ -641,7 +641,7 @@ abstract contract SpokePool is
         // Do stuff
         // - Pull funds from depositor
 
-        emit USSLib.FundsDeposited(
+        emit USSLib.USSFundsDeposited(
             inputToken,
             outputToken,
             destinationChainId,
@@ -951,7 +951,7 @@ abstract contract SpokePool is
 
         // Trigger `message` callback if appropriate.
 
-        emit USSLib.FilledRelay(
+        emit USSLib.USSFilledRelay(
             inputToken,
             outputToken,
             repaymentChainId,

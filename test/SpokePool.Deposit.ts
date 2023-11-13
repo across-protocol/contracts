@@ -7,6 +7,7 @@ import {
   depositRelayerFeePct as relayerFeePct,
   maxUint256,
 } from "./constants";
+import { ZERO_ADDRESS } from "@uma/common";
 
 const maxCount = maxUint256;
 
@@ -410,5 +411,30 @@ describe("SpokePool Depositor Logic", async function () {
         })
       )
     ).to.be.revertedWith(revertReason);
+  });
+
+  describe("deposit USS", function () {
+    it("placeholder: gas test", async function () {
+      await spokePool.depositUSS(
+        depositor.address,
+        recipient.address,
+        randomAddress(),
+        // Input token
+        {
+          token: erc20.address,
+          amount: amountToDeposit,
+        },
+        // Output token
+        {
+          token: randomAddress(),
+          amount: amountToDeposit,
+        },
+        destinationChainId,
+        ZERO_ADDRESS,
+        quoteTimestamp,
+        quoteTimestamp + 100,
+        "0x"
+      );
+    });
   });
 });
