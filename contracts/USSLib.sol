@@ -8,7 +8,7 @@ library USSLib {
         // `fillRelay()` or `fillRelayWithUpdatedDeposit`.
         SlowFill, // Slow relay execution can be done after the dataworker includes a slow relay leaf in the root bundle
         // proposal, which propogates the leaf to this SpokePool and someone calls executeSlowRelayLeaf().
-        RefundDeposit // Deposit refunds are included similarly to Slow relay leaves but are distinguished for the
+        DepositRefund // Deposit refunds are included similarly to Slow relay leaves but are distinguished for the
         // convenience of off-chain actors who may want to treat slow fill execution differently from deposit
         // refund execution. For example, deposit refunds are expected to have `message` fields with helpful
         // information to define the deposit for the refund callback address, but typically, an off-chain actor
