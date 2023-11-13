@@ -15,8 +15,8 @@ library USSLib {
         // would not want to execute slow fill leaves with messages because they might be rebating the slow fill
         // recipient their relayer fees unintentionally.
     }
-// This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool                                                                         
-// to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
+    // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
+    // to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
     struct RelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
