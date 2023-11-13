@@ -626,33 +626,29 @@ abstract contract SpokePool is
         address depositor,
         address recipient,
         address depositRefundCallbackAddress,
-        address inputToken,
-        address outputToken,
-        address exclusiveRelayer,
-        uint256 inputAmount,
-        uint256 outputAmount,
+        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
+        // so I've packed them for now into input and output token structs
+        USSLib.InputToken memory inputToken,
+        USSLib.OutputToken memory outputToken,
         uint256 destinationChainId,
+        address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         bytes memory message
     ) public payable nonReentrant unpausedDeposits {
         // Validate
 
-        // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        uint32 newDepositId = numberOfDeposits++;
-
         // Do stuff
         // - Pull funds from depositor
 
         emit USSLib.FundsDeposited(
-            destinationChainId,
-            inputAmount,
-            outputAmount,
-            newDepositId,
-            quoteTimestamp,
-            fillDeadline,
             inputToken,
             outputToken,
+            destinationChainId,
+            // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            numberOfDeposits++,
+            quoteTimestamp,
+            fillDeadline,
             depositor,
             recipient,
             exclusiveRelayer,
@@ -914,10 +910,8 @@ abstract contract SpokePool is
         address depositor,
         address recipient,
         address exclusiveRelayer,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
+        USSLib.InputToken memory inputToken,
+        USSLib.OutputToken memory outputToken,
         uint256 repaymentChainId,
         uint256 originChainId,
         uint32 depositId,
@@ -931,10 +925,10 @@ abstract contract SpokePool is
                 depositor: depositor,
                 recipient: recipient,
                 relayer: exclusiveRelayer,
-                inputToken: inputToken,
-                outputToken: outputToken,
-                inputAmount: inputAmount,
-                outputAmount: outputAmount,
+                inputToken: inputToken.token,
+                outputToken: outputToken.token,
+                inputAmount: inputToken.amount,
+                outputAmount: outputToken.amount,
                 originChainId: originChainId,
                 destinationChainId: chainId(),
                 depositId: depositId,
@@ -942,7 +936,7 @@ abstract contract SpokePool is
                 message: message
             }),
             relayHash: bytes32(0),
-            updatedOutputAmount: outputAmount,
+            updatedOutputAmount: outputToken.amount,
             updatedRecipient: recipient,
             updatedMessage: message,
             repaymentChainId: repaymentChainId,
@@ -957,29 +951,27 @@ abstract contract SpokePool is
 
         // Trigger `message` callback if appropriate.
 
-        // @dev We may not need this RelayExecutionInfo struct if the FilledRelay event is compact enough. This struct
-        // would only be used to fit more params into the FilledRelay event.
-        USSLib.RelayExecutionInfo memory relayExecutionInfo = USSLib.RelayExecutionInfo({
-            recipient: relayExecution.updatedRecipient,
-            executionType: relayExecution.executionType,
-            outputAmount: relayExecution.relay.outputAmount,
-            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct,
-            message: relayExecution.updatedMessage
-        });
         emit USSLib.FilledRelay(
-            relayExecution.relay.inputAmount,
-            relayExecution.relay.outputAmount,
-            relayExecution.repaymentChainId,
-            relayExecution.relay.originChainId,
-            relayExecution.relay.depositId,
-            relayExecution.relay.fillDeadline,
-            relayExecution.relay.inputToken,
-            relayExecution.relay.outputToken,
-            relayExecution.relay.relayer, // or msg.sender
-            relayExecution.relay.depositor,
-            relayExecution.relay.recipient,
-            relayExecution.relay.message,
-            relayExecutionInfo
+            inputToken,
+            outputToken,
+            repaymentChainId,
+            originChainId,
+            depositId,
+            fillDeadline,
+            exclusiveRelayer, // or msg.sender
+            depositor,
+            recipient,
+            message,
+            // updatedRecipient,
+            recipient,
+            // executionType,
+            USSLib.RelayExecutionType.FastFill,
+            // updatedOutputTokenAmount
+            outputToken.amount,
+            // payout adjustment pct
+            0,
+            // updatedMessage
+            message
         );
     }
 

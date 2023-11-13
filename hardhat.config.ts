@@ -33,7 +33,7 @@ const mnemonic = getMnemonic();
 // limit.
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 20000 }, viaIR: true },
+  settings: { optimizer: { enabled: true, runs: 1000 }, viaIR: true },
 };
 
 const config: HardhatUserConfig = {

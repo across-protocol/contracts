@@ -74,17 +74,31 @@ library USSLib {
         bytes message;
     }
 
+    // @dev The following deposit parameters are packed into structs to avoid stack too deep errors when
+    // emitting events like FundsDeposited/FilledRelay that emit
+    // a lot of individual parameters.
+
+    /// @dev tokens that need to be sent from the offerer in order to satisfy an order.
+    struct InputToken {
+        address token;
+        uint256 amount;
+    }
+
+    /// @dev tokens that need to be received by the recipient on another chain in order to satisfy an order
+    struct OutputToken {
+        address token;
+        uint256 amount;
+    }
+
     // TODO: I know within Solidity we can name this event the same as SpokePool.FundsDeposited but does that make
     // it harder at the typescript level to distinguish the events?
     event FundsDeposited(
+        InputToken inputToken,
+        OutputToken outputToken,
         uint256 indexed destinationChainId,
-        uint256 inputAmount,
-        uint256 outputAmount,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        address inputToken,
-        address outputToken,
         address indexed depositor,
         address recipient,
         address relayer,
@@ -93,18 +107,21 @@ library USSLib {
     );
 
     event FilledRelay(
-        uint256 inputAmount,
-        uint256 outputAmount,
+        InputToken inputToken,
+        OutputToken outputToken,
         uint256 repaymentChainId,
         uint256 indexed originChainId,
         uint32 indexed depositId,
         uint32 fillDeadline,
-        address inputToken,
-        address outputToken,
         address indexed relayer,
         address depositor,
         address recipient,
         bytes message,
-        RelayExecutionInfo updatableRelayData
+        // Parameters with "updated" prefix to signal that these parameters can be updated via speed ups.
+        address updatedRecipient,
+        RelayExecutionType executionType,
+        uint256 updatedOutputAmount,
+        int256 payoutAdjustmentPct,
+        bytes updatedMessage
     );
 }
