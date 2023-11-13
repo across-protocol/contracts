@@ -1175,6 +1175,7 @@ abstract contract SpokePool is
             // limit the refund count in valid proposals to be ~800 so any RelayerRefundLeaves with > 800 refunds should
             // not make it to this stage.
 
+            // TODO: I think we can remove this if we bump solidity to >=0.8.22
             unchecked {
                 ++i;
             }
