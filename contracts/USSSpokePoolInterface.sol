@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
-library USSLib {
+interface USSSpokePoolInterface {
     enum RelayExecutionType {
         FastFill, // Fast relay execution is the default and is used for most relays by calling
         // `fillRelay()` or `fillRelayWithUpdatedDeposit`.
@@ -17,7 +17,7 @@ library USSLib {
     }
     // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
     // to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
-    struct RelayData {
+    struct USSRelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
         // The recipient address on the destination chain.
@@ -45,8 +45,8 @@ library USSLib {
         bytes message;
     }
 
-    struct SlowFill {
-        RelayData relayData;
+    struct USSSlowFill {
+        USSRelayData relayData;
         RelayExecutionType executionType;
         int256 payoutAdjustmentPct;
     }
@@ -55,8 +55,8 @@ library USSLib {
     // relay itself but is required to know how to process the relay. For example, "updatedX" fields can be used
     // by the relayer to modify fields of the relay with the depositor's permission, and "repaymentChainId" is specified
     // by the relayer to determine where to take a relayer refund, but doesn't affect the uniqueness of the relay.
-    struct RelayExecution {
-        RelayData relay;
+    struct USSRelayExecution {
+        USSRelayData relay;
         bytes32 relayHash;
         uint256 updatedOutputAmount;
         address updatedRecipient;
@@ -64,14 +64,6 @@ library USSLib {
         uint256 repaymentChainId;
         RelayExecutionType executionType;
         int256 payoutAdjustmentPct;
-    }
-
-    struct RelayExecutionInfo {
-        address recipient;
-        RelayExecutionType executionType;
-        uint256 outputAmount;
-        int256 payoutAdjustmentPct;
-        bytes message;
     }
 
     // @dev The following deposit parameters are packed into structs to avoid stack too deep errors when

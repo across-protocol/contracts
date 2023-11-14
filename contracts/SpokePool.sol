@@ -7,7 +7,7 @@ import "./interfaces/SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
-import "./USSLib.sol";
+import "./USSSpokePoolInterface.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -37,6 +37,7 @@ interface AcrossMessageHandler {
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
 abstract contract SpokePool is
+    USSSpokePoolInterface,
     SpokePoolInterface,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -628,8 +629,8 @@ abstract contract SpokePool is
         address depositRefundCallbackAddress,
         // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
         // so I've packed them for now into input and output token structs
-        USSLib.InputToken memory inputToken,
-        USSLib.OutputToken memory outputToken,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
         uint256 destinationChainId,
         address exclusiveRelayer,
         uint32 quoteTimestamp,
@@ -641,7 +642,7 @@ abstract contract SpokePool is
         // Do stuff
         // - Pull funds from depositor
 
-        emit USSLib.USSFundsDeposited(
+        emit USSFundsDeposited(
             inputToken,
             outputToken,
             destinationChainId,
@@ -910,8 +911,8 @@ abstract contract SpokePool is
         address depositor,
         address recipient,
         address exclusiveRelayer,
-        USSLib.InputToken memory inputToken,
-        USSLib.OutputToken memory outputToken,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
         uint256 repaymentChainId,
         uint256 originChainId,
         uint32 depositId,
@@ -920,8 +921,8 @@ abstract contract SpokePool is
     ) public nonReentrant unpausedFills {
         // Validate input params
 
-        USSLib.RelayExecution memory relayExecution = USSLib.RelayExecution({
-            relay: USSLib.RelayData({
+        USSRelayExecution memory relayExecution = USSRelayExecution({
+            relay: USSRelayData({
                 depositor: depositor,
                 recipient: recipient,
                 relayer: exclusiveRelayer,
@@ -940,7 +941,7 @@ abstract contract SpokePool is
             updatedRecipient: recipient,
             updatedMessage: message,
             repaymentChainId: repaymentChainId,
-            executionType: USSLib.RelayExecutionType.FastFill,
+            executionType: RelayExecutionType.FastFill,
             payoutAdjustmentPct: 0
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
@@ -951,7 +952,7 @@ abstract contract SpokePool is
 
         // Trigger `message` callback if appropriate.
 
-        emit USSLib.USSFilledRelay(
+        emit USSFilledRelay(
             inputToken,
             outputToken,
             repaymentChainId,
@@ -965,7 +966,7 @@ abstract contract SpokePool is
             // updatedRecipient,
             recipient,
             // executionType,
-            USSLib.RelayExecutionType.FastFill,
+            RelayExecutionType.FastFill,
             // updatedOutputTokenAmount
             outputToken.amount,
             // payout adjustment pct
