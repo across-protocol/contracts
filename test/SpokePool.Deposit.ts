@@ -8,7 +8,7 @@ import {
   maxUint256,
 } from "./constants";
 
-const { AddressZero: ZERO_ADDRESS } = ethers.utils;
+const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 
 const maxCount = maxUint256;
 
