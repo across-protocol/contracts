@@ -7,7 +7,8 @@ import {
   depositRelayerFeePct as relayerFeePct,
   maxUint256,
 } from "./constants";
-import { ZERO_ADDRESS } from "@uma/common";
+
+const { AddressZero: ZERO_ADDRESS } = ethers.utils;
 
 const maxCount = maxUint256;
 
