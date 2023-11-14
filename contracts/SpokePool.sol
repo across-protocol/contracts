@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
+import "./interfaces/USSSpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
-import "./USSSpokePoolInterface.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -636,7 +636,7 @@ abstract contract SpokePool is
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         bytes memory message
-    ) public payable nonReentrant unpausedDeposits {
+    ) public payable override nonReentrant unpausedDeposits {
         // Validate
 
         // Do stuff
@@ -918,7 +918,7 @@ abstract contract SpokePool is
         uint32 depositId,
         uint32 fillDeadline,
         bytes memory message
-    ) public nonReentrant unpausedFills {
+    ) public override nonReentrant unpausedFills {
         // Validate input params
 
         USSRelayExecution memory relayExecution = USSRelayExecution({

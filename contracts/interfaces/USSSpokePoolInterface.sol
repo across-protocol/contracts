@@ -114,4 +114,32 @@ interface USSSpokePoolInterface {
         int256 payoutAdjustmentPct,
         bytes updatedMessage
     );
+
+    function depositUSS(
+        address depositor,
+        address recipient,
+        address depositRefundCallbackAddress,
+        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
+        // so I've packed them for now into input and output token structs
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        bytes memory message
+    ) external payable;
+
+    function fillRelayUSS(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        bytes memory message
+    ) external;
 }

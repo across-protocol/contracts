@@ -36,6 +36,11 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: { optimizer: { enabled: true, runs: 1000 }, viaIR: true },
 };
 
+const XTRA_LARGE_CONTRACT_COMPILER_SETTINGS = {
+  version: solcVersion,
+  settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+};
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true } }],
@@ -47,12 +52,12 @@ const config: HardhatUserConfig = {
       "contracts/Succinct_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/ZkSync_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Ovm_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Polygon_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockSpokePoolV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockSpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockOptimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Ovm_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
