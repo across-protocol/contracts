@@ -79,7 +79,6 @@ interface USSSpokePoolInterface {
         address indexed depositor,
         address recipient,
         address relayer,
-        address depositRefundCallbackAddress,
         bytes message
     );
 
