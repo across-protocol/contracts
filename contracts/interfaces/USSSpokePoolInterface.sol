@@ -104,7 +104,6 @@ interface USSSpokePoolInterface {
     function depositUSS(
         address depositor,
         address recipient,
-        address depositRefundCallbackAddress,
         // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
         // so I've packed them for now into input and output token structs
         InputToken memory inputToken,
