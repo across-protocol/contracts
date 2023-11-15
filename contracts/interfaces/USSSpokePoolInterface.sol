@@ -3,18 +3,6 @@ pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
 interface USSSpokePoolInterface {
-    enum RelayExecutionType {
-        FastFill, // Fast relay execution is the default and is used for most relays by calling
-        // `fillRelay()` or `fillRelayWithUpdatedDeposit`.
-        SlowFill, // Slow relay execution can be done after the dataworker includes a slow relay leaf in the root bundle
-        // proposal, which propogates the leaf to this SpokePool and someone calls executeSlowRelayLeaf().
-        DepositRefund // Deposit refunds are included similarly to Slow relay leaves but are distinguished for the
-        // convenience of off-chain actors who may want to treat slow fill execution differently from deposit
-        // refund execution. For example, deposit refunds are expected to have `message` fields with helpful
-        // information to define the deposit for the refund callback address, but typically, an off-chain actor
-        // would not want to execute slow fill leaves with messages because they might be rebating the slow fill
-        // recipient their relayer fees unintentionally.
-    }
     // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
     // to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
     struct USSRelayData {
@@ -47,7 +35,6 @@ interface USSSpokePoolInterface {
 
     struct USSSlowFill {
         USSRelayData relayData;
-        RelayExecutionType executionType;
         int256 payoutAdjustmentPct;
     }
 
@@ -62,7 +49,7 @@ interface USSSpokePoolInterface {
         address updatedRecipient;
         bytes updatedMessage;
         uint256 repaymentChainId;
-        RelayExecutionType executionType;
+        bool slowFill;
         int256 payoutAdjustmentPct;
     }
 
@@ -109,7 +96,7 @@ interface USSSpokePoolInterface {
         bytes message,
         // Parameters with "updated" prefix to signal that these parameters can be updated via speed ups.
         address updatedRecipient,
-        RelayExecutionType executionType,
+        bool slowFill,
         uint256 updatedOutputAmount,
         int256 payoutAdjustmentPct,
         bytes updatedMessage

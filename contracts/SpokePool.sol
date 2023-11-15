@@ -941,7 +941,7 @@ abstract contract SpokePool is
             updatedRecipient: recipient,
             updatedMessage: message,
             repaymentChainId: repaymentChainId,
-            executionType: RelayExecutionType.FastFill,
+            slowFill: false,
             payoutAdjustmentPct: 0
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
@@ -965,8 +965,8 @@ abstract contract SpokePool is
             message,
             // updatedRecipient,
             recipient,
-            // executionType,
-            RelayExecutionType.FastFill,
+            // slowFill,
+            false,
             // updatedOutputTokenAmount
             outputToken.amount,
             // payout adjustment pct
