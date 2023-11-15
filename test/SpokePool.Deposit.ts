@@ -419,7 +419,6 @@ describe("SpokePool Depositor Logic", async function () {
       await spokePool.depositUSS(
         depositor.address,
         recipient.address,
-        randomAddress(),
         // Input token
         {
           token: erc20.address,
