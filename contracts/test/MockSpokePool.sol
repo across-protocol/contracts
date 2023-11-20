@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  */
 contract MockSpokePool is SpokePool, OwnableUpgradeable {
     uint256 private chainId_;
-    uint256 private currentTime;
+    uint32 private currentTime;
 
     function initialize(
         uint32 _initialDepositId,
@@ -20,14 +20,14 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
     ) public initializer {
         __Ownable_init();
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
-        currentTime = block.timestamp; // solhint-disable-line not-rely-on-time
+        currentTime = uint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
 
-    function setCurrentTime(uint256 time) external {
+    function setCurrentTime(uint32 time) external {
         currentTime = time;
     }
 
-    function getCurrentTime() public view override returns (uint256) {
+    function getCurrentTime() public view override returns (uint32) {
         return currentTime;
     }
 

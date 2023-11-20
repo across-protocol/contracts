@@ -515,16 +515,7 @@ abstract contract SpokePool is
         bytes memory message,
         uint256 maxCount
     ) public payable {
-        deposit(
-            recipient,
-            originToken,
-            amount,
-            destinationChainId,
-            relayerFeePct,
-            uint32(getCurrentTime()),
-            message,
-            maxCount
-        );
+        deposit(recipient, originToken, amount, destinationChainId, relayerFeePct, getCurrentTime(), message, maxCount);
     }
 
     /**
@@ -560,7 +551,7 @@ abstract contract SpokePool is
             amount,
             destinationChainId,
             relayerFeePct,
-            uint32(getCurrentTime()),
+            getCurrentTime(),
             message,
             maxCount
         );
@@ -626,8 +617,6 @@ abstract contract SpokePool is
     function depositUSS(
         address depositor,
         address recipient,
-        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
-        // so I've packed them for now into input and output token structs
         InputToken memory inputToken,
         OutputToken memory outputToken,
         uint256 destinationChainId,
@@ -636,10 +625,39 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         bytes memory message
     ) public payable override nonReentrant unpausedDeposits {
-        // Validate
+        // Check that deposit route is enabled for the input token. There are no checks required for the output token
+        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
+        require(enabledDepositRoutes[inputToken.token][destinationChainId], "Disabled route");
 
-        // Do stuff
-        // - Pull funds from depositor
+        //@dev The following checks are copied from _deposit. Are they still needed?
+        require(inputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        require(outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
+
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
+        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+
+        // fillDeadline is relative to the destination chain.
+        // Don’t allow fillDeadline to be more than ~3 bundles into the future, so 12 hours maybe.
+        // This way the dataworker/relayer doesn’t have to maintain more a lookback longer than this.
+        // TODO: We could choose to skip this check in favor of adding a rule in the dataworker to enforce this
+        // constraint.
+        require(fillDeadline <= getCurrentTime() + 12 hours, "invalid fillDeadline");
+
+        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
+        // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
+        if (inputToken.token == address(wrappedNativeToken) && msg.value > 0) {
+            require(msg.value == inputToken.amount, "msg.value must match amount");
+            wrappedNativeToken.deposit{ value: msg.value }();
+            // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
+            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
+            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+        } else IERC20Upgradeable(inputToken.token).safeTransferFrom(msg.sender, address(this), inputToken.amount);
 
         emit USSFundsDeposited(
             inputToken,
@@ -1062,8 +1080,8 @@ abstract contract SpokePool is
      * @notice Gets the current time.
      * @return uint for the current timestamp.
      */
-    function getCurrentTime() public view virtual returns (uint256) {
-        return block.timestamp; // solhint-disable-line not-rely-on-time
+    function getCurrentTime() public view virtual returns (uint32) {
+        return uint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
 
     /**************************************
@@ -1112,16 +1130,23 @@ abstract contract SpokePool is
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit FundsDeposited(
-            amount,
-            chainId(),
+        emit USSFundsDeposited(
+            InputToken({ token: originToken, amount: amount }), // inputToken
+            OutputToken({ token: address(0), amount: _computeAmountPostFees(amount, relayerFeePct) }),
+            // outputToken:
+            // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
+            // token as the inputToken for the destination chain should be replaced here.
+            // - amount will be the deposit amount less relayerFeePct, which should now be set
+            // equal to realizedLpFeePct + gasFeePct + capitalCostFeePct where (gasFeePct + capitalCostFeePct)
+            // is equal to the old usage of `relayerFeePct`.
             destinationChainId,
-            relayerFeePct,
             newDepositId,
             quoteTimestamp,
-            originToken,
-            recipient,
+            type(uint32).max, // fillDeadline. Older deposits don't expire.
             depositor,
+            recipient,
+            address(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
+            // is no exclusive relayer.
             message
         );
     }
