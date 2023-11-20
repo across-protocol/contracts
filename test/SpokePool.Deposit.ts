@@ -304,7 +304,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp: quoteTimestamp + 1,
         })
       )
-    ).to.be.reverted;
+    ).to.be.revertedWith("underflowed");
 
     await expect(
       spokePool.connect(depositor).deposit(
