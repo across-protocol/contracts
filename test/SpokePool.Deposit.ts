@@ -46,7 +46,7 @@ describe("SpokePool Depositor Logic", async function () {
     // Whitelist origin token => destination chain ID routes:
     await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
 
-    quoteTimestamp = await spokePool.getCurrentTime();
+    quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
   });
 
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function () {

@@ -515,7 +515,16 @@ abstract contract SpokePool is
         bytes memory message,
         uint256 maxCount
     ) public payable {
-        deposit(recipient, originToken, amount, destinationChainId, relayerFeePct, getCurrentTime(), message, maxCount);
+        deposit(
+            recipient,
+            originToken,
+            amount,
+            destinationChainId,
+            relayerFeePct,
+            uint32(getCurrentTime()),
+            message,
+            maxCount
+        );
     }
 
     /**
@@ -551,7 +560,7 @@ abstract contract SpokePool is
             amount,
             destinationChainId,
             relayerFeePct,
-            getCurrentTime(),
+            uint32(getCurrentTime()),
             message,
             maxCount
         );
@@ -1080,8 +1089,8 @@ abstract contract SpokePool is
      * @notice Gets the current time.
      * @return uint for the current timestamp.
      */
-    function getCurrentTime() public view virtual returns (uint32) {
-        return uint32(block.timestamp); // solhint-disable-line not-rely-on-time
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
     /**************************************
