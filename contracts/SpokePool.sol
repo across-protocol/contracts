@@ -59,6 +59,10 @@ abstract contract SpokePool is
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
     WETH9Interface public wrappedNativeToken;
 
+    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+    // caller to use an approximately "current" realized fee.
+    uint32 public constant depositQuoteTimeBuffer = 3600;
+
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
@@ -91,10 +95,6 @@ abstract contract SpokePool is
     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
     // requests are known and accounted for.
     mapping(bytes32 => uint256) public refundsRequested;
-
-    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an approximately "current" realized fee.
-    uint32 public constant DEPOSIT_QUOTE_TIME_BUFFER = 1 hours;
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
@@ -639,7 +639,7 @@ abstract contract SpokePool is
         // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= DEPOSIT_QUOTE_TIME_BUFFER, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than ~3 bundles into the future.
@@ -1111,7 +1111,7 @@ abstract contract SpokePool is
         // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= DEPOSIT_QUOTE_TIME_BUFFER, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
