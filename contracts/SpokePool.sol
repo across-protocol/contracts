@@ -57,7 +57,7 @@ abstract contract SpokePool is
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9Interface public wrappedNativeToken;
+    WETH9Interface public DEPRECATED_wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
@@ -255,13 +255,11 @@ abstract contract SpokePool is
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      */
     function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wrappedNativeTokenAddress
+        address _hubPool
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
         __EIP712_init("ACROSS-V2", "1.0.0");
@@ -269,7 +267,6 @@ abstract contract SpokePool is
         __ReentrancyGuard_init();
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
     }
 
     /****************************************
@@ -648,9 +645,9 @@ abstract contract SpokePool is
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
-        if (inputToken.token == address(wrappedNativeToken) && msg.value > 0) {
+        if (inputToken.token == address(wrappedNativeToken()) && msg.value > 0) {
             require(msg.value == inputToken.amount, "msg.value must match amount");
-            wrappedNativeToken.deposit{ value: msg.value }();
+            wrappedNativeToken().deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
@@ -1066,6 +1063,14 @@ abstract contract SpokePool is
      **************************************/
 
     /**
+     * @notice Returns wrapped native token for this network.
+     * @dev If an origin token matches this, then the caller can optionally instruct this contract to wrap
+     * native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
+     * @return Address of wrapped native token
+     */
+    function wrappedNativeToken() public view virtual returns (WETH9Interface);
+
+    /**
      * @notice Returns chain ID for this network.
      * @dev Some L2s like ZKSync don't support the CHAIN_ID opcode so we allow the implementer to override this.
      */
@@ -1119,9 +1124,9 @@ abstract contract SpokePool is
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
-        if (originToken == address(wrappedNativeToken) && msg.value > 0) {
+        if (originToken == address(wrappedNativeToken()) && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
-            wrappedNativeToken.deposit{ value: msg.value }();
+            wrappedNativeToken().deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
@@ -1372,9 +1377,9 @@ abstract contract SpokePool is
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
+            IERC20Upgradeable(address(wrappedNativeToken())).safeTransfer(to, amount);
         } else {
-            wrappedNativeToken.withdraw(amount);
+            wrappedNativeToken().withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
         }
     }
@@ -1493,7 +1498,7 @@ abstract contract SpokePool is
         if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return fillAmountPreFees;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
-        if (relayData.destinationToken == address(wrappedNativeToken)) {
+        if (relayData.destinationToken == address(wrappedNativeToken())) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the

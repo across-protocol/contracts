@@ -26,7 +26,7 @@ interface IL2ERC20Bridge {
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  */
-contract Ovm_SpokePool is SpokePool {
+abstract contract Ovm_SpokePool is SpokePool {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
     uint32 public l1Gas;
@@ -62,11 +62,10 @@ contract Ovm_SpokePool is SpokePool {
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
-        address _l2Eth,
-        address _wrappedNativeToken
+        address _l2Eth
     ) public onlyInitializing {
         l1Gas = 5_000_000;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
@@ -118,7 +117,7 @@ contract Ovm_SpokePool is SpokePool {
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
+        if (destinationToken == address(wrappedNativeToken())) _depositEthToWeth();
 
         _executeSlowRelayLeaf(
             depositor,
@@ -147,7 +146,7 @@ contract Ovm_SpokePool is SpokePool {
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken())) _depositEthToWeth();
 
         _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
@@ -162,13 +161,13 @@ contract Ovm_SpokePool is SpokePool {
     // on the OVM.
     function _depositEthToWeth() internal {
         //slither-disable-next-line arbitrary-send-eth
-        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
+        if (address(this).balance > 0) wrappedNativeToken().deposit{ value: address(this).balance }();
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken())) {
             WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
             IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{

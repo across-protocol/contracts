@@ -16,15 +16,14 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
      */
-    function initialize(
-        uint32 _initialDepositId,
-        address _hubPool,
-        address _wethAddress
-    ) public initializer {
+    function initialize(uint32 _initialDepositId, address _hubPool) public initializer {
         __Ownable_init();
-        __SpokePool_init(_initialDepositId, _hubPool, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _hubPool, _hubPool);
+    }
+
+    function wrappedNativeToken() public pure override returns (WETH9Interface) {
+        return WETH9Interface(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     }
 
     /**************************************

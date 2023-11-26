@@ -6,13 +6,20 @@ import "../Ovm_SpokePool.sol";
  * @notice Mock Optimism Spoke pool allowing deployer to override constructor params.
  */
 contract MockOptimism_SpokePool is Ovm_SpokePool {
+    address private wethAddress;
+
     function initialize(
-        address l2Weth,
         address l2Eth,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _hubPool,
+        address _wethAddress
     ) public initializer {
-        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, l2Eth, l2Weth);
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, l2Eth);
+        wethAddress = _wethAddress;
+    }
+
+    function wrappedNativeToken() public view override returns (WETH9Interface) {
+        return WETH9Interface(wethAddress);
     }
 }

@@ -18,6 +18,8 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated;
 
+    WETH9Interface public _wrappedNativeTokenAddress;
+
     event SetSuccinctTargetAmb(address indexed newSuccinctTargetAmb);
     event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
 
@@ -59,9 +61,14 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         address _hubPool,
         address _wrappedNativeToken
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         succinctTargetAmb = _succinctTargetAmb;
         hubChainId = _hubChainId;
+        _wrappedNativeTokenAddress = WETH9Interface(_wrappedNativeToken);
+    }
+
+    function wrappedNativeToken() public view override returns (WETH9Interface) {
+        return _wrappedNativeTokenAddress;
     }
 
     /**

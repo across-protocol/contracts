@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 contract MockSpokePool is SpokePool, OwnableUpgradeable {
     uint256 private chainId_;
     uint256 private currentTime;
+    address private wethAddress;
 
     function initialize(
         uint32 _initialDepositId,
@@ -19,8 +20,13 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         address _wethAddress
     ) public initializer {
         __Ownable_init();
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         currentTime = block.timestamp; // solhint-disable-line not-rely-on-time
+        wethAddress = _wethAddress;
+    }
+
+    function wrappedNativeToken() public view override returns (WETH9Interface) {
+        return WETH9Interface(wethAddress);
     }
 
     function setCurrentTime(uint256 time) external {

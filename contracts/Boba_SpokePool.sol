@@ -19,12 +19,10 @@ contract Boba_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(
-            _initialDepositId,
-            _crossDomainAdmin,
-            _hubPool,
-            0x4200000000000000000000000000000000000006,
-            0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000
-        );
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006);
+    }
+
+    function wrappedNativeToken() public pure override returns (WETH9Interface) {
+        return WETH9Interface(0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000);
     }
 }

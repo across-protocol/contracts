@@ -34,22 +34,24 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
      */
     function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wethAddress
+        address _hubPool
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
     modifier onlyFromCrossDomainAdmin() {
         require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
+    }
+
+    function wrappedNativeToken() public pure override returns (WETH9Interface) {
+        return WETH9Interface(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     }
 
     /********************************************************

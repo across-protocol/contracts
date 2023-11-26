@@ -20,12 +20,10 @@ contract Base_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(
-            _initialDepositId,
-            _crossDomainAdmin,
-            _hubPool,
-            Lib_PredeployAddresses.OVM_ETH,
-            0x4200000000000000000000000000000000000006
-        );
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, Lib_PredeployAddresses.OVM_ETH);
+    }
+
+    function wrappedNativeToken() public pure override returns (WETH9Interface) {
+        return WETH9Interface(0x4200000000000000000000000000000000000006);
     }
 }

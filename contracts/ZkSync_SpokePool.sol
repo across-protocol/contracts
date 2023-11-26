@@ -42,23 +42,25 @@ contract ZkSync_SpokePool is SpokePool {
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
      */
     function initialize(
         uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wethAddress
+        address _hubPool
     ) public initializer {
         l2Eth = 0x000000000000000000000000000000000000800A;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         _setZkBridge(_zkErc20Bridge);
     }
 
     modifier onlyFromCrossDomainAdmin() {
         require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
+    }
+
+    function wrappedNativeToken() public pure override returns (WETH9Interface) {
+        return WETH9Interface(0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91);
     }
 
     /********************************************************
@@ -96,7 +98,7 @@ contract ZkSync_SpokePool is SpokePool {
         int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
+        if (destinationToken == address(wrappedNativeToken())) _depositEthToWeth();
 
         _executeSlowRelayLeaf(
             depositor,
@@ -125,7 +127,7 @@ contract ZkSync_SpokePool is SpokePool {
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public override(SpokePool) nonReentrant {
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken())) _depositEthToWeth();
 
         _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
@@ -141,13 +143,13 @@ contract ZkSync_SpokePool is SpokePool {
     // held ETH into WETH at the cost of higher gas costs.
     function _depositEthToWeth() internal {
         //slither-disable-next-line arbitrary-send-eth
-        if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
+        if (address(this).balance > 0) wrappedNativeToken().deposit{ value: address(this).balance }();
     }
 
     function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
         // SpokePool is expected to receive ETH from the L1 HubPool and currently, withdrawing ETH directly
         // over the ERC20 Bridge is blocked at the contract level. Therefore, we need to unwrap it before withdrawing.
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
+        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken())) {
             WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
             IL2ETH(l2Eth).withdraw{ value: relayerRefundLeaf.amountToReturn }(hubPool);
