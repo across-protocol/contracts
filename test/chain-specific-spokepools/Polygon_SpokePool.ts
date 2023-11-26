@@ -45,7 +45,7 @@ describe("Polygon Spoke Pool", function () {
 
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
-      [0, polygonTokenBridger.address, owner.address, hubPool.address, weth.address, fxChild.address],
+      [0, polygonTokenBridger.address, owner.address, hubPool.address, fxChild.address],
       { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
@@ -204,10 +204,16 @@ describe("Polygon Spoke Pool", function () {
   });
 
   it("Can wrap native token", async function () {
+    // Deploy fake weth contract to polygon wmatic address hardcoded in contract.
+    const wmaticFake = await createFake("WETH9", await polygonSpokePool.wrappedNativeToken());
+
     await expect(() =>
       rando.sendTransaction({ to: polygonSpokePool.address, value: toWei("0.1") })
     ).to.changeEtherBalance(polygonSpokePool, toWei("0.1"));
-    await expect(() => polygonSpokePool.wrap()).to.changeTokenBalance(weth, polygonSpokePool, toWei("0.1"));
+
+    // Wrapping should call to the WMATIC contract.
+    await polygonSpokePool.wrap();
+    expect(wmaticFake.deposit).to.have.been.called;
   });
 
   it("Bridge tokens to hub pool correctly sends tokens through the PolygonTokenBridger", async function () {

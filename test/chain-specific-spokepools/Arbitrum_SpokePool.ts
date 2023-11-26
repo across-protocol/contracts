@@ -16,7 +16,7 @@ import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract;
-let l2Weth: string, l2Dai: string, crossDomainAliasAddress;
+let l2Dai: string, crossDomainAliasAddress;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
 let l2GatewayRouter: FakeContract;
@@ -24,7 +24,7 @@ let l2GatewayRouter: FakeContract;
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, l2Weth, dai, l2Dai, hubPool } = await hubPoolFixture());
+    ({ weth, dai, l2Dai, hubPool } = await hubPoolFixture());
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
     crossDomainAliasAddress = avmL1ToL2Alias(owner.address);
@@ -36,7 +36,7 @@ describe("Arbitrum Spoke Pool", function () {
 
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth],
+      [0, l2GatewayRouter.address, owner.address, hubPool.address],
       { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 

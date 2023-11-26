@@ -15,7 +15,7 @@ describe("Ethereum Spoke Pool", function () {
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),
-      [0, hubPool.address, weth.address],
+      [0, hubPool.address],
       { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 

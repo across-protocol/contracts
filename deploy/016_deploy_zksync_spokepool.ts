@@ -22,7 +22,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].zkErc20Bridge,
     hubPool.address,
     hubPool.address,
-    L2_ADDRESS_MAP[spokeChainId].l2Weth,
   ];
 
   const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {

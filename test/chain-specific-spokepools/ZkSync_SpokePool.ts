@@ -9,6 +9,7 @@ import {
   getContractFactory,
   seedContract,
   avmL1ToL2Alias,
+  createFake,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 
@@ -70,8 +71,8 @@ describe("ZkSync Spoke Pool", function () {
     l2Eth = await smock.fake(abiData.eth.abi, { address: abiData.eth.address });
 
     zkSyncSpokePool = await hre.upgrades.deployProxy(
-      await getContractFactory("ZkSync_SpokePool", owner),
-      [0, zkErc20Bridge.address, owner.address, hubPool.address, weth.address],
+      await getContractFactory("MockZkSync_SpokePool", owner),
+      [0, zkErc20Bridge.address, owner.address, hubPool.address],
       { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
@@ -81,7 +82,7 @@ describe("ZkSync Spoke Pool", function () {
   it("Only cross domain owner upgrade logic contract", async function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
-      await getContractFactory("ZkSync_SpokePool", owner),
+      await getContractFactory("MockZkSync_SpokePool", owner),
       { kind: "uups", unsafeAllow: ["delegatecall"] }
     );
 
@@ -110,17 +111,22 @@ describe("ZkSync Spoke Pool", function () {
     expect(zkErc20Bridge.withdraw).to.have.been.calledWith(hubPool.address, l2Dai, amountToReturn);
   });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
-    const { leaves, tree } = await constructSingleRelayerRefundTree(
-      weth.address,
+    // Deploy fake weth contract to weth address hardcoded in contract.
+    const wethFake = await createFake("WETH9", await zkSyncSpokePool.wrappedNativeToken());
+
+    // The contract must have a "weth balance" to withdraw so we fake it.
+    wethFake.balanceOf.whenCalledWith(zkSyncSpokePool.address).returns(amountToReturn);
+
+    // Moreover, the contract must have an ETH balance after withdrawing in order to call "withdraw" on the native
+    // ZkSync ETH contract, which is a custom zksync ETH function.
+    await owner.sendTransaction({ to: zkSyncSpokePool.address, value: amountToReturn });
+
+    const { leaves } = await constructSingleRelayerRefundTree(
+      wethFake.address,
       await zkSyncSpokePool.callStatic.chainId()
     );
-    await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-
-    // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
-    // to the ERC20 bridge. This results in a net decrease in WETH balance.
-    await expect(() =>
-      zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.changeTokenBalance(weth, zkSyncSpokePool, amountToReturn.mul(-1));
+    await zkSyncSpokePool.connect(crossDomainAlias).bridgeTokensToHubPool(leaves[0]);
+    expect(wethFake.withdraw).to.have.been.calledWith(amountToReturn);
     expect(l2Eth.withdraw).to.have.been.calledWithValue(amountToReturn);
     expect(l2Eth.withdraw).to.have.been.calledWith(hubPool.address);
   });

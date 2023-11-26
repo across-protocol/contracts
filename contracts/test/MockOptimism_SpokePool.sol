@@ -9,14 +9,14 @@ contract MockOptimism_SpokePool is Ovm_SpokePool {
     address private wethAddress;
 
     function initialize(
+        address _l2WethAddress,
         address l2Eth,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wethAddress
+        address _hubPool
     ) public initializer {
         __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, l2Eth);
-        wethAddress = _wethAddress;
+        wethAddress = _l2WethAddress;
     }
 
     function wrappedNativeToken() public view override returns (WETH9Interface) {
