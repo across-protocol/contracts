@@ -8,6 +8,8 @@ import {
   maxUint256,
 } from "./constants";
 
+const { AddressZero: ZERO_ADDRESS } = ethers.constants;
+
 const maxCount = maxUint256;
 
 describe("SpokePool Depositor Logic", async function () {
@@ -410,5 +412,29 @@ describe("SpokePool Depositor Logic", async function () {
         })
       )
     ).to.be.revertedWith(revertReason);
+  });
+
+  describe("deposit USS", function () {
+    it("placeholder: gas test", async function () {
+      await spokePool.depositUSS(
+        depositor.address,
+        recipient.address,
+        // Input token
+        {
+          token: erc20.address,
+          amount: amountToDeposit,
+        },
+        // Output token
+        {
+          token: randomAddress(),
+          amount: amountToDeposit,
+        },
+        destinationChainId,
+        ZERO_ADDRESS,
+        quoteTimestamp,
+        quoteTimestamp + 100,
+        "0x"
+      );
+    });
   });
 });

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
+import "./interfaces/USSSpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
@@ -36,6 +37,7 @@ interface AcrossMessageHandler {
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
 abstract contract SpokePool is
+    USSSpokePoolInterface,
     SpokePoolInterface,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -617,6 +619,43 @@ abstract contract SpokePool is
         );
     }
 
+    /********************************************
+     *         USS DEPOSITOR FUNCTIONS          *
+     ********************************************/
+
+    function depositUSS(
+        address depositor,
+        address recipient,
+        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
+        // so I've packed them for now into input and output token structs
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        bytes memory message
+    ) public payable override nonReentrant unpausedDeposits {
+        // Validate
+
+        // Do stuff
+        // - Pull funds from depositor
+
+        emit USSFundsDeposited(
+            inputToken,
+            outputToken,
+            destinationChainId,
+            // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            numberOfDeposits++,
+            quoteTimestamp,
+            fillDeadline,
+            depositor,
+            recipient,
+            exclusiveRelayer,
+            message
+        );
+    }
+
     /**************************************
      *         RELAYER FUNCTIONS          *
      **************************************/
@@ -862,6 +901,79 @@ abstract contract SpokePool is
         );
     }
 
+    /******************************************
+     *         USS RELAYER FUNCTIONS          *
+     ******************************************/
+
+    function fillRelayUSS(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        bytes memory message
+    ) public override nonReentrant unpausedFills {
+        // Validate input params
+
+        USSRelayExecution memory relayExecution = USSRelayExecution({
+            relay: USSRelayData({
+                depositor: depositor,
+                recipient: recipient,
+                relayer: exclusiveRelayer,
+                inputToken: inputToken.token,
+                outputToken: outputToken.token,
+                inputAmount: inputToken.amount,
+                outputAmount: outputToken.amount,
+                originChainId: originChainId,
+                destinationChainId: chainId(),
+                depositId: depositId,
+                fillDeadline: fillDeadline,
+                message: message
+            }),
+            relayHash: bytes32(0),
+            updatedOutputAmount: outputToken.amount,
+            updatedRecipient: recipient,
+            updatedMessage: message,
+            repaymentChainId: repaymentChainId,
+            slowFill: false,
+            payoutAdjustmentPct: 0
+        });
+        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
+
+        // Validate RelayExecution data
+
+        // Pull output tokens from msg.sender and send to recipient
+
+        // Trigger `message` callback if appropriate.
+
+        emit USSFilledRelay(
+            inputToken,
+            outputToken,
+            repaymentChainId,
+            originChainId,
+            depositId,
+            fillDeadline,
+            exclusiveRelayer, // or msg.sender
+            depositor,
+            recipient,
+            message,
+            // updatedRecipient,
+            recipient,
+            // slowFill,
+            false,
+            // updatedOutputTokenAmount
+            outputToken.amount,
+            // payout adjustment pct
+            0,
+            // updatedMessage
+            message
+        );
+    }
+
     /**************************************
      *         DATA WORKER FUNCTIONS      *
      **************************************/
@@ -1053,6 +1165,7 @@ abstract contract SpokePool is
             // limit the refund count in valid proposals to be ~800 so any RelayerRefundLeaves with > 800 refunds should
             // not make it to this stage.
 
+            // TODO: I think we can remove this if we bump solidity to >=0.8.22
             unchecked {
                 ++i;
             }

@@ -8,6 +8,7 @@ import {
   toBN,
   BigNumber,
   createFake,
+  randomAddress,
 } from "../utils/utils";
 import {
   spokePoolFixture,
@@ -488,6 +489,32 @@ describe("SpokePool Relayer Logic", async function () {
   });
   it("EIP1271 - Updating relayer fee signature verification failure cases", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
+  });
+  describe("fill USS", function () {
+    it("placeholder: gas test", async function () {
+      const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
+
+      await spokePool.fillRelayUSS(
+        depositor.address,
+        recipient.address,
+        randomAddress(),
+        // Input token
+        {
+          token: erc20.address,
+          amount: consts.amountToDeposit,
+        },
+        // Output token
+        {
+          token: randomAddress(),
+          amount: consts.amountToDeposit,
+        },
+        consts.repaymentChainId,
+        consts.originChainId,
+        consts.firstDepositId,
+        fillDeadline,
+        "0x"
+      );
+    });
   });
 });
 
