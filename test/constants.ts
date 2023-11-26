@@ -44,8 +44,6 @@ export const repaymentChainId = 777;
 
 export const firstDepositId = 0;
 
-export const depositQuoteTimeBuffer = 60 * 60; // 60 minutes
-
 export const bondAmount = toWei("5");
 
 export const finalFee = toWei("1");

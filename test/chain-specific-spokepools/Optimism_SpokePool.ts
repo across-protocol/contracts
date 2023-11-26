@@ -97,13 +97,6 @@ describe("Optimism Spoke Pool", function () {
     expect(await optimismSpokePool.hubPool()).to.equal(rando.address);
   });
 
-  it("Only cross domain owner can set the quote time buffer", async function () {
-    await expect(optimismSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setDepositQuoteTimeBuffer(12345);
-    expect(await optimismSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
-  });
-
   it("Only cross domain owner can initialize a relayer refund", async function () {
     await expect(optimismSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);

@@ -25,13 +25,6 @@ describe("SpokePool Admin Functions", async function () {
       .withArgs(erc20.address, destinationChainId, true);
     expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
   });
-  it("Change deposit quote buffer", async function () {
-    await expect(spokePool.connect(owner).setDepositQuoteTimeBuffer(60))
-      .to.emit(spokePool, "SetDepositQuoteTimeBuffer")
-      .withArgs(60);
-
-    expect(await spokePool.depositQuoteTimeBuffer()).to.equal(60);
-  });
 
   it("Pause deposits", async function () {
     expect(await spokePool.pausedDeposits()).to.equal(false);

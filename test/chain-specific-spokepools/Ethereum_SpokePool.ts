@@ -56,12 +56,6 @@ describe("Ethereum Spoke Pool", function () {
     expect(await spokePool.hubPool()).to.equal(rando.address);
   });
 
-  it("Only owner can set the quote time buffer", async function () {
-    await expect(spokePool.connect(rando).setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-    await spokePool.connect(owner).setDepositQuoteTimeBuffer(12345);
-    expect(await spokePool.depositQuoteTimeBuffer()).to.equal(12345);
-  });
-
   it("Only owner can initialize a relayer refund", async function () {
     await expect(spokePool.connect(rando).relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
     await spokePool.connect(owner).relayRootBundle(mockTreeRoot, mockTreeRoot);

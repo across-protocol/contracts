@@ -132,28 +132,6 @@ describe("Polygon Spoke Pool", function () {
     expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
-  it("Only correct caller can set the quote time buffer", async function () {
-    // Cannot call directly
-    await expect(polygonSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-
-    const setDepositQuoteTimeBufferData = polygonSpokePool.interface.encodeFunctionData("setDepositQuoteTimeBuffer", [
-      12345,
-    ]);
-
-    // Wrong rootMessageSender address.
-    await expect(
-      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, setDepositQuoteTimeBufferData)
-    ).to.be.reverted;
-
-    // Wrong calling address.
-    await expect(
-      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, setDepositQuoteTimeBufferData)
-    ).to.be.reverted;
-
-    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setDepositQuoteTimeBufferData);
-    expect(await polygonSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
-  });
-
   it("Only correct caller can initialize a relayer refund", async function () {
     // Cannot call directly
     await expect(polygonSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;

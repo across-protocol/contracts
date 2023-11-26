@@ -59,10 +59,6 @@ abstract contract SpokePool is
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
     WETH9Interface public wrappedNativeToken;
 
-    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an approximately "current" realized fee. Defaults to 1 hour.
-    uint32 public depositQuoteTimeBuffer;
-
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
 
@@ -95,6 +91,10 @@ abstract contract SpokePool is
     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
     // requests are known and accounted for.
     mapping(bytes32 => uint256) public refundsRequested;
+
+    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+    // caller to use an approximately "current" realized fee.
+    uint32 public constant DEPOSIT_QUOTE_TIME_BUFFER = 1 hours;
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
@@ -267,7 +267,6 @@ abstract contract SpokePool is
         __EIP712_init("ACROSS-V2", "1.0.0");
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
-        depositQuoteTimeBuffer = 3600;
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
@@ -356,15 +355,6 @@ abstract contract SpokePool is
     ) public override onlyAdmin nonReentrant {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
-    }
-
-    /**
-     * @notice Change allowance for deposit quote time to differ from current block time. Callable by admin only.
-     * @param newDepositQuoteTimeBuffer New quote time buffer.
-     */
-    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
-        depositQuoteTimeBuffer = newDepositQuoteTimeBuffer;
-        emit SetDepositQuoteTimeBuffer(newDepositQuoteTimeBuffer);
     }
 
     /**
@@ -649,14 +639,12 @@ abstract contract SpokePool is
         // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= DEPOSIT_QUOTE_TIME_BUFFER, "invalid quoteTimestamp");
 
         // fillDeadline is relative to the destination chain.
-        // Don’t allow fillDeadline to be more than ~3 bundles into the future, so 12 hours maybe.
+        // Don’t allow fillDeadline to be more than ~3 bundles into the future.
         // This way the dataworker/relayer doesn’t have to maintain more a lookback longer than this.
-        // TODO: We could choose to skip this check in favor of adding a rule in the dataworker to enforce this
-        // constraint.
-        require(fillDeadline <= getCurrentTime() + 12 hours, "invalid fillDeadline");
+        require(fillDeadline <= getCurrentTime() + 9 hours, "invalid fillDeadline");
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
@@ -1123,7 +1111,7 @@ abstract contract SpokePool is
         // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= DEPOSIT_QUOTE_TIME_BUFFER, "invalid quoteTimestamp");
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;

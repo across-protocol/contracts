@@ -292,7 +292,7 @@ describe("SpokePool Depositor Logic", async function () {
 
   it("quoteTimestamp is out of range", async function () {
     const revertReason = "invalid quoteTimestamp";
-    const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
+    const quoteTimeBuffer = await spokePool.DEPOSIT_QUOTE_TIME_BUFFER();
 
     await expect(
       spokePool.connect(depositor).deposit(

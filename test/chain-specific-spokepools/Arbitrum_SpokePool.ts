@@ -86,12 +86,6 @@ describe("Arbitrum Spoke Pool", function () {
     expect(await arbitrumSpokePool.hubPool()).to.equal(rando.address);
   });
 
-  it("Only cross domain owner can set the quote time buffer", async function () {
-    await expect(arbitrumSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).setDepositQuoteTimeBuffer(12345);
-    expect(await arbitrumSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
-  });
-
   it("Only cross domain owner can initialize a relayer refund", async function () {
     await expect(arbitrumSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(mockTreeRoot, mockTreeRoot);
