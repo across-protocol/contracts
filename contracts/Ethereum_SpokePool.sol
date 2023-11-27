@@ -11,7 +11,11 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress) {}
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Ethereum SpokePool.

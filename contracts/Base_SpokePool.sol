@@ -9,7 +9,11 @@ import "./Ovm_SpokePool.sol";
  */
 contract Base_SpokePool is Ovm_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _wrappedNativeTokenAddress) Ovm_SpokePool(_wrappedNativeTokenAddress) {}
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) Ovm_SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the OVM Base SpokePool.

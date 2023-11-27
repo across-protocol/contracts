@@ -72,7 +72,7 @@ describe("ZkSync Spoke Pool", function () {
     zkSyncSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("ZkSync_SpokePool", owner),
       [0, zkErc20Bridge.address, owner.address, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     await seedContract(zkSyncSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -82,7 +82,7 @@ describe("ZkSync Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("ZkSync_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     // upgradeTo fails unless called by cross domain admin

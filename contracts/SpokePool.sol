@@ -58,19 +58,16 @@ abstract contract SpokePool is
     // Note: storage variables prefixed with DEPRECATED used to be variables that could be set by the cross-domain
     // admin. Admins ended up not changing these in production, so to reduce gas in deposit/fill functions,
     // we are converting them to private variables to maintain the  contract storage layout and replacing them with
-    // references in the code with a constant, because retrieving a constant value is cheaper than retrieving
-    // a storage variable.
+    // immutable or constant variables, because retrieving a constant value is cheaper than retrieving
+    // a storage variable. Please see out the immutable/constant variable section.
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
     WETH9Interface private DEPRECATED_wrappedNativeToken;
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    WETH9Interface public immutable wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     uint32 private DEPRECATED_depositQuoteTimeBuffer;
-    uint32 public constant depositQuoteTimeBuffer = 3600;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
@@ -104,6 +101,30 @@ abstract contract SpokePool is
     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
     // requests are known and accounted for.
     mapping(bytes32 => uint256) public refundsRequested;
+
+    /**************************************************************
+     *                CONSTANT/IMMUTABLE VARIABLES                *
+     **************************************************************/
+    // Constant and immutable variables do not take up storage slots and are instead added to the contract bytecode
+    // at compile time. The difference between them is that constant variables must be declared inline, meaning
+    // that they cannot be changed in production without changing the contract code, while immutable variables
+    // can be set in the constructor. Therefore we use the immutable keyword for variables that we might want to be
+    // different for each child contract (one obvious example of this is the wrappedNativeToken) or that we might
+    // want to update in the future like depositQuoteTimeBuffer. Constants are unlikely to ever be changed.
+
+    // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
+    // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    WETH9Interface public immutable wrappedNativeToken;
+
+    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+    // caller to use an approximately "current" realized fee.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint32 public immutable depositQuoteTimeBuffer;
+
+    // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint32 public immutable fillDeadlineBuffer;
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
@@ -257,10 +278,20 @@ abstract contract SpokePool is
      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
      * it is deployed:
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
+     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * into the past from the block time of the deposit.
+     * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
+     * into the future from the block time of the deposit.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _wrappedNativeTokenAddress) {
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
+        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
+        fillDeadlineBuffer = _fillDeadlineBuffer;
         _disableInitializers();
     }
 
@@ -654,9 +685,9 @@ abstract contract SpokePool is
         require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // fillDeadline is relative to the destination chain.
-        // Don’t allow fillDeadline to be more than ~3 bundles into the future.
+        // Don’t allow fillDeadline to be more than several bundles into the future.
         // This way the dataworker/relayer doesn’t have to maintain more a lookback longer than this.
-        require(fillDeadline <= getCurrentTime() + 9 hours, "invalid fillDeadline");
+        require(fillDeadline <= getCurrentTime() + fillDeadlineBuffer, "invalid fillDeadline");
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.

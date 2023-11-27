@@ -13,7 +13,7 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
     uint256 private currentTime;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress) {}
+    constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
 
     function initialize(
         uint32 _initialDepositId,

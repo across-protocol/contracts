@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // with deprecated spoke pool.
   const constructorArgs = [1_000_000, hubPool.address, L1_ADDRESS_MAP[chainId].weth];
   await deployNewProxy("Ethereum_SpokePool", constructorArgs, {
-    constructorArgs: [L1_ADDRESS_MAP[chainId].weth],
+    constructorArgs: [L1_ADDRESS_MAP[chainId].weth, 3600, 32400],
   });
 
   // Transfer ownership to hub pool.

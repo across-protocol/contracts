@@ -10,7 +10,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const constructorArgs = [1_000_000, hubPool.address, hubPool.address];
   await deployNewProxy("Optimism_SpokePool", constructorArgs, {
-    constructorArgs: ["0x4200000000000000000000000000000000000006"],
+    constructorArgs: ["0x4200000000000000000000000000000000000006", 3600, 32400],
   });
 };
 module.exports = func;
