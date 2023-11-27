@@ -12,6 +12,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 contract MockSpokePoolV2 is MockSpokePool, ERC20Upgradeable {
     event NewEvent(bool value);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address _wrappedNativeTokenAddress) MockSpokePool(_wrappedNativeTokenAddress) {}
+
     // Demonstrative of how we could reset state variables in a V2 contract conveniently while initializing new
     // modules. The `reinitializer` modifier is required to create new Initializable contracts.
     function reinitialize(address _hubPool) public reinitializer(2) {

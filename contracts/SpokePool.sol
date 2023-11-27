@@ -55,12 +55,21 @@ abstract contract SpokePool is
     // refunds and slow relays.
     address public hubPool;
 
+    // Note: storage variables prefixed with DEPRECATED used to be variables that could be set by the cross-domain
+    // admin. Admins ended up not changing these in production, so to reduce gas in deposit/fill functions,
+    // we are converting them to private variables to maintain the  contract storage layout and replacing them with
+    // references in the code with a constant, because retrieving a constant value is cheaper than retrieving
+    // a storage variable.
+
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9Interface public wrappedNativeToken;
+    WETH9Interface private DEPRECATED_wrappedNativeToken;
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    WETH9Interface public immutable wrappedNativeToken;
 
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
+    uint32 private DEPRECATED_depositQuoteTimeBuffer;
     uint32 public constant depositQuoteTimeBuffer = 3600;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
@@ -239,13 +248,19 @@ abstract contract SpokePool is
     }
 
     /**
-     * Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
+     * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
+     * have constructors since the following code will be executed within the logic contract's state, not the
+     * proxy contract's state. However, if we restrict the constructor to setting only immutable variables, then
+     * we are safe because immutable variables are included in the logic contract's bytecode rather than its storage.
+     * @dev Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
      * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
      * it is deployed:
+     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(address _wrappedNativeTokenAddress) {
+        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         _disableInitializers();
     }
 
@@ -255,13 +270,11 @@ abstract contract SpokePool is
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      */
     function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wrappedNativeTokenAddress
+        address _hubPool
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
         __EIP712_init("ACROSS-V2", "1.0.0");
@@ -269,7 +282,6 @@ abstract contract SpokePool is
         __ReentrancyGuard_init();
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
     }
 
     /****************************************

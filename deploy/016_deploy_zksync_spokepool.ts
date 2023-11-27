@@ -22,12 +22,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].zkErc20Bridge,
     hubPool.address,
     hubPool.address,
-    L2_ADDRESS_MAP[spokeChainId].l2Weth,
   ];
 
   const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
     initializer: "initialize",
     kind: "uups",
+    constructorArgs: [L2_ADDRESS_MAP[spokeChainId].l2Weth],
     unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
   });
   console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);

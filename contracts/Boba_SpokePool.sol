@@ -7,6 +7,9 @@ import "./Ovm_SpokePool.sol";
  * @notice Boba Spoke pool. Note that the l2ETH and l2WETH are the opposite as that in Optimism.
  */
 contract Boba_SpokePool is Ovm_SpokePool {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address _wrappedNativeTokenAddress) Ovm_SpokePool(_wrappedNativeTokenAddress) {}
+
     /**
      * @notice Construct the OVM Boba SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
@@ -19,12 +22,6 @@ contract Boba_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(
-            _initialDepositId,
-            _crossDomainAdmin,
-            _hubPool,
-            0x4200000000000000000000000000000000000006,
-            0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000
-        );
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006);
     }
 }

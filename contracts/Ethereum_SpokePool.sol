@@ -10,21 +10,19 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress) {}
+
     /**
      * @notice Construct the Ethereum SpokePool.
      * @dev crossDomainAdmin is unused on this contract.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
      */
-    function initialize(
-        uint32 _initialDepositId,
-        address _hubPool,
-        address _wethAddress
-    ) public initializer {
+    function initialize(uint32 _initialDepositId, address _hubPool) public initializer {
         __Ownable_init();
-        __SpokePool_init(_initialDepositId, _hubPool, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _hubPool, _hubPool);
     }
 
     /**************************************

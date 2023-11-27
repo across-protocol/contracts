@@ -15,8 +15,8 @@ describe("Ethereum Spoke Pool", function () {
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),
-      [0, hubPool.address, weth.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      [0, hubPool.address],
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
     );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
@@ -28,7 +28,7 @@ describe("Ethereum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Ethereum_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
     );
 
     // upgradeTo fails unless called by cross domain admin
