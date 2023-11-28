@@ -21,6 +21,11 @@ export interface RelayerRefundLeaf {
   refundAddresses: string[];
 }
 
+export interface USSRelayerRefundLeaf extends RelayerRefundLeaf {
+  fillsRefundedRoot: string;
+  fillsRefundedIpfsHash: string;
+}
+
 export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundLeaf[]) {
   for (let i = 0; i < relayerRefundLeaves.length; i++) {
     // The 2 provided parallel arrays must be of equal length.

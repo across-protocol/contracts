@@ -33,8 +33,8 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      *          INTERNAL FUNCTIONS           *
      **************************************/
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        IERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeTransfer(hubPool, relayerRefundLeaf.amountToReturn);
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        IERC20Upgradeable(l2TokenAddress).safeTransfer(hubPool, amountToReturn);
     }
 
     // The SpokePool deployed to the same network as the HubPool must be owned by the HubPool.

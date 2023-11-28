@@ -102,65 +102,16 @@ contract Ovm_SpokePool is SpokePool {
     }
 
     /**************************************
-     *         DATA WORKER FUNCTIONS      *
-     **************************************/
-
-    /**
-     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
-     * ETH over the canonical token bridge instead of WETH.
-     * @inheritdoc SpokePool
-     */
-    function executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 totalRelayAmount,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 rootBundleId,
-        bytes memory message,
-        int256 payoutAdjustment,
-        bytes32[] memory proof
-    ) public override(SpokePool) nonReentrant {
-        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
-
-        _executeSlowRelayLeaf(
-            depositor,
-            recipient,
-            destinationToken,
-            totalRelayAmount,
-            originChainId,
-            chainId(),
-            realizedLpFeePct,
-            relayerFeePct,
-            depositId,
-            rootBundleId,
-            message,
-            payoutAdjustment,
-            proof
-        );
-    }
-
-    /**
-     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
-     * ETH over the canonical token bridge instead of WETH.
-     * @inheritdoc SpokePool
-     */
-    function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
-        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
-    ) public override(SpokePool) nonReentrant {
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
-
-        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
-    }
-
-    /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+
+    /**
+     * @notice Wraps any ETH into WETH before executing leaves. This is necessary because SpokePool receives
+     * ETH over the canonical token bridge instead of WETH.
+     */
+    function _preExecuteLeafHook(address l2TokenAddress) internal override {
+        if (l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+    }
 
     // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because
     // this SpokePool will receive ETH from the canonical token bridge instead of WETH. Its not sufficient to execute
@@ -171,42 +122,40 @@ contract Ovm_SpokePool is SpokePool {
         if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
-            WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
-            relayerRefundLeaf.l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
-            IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{
-                value: relayerRefundLeaf.amountToReturn
-            }(
-                relayerRefundLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+        if (l2TokenAddress == address(wrappedNativeToken)) {
+            WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
+            l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
+            IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToReturn }(
+                l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                relayerRefundLeaf.amountToReturn, // _amount.
+                amountToReturn, // _amount.
                 l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                 "" // _data. We don't need to send any data for the bridging action.
             );
         }
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
-        else if (relayerRefundLeaf.l2TokenAddress == SNX)
+        else if (l2TokenAddress == SNX)
             SynthetixBridgeToBase(SYNTHETIX_BRIDGE).withdrawTo(
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                relayerRefundLeaf.amountToReturn // _amount.
+                amountToReturn // _amount.
             );
         else
             IL2ERC20Bridge(
-                tokenBridges[relayerRefundLeaf.l2TokenAddress] == address(0)
+                tokenBridges[l2TokenAddress] == address(0)
                     ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
-                    : tokenBridges[relayerRefundLeaf.l2TokenAddress]
+                    : tokenBridges[l2TokenAddress]
             ).withdrawTo(
-                    relayerRefundLeaf.l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+                    l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                     hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                    relayerRefundLeaf.amountToReturn, // _amount.
+                    amountToReturn, // _amount.
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.
                 );
 
-        emit OptimismTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn, l1Gas);
+        emit OptimismTokensBridged(l2TokenAddress, hubPool, amountToReturn, l1Gas);
     }
 
     // Apply OVM-specific transformation to cross domain admin address on L1.

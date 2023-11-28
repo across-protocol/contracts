@@ -29,6 +29,14 @@ contract MerkleLibTest {
         return MerkleLib.verifyRelayerRefund(root, refund, proof);
     }
 
+    function verifyRelayerRefundUSS(
+        bytes32 root,
+        USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
+        bytes32[] memory proof
+    ) internal pure returns (bool) {
+        return MerkleLib.verifyRelayerRefundUSS(root, refund, proof);
+    }
+
     function verifySlowRelayFulfillment(
         bytes32 root,
         SpokePoolInterface.SlowFill memory slowFill,

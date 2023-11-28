@@ -34,7 +34,7 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}
+    function _bridgeTokensToHubPool(uint256, address) internal override {}
 
     function _requireAdminSender() internal override onlyOwner {} // solhint-disable-line no-empty-blocks
 

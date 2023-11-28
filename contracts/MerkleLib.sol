@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/SpokePoolInterface.sol";
+import "./interfaces/USSSpokePoolInterface.sol";
 import "./interfaces/HubPoolInterface.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
@@ -35,6 +36,14 @@ library MerkleLib {
     function verifyRelayerRefund(
         bytes32 root,
         SpokePoolInterface.RelayerRefundLeaf memory refund,
+        bytes32[] memory proof
+    ) internal pure returns (bool) {
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
+    }
+
+    function verifyRelayerRefundUSS(
+        bytes32 root,
+        USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));

@@ -79,65 +79,16 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     /**************************************
-     *         DATA WORKER FUNCTIONS      *
-     **************************************/
-
-    /**
-     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
-     * ETH over the canonical token bridge instead of WETH.
-     * @inheritdoc SpokePool
-     */
-    function executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 totalRelayAmount,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 rootBundleId,
-        bytes memory message,
-        int256 payoutAdjustment,
-        bytes32[] memory proof
-    ) public override(SpokePool) nonReentrant {
-        if (destinationToken == address(wrappedNativeToken)) _depositEthToWeth();
-
-        _executeSlowRelayLeaf(
-            depositor,
-            recipient,
-            destinationToken,
-            totalRelayAmount,
-            originChainId,
-            chainId(),
-            realizedLpFeePct,
-            relayerFeePct,
-            depositId,
-            rootBundleId,
-            message,
-            payoutAdjustment,
-            proof
-        );
-    }
-
-    /**
-     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
-     * ETH over the canonical token bridge instead of WETH.
-     * @inheritdoc SpokePool
-     */
-    function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
-        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
-    ) public override(SpokePool) nonReentrant {
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
-
-        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
-    }
-
-    /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+
+    /**
+     * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
+     * ETH over the canonical token bridge instead of WETH.
+     */
+    function _preExecuteLeafHook(address l2TokenAddress) internal override {
+        if (l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+    }
 
     // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because
     // this SpokePool will receive ETH from the canonical token bridge instead of WETH. This may not be neccessary
@@ -149,17 +100,17 @@ contract ZkSync_SpokePool is SpokePool {
         if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // SpokePool is expected to receive ETH from the L1 HubPool and currently, withdrawing ETH directly
         // over the ERC20 Bridge is blocked at the contract level. Therefore, we need to unwrap it before withdrawing.
-        if (relayerRefundLeaf.l2TokenAddress == address(wrappedNativeToken)) {
-            WETH9Interface(relayerRefundLeaf.l2TokenAddress).withdraw(relayerRefundLeaf.amountToReturn); // Unwrap into ETH.
+        if (l2TokenAddress == address(wrappedNativeToken)) {
+            WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
-            IL2ETH(l2Eth).withdraw{ value: relayerRefundLeaf.amountToReturn }(hubPool);
+            IL2ETH(l2Eth).withdraw{ value: amountToReturn }(hubPool);
         } else {
-            zkErc20Bridge.withdraw(hubPool, relayerRefundLeaf.l2TokenAddress, relayerRefundLeaf.amountToReturn);
+            zkErc20Bridge.withdraw(hubPool, l2TokenAddress, amountToReturn);
         }
-        emit ZkSyncTokensBridged(relayerRefundLeaf.l2TokenAddress, hubPool, relayerRefundLeaf.amountToReturn);
+        emit ZkSyncTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 
     function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {

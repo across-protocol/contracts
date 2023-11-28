@@ -1,4 +1,4 @@
-import { PoolRebalanceLeaf, RelayerRefundLeaf } from "./MerkleLib.utils";
+import { PoolRebalanceLeaf, RelayerRefundLeaf, USSRelayerRefundLeaf } from "./MerkleLib.utils";
 import { merkleLibFixture } from "./fixtures/MerkleLib.Fixture";
 import { MerkleTree, EMPTY_MERKLE_ROOT } from "../utils/MerkleTree";
 import {
@@ -10,6 +10,7 @@ import {
   keccak256,
   Contract,
   BigNumber,
+  createRandomBytes32,
 } from "../utils/utils";
 
 let merkleLibTest: Contract;
@@ -97,6 +98,44 @@ describe("MerkleLib Proofs", async function () {
     const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
     const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
     const merkleTree = new MerkleTree<RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
+
+    const root = merkleTree.getHexRoot();
+    const proof = merkleTree.getHexProof(relayerRefundLeaves[14]);
+    expect(await merkleLibTest.verifyRelayerRefund(root, relayerRefundLeaves[14], proof)).to.equal(true);
+
+    // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
+    expect(() => merkleTree.getHexProof(invalidRelayerRefundLeaf)).to.throw();
+    expect(await merkleLibTest.verifyRelayerRefund(root, invalidRelayerRefundLeaf, proof)).to.equal(false);
+  });
+  it("USSRelayerRefundLeafProof", async function () {
+    const relayerRefundLeaves: USSRelayerRefundLeaf[] = [];
+    const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
+    for (let i = 0; i < numDistributions; i++) {
+      const numAddresses = 10;
+      const refundAddresses: string[] = [];
+      const refundAmounts: BigNumber[] = [];
+      for (let j = 0; j < numAddresses; j++) {
+        refundAddresses.push(randomAddress());
+        refundAmounts.push(randomBigNumber());
+      }
+      relayerRefundLeaves.push({
+        leafId: BigNumber.from(i),
+        chainId: randomBigNumber(2),
+        amountToReturn: randomBigNumber(),
+        l2TokenAddress: randomAddress(),
+        refundAddresses,
+        refundAmounts,
+        fillsRefundedRoot: createRandomBytes32(),
+        fillsRefundedIpfsHash: createRandomBytes32(),
+      });
+    }
+
+    // Remove the last element.
+    const invalidRelayerRefundLeaf = relayerRefundLeaves.pop()!;
+
+    const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefundUSS", "refund");
+    const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const merkleTree = new MerkleTree<USSRelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(relayerRefundLeaves[14]);
