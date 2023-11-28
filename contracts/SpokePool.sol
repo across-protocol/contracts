@@ -57,16 +57,10 @@ abstract contract SpokePool is
 
     // Note: storage variables prefixed with DEPRECATED used to be variables that could be set by the cross-domain
     // admin. Admins ended up not changing these in production, so to reduce gas in deposit/fill functions,
-    // we are converting them to private variables to maintain the  contract storage layout and replacing them with
+    // we are converting them to private variables to maintain the contract storage layout and replacing them with
     // immutable or constant variables, because retrieving a constant value is cheaper than retrieving
     // a storage variable. Please see out the immutable/constant variable section.
-
-    // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
-    // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
     WETH9Interface private DEPRECATED_wrappedNativeToken;
-
-    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an approximately "current" realized fee.
     uint32 private DEPRECATED_depositQuoteTimeBuffer;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
