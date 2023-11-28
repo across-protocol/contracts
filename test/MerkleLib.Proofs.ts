@@ -139,10 +139,10 @@ describe("MerkleLib Proofs", async function () {
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(relayerRefundLeaves[14]);
-    expect(await merkleLibTest.verifyRelayerRefund(root, relayerRefundLeaves[14], proof)).to.equal(true);
+    expect(await merkleLibTest.verifyRelayerRefundUSS(root, relayerRefundLeaves[14], proof)).to.equal(true);
 
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     expect(() => merkleTree.getHexProof(invalidRelayerRefundLeaf)).to.throw();
-    expect(await merkleLibTest.verifyRelayerRefund(root, invalidRelayerRefundLeaf, proof)).to.equal(false);
+    expect(await merkleLibTest.verifyRelayerRefundUSS(root, invalidRelayerRefundLeaf, proof)).to.equal(false);
   });
 });

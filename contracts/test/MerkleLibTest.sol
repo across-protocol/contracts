@@ -33,7 +33,7 @@ contract MerkleLibTest {
         bytes32 root,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
         bytes32[] memory proof
-    ) internal pure returns (bool) {
+    ) public pure returns (bool) {
         return MerkleLib.verifyRelayerRefundUSS(root, refund, proof);
     }
 
