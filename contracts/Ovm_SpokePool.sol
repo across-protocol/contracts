@@ -64,6 +64,8 @@ contract Ovm_SpokePool is SpokePool {
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _l2Eth Address of L2 ETH token. Usually should be Lib_PreeployAddresses.OVM_ETH but sometimes this can
+     * be different, like with Boba which flips the WETH and OVM_ETH addresses.
      */
     function __OvmSpokePool_init(
         uint32 _initialDepositId,
