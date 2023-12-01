@@ -55,11 +55,11 @@ abstract contract SpokePool is
     // refunds and slow relays.
     address public hubPool;
 
-    // Note: storage variables prefixed with DEPRECATED used to be variables that could be set by the cross-domain
-    // admin. Admins ended up not changing these in production, so to reduce gas in deposit/fill functions,
-    // we are converting them to private variables to maintain the contract storage layout and replacing them with
-    // immutable or constant variables, because retrieving a constant value is cheaper than retrieving
-    // a storage variable. Please see out the immutable/constant variable section.
+    // Note: The following two storage variables prefixed with DEPRECATED used to be variables that could be set by
+    // the cross-domain admin. Admins ended up not changing these in production, so to reduce
+    // gas in deposit/fill functions, we are converting them to private variables to maintain the contract
+    // storage layout and replacing them with immutable or constant variables, because retrieving a constant
+    // value is cheaper than retrieving a storage variable. Please see out the immutable/constant variable section.
     WETH9Interface private DEPRECATED_wrappedNativeToken;
     uint32 private DEPRECATED_depositQuoteTimeBuffer;
 
