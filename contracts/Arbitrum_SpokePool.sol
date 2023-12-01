@@ -27,6 +27,13 @@ contract Arbitrum_SpokePool is SpokePool {
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+
     /**
      * @notice Construct the AVM SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
@@ -34,16 +41,14 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
      */
     function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wethAddress
+        address _hubPool
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 

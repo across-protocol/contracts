@@ -55,13 +55,13 @@ abstract contract SpokePool is
     // refunds and slow relays.
     address public hubPool;
 
-    // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
-    // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-    WETH9Interface public wrappedNativeToken;
-
-    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-    // caller to use an approximately "current" realized fee. Defaults to 1 hour.
-    uint32 public depositQuoteTimeBuffer;
+    // Note: The following two storage variables prefixed with DEPRECATED used to be variables that could be set by
+    // the cross-domain admin. Admins ended up not changing these in production, so to reduce
+    // gas in deposit/fill functions, we are converting them to private variables to maintain the contract
+    // storage layout and replacing them with immutable or constant variables, because retrieving a constant
+    // value is cheaper than retrieving a storage variable. Please see out the immutable/constant variable section.
+    WETH9Interface private DEPRECATED_wrappedNativeToken;
+    uint32 private DEPRECATED_depositQuoteTimeBuffer;
 
     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
     uint32 public numberOfDeposits;
@@ -96,6 +96,30 @@ abstract contract SpokePool is
     // requests are known and accounted for.
     mapping(bytes32 => uint256) public refundsRequested;
 
+    /**************************************************************
+     *                CONSTANT/IMMUTABLE VARIABLES                *
+     **************************************************************/
+    // Constant and immutable variables do not take up storage slots and are instead added to the contract bytecode
+    // at compile time. The difference between them is that constant variables must be declared inline, meaning
+    // that they cannot be changed in production without changing the contract code, while immutable variables
+    // can be set in the constructor. Therefore we use the immutable keyword for variables that we might want to be
+    // different for each child contract (one obvious example of this is the wrappedNativeToken) or that we might
+    // want to update in the future like depositQuoteTimeBuffer. Constants are unlikely to ever be changed.
+
+    // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
+    // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    WETH9Interface public immutable wrappedNativeToken;
+
+    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+    // caller to use an approximately "current" realized fee.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint32 public immutable depositQuoteTimeBuffer;
+
+    // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint32 public immutable fillDeadlineBuffer;
+
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
     // Note: this needs to be larger than the max transfer size to ensure that all slow fills are fillable, even if
@@ -117,7 +141,6 @@ abstract contract SpokePool is
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
-    event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
         uint256 originChainId,
@@ -239,13 +262,29 @@ abstract contract SpokePool is
     }
 
     /**
-     * Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
+     * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
+     * have constructors since the following code will be executed within the logic contract's state, not the
+     * proxy contract's state. However, if we restrict the constructor to setting only immutable variables, then
+     * we are safe because immutable variables are included in the logic contract's bytecode rather than its storage.
+     * @dev Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
      * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
      * it is deployed:
+     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
+     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * into the past from the block time of the deposit.
+     * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
+     * into the future from the block time of the deposit.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) {
+        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
+        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
+        fillDeadlineBuffer = _fillDeadlineBuffer;
         _disableInitializers();
     }
 
@@ -255,22 +294,18 @@ abstract contract SpokePool is
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      */
     function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wrappedNativeTokenAddress
+        address _hubPool
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
         __EIP712_init("ACROSS-V2", "1.0.0");
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
-        depositQuoteTimeBuffer = 3600;
         _setCrossDomainAdmin(_crossDomainAdmin);
         _setHubPool(_hubPool);
-        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
     }
 
     /****************************************
@@ -356,15 +391,6 @@ abstract contract SpokePool is
     ) public override onlyAdmin nonReentrant {
         enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
-    }
-
-    /**
-     * @notice Change allowance for deposit quote time to differ from current block time. Callable by admin only.
-     * @param newDepositQuoteTimeBuffer New quote time buffer.
-     */
-    function setDepositQuoteTimeBuffer(uint32 newDepositQuoteTimeBuffer) public override onlyAdmin nonReentrant {
-        depositQuoteTimeBuffer = newDepositQuoteTimeBuffer;
-        emit SetDepositQuoteTimeBuffer(newDepositQuoteTimeBuffer);
     }
 
     /**
@@ -626,8 +652,6 @@ abstract contract SpokePool is
     function depositUSS(
         address depositor,
         address recipient,
-        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
-        // so I've packed them for now into input and output token structs
         InputToken memory inputToken,
         OutputToken memory outputToken,
         uint256 destinationChainId,
@@ -636,10 +660,39 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         bytes memory message
     ) public payable override nonReentrant unpausedDeposits {
-        // Validate
+        // Check that deposit route is enabled for the input token. There are no checks required for the output token
+        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
+        require(enabledDepositRoutes[inputToken.token][destinationChainId], "Disabled route");
 
-        // Do stuff
-        // - Pull funds from depositor
+        // Sanity check output token amount to prevent depositor from griefing off-chainbots who need to compute
+        // this amount and may not be able to process such large numbers. Same with input token amount.
+        // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
+        require(inputToken.amount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
+
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
+        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+
+        // fillDeadline is relative to the destination chain.
+        // Don’t allow fillDeadline to be more than several bundles into the future.
+        // This limits the maximum required lookback for dataworker and relayer instances.
+        require(fillDeadline <= getCurrentTime() + fillDeadlineBuffer, "invalid fillDeadline");
+
+        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
+        // transaction then the user is sending the native token. In this case, the native token should be
+        // wrapped.
+        if (inputToken.token == address(wrappedNativeToken) && msg.value > 0) {
+            require(msg.value == inputToken.amount, "msg.value must match amount");
+            wrappedNativeToken.deposit{ value: msg.value }();
+            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
+            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
+            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+        } else IERC20Upgradeable(inputToken.token).safeTransferFrom(msg.sender, address(this), inputToken.amount);
 
         emit USSFundsDeposited(
             inputToken,
@@ -1112,16 +1165,23 @@ abstract contract SpokePool is
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit FundsDeposited(
-            amount,
-            chainId(),
+        emit USSFundsDeposited(
+            InputToken({ token: originToken, amount: amount }), // inputToken
+            OutputToken({ token: address(0), amount: _computeAmountPostFees(amount, relayerFeePct) }),
+            // outputToken:
+            // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
+            // token as the inputToken for the destination chain should be replaced here.
+            // - amount will be the deposit amount less relayerFeePct, which should now be set
+            // equal to realizedLpFeePct + gasFeePct + capitalCostFeePct where (gasFeePct + capitalCostFeePct)
+            // is equal to the old usage of `relayerFeePct`.
             destinationChainId,
-            relayerFeePct,
             newDepositId,
             quoteTimestamp,
-            originToken,
-            recipient,
+            type(uint32).max, // fillDeadline. Older deposits don't expire.
             depositor,
+            recipient,
+            address(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
+            // is no exclusive relayer.
             message
         );
     }

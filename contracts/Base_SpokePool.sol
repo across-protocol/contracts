@@ -8,6 +8,13 @@ import "./Ovm_SpokePool.sol";
  * @notice Base Spoke pool.
  */
 contract Base_SpokePool is Ovm_SpokePool {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) Ovm_SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+
     /**
      * @notice Construct the OVM Base SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
@@ -20,12 +27,6 @@ contract Base_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(
-            _initialDepositId,
-            _crossDomainAdmin,
-            _hubPool,
-            Lib_PredeployAddresses.OVM_ETH,
-            0x4200000000000000000000000000000000000006
-        );
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, Lib_PredeployAddresses.OVM_ETH);
     }
 }

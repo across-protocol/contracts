@@ -35,6 +35,13 @@ contract ZkSync_SpokePool is SpokePool {
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
     event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+
     /**
      * @notice Construct the ZkSync SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
@@ -42,17 +49,15 @@ contract ZkSync_SpokePool is SpokePool {
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wethAddress Weth address for this network to set.
      */
     function initialize(
         uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wethAddress
+        address _hubPool
     ) public initializer {
         l2Eth = 0x000000000000000000000000000000000000800A;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wethAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         _setZkBridge(_zkErc20Bridge);
     }
 

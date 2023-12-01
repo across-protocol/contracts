@@ -9,17 +9,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
-  const constructorArgs = [
+  const initArgs = [
     1_000_000,
     // The same token bridger must be deployed on mainnet and polygon, so its easier
     // to reuse it.
     "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
     hubPool.address,
     hubPool.address,
-    L2_ADDRESS_MAP[spokeChainId].wMatic,
     L2_ADDRESS_MAP[spokeChainId].fxChild,
   ];
-  await deployNewProxy("Polygon_SpokePool", constructorArgs);
+  await deployNewProxy("Polygon_SpokePool", initArgs, {
+    constructorArgs: [L2_ADDRESS_MAP[spokeChainId].wMatic, 3600, 32400],
+  });
 };
 
 module.exports = func;

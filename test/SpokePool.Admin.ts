@@ -14,8 +14,8 @@ describe("SpokePool Admin Functions", async function () {
   it("Can set initial deposit ID", async function () {
     const spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("MockSpokePool", owner),
-      [1, owner.address, owner.address, owner.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      [1, owner.address, owner.address],
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [owner.address] }
     );
     expect(await spokePool.numberOfDeposits()).to.equal(1);
   });
@@ -24,13 +24,6 @@ describe("SpokePool Admin Functions", async function () {
       .to.emit(spokePool, "EnabledDepositRoute")
       .withArgs(erc20.address, destinationChainId, true);
     expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
-  });
-  it("Change deposit quote buffer", async function () {
-    await expect(spokePool.connect(owner).setDepositQuoteTimeBuffer(60))
-      .to.emit(spokePool, "SetDepositQuoteTimeBuffer")
-      .withArgs(60);
-
-    expect(await spokePool.depositQuoteTimeBuffer()).to.equal(60);
   });
 
   it("Pause deposits", async function () {

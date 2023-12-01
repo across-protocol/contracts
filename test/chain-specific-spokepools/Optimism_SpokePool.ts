@@ -39,8 +39,8 @@ describe("Optimism Spoke Pool", function () {
 
     optimismSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("MockOptimism_SpokePool", owner),
-      [weth.address, l2Eth, 0, owner.address, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      [l2Eth, 0, owner.address, hubPool.address],
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
     );
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -50,7 +50,7 @@ describe("Optimism Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Optimism_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     // upgradeTo fails unless called by cross domain admin via messenger contract
@@ -95,13 +95,6 @@ describe("Optimism Spoke Pool", function () {
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setHubPool(rando.address);
     expect(await optimismSpokePool.hubPool()).to.equal(rando.address);
-  });
-
-  it("Only cross domain owner can set the quote time buffer", async function () {
-    await expect(optimismSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setDepositQuoteTimeBuffer(12345);
-    expect(await optimismSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {

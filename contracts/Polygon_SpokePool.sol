@@ -70,6 +70,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         callValidated = false;
     }
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+
     /**
      * @notice Construct the Polygon SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
@@ -77,7 +84,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wmaticAddress Replaces wrappedNativeToken for this network since MATIC is the native currency on polygon.
      * @param _fxChild FxChild contract, changeable by Admin.
      */
     function initialize(
@@ -85,11 +91,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
-        address _wmaticAddress, // Note: wmatic is used here since it is the token sent via msg.value on polygon.
         address _fxChild
     ) public initializer {
         callValidated = false;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wmaticAddress);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         polygonTokenBridger = _polygonTokenBridger;
         //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;

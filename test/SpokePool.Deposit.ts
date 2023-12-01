@@ -1,11 +1,24 @@
-import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei, randomAddress } from "../utils/utils";
+import {
+  expect,
+  ethers,
+  Contract,
+  SignerWithAddress,
+  seedWallet,
+  toBN,
+  toWei,
+  randomAddress,
+  BigNumber,
+} from "../utils/utils";
 import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
 import {
   amountToSeedWallets,
   amountToDeposit,
   destinationChainId,
-  depositRelayerFeePct as relayerFeePct,
+  depositRelayerFeePct,
+  realizedLpFeePct,
+  amountReceived,
   maxUint256,
+  MAX_UINT32,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -17,6 +30,7 @@ describe("SpokePool Depositor Logic", async function () {
   let depositor: SignerWithAddress, recipient: SignerWithAddress;
   let quoteTimestamp: number;
   let amount = amountToDeposit;
+  const relayerFeePct = toBN(depositRelayerFeePct).add(realizedLpFeePct);
 
   beforeEach(async function () {
     [depositor, recipient] = await ethers.getSigners();
@@ -66,17 +80,17 @@ describe("SpokePool Depositor Logic", async function () {
         })
       )
     )
-      .to.emit(spokePool, "FundsDeposited")
+      .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        amountToDeposit,
+        [erc20.address, amountToDeposit],
+        [ZERO_ADDRESS, amountReceived],
         destinationChainId,
-        destinationChainId,
-        relayerFeePct,
         0,
         quoteTimestamp,
-        erc20.address,
-        recipient.address,
+        MAX_UINT32,
         depositor.address,
+        recipient.address,
+        ZERO_ADDRESS,
         "0x"
       );
 
@@ -106,17 +120,17 @@ describe("SpokePool Depositor Logic", async function () {
         })
       )
     )
-      .to.emit(spokePool, "FundsDeposited")
+      .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        amountToDeposit,
+        [erc20.address, amountToDeposit],
+        [ZERO_ADDRESS, amountReceived],
         destinationChainId,
-        destinationChainId,
-        relayerFeePct,
         0,
         quoteTimestamp,
-        erc20.address,
+        BigNumber.from("0xFFFFFFFF"),
+        newDepositor, // Depositor is overridden.
         recipient.address,
-        newDepositor, // This gets overridden
+        ZERO_ADDRESS,
         "0x"
       );
   });
@@ -198,7 +212,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.emit(spokePool, "FundsDeposited");
+    ).to.emit(spokePool, "USSFundsDeposited");
   });
 
   it("Deposit route is disabled", async function () {
@@ -228,7 +242,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.emit(spokePool, "FundsDeposited");
+    ).to.emit(spokePool, "USSFundsDeposited");
 
     // Disable the route.
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
@@ -257,7 +271,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.emit(spokePool, "FundsDeposited");
+    ).to.emit(spokePool, "USSFundsDeposited");
   });
 
   it("Relayer fee is invalid", async function () {
@@ -290,7 +304,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp: quoteTimestamp + 1,
         })
       )
-    ).to.be.reverted;
+    ).to.be.revertedWith("underflowed");
 
     await expect(
       spokePool.connect(depositor).deposit(
@@ -317,7 +331,7 @@ describe("SpokePool Depositor Logic", async function () {
             quoteTimestamp: quoteTimestamp - offset,
           })
         )
-      ).to.emit(spokePool, "FundsDeposited");
+      ).to.emit(spokePool, "USSFundsDeposited");
     }
   });
 
@@ -336,17 +350,17 @@ describe("SpokePool Depositor Logic", async function () {
           maxUint256
         )
     )
-      .to.emit(spokePool, "FundsDeposited")
+      .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        amountToDeposit,
+        [erc20.address, amountToDeposit],
+        [ZERO_ADDRESS, amountReceived],
         destinationChainId,
-        destinationChainId,
-        relayerFeePct,
         0,
         quoteTimestamp,
-        erc20.address,
-        recipient.address,
+        BigNumber.from("0xFFFFFFFF"),
         depositor.address,
+        recipient.address,
+        ZERO_ADDRESS,
         "0x"
       );
 
@@ -398,7 +412,7 @@ describe("SpokePool Depositor Logic", async function () {
           maxCount,
         })
       )
-    ).to.emit(spokePool, "FundsDeposited");
+    ).to.emit(spokePool, "USSFundsDeposited");
 
     await expect(
       spokePool.connect(depositor).deposit(

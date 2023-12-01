@@ -15,8 +15,8 @@ describe("Ethereum Spoke Pool", function () {
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),
-      [0, hubPool.address, weth.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      [0, hubPool.address],
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
@@ -28,7 +28,7 @@ describe("Ethereum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Ethereum_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     // upgradeTo fails unless called by cross domain admin
@@ -54,12 +54,6 @@ describe("Ethereum Spoke Pool", function () {
     await expect(spokePool.connect(rando).setHubPool(rando.address)).to.be.reverted;
     await spokePool.connect(owner).setHubPool(rando.address);
     expect(await spokePool.hubPool()).to.equal(rando.address);
-  });
-
-  it("Only owner can set the quote time buffer", async function () {
-    await expect(spokePool.connect(rando).setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-    await spokePool.connect(owner).setDepositQuoteTimeBuffer(12345);
-    expect(await spokePool.depositQuoteTimeBuffer()).to.equal(12345);
   });
 
   it("Only owner can initialize a relayer refund", async function () {

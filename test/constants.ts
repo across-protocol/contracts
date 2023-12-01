@@ -1,6 +1,6 @@
 import { toWei, utf8ToHex, toBN, createRandomBytes32 } from "../utils/utils";
 
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 export { TokenRolesEnum } from "@uma/common";
 
@@ -30,6 +30,8 @@ export const totalPostModifiedFeesPct = toBN(oneHundredPct).sub(toBN(modifiedRel
 
 export const amountToRelayPreFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostFeesPct);
 
+export const amountReceived = toBN(amountToDeposit).mul(toBN(totalPostFeesPct)).div(toBN(oneHundredPct));
+
 export const amountToRelayPreModifiedFees = toBN(amountToRelay).mul(toBN(oneHundredPct)).div(totalPostModifiedFeesPct);
 
 export const amountToRelayPreLPFee = amountToRelayPreFees.mul(oneHundredPct.sub(realizedLpFeePct)).div(oneHundredPct);
@@ -41,8 +43,6 @@ export const originChainId = 666;
 export const repaymentChainId = 777;
 
 export const firstDepositId = 0;
-
-export const depositQuoteTimeBuffer = 60 * 60; // 60 minutes
 
 export const bondAmount = toWei("5");
 
@@ -97,6 +97,8 @@ export const maxL1TokensPerPoolRebalanceLeaf = 3;
 // Once running balances hits this number for an L1 token, net send amount should be set to running
 // balances to transfer tokens to the spoke pool.
 export const l1TokenTransferThreshold = toWei(100);
+
+export const MAX_UINT32 = BigNumber.from("0xFFFFFFFF");
 
 // DAI's Rate model.
 export const sampleRateModel = {

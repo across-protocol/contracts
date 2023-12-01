@@ -42,6 +42,13 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         adminCallValidated = false;
     }
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+
     /**
      * @notice Construct the Succinct SpokePool.
      * @param _hubChainId Chain ID of the chain where the HubPool is deployed.
@@ -49,17 +56,15 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _wrappedNativeToken Address of the wrapped native token.
      */
     function initialize(
         uint16 _hubChainId,
         address _succinctTargetAmb,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
-        address _wrappedNativeToken
+        address _hubPool
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, _wrappedNativeToken);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         succinctTargetAmb = _succinctTargetAmb;
         hubChainId = _hubChainId;
     }

@@ -36,8 +36,8 @@ describe("Arbitrum Spoke Pool", function () {
 
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Weth],
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      [0, l2GatewayRouter.address, owner.address, hubPool.address],
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60] }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -48,7 +48,7 @@ describe("Arbitrum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60] }
     );
 
     // upgradeTo fails unless called by cross domain admin
@@ -84,12 +84,6 @@ describe("Arbitrum Spoke Pool", function () {
     await expect(arbitrumSpokePool.setHubPool(rando.address)).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).setHubPool(rando.address);
     expect(await arbitrumSpokePool.hubPool()).to.equal(rando.address);
-  });
-
-  it("Only cross domain owner can set the quote time buffer", async function () {
-    await expect(arbitrumSpokePool.setDepositQuoteTimeBuffer(12345)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).setDepositQuoteTimeBuffer(12345);
-    expect(await arbitrumSpokePool.depositQuoteTimeBuffer()).to.equal(12345);
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {

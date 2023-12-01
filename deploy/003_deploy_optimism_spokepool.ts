@@ -8,8 +8,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
-  const constructorArgs = [1_000_000, hubPool.address, hubPool.address];
-  await deployNewProxy("Optimism_SpokePool", constructorArgs);
+  const initArgs = [1_000_000, hubPool.address, hubPool.address];
+  await deployNewProxy("Optimism_SpokePool", initArgs, {
+    constructorArgs: ["0x4200000000000000000000000000000000000006", 3600, 32400],
+  });
 };
 module.exports = func;
 func.tags = ["OptimismSpokePool", "optimism"];
