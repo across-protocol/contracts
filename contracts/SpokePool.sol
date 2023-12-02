@@ -201,8 +201,7 @@ abstract contract SpokePool is
         uint32 indexed rootBundleId,
         uint32 indexed leafId,
         address l2TokenAddress,
-        address[] refundAddresses,
-        address caller
+        address[] refundAddresses
     );
     event TokensBridged(
         uint256 amountToReturn,
@@ -1127,8 +1126,7 @@ abstract contract SpokePool is
             rootBundleId,
             relayerRefundLeaf.leafId,
             relayerRefundLeaf.l2TokenAddress,
-            relayerRefundLeaf.refundAddresses,
-            msg.sender
+            relayerRefundLeaf.refundAddresses
         );
     }
 

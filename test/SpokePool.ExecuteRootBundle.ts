@@ -60,7 +60,6 @@ describe("SpokePool Root Bundle Execution", function () {
       [consts.amountToRelay, consts.amountToRelay].map((v) => v.toString())
     );
     expect(relayTokensEvents[0].args?.refundAddresses).to.deep.equal([relayer.address, rando.address]);
-    expect(relayTokensEvents[0].args?.caller).to.equal(dataWorker.address);
 
     // Should emit TokensBridged event if amountToReturn is positive.
     let tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
