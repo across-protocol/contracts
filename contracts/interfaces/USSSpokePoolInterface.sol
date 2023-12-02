@@ -56,8 +56,8 @@ interface USSSpokePoolInterface {
         // and refundAddresses. The MerkleLeaf structure should be defined in the ACROSS-V2 UMIP, as there is no
         // logic in this contract that supports proving leaf inclusion in this root.
         bytes32 fillsRefundedRoot;
-        // IPFS hash of the file containing all leaves in the fillsRefundedRoot.
-        string fillsRefundedIpfsHash;
+        // Storage layer hash of the file containing all leaves in the fillsRefundedRoot.
+        string fillsRefundedHash;
     }
 
     // Contains information about a relay to be sent along with additional information that is not unique to the
