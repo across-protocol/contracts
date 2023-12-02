@@ -1153,7 +1153,7 @@ abstract contract SpokePool is
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
-        // Check that inclusionProof proves that relayerRefundLeaf is contained within the relayer refund root.
+        // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
         // Note: This should revert if the relayerRefundRoot is uninitialized.
         require(MerkleLib.verifyRelayerRefundUSS(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
 
