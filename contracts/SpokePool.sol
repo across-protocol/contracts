@@ -141,7 +141,6 @@ abstract contract SpokePool is
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
-    event SetDepositQuoteTimeBuffer(uint32 newBuffer);
     event FundsDeposited(
         uint256 amount,
         uint256 originChainId,
@@ -665,9 +664,10 @@ abstract contract SpokePool is
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
         require(enabledDepositRoutes[inputToken.token][destinationChainId], "Disabled route");
 
-        //@dev The following checks are copied from _deposit. Are they still needed?
-        require(inputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
-        require(outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        // Sanity check output token amount to prevent depositor from griefing off-chainbots who need to compute
+        // this amount and may not be able to process such large numbers. Same with input token amount.
+        // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
+        require(inputToken.amount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
@@ -680,16 +680,17 @@ abstract contract SpokePool is
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
-        // This way the dataworker/relayer doesn’t have to maintain more a lookback longer than this.
+        // This limits the maximum required lookback for dataworker and relayer instances.
         require(fillDeadline <= getCurrentTime() + fillDeadlineBuffer, "invalid fillDeadline");
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
-        // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
+        // transaction then the user is sending the native token. In this case, the native token should be
+        // wrapped.
         if (inputToken.token == address(wrappedNativeToken) && msg.value > 0) {
             require(msg.value == inputToken.amount, "msg.value must match amount");
             wrappedNativeToken.deposit{ value: msg.value }();
-            // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
-            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
+            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
+            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20Upgradeable(inputToken.token).safeTransferFrom(msg.sender, address(this), inputToken.amount);
 
