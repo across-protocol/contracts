@@ -1105,7 +1105,7 @@ abstract contract SpokePool is
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
-        // Check that inclusionProof proves that relayerRefundLeaf is contained within the relayer refund root.
+        // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
         // Note: This should revert if the relayerRefundRoot is uninitialized.
         require(MerkleLib.verifyRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
 
@@ -1153,7 +1153,7 @@ abstract contract SpokePool is
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
-        // Check that inclusionProof proves that relayerRefundLeaf is contained within the relayer refund root.
+        // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
         // Note: This should revert if the relayerRefundRoot is uninitialized.
         require(MerkleLib.verifyRelayerRefundUSS(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
 
@@ -1383,7 +1383,7 @@ abstract contract SpokePool is
         uint256[] memory refundAmounts
     ) internal view {
         require(_chainId == chainId(), "Invalid chainId");
-        require(refundAddresses.length == refundAmounts.length, "invalid leaf");
+        require(refundAddresses.length == refundAmounts.length, "Invalid leaf");
     }
 
     function _setClaimedLeaf(uint32 rootBundleId, uint32 leafId) internal {
