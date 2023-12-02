@@ -1383,7 +1383,7 @@ abstract contract SpokePool is
         uint256[] memory refundAmounts
     ) internal view {
         require(_chainId == chainId(), "Invalid chainId");
-        require(refundAddresses.length == refundAmounts.length, "invalid leaf");
+        require(refundAddresses.length == refundAmounts.length, "Invalid leaf");
     }
 
     function _setClaimedLeaf(uint32 rootBundleId, uint32 leafId) internal {
