@@ -132,8 +132,7 @@ interface USSSpokePoolInterface {
         address l2TokenAddress,
         address[] refundAddresses,
         bytes32 fillsRefundedRoot,
-        string fillsRefundedIpfsHash,
-        address caller
+        string fillsRefundedIpfsHash
     );
 
     function depositUSS(

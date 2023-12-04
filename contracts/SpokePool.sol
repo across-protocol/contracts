@@ -1176,8 +1176,7 @@ abstract contract SpokePool is
             relayerRefundLeaf.l2TokenAddress,
             relayerRefundLeaf.refundAddresses,
             relayerRefundLeaf.fillsRefundedRoot,
-            relayerRefundLeaf.fillsRefundedIpfsHash,
-            msg.sender
+            relayerRefundLeaf.fillsRefundedHash
         );
     }
 

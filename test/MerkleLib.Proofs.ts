@@ -126,7 +126,7 @@ describe("MerkleLib Proofs", async function () {
         refundAddresses,
         refundAmounts,
         fillsRefundedRoot: createRandomBytes32(),
-        fillsRefundedIpfsHash: createRandomBytes32(),
+        fillsRefundedHash: createRandomBytes32(),
       });
     }
 

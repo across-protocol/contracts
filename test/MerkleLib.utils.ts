@@ -23,7 +23,7 @@ export interface RelayerRefundLeaf {
 
 export interface USSRelayerRefundLeaf extends RelayerRefundLeaf {
   fillsRefundedRoot: string;
-  fillsRefundedIpfsHash: string;
+  fillsRefundedHash: string;
 }
 
 export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundLeaf[]) {
