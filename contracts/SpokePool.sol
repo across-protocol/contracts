@@ -662,7 +662,7 @@ abstract contract SpokePool is
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
         require(enabledDepositRoutes[inputToken.token][destinationChainId], "Disabled route");
 
-        // Sanity check output token amount to prevent depositor from griefing off-chainbots who need to compute
+        // Sanity check output token amount to prevent depositor from griefing off-chain bots who need to compute
         // this amount and may not be able to process such large numbers. Same with input token amount.
         // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
         require(inputToken.amount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
@@ -968,7 +968,9 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         bytes memory message
     ) public override nonReentrant unpausedFills {
-        // Validate input params
+        require(exclusiveRelayer == msg.sender, "Not exclusive relayer");
+        // solhint-disable-next-line not-rely-on-time
+        require(fillDeadline >= block.timestamp, "Fill deadline expired");
 
         USSRelayExecution memory relayExecution = USSRelayExecution({
             relay: USSRelayData({
@@ -995,11 +997,7 @@ abstract contract SpokePool is
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
-        // Validate RelayExecution data
-
-        // Pull output tokens from msg.sender and send to recipient
-
-        // Trigger `message` callback if appropriate.
+        _fillRelayUSS(relayExecution);
 
         emit USSFilledRelay(
             inputToken,
@@ -1077,6 +1075,37 @@ abstract contract SpokePool is
             depositId,
             rootBundleId,
             message,
+            payoutAdjustment,
+            proof
+        );
+    }
+
+    function executeUSSSlowRelayLeaf(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        bytes memory message,
+        uint32 rootBundleId,
+        int256 payoutAdjustment,
+        bytes32[] memory proof
+    ) public override nonReentrant {
+        _preExecuteLeafHook(outputToken.token);
+        _executeUSSSlowRelayLeaf(
+            depositor,
+            recipient,
+            exclusiveRelayer,
+            inputToken,
+            outputToken,
+            originChainId,
+            depositId,
+            fillDeadline,
+            message,
+            rootBundleId,
             payoutAdjustment,
             proof
         );
@@ -1355,6 +1384,73 @@ abstract contract SpokePool is
         _emitFillRelay(relayExecution, fillAmountPreFees);
     }
 
+    function _executeUSSSlowRelayLeaf(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        bytes memory message,
+        uint32 rootBundleId,
+        int256 payoutAdjustment,
+        bytes32[] memory proof
+    ) internal {
+        USSRelayExecution memory relayExecution = USSRelayExecution({
+            relay: USSRelayData({
+                depositor: depositor,
+                recipient: recipient,
+                relayer: exclusiveRelayer,
+                inputToken: inputToken.token,
+                outputToken: outputToken.token,
+                inputAmount: inputToken.amount,
+                outputAmount: outputToken.amount,
+                originChainId: originChainId,
+                destinationChainId: chainId(),
+                depositId: depositId,
+                fillDeadline: fillDeadline,
+                message: message
+            }),
+            relayHash: bytes32(0),
+            updatedOutputAmount: outputToken.amount,
+            updatedRecipient: recipient,
+            updatedMessage: message,
+            repaymentChainId: 0, // Hardcoded to 0 for slow fills
+            slowFill: true, // This is a slow fill execution
+            payoutAdjustmentPct: payoutAdjustment
+        });
+        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
+
+        _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
+
+        _fillRelayUSS(relayExecution);
+
+        emit USSFilledRelay(
+            inputToken,
+            outputToken,
+            0, // repaymentChainId
+            originChainId,
+            depositId,
+            fillDeadline,
+            address(0), // exclusive relayer thrown away for slow fill execution?
+            depositor,
+            recipient,
+            message,
+            // updatedRecipient,
+            recipient,
+            // slowFill,
+            true,
+            // updatedOutputTokenAmount
+            outputToken.amount,
+            // payout adjustment pct
+            payoutAdjustment,
+            // updatedMessage
+            message
+        );
+    }
+
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
         require(newCrossDomainAdmin != address(0), "Bad bridge router address");
         crossDomainAdmin = newCrossDomainAdmin;
@@ -1460,6 +1556,22 @@ abstract contract SpokePool is
 
         require(
             MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
+            "Invalid slow relay proof"
+        );
+    }
+
+    function _verifyUSSSlowFill(
+        USSRelayExecution memory relayExecution,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) internal view {
+        USSSlowFill memory slowFill = USSSlowFill({
+            relayData: relayExecution.relay,
+            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
+        });
+
+        require(
+            MerkleLib.verifySlowRelayFulfillmentUSS(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
             "Invalid slow relay proof"
         );
     }
@@ -1631,6 +1743,83 @@ abstract contract SpokePool is
                 amountToSend,
                 relayFills[relayExecution.relayHash] >= relayData.amount,
                 msg.sender,
+                relayExecution.updatedMessage
+            );
+        }
+    }
+
+    function _fillRelayUSS(USSRelayExecution memory relayExecution) internal {
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
+
+        // Sanity check output token amount to prevent filler from griefing off-chain bots who may not
+        // be able to process such large numbers.
+        // @dev: Is this sanity check useful or nice-to-have and is it worth the added gas cost?
+        require(amountToSend <= MAX_TRANSFER_SIZE, "Amount too large");
+
+        // @dev: This function doesn't support partial fills. Is there a way to gas-optimize this check?
+        require(relayFills[relayExecution.relayHash] != 1, "relay filled");
+        relayFills[relayExecution.relayHash] = 1;
+
+        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
+        // net movement of funds.
+        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
+        // way (no need to have funds on the destination).
+        if (msg.sender == relayExecution.updatedRecipient) return;
+
+        // This can only happen in a slow fill, where the contract is funding the relay.
+        if (relayExecution.payoutAdjustmentPct != 0) {
+            // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
+            // were originally expecting. If it is negative, then the recipient will receive less.
+            // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
+            require(relayExecution.payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
+
+            // Allow the payout adjustment to go up to 1000% (i.e. 11x).
+            // This is a sanity check to ensure the payouts do not grow too large via some sort of issue in bundle
+            // construction.
+            require(relayExecution.payoutAdjustmentPct <= 100e18, "payoutAdjustmentPct too large");
+
+            // Note: since _computeAmountPostFees is typically intended for fees, the signage must be reversed.
+            amountToSend = _computeAmountPostFees(amountToSend, -relayExecution.payoutAdjustmentPct);
+        }
+
+        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
+        // net movement of funds.
+        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
+        // way (no need to have funds on the destination).
+        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
+        // since there is no "relayer".
+        if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return;
+
+        USSRelayData memory relayData = relayExecution.relay;
+
+        // If relay token is wrappedNativeToken then unwrap and send native token.
+        if (relayData.outputToken == address(wrappedNativeToken)) {
+            // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
+            // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
+            // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
+            // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
+            // need to unwrap it to native token before sending to the user.
+            if (!relayExecution.slowFill)
+                IERC20Upgradeable(relayData.outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else {
+            // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
+            if (!relayExecution.slowFill)
+                IERC20Upgradeable(relayData.outputToken).safeTransferFrom(
+                    msg.sender,
+                    relayExecution.updatedRecipient,
+                    amountToSend
+                );
+            else IERC20Upgradeable(relayData.outputToken).safeTransfer(relayExecution.updatedRecipient, amountToSend);
+        }
+
+        if (relayExecution.updatedRecipient.isContract() && relayExecution.updatedMessage.length > 0) {
+            AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
+                relayData.outputToken,
+                amountToSend,
+                true, // fillCompleted
+                relayData.relayer,
                 relayExecution.updatedMessage
             );
         }

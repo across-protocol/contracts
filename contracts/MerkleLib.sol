@@ -64,6 +64,14 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
+    function verifySlowRelayFulfillmentUSS(
+        bytes32 root,
+        USSSpokePoolInterface.USSSlowFill memory slowRelayFulfillment,
+        bytes32[] memory proof
+    ) internal pure returns (bool) {
+        return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
+    }
+
     // The following functions are primarily copied from
     // https://github.com/Uniswap/merkle-distributor/blob/master/contracts/MerkleDistributor.sol with minor changes.
 

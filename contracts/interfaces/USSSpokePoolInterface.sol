@@ -167,4 +167,19 @@ interface USSSpokePoolInterface {
         USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) external;
+
+    function executeUSSSlowRelayLeaf(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        InputToken memory inputToken,
+        OutputToken memory outputToken,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        bytes memory message,
+        uint32 rootBundleId,
+        int256 payoutAdjustment,
+        bytes32[] memory proof
+    ) external;
 }
