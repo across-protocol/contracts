@@ -88,6 +88,7 @@ describe("SpokePool Depositor Logic", async function () {
         0,
         quoteTimestamp,
         MAX_UINT32,
+        0,
         depositor.address,
         recipient.address,
         ZERO_ADDRESS,
@@ -128,6 +129,7 @@ describe("SpokePool Depositor Logic", async function () {
         0,
         quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
+        0,
         newDepositor, // Depositor is overridden.
         recipient.address,
         ZERO_ADDRESS,
@@ -358,6 +360,7 @@ describe("SpokePool Depositor Logic", async function () {
         0,
         quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
+        0,
         depositor.address,
         recipient.address,
         ZERO_ADDRESS,
@@ -446,7 +449,8 @@ describe("SpokePool Depositor Logic", async function () {
         destinationChainId,
         ZERO_ADDRESS,
         quoteTimestamp,
-        quoteTimestamp + 100,
+        quoteTimestamp + 100, // fill deadline
+        quoteTimestamp + 10, // exclusivity deadline
         "0x"
       );
     });

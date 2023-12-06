@@ -10,8 +10,7 @@ interface USSSpokePoolInterface {
         address depositor;
         // The recipient address on the destination chain.
         address recipient;
-        // If this address is not 0x0, then only this address can fill the deposit. Consider this therefore a
-        // "committed relayer" address.
+        // This is the exclusive relayer who can fill the deposit before the exclusivity deadline.
         address relayer;
         // Token that is deposited on origin chain by depositor.
         address inputToken;
@@ -29,6 +28,8 @@ interface USSSpokePoolInterface {
         uint32 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
         uint32 fillDeadline;
+        // The timestamp on the destination chain after which any relayer can fill the deposit.
+        uint32 exclusivityDeadline;
         // Data that is forwarded to the recipient.
         bytes message;
     }
@@ -98,6 +99,7 @@ interface USSSpokePoolInterface {
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         address indexed depositor,
         address recipient,
         address relayer,
@@ -111,6 +113,7 @@ interface USSSpokePoolInterface {
         uint256 indexed originChainId,
         uint32 indexed depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         address indexed relayer,
         address depositor,
         address recipient,
@@ -138,14 +141,13 @@ interface USSSpokePoolInterface {
     function depositUSS(
         address depositor,
         address recipient,
-        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
-        // so I've packed them for now into input and output token structs
         InputToken memory inputToken,
         OutputToken memory outputToken,
         uint256 destinationChainId,
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message
     ) external payable;
 
@@ -159,6 +161,7 @@ interface USSSpokePoolInterface {
         uint256 originChainId,
         uint32 depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message
     ) external;
 
@@ -177,6 +180,7 @@ interface USSSpokePoolInterface {
         uint256 originChainId,
         uint32 depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message,
         uint32 rootBundleId,
         int256 payoutAdjustment,

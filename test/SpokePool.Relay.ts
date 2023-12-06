@@ -494,10 +494,10 @@ describe("SpokePool Relayer Logic", async function () {
     it("placeholder: gas test", async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
 
-      await spokePool.fillRelayUSS(
+      await spokePool.connect(relayer).fillRelayUSS(
         depositor.address,
         recipient.address,
-        randomAddress(),
+        relayer.address,
         // Input token
         {
           token: erc20.address,
@@ -505,13 +505,14 @@ describe("SpokePool Relayer Logic", async function () {
         },
         // Output token
         {
-          token: randomAddress(),
+          token: destErc20.address,
           amount: consts.amountToDeposit,
         },
         consts.repaymentChainId,
         consts.originChainId,
         consts.firstDepositId,
         fillDeadline,
+        fillDeadline - 500,
         "0x"
       );
     });

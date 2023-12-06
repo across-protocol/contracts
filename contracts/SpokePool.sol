@@ -656,6 +656,7 @@ abstract contract SpokePool is
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
@@ -681,6 +682,9 @@ abstract contract SpokePool is
         // This limits the maximum required lookback for dataworker and relayer instances.
         require(fillDeadline <= getCurrentTime() + fillDeadlineBuffer, "invalid fillDeadline");
 
+        // No need to sanity check exclusivityDeadline becaue if its bigger than fillDeadline, then
+        // there the full deadline is exclusive, and if its too small, then there is no exclusivity period.
+
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be
         // wrapped.
@@ -700,6 +704,7 @@ abstract contract SpokePool is
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
+            exclusivityDeadline,
             depositor,
             recipient,
             exclusiveRelayer,
@@ -966,11 +971,13 @@ abstract contract SpokePool is
         uint256 originChainId,
         uint32 depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message
     ) public override nonReentrant unpausedFills {
-        require(exclusiveRelayer == msg.sender, "Not exclusive relayer");
         // solhint-disable-next-line not-rely-on-time
         require(fillDeadline >= block.timestamp, "Fill deadline expired");
+        // solhint-disable-next-line not-rely-on-time
+        require(exclusivityDeadline >= block.timestamp && exclusiveRelayer == msg.sender, "Not exclusive relayer");
 
         USSRelayExecution memory relayExecution = USSRelayExecution({
             relay: USSRelayData({
@@ -985,6 +992,7 @@ abstract contract SpokePool is
                 destinationChainId: chainId(),
                 depositId: depositId,
                 fillDeadline: fillDeadline,
+                exclusivityDeadline: exclusivityDeadline,
                 message: message
             }),
             relayHash: bytes32(0),
@@ -1006,6 +1014,7 @@ abstract contract SpokePool is
             originChainId,
             depositId,
             fillDeadline,
+            exclusivityDeadline,
             exclusiveRelayer, // or msg.sender
             depositor,
             recipient,
@@ -1089,6 +1098,7 @@ abstract contract SpokePool is
         uint256 originChainId,
         uint32 depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message,
         uint32 rootBundleId,
         int256 payoutAdjustment,
@@ -1104,6 +1114,7 @@ abstract contract SpokePool is
             originChainId,
             depositId,
             fillDeadline,
+            exclusivityDeadline,
             message,
             rootBundleId,
             payoutAdjustment,
@@ -1288,6 +1299,7 @@ abstract contract SpokePool is
             newDepositId,
             quoteTimestamp,
             type(uint32).max, // fillDeadline. Older deposits don't expire.
+            0, // exclusivityDeadline.
             depositor,
             recipient,
             address(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
@@ -1393,6 +1405,7 @@ abstract contract SpokePool is
         uint256 originChainId,
         uint32 depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message,
         uint32 rootBundleId,
         int256 payoutAdjustment,
@@ -1411,6 +1424,7 @@ abstract contract SpokePool is
                 destinationChainId: chainId(),
                 depositId: depositId,
                 fillDeadline: fillDeadline,
+                exclusivityDeadline: exclusivityDeadline,
                 message: message
             }),
             relayHash: bytes32(0),
@@ -1434,6 +1448,7 @@ abstract contract SpokePool is
             originChainId,
             depositId,
             fillDeadline,
+            exclusivityDeadline,
             address(0), // exclusive relayer thrown away for slow fill execution?
             depositor,
             recipient,
@@ -1759,12 +1774,6 @@ abstract contract SpokePool is
         // @dev: This function doesn't support partial fills. Is there a way to gas-optimize this check?
         require(relayFills[relayExecution.relayHash] != 1, "relay filled");
         relayFills[relayExecution.relayHash] = 1;
-
-        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
-        // net movement of funds.
-        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
-        // way (no need to have funds on the destination).
-        if (msg.sender == relayExecution.updatedRecipient) return;
 
         // This can only happen in a slow fill, where the contract is funding the relay.
         if (relayExecution.payoutAdjustmentPct != 0) {
