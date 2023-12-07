@@ -445,7 +445,6 @@ describe("SpokePool Depositor Logic", async function () {
         },
         destinationChainId,
         ZERO_ADDRESS,
-        quoteTimestamp,
         quoteTimestamp + 100, // fill deadline
         quoteTimestamp + 10, // exclusivity deadline
         "0x"
