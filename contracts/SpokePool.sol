@@ -1765,6 +1765,11 @@ abstract contract SpokePool is
 
     function _fillRelayUSS(USSRelayExecution memory relayExecution) internal {
         uint256 amountToSend = relayExecution.updatedOutputAmount;
+        address recipientToSend = relayExecution.updatedRecipient;
+        USSRelayData memory relayData = relayExecution.relay;
+        bytes32 relayHash = relayExecution.relayHash;
+        bool isSlowFill = relayExecution.slowFill;
+        address outputToken = relayData.outputToken;
 
         // Sanity check output token amount to prevent filler from griefing off-chain bots who may not
         // be able to process such large numbers.
@@ -1772,23 +1777,24 @@ abstract contract SpokePool is
         require(amountToSend <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // @dev: This function doesn't support partial fills. Is there a way to gas-optimize this check?
-        require(relayFills[relayExecution.relayHash] != 1, "relay filled");
-        relayFills[relayExecution.relayHash] = 1;
+        require(relayFills[relayHash] == 0, "relay filled");
+        relayFills[relayHash] = 1;
 
         // This can only happen in a slow fill, where the contract is funding the relay.
-        if (relayExecution.payoutAdjustmentPct != 0) {
+        int256 payoutAdjustmentPct = relayExecution.payoutAdjustmentPct;
+        if (payoutAdjustmentPct != 0) {
             // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
             // were originally expecting. If it is negative, then the recipient will receive less.
             // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
-            require(relayExecution.payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
+            require(payoutAdjustmentPct >= -1e18, "payoutAdjustmentPct too small");
 
             // Allow the payout adjustment to go up to 1000% (i.e. 11x).
             // This is a sanity check to ensure the payouts do not grow too large via some sort of issue in bundle
             // construction.
-            require(relayExecution.payoutAdjustmentPct <= 100e18, "payoutAdjustmentPct too large");
+            require(payoutAdjustmentPct <= 100e18, "payoutAdjustmentPct too large");
 
             // Note: since _computeAmountPostFees is typically intended for fees, the signage must be reversed.
-            amountToSend = _computeAmountPostFees(amountToSend, -relayExecution.payoutAdjustmentPct);
+            amountToSend = _computeAmountPostFees(amountToSend, -payoutAdjustmentPct);
         }
 
         // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
@@ -1797,35 +1803,27 @@ abstract contract SpokePool is
         // way (no need to have funds on the destination).
         // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
         // since there is no "relayer".
-        if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return;
-
-        USSRelayData memory relayData = relayExecution.relay;
+        if (msg.sender == recipientToSend && !isSlowFill) return;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
-        if (relayData.outputToken == address(wrappedNativeToken)) {
+        if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
-            if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
-            if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.outputToken).safeTransferFrom(
-                    msg.sender,
-                    relayExecution.updatedRecipient,
-                    amountToSend
-                );
-            else IERC20Upgradeable(relayData.outputToken).safeTransfer(relayExecution.updatedRecipient, amountToSend);
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
+            else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
         }
 
-        if (relayExecution.updatedRecipient.isContract() && relayExecution.updatedMessage.length > 0) {
-            AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
-                relayData.outputToken,
+        if (recipientToSend.isContract() && relayExecution.updatedMessage.length > 0) {
+            AcrossMessageHandler(recipientToSend).handleAcrossMessage(
+                outputToken,
                 amountToSend,
                 true, // fillCompleted
                 relayData.relayer,
