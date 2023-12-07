@@ -654,7 +654,6 @@ abstract contract SpokePool is
         OutputToken memory outputToken,
         uint256 destinationChainId,
         address exclusiveRelayer,
-        uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes memory message
@@ -667,15 +666,6 @@ abstract contract SpokePool is
         // this amount and may not be able to process such large numbers. Same with input token amount.
         // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
         require(inputToken.amount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
-
-        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
-        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
-        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
-        // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
-        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
-
-        // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -702,7 +692,6 @@ abstract contract SpokePool is
             destinationChainId,
             // Increment count of deposits so that deposit ID for this spoke pool is unique.
             numberOfDeposits++,
-            quoteTimestamp,
             fillDeadline,
             exclusivityDeadline,
             depositor,
@@ -1297,7 +1286,6 @@ abstract contract SpokePool is
             // is equal to the old usage of `relayerFeePct`.
             destinationChainId,
             newDepositId,
-            quoteTimestamp,
             type(uint32).max, // fillDeadline. Older deposits don't expire.
             0, // exclusivityDeadline.
             depositor,

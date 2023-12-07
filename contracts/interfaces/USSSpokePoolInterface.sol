@@ -97,7 +97,6 @@ interface USSSpokePoolInterface {
         OutputToken outputToken,
         uint256 indexed destinationChainId,
         uint32 indexed depositId,
-        uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         address indexed depositor,
@@ -145,7 +144,6 @@ interface USSSpokePoolInterface {
         OutputToken memory outputToken,
         uint256 destinationChainId,
         address exclusiveRelayer,
-        uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes memory message
