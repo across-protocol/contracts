@@ -292,7 +292,7 @@ describe("SpokePool Depositor Logic", async function () {
 
   it("quoteTimestamp is out of range", async function () {
     const revertReason = "invalid quoteTimestamp";
-    const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
+    const quoteTimeBuffer = await spokePool.quoteTimeBuffer();
 
     await expect(
       spokePool.connect(depositor).deposit(
@@ -428,7 +428,7 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.revertedWith(revertReason);
   });
 
-  describe("deposit USS", function () {
+  describe.only("deposit USS", function () {
     it("placeholder: gas test", async function () {
       await spokePool.depositUSS(
         depositor.address,

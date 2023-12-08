@@ -160,6 +160,7 @@ interface USSSpokePoolInterface {
         uint32 depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
+        uint32 quoteTimestamp,
         bytes memory message
     ) external;
 

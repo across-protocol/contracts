@@ -490,9 +490,10 @@ describe("SpokePool Relayer Logic", async function () {
   it("EIP1271 - Updating relayer fee signature verification failure cases", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
   });
-  describe("fill USS", function () {
+  describe.only("fill USS", function () {
     it("placeholder: gas test", async function () {
-      const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
+      const quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadline = quoteTimestamp + 1000;
 
       await spokePool.connect(relayer).fillRelayUSS(
         depositor.address,
@@ -513,6 +514,7 @@ describe("SpokePool Relayer Logic", async function () {
         consts.firstDepositId,
         fillDeadline,
         fillDeadline - 500,
+        quoteTimestamp,
         "0x"
       );
     });

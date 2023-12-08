@@ -104,17 +104,17 @@ abstract contract SpokePool is
     // that they cannot be changed in production without changing the contract code, while immutable variables
     // can be set in the constructor. Therefore we use the immutable keyword for variables that we might want to be
     // different for each child contract (one obvious example of this is the wrappedNativeToken) or that we might
-    // want to update in the future like depositQuoteTimeBuffer. Constants are unlikely to ever be changed.
+    // want to update in the future like quoteTimeBuffer. Constants are unlikely to ever be changed.
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     WETH9Interface public immutable wrappedNativeToken;
 
-    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+    // Any lp fee quote timestamps greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    uint32 public immutable depositQuoteTimeBuffer;
+    uint32 public immutable quoteTimeBuffer;
 
     // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -269,7 +269,7 @@ abstract contract SpokePool is
      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
      * it is deployed:
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * @param _quoteTimeBuffer quoteTimeBuffer to set. Quote timestamps can't be set more than this amount
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
@@ -277,11 +277,11 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
-        uint32 _depositQuoteTimeBuffer,
+        uint32 _quoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     ) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
-        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
+        quoteTimeBuffer = _quoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
         _disableInitializers();
     }
@@ -665,7 +665,8 @@ abstract contract SpokePool is
         // Sanity check output token amount to prevent depositor from griefing off-chain bots who need to compute
         // this amount and may not be able to process such large numbers. Same with input token amount.
         // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
-        require(inputToken.amount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        uint256 inputTokenAmount = inputToken.amount;
+        require(inputTokenAmount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -678,13 +679,14 @@ abstract contract SpokePool is
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be
         // wrapped.
-        if (inputToken.token == address(wrappedNativeToken) && msg.value > 0) {
-            require(msg.value == inputToken.amount, "msg.value must match amount");
+        address inputTokenAddress = inputToken.token;
+        if (inputTokenAddress == address(wrappedNativeToken) && msg.value > 0) {
+            require(msg.value == inputTokenAmount, "msg.value must match amount");
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
             // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20Upgradeable(inputToken.token).safeTransferFrom(msg.sender, address(this), inputToken.amount);
+        } else IERC20Upgradeable(inputTokenAddress).safeTransferFrom(msg.sender, address(this), inputTokenAmount);
 
         emit USSFundsDeposited(
             inputToken,
@@ -961,12 +963,23 @@ abstract contract SpokePool is
         uint32 depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
+        uint32 quoteTimestamp,
         bytes memory message
     ) public override nonReentrant unpausedFills {
         // solhint-disable-next-line not-rely-on-time
         require(fillDeadline >= block.timestamp, "Fill deadline expired");
         // solhint-disable-next-line not-rely-on-time
         require(exclusivityDeadline >= block.timestamp && exclusiveRelayer == msg.sender, "Not exclusive relayer");
+
+        // Require that quoteTimestamp has a maximum age so that relayer pays an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
+        // This will underflow if quoteTimestamp is more than quoteTimeBuffer;
+        // this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        require(getCurrentTime() - quoteTimestamp <= quoteTimeBuffer, "invalid quoteTimestamp");
 
         USSRelayExecution memory relayExecution = USSRelayExecution({
             relay: USSRelayData({
@@ -1256,10 +1269,10 @@ abstract contract SpokePool is
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
         // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
-        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
+        // quoteTimestamp is more than quoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= quoteTimeBuffer, "invalid quoteTimestamp");
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
@@ -1752,19 +1765,14 @@ abstract contract SpokePool is
     }
 
     function _fillRelayUSS(USSRelayExecution memory relayExecution) internal {
-        uint256 amountToSend = relayExecution.updatedOutputAmount;
-        address recipientToSend = relayExecution.updatedRecipient;
-        USSRelayData memory relayData = relayExecution.relay;
-        bytes32 relayHash = relayExecution.relayHash;
-        bool isSlowFill = relayExecution.slowFill;
-        address outputToken = relayData.outputToken;
-
         // Sanity check output token amount to prevent filler from griefing off-chain bots who may not
         // be able to process such large numbers.
         // @dev: Is this sanity check useful or nice-to-have and is it worth the added gas cost?
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
         require(amountToSend <= MAX_TRANSFER_SIZE, "Amount too large");
 
         // @dev: This function doesn't support partial fills. Is there a way to gas-optimize this check?
+        bytes32 relayHash = relayExecution.relayHash;
         require(relayFills[relayHash] == 0, "relay filled");
         relayFills[relayHash] = 1;
 
@@ -1791,9 +1799,12 @@ abstract contract SpokePool is
         // way (no need to have funds on the destination).
         // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
         // since there is no "relayer".
+        bool isSlowFill = relayExecution.slowFill;
+        address recipientToSend = relayExecution.updatedRecipient;
         if (msg.sender == recipientToSend && !isSlowFill) return;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
+        address outputToken = relayExecution.relay.outputToken;
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
@@ -1809,13 +1820,16 @@ abstract contract SpokePool is
             else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
         }
 
-        if (recipientToSend.isContract() && relayExecution.updatedMessage.length > 0) {
+        // @TODO Can we remove the third param in handleAcrossMessage since we no longer support partial fills? Will
+        // require integrators sign-off.
+        bytes memory updatedMessage = relayExecution.updatedMessage;
+        if (recipientToSend.isContract() && updatedMessage.length > 0) {
             AcrossMessageHandler(recipientToSend).handleAcrossMessage(
                 outputToken,
                 amountToSend,
                 true, // fillCompleted
-                relayData.relayer,
-                relayExecution.updatedMessage
+                msg.sender,
+                updatedMessage
             );
         }
     }
