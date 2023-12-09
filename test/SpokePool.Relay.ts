@@ -490,33 +490,27 @@ describe("SpokePool Relayer Logic", async function () {
   it("EIP1271 - Updating relayer fee signature verification failure cases", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
   });
-  describe.only("fill USS", function () {
+  describe("fill USS", function () {
     it("placeholder: gas test", async function () {
-      const quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
-      const fillDeadline = quoteTimestamp + 1000;
+      const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
 
-      await spokePool.connect(relayer).fillRelayUSS(
-        depositor.address,
-        recipient.address,
-        relayer.address,
-        // Input token
-        {
-          token: erc20.address,
-          amount: consts.amountToDeposit,
-        },
-        // Output token
-        {
-          token: destErc20.address,
-          amount: consts.amountToDeposit,
-        },
-        consts.repaymentChainId,
-        consts.originChainId,
-        consts.firstDepositId,
-        fillDeadline,
-        fillDeadline - 500,
-        quoteTimestamp,
-        "0x"
-      );
+      await spokePool
+        .connect(relayer)
+        .fillRelayUSS(
+          depositor.address,
+          recipient.address,
+          relayer.address,
+          erc20.address,
+          destErc20.address,
+          consts.amountToDeposit,
+          consts.amountToDeposit,
+          consts.repaymentChainId,
+          consts.originChainId,
+          consts.firstDepositId,
+          fillDeadline,
+          fillDeadline - 500,
+          "0x"
+        );
     });
   });
 });

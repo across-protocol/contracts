@@ -650,23 +650,35 @@ abstract contract SpokePool is
     function depositUSS(
         address depositor,
         address recipient,
-        InputToken memory inputToken,
-        OutputToken memory outputToken,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
+        uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes memory message
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        require(enabledDepositRoutes[inputToken.token][destinationChainId], "Disabled route");
+        require(enabledDepositRoutes[inputToken][destinationChainId], "Disabled route");
 
         // Sanity check output token amount to prevent depositor from griefing off-chain bots who need to compute
         // this amount and may not be able to process such large numbers. Same with input token amount.
         // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
-        uint256 inputTokenAmount = inputToken.amount;
-        require(inputTokenAmount <= MAX_TRANSFER_SIZE && outputToken.amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        require(inputAmount <= MAX_TRANSFER_SIZE && outputAmount <= MAX_TRANSFER_SIZE, "Amount too large");
+
+        // Require that quoteTimestamp has a maximum age so that relayer pays an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
+        // This will underflow if quoteTimestamp is more than quoteTimeBuffer;
+        // this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        require(getCurrentTime() - quoteTimestamp <= quoteTimeBuffer, "invalid quoteTimestamp");
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -679,21 +691,23 @@ abstract contract SpokePool is
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be
         // wrapped.
-        address inputTokenAddress = inputToken.token;
-        if (inputTokenAddress == address(wrappedNativeToken) && msg.value > 0) {
-            require(msg.value == inputTokenAmount, "msg.value must match amount");
+        if (inputToken == address(wrappedNativeToken) && msg.value > 0) {
+            require(msg.value == inputAmount, "msg.value must match amount");
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
             // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20Upgradeable(inputTokenAddress).safeTransferFrom(msg.sender, address(this), inputTokenAmount);
+        } else IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
 
         emit USSFundsDeposited(
             inputToken,
             outputToken,
+            inputAmount,
+            outputAmount,
             destinationChainId,
             // Increment count of deposits so that deposit ID for this spoke pool is unique.
             numberOfDeposits++,
+            quoteTimestamp,
             fillDeadline,
             exclusivityDeadline,
             depositor,
@@ -956,14 +970,15 @@ abstract contract SpokePool is
         address depositor,
         address recipient,
         address exclusiveRelayer,
-        InputToken memory inputToken,
-        OutputToken memory outputToken,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
         uint256 repaymentChainId,
         uint256 originChainId,
         uint32 depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
-        uint32 quoteTimestamp,
         bytes memory message
     ) public override nonReentrant unpausedFills {
         // solhint-disable-next-line not-rely-on-time
@@ -971,25 +986,15 @@ abstract contract SpokePool is
         // solhint-disable-next-line not-rely-on-time
         require(exclusivityDeadline >= block.timestamp && exclusiveRelayer == msg.sender, "Not exclusive relayer");
 
-        // Require that quoteTimestamp has a maximum age so that relayer pays an LP fee based on recent HubPool usage.
-        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
-        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
-        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
-        // This will underflow if quoteTimestamp is more than quoteTimeBuffer;
-        // this is safe but will throw an unintuitive error.
-
-        // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= quoteTimeBuffer, "invalid quoteTimestamp");
-
         USSRelayExecution memory relayExecution = USSRelayExecution({
             relay: USSRelayData({
                 depositor: depositor,
                 recipient: recipient,
-                relayer: exclusiveRelayer,
-                inputToken: inputToken.token,
-                outputToken: outputToken.token,
-                inputAmount: inputToken.amount,
-                outputAmount: outputToken.amount,
+                exclusiveRelayer: exclusiveRelayer,
+                inputToken: inputToken,
+                outputToken: outputToken,
+                inputAmount: inputAmount,
+                outputAmount: outputAmount,
                 originChainId: originChainId,
                 destinationChainId: chainId(),
                 depositId: depositId,
@@ -998,7 +1003,7 @@ abstract contract SpokePool is
                 message: message
             }),
             relayHash: bytes32(0),
-            updatedOutputAmount: outputToken.amount,
+            updatedOutputAmount: outputAmount,
             updatedRecipient: recipient,
             updatedMessage: message,
             repaymentChainId: repaymentChainId,
@@ -1007,30 +1012,27 @@ abstract contract SpokePool is
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
+        // If a slow fill for this fill was requested then the relayFills value for this hash will be
+        // FillStatus.RequestedSlowFill.
+        bool replacedSlowFillExecution = relayFills[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill);
         _fillRelayUSS(relayExecution);
 
         emit USSFilledRelay(
             inputToken,
             outputToken,
+            inputAmount,
+            outputAmount,
             repaymentChainId,
             originChainId,
             depositId,
             fillDeadline,
             exclusivityDeadline,
-            exclusiveRelayer, // or msg.sender
+            exclusiveRelayer,
+            msg.sender,
             depositor,
             recipient,
             message,
-            // updatedRecipient,
-            recipient,
-            // slowFill,
-            false,
-            // updatedOutputTokenAmount
-            outputToken.amount,
-            // payout adjustment pct
-            0,
-            // updatedMessage
-            message
+            replacedSlowFillExecution
         );
     }
 
@@ -1091,37 +1093,53 @@ abstract contract SpokePool is
         );
     }
 
+    // @dev We pack the function params into USSSlowFill to avoid stack-to-deep error that occurs
+    // when a function is called with more than 13 params.
     function executeUSSSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        InputToken memory inputToken,
-        OutputToken memory outputToken,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes memory message,
+        USSSlowFill memory slowFillLeaf,
         uint32 rootBundleId,
-        int256 payoutAdjustment,
         bytes32[] memory proof
     ) public override nonReentrant {
-        _preExecuteLeafHook(outputToken.token);
-        _executeUSSSlowRelayLeaf(
-            depositor,
-            recipient,
-            exclusiveRelayer,
-            inputToken,
-            outputToken,
-            originChainId,
-            depositId,
-            fillDeadline,
-            exclusivityDeadline,
-            message,
-            rootBundleId,
-            payoutAdjustment,
-            proof
+        USSRelayData memory relayData = slowFillLeaf.relayData;
+        _preExecuteLeafHook(relayData.outputToken);
+
+        // @TODO In the future consider allowing way for slow fill leaf to be created with updated
+        // deposit params like outputAmount, message and recipient.
+        USSRelayExecution memory relayExecution = USSRelayExecution({
+            relay: relayData,
+            relayHash: bytes32(0),
+            updatedOutputAmount: relayData.outputAmount,
+            updatedRecipient: relayData.recipient,
+            updatedMessage: relayData.message,
+            repaymentChainId: 0, // Hardcoded to 0 for slow fills
+            slowFill: true, // This is a slow fill execution
+            payoutAdjustmentPct: slowFillLeaf.payoutAdjustmentPct
+        });
+        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
+
+        _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
+
+        _fillRelayUSS(relayExecution);
+
+        emit USSFilledRelay(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            0, // repaymentChainId
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            address(0), // 0x0 hardcoded as relayer for slow fill execution.
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
+            false // Executing a slow fill means that there was no slow fill replaced trivially.
         );
+
+        // emit USSExecutedSlowFill(payoutAdjustment);
     }
 
     /**
@@ -1289,16 +1307,18 @@ abstract contract SpokePool is
         } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit USSFundsDeposited(
-            InputToken({ token: originToken, amount: amount }), // inputToken
-            OutputToken({ token: address(0), amount: _computeAmountPostFees(amount, relayerFeePct) }),
-            // outputToken:
+            originToken, // inputToken
+            address(0), // outputToken
             // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
             // token as the inputToken for the destination chain should be replaced here.
-            // - amount will be the deposit amount less relayerFeePct, which should now be set
+            amount, // inputAmount
+            _computeAmountPostFees(amount, relayerFeePct), // outputAmount
+            // - output amount will be the deposit amount less relayerFeePct, which should now be set
             // equal to realizedLpFeePct + gasFeePct + capitalCostFeePct where (gasFeePct + capitalCostFeePct)
             // is equal to the old usage of `relayerFeePct`.
             destinationChainId,
             newDepositId,
+            quoteTimestamp,
             type(uint32).max, // fillDeadline. Older deposits don't expire.
             0, // exclusivityDeadline.
             depositor,
@@ -1395,76 +1415,6 @@ abstract contract SpokePool is
         // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
         // to 0 as slow relays do not pay the caller of this method (depositor is refunded this fee).
         _emitFillRelay(relayExecution, fillAmountPreFees);
-    }
-
-    function _executeUSSSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        InputToken memory inputToken,
-        OutputToken memory outputToken,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes memory message,
-        uint32 rootBundleId,
-        int256 payoutAdjustment,
-        bytes32[] memory proof
-    ) internal {
-        USSRelayExecution memory relayExecution = USSRelayExecution({
-            relay: USSRelayData({
-                depositor: depositor,
-                recipient: recipient,
-                relayer: exclusiveRelayer,
-                inputToken: inputToken.token,
-                outputToken: outputToken.token,
-                inputAmount: inputToken.amount,
-                outputAmount: outputToken.amount,
-                originChainId: originChainId,
-                destinationChainId: chainId(),
-                depositId: depositId,
-                fillDeadline: fillDeadline,
-                exclusivityDeadline: exclusivityDeadline,
-                message: message
-            }),
-            relayHash: bytes32(0),
-            updatedOutputAmount: outputToken.amount,
-            updatedRecipient: recipient,
-            updatedMessage: message,
-            repaymentChainId: 0, // Hardcoded to 0 for slow fills
-            slowFill: true, // This is a slow fill execution
-            payoutAdjustmentPct: payoutAdjustment
-        });
-        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
-
-        _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
-
-        _fillRelayUSS(relayExecution);
-
-        emit USSFilledRelay(
-            inputToken,
-            outputToken,
-            0, // repaymentChainId
-            originChainId,
-            depositId,
-            fillDeadline,
-            exclusivityDeadline,
-            address(0), // exclusive relayer thrown away for slow fill execution?
-            depositor,
-            recipient,
-            message,
-            // updatedRecipient,
-            recipient,
-            // slowFill,
-            true,
-            // updatedOutputTokenAmount
-            outputToken.amount,
-            // payout adjustment pct
-            payoutAdjustment,
-            // updatedMessage
-            message
-        );
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
@@ -1771,10 +1721,15 @@ abstract contract SpokePool is
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         require(amountToSend <= MAX_TRANSFER_SIZE, "Amount too large");
 
-        // @dev: This function doesn't support partial fills. Is there a way to gas-optimize this check?
+        // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
+        // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
+        // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
+        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
+        // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
+        // needs to send back to the HubPool.
         bytes32 relayHash = relayExecution.relayHash;
-        require(relayFills[relayHash] == 0, "relay filled");
-        relayFills[relayHash] = 1;
+        require(relayFills[relayHash] <= uint256(FillStatus.Filled), "relay filled");
+        relayFills[relayHash] = uint256(FillStatus.Filled);
 
         // This can only happen in a slow fill, where the contract is funding the relay.
         int256 payoutAdjustmentPct = relayExecution.payoutAdjustmentPct;

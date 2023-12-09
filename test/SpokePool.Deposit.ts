@@ -82,10 +82,13 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        [erc20.address, amountToDeposit],
-        [ZERO_ADDRESS, amountReceived],
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
         destinationChainId,
         0,
+        quoteTimestamp,
         MAX_UINT32,
         0,
         depositor.address,
@@ -122,10 +125,13 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        [erc20.address, amountToDeposit],
-        [ZERO_ADDRESS, amountReceived],
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
         destinationChainId,
         0,
+        quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
         0,
         newDepositor, // Depositor is overridden.
@@ -352,10 +358,13 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        [erc20.address, amountToDeposit],
-        [ZERO_ADDRESS, amountReceived],
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
         destinationChainId,
         0,
+        quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
         0,
         depositor.address,
@@ -428,23 +437,20 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.revertedWith(revertReason);
   });
 
-  describe.only("deposit USS", function () {
+  describe("deposit USS", function () {
     it("placeholder: gas test", async function () {
       await spokePool.depositUSS(
         depositor.address,
         recipient.address,
         // Input token
-        {
-          token: erc20.address,
-          amount: amountToDeposit,
-        },
+        erc20.address,
         // Output token
-        {
-          token: randomAddress(),
-          amount: amountToDeposit,
-        },
+        randomAddress(),
+        amountToDeposit,
+        amountToDeposit,
         destinationChainId,
         ZERO_ADDRESS,
+        quoteTimestamp,
         quoteTimestamp + 100, // fill deadline
         quoteTimestamp + 10, // exclusivity deadline
         "0x"
