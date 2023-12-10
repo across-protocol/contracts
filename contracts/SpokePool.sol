@@ -949,46 +949,29 @@ abstract contract SpokePool is
      *         USS RELAYER FUNCTIONS          *
      ******************************************/
 
-    function fillUSSRelay(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes calldata message
-    ) public override nonReentrant unpausedFills {
+    function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId)
+        public
+        override
+        nonReentrant
+        unpausedFills
+    {
         // solhint-disable-next-line not-rely-on-time
-        require(fillDeadline >= block.timestamp, "Fill deadline expired");
+        require(relayData.fillDeadline >= block.timestamp, "Fill deadline expired");
         // solhint-disable-next-line not-rely-on-time
-        require(exclusivityDeadline >= block.timestamp && exclusiveRelayer == msg.sender, "Not exclusive relayer");
+        require(
+            relayData.exclusivityDeadline >= block.timestamp && relayData.exclusiveRelayer == msg.sender,
+            "Not exclusive relayer"
+        );
+
+        // No need to override passed in destination chain id to be equal to chainId(),
+        // since this is not emitted in the FilledRelay event. So we do not have to fear a replay attack.
 
         USSRelayExecution memory relayExecution = USSRelayExecution({
-            relay: USSRelayData({
-                depositor: depositor,
-                recipient: recipient,
-                exclusiveRelayer: exclusiveRelayer,
-                inputToken: inputToken,
-                outputToken: outputToken,
-                inputAmount: inputAmount,
-                outputAmount: outputAmount,
-                originChainId: originChainId,
-                destinationChainId: chainId(),
-                depositId: depositId,
-                fillDeadline: fillDeadline,
-                exclusivityDeadline: exclusivityDeadline,
-                message: message
-            }),
+            relay: relayData,
             relayHash: bytes32(0),
-            updatedOutputAmount: outputAmount,
-            updatedRecipient: recipient,
-            updatedMessage: message,
+            updatedOutputAmount: relayData.outputAmount,
+            updatedRecipient: relayData.recipient,
+            updatedMessage: relayData.message,
             repaymentChainId: repaymentChainId,
             slowFill: false,
             payoutAdjustmentPct: 0
@@ -1001,78 +984,43 @@ abstract contract SpokePool is
         _fillRelayUSS(relayExecution);
 
         emit FilledUSSRelay(
-            inputToken,
-            outputToken,
-            inputAmount,
-            outputAmount,
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
             repaymentChainId,
-            originChainId,
-            depositId,
-            fillDeadline,
-            exclusivityDeadline,
-            exclusiveRelayer,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
             msg.sender,
-            depositor,
-            recipient,
-            message,
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
             replacedSlowFillExecution
         );
     }
 
-    function requestUSSSlowFill(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes calldata message
-    ) public override nonReentrant unpausedFills {
-        USSRelayData relayData = USSRelayData({
-            depositor: depositor,
-            recipient: recipient,
-            relayer: exclusiveRelayer,
-            inputToken: inputToken.token,
-            outputToken: outputToken.token,
-            inputAmount: inputToken.amount,
-            outputAmount: outputToken.amount,
-            exclusiveRelayer: exclusiveRelayer,
-            inputToken: inputToken,
-            outputToken: outputToken,
-            inputAmount: inputAmount,
-            outputAmount: outputAmount,
-            originChainId: originChainId,
-            destinationChainId: chainId(),
-            depositId: depositId,
-            fillDeadline: fillDeadline,
-            exclusivityDeadline: exclusivityDeadline,
-            message: message
-        });
+    function requestUSSSlowFill(USSRelayData memory relayData) public override nonReentrant unpausedFills {
         bytes32 relayHash = keccak256(abi.encode(relayData));
         if (relayFills[relayHash] != uint256(FillStatus.RequestedSlowFill)) {
             relayFills[relayHash] = uint256(FillStatus.RequestedSlowFill);
         }
 
         emit RequestedUSSSlowFill(
-            inputToken,
-            outputToken,
-            inputAmount,
-            outputAmount,
-            repaymentChainId,
-            originChainId,
-            depositId,
-            fillDeadline,
-            exclusivityDeadline,
-            exclusiveRelayer,
-            depositor,
-            recipient,
-            message
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message
         );
     }
 
@@ -1161,7 +1109,7 @@ abstract contract SpokePool is
 
         _fillRelayUSS(relayExecution);
 
-        emit USSFilledRelay(
+        emit FilledUSSRelay(
             relayData.inputToken,
             relayData.outputToken,
             relayData.inputAmount,

@@ -497,19 +497,22 @@ describe("SpokePool Relayer Logic", async function () {
       await spokePool
         .connect(relayer)
         .fillUSSRelay(
-          depositor.address,
-          recipient.address,
-          relayer.address,
-          erc20.address,
-          destErc20.address,
-          consts.amountToDeposit,
-          consts.amountToDeposit,
-          consts.repaymentChainId,
-          consts.originChainId,
-          consts.firstDepositId,
-          fillDeadline,
-          fillDeadline - 500,
-          "0x"
+          {
+            depositor: depositor.address,
+            recipient: recipient.address,
+            exclusiveRelayer: relayer.address,
+            inputToken: erc20.address,
+            outputToken: destErc20.address,
+            inputAmount: consts.amountToDeposit,
+            outputAmount: consts.amountToDeposit,
+            originChainId: consts.originChainId,
+            destinationChainId: consts.destinationChainId,
+            depositId: consts.firstDepositId,
+            fillDeadline: fillDeadline,
+            exclusivityDeadline: fillDeadline - 500,
+            message: "0x",
+          },
+          consts.repaymentChainId
         );
     });
   });

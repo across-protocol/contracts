@@ -121,13 +121,11 @@ interface USSSpokePoolInterface {
         address outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
-        uint256 repaymentChainId,
         uint256 indexed originChainId,
         uint32 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         address exclusiveRelayer,
-        address indexed relayer,
         address depositor,
         address recipient,
         bytes message
@@ -189,43 +187,9 @@ interface USSSpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function fillUSSRelay(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes calldata message
-    ) external;
+    function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId) external;
 
-    function requestUSSSlowFill(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes calldata message
-    ) external;
-
-    function executeRelayerRefundLeafUSS(
-        uint32 rootBundleId,
-        USSRelayerRefundLeaf calldata relayerRefundLeaf,
-        bytes32[] calldata proof
-    ) external;
+    function requestUSSSlowFill(USSRelayData memory relayData) external;
 
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
