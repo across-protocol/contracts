@@ -1112,6 +1112,7 @@ abstract contract SpokePool is
         _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
 
         _distributeRelayerRefunds(
+            relayerRefundLeaf.chainId,
             relayerRefundLeaf.amountToReturn,
             relayerRefundLeaf.refundAmounts,
             relayerRefundLeaf.leafId,
@@ -1160,6 +1161,7 @@ abstract contract SpokePool is
         _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
 
         _distributeRelayerRefunds(
+            relayerRefundLeaf.chainId,
             relayerRefundLeaf.amountToReturn,
             relayerRefundLeaf.refundAmounts,
             relayerRefundLeaf.leafId,
@@ -1268,6 +1270,7 @@ abstract contract SpokePool is
     }
 
     function _distributeRelayerRefunds(
+        uint256 _chainId,
         uint256 amountToReturn,
         uint256[] memory refundAmounts,
         uint32 leafId,
@@ -1297,7 +1300,7 @@ abstract contract SpokePool is
         if (amountToReturn > 0) {
             _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
 
-            emit TokensBridged(amountToReturn, chainId(), leafId, l2TokenAddress);
+            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress);
         }
     }
 

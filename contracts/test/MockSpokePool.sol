@@ -29,6 +29,17 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         currentTime = time;
     }
 
+    function distributeRelayerRefunds(
+        uint256 _chainId,
+        uint256 amountToReturn,
+        uint256[] memory refundAmounts,
+        uint32 leafId,
+        address l2TokenAddress,
+        address[] memory refundAddresses
+    ) external {
+        _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
+    }
+
     function getCurrentTime() public view override returns (uint256) {
         return currentTime;
     }

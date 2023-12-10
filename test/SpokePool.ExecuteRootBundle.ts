@@ -116,4 +116,29 @@ describe("SpokePool Root Bundle Execution", function () {
     await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
       .be.reverted;
   });
+
+  describe("Gas test", function () {
+    // Run following tests with REPORT_GAS=true to print out isolated gas costs for internal functions
+    // that are called directly by the MockSpokePool.
+    it("_distributeRelayerRefunds: amountToReturn > 0", async function () {
+      const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
+      await spokePool.connect(dataWorker).relayRootBundle(
+        tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+        consts.mockSlowRelayRoot
+      );
+
+      const leaf = leaves[0];
+      expect(leaf.amountToReturn).to.be.gt(0);
+      await spokePool
+        .connect(dataWorker)
+        .distributeRelayerRefunds(
+          leaf.chainId,
+          leaf.amountToReturn,
+          leaf.refundAmounts,
+          leaf.leafId,
+          leaf.l2TokenAddress,
+          leaf.refundAddresses
+        );
+    });
+  });
 });
