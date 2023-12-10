@@ -665,11 +665,6 @@ abstract contract SpokePool is
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
         require(enabledDepositRoutes[inputToken][destinationChainId], "Disabled route");
 
-        // Sanity check output token amount to prevent depositor from griefing off-chain bots who need to compute
-        // this amount and may not be able to process such large numbers. Same with input token amount.
-        // @dev: Are these sanity checks useful or nice-to-have and are they worth the added gas cost?
-        require(inputAmount <= MAX_TRANSFER_SIZE && outputAmount <= MAX_TRANSFER_SIZE, "Amount too large");
-
         // Require that quoteTimestamp has a maximum age so that relayer pays an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
@@ -1715,12 +1710,6 @@ abstract contract SpokePool is
     }
 
     function _fillRelayUSS(USSRelayExecution memory relayExecution) internal {
-        // Sanity check output token amount to prevent filler from griefing off-chain bots who may not
-        // be able to process such large numbers.
-        // @dev: Is this sanity check useful or nice-to-have and is it worth the added gas cost?
-        uint256 amountToSend = relayExecution.updatedOutputAmount;
-        require(amountToSend <= MAX_TRANSFER_SIZE, "Amount too large");
-
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
@@ -1730,6 +1719,8 @@ abstract contract SpokePool is
         bytes32 relayHash = relayExecution.relayHash;
         require(relayFills[relayHash] <= uint256(FillStatus.Filled), "relay filled");
         relayFills[relayHash] = uint256(FillStatus.Filled);
+
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
 
         // This can only happen in a slow fill, where the contract is funding the relay.
         int256 payoutAdjustmentPct = relayExecution.payoutAdjustmentPct;
