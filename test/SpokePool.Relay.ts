@@ -496,7 +496,7 @@ describe("SpokePool Relayer Logic", async function () {
 
       await spokePool
         .connect(relayer)
-        .fillRelayUSS(
+        .fillUSSRelay(
           depositor.address,
           recipient.address,
           relayer.address,

@@ -98,7 +98,7 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
-    event USSFilledRelay(
+    event FilledUSSRelay(
         address inputToken,
         address outputToken,
         uint256 inputAmount,
@@ -145,6 +145,18 @@ interface USSSpokePoolInterface {
         string fillsRefundedIpfsHash
     );
 
+    event ExecutedUSSRelayerRefundRoot(
+        uint256 amountToReturn,
+        uint256 indexed chainId,
+        uint256[] refundAmounts,
+        uint32 indexed rootBundleId,
+        uint32 indexed leafId,
+        address l2TokenAddress,
+        address[] refundAddresses,
+        bytes32 fillsRefundedRoot,
+        string fillsRefundedIpfsHash
+    );
+
     function depositUSS(
         address depositor,
         address recipient,
@@ -160,7 +172,7 @@ interface USSSpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function fillRelayUSS(
+    function fillUSSRelay(
         address depositor,
         address recipient,
         address exclusiveRelayer,
@@ -186,5 +198,11 @@ interface USSSpokePoolInterface {
         USSSlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
+    ) external;
+
+    function executeUSSRelayerRefundLeaf(
+        uint32 rootBundleId,
+        USSRelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
     ) external;
 }
