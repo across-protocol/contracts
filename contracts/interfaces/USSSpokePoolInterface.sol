@@ -116,6 +116,23 @@ interface USSSpokePoolInterface {
         bool replacedSlowFillExecution
     );
 
+    event RequestedUSSSlowFill(
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 repaymentChainId,
+        uint256 indexed originChainId,
+        uint32 indexed depositId,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        address exclusiveRelayer,
+        address indexed relayer,
+        address depositor,
+        address recipient,
+        bytes message
+    );
+
     // TODO: Consider emitting the following events in fillRelayUSSWithUpdatedDeposit
     // and executeUSSSlowRelayLeaf to capture data that USSFilledRelay doesn't. The reason
     // I'm on the fence about this is because the existing dataworker/relayer do not use
@@ -173,6 +190,22 @@ interface USSSpokePoolInterface {
     ) external payable;
 
     function fillUSSRelay(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes calldata message
+    ) external;
+
+    function requestUSSSlowFill(
         address depositor,
         address recipient,
         address exclusiveRelayer,

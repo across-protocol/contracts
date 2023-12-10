@@ -64,7 +64,7 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
-    function verifySlowRelayFulfillmentUSS(
+    function verifyUSSSlowRelayFulfillment(
         bytes32 root,
         USSSpokePoolInterface.USSSlowFill memory slowRelayFulfillment,
         bytes32[] memory proof

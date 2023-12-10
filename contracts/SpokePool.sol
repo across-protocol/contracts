@@ -104,17 +104,17 @@ abstract contract SpokePool is
     // that they cannot be changed in production without changing the contract code, while immutable variables
     // can be set in the constructor. Therefore we use the immutable keyword for variables that we might want to be
     // different for each child contract (one obvious example of this is the wrappedNativeToken) or that we might
-    // want to update in the future like quoteTimeBuffer. Constants are unlikely to ever be changed.
+    // want to update in the future like depositQuoteTimeBuffer. Constants are unlikely to ever be changed.
 
     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     WETH9Interface public immutable wrappedNativeToken;
 
-    // Any lp fee quote timestamps greater than or less than this value to the current contract time is blocked. Forces
+    // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    uint32 public immutable quoteTimeBuffer;
+    uint32 public immutable depositQuoteTimeBuffer;
 
     // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -257,7 +257,7 @@ abstract contract SpokePool is
      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
      * it is deployed:
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param _quoteTimeBuffer quoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
@@ -265,11 +265,11 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
-        uint32 _quoteTimeBuffer,
+        uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     ) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
-        quoteTimeBuffer = _quoteTimeBuffer;
+        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
         _disableInitializers();
     }
@@ -653,15 +653,15 @@ abstract contract SpokePool is
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
         require(enabledDepositRoutes[inputToken][destinationChainId], "Disabled route");
 
-        // Require that quoteTimestamp has a maximum age so that relayer pays an LP fee based on recent HubPool usage.
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
         // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
-        // This will underflow if quoteTimestamp is more than quoteTimeBuffer;
+        // This will underflow if quoteTimestamp is more than depositQuoteTimeBuffer;
         // this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= quoteTimeBuffer, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -962,7 +962,7 @@ abstract contract SpokePool is
         uint32 depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
-        bytes memory message
+        bytes calldata message
     ) public override nonReentrant unpausedFills {
         // solhint-disable-next-line not-rely-on-time
         require(fillDeadline >= block.timestamp, "Fill deadline expired");
@@ -1016,6 +1016,63 @@ abstract contract SpokePool is
             recipient,
             message,
             replacedSlowFillExecution
+        );
+    }
+
+    function requestUSSSlowFill(
+        address depositor,
+        address recipient,
+        address exclusiveRelayer,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        uint32 depositId,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes calldata message
+    ) public override nonReentrant unpausedFills {
+        USSRelayData relayData = USSRelayData({
+            depositor: depositor,
+            recipient: recipient,
+            relayer: exclusiveRelayer,
+            inputToken: inputToken.token,
+            outputToken: outputToken.token,
+            inputAmount: inputToken.amount,
+            outputAmount: outputToken.amount,
+            exclusiveRelayer: exclusiveRelayer,
+            inputToken: inputToken,
+            outputToken: outputToken,
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            originChainId: originChainId,
+            destinationChainId: chainId(),
+            depositId: depositId,
+            fillDeadline: fillDeadline,
+            exclusivityDeadline: exclusivityDeadline,
+            message: message
+        });
+        bytes32 relayHash = keccak256(abi.encode(relayData));
+        if (relayFills[relayHash] != uint256(FillStatus.RequestedSlowFill)) {
+            relayFills[relayHash] = uint256(FillStatus.RequestedSlowFill);
+        }
+
+        emit RequestedUSSSlowFill(
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            repaymentChainId,
+            originChainId,
+            depositId,
+            fillDeadline,
+            exclusivityDeadline,
+            exclusiveRelayer,
+            depositor,
+            recipient,
+            message
         );
     }
 
@@ -1272,10 +1329,10 @@ abstract contract SpokePool is
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
         // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
-        // quoteTimestamp is more than quoteTimeBuffer; this is safe but will throw an unintuitive error.
+        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= quoteTimeBuffer, "invalid quoteTimestamp");
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
@@ -1523,7 +1580,7 @@ abstract contract SpokePool is
         });
 
         require(
-            MerkleLib.verifySlowRelayFulfillmentUSS(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
+            MerkleLib.verifyUSSSlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
             "Invalid slow relay proof"
         );
     }

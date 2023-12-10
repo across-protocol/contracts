@@ -45,12 +45,12 @@ contract MerkleLibTest {
         return MerkleLib.verifySlowRelayFulfillment(root, slowFill, proof);
     }
 
-    function verifySlowRelayFulfillmentUSS(
+    function verifyUSSSlowRelayFulfillment(
         bytes32 root,
         USSSpokePoolInterface.USSSlowFill memory slowFill,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifySlowRelayFulfillmentUSS(root, slowFill, proof);
+        return MerkleLib.verifyUSSSlowRelayFulfillment(root, slowFill, proof);
     }
 
     function isClaimed(uint256 index) public view returns (bool) {
