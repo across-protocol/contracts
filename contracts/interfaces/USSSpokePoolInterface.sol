@@ -104,7 +104,7 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
-    event USSFilledRelay(
+    event FilledUSSRelay(
         InputToken inputToken,
         OutputToken outputToken,
         uint256 repaymentChainId,
@@ -123,7 +123,7 @@ interface USSSpokePoolInterface {
         bytes updatedMessage
     );
 
-    event USSExecutedRelayerRefundRoot(
+    event ExecutedUSSRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
         uint256[] refundAmounts,
@@ -149,7 +149,7 @@ interface USSSpokePoolInterface {
         bytes memory message
     ) external payable;
 
-    function fillRelayUSS(
+    function fillUSSRelay(
         address depositor,
         address recipient,
         address exclusiveRelayer,
@@ -162,7 +162,7 @@ interface USSSpokePoolInterface {
         bytes memory message
     ) external;
 
-    function executeRelayerRefundLeafUSS(
+    function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
         USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof

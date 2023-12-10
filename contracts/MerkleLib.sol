@@ -41,7 +41,7 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
     }
 
-    function verifyRelayerRefundUSS(
+    function verifyUSSRelayerRefund(
         bytes32 root,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
         bytes32[] memory proof

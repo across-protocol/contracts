@@ -956,7 +956,7 @@ abstract contract SpokePool is
      *         USS RELAYER FUNCTIONS          *
      ******************************************/
 
-    function fillRelayUSS(
+    function fillUSSRelay(
         address depositor,
         address recipient,
         address exclusiveRelayer,
@@ -1001,7 +1001,7 @@ abstract contract SpokePool is
 
         // Trigger `message` callback if appropriate.
 
-        emit USSFilledRelay(
+        emit FilledUSSRelay(
             inputToken,
             outputToken,
             repaymentChainId,
@@ -1139,7 +1139,7 @@ abstract contract SpokePool is
      * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */
-    function executeRelayerRefundLeafUSS(
+    function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
@@ -1156,7 +1156,7 @@ abstract contract SpokePool is
 
         // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
         // Note: This should revert if the relayerRefundRoot is uninitialized.
-        require(MerkleLib.verifyRelayerRefundUSS(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
+        require(MerkleLib.verifyUSSRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof), "Bad Proof");
 
         _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
 
@@ -1169,7 +1169,7 @@ abstract contract SpokePool is
             relayerRefundLeaf.refundAddresses
         );
 
-        emit USSExecutedRelayerRefundRoot(
+        emit ExecutedUSSRelayerRefundRoot(
             relayerRefundLeaf.amountToReturn,
             relayerRefundLeaf.chainId,
             relayerRefundLeaf.refundAmounts,
