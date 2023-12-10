@@ -103,7 +103,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         return ITelepathyHandler.handleTelepathy.selector;
     }
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory) internal override {
+    function _bridgeTokensToHubPool(uint256, address) internal override {
         // This method is a no-op. If the chain intends to include bridging functionality, this must be overriden.
         // If not, leaving this unimplemented means this method may be triggered, but the result will be that no
         // balance is transferred.

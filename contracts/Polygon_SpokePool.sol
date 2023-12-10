@@ -164,92 +164,22 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         _wrap();
     }
 
-    /**
-     * @notice Executes a relayer refund leaf stored as part of a root bundle. Will send the relayer the amount they
-     * sent to the recipient plus a relayer fee.
-     * @dev this is only overridden to wrap any matic the contract holds before running.
-     * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
-     * @param relayerRefundLeaf Contains all data necessary to reconstruct leaf contained in root bundle and to
-     * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
-     * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
-     */
-    function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
-        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
-    ) public override nonReentrant {
-        _wrap();
-        _executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
-    }
-
-    /**
-     * @notice Executes a slow relay leaf stored as part of a root bundle. Will send the full amount remaining in the
-     * relay to the recipient, less fees.
-     * @dev This function assumes that the relay's destination chain ID is the current chain ID, which prevents
-     * the caller from executing a slow relay intended for another chain on this chain. This is only overridden to call
-     * wrap before running the function.
-     * @param depositor Depositor on origin chain who set this chain as the destination chain.
-     * @param recipient Specified recipient on this chain.
-     * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
-     * and this chain ID via a mapping on the HubPool.
-     * @param amount Full size of the deposit.
-     * @param originChainId Chain of SpokePool where deposit originated.
-     * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
-     * quote time.
-     * @param relayerFeePct Original fee % to keep as relayer set by depositor.
-     * @param depositId Unique deposit ID on origin spoke pool.
-     * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
-     * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
-     */
-    function executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 rootBundleId,
-        bytes memory message,
-        int256 payoutAdjustment,
-        bytes32[] memory proof
-    ) public virtual override nonReentrant {
-        _wrap();
-        _executeSlowRelayLeaf(
-            depositor,
-            recipient,
-            destinationToken,
-            amount,
-            originChainId,
-            chainId(),
-            realizedLpFeePct,
-            relayerFeePct,
-            depositId,
-            rootBundleId,
-            message,
-            payoutAdjustment,
-            proof
-        );
-    }
-
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
-        PolygonIERC20Upgradeable(relayerRefundLeaf.l2TokenAddress).safeIncreaseAllowance(
-            address(polygonTokenBridger),
-            relayerRefundLeaf.amountToReturn
-        );
+    function _preExecuteLeafHook(address) internal override {
+        // Wraps MATIC --> WMATIC before distributing tokens from this contract.
+        _wrap();
+    }
+
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(address(polygonTokenBridger), amountToReturn);
 
         // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
-        polygonTokenBridger.send(
-            PolygonIERC20Upgradeable(relayerRefundLeaf.l2TokenAddress),
-            relayerRefundLeaf.amountToReturn
-        );
+        polygonTokenBridger.send(PolygonIERC20Upgradeable(l2TokenAddress), amountToReturn);
 
-        emit PolygonTokensBridged(relayerRefundLeaf.l2TokenAddress, address(this), relayerRefundLeaf.amountToReturn);
+        emit PolygonTokensBridged(l2TokenAddress, address(this), amountToReturn);
     }
 
     function _wrap() internal {

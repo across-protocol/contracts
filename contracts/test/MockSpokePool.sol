@@ -29,12 +29,23 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         currentTime = time;
     }
 
+    function distributeRelayerRefunds(
+        uint256 _chainId,
+        uint256 amountToReturn,
+        uint256[] memory refundAmounts,
+        uint32 leafId,
+        address l2TokenAddress,
+        address[] memory refundAddresses
+    ) external {
+        _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
+    }
+
     function getCurrentTime() public view override returns (uint256) {
         return currentTime;
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {}
+    function _bridgeTokensToHubPool(uint256, address) internal override {}
 
     function _requireAdminSender() internal override onlyOwner {} // solhint-disable-line no-empty-blocks
 

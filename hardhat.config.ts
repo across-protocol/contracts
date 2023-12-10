@@ -54,7 +54,7 @@ const config: HardhatUserConfig = {
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Polygon_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/test/MockSpokePoolV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/test/MockSpokePoolV2.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockSpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockOptimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ovm_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,

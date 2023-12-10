@@ -82,18 +82,18 @@ contract Arbitrum_SpokePool is SpokePool {
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    function _bridgeTokensToHubPool(RelayerRefundLeaf memory relayerRefundLeaf) internal override {
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // Check that the Ethereum counterpart of the L2 token is stored on this contract.
-        address ethereumTokenToBridge = whitelistedTokens[relayerRefundLeaf.l2TokenAddress];
+        address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
         require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
         //slither-disable-next-line unused-return
         StandardBridgeLike(l2GatewayRouter).outboundTransfer(
             ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
             hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            relayerRefundLeaf.amountToReturn, // _amount.
+            amountToReturn, // _amount.
             "" // _data. We don't need to send any data for the bridging action.
         );
-        emit ArbitrumTokensBridged(address(0), hubPool, relayerRefundLeaf.amountToReturn);
+        emit ArbitrumTokensBridged(address(0), hubPool, amountToReturn);
     }
 
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {
