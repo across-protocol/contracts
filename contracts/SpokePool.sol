@@ -16,7 +16,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
-// This interface is expected to be implemented by any contract that expects to recieve messages from the SpokePool.
+// This interface is expected to be implemented by any contract that expects to receive messages from the SpokePool.
 interface AcrossMessageHandler {
     function handleAcrossMessage(
         address tokenSent,
@@ -141,18 +141,6 @@ abstract contract SpokePool is
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
-    event FundsDeposited(
-        uint256 amount,
-        uint256 originChainId,
-        uint256 indexed destinationChainId,
-        int64 relayerFeePct,
-        uint32 indexed depositId,
-        uint32 quoteTimestamp,
-        address originToken,
-        address recipient,
-        address indexed depositor,
-        bytes message
-    );
     event RequestedSpeedUpDeposit(
         int64 newRelayerFeePct,
         uint32 indexed depositId,

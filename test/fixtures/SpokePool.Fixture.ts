@@ -99,7 +99,7 @@ export async function deposit(
     })
   );
   const [events, originChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.FundsDeposited()),
+    spokePool.queryFilter(spokePool.filters.USSFundsDeposited()),
     spokePool.chainId(),
   ]);
 
