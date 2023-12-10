@@ -494,7 +494,7 @@ describe("SpokePool Relayer Logic", async function () {
     it("placeholder: gas test", async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
 
-      await spokePool.fillRelayUSS(
+      await spokePool.fillUSSRelay(
         depositor.address,
         recipient.address,
         randomAddress(),
