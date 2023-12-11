@@ -71,7 +71,7 @@ interface USSSpokePoolInterface {
     // relay itself but is required to know how to process the relay. For example, "updatedX" fields can be used
     // by the relayer to modify fields of the relay with the depositor's permission, and "repaymentChainId" is specified
     // by the relayer to determine where to take a relayer refund, but doesn't affect the uniqueness of the relay.
-    struct USSRelayExecution {
+    struct USSRelayExecutionParams {
         USSRelayData relay;
         bytes32 relayHash;
         uint256 updatedOutputAmount;
@@ -144,20 +144,15 @@ interface USSSpokePoolInterface {
     //     bytes updatedMessage
     // );
 
-    // event USSExecutedSlowFill(
-    //     int256 payoutAdjustmentPct
-    // );
-
-    event USSExecutedRelayerRefundRoot(
-        uint256 amountToReturn,
-        uint256 indexed chainId,
-        uint256[] refundAmounts,
-        uint32 indexed rootBundleId,
-        uint32 indexed leafId,
-        address l2TokenAddress,
-        address[] refundAddresses,
-        bytes32 fillsRefundedRoot,
-        string fillsRefundedIpfsHash
+    // Emitting these params that are unique to the specific fill transaction, separately because they
+    // are unused by the dataworker and relayer when proposing and validating bundles and filling deposits.
+    // However, they are useful for tracking relayer balances and data analytics in general.
+    event USSRelayExecution(
+        int256 payoutAdjustmentPct,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes updatedMessage,
+        bool slowFill
     );
 
     event ExecutedUSSRelayerRefundRoot(
@@ -202,4 +197,18 @@ interface USSSpokePoolInterface {
         USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) external;
+
+    error DisabledRoute();
+    error InvalidQuoteTimestamp();
+    error InvalidFillDeadline();
+    error MsgValueDoesNotMatchInputAmount();
+    error NotExclusiveRelayer();
+    error RelayFilled();
+    error InvalidSlowFill();
+    error ExpiredFillDeadline();
+    error InvalidMerkleProof();
+    error InvalidChainId();
+    error InvalidMerkleLeaf();
+    error ClaimedMerkleLeaf();
+    error InvalidPayoutAdjustmentPct();
 }

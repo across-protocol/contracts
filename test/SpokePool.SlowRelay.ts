@@ -10,11 +10,19 @@ import {
   BigNumber,
   toWei,
 } from "../utils/utils";
-import { spokePoolFixture, enableRoutes, getExecuteSlowRelayParams, SlowFill } from "./fixtures/SpokePool.Fixture";
+import {
+  spokePoolFixture,
+  enableRoutes,
+  getExecuteSlowRelayParams,
+  SlowFill,
+  USSRelayData,
+  getUSSRelayHash,
+} from "./fixtures/SpokePool.Fixture";
 import { getFillRelayParams, getRelayHash } from "./fixtures/SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
 import { buildSlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";
+import { FillStatus } from "../utils/constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -567,5 +575,46 @@ describe("SpokePool Slow Relay Logic", async function () {
         )
       )
     ).to.be.reverted;
+  });
+
+  describe("requestUSSSlowFill", function () {
+    let relayData: USSRelayData;
+    beforeEach(async function () {
+      const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
+      relayData = {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        exclusiveRelayer: relayer.address,
+        inputToken: erc20.address,
+        outputToken: destErc20.address,
+        inputAmount: consts.amountToDeposit,
+        outputAmount: fullRelayAmountPostFees,
+        originChainId: consts.originChainId,
+        destinationChainId: consts.destinationChainId,
+        depositId: consts.firstDepositId,
+        fillDeadline: fillDeadline,
+        exclusivityDeadline: fillDeadline - 500,
+        message: "0x",
+      };
+    });
+    it("can send before fast fill", async function () {
+      const relayHash = getUSSRelayHash(relayData);
+
+      expect(await spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.emit(spokePool, "RequestedUSSSlowFill");
+      expect(await spokePool.relayFills(relayHash)).to.equal(FillStatus.RequestedSlowFill);
+
+      // Can't slow fill again
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("InvalidSlowFill");
+
+      // Can fast fill after.
+      await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
+    });
+    it("can't send after fast fill", async function () {
+      await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
+      const relayHash = getUSSRelayHash(relayData);
+      expect(await spokePool.relayFills(relayHash)).to.equal(FillStatus.Filled);
+
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("InvalidSlowFill");
+    });
   });
 });

@@ -8,7 +8,6 @@ import {
   toBN,
   BigNumber,
   createFake,
-  randomAddress,
 } from "../utils/utils";
 import {
   spokePoolFixture,
