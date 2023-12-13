@@ -958,7 +958,7 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         // solhint-disable-next-line not-rely-on-time
-        if (relayData.exclusivityDeadline >= block.timestamp && relayData.exclusiveRelayer != msg.sender) {
+        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= block.timestamp) {
             revert NotExclusiveRelayer();
         }
 
