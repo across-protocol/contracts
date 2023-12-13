@@ -230,6 +230,14 @@ const config: HardhatUserConfig = {
           browserURL: "https://goerli.basescan.org",
         },
       },
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io",
+        },
+      },
     ],
   },
   namedAccounts: { deployer: 0 },

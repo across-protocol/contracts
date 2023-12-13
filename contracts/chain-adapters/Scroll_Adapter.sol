@@ -5,27 +5,21 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@scroll-tech/contracts/L1/gateways/IL1GatewayRouter.sol";
 import "@scroll-tech/contracts/L1/IL1ScrollMessenger.sol";
-
 import "./interfaces/AdapterInterface.sol";
-import "../external/interfaces/WETH9Interface.sol";
 
-contract ScrollAdapter is AdapterInterface {
+contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 200_000;
-
-    WETH9Interface public immutable l1Weth;
 
     IL1GatewayRouter public immutable l1GatewayRouter;
     IL1ScrollMessenger public immutable l1ScrollMessenger;
 
     /**
      * @notice Constructs new Adapter.
-     * @param _l1Weth WETH address on L1.
      * @param _l1GatewayRouter Standard bridge contract.
      * @param _l1ScrollMessenger Scroll Messenger contract.
      */
-    constructor(WETH9Interface _l1Weth, IL1GatewayRouter _l1GatewayRouter, IL1ScrollMessenger _l1ScrollMessenger) {
-        l1Weth = _l1Weth;
+    constructor(IL1GatewayRouter _l1GatewayRouter, IL1ScrollMessenger _l1ScrollMessenger) {
         l1GatewayRouter = _l1GatewayRouter;
         l1ScrollMessenger = _l1ScrollMessenger;
     }
@@ -53,16 +47,27 @@ contract ScrollAdapter is AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
+    function relayTokens(
+        address l1Token,
+        address l2Token,
+        uint256 amount,
+        address to
+    ) external payable {
         IL1GatewayRouter _l1GatewayRouter = l1GatewayRouter;
-        // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
-        if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            _l1GatewayRouter.depositETH(to, amount, l2GasLimit);
-        } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(_l1GatewayRouter), amount);
-            _l1GatewayRouter.depositERC20(l2Token, to, amount, l2GasLimit);
-        }
+
+        // Confirm that the l2Token that we're trying to send is the correct counterpart
+        // address
+        address _l2Token = _l1GatewayRouter.getL2ERC20Address(l1Token);
+        require(_l2Token == l2Token, "l2Token Mismatch");
+
+        // Bump the allowance
+        IERC20(l1Token).safeIncreaseAllowance(address(_l1GatewayRouter), amount);
+        // The scroll bridge handles arbitrary ERC20 tokens and is mindful of
+        // the official WETH address on-chain. We don't need to do anything specific
+        // to differentiate between WETH and a separate ERC20.
+        // Note: TL;DR the unwrap happens under the hood
+        // Note: this happens due to the L1GatewayRouter.getERC20Gateway()
+        _l1GatewayRouter.depositERC20(l1Token, to, amount, l2GasLimit);
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 }
