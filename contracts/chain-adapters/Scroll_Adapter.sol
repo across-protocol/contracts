@@ -9,7 +9,7 @@ import "./interfaces/AdapterInterface.sol";
 
 contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
-    uint32 public immutable l2GasLimit = 200_000;
+    uint32 public immutable l2GasLimit = 250_000;
 
     IL1GatewayRouter public immutable l1GatewayRouter;
     IL1ScrollMessenger public immutable l1ScrollMessenger;
@@ -47,12 +47,7 @@ contract Scroll_Adapter is AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
         IL1GatewayRouter _l1GatewayRouter = l1GatewayRouter;
 
         // Confirm that the l2Token that we're trying to send is the correct counterpart
@@ -65,9 +60,8 @@ contract Scroll_Adapter is AdapterInterface {
         // The scroll bridge handles arbitrary ERC20 tokens and is mindful of
         // the official WETH address on-chain. We don't need to do anything specific
         // to differentiate between WETH and a separate ERC20.
-        // Note: TL;DR the unwrap happens under the hood
-        // Note: this happens due to the L1GatewayRouter.getERC20Gateway()
-        _l1GatewayRouter.depositERC20(l1Token, to, amount, l2GasLimit);
+        // Note: This happens due to the L1GatewayRouter.getERC20Gateway() call
+        _l1GatewayRouter.depositERC20{ value: msg.value }(l1Token, to, amount, l2GasLimit);
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 }
