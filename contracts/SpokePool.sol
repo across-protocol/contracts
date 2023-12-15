@@ -974,8 +974,7 @@ abstract contract SpokePool is
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: repaymentChainId,
-            slowFill: false,
-            payoutAdjustmentPct: 0
+            slowFill: false
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
@@ -1095,12 +1094,11 @@ abstract contract SpokePool is
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
             relayHash: bytes32(0),
-            updatedOutputAmount: relayData.outputAmount,
+            updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: 0, // Hardcoded to 0 for slow fills
-            slowFill: true, // This is a slow fill execution
-            payoutAdjustmentPct: slowFillLeaf.payoutAdjustmentPct
+            slowFill: true // This is a slow fill execution
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
@@ -1495,7 +1493,7 @@ abstract contract SpokePool is
     ) internal view {
         USSSlowFill memory slowFill = USSSlowFill({
             relayData: relayExecution.relay,
-            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
+            updatedOutputAmount: relayExecution.updatedOutputAmount
         });
 
         if (!MerkleLib.verifyUSSSlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
@@ -1701,33 +1699,6 @@ abstract contract SpokePool is
         if (relayFills[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
         relayFills[relayHash] = uint256(FillStatus.Filled);
 
-        uint256 amountToSend = relayExecution.updatedOutputAmount;
-
-        // This can only happen in a slow fill, where the contract is funding the relay.
-        int256 payoutAdjustmentPct = relayExecution.payoutAdjustmentPct;
-        if (payoutAdjustmentPct != 0) {
-            // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
-            // were originally expecting. If it is negative, then the recipient will receive less.
-            // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
-            // Moreover, allow the payout adjustment to go up to 1000% (i.e. 11x).
-            // This is a sanity check to ensure the payouts do not grow too large via some sort of issue in bundle
-            // construction.
-
-            if (payoutAdjustmentPct < -1e18 || payoutAdjustmentPct > 100e18) revert InvalidPayoutAdjustmentPct();
-
-            // Note: since _computeAmountPostFees is typically intended for fees, the signage must be reversed.
-            amountToSend = _computeAmountPostFees(amountToSend, -payoutAdjustmentPct);
-        }
-
-        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
-        // net movement of funds.
-        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
-        // way (no need to have funds on the destination).
-        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
-        // since there is no "relayer".
-        bool isSlowFill = relayExecution.slowFill;
-        address recipientToSend = relayExecution.updatedRecipient;
-
         // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
         // successful.
         emit FilledUSSRelay(
@@ -1745,20 +1716,29 @@ abstract contract SpokePool is
             relayData.depositor,
             relayData.recipient,
             relayData.message,
-            replacedSlowFillExecution
+            USSRelayExecutionEventInfo({
+                updatedRecipient: relayExecution.updatedRecipient,
+                updatedMessage: relayExecution.updatedMessage,
+                updatedOutputAmount: relayExecution.updatedOutputAmount,
+                isSlowRelay: relayExecution.slowFill,
+                replacedSlowFillExecution: replacedSlowFillExecution
+            })
         );
 
-        emit USSRelayExecution(
-            relayExecution.payoutAdjustmentPct,
-            relayExecution.updatedOutputAmount,
-            relayExecution.updatedRecipient,
-            relayExecution.updatedMessage,
-            relayExecution.slowFill
-        );
+        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
+        // net movement of funds.
+        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
+        // way (no need to have funds on the destination).
+        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
+        // since there is no "relayer".
+        bool isSlowFill = relayExecution.slowFill;
+        address recipientToSend = relayExecution.updatedRecipient;
+
         if (msg.sender == recipientToSend && !isSlowFill) return;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         address outputToken = relayData.outputToken;
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the

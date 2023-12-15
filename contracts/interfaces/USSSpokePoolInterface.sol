@@ -42,7 +42,7 @@ interface USSSpokePoolInterface {
 
     struct USSSlowFill {
         USSRelayData relayData;
-        int256 payoutAdjustmentPct;
+        uint256 updatedOutputAmount;
     }
 
     struct USSRelayerRefundLeaf {
@@ -79,7 +79,6 @@ interface USSSpokePoolInterface {
         bytes updatedMessage;
         uint256 repaymentChainId;
         bool slowFill;
-        int256 payoutAdjustmentPct;
     }
 
     event USSFundsDeposited(
@@ -98,6 +97,14 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
+    struct USSRelayExecutionEventInfo {
+        address updatedRecipient;
+        bytes updatedMessage;
+        uint256 updatedOutputAmount;
+        bool isSlowRelay;
+        bool replacedSlowFillExecution;
+    }
+
     event FilledUSSRelay(
         address inputToken,
         address outputToken,
@@ -113,7 +120,7 @@ interface USSSpokePoolInterface {
         address depositor,
         address recipient,
         bytes message,
-        bool replacedSlowFillExecution
+        USSRelayExecutionEventInfo relayExecutionInfo
     );
 
     event RequestedUSSSlowFill(
@@ -129,30 +136,6 @@ interface USSSpokePoolInterface {
         address depositor,
         address recipient,
         bytes message
-    );
-
-    // TODO: Consider emitting the following events in fillRelayUSSWithUpdatedDeposit
-    // and executeUSSSlowRelayLeaf to capture data that USSFilledRelay doesn't. The reason
-    // I'm on the fence about this is because the existing dataworker/relayer do not use
-    // the sped-up-deposit modified data and I don't anticipate them needing to query
-    // the payoutAdjustmentPct. The ones that would would be those tracking relayer balances
-    // like relayers themselves and the data teams.
-
-    // event USSFilledModifiedRelay(
-    //     uint256 updatedOutputAmount,
-    //     address updatedRecipient,
-    //     bytes updatedMessage
-    // );
-
-    // Emitting these params that are unique to the specific fill transaction, separately because they
-    // are unused by the dataworker and relayer when proposing and validating bundles and filling deposits.
-    // However, they are useful for tracking relayer balances and data analytics in general.
-    event USSRelayExecution(
-        int256 payoutAdjustmentPct,
-        uint256 updatedOutputAmount,
-        address updatedRecipient,
-        bytes updatedMessage,
-        bool slowFill
     );
 
     event ExecutedUSSRelayerRefundRoot(
