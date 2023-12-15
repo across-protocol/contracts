@@ -973,12 +973,11 @@ abstract contract SpokePool is
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
-            repaymentChainId: repaymentChainId,
-            slowFill: false
+            repaymentChainId: repaymentChainId
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
-        _fillRelayUSS(relayExecution, msg.sender);
+        _fillRelayUSS(relayExecution, msg.sender, false);
     }
 
     /**
@@ -991,8 +990,6 @@ abstract contract SpokePool is
      * fill for the intended deposit.
      */
     function requestUSSSlowFill(USSRelayData memory relayData) public override nonReentrant unpausedFills {
-        // TODO: Should we require that the exclusivity deadline has passed? In practice, I would never expect
-        // an exclusive relayer to request a slow fill, but there could be reasons?
         // solhint-disable-next-line not-rely-on-time
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
@@ -1097,15 +1094,14 @@ abstract contract SpokePool is
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
-            repaymentChainId: 0, // Hardcoded to 0 for slow fills
-            slowFill: true // This is a slow fill execution
+            repaymentChainId: 0 // Hardcoded to 0 for slow fills
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
         _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
 
         // - 0x0 hardcoded as relayer for slow fill execution.
-        _fillRelayUSS(relayExecution, address(0));
+        _fillRelayUSS(relayExecution, address(0), true);
     }
 
     /**
@@ -1672,23 +1668,34 @@ abstract contract SpokePool is
         }
     }
 
-    // @param relayer: relayer who is actually credited as filling this deposit. Can be differenet from
+    // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayUSS(USSRelayExecutionParams memory relayExecution, address relayer) internal {
+    function _fillRelayUSS(
+        USSRelayExecutionParams memory relayExecution,
+        address relayer,
+        bool isSlowFill
+    ) internal {
         USSRelayData memory relayData = relayExecution.relay;
 
         // solhint-disable-next-line not-rely-on-time
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
         bytes32 relayHash = relayExecution.relayHash;
+
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-        // is trivially false since a slow fill cannot replace itself. We'll emit this param in the FilledRelay
+        // is trivially true. We'll emit this value in the FilledRelay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
-        bool replacedSlowFillExecution = !relayExecution.slowFill &&
-            relayFills[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill);
+        FillType fillType = isSlowFill
+            ? FillType.SlowFill
+            : (
+                // The following is true if this is a fast fill that was sent after a slow fill request.
+                relayFills[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
+                    ? FillType.ReplacedSlowFill
+                    : FillType.FastFill
+            );
 
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
@@ -1720,8 +1727,7 @@ abstract contract SpokePool is
                 updatedRecipient: relayExecution.updatedRecipient,
                 updatedMessage: relayExecution.updatedMessage,
                 updatedOutputAmount: relayExecution.updatedOutputAmount,
-                isSlowRelay: relayExecution.slowFill,
-                replacedSlowFillExecution: replacedSlowFillExecution
+                fillType: fillType
             })
         );
 
@@ -1731,7 +1737,6 @@ abstract contract SpokePool is
         // way (no need to have funds on the destination).
         // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
         // since there is no "relayer".
-        bool isSlowFill = relayExecution.slowFill;
         address recipientToSend = relayExecution.updatedRecipient;
 
         if (msg.sender == recipientToSend && !isSlowFill) return;

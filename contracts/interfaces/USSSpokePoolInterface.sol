@@ -3,10 +3,24 @@ pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
 interface USSSpokePoolInterface {
+    // Fill status tracks on-chain state of deposit, uniquely identified by relayHash.
     enum FillStatus {
         Unfilled,
         RequestedSlowFill,
         Filled
+    }
+    // Fill type is emitted in the FilledRelay event to assist Dataworker with determining which types of
+    // fills to refund (e.g. only fast fills) and whether a fast fill created a sow fill excess.
+    enum FillType {
+        FastFill,
+        // Fast fills are normal fills that do not replace a slow fill request.
+        ReplacedSlowFill,
+        // Replaced slow fills are fast fills that replace a slow fill request. This type is used by the Dataworker
+        // to know when to send excess funds from the SpokePool to the HubPool because they can no longer be used
+        // for a slow fill execution.
+        SlowFill
+        // Slow fills are requested via requestSlowFill and executed by executeSlowRelayLeaf after a bundle containing
+        // the slow fill is validated.
     }
 
     // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
@@ -78,7 +92,6 @@ interface USSSpokePoolInterface {
         address updatedRecipient;
         bytes updatedMessage;
         uint256 repaymentChainId;
-        bool slowFill;
     }
 
     event USSFundsDeposited(
@@ -101,8 +114,7 @@ interface USSSpokePoolInterface {
         address updatedRecipient;
         bytes updatedMessage;
         uint256 updatedOutputAmount;
-        bool isSlowRelay;
-        bool replacedSlowFillExecution;
+        FillType fillType;
     }
 
     event FilledUSSRelay(
