@@ -23,8 +23,6 @@ import {
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 
-const maxCount = maxUint256;
-
 describe("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
   let depositor: SignerWithAddress, recipient: SignerWithAddress;
@@ -103,9 +101,6 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Deposit nonce should increment.
     expect(await spokePool.numberOfDeposits()).to.equal(1);
-
-    // Count is correctly incremented.
-    expect(await spokePool.depositCounter(erc20.address)).to.equal(amountToDeposit);
   });
 
   it("DepositFor overrrides the depositor", async function () {
@@ -404,37 +399,6 @@ describe("SpokePool Depositor Logic", async function () {
           { value: amountToDeposit }
         )
     ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
-  });
-
-  it("maxCount is too low", async function () {
-    const revertReason = "Above max count";
-
-    // Setting max count to be smaller than the sum of previous deposits should fail.
-    await expect(
-      spokePool.connect(depositor).deposit(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-          maxCount,
-        })
-      )
-    ).to.emit(spokePool, "USSFundsDeposited");
-
-    await expect(
-      spokePool.connect(depositor).deposit(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-          maxCount: amount.sub(1), // Less than the previous transaction's deposit amount.
-        })
-      )
-    ).to.be.revertedWith(revertReason);
   });
 
   describe("deposit USS", function () {
