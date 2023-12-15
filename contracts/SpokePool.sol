@@ -996,7 +996,7 @@ abstract contract SpokePool is
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData));
-        if (relayFills[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFill();
+        if (relayFills[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         relayFills[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
         emit RequestedUSSSlowFill(
