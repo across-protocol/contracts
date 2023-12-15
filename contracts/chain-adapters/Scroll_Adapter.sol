@@ -33,7 +33,11 @@ contract Scroll_Adapter is AdapterInterface {
      * @param message Message to send to `target`.
      */
     function relayMessage(address target, bytes calldata message) external payable {
-        l1ScrollMessenger.sendMessage(target, msg.value, message, l2GasLimit);
+        // We can specifically send a message with 0 value to the Scroll Bridge
+        // and it will not forward any ETH to the target contract on L2. However,
+        // we need to set the payable value to msg.value to ensure that the Scroll
+        // Bridge has enough gas to forward the message to L2.
+        l1ScrollMessenger.sendMessage{ value: msg.value }(target, 0, message, l2GasLimit);
         emit MessageRelayed(target, message);
     }
 
@@ -47,7 +51,12 @@ contract Scroll_Adapter is AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
+    function relayTokens(
+        address l1Token,
+        address l2Token,
+        uint256 amount,
+        address to
+    ) external payable {
         IL1GatewayRouter _l1GatewayRouter = l1GatewayRouter;
 
         // Confirm that the l2Token that we're trying to send is the correct counterpart
