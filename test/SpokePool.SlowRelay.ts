@@ -604,7 +604,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       expect(await spokePool.relayFills(relayHash)).to.equal(FillStatus.RequestedSlowFill);
 
       // Can't slow fill again
-      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("InvalidSlowFill");
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
+        "InvalidSlowFillRequest"
+      );
 
       // Can fast fill after.
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
@@ -614,7 +616,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       const relayHash = getUSSRelayHash(relayData);
       expect(await spokePool.relayFills(relayHash)).to.equal(FillStatus.Filled);
 
-      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("InvalidSlowFill");
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
+        "InvalidSlowFillRequest"
+      );
     });
   });
 });

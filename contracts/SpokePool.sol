@@ -962,8 +962,10 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        // No need to override passed in destination chain id to be equal to chainId(),
-        // since this is not emitted in the FilledRelay event. So we do not have to fear a replay attack.
+        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
+        // fill that was destined for a different chain. This is required because the relayData
+        // is used to form the relayHash which this contract uses to uniquely ID relays.
+        relayData.destinationChainId = chainId();
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
@@ -996,7 +998,7 @@ abstract contract SpokePool is
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData));
-        if (relayFills[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFill();
+        if (relayFills[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         relayFills[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
         emit RequestedUSSSlowFill(
@@ -1082,6 +1084,11 @@ abstract contract SpokePool is
         USSRelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken);
+
+        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
+        // fill that was destined for a different chain. This is required because the relayData
+        // is used to form the relayHash which this contract uses to uniquely ID relays.
+        relayData.destinationChainId = chainId();
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
@@ -1720,6 +1727,34 @@ abstract contract SpokePool is
         // since there is no "relayer".
         bool isSlowFill = relayExecution.slowFill;
         address recipientToSend = relayExecution.updatedRecipient;
+
+        // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
+        // successful.
+        emit FilledUSSRelay(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            relayExecution.repaymentChainId,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayer,
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
+            replacedSlowFillExecution
+        );
+
+        emit USSRelayExecution(
+            relayExecution.payoutAdjustmentPct,
+            relayExecution.updatedOutputAmount,
+            relayExecution.updatedRecipient,
+            relayExecution.updatedMessage,
+            relayExecution.slowFill
+        );
         if (msg.sender == recipientToSend && !isSlowFill) return;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
@@ -1751,32 +1786,6 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
-
-        emit FilledUSSRelay(
-            relayData.inputToken,
-            relayData.outputToken,
-            relayData.inputAmount,
-            relayData.outputAmount,
-            relayExecution.repaymentChainId,
-            relayData.originChainId,
-            relayData.depositId,
-            relayData.fillDeadline,
-            relayData.exclusivityDeadline,
-            relayData.exclusiveRelayer,
-            relayer,
-            relayData.depositor,
-            relayData.recipient,
-            relayData.message,
-            replacedSlowFillExecution
-        );
-
-        emit USSRelayExecution(
-            relayExecution.payoutAdjustmentPct,
-            relayExecution.updatedOutputAmount,
-            relayExecution.updatedRecipient,
-            relayExecution.updatedMessage,
-            relayExecution.slowFill
-        );
     }
 
     function _updateCountFromFill(

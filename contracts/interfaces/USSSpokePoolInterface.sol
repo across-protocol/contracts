@@ -204,7 +204,7 @@ interface USSSpokePoolInterface {
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
     error RelayFilled();
-    error InvalidSlowFill();
+    error InvalidSlowFillRequest();
     error ExpiredFillDeadline();
     error InvalidMerkleProof();
     error InvalidChainId();
