@@ -57,6 +57,7 @@ contract Scroll_Adapter is AdapterInterface {
 
         // Bump the allowance
         IERC20(l1Token).safeIncreaseAllowance(address(_l1GatewayRouter), amount);
+
         // The scroll bridge handles arbitrary ERC20 tokens and is mindful of
         // the official WETH address on-chain. We don't need to do anything specific
         // to differentiate between WETH and a separate ERC20.
