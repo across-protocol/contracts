@@ -3,6 +3,26 @@ pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
 interface USSSpokePoolInterface {
+    // Fill status tracks on-chain state of deposit, uniquely identified by relayHash.
+    enum FillStatus {
+        Unfilled,
+        RequestedSlowFill,
+        Filled
+    }
+    // Fill type is emitted in the FilledRelay event to assist Dataworker with determining which types of
+    // fills to refund (e.g. only fast fills) and whether a fast fill created a sow fill excess.
+    enum FillType {
+        FastFill,
+        // Fast fills are normal fills that do not replace a slow fill request.
+        ReplacedSlowFill,
+        // Replaced slow fills are fast fills that replace a slow fill request. This type is used by the Dataworker
+        // to know when to send excess funds from the SpokePool to the HubPool because they can no longer be used
+        // for a slow fill execution.
+        SlowFill
+        // Slow fills are requested via requestSlowFill and executed by executeSlowRelayLeaf after a bundle containing
+        // the slow fill is validated.
+    }
+
     // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
     // to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
     struct USSRelayData {
@@ -10,9 +30,8 @@ interface USSSpokePoolInterface {
         address depositor;
         // The recipient address on the destination chain.
         address recipient;
-        // If this address is not 0x0, then only this address can fill the deposit. Consider this therefore a
-        // "committed relayer" address.
-        address relayer;
+        // This is the exclusive relayer who can fill the deposit before the exclusivity deadline.
+        address exclusiveRelayer;
         // Token that is deposited on origin chain by depositor.
         address inputToken;
         // Token that is received on destination chain by recipient.
@@ -29,13 +48,15 @@ interface USSSpokePoolInterface {
         uint32 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
         uint32 fillDeadline;
+        // The timestamp on the destination chain after which any relayer can fill the deposit.
+        uint32 exclusivityDeadline;
         // Data that is forwarded to the recipient.
         bytes message;
     }
 
     struct USSSlowFill {
         USSRelayData relayData;
-        int256 payoutAdjustmentPct;
+        uint256 updatedOutputAmount;
     }
 
     struct USSRelayerRefundLeaf {
@@ -64,63 +85,69 @@ interface USSSpokePoolInterface {
     // relay itself but is required to know how to process the relay. For example, "updatedX" fields can be used
     // by the relayer to modify fields of the relay with the depositor's permission, and "repaymentChainId" is specified
     // by the relayer to determine where to take a relayer refund, but doesn't affect the uniqueness of the relay.
-    struct USSRelayExecution {
+    struct USSRelayExecutionParams {
         USSRelayData relay;
         bytes32 relayHash;
         uint256 updatedOutputAmount;
         address updatedRecipient;
         bytes updatedMessage;
         uint256 repaymentChainId;
-        bool slowFill;
-        int256 payoutAdjustmentPct;
-    }
-
-    // @dev The following deposit parameters are packed into structs to avoid stack too deep errors when
-    // emitting events like FundsDeposited/FilledRelay that emit
-    // a lot of individual parameters.
-
-    /// @dev tokens that need to be sent from the offerer in order to satisfy an order.
-    struct InputToken {
-        address token;
-        uint256 amount;
-    }
-
-    /// @dev tokens that need to be received by the recipient on another chain in order to satisfy an order
-    struct OutputToken {
-        address token;
-        uint256 amount;
     }
 
     event USSFundsDeposited(
-        InputToken inputToken,
-        OutputToken outputToken,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
         uint256 indexed destinationChainId,
         uint32 indexed depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         address indexed depositor,
         address recipient,
         address relayer,
         bytes message
     );
 
+    struct USSRelayExecutionEventInfo {
+        address updatedRecipient;
+        bytes updatedMessage;
+        uint256 updatedOutputAmount;
+        FillType fillType;
+    }
+
     event FilledUSSRelay(
-        InputToken inputToken,
-        OutputToken outputToken,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
         uint256 repaymentChainId,
         uint256 indexed originChainId,
         uint32 indexed depositId,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        address exclusiveRelayer,
         address indexed relayer,
         address depositor,
         address recipient,
         bytes message,
-        // Parameters with "updated" prefix to signal that these parameters can be updated via speed ups.
-        address updatedRecipient,
-        bool slowFill,
-        uint256 updatedOutputAmount,
-        int256 payoutAdjustmentPct,
-        bytes updatedMessage
+        USSRelayExecutionEventInfo relayExecutionInfo
+    );
+
+    event RequestedUSSSlowFill(
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 indexed originChainId,
+        uint32 indexed depositId,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        address exclusiveRelayer,
+        address depositor,
+        address recipient,
+        bytes message
     );
 
     event ExecutedUSSRelayerRefundRoot(
@@ -138,28 +165,26 @@ interface USSSpokePoolInterface {
     function depositUSS(
         address depositor,
         address recipient,
-        // TODO: Running into stack-too-deep errors when emitting FundsDeposited with all of the parameters
-        // so I've packed them for now into input and output token structs
-        InputToken memory inputToken,
-        OutputToken memory outputToken,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        bytes memory message
+        uint32 exclusivityDeadline,
+        bytes calldata message
     ) external payable;
 
-    function fillUSSRelay(
-        address depositor,
-        address recipient,
-        address exclusiveRelayer,
-        InputToken memory inputToken,
-        OutputToken memory outputToken,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        uint32 depositId,
-        uint32 fillDeadline,
-        bytes memory message
+    function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId) external;
+
+    function requestUSSSlowFill(USSRelayData memory relayData) external;
+
+    function executeUSSSlowRelayLeaf(
+        USSSlowFill calldata slowFillLeaf,
+        uint32 rootBundleId,
+        bytes32[] calldata proof
     ) external;
 
     function executeUSSRelayerRefundLeaf(
@@ -167,4 +192,18 @@ interface USSSpokePoolInterface {
         USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) external;
+
+    error DisabledRoute();
+    error InvalidQuoteTimestamp();
+    error InvalidFillDeadline();
+    error MsgValueDoesNotMatchInputAmount();
+    error NotExclusiveRelayer();
+    error RelayFilled();
+    error InvalidSlowFillRequest();
+    error ExpiredFillDeadline();
+    error InvalidMerkleProof();
+    error InvalidChainId();
+    error InvalidMerkleLeaf();
+    error ClaimedMerkleLeaf();
+    error InvalidPayoutAdjustmentPct();
 }

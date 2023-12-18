@@ -190,6 +190,22 @@ export interface RelayData {
   message: string;
 }
 
+export interface USSRelayData {
+  depositor: string;
+  recipient: string;
+  exclusiveRelayer: string;
+  inputToken: string;
+  outputToken: string;
+  inputAmount: BigNumber;
+  outputAmount: BigNumber;
+  originChainId: number;
+  destinationChainId: number;
+  depositId: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  message: string;
+}
+
 export interface SlowFill {
   relayData: RelayData;
   payoutAdjustmentPct: BigNumber;
@@ -229,6 +245,17 @@ export function getRelayHash(
     )
   );
   return { relayHash, relayData };
+}
+
+export function getUSSRelayHash(relayData: USSRelayData): string {
+  return ethers.utils.keccak256(
+    defaultAbiCoder.encode(
+      [
+        "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 destinationChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+      ],
+      [relayData]
+    )
+  );
 }
 
 export function getDepositParams(args: {
