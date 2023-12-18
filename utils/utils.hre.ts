@@ -23,12 +23,20 @@ export async function getSpokePoolDeploymentInfo(
   return { hubPool, hubChainId, spokeChainId };
 }
 
-export async function deployNewProxy(name: string, args: (number | string)[]): Promise<void> {
+type FnArgs = number | string;
+type DeployOpts = {
+  constructorArgs: FnArgs[];
+  initFn?: string;
+  initArgs?: FnArgs[];
+};
+export async function deployNewProxy(name: string, args: DeployOpts): Promise<void> {
   const { deployments, run, upgrades } = hre;
 
-  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, {
+  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args.initArgs ?? [], {
     kind: "uups",
     unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+    initializer: args.initFn ?? "initialize",
+    constructorArgs: args.constructorArgs,
   });
   const instance = await proxy.deployed();
   console.log(`New ${name} proxy deployed @ ${instance.address}`);

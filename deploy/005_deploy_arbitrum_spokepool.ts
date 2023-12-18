@@ -10,8 +10,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const initArgs = [1_000_000, L2_ADDRESS_MAP[spokeChainId].l2GatewayRouter, hubPool.address, hubPool.address];
-  await deployNewProxy("Arbitrum_SpokePool", initArgs, {
+  await deployNewProxy("Arbitrum_SpokePool", {
     constructorArgs: [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 32400],
+    initArgs,
   });
 };
 module.exports = func;

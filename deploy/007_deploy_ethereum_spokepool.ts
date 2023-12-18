@@ -12,8 +12,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
   const initArgs = [1_000_000, hubPool.address, L1_ADDRESS_MAP[chainId].weth];
-  await deployNewProxy("Ethereum_SpokePool", initArgs, {
+  await deployNewProxy("Ethereum_SpokePool", {
     constructorArgs: [L1_ADDRESS_MAP[chainId].weth, 3600, 32400],
+    initArgs,
   });
 
   // Transfer ownership to hub pool.

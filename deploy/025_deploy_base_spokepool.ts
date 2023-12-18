@@ -9,8 +9,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const initArgs = [1_000_000, hubPool.address, hubPool.address];
-  await deployNewProxy("Base_SpokePool", initArgs, {
+  await deployNewProxy("Base_SpokePool", {
     constructorArgs: ["0x4200000000000000000000000000000000000006", 3600, 32400],
+    initArgs,
   });
 };
 module.exports = func;
