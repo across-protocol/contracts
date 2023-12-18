@@ -90,9 +90,6 @@ describe("SpokePool Relayer Logic", async function () {
     expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets.sub(consts.amountToRelay));
     expect(await destErc20.balanceOf(recipient.address)).to.equal(consts.amountToRelay);
 
-    // Fill amount should be set.
-    expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreFees);
-
     // Fill count should be set. Note: even though this is a partial fill, the fill count should be set to the full
     // amount because we don't know if the rest of the relay will be slow filled or not.
     const fillCountIncrement = relayData.amount
@@ -111,9 +108,6 @@ describe("SpokePool Relayer Logic", async function () {
       consts.amountToSeedWallets.sub(fullRelayAmountPostFees)
     );
     expect(await destErc20.balanceOf(recipient.address)).to.equal(fullRelayAmountPostFees);
-
-    // Fill amount should be equal to full relay amount.
-    expect(await spokePool.relayFills(relayHash)).to.equal(fullRelayAmount);
   });
   it("Repayment chain is set correctly", async function () {
     // Can set repayment chain if full fill.
@@ -279,7 +273,7 @@ describe("SpokePool Relayer Logic", async function () {
       );
   });
   it("Relaying WETH correctly unwraps into ETH", async function () {
-    const { relayHash, relayData } = getRelayHash(
+    const { relayData } = getRelayHash(
       depositor.address,
       recipient.address,
       consts.firstDepositId,
@@ -296,9 +290,6 @@ describe("SpokePool Relayer Logic", async function () {
     // The collateral should have unwrapped to ETH and then transferred to recipient.
     expect(await weth.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets.sub(consts.amountToRelay));
     expect(await recipient.getBalance()).to.equal(startingRecipientBalance.add(consts.amountToRelay));
-
-    // Fill amount should be set.
-    expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreFees);
   });
   it("Relaying to contract recipient correctly calls contract and sends tokens", async function () {
     const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
@@ -356,7 +347,7 @@ describe("SpokePool Relayer Logic", async function () {
   });
   it("Self-relay transfers no tokens", async function () {
     const largeRelayAmount = consts.amountToSeedWallets.mul(100);
-    const { relayHash, relayData } = getRelayHash(
+    const { relayData } = getRelayHash(
       depositor.address,
       relayer.address,
       consts.firstDepositId,
@@ -373,9 +364,6 @@ describe("SpokePool Relayer Logic", async function () {
 
     // Balance should be the same as before.
     expect(await weth.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets);
-
-    // Fill amount should be set.
-    expect(await spokePool.relayFills(relayHash)).to.equal(largeRelayAmount);
   });
   it("General failure cases", async function () {
     // Fees set too high.
@@ -732,9 +720,6 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
   const expectedRecipientBalance = consts.amountToRelay;
   expect(recipientBalance.gte(expectedRecipientBalance.sub(1)) || recipientBalance.lte(expectedRecipientBalance.add(1)))
     .to.be.true;
-
-  // Fill amount should be be set taking into account modified fees.
-  expect(await spokePool.relayFills(relayHash)).to.equal(consts.amountToRelayPreModifiedFees);
 }
 
 async function testUpdatedFeeSignatureFailCases(depositorAddress: string) {

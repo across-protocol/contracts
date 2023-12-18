@@ -79,7 +79,11 @@ abstract contract SpokePool is
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
     // relay, the fees, and the agents are all parameters included in the hash key.
-    mapping(bytes32 => uint256) public relayFills;
+    mapping(bytes32 => uint256) private DEPRECATED_relayFills;
+
+    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
+    // to eliminate any chance of collision between RelayData hashes and USSRelayData hashes.
+    mapping(bytes32 => uint256) public fillStatuses;
 
     // This keeps track of the worst-case liabilities due to fills.
     // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between
@@ -994,8 +998,8 @@ abstract contract SpokePool is
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData));
-        if (relayFills[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
-        relayFills[relayHash] = uint256(FillStatus.RequestedSlowFill);
+        if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
+        fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
         emit RequestedUSSSlowFill(
             relayData.inputToken,
@@ -1543,7 +1547,7 @@ abstract contract SpokePool is
 
         // Check that the relay has not already been completely filled. Note that the relays mapping will point to
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
-        require(relayFills[relayExecution.relayHash] < relayData.amount, "relay filled");
+        require(DEPRECATED_relayFills[relayExecution.relayHash] < relayData.amount, "relay filled");
 
         // This allows the caller to add in frontrunning protection for quote validity.
         require(fillCounter[relayData.destinationToken] <= relayExecution.maxCount, "Above max count");
@@ -1563,7 +1567,7 @@ abstract contract SpokePool is
 
         // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
         // we'll pull exactly enough tokens to complete the relay.
-        uint256 amountRemainingInRelay = relayData.amount - relayFills[relayExecution.relayHash];
+        uint256 amountRemainingInRelay = relayData.amount - DEPRECATED_relayFills[relayExecution.relayHash];
         if (amountRemainingInRelay < fillAmountPreFees) {
             fillAmountPreFees = amountRemainingInRelay;
         }
@@ -1610,7 +1614,7 @@ abstract contract SpokePool is
 
         // Update fill counter.
         _updateCountFromFill(
-            relayFills[relayExecution.relayHash],
+            DEPRECATED_relayFills[relayExecution.relayHash],
             localRepayment,
             relayData.amount,
             relayData.realizedLpFeePct,
@@ -1621,7 +1625,7 @@ abstract contract SpokePool is
         // relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
         // numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
         // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
-        relayFills[relayExecution.relayHash] += fillAmountPreFees;
+        DEPRECATED_relayFills[relayExecution.relayHash] += fillAmountPreFees;
 
         // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
         // net movement of funds.
@@ -1661,7 +1665,7 @@ abstract contract SpokePool is
             AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
-                relayFills[relayExecution.relayHash] >= relayData.amount,
+                DEPRECATED_relayFills[relayExecution.relayHash] >= relayData.amount,
                 msg.sender,
                 relayExecution.updatedMessage
             );
@@ -1692,7 +1696,7 @@ abstract contract SpokePool is
             ? FillType.SlowFill
             : (
                 // The following is true if this is a fast fill that was sent after a slow fill request.
-                relayFills[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
+                fillStatuses[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
                     ? FillType.ReplacedSlowFill
                     : FillType.FastFill
             );
@@ -1703,8 +1707,8 @@ abstract contract SpokePool is
         // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
-        if (relayFills[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
-        relayFills[relayHash] = uint256(FillStatus.Filled);
+        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
+        fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
         // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
         // successful.
@@ -1798,7 +1802,7 @@ abstract contract SpokePool is
 
         emit FilledRelay(
             relayExecution.relay.amount,
-            relayFills[relayExecution.relayHash],
+            DEPRECATED_relayFills[relayExecution.relayHash],
             fillAmountPreFees,
             relayExecution.repaymentChainId,
             relayExecution.relay.originChainId,
