@@ -17,6 +17,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
+    lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
+    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -47,6 +51,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     baseCrossDomainMessenger: "0x8e5693140eA606bcEB98761d9beB1BC87383706D",
     baseStandardBridge: "0xfA6D8Ee5BE770F84FC001D098C4bD604Fe01284a",
+    usdc: "0x07865c6e87b9f70255377e024ace6630c1eaa37f",
+    lineaMessageService: "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
+    lineaTokenBridge: "0x5506A3805fB8A58Fa58248CC52d2b06D92cA94e6",
+    lineaUsdcBridge: "0x32D123756d32d3eD6580935f8edF416e57b940f4",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
@@ -103,6 +111,14 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+  },
+  59144: {
+    usdc: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+    lineaUsdcBridge: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
+  },
+  59140: {
+    usdc: "0xB4257F31750961C8e536f5cfCBb3079437700416",
+    lineaUsdcBridge: "0xDFa112375c9be9D124932b1d104b73f888655329",
   },
 };
 
