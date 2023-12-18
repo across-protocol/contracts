@@ -3,10 +3,24 @@ pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
 interface USSSpokePoolInterface {
+    // Fill status tracks on-chain state of deposit, uniquely identified by relayHash.
     enum FillStatus {
         Unfilled,
         RequestedSlowFill,
         Filled
+    }
+    // Fill type is emitted in the FilledRelay event to assist Dataworker with determining which types of
+    // fills to refund (e.g. only fast fills) and whether a fast fill created a sow fill excess.
+    enum FillType {
+        FastFill,
+        // Fast fills are normal fills that do not replace a slow fill request.
+        ReplacedSlowFill,
+        // Replaced slow fills are fast fills that replace a slow fill request. This type is used by the Dataworker
+        // to know when to send excess funds from the SpokePool to the HubPool because they can no longer be used
+        // for a slow fill execution.
+        SlowFill
+        // Slow fills are requested via requestSlowFill and executed by executeSlowRelayLeaf after a bundle containing
+        // the slow fill is validated.
     }
 
     // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
@@ -42,7 +56,7 @@ interface USSSpokePoolInterface {
 
     struct USSSlowFill {
         USSRelayData relayData;
-        int256 payoutAdjustmentPct;
+        uint256 updatedOutputAmount;
     }
 
     struct USSRelayerRefundLeaf {
@@ -78,8 +92,6 @@ interface USSSpokePoolInterface {
         address updatedRecipient;
         bytes updatedMessage;
         uint256 repaymentChainId;
-        bool slowFill;
-        int256 payoutAdjustmentPct;
     }
 
     event USSFundsDeposited(
@@ -98,6 +110,13 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
+    struct USSRelayExecutionEventInfo {
+        address updatedRecipient;
+        bytes updatedMessage;
+        uint256 updatedOutputAmount;
+        FillType fillType;
+    }
+
     event FilledUSSRelay(
         address inputToken,
         address outputToken,
@@ -113,7 +132,7 @@ interface USSSpokePoolInterface {
         address depositor,
         address recipient,
         bytes message,
-        bool replacedSlowFillExecution
+        USSRelayExecutionEventInfo relayExecutionInfo
     );
 
     event RequestedUSSSlowFill(
@@ -129,30 +148,6 @@ interface USSSpokePoolInterface {
         address depositor,
         address recipient,
         bytes message
-    );
-
-    // TODO: Consider emitting the following events in fillRelayUSSWithUpdatedDeposit
-    // and executeUSSSlowRelayLeaf to capture data that USSFilledRelay doesn't. The reason
-    // I'm on the fence about this is because the existing dataworker/relayer do not use
-    // the sped-up-deposit modified data and I don't anticipate them needing to query
-    // the payoutAdjustmentPct. The ones that would would be those tracking relayer balances
-    // like relayers themselves and the data teams.
-
-    // event USSFilledModifiedRelay(
-    //     uint256 updatedOutputAmount,
-    //     address updatedRecipient,
-    //     bytes updatedMessage
-    // );
-
-    // Emitting these params that are unique to the specific fill transaction, separately because they
-    // are unused by the dataworker and relayer when proposing and validating bundles and filling deposits.
-    // However, they are useful for tracking relayer balances and data analytics in general.
-    event USSRelayExecution(
-        int256 payoutAdjustmentPct,
-        uint256 updatedOutputAmount,
-        address updatedRecipient,
-        bytes updatedMessage,
-        bool slowFill
     );
 
     event ExecutedUSSRelayerRefundRoot(
@@ -204,7 +199,7 @@ interface USSSpokePoolInterface {
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
     error RelayFilled();
-    error InvalidSlowFill();
+    error InvalidSlowFillRequest();
     error ExpiredFillDeadline();
     error InvalidMerkleProof();
     error InvalidChainId();

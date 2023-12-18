@@ -79,7 +79,11 @@ abstract contract SpokePool is
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
     // relay, the fees, and the agents are all parameters included in the hash key.
-    mapping(bytes32 => uint256) public relayFills;
+    mapping(bytes32 => uint256) private DEPRECATED_relayFills;
+
+    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
+    // to eliminate any chance of collision between RelayData hashes and USSRelayData hashes.
+    mapping(bytes32 => uint256) public fillStatuses;
 
     // Note: We will likely un-deprecate the fill and deposit counters to implement a better
     // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
@@ -878,8 +882,9 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        // No need to override passed in destination chain id to be equal to chainId(),
-        // since this is not emitted in the FilledRelay event. So we do not have to fear a replay attack.
+        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
+        // fill that was destined for a different chain. This is required because the relayData
+        // is used to form the relayHash which this contract uses to uniquely ID relays.
         relayData.destinationChainId = chainId();
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
@@ -888,13 +893,11 @@ abstract contract SpokePool is
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
-            repaymentChainId: repaymentChainId,
-            slowFill: false,
-            payoutAdjustmentPct: 0
+            repaymentChainId: repaymentChainId
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
-        _fillRelayUSS(relayExecution, msg.sender);
+        _fillRelayUSS(relayExecution, msg.sender, false);
     }
 
     /**
@@ -907,14 +910,12 @@ abstract contract SpokePool is
      * fill for the intended deposit.
      */
     function requestUSSSlowFill(USSRelayData memory relayData) public override nonReentrant unpausedFills {
-        // TODO: Should we require that the exclusivity deadline has passed? In practice, I would never expect
-        // an exclusive relayer to request a slow fill, but there could be reasons?
         // solhint-disable-next-line not-rely-on-time
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData));
-        if (relayFills[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFill();
-        relayFills[relayHash] = uint256(FillStatus.RequestedSlowFill);
+        if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
+        fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
         emit RequestedUSSSlowFill(
             relayData.inputToken,
@@ -1000,6 +1001,9 @@ abstract contract SpokePool is
 
         _preExecuteLeafHook(relayData.outputToken);
 
+        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
+        // fill that was destined for a different chain. This is required because the relayData
+        // is used to form the relayHash which this contract uses to uniquely ID relays.
         relayData.destinationChainId = chainId();
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
@@ -1007,19 +1011,17 @@ abstract contract SpokePool is
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
             relayHash: bytes32(0),
-            updatedOutputAmount: relayData.outputAmount,
+            updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
-            repaymentChainId: 0, // Hardcoded to 0 for slow fills
-            slowFill: true, // This is a slow fill execution
-            payoutAdjustmentPct: slowFillLeaf.payoutAdjustmentPct
+            repaymentChainId: 0 // Hardcoded to 0 for slow fills
         });
         relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
         _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
 
         // - 0x0 hardcoded as relayer for slow fill execution.
-        _fillRelayUSS(relayExecution, address(0));
+        _fillRelayUSS(relayExecution, address(0), true);
     }
 
     /**
@@ -1404,7 +1406,7 @@ abstract contract SpokePool is
     ) internal view {
         USSSlowFill memory slowFill = USSSlowFill({
             relayData: relayExecution.relay,
-            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
+            updatedOutputAmount: relayExecution.updatedOutputAmount
         });
 
         if (!MerkleLib.verifyUSSSlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
@@ -1458,7 +1460,7 @@ abstract contract SpokePool is
 
         // Check that the relay has not already been completely filled. Note that the relays mapping will point to
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
-        require(relayFills[relayExecution.relayHash] < relayData.amount, "relay filled");
+        require(DEPRECATED_relayFills[relayExecution.relayHash] < relayData.amount, "relay filled");
 
         // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
         // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
@@ -1475,7 +1477,7 @@ abstract contract SpokePool is
 
         // If user's specified max amount to send is greater than the amount of the relay remaining pre-fees,
         // we'll pull exactly enough tokens to complete the relay.
-        uint256 amountRemainingInRelay = relayData.amount - relayFills[relayExecution.relayHash];
+        uint256 amountRemainingInRelay = relayData.amount - DEPRECATED_relayFills[relayExecution.relayHash];
         if (amountRemainingInRelay < fillAmountPreFees) {
             fillAmountPreFees = amountRemainingInRelay;
         }
@@ -1523,7 +1525,7 @@ abstract contract SpokePool is
         // relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
         // numbers for the maxTokensToSend parameter or convenient numbers like 100 (i.e. relayers who will fully
         // fill any relay up to 100 tokens, and partial fill with 100 tokens for larger relays).
-        relayFills[relayExecution.relayHash] += fillAmountPreFees;
+        DEPRECATED_relayFills[relayExecution.relayHash] += fillAmountPreFees;
 
         // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
         // net movement of funds.
@@ -1563,30 +1565,41 @@ abstract contract SpokePool is
             AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
-                relayFills[relayExecution.relayHash] >= relayData.amount,
+                DEPRECATED_relayFills[relayExecution.relayHash] >= relayData.amount,
                 msg.sender,
                 relayExecution.updatedMessage
             );
         }
     }
 
-    // @param relayer: relayer who is actually credited as filling this deposit. Can be differenet from
+    // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayUSS(USSRelayExecutionParams memory relayExecution, address relayer) internal {
+    function _fillRelayUSS(
+        USSRelayExecutionParams memory relayExecution,
+        address relayer,
+        bool isSlowFill
+    ) internal {
         USSRelayData memory relayData = relayExecution.relay;
 
         // solhint-disable-next-line not-rely-on-time
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
         bytes32 relayHash = relayExecution.relayHash;
+
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-        // is trivially false since a slow fill cannot replace itself. We'll emit this param in the FilledRelay
+        // is trivially true. We'll emit this value in the FilledRelay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
-        bool replacedSlowFillExecution = !relayExecution.slowFill &&
-            relayFills[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill);
+        FillType fillType = isSlowFill
+            ? FillType.SlowFill
+            : (
+                // The following is true if this is a fast fill that was sent after a slow fill request.
+                fillStatuses[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
+                    ? FillType.ReplacedSlowFill
+                    : FillType.FastFill
+            );
 
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
@@ -1594,26 +1607,33 @@ abstract contract SpokePool is
         // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
-        if (relayFills[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
-        relayFills[relayHash] = uint256(FillStatus.Filled);
+        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
+        fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
-        uint256 amountToSend = relayExecution.updatedOutputAmount;
-
-        // This can only happen in a slow fill, where the contract is funding the relay.
-        int256 payoutAdjustmentPct = relayExecution.payoutAdjustmentPct;
-        if (payoutAdjustmentPct != 0) {
-            // If payoutAdjustmentPct is positive, then the recipient will receive more than the amount they
-            // were originally expecting. If it is negative, then the recipient will receive less.
-            // -1e18 is -100%. Because we cannot pay out negative values, that is the minimum.
-            // Moreover, allow the payout adjustment to go up to 1000% (i.e. 11x).
-            // This is a sanity check to ensure the payouts do not grow too large via some sort of issue in bundle
-            // construction.
-
-            if (payoutAdjustmentPct < -1e18 || payoutAdjustmentPct > 100e18) revert InvalidPayoutAdjustmentPct();
-
-            // Note: since _computeAmountPostFees is typically intended for fees, the signage must be reversed.
-            amountToSend = _computeAmountPostFees(amountToSend, -payoutAdjustmentPct);
-        }
+        // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
+        // successful.
+        emit FilledUSSRelay(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            relayExecution.repaymentChainId,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayer,
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
+            USSRelayExecutionEventInfo({
+                updatedRecipient: relayExecution.updatedRecipient,
+                updatedMessage: relayExecution.updatedMessage,
+                updatedOutputAmount: relayExecution.updatedOutputAmount,
+                fillType: fillType
+            })
+        );
 
         // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
         // net movement of funds.
@@ -1621,12 +1641,13 @@ abstract contract SpokePool is
         // way (no need to have funds on the destination).
         // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
         // since there is no "relayer".
-        bool isSlowFill = relayExecution.slowFill;
         address recipientToSend = relayExecution.updatedRecipient;
+
         if (msg.sender == recipientToSend && !isSlowFill) return;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         address outputToken = relayData.outputToken;
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
@@ -1654,32 +1675,6 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
-
-        emit FilledUSSRelay(
-            relayData.inputToken,
-            relayData.outputToken,
-            relayData.inputAmount,
-            relayData.outputAmount,
-            relayExecution.repaymentChainId,
-            relayData.originChainId,
-            relayData.depositId,
-            relayData.fillDeadline,
-            relayData.exclusivityDeadline,
-            relayData.exclusiveRelayer,
-            relayer,
-            relayData.depositor,
-            relayData.recipient,
-            relayData.message,
-            replacedSlowFillExecution
-        );
-
-        emit USSRelayExecution(
-            relayExecution.payoutAdjustmentPct,
-            relayExecution.updatedOutputAmount,
-            relayExecution.updatedRecipient,
-            relayExecution.updatedMessage,
-            relayExecution.slowFill
-        );
     }
 
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
@@ -1693,7 +1688,7 @@ abstract contract SpokePool is
 
         emit FilledRelay(
             relayExecution.relay.amount,
-            relayFills[relayExecution.relayHash],
+            DEPRECATED_relayFills[relayExecution.relayHash],
             fillAmountPreFees,
             relayExecution.repaymentChainId,
             relayExecution.relay.originChainId,
