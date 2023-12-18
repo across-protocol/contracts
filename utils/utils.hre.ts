@@ -30,8 +30,8 @@ export async function deployNewProxy(name: string, constructorArgs: FnArgs[], in
   const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), initArgs, {
     kind: "uups",
     unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
-    initializer: "initialize",
     constructorArgs,
+    initializer: "initialize",
   });
   const instance = await proxy.deployed();
   console.log(`New ${name} proxy deployed @ ${instance.address}`);
@@ -51,7 +51,7 @@ export async function deployNewProxy(name: string, constructorArgs: FnArgs[], in
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
-  await run("verify:verify", { address: instance.address });
+  await run("verify:verify", { address: instance.address, constructorArguments: constructorArgs });
 }
 
 export { hre };
