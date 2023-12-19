@@ -1,3 +1,4 @@
+import { MerkleTree } from "../utils/MerkleTree";
 import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../utils/utils";
 import * as consts from "./constants";
 import { deployMockSpokePoolCaller, spokePoolFixture } from "./fixtures/SpokePool.Fixture";
@@ -140,13 +141,6 @@ describe("SpokePool Root Bundle Execution", function () {
     it("Can execute ERC20 leaf", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
       await spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
-    });
-    it("Must be EOA to execute", async function () {
-      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
-      const nonEOACaller = await deployMockSpokePoolCaller(spokePool);
-      await expect(
-        nonEOACaller.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-      ).to.revertedWith("NotEOA");
     });
   });
 

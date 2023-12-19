@@ -174,8 +174,8 @@ export async function buildSlowRelayTree(slowFills: SlowFill[]) {
 }
 export async function buildUSSSlowRelayTree(slowFills: USSSlowFill[]) {
   const paramType = await getParamType("MerkleLibTest", "verifyUSSSlowRelayFulfillment", "slowFill");
-  const hashFn = (input: SlowFill) => {
+  const hashFn = (input: USSSlowFill) => {
     return keccak256(defaultAbiCoder.encode([paramType!], [input]));
   };
-  return new MerkleTree<SlowFill>(slowFills, hashFn);
+  return new MerkleTree<USSSlowFill>(slowFills, hashFn);
 }

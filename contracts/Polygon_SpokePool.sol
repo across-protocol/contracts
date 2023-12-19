@@ -164,6 +164,30 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         _wrap();
     }
 
+    /**
+     * @notice These functions can send an L2 to L1 message so we are extra cautious about preventing a griefing vector
+     * whereby someone batches this call with a bunch of other calls and produces a very large L2 burn transaction.
+     * This might make the L2 -> L1 message fail due to exceeding the L1 calldata limit.
+     */
+
+    function executeUSSRelayerRefundLeaf(
+        uint32 rootBundleId,
+        USSRelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) public override {
+        if (relayerRefundLeaf.amountToReturn > 0 && AddressLibUpgradeable.isContract(msg.sender)) revert NotEOA();
+        super.executeUSSRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
+    }
+
+    function executeRelayerRefundLeaf(
+        uint32 rootBundleId,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
+    ) public override {
+        if (relayerRefundLeaf.amountToReturn > 0 && AddressLibUpgradeable.isContract(msg.sender)) revert NotEOA();
+        super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
+    }
+
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/

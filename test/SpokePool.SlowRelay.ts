@@ -665,23 +665,5 @@ describe("SpokePool Slow Relay Logic", async function () {
           )
       );
     });
-    it("must be called by EOA", async function () {
-      const tree = await buildUSSSlowRelayTree([slowRelayLeaf]);
-      await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
-
-      const nonEOACaller = await (
-        await getContractFactory("MockCaller", (await ethers.getSigners())[0])
-      ).deploy(spokePool.address);
-      await expect(() =>
-        nonEOACaller
-          .connect(relayer)
-          .executeUSSSlowRelayLeaf(
-            slowRelayLeaf,
-            1, // rootBundleId
-            tree.getHexProof(slowRelayLeaf)
-          )
-          .to.revertedWith("NotEOA")
-      );
-    });
   });
 });

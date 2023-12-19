@@ -14,14 +14,20 @@ import {
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
-import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
+import {
+  buildRelayerRefundLeaves,
+  buildRelayerRefundTree,
+  buildUSSRelayerRefundLeaves,
+  buildUSSRelayerRefundTree,
+  constructSingleRelayerRefundTree,
+} from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
+import { deployMockSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string;
 let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
-
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
@@ -227,6 +233,63 @@ describe("Polygon Spoke Pool", function () {
     await expect(polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
       .to.emit(dai, "Transfer")
       .withArgs(bridger, zeroAddress, amountToReturn);
+  });
+
+  it("Must be EOA to execute USS relayer refund leaf with amountToReturn > 0", async function () {
+    const l2ChainId = await owner.getChainId();
+    const leaves = buildUSSRelayerRefundLeaves(
+      [l2ChainId, l2ChainId], // Destination chain ID.
+      [amountToReturn, 0], // amountToReturn.
+      [dai.address, dai.address], // l2Token.
+      [[], []], // refundAddresses.
+      [[], []], // refundAmounts.
+      [mockTreeRoot, mockTreeRoot], // fillsRefundedRoot.
+      [mockTreeRoot, mockTreeRoot] // fillsRefundedHash.
+    );
+    const tree = await buildUSSRelayerRefundTree(leaves);
+
+    // Relay leaves to Spoke
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      tree.getHexRoot(),
+      mockTreeRoot,
+    ]);
+
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+    const nonEOACaller = await deployMockSpokePoolCaller(polygonSpokePool);
+    await expect(
+      nonEOACaller.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.revertedWith("NotEOA");
+
+    // Executing leaf with amountToReturn == 0 is fine through contract caller.
+    await expect(nonEOACaller.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[1], tree.getHexProof(leaves[1])))
+      .to.not.be.reverted;
+  });
+
+  it("Must be EOA to execute relayer refund leaf with amountToReturn > 0", async function () {
+    const l2ChainId = await owner.getChainId();
+    const leaves = buildRelayerRefundLeaves(
+      [l2ChainId, l2ChainId], // Destination chain ID.
+      [amountToReturn, 0], // amountToReturn.
+      [dai.address, dai.address], // l2Token.
+      [[], []], // refundAddresses.
+      [[], []] // refundAmounts.
+    );
+    const tree = await buildRelayerRefundTree(leaves);
+
+    // Relay leaves to Spoke
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      tree.getHexRoot(),
+      mockTreeRoot,
+    ]);
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+    const nonEOACaller = await deployMockSpokePoolCaller(polygonSpokePool);
+    await expect(
+      nonEOACaller.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.revertedWith("NotEOA");
+
+    // Executing leaf with amountToReturn == 0 is fine through contract caller.
+    await expect(nonEOACaller.connect(relayer).executeRelayerRefundLeaf(0, leaves[1], tree.getHexProof(leaves[1]))).to
+      .not.be.reverted;
   });
 
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {

@@ -1120,7 +1120,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         _validateRelayerRefundLeaf(
@@ -1170,7 +1170,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         _validateRelayerRefundLeaf(
@@ -1389,12 +1389,10 @@ abstract contract SpokePool is
         emit SetHubPool(newHubPool);
     }
 
-    function _preExecuteLeafHook(address l2TokenAddress) internal virtual {
+    function _preExecuteLeafHook(address) internal virtual {
         // This method by default is a no-op. Different child spoke pools might want to execute functionality here
         // such as wrapping any native tokens owned by the contract into wrapped tokens before proceeding with
         // executing the leaf.
-
-        if (address(msg.sender).isContract()) revert NotEOA();
     }
 
     // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
