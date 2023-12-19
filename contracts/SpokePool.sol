@@ -26,9 +26,9 @@ interface AcrossMessageHandler {
         bytes memory message
     ) external;
 
-    // Overloaded function interface to be used with USS functions since fillCompleted no longer has any
+    // New function interface to be used with USS functions since fillCompleted no longer has any
     // meetings now that partial fills are impossible.
-    function handleAcrossMessage(
+    function handleUSSAcrossMessage(
         address tokenSent,
         uint256 amount,
         address relayer,
@@ -1774,7 +1774,7 @@ abstract contract SpokePool is
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
-            AcrossMessageHandler(recipientToSend).handleAcrossMessage(
+            AcrossMessageHandler(recipientToSend).handleUSSAcrossMessage(
                 outputToken,
                 amountToSend,
                 msg.sender,
