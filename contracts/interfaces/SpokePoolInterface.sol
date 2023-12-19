@@ -183,4 +183,6 @@ interface SpokePoolInterface {
     ) external;
 
     function chainId() external view returns (uint256);
+
+    error NotEOA();
 }

@@ -1393,6 +1393,8 @@ abstract contract SpokePool is
         // This method by default is a no-op. Different child spoke pools might want to execute functionality here
         // such as wrapping any native tokens owned by the contract into wrapped tokens before proceeding with
         // executing the leaf.
+
+        if (address(msg.sender).isContract()) revert NotEOA();
     }
 
     // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.

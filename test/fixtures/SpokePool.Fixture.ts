@@ -211,6 +211,11 @@ export interface SlowFill {
   payoutAdjustmentPct: BigNumber;
 }
 
+export interface USSSlowFill {
+  relayData: USSRelayData;
+  updatedOutputAmount: BigNumber;
+}
+
 export function getRelayHash(
   _depositor: string,
   _recipient: string,
@@ -402,4 +407,8 @@ export async function modifyRelayHelper(
   return {
     signature,
   };
+}
+
+export async function deployMockSpokePoolCaller(spokePool: Contract): Promise<Contract> {
+  return await (await getContractFactory("MockCaller", (await ethers.getSigners())[0])).deploy(spokePool.address);
 }
