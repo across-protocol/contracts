@@ -90,13 +90,6 @@ describe("SpokePool Relayer Logic", async function () {
     expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToSeedWallets.sub(consts.amountToRelay));
     expect(await destErc20.balanceOf(recipient.address)).to.equal(consts.amountToRelay);
 
-    // Fill count should be set. Note: even though this is a partial fill, the fill count should be set to the full
-    // amount because we don't know if the rest of the relay will be slow filled or not.
-    const fillCountIncrement = relayData.amount
-      .mul(consts.oneHundredPct.sub(relayData.realizedLpFeePct))
-      .div(consts.oneHundredPct);
-    expect(await spokePool.fillCounter(relayData.destinationToken)).to.equal(fillCountIncrement);
-
     // Relay again with maxAmountOfTokensToSend > amount of the relay remaining and check that the contract
     // pulls exactly enough tokens to complete the relay.
     const fullRelayAmount = consts.amountToDeposit;
