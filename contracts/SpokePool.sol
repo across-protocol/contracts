@@ -25,6 +25,15 @@ interface AcrossMessageHandler {
         address relayer,
         bytes memory message
     ) external;
+
+    // Overloaded function interface to be used with USS functions since fillCompleted no longer has any
+    // meetings now that partial fills are impossible.
+    function handleAcrossMessage(
+        address tokenSent,
+        uint256 amount,
+        address relayer,
+        bytes memory message
+    ) external;
 }
 
 /**
@@ -1763,14 +1772,11 @@ abstract contract SpokePool is
             else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
         }
 
-        // @TODO Can we remove the third param in handleAcrossMessage since we no longer support partial fills? Will
-        // require integrators sign-off.
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
             AcrossMessageHandler(recipientToSend).handleAcrossMessage(
                 outputToken,
                 amountToSend,
-                true, // fillCompleted
                 msg.sender,
                 updatedMessage
             );
