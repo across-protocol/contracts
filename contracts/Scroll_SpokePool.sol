@@ -16,7 +16,7 @@ contract Scroll_SpokePool is SpokePool {
      ******************************************/
 
     /**************************************
-     *         ITERNAL FUNCTIONS          *
+     *         INTERNAL FUNCTIONS         *
      **************************************/
 
     function _depositEthToWeth() internal {
