@@ -18,7 +18,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     L2_ADDRESS_MAP[spokeChainId].fxChild,
   ];
-  await deployNewProxy("Polygon_SpokePool", [L2_ADDRESS_MAP[spokeChainId].wMatic, 3600, 32400], initArgs);
+  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].wMatic, 3600, 32400];
+  await deployNewProxy("Polygon_SpokePool", constructorArgs, initArgs);
 };
 
 module.exports = func;
