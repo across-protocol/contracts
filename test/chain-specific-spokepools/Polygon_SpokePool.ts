@@ -239,7 +239,7 @@ describe("Polygon Spoke Pool", function () {
     const l2ChainId = await owner.getChainId();
     const leaves = buildUSSRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
-      [amountToReturn, 0], // amountToReturn.
+      [amountToReturn, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
       [[], []], // refundAmounts.
@@ -269,7 +269,7 @@ describe("Polygon Spoke Pool", function () {
     const l2ChainId = await owner.getChainId();
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
-      [amountToReturn, 0], // amountToReturn.
+      [amountToReturn, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.

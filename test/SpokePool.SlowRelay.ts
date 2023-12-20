@@ -9,7 +9,6 @@ import {
   randomBigNumber,
   BigNumber,
   toWei,
-  getContractFactory,
 } from "../utils/utils";
 import {
   spokePoolFixture,
