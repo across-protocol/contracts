@@ -23,12 +23,15 @@ export async function getSpokePoolDeploymentInfo(
   return { hubPool, hubChainId, spokeChainId };
 }
 
-export async function deployNewProxy(name: string, args: (number | string)[]): Promise<void> {
+type FnArgs = number | string;
+export async function deployNewProxy(name: string, constructorArgs: FnArgs[], initArgs: FnArgs[]): Promise<void> {
   const { deployments, run, upgrades } = hre;
 
-  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), args, {
+  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), initArgs, {
     kind: "uups",
     unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+    constructorArgs,
+    initializer: "initialize",
   });
   const instance = await proxy.deployed();
   console.log(`New ${name} proxy deployed @ ${instance.address}`);
@@ -48,7 +51,7 @@ export async function deployNewProxy(name: string, args: (number | string)[]): P
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
-  await run("verify:verify", { address: instance.address });
+  await run("verify:verify", { address: instance.address, constructorArguments: constructorArgs });
 }
 
 export { hre };
