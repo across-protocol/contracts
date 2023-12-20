@@ -110,6 +110,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   534351: {
     l2Weth: "0x5300000000000000000000000000000000000004",
+    scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
   },
 };
 

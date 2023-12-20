@@ -220,7 +220,7 @@ const config: HardhatUserConfig = {
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
       base: process.env.BASE_ETHERSCAN_API_KEY!,
       "base-goerli": process.env.ETHERSCAN_API_KEY!,
-      "sepolia-scroll": process.env.ETHERSCAN_API_KEY!,
+      "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -243,7 +243,7 @@ const config: HardhatUserConfig = {
         network: "sepolia",
         chainId: 11155111,
         urls: {
-          apiURL: "https://api-sepolia.etherscan.io/api",
+          apiURL: "https://api-sepolia.etherscan.io",
           browserURL: "https://sepolia.etherscan.io",
         },
       },
@@ -251,7 +251,7 @@ const config: HardhatUserConfig = {
         network: "scroll-sepolia",
         chainId: 534351,
         urls: {
-          apiURL: "https://api-sepolia.scrollscan.com/api",
+          apiURL: "https://api-sepolia.scrollscan.com",
           browserURL: "https://api-sepolia.scrollscan.com",
         },
       },
