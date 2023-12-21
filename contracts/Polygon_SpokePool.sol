@@ -44,6 +44,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     // the caller is the fxChild AND that the fxChild called processMessageFromRoot
     bool private callValidated;
 
+    // Dictionary of function UUID to unique hashes, which we use to mark the last block that a function was called
+    // by a certain caller (e.g. set value equal to keccak256(block.timestamp, tx.origin)). This can be
+    // used to prevent certain functions from being called atomically by the same caller.
+    // This assumes each block has a different block.timestamp on this network.
+    mapping(string => bytes32) private funcLocks;
+    error CrossFunctionLock();
+
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
     event SetPolygonTokenBridger(address indexed polygonTokenBridger);
@@ -193,12 +200,21 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode.
         // solhint-disable-next-line avoid-tx-origin
         if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
+        // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
+        _revertIfFunctionCalledAtomically("fill");
+        _setFunctionLock("executeLeaf");
         super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+
+    // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
+    function _preHandleMessageHook() internal override {
+        _revertIfFunctionCalledAtomically("executeLeaf");
+        _setFunctionLock("fill");
+    }
 
     function _preExecuteLeafHook(address) internal override {
         // Wraps MATIC --> WMATIC before distributing tokens from this contract.
@@ -218,6 +234,18 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         uint256 balance = address(this).balance;
         //slither-disable-next-line arbitrary-send-eth
         if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
+    }
+
+    function _setFunctionLock(string memory funcSig) internal {
+        // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
+        bytes32 lockValue = keccak256(abi.encodePacked(block.timestamp, tx.origin));
+        if (funcLocks[funcSig] != lockValue) funcLocks[funcSig] = lockValue;
+    }
+
+    // Revert if function was called during this block
+    function _revertIfFunctionCalledAtomically(string memory funcSig) internal view {
+        // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
+        if (funcLocks[funcSig] == keccak256(abi.encodePacked(block.timestamp, tx.origin))) revert CrossFunctionLock();
     }
 
     // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`, which is why
