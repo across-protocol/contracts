@@ -14,7 +14,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
-    args: [L1_ADDRESS_MAP[chainId].scrollERC20GatewayRouter, L1_ADDRESS_MAP[chainId].scrollMessengerRelay],
+    args: [
+      L1_ADDRESS_MAP[chainId].scrollERC20GatewayRouter,
+      L1_ADDRESS_MAP[chainId].scrollMessengerRelay,
+      L1_ADDRESS_MAP[chainId].scrollGasPriceOracle,
+    ],
   });
 };
 

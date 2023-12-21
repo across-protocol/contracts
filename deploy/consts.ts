@@ -76,6 +76,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
+    scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
   },
 };
 
