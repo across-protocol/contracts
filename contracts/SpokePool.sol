@@ -27,7 +27,7 @@ interface AcrossMessageHandler {
     ) external;
 
     // New function interface to be used with USS functions since fillCompleted no longer has any
-    // meetings now that partial fills are impossible.
+    // meaning now that partial fills are impossible.
     function handleUSSAcrossMessage(
         address tokenSent,
         uint256 amount,
