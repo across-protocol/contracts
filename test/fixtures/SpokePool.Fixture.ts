@@ -414,7 +414,7 @@ export async function deployMockSpokePoolCaller(
   spokePool: Contract,
   rootBundleId: number,
   leaf: RelayerRefundLeaf,
-  proof: string
+  proof: string[]
 ): Promise<Contract> {
   return await (
     await getContractFactory("MockCaller", (await ethers.getSigners())[0])
@@ -425,7 +425,7 @@ export async function deployMockUSSSpokePoolCaller(
   spokePool: Contract,
   rootBundleId: number,
   leaf: USSRelayerRefundLeaf,
-  proof: string
+  proof: string[]
 ): Promise<Contract> {
   return await (
     await getContractFactory("MockUSSCaller", (await ethers.getSigners())[0])
