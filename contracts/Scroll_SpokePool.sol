@@ -6,7 +6,6 @@ import "@scroll-tech/contracts/L2/gateways/IL2GatewayRouter.sol";
 
 contract Scroll_SpokePool is SpokePool {
     IL2GatewayRouter public l2GatewayRouter;
-    uint32 public l1GasLimit;
 
     /**************************************
      *               EVENTS               *
@@ -40,7 +39,6 @@ contract Scroll_SpokePool is SpokePool {
     ) public initializer {
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         l2GatewayRouter = _l2GatewayRouter;
-        l1GasLimit = 250_000;
     }
 
     /**************************************
@@ -54,7 +52,7 @@ contract Scroll_SpokePool is SpokePool {
         // the official WETH address on-chain. We don't need to do anything specific
         // to differentiate between WETH and a separate ERC20.
         // Note: This happens due to the L2GatewayRouter.getERC20Gateway() call
-        _l2GatewayRouter.withdrawERC20{ value: msg.value }(l2TokenAddress, hubPool, amountToReturn, l1GasLimit);
+        _l2GatewayRouter.withdrawERC20{ value: msg.value }(l2TokenAddress, hubPool, amountToReturn, 0);
         emit ScrollTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 
