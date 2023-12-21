@@ -10,6 +10,7 @@ import {
 } from "../../utils/utils";
 
 import * as consts from "../constants";
+import { RelayerRefundLeaf, USSRelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
@@ -409,6 +410,24 @@ export async function modifyRelayHelper(
   };
 }
 
-export async function deployMockSpokePoolCaller(spokePool: Contract): Promise<Contract> {
-  return await (await getContractFactory("MockCaller", (await ethers.getSigners())[0])).deploy(spokePool.address);
+export async function deployMockSpokePoolCaller(
+  spokePool: Contract,
+  rootBundleId: number,
+  leaf: RelayerRefundLeaf,
+  proof: string
+): Promise<Contract> {
+  return await (
+    await getContractFactory("MockCaller", (await ethers.getSigners())[0])
+  ).deploy(spokePool.address, rootBundleId, leaf, proof);
+}
+
+export async function deployMockUSSSpokePoolCaller(
+  spokePool: Contract,
+  rootBundleId: number,
+  leaf: USSRelayerRefundLeaf,
+  proof: string
+): Promise<Contract> {
+  return await (
+    await getContractFactory("MockUSSCaller", (await ethers.getSigners())[0])
+  ).deploy(spokePool.address, rootBundleId, leaf, proof);
 }

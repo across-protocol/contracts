@@ -22,7 +22,7 @@ import {
   constructSingleRelayerRefundTree,
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
-import { deployMockSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
+import { deployMockSpokePoolCaller, deployMockUSSSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string;
 let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
@@ -255,14 +255,15 @@ describe("Polygon Spoke Pool", function () {
     ]);
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
-    const nonEOACaller = await deployMockSpokePoolCaller(polygonSpokePool);
+
+    // Deploying  mock caller tries to execute leaf from within constructor:
     await expect(
-      nonEOACaller.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.revertedWith("NotEOA");
+      deployMockUSSSpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("NotEOA");
 
     // Executing leaf with amountToReturn == 0 is fine through contract caller.
-    await expect(nonEOACaller.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[1], tree.getHexProof(leaves[1])))
-      .to.not.be.reverted;
+    await expect(deployMockUSSSpokePoolCaller(polygonSpokePool, 0, leaves[1], tree.getHexProof(leaves[1]))).to.not.be
+      .reverted;
   });
 
   it("Must be EOA to execute relayer refund leaf with amountToReturn > 0", async function () {
@@ -282,14 +283,15 @@ describe("Polygon Spoke Pool", function () {
       mockTreeRoot,
     ]);
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
-    const nonEOACaller = await deployMockSpokePoolCaller(polygonSpokePool);
+
+    // Deploying  mock caller tries to execute leaf from within constructor:
     await expect(
-      nonEOACaller.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.revertedWith("NotEOA");
+      deployMockSpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("NotEOA");
 
     // Executing leaf with amountToReturn == 0 is fine through contract caller.
-    await expect(nonEOACaller.connect(relayer).executeRelayerRefundLeaf(0, leaves[1], tree.getHexProof(leaves[1]))).to
-      .not.be.reverted;
+    await expect(deployMockSpokePoolCaller(polygonSpokePool, 0, leaves[1], tree.getHexProof(leaves[1]))).to.not.be
+      .reverted;
   });
 
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {
