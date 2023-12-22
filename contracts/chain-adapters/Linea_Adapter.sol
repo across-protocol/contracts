@@ -55,6 +55,8 @@ interface ITokenBridge {
 }
 
 interface IUSDCBridge {
+    function usdc() external view returns (address);
+
     /**
      * @dev Sends the sender's USDC from L1 to the recipient on L2, locks the USDC sent
      * in this contract and sends a message to the message bridge
@@ -70,7 +72,6 @@ contract Linea_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
     WETH9Interface public immutable l1Weth;
-    IERC20 public immutable l1Usdc;
 
     IMessageService public immutable l1MessageService;
     ITokenBridge public immutable l1TokenBridge;
@@ -79,20 +80,17 @@ contract Linea_Adapter is AdapterInterface {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
-     * @param _l1Usdc USDC address on L1.
      * @param _l1MessageService Canonical message service contract on L1.
      * @param _l1TokenBridge Canonical token bridge contract on L1.
      * @param _l1UsdcBridge L1 USDC Bridge to ConsenSys's L2 Linea.
      */
     constructor(
         WETH9Interface _l1Weth,
-        IERC20 _l1Usdc,
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
         IUSDCBridge _l1UsdcBridge
     ) {
         l1Weth = _l1Weth;
-        l1Usdc = _l1Usdc;
         l1MessageService = _l1MessageService;
         l1TokenBridge = _l1TokenBridge;
         l1UsdcBridge = _l1UsdcBridge;
@@ -128,7 +126,7 @@ contract Linea_Adapter is AdapterInterface {
             l1MessageService.sendMessage{ value: amount }(to, 0, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
-        else if (l1Token == address(l1Usdc)) {
+        else if (l1Token == l1UsdcBridge.usdc()) {
             IERC20(l1Token).safeIncreaseAllowance(address(l1UsdcBridge), amount);
             l1UsdcBridge.depositTo(amount, to);
         }

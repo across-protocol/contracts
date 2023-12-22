@@ -16,7 +16,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     skipIfAlreadyDeployed: true,
     args: [
       L1_ADDRESS_MAP[chainId].weth,
-      L1_ADDRESS_MAP[chainId].usdc,
       L1_ADDRESS_MAP[chainId].lineaMessageService,
       L1_ADDRESS_MAP[chainId].lineaTokenBridge,
       L1_ADDRESS_MAP[chainId].lineaUsdcBridge,
