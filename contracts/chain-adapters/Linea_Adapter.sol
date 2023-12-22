@@ -9,51 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IMessageService {
     /**
-     * @dev Emitted when a message is sent.
-     * @dev We include the message hash to save hashing costs on the rollup.
-     */
-    event MessageSent(
-        address indexed _from,
-        address indexed _to,
-        uint256 _fee,
-        uint256 _value,
-        uint256 _nonce,
-        bytes _calldata,
-        bytes32 indexed _messageHash
-    );
-
-    /**
-     * @dev Emitted when a message is claimed.
-     */
-    event MessageClaimed(bytes32 indexed _messageHash);
-
-    /**
-     * @dev Thrown when fees are lower than the minimum fee.
-     */
-    error FeeTooLow();
-
-    /**
-     * @dev Thrown when fees are lower than value.
-     */
-    error ValueShouldBeGreaterThanFee();
-
-    /**
-     * @dev Thrown when the value sent is less than the fee.
-     * @dev Value to forward on is msg.value - _fee.
-     */
-    error ValueSentTooLow();
-
-    /**
-     * @dev Thrown when the destination address reverts.
-     */
-    error MessageSendingFailed(address destination);
-
-    /**
-     * @dev Thrown when the destination address reverts.
-     */
-    error FeePaymentFailed(address recipient);
-
-    /**
      * @notice Sends a message for transporting from the given chain.
      * @dev This function should be called with a msg.value = _value + _fee. The fee will be paid on the destination chain.
      * @param _to The destination address on the destination chain.
@@ -65,69 +20,9 @@ interface IMessageService {
         uint256 _fee,
         bytes calldata _calldata
     ) external payable;
-
-    /**
-     * @notice Deliver a message to the destination chain.
-     * @notice Is called automatically by the Postman, dApp or end user.
-     * @param _from The msg.sender calling the origin message service.
-     * @param _to The destination address on the destination chain.
-     * @param _value The value to be transferred to the destination address.
-     * @param _fee The message service fee on the origin chain.
-     * @param _feeRecipient Address that will receive the fees.
-     * @param _calldata The calldata used by the destination message service to call/forward to the destination contract.
-     * @param _nonce Unique message number.
-     */
-    function claimMessage(
-        address _from,
-        address _to,
-        uint256 _fee,
-        uint256 _value,
-        address payable _feeRecipient,
-        bytes calldata _calldata,
-        uint256 _nonce
-    ) external;
-
-    /**
-     * @notice Returns the original sender of the message on the origin layer.
-     * @return The original sender of the message on the origin layer.
-     */
-    function sender() external view returns (address);
 }
 
 interface ITokenBridge {
-    event TokenReserved(address indexed token);
-    event CustomContractSet(address indexed nativeToken, address indexed customContract, address indexed setBy);
-    event BridgingInitiated(address indexed sender, address recipient, address indexed token, uint256 indexed amount);
-    event BridgingFinalized(
-        address indexed nativeToken,
-        address indexed bridgedToken,
-        uint256 indexed amount,
-        address recipient
-    );
-    event NewToken(address indexed token);
-    event NewTokenDeployed(address indexed bridgedToken, address indexed nativeToken);
-    event RemoteTokenBridgeSet(address indexed remoteTokenBridge, address indexed setBy);
-    event TokenDeployed(address indexed token);
-    event DeploymentConfirmed(address[] tokens, address indexed confirmedBy);
-    event MessageServiceUpdated(
-        address indexed newMessageService,
-        address indexed oldMessageService,
-        address indexed setBy
-    );
-
-    error ReservedToken(address token);
-    error RemoteTokenBridgeAlreadySet(address remoteTokenBridge);
-    error AlreadyBridgedToken(address token);
-    error InvalidPermitData(bytes4 permitData, bytes4 permitSelector);
-    error PermitNotFromSender(address owner);
-    error PermitNotAllowingBridge(address spender);
-    error ZeroAmountNotAllowed(uint256 amount);
-    error NotReserved(address token);
-    error TokenNotDeployed(address token);
-    error TokenNativeOnOtherLayer(address token);
-    error AlreadyBrigedToNativeTokenSet(address token);
-    error StatusAddressNotAllowed(address token);
-
     /**
      * @notice This function is the single entry point to bridge tokens to the
      *   other chain, both for native and already bridged tokens. You can use it
@@ -153,111 +48,13 @@ interface ITokenBridge {
     ) external payable;
 
     /**
-     * @notice Similar to `bridgeToken` function but allows to pass additional
-     *   permit data to do the ERC20 approval in a single transaction.
-     * @param _token The address of the token to be bridged.
-     * @param _amount The amount of the token to be bridged.
-     * @param _recipient The address that will receive the tokens on the other chain.
-     * @param _permitData The permit data for the token, if applicable.
-     */
-    function bridgeTokenWithPermit(
-        address _token,
-        uint256 _amount,
-        address _recipient,
-        bytes calldata _permitData
-    ) external payable;
-
-    /**
-     * @dev It can only be called from the Message Service. To finalize the bridging
-     *   process, a user or postmen needs to use the `claimMessage` function of the
-     *   Message Service to trigger the transaction.
-     * @param _nativeToken The address of the token on its native chain.
-     * @param _amount The amount of the token to be received.
-     * @param _recipient The address that will receive the tokens.
-     * @param _chainId The source chainId or target chaindId for this token
-     * @param _tokenMetadata Additional data used to deploy the bridged token if it
-     *   doesn't exist already.
-     */
-    function completeBridging(
-        address _nativeToken,
-        uint256 _amount,
-        address _recipient,
-        uint256 _chainId,
-        bytes calldata _tokenMetadata
-    ) external;
-
-    /**
      * @dev Change the address of the Message Service.
      * @param _messageService The address of the new Message Service.
      */
     function setMessageService(address _messageService) external;
-
-    /**
-     * @dev It can only be called from the Message Service. To change the status of
-     *   the native tokens to DEPLOYED meaning they have been deployed on the other chain
-     *   a user or postman needs to use the `claimMessage` function of the
-     *   Message Service to trigger the transaction.
-     * @param _nativeTokens The addresses of the native tokens.
-     */
-    function setDeployed(address[] memory _nativeTokens) external;
-
-    /**
-     * @dev Sets the address of the remote token bridge. Can only be called once.
-     * @param _remoteTokenBridge The address of the remote token bridge to be set.
-     */
-    function setRemoteTokenBridge(address _remoteTokenBridge) external;
-
-    /**
-     * @dev Removes a token from the reserved list.
-     * @param _token The address of the token to be removed from the reserved list.
-     */
-    function removeReserved(address _token) external;
-
-    /**
-     * @dev Linea can set a custom ERC20 contract for specific ERC20.
-     *   For security purpose, Linea can only call this function if the token has
-     *   not been bridged yet.
-     * @param _nativeToken address of the token on the source chain.
-     * @param _targetContract address of the custom contract.
-     */
-    function setCustomContract(address _nativeToken, address _targetContract) external;
-
-    /**
-     * @dev Pause the contract, can only be called by the owner.
-     */
-    function pause() external;
-
-    /**
-     * @dev Unpause the contract, can only be called by the owner.
-     */
-    function unpause() external;
 }
 
 interface IUSDCBridge {
-    event MessageServiceUpdated(address indexed oldAddress, address indexed newAddress);
-    event RemoteUSDCBridgeSet(address indexed newRemoteUSDCBridge);
-    event Deposited(address indexed depositor, uint256 amount, address indexed to);
-    event ReceivedFromOtherLayer(address indexed recipient, uint256 indexed amount);
-
-    error NoBurnCapabilities(address addr);
-    error AmountTooBig(uint256 amount, uint256 limit);
-    error NotMessageService(address addr, address messageService);
-    error ZeroAmountNotAllowed(uint256 amount);
-    error NotFromRemoteUSDCBridge(address sender, address remoteUSDCBridge);
-    error ZeroAddressNotAllowed(address addr);
-    error RemoteUSDCBridgeNotSet();
-    error SenderBalanceTooLow(uint256 amount, uint256 balance);
-    error SameMessageServiceAddr(address messageService);
-    error RemoteUSDCBridgeAlreadySet(address remoteUSDCBridge);
-
-    /**
-     * @dev Sends the sender's USDC from L1 to L2, locks the USDC sent
-     * in this contract and sends a message to the message bridge
-     * contract to mint the equivalent USDC on L2
-     * @param amount The amount of USDC to send
-     */
-    function deposit(uint256 amount) external;
-
     /**
      * @dev Sends the sender's USDC from L1 to the recipient on L2, locks the USDC sent
      * in this contract and sends a message to the message bridge
@@ -266,14 +63,6 @@ interface IUSDCBridge {
      * @param to The recipient's address to receive the funds
      */
     function depositTo(uint256 amount, address to) external payable;
-
-    /**
-     * @dev This function is called by the message bridge when transferring USDC from L2 to L1
-     * It burns the USDC on L2 and unlocks the equivalent USDC from this contract to the recipient
-     * @param recipient The recipient to receive the USDC on L1
-     * @param amount The amount of USDC to receive
-     */
-    function receiveFromOtherLayer(address recipient, uint256 amount) external;
 }
 
 // solhint-disable-next-line contract-name-camelcase
