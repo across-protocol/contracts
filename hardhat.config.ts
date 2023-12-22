@@ -17,6 +17,7 @@ import "@openzeppelin/hardhat-upgrades";
 // Custom tasks to add to HRE.
 // eslint-disable-next-line node/no-missing-require
 require("./tasks/enableL1TokenAcrossEcosystem");
+require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
 
@@ -257,7 +258,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  namedAccounts: { deployer: 0 },
+  namedAccounts: { deployer: 1 },
   typechain: {
     outDir: "./typechain",
     target: "ethers-v5",
