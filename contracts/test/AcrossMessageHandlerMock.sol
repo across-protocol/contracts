@@ -11,4 +11,11 @@ contract AcrossMessageHandlerMock is AcrossMessageHandler {
         address relayer,
         bytes memory message
     ) external override {}
+
+    function handleUSSAcrossMessage(
+        address tokenSent,
+        uint256 amount,
+        address relayer,
+        bytes memory message
+    ) external override {}
 }
