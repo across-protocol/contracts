@@ -31,9 +31,6 @@ describe("SpokePool Upgrade Functions", async function () {
     const spokePoolContract = (await ethers.getContractFactory("MockSpokePoolV2")).attach(spokePool.address);
     expect(await spokePoolContract.hubPool()).to.equal(newHubPool);
 
-    // Contract should be an ERC20 now.
-    expect(await spokePoolContract.totalSupply()).to.equal(0);
-
     // Can't reinitialize again.
     expect(spokePoolContract.reinitialize(newHubPool)).to.be.revertedWith(
       "Contract instance has already been initialized"

@@ -23,8 +23,6 @@ import {
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 
-const maxCount = maxUint256;
-
 describe("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
   let depositor: SignerWithAddress, recipient: SignerWithAddress;
@@ -82,12 +80,15 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        [erc20.address, amountToDeposit],
-        [ZERO_ADDRESS, amountReceived],
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
         destinationChainId,
         0,
         quoteTimestamp,
         MAX_UINT32,
+        0,
         depositor.address,
         recipient.address,
         ZERO_ADDRESS,
@@ -100,9 +101,6 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Deposit nonce should increment.
     expect(await spokePool.numberOfDeposits()).to.equal(1);
-
-    // Count is correctly incremented.
-    expect(await spokePool.depositCounter(erc20.address)).to.equal(amountToDeposit);
   });
 
   it("DepositFor overrrides the depositor", async function () {
@@ -122,12 +120,15 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        [erc20.address, amountToDeposit],
-        [ZERO_ADDRESS, amountReceived],
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
         destinationChainId,
         0,
         quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
+        0,
         newDepositor, // Depositor is overridden.
         recipient.address,
         ZERO_ADDRESS,
@@ -352,12 +353,15 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "USSFundsDeposited")
       .withArgs(
-        [erc20.address, amountToDeposit],
-        [ZERO_ADDRESS, amountReceived],
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
         destinationChainId,
         0,
         quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
+        0,
         depositor.address,
         recipient.address,
         ZERO_ADDRESS,
@@ -397,56 +401,22 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
   });
 
-  it("maxCount is too low", async function () {
-    const revertReason = "Above max count";
-
-    // Setting max count to be smaller than the sum of previous deposits should fail.
-    await expect(
-      spokePool.connect(depositor).deposit(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-          maxCount,
-        })
-      )
-    ).to.emit(spokePool, "USSFundsDeposited");
-
-    await expect(
-      spokePool.connect(depositor).deposit(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-          maxCount: amount.sub(1), // Less than the previous transaction's deposit amount.
-        })
-      )
-    ).to.be.revertedWith(revertReason);
-  });
-
   describe("deposit USS", function () {
     it("placeholder: gas test", async function () {
       await spokePool.depositUSS(
         depositor.address,
         recipient.address,
         // Input token
-        {
-          token: erc20.address,
-          amount: amountToDeposit,
-        },
+        erc20.address,
         // Output token
-        {
-          token: randomAddress(),
-          amount: amountToDeposit,
-        },
+        randomAddress(),
+        amountToDeposit,
+        amountToDeposit,
         destinationChainId,
         ZERO_ADDRESS,
         quoteTimestamp,
-        quoteTimestamp + 100,
+        quoteTimestamp + 100, // fill deadline
+        quoteTimestamp + 10, // exclusivity deadline
         "0x"
       );
     });
