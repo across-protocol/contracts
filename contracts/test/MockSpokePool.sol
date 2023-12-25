@@ -40,6 +40,18 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
     }
 
+    function fillRelayUSSInternal(
+        USSRelayExecutionParams memory relayExecution,
+        address relayer,
+        bool isSlowFill
+    ) external {
+        _fillRelayUSS(relayExecution, relayer, isSlowFill);
+    }
+
+    function setFillStatus(bytes32 relayHash, FillType fillType) external {
+        fillStatuses[relayHash] = uint256(fillType);
+    }
+
     function getCurrentTime() public view override returns (uint256) {
         return currentTime;
     }

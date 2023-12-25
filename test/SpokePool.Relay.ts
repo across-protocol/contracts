@@ -8,6 +8,9 @@ import {
   toBN,
   BigNumber,
   createFake,
+  keccak256,
+  defaultAbiCoder,
+  getParamType,
 } from "../utils/utils";
 import {
   spokePoolFixture,
@@ -15,6 +18,10 @@ import {
   modifyRelayHelper,
   getFillRelayParams,
   getFillRelayUpdatedFeeParams,
+  USSRelayData,
+  USSRelayExecutionParams,
+  FillStatus,
+  FillType,
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 import { MAX_UINT_VAL } from "@uma/common";
@@ -38,7 +45,7 @@ describe("SpokePool Relayer Logic", async function () {
     await weth.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
   });
   it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
-    const { relayHash, relayData } = getRelayHash(
+    const { relayData } = getRelayHash(
       depositor.address,
       recipient.address,
       consts.firstDepositId,
@@ -325,27 +332,116 @@ describe("SpokePool Relayer Logic", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
   });
   describe("fill USS", function () {
-    it("placeholder: gas test", async function () {
+    let relayData: USSRelayData;
+    beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
-
-      await spokePool.connect(relayer).fillUSSRelay(
-        {
-          depositor: depositor.address,
-          recipient: recipient.address,
-          exclusiveRelayer: relayer.address,
-          inputToken: erc20.address,
-          outputToken: destErc20.address,
-          inputAmount: consts.amountToDeposit,
-          outputAmount: consts.amountToDeposit,
-          originChainId: consts.originChainId,
-          destinationChainId: consts.destinationChainId,
-          depositId: consts.firstDepositId,
-          fillDeadline: fillDeadline,
-          exclusivityDeadline: fillDeadline - 500,
-          message: "0x",
-        },
-        consts.repaymentChainId
-      );
+      relayData = {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        exclusiveRelayer: relayer.address,
+        inputToken: erc20.address,
+        outputToken: destErc20.address,
+        inputAmount: consts.amountToDeposit,
+        outputAmount: consts.amountToDeposit,
+        originChainId: consts.originChainId,
+        destinationChainId: consts.destinationChainId,
+        depositId: consts.firstDepositId,
+        fillDeadline: fillDeadline,
+        exclusivityDeadline: fillDeadline - 500,
+        message: "0x",
+      };
+    });
+    it("succeeds with expected params", async function () {
+      await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
+    });
+    describe("_fillRelay internal logic", function () {
+      // _fillRelay takes a USSRelayExecutionParams object as a param. This function returns the correct object
+      // as a convenience.
+      async function getRelayExecutionParams(_relayData: USSRelayData): Promise<USSRelayExecutionParams> {
+        const paramType = await getParamType("MockSpokePool", "fillUSSRelay", "relayData");
+        return {
+          relay: _relayData,
+          relayHash: keccak256(defaultAbiCoder.encode([paramType!], [_relayData])),
+          updatedOutputAmount: _relayData.outputAmount,
+          updatedRecipient: _relayData.recipient,
+          updatedMessage: _relayData.message,
+          repaymentChainId: consts.repaymentChainId,
+        };
+      }
+      it("expired fill deadline reverts", async function () {
+        const _relay = {
+          ...relayData,
+          fillDeadline: 0, // Will always be less than SpokePool.currentTime so should expire.
+        };
+        const relayExecution = await getRelayExecutionParams(_relay);
+        await expect(
+          spokePool.connect(relayer).fillRelayUSSInternal(
+            relayExecution,
+            relayer.address,
+            false // isSlowFill
+          )
+        ).to.revertedWith("ExpiredFillDeadline");
+      });
+      it("relay hash already marked filled", async function () {
+        const relayExecution = await getRelayExecutionParams(relayData);
+        await spokePool.setFillStatus(relayExecution.relayHash, FillStatus.Filled);
+        await expect(
+          spokePool.connect(relayer).fillRelayUSSInternal(
+            relayExecution,
+            relayer.address,
+            false // isSlowFill
+          )
+        ).to.revertedWith("RelayFilled");
+      });
+      it("fast fill replacing speed up request emits correct FillType", async function () {
+        const relayExecution = await getRelayExecutionParams(relayData);
+        await spokePool.setFillStatus(relayExecution.relayHash, FillStatus.RequestedSlowFill);
+        await expect(
+          spokePool.connect(relayer).fillRelayUSSInternal(
+            relayExecution,
+            relayer.address,
+            false // isSlowFill
+          )
+        )
+          .to.emit(spokePool, "FilledUSSRelay")
+          .withArgs(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            relayExecution.repaymentChainId,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayer.address,
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
+            [
+              relayExecution.updatedRecipient,
+              relayExecution.updatedMessage,
+              relayExecution.updatedOutputAmount,
+              // Testing that this FillType is not "FastFill"
+              FillType.ReplacedSlowFill,
+            ]
+          );
+      });
+      it("slow fill emits correct FillType", async function () {});
+      it("fast fill emits correct FillType", async function () {});
+      it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {});
+      it("sends updatedOutputAmount to updatedRecipient", async function () {
+        // Test by making relayData different from updated relay data
+        // Test event is emitted correctly with USSRelayExecutionEventInfo
+      });
+      it("unwraps native token if sending to EOA otherwise sends wrapped ERC20", async function () {});
+      it("slow fills send native token out of spoke pool balance", async function () {});
+      it("slow fills send non-native token out of spoke pool balance", async function () {});
+      it("if recipient is contract that implements message handler, calls message handler", async function () {
+        // Does nothing if message length is 0
+        // Calls handleAcrossMessage with correct params
+      });
     });
   });
 });
