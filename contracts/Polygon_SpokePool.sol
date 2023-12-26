@@ -44,12 +44,16 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     // the caller is the fxChild AND that the fxChild called processMessageFromRoot
     bool private callValidated;
 
-    // Dictionary of function UUID to unique hashes, which we use to mark the last block that a function was called
+    // Dictionary of function lock UUID to unique hashes, which we use to mark the last block that a function was called
     // by a certain caller (e.g. set value equal to keccak256(block.timestamp, tx.origin)). This can be
     // used to prevent certain functions from being called atomically by the same caller.
     // This assumes each block has a different block.timestamp on this network.
-    mapping(string => bytes32) private funcLocks;
+    mapping(bytes32 => bytes32) private funcLocks;
     error CrossFunctionLock();
+
+    // Function lock identifiers used as keys in funcLocks mapping above.
+    bytes32 private constant FILL_LOCK_IDENTIFIER = "Fill";
+    bytes32 private constant EXECUTE_LOCK_IDENTIFIER = "Execute";
 
     event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
@@ -187,6 +191,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode.
         // solhint-disable-next-line avoid-tx-origin
         if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
+        // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
+        _revertIfFunctionCalledAtomically(FILL_LOCK_IDENTIFIER);
+        _setFunctionLock(EXECUTE_LOCK_IDENTIFIER);
         super.executeUSSRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
@@ -201,8 +208,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         // solhint-disable-next-line avoid-tx-origin
         if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
         // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
-        _revertIfFunctionCalledAtomically("fill");
-        _setFunctionLock("executeLeaf");
+        _revertIfFunctionCalledAtomically(FILL_LOCK_IDENTIFIER);
+        _setFunctionLock(EXECUTE_LOCK_IDENTIFIER);
         super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
@@ -212,8 +219,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
     function _preHandleMessageHook() internal override {
-        _revertIfFunctionCalledAtomically("executeLeaf");
-        _setFunctionLock("fill");
+        _revertIfFunctionCalledAtomically(EXECUTE_LOCK_IDENTIFIER);
+        _setFunctionLock(FILL_LOCK_IDENTIFIER);
     }
 
     function _preExecuteLeafHook(address) internal override {
@@ -236,14 +243,14 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
     }
 
-    function _setFunctionLock(string memory funcSig) internal {
+    function _setFunctionLock(bytes32 funcSig) internal {
         // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
         bytes32 lockValue = keccak256(abi.encodePacked(block.timestamp, tx.origin));
         if (funcLocks[funcSig] != lockValue) funcLocks[funcSig] = lockValue;
     }
 
     // Revert if function was called during this block
-    function _revertIfFunctionCalledAtomically(string memory funcSig) internal view {
+    function _revertIfFunctionCalledAtomically(bytes32 funcSig) internal view {
         // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
         if (funcLocks[funcSig] == keccak256(abi.encodePacked(block.timestamp, tx.origin))) revert CrossFunctionLock();
     }
