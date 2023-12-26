@@ -25,6 +25,15 @@ interface AcrossMessageHandler {
         address relayer,
         bytes memory message
     ) external;
+
+    // New function interface to be used with USS functions since fillCompleted no longer has any
+    // meaning now that partial fills are impossible.
+    function handleUSSAcrossMessage(
+        address tokenSent,
+        uint256 amount,
+        address relayer,
+        bytes memory message
+    ) external;
 }
 
 /**
@@ -85,20 +94,24 @@ abstract contract SpokePool is
     // to eliminate any chance of collision between RelayData hashes and USSRelayData hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
+    // Note: We will likely un-deprecate the fill and deposit counters to implement a better
+    // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
+    // in deposit/fill functions. This can be used to implement a UBA-esque fee mechanism.
+
     // This keeps track of the worst-case liabilities due to fills.
     // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between
     // two points. This is used to provide frontrunning protection to ensure the relayer's assumptions about the state
     // upon which their expected repayments are based will not change before their transaction is mined.
-    mapping(address => uint256) public fillCounter;
+    mapping(address => uint256) private DEPRECATED_fillCounter;
 
     // This keeps track of the total running deposits for each token. This allows depositors to protect themselves from
     // frontrunning that might change their worst-case quote.
-    mapping(address => uint256) public depositCounter;
+    mapping(address => uint256) private DEPRECATED_depositCounter;
 
     // This tracks the number of identical refunds that have been requested.
     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
     // requests are known and accounted for.
-    mapping(bytes32 => uint256) public refundsRequested;
+    mapping(bytes32 => uint256) private DEPRECATED_refundsRequested;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
@@ -420,6 +433,10 @@ abstract contract SpokePool is
      *         DEPOSITOR FUNCTIONS        *
      **************************************/
 
+    // Note: The following deposit functions will be removed in favor of the
+    // depositUSS_ functions. These are maintained for backwards compatibility with
+    // UI's that expect to call this interface.
+
     /**
      * @notice Called by user to bridge funds from origin to destination chain. Depositor will effectively lock
      * tokens in this contract and receive a destination token on the destination chain. The origin => destination
@@ -437,7 +454,6 @@ abstract contract SpokePool is
      * to LP pool on HubPool.
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
      */
     function deposit(
         address recipient,
@@ -447,7 +463,7 @@ abstract contract SpokePool is
         int64 relayerFeePct,
         uint32 quoteTimestamp,
         bytes memory message,
-        uint256 maxCount
+        uint256 // maxCount. Deprecated.
     ) public payable override nonReentrant unpausedDeposits {
         _deposit(
             msg.sender,
@@ -457,8 +473,7 @@ abstract contract SpokePool is
             destinationChainId,
             relayerFeePct,
             quoteTimestamp,
-            message,
-            maxCount
+            message
         );
     }
 
@@ -481,7 +496,6 @@ abstract contract SpokePool is
      * to LP pool on HubPool.
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
      */
     function depositFor(
         address depositor,
@@ -492,19 +506,9 @@ abstract contract SpokePool is
         int64 relayerFeePct,
         uint32 quoteTimestamp,
         bytes memory message,
-        uint256 maxCount
+        uint256 // maxCount. Deprecated.
     ) public payable nonReentrant unpausedDeposits {
-        _deposit(
-            depositor,
-            recipient,
-            originToken,
-            amount,
-            destinationChainId,
-            relayerFeePct,
-            quoteTimestamp,
-            message,
-            maxCount
-        );
+        _deposit(depositor, recipient, originToken, amount, destinationChainId, relayerFeePct, quoteTimestamp, message);
     }
 
     /**
@@ -708,6 +712,13 @@ abstract contract SpokePool is
      *         RELAYER FUNCTIONS          *
      **************************************/
 
+    // Note: The following fill functions will be removed in favor of the
+    // fillRelayUSS_ functions. These are maintained for backwards compatibility with
+    // relayers so that they can fill old deposits that emitted FundsDepositted events
+    // pre-upgrade. All future deposits that emit USSFundsDeposited events will be
+    // fillable only with fillRelayUSS_ functions.
+
+    /**
     /**
      * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
      * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
@@ -861,92 +872,6 @@ abstract contract SpokePool is
         );
         uint256 fillAmountPreFees = _fillRelay(relayExecution);
         _emitFillRelay(relayExecution, fillAmountPreFees);
-    }
-
-    /**
-     * @notice Caller signals to the system that they want a refund on this chain, which they set as the
-     * `repaymentChainId` on the original fillRelay() call on the `destinationChainId`. An observer should be
-     * be able to 1-to-1 match the emitted RefundRequested event with the FilledRelay event on the `destinationChainId`.
-     * @dev This function could be used to artificially inflate the `fillCounter`, allowing the caller to "frontrun"
-     * and cancel pending fills in the mempool. This would in the worst case censor fills at the cost of the caller's
-     * gas costs. We don't view this as a major issue as the fill can be resubmitted and obtain the same incentive,
-     * since incentives are based on validated refunds and would ignore these censoring attempts. This is no
-     * different from calling `fillRelay` and setting msg.sender = recipient.
-     * @dev Caller needs to pass in `fillBlock` that the FilledRelay event was emitted on the `destinationChainId`.
-     * This is to make it hard to request a refund before a fill has been mined and to make lookups of the original
-     * fill as simple as possible.
-     * @param refundToken This chain's token equivalent for original fill destination token.
-     * @param amount Original deposit amount.
-     * @param originChainId Original origin chain ID.
-     * @param destinationChainId Original destination chain ID.
-     * @param realizedLpFeePct Original realized LP fee %.
-     * @param depositId Original deposit ID.
-     * @param maxCount Max count to protect the refund recipient from frontrunning.
-     */
-    function requestRefund(
-        address refundToken,
-        uint256 amount,
-        uint256 originChainId,
-        uint256 destinationChainId,
-        int64 realizedLpFeePct,
-        uint32 depositId,
-        uint256 fillBlock,
-        uint256 maxCount
-    ) external nonReentrant {
-        // Prevent unrealistic amounts from increasing fill counter too high.
-        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
-
-        // This allows the caller to add in frontrunning protection for quote validity.
-        require(fillCounter[refundToken] <= maxCount, "Above max count");
-
-        // Track duplicate refund requests.
-        bytes32 refundHash = keccak256(
-            abi.encode(
-                msg.sender,
-                refundToken,
-                amount,
-                originChainId,
-                destinationChainId,
-                realizedLpFeePct,
-                depositId,
-                fillBlock
-            )
-        );
-
-        // Track duplicate requests so that an offchain actor knows if an identical request has already been made.
-        // If so, it can check to ensure that that request was thrown out as invalid before honoring the duplicate.
-        // In particular, this is meant to handle odd cases where an initial request is invalidated based on
-        // timing, but can be validated by a later, identical request.
-        uint256 previousIdenticalRequests = refundsRequested[refundHash]++;
-
-        // Refund will take tokens out of this pool, increment the fill counter. This function should only be
-        // called if a relayer from destinationChainId wants to take a refund on this chain, a different chain.
-        // This type of repayment should only be possible for full fills, so the starting fill amount should
-        // always be 0. Also, just like in _fillRelay we should revert if the first fill pre fees rounds to 0,
-        // and in this case `amount` == `fillAmountPreFees`.
-        require(amount > 0, "Amount must be > 0");
-        _updateCountFromFill(
-            0,
-            true, // The refund is being requested here, so it is local.
-            amount,
-            realizedLpFeePct,
-            refundToken,
-            false // Slow fills should never match with a Refund. This should be enforced by off-chain bundle builders.
-        );
-
-        emit RefundRequested(
-            // Set caller as relayer. If caller is not relayer from destination chain that originally sent
-            // fill, then off-chain validator should discard this refund attempt.
-            msg.sender,
-            refundToken,
-            amount,
-            originChainId,
-            destinationChainId,
-            realizedLpFeePct,
-            depositId,
-            fillBlock,
-            previousIdenticalRequests
-        );
     }
 
     /******************************************
@@ -1241,8 +1166,7 @@ abstract contract SpokePool is
         uint256 destinationChainId,
         int64 relayerFeePct,
         uint32 quoteTimestamp,
-        bytes memory message,
-        uint256 maxCount
+        bytes memory message
     ) internal {
         // Check that deposit route is enabled.
         require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
@@ -1250,7 +1174,6 @@ abstract contract SpokePool is
         // We limit the relay fees to prevent the user spending all their funds on fees.
         require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
         require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
-        require(depositCounter[originToken] <= maxCount, "Above max count");
 
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
@@ -1263,7 +1186,6 @@ abstract contract SpokePool is
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
-        depositCounter[originToken] += amount;
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
@@ -1549,9 +1471,6 @@ abstract contract SpokePool is
         // the amount filled so far for a particular relayHash, so this will start at 0 and increment with each fill.
         require(DEPRECATED_relayFills[relayExecution.relayHash] < relayData.amount, "relay filled");
 
-        // This allows the caller to add in frontrunning protection for quote validity.
-        require(fillCounter[relayData.destinationToken] <= relayExecution.maxCount, "Above max count");
-
         // Derive the amount of the relay filled if the caller wants to send exactly maxTokensToSend tokens to
         // the recipient. For example, if the user wants to send 10 tokens to the recipient, the full relay amount
         // is 100, and the fee %'s total 5%, then this computation would return ~10.5, meaning that to fill 10.5/100
@@ -1610,16 +1529,6 @@ abstract contract SpokePool is
         require(
             localRepayment || relayExecution.relay.amount == fillAmountPreFees || relayExecution.slowFill,
             "invalid repayment chain"
-        );
-
-        // Update fill counter.
-        _updateCountFromFill(
-            DEPRECATED_relayFills[relayExecution.relayHash],
-            localRepayment,
-            relayData.amount,
-            relayData.realizedLpFeePct,
-            relayData.destinationToken,
-            relayExecution.slowFill
         );
 
         // relayFills keeps track of pre-fee fill amounts as a convenience to relayers who want to specify round
@@ -1768,33 +1677,16 @@ abstract contract SpokePool is
             else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
         }
 
-        // @TODO Can we remove the third param in handleAcrossMessage since we no longer support partial fills? Will
-        // require integrators sign-off.
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
             _preHandleMessageHook();
             AcrossMessageHandler(recipientToSend).handleAcrossMessage(
                 outputToken,
                 amountToSend,
-                true, // fillCompleted
                 msg.sender,
                 updatedMessage
             );
         }
-    }
-
-    function _updateCountFromFill(
-        uint256 startingFillAmount,
-        bool localRepayment,
-        uint256 totalFillAmount,
-        int64 realizedLPFeePct,
-        address token,
-        bool useContractFunds
-    ) internal {
-        // If this is a slow fill, a first partial fill with repayment on another chain, or a partial fill has already happened, do nothing, as these
-        // should not impact the count. Initial 0-fills will not reach this part of the code.
-        if (useContractFunds || startingFillAmount > 0 || !localRepayment) return;
-        fillCounter[token] += _computeAmountPostFees(totalFillAmount, realizedLPFeePct);
     }
 
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
