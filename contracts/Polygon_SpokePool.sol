@@ -249,7 +249,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         if (funcLocks[funcIdentifier] != lockValue) funcLocks[funcIdentifier] = lockValue;
     }
 
-    // Revert if function was called during this block
+    // Revert if function was called during this block with the same tx.origin.
     function _revertIfFunctionCalledAtomically(bytes32 funcIdentifier) internal view {
         // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
         if (funcLocks[funcIdentifier] == keccak256(abi.encodePacked(block.timestamp, tx.origin)))
