@@ -46,12 +46,6 @@ interface ITokenBridge {
         uint256 _amount,
         address _recipient
     ) external payable;
-
-    /**
-     * @dev Change the address of the Message Service.
-     * @param _messageService The address of the new Message Service.
-     */
-    function setMessageService(address _messageService) external;
 }
 
 interface IUSDCBridge {

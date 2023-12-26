@@ -113,13 +113,13 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
   },
   59144: {
-    usdc: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+    l2Weth: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     lineaUsdcBridge: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
   },
   59140: {
-    usdc: "0xB4257F31750961C8e536f5cfCBb3079437700416",
+    l2Weth: "0x2C1b868d6596a18e32E61B901E4060C872647b6C",
     lineaMessageService: "0xC499a572640B64eA1C8c194c43Bc3E19940719dC",
     lineaUsdcBridge: "0xDFa112375c9be9D124932b1d104b73f888655329",
     lineaTokenBridge: "0x3ccd0F623B7a25Eab5dFc6a3fD723dCE5520489B",
