@@ -331,7 +331,7 @@ describe("SpokePool Relayer Logic", async function () {
   it("EIP1271 - Updating relayer fee signature verification failure cases", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
   });
-  describe.only("fill USS", function () {
+  describe("fill USS", function () {
     let relayData: USSRelayData;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
@@ -497,10 +497,40 @@ describe("SpokePool Relayer Logic", async function () {
             ]
           );
       });
-      it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {});
+      it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {
+        const _relayData = {
+          ...relayData,
+          // Set recipient == relayer
+          recipient: relayer.address,
+        };
+        const relayExecution = await getRelayExecutionParams(_relayData);
+        await expect(
+          spokePool.connect(relayer).fillRelayUSSInternal(
+            relayExecution,
+            relayer.address,
+            false // isSlowFill
+          )
+        ).to.not.emit(destErc20, "Transfer");
+      });
       it("sends updatedOutputAmount to updatedRecipient", async function () {
-        // Test by making relayData different from updated relay data
-        // Test event is emitted correctly with USSRelayExecutionEventInfo
+        const relayExecution = await getRelayExecutionParams(relayData);
+        const _relayExecution = {
+          ...relayExecution,
+          // Overwrite amount to send to be double the original amount
+          updatedOutputAmount: consts.amountToDeposit.mul(2),
+          // Overwrite recipient to depositor which is not the same as the original recipient
+          updatedRecipient: depositor.address,
+        };
+        expect(_relayExecution.updatedRecipient).to.not.equal(relayExecution.updatedRecipient);
+        expect(_relayExecution.updatedOutputAmount).to.not.equal(relayExecution.updatedOutputAmount);
+        await destErc20.connect(relayer).approve(spokePool.address, _relayExecution.updatedOutputAmount);
+        await expect(() =>
+          spokePool.connect(relayer).fillRelayUSSInternal(
+            _relayExecution,
+            relayer.address,
+            false // isSlowFill
+          )
+        ).to.changeTokenBalance(destErc20, depositor, consts.amountToDeposit.mul(2));
       });
       it("unwraps native token if sending to EOA otherwise sends wrapped ERC20", async function () {
         const _relayData = {
@@ -544,7 +574,26 @@ describe("SpokePool Relayer Logic", async function () {
       });
       it("if recipient is contract that implements message handler, calls message handler", async function () {
         // Does nothing if message length is 0
-        // Calls handleAcrossMessage with correct params
+        const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
+        const _relayData = {
+          ...relayData,
+          recipient: acrossMessageHandler.address,
+          message: "0x1234",
+        };
+        const relayExecution = await getRelayExecutionParams(_relayData);
+
+        // Handler is called with expected params.
+        await spokePool.connect(relayer).fillRelayUSSInternal(
+          relayExecution,
+          relayer.address,
+          false // isSlowFill
+        );
+        expect(acrossMessageHandler.handleUSSAcrossMessage).to.have.been.calledOnceWith(
+          _relayData.outputToken,
+          relayExecution.updatedOutputAmount,
+          relayer.address, // Custom relayer
+          _relayData.message
+        );
       });
     });
   });
