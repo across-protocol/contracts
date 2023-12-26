@@ -1680,7 +1680,7 @@ abstract contract SpokePool is
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
             _preHandleMessageHook();
-            AcrossMessageHandler(recipientToSend).handleAcrossMessage(
+            AcrossMessageHandler(recipientToSend).handleUSSAcrossMessage(
                 outputToken,
                 amountToSend,
                 msg.sender,
