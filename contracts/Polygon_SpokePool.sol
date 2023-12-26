@@ -243,16 +243,17 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
     }
 
-    function _setFunctionLock(bytes32 funcSig) internal {
+    function _setFunctionLock(bytes32 funcIdentifier) internal {
         // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
         bytes32 lockValue = keccak256(abi.encodePacked(block.timestamp, tx.origin));
-        if (funcLocks[funcSig] != lockValue) funcLocks[funcSig] = lockValue;
+        if (funcLocks[funcIdentifier] != lockValue) funcLocks[funcIdentifier] = lockValue;
     }
 
     // Revert if function was called during this block
-    function _revertIfFunctionCalledAtomically(bytes32 funcSig) internal view {
+    function _revertIfFunctionCalledAtomically(bytes32 funcIdentifier) internal view {
         // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
-        if (funcLocks[funcSig] == keccak256(abi.encodePacked(block.timestamp, tx.origin))) revert CrossFunctionLock();
+        if (funcLocks[funcIdentifier] == keccak256(abi.encodePacked(block.timestamp, tx.origin)))
+            revert CrossFunctionLock();
     }
 
     // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`, which is why
