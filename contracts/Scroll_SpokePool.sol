@@ -76,7 +76,9 @@ contract Scroll_SpokePool is SpokePool {
     function _requireAdminSender() internal view override {
         // The xdomainMessageSender is set within the Scroll messenger right
         // before the call to this function (and reset afterwards). This represents
-        // the address that sent the message from L1 to L2.
+        // the address that sent the message from L1 to L2. If the calling contract
+        // isn't the Scroll messenger, then the xdomainMessageSender will be the zero
+        // address and *NOT* cross domain admin.
         address _xDomainSender = l2ScrollMessenger.xDomainMessageSender();
         require(_xDomainSender == crossDomainAdmin, "Sender must be admin");
     }
