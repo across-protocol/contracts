@@ -88,6 +88,7 @@ contract Scroll_Adapter is AdapterInterface {
         // the official WETH address on-chain. We don't need to do anything specific
         // to differentiate between WETH and a separate ERC20.
         // Note: This happens due to the L1GatewayRouter.getERC20Gateway() call
+        // Note: dev docs: https://docs.scroll.io/en/developers/l1-and-l2-bridging/eth-and-erc20-token-bridge/
         _l1GatewayRouter.depositERC20{ value: _generateRelayerFee() }(l1Token, to, amount, l2GasLimit);
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
