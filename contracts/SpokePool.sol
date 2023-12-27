@@ -1045,7 +1045,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         _validateRelayerRefundLeaf(
@@ -1095,7 +1095,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         _validateRelayerRefundLeaf(
@@ -1311,7 +1311,7 @@ abstract contract SpokePool is
         emit SetHubPool(newHubPool);
     }
 
-    function _preExecuteLeafHook(address l2TokenAddress) internal virtual {
+    function _preExecuteLeafHook(address) internal virtual {
         // This method by default is a no-op. Different child spoke pools might want to execute functionality here
         // such as wrapping any native tokens owned by the contract into wrapped tokens before proceeding with
         // executing the leaf.
@@ -1571,6 +1571,7 @@ abstract contract SpokePool is
         }
 
         if (relayExecution.updatedRecipient.isContract() && relayExecution.updatedMessage.length > 0) {
+            _preHandleMessageHook();
             AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
@@ -1579,6 +1580,10 @@ abstract contract SpokePool is
                 relayExecution.updatedMessage
             );
         }
+    }
+
+    function _preHandleMessageHook() internal virtual {
+        // This method by default is a no-op.
     }
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
@@ -1674,6 +1679,7 @@ abstract contract SpokePool is
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
+            _preHandleMessageHook();
             AcrossMessageHandler(recipientToSend).handleUSSAcrossMessage(
                 outputToken,
                 amountToSend,
