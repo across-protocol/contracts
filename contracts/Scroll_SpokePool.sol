@@ -79,5 +79,5 @@ contract Scroll_SpokePool is SpokePool {
         // the address that sent the message from L1 to L2.
         address _xDomainSender = l2ScrollMessenger.xDomainMessageSender();
         require(_xDomainSender == crossDomainAdmin, "Sender must be admin");
-    } // solhint-disable-line no-empty-blocks
+    }
 }
