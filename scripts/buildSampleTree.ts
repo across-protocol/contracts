@@ -14,15 +14,15 @@ const POOL_REBALANCE_LEAF_COUNT = 1;
 const RELAYER_REFUND_LEAF_COUNT = 1;
 const SLOW_RELAY_LEAF_COUNT = 1;
 const POOL_REBALANCE_NET_SEND_AMOUNT = 0.1; // Amount of tokens to send from HubPool to SpokePool
-const RELAYER_REFUND_AMOUNT_TO_RETURN = 0.1; // Amount of tokens to send from SpokePool to HubPool
-const L1_TOKEN = "0x40153ddfad90c49dbe3f5c9f96f2a5b25ec67461";
-const L2_TOKEN = "0x40153ddfad90c49dbe3f5c9f96f2a5b25ec67461";
+const RELAYER_REFUND_AMOUNT_TO_RETURN = 0; // Amount of tokens to send from SpokePool to HubPool
+const L1_TOKEN = "0xAcDE84590A2ba1aCfEbB220997Eb41B7A01f271f";
+const L2_TOKEN = "0x8B16b55d6062CFD860Abb9Da70eD49Fa3b9B412f";
 const DECIMALS = 18;
 const RELAYER_REFUND_ADDRESS_TO_REFUND = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
-const RELAYER_REFUND_AMOUNT_TO_REFUND = 0.1; // Amount of tokens to send out of SpokePool to relayer refund recipient
+const RELAYER_REFUND_AMOUNT_TO_REFUND = 0; // Amount of tokens to send out of SpokePool to relayer refund recipient
 const SLOW_RELAY_RECIPIENT_ADDRESS = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
-const SLOW_RELAY_AMOUNT = 0.1; // Amount of tokens to send out of SpokePool to slow relay recipient address
-const SPOKE_POOL_CHAIN_ID = 5;
+const SLOW_RELAY_AMOUNT = 0; // Amount of tokens to send out of SpokePool to slow relay recipient address
+const SPOKE_POOL_CHAIN_ID = 534351;
 
 function tuplelifyLeaf(leaf: Object) {
   return JSON.stringify(

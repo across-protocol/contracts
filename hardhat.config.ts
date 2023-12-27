@@ -244,7 +244,7 @@ const config: HardhatUserConfig = {
         network: "sepolia",
         chainId: 11155111,
         urls: {
-          apiURL: "https://api-sepolia.etherscan.io",
+          apiURL: "https://api-sepolia.etherscan.io/api",
           browserURL: "https://sepolia.etherscan.io",
         },
       },
@@ -252,13 +252,13 @@ const config: HardhatUserConfig = {
         network: "scroll-sepolia",
         chainId: 534351,
         urls: {
-          apiURL: "https://api-sepolia.scrollscan.com",
+          apiURL: "https://api-sepolia.scrollscan.com/api",
           browserURL: "https://api-sepolia.scrollscan.com",
         },
       },
     ],
   },
-  namedAccounts: { deployer: 1 },
+  namedAccounts: { deployer: 0 },
   typechain: {
     outDir: "./typechain",
     target: "ethers-v5",
