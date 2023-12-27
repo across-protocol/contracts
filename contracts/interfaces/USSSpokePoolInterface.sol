@@ -110,6 +110,15 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
+    event RequestedSpeedUpUSSDeposit(
+        uint256 updatedOutputAmount,
+        uint32 indexed depositId,
+        address indexed depositor,
+        address updatedRecipient,
+        bytes updatedMessage,
+        bytes depositorSignature
+    );
+
     struct USSRelayExecutionEventInfo {
         address updatedRecipient;
         bytes updatedMessage;
@@ -177,7 +186,25 @@ interface USSSpokePoolInterface {
         bytes calldata message
     ) external payable;
 
+    function speedUpUSSDeposit(
+        address depositor,
+        uint32 depositId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) external;
+
     function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId) external;
+
+    function fillUSSRelayWithUpdatedDeposit(
+        USSRelayData memory relayData,
+        uint256 repaymentChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) external;
 
     function requestUSSSlowFill(USSRelayData memory relayData) external;
 
