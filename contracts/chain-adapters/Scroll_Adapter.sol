@@ -8,6 +8,11 @@ import "@scroll-tech/contracts/L1/rollup/IL2GasPriceOracle.sol";
 import "@scroll-tech/contracts/L1/IL1ScrollMessenger.sol";
 import "./interfaces/AdapterInterface.sol";
 
+/**
+ * @title Scroll_Adapter
+ * @notice Adapter contract deployed on L1 alongside the HubPool to facilitate token transfers
+ * and arbitrary message relaying from L1 to L2.
+ */
 contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 250_000;
@@ -32,14 +37,17 @@ contract Scroll_Adapter is AdapterInterface {
         l2GasPriceOracle = _l2GasPriceOracle;
     }
 
+    /**
+     * @notice Generates the relayer fee for a message to be sent to L2.
+     */
     function _generateRelayerFee() internal view returns (uint256) {
         return l2GasPriceOracle.estimateCrossDomainMessageFee(l2GasLimit);
     }
 
     /**
-     * @notice Send message to `target` on L2.
-     * @dev This method is marked payable because relaying the message might require a fee
-     * to be paid by the sender to forward the message to L2. However, it will not send msg.value
+     * @notice Send message to `target` on Scroll.
+     * @dev This message is marked payable because relaying the message will require
+     * a fee that needs to be propagated to the Scroll Bridge. It will not send msg.value
      * to the target contract on L2.
      * @param target L2 address to send message to.
      * @param message Message to send to `target`.
@@ -54,7 +62,7 @@ contract Scroll_Adapter is AdapterInterface {
     }
 
     /**
-     * @notice Send `amount` of `l1Token` to `to` on L2. `l2Token` is the L2 address equivalent of `l1Token`.
+     * @notice Send `amount` of `l1Token` to `to` on Scroll. `l2Token` is the Scroll address equivalent of `l1Token`.
      * @dev This method is marked payable because relaying the message might require a fee
      * to be paid by the sender to forward the message to L2. However, it will not send msg.value
      * to the target contract on L2.

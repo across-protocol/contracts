@@ -113,6 +113,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Weth: "0x5300000000000000000000000000000000000004",
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
+    scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
   },
 };
 
