@@ -43,10 +43,10 @@ ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license 
 
 ## Tasks
 
-### Finalize Scroll Claims from L2 -> L1 (Mainnet | Sepolia)
+##### Finalize Scroll Claims from L2 -> L1 (Mainnet | Sepolia)
 
 ```shell
-    yarn hardhat finalize-scroll-claims --l2-address {operatorAddress}
+yarn hardhat finalize-scroll-claims --l2-address {operatorAddress}
 ```
 
 ## Slither
