@@ -6,11 +6,11 @@ import {
   seedWallet,
   toWei,
   toBN,
-  BigNumber,
   createFake,
   keccak256,
   defaultAbiCoder,
   getParamType,
+  getContractFactory,
 } from "../utils/utils";
 import {
   spokePoolFixture,
@@ -24,10 +24,23 @@ import {
   FillType,
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
-import { MAX_UINT_VAL } from "@uma/common";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract, erc1271: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
+
+// _fillRelay takes a USSRelayExecutionParams object as a param. This function returns the correct object
+// as a convenience.
+async function getRelayExecutionParams(_relayData: USSRelayData): Promise<USSRelayExecutionParams> {
+  const paramType = await getParamType("MockSpokePool", "fillUSSRelay", "relayData");
+  return {
+    relay: _relayData,
+    relayHash: keccak256(defaultAbiCoder.encode([paramType!], [_relayData])),
+    updatedOutputAmount: _relayData.outputAmount,
+    updatedRecipient: _relayData.recipient,
+    updatedMessage: _relayData.message,
+    repaymentChainId: consts.repaymentChainId,
+  };
+}
 
 describe("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
@@ -355,19 +368,6 @@ describe("SpokePool Relayer Logic", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
     });
     describe("_fillRelay internal logic", function () {
-      // _fillRelay takes a USSRelayExecutionParams object as a param. This function returns the correct object
-      // as a convenience.
-      async function getRelayExecutionParams(_relayData: USSRelayData): Promise<USSRelayExecutionParams> {
-        const paramType = await getParamType("MockSpokePool", "fillUSSRelay", "relayData");
-        return {
-          relay: _relayData,
-          relayHash: keccak256(defaultAbiCoder.encode([paramType!], [_relayData])),
-          updatedOutputAmount: _relayData.outputAmount,
-          updatedRecipient: _relayData.recipient,
-          updatedMessage: _relayData.message,
-          repaymentChainId: consts.repaymentChainId,
-        };
-      }
       it("expired fill deadline reverts", async function () {
         const _relay = {
           ...relayData,
@@ -596,6 +596,95 @@ describe("SpokePool Relayer Logic", async function () {
         );
       });
     });
+    describe("fillUSSRelay", function () {
+      it("fills are not paused", async function () {
+        await spokePool.pauseFills(true);
+        await expect(spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId)).to.be.revertedWith(
+          "Paused fills"
+        );
+      });
+      it("reentrancy protected", async function () {
+        const callbackMessageHandler = await (
+          await getContractFactory("AcrossMessageHandlerCallbackMock", depositor)
+        ).deploy();
+        const functionCalldata = spokePool.interface.encodeFunctionData("fillUSSRelay", [
+          relayData,
+          consts.repaymentChainId,
+        ]);
+        const _relayData = {
+          ...relayData,
+          recipient: callbackMessageHandler.address,
+          message: functionCalldata,
+        };
+        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.be.revertedWith(
+          "ReentrancyGuard: reentrant call"
+        );
+      });
+      it("must be exclusive relayer before exclusivity deadline", async function () {
+        const _relayData = {
+          ...relayData,
+          // Overwrite exclusive relayer and exclusivity deadline
+          exclusiveRelayer: recipient.address,
+          exclusivityDeadline: relayData.fillDeadline,
+        };
+        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.be.revertedWith(
+          "NotExclusiveRelayer"
+        );
+
+        // Can send it after exclusivity deadline
+        await expect(
+          spokePool.connect(relayer).fillUSSRelay(
+            {
+              ..._relayData,
+              exclusivityDeadline: 0,
+            },
+            consts.repaymentChainId
+          )
+        ).to.not.be.reverted;
+      });
+      it("can't overwrite RelayData destination chain", async function () {
+        const _relayData = {
+          ...relayData,
+          // Try to overwrite the passed in destinationChainId
+          destinationChainId: consts.originChainId,
+        };
+        await spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId);
+
+        // Check that relay hash was filled with the correct destination chain ID from the
+        // original relay data, not the overwritten one.
+        const { relayHash } = await getRelayExecutionParams(relayData);
+        expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
+        const { relayHash: invalidRelayHash } = await getRelayExecutionParams(_relayData);
+        expect(await spokePool.fillStatuses(invalidRelayHash)).to.equal(FillStatus.Unfilled);
+      });
+      it("calls _fillRelayUSS with  expected params", async function () {
+        await expect(spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId))
+          .to.emit(spokePool, "FilledUSSRelay")
+          .withArgs(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            consts.repaymentChainId, // Should be passed-in repayment chain ID
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayer.address, // Should be equal to msg.sender of fillRelayUSS
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
+            [
+              relayData.recipient, // updatedRecipient should be equal to recipient
+              relayData.message, // updatedMessage should be equal to message
+              relayData.outputAmount, // updatedOutputAmount should be equal to outputAmount
+              // Should be FastFill
+              FillType.FastFill,
+            ]
+          );
+      });
+    });
   });
 });
 
@@ -735,7 +824,7 @@ async function testfillRelayWithUpdatedDeposit(depositorAddress: string) {
   // The relay should succeed just like before with the same amount of tokens pulled from the relayer's wallet,
   // however the filled amount should have increased since the proportion of the relay filled would increase with a
   // higher fee.
-  const { relayHash, relayData } = getRelayHash(
+  const { relayData } = getRelayHash(
     depositorAddress,
     depositor.address,
     consts.firstDepositId,
