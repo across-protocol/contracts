@@ -21,6 +21,10 @@ contract Scroll_Adapter is AdapterInterface {
     IL1ScrollMessenger public immutable l1ScrollMessenger;
     IL2GasPriceOracle public immutable l2GasPriceOracle;
 
+    /**************************************
+     *          PUBLIC FUNCTIONS          *
+     **************************************/
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1GatewayRouter Standard bridge contract.
@@ -35,13 +39,6 @@ contract Scroll_Adapter is AdapterInterface {
         l1GatewayRouter = _l1GatewayRouter;
         l1ScrollMessenger = _l1ScrollMessenger;
         l2GasPriceOracle = _l2GasPriceOracle;
-    }
-
-    /**
-     * @notice Generates the relayer fee for a message to be sent to L2.
-     */
-    function _generateRelayerFee() internal view returns (uint256) {
-        return l2GasPriceOracle.estimateCrossDomainMessageFee(l2GasLimit);
     }
 
     /**
@@ -93,5 +90,16 @@ contract Scroll_Adapter is AdapterInterface {
         // Note: This happens due to the L1GatewayRouter.getERC20Gateway() call
         _l1GatewayRouter.depositERC20{ value: _generateRelayerFee() }(l1Token, to, amount, l2GasLimit);
         emit TokensRelayed(l1Token, l2Token, amount, to);
+    }
+
+    /**************************************
+     *         INTERNAL FUNCTIONS         *
+     **************************************/
+
+    /**
+     * @notice Generates the relayer fee for a message to be sent to L2.
+     */
+    function _generateRelayerFee() internal view returns (uint256) {
+        return l2GasPriceOracle.estimateCrossDomainMessageFee(l2GasLimit);
     }
 }
