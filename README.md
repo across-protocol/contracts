@@ -41,6 +41,14 @@ NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --n
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
 ```
 
+## Tasks
+
+### Finalize Scroll Claims from L2 -> L1 (Mainnet | Sepolia)
+
+```shell
+    yarn hardhat finalize-scroll-claims --l2-address {operatorAddress}
+```
+
 ## Slither
 
 [Slither](https://github.com/crytic/slither) is a Solidity static analysis framework written in Python 3. It runs a
