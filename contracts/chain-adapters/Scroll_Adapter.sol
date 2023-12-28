@@ -86,7 +86,12 @@ contract Scroll_Adapter is AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
+    function relayTokens(
+        address l1Token,
+        address l2Token,
+        uint256 amount,
+        address to
+    ) external payable {
         IL1GatewayRouter _l1GatewayRouter = l1GatewayRouter;
 
         // Confirm that the l2Token that we're trying to send is the correct counterpart
