@@ -12,6 +12,10 @@ These contracts were [audited by OpenZeppelin](https://blog.openzeppelin.com/uma
 
 [This video](https://www.youtube.com/watch?v=iuxf6Crv8MI) is also useful for understanding the technical architecture.
 
+## Deployed Contract Versions
+
+The latest contract deployments on Production will always be under the `deployed` tag.
+
 ## Build
 
 ```shell
