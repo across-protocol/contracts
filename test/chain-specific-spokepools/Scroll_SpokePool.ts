@@ -132,7 +132,7 @@ describe("Scroll Spoke Pool", function () {
   });
 
   // *ALL* ERC20 (including WETH) will be bridged through the withdrawERC20 method.
-  it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
+  it("Bridge tokens to hub pool correctly calls the L2GatewayRouter for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
       await scrollSpokePool.callStatic.chainId()
