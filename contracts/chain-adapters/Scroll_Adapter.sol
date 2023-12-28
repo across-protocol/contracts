@@ -112,8 +112,10 @@ contract Scroll_Adapter is AdapterInterface {
 
     /**
      * @notice Generates the relayer fee for a message to be sent to L2.
+     * @dev Function will revert if the contract does not have enough ETH to pay the fee.
      */
-    function _generateRelayerFee() internal view returns (uint256) {
-        return l2GasPriceOracle.estimateCrossDomainMessageFee(l2GasLimit);
+    function _generateRelayerFee() internal view returns (uint256 l2Fee) {
+        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(l2GasLimit);
+        require(address(this).balance >= l2Fee, "Insufficient ETH balance");
     }
 }

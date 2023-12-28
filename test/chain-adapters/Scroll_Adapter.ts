@@ -161,13 +161,28 @@ describe("Scroll Chain Adapter", function () {
     scrollAdapter = await (
       await getContractFactory("Scroll_Adapter", owner)
     ).deploy(l1GatewayRouter.address, l1Messenger.address, l1GasPriceOracle.address);
-
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
 
     await hubPool.setCrossChainContracts(scrollChainId, scrollAdapter.address, mockSpoke.address);
     await hubPool.setPoolRebalanceRoute(scrollChainId, dai.address, l2Dai);
     await hubPool.setPoolRebalanceRoute(scrollChainId, weth.address, l2Weth);
+  });
+
+  it("relayMessage fails when there's not enough fees", async function () {
+    // Hike the relayer fee to something that's too high for our hub pool to pay.
+    const fakedRelayerFee = toWei("1").add(1);
+    l1GasPriceOracle.estimateCrossDomainMessageFee.returns(fakedRelayerFee);
+
+    // Let's queue up a spoke pool function call and check that it's called correctly.
+    const newAdmin = randomAddress();
+    const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
+
+    // We should expect that this will fail in the spoke adapter. The hub pool should propagate this error
+    // to the caller with the error message "delegatecall failed".
+    await expect(hubPool.relaySpokePoolAdminFunction(scrollChainId, functionCallData)).to.have.revertedWith(
+      "delegatecall failed"
+    );
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -200,6 +215,9 @@ describe("Scroll Chain Adapter", function () {
   });
 
   it("Correctly calls appropriate scroll bridge functions when transferring tokens to different chains", async function () {
+    // Seed the HubPool some funds so it can send L1->L2 messages.
+    await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
+
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
 
