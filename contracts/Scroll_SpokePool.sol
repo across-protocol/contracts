@@ -19,6 +19,8 @@ contract Scroll_SpokePool is SpokePool {
      **************************************/
 
     event ScrollTokensBridged(address indexed token, address indexed receiver, uint256 amount);
+    event SetL2GatewayRouter(address indexed newGatewayRouter, address oldGatewayRouter);
+    event SetL2ScrollMessenger(address indexed newScrollMessenger, address oldScrollMessenger);
 
     /**************************************
      *          PUBLIC FUNCTIONS          *
@@ -51,6 +53,22 @@ contract Scroll_SpokePool is SpokePool {
         l2ScrollMessenger = _l2ScrollMessenger;
     }
 
+    /**
+     * @notice Change the L2 Gateway Router. Changed only by admin.
+     * @param _l2GatewayRouter New address of L2 gateway router.
+     */
+    function setL2GatewayRouter(IL2GatewayRouter _l2GatewayRouter) public onlyAdmin nonReentrant {
+        _setL2GatewayRouter(_l2GatewayRouter);
+    }
+
+    /**
+     * @notice Change L2 message service address. Callable only by admin.
+     * @param _l2ScrollMessenger New address of L2 messenger.
+     */
+    function setL2ScrollMessenger(IScrollMessenger _l2ScrollMessenger) public onlyAdmin nonReentrant {
+        _setL2MessageService(_l2ScrollMessenger);
+    }
+
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
@@ -81,5 +99,17 @@ contract Scroll_SpokePool is SpokePool {
         // address and *NOT* cross domain admin.
         address _xDomainSender = l2ScrollMessenger.xDomainMessageSender();
         require(_xDomainSender == crossDomainAdmin, "Sender must be admin");
+    }
+
+    function _setL2GatewayRouter(IL2GatewayRouter _l2GatewayRouter) internal {
+        address oldL2GatewayRouter = address(l2GatewayRouter);
+        l2GatewayRouter = _l2GatewayRouter;
+        emit SetL2GatewayRouter(address(_l2GatewayRouter), oldL2GatewayRouter);
+    }
+
+    function _setL2MessageService(IScrollMessenger _l2ScrollMessenger) internal {
+        address oldL2ScrollMessenger = address(l2ScrollMessenger);
+        l2ScrollMessenger = _l2ScrollMessenger;
+        emit SetL2ScrollMessenger(address(_l2ScrollMessenger), oldL2ScrollMessenger);
     }
 }
