@@ -159,11 +159,11 @@ describe("MerkleLib Proofs", async function () {
         outputToken: randomAddress(),
         inputAmount: randomBigNumber(),
         outputAmount: randomBigNumber(),
-        originChainId: randomBigNumber(2),
-        destinationChainId: randomBigNumber(2),
-        depositId: BigNumber.from(i),
-        fillDeadline: randomBigNumber(2),
-        exclusivityDeadline: randomBigNumber(2),
+        originChainId: randomBigNumber(2).toNumber(),
+        destinationChainId: randomBigNumber(2).toNumber(),
+        depositId: BigNumber.from(i).toNumber(),
+        fillDeadline: randomBigNumber(2).toNumber(),
+        exclusivityDeadline: randomBigNumber(2).toNumber(),
         message: ethers.utils.hexlify(ethers.utils.randomBytes(1024)),
       };
       slowFillLeaves.push({
