@@ -15,10 +15,28 @@ import "./interfaces/AdapterInterface.sol";
  */
 contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
+
+    /**
+     * @notice Used as the gas limit for relaying messages to L2.
+     */
     uint32 public constant l2GasLimit = 250_000;
 
+    /**
+     * @notice The address of the official l1GatewayRouter contract for Scroll for bridging tokens from L1 -> L2
+     * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
+     */
     IL1GatewayRouter public immutable l1GatewayRouter;
+
+    /**
+     * @notice The address of the official messenger contract for Scroll from L1 -> L2
+     * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
+     */
     IL1ScrollMessenger public immutable l1ScrollMessenger;
+
+    /**
+     * @notice The address of the official gas price oracle contract for Scroll for estimating the relayer fee
+     * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
+     */
     IL2GasPriceOracle public immutable l2GasPriceOracle;
 
     /**************************************
@@ -68,12 +86,7 @@ contract Scroll_Adapter is AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
         IL1GatewayRouter _l1GatewayRouter = l1GatewayRouter;
 
         // Confirm that the l2Token that we're trying to send is the correct counterpart

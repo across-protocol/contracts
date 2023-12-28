@@ -11,7 +11,16 @@ import "@scroll-tech/contracts/libraries/IScrollMessenger.sol";
  * from Scroll to the HubPool
  */
 contract Scroll_SpokePool is SpokePool {
+    /**
+     * @notice The address of the official l2GatewayRouter contract for Scroll for bridging tokens from L2 -> L1
+     * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
+     */
     IL2GatewayRouter public l2GatewayRouter;
+
+    /**
+     * @notice The address of the official messenger contract for Scroll from L2 -> L1
+     * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
+     */
     IScrollMessenger public l2ScrollMessenger;
 
     /**************************************
