@@ -15,7 +15,7 @@ import "./interfaces/AdapterInterface.sol";
  */
 contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
-    uint32 public immutable l2GasLimit = 250_000;
+    uint32 public constant l2GasLimit = 250_000;
 
     IL1GatewayRouter public immutable l1GatewayRouter;
     IL1ScrollMessenger public immutable l1ScrollMessenger;
