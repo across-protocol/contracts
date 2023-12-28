@@ -23,11 +23,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
+  // Construct this spokepool with a:
+  //    * A WETH address of the WETH address
+  //    * A depositQuoteTimeBuffer of 1 hour
+  //    * A fillDeadlineBuffer of 9 hours
+  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 32400];
 
   const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
     initializer: "initialize",
     kind: "uups",
-    constructorArgs: [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 32400],
+    constructorArgs,
     unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
   });
   console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);
