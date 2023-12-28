@@ -18,6 +18,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
+  // Construct this spokepool with a:
+  //    * A WETH address of the L2 WETH address
+  //    * A depositQuoteTimeBuffer of 1 hour
+  //    * A fillDeadlineBuffer of 9 hours
   const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 32400];
 
   await deployNewProxy("Scroll_SpokePool", constructorArgs, initArgs);
