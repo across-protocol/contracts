@@ -131,6 +131,7 @@ describe("Scroll Spoke Pool", function () {
     await expect(scrollSpokePool.relayRootBundle(tree.getHexRoot(), mockTreeRoot)).to.be.revertedWith(NO_ADMIN_REVERT);
   });
 
+  // *ALL* ERC20 (including WETH) will be bridged through the withdrawERC20 method.
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
