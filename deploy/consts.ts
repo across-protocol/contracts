@@ -17,6 +17,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    l1UsdcAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -47,6 +49,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     baseCrossDomainMessenger: "0x8e5693140eA606bcEB98761d9beB1BC87383706D",
     baseStandardBridge: "0xfA6D8Ee5BE770F84FC001D098C4bD604Fe01284a",
+    l1UsdcAddress: "0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
+    cctpTokenMessenger: "0xD0C3da58f55358142b8d3e06C1C30c5C6114EFE8",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
@@ -109,4 +113,18 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
 export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
   1: 137,
   5: 80001,
+};
+
+/**
+ * The domain ID provided by Circle for each supported chain ID.
+ * @note This is not the same as the chain ID.
+ * @note Only reference by the mainnet token, they are all the same.
+ * @link https://developers.circle.com/stablecoins/docs/supported-domains
+ */
+export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
+  1: 0, // Mainnet
+  10: 2, // Optimism
+  42161: 3, // Arbitrum
+  8453: 6, // Base
+  137: 7, // Polygon
 };
