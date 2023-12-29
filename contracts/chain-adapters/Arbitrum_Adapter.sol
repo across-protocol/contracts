@@ -5,6 +5,8 @@ import "./interfaces/AdapterInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
+import "./libraries/CCTPAdapter.sol";
 
 /**
  * @notice Interface for Arbitrum's L1 Inbox contract used to send messages to Arbitrum.
@@ -138,7 +140,7 @@ interface ArbitrumL1ERC20GatewayLike {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is AdapterInterface {
+contract Arbitrum_Adapter is AdapterInterface, CCTPAdapter {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -166,12 +168,18 @@ contract Arbitrum_Adapter is AdapterInterface {
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
+     * @param _l1Usdc USDC address on L1.
+     * @param _circleDomain Circle domain set for this chain. NOTE: this is issued by circle and is irrelevant of chain id
+     * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
-        address _l2RefundL2Address
-    ) {
+        address _l2RefundL2Address,
+        IERC20 _l1Usdc,
+        uint32 _circleDomain,
+        ITokenMessenger _tokenMessenger
+    ) CCTPAdapter(_l1Usdc, _circleDomain, _tokenMessenger) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
         l2RefundL2Address = _l2RefundL2Address;
@@ -216,46 +224,53 @@ contract Arbitrum_Adapter is AdapterInterface {
         uint256 amount,
         address to
     ) external payable override {
-        uint256 requiredL1CallValue = _contractHasSufficientEthBalance(RELAY_TOKENS_L2_GAS_LIMIT);
+        // Check if this token is USDC, which requires a custom bridge via CCTP.
+        if (_isL1Usdc(l1Token)) {
+            _transferFromL1Usdc(to, amount);
+        }
+        // If not, we can use the Arbitrum gateway
+        else {
+            uint256 requiredL1CallValue = _contractHasSufficientEthBalance(RELAY_TOKENS_L2_GAS_LIMIT);
 
-        // Approve the gateway, not the router, to spend the hub pool's balance. The gateway, which is different
-        // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
-        address erc20Gateway = l1ERC20GatewayRouter.getGateway(l1Token);
-        IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
+            // Approve the gateway, not the router, to spend the hub pool's balance. The gateway, which is different
+            // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
+            address erc20Gateway = l1ERC20GatewayRouter.getGateway(l1Token);
+            IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
 
-        // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
-        // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
-        bytes memory data = abi.encode(l2MaxSubmissionCost, "");
+            // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
+            // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
+            bytes memory data = abi.encode(l2MaxSubmissionCost, "");
 
-        // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
-        // outboundTransfer(). Legacy routers are used for the following tokens that are currently enabled:
-        // - DAI: the implementation of `outboundTransfer` at the current DAI custom gateway
-        //        (https://etherscan.io/address/0xD3B5b60020504bc3489D6949d545893982BA3011#writeContract) sets the
-        //        sender as the refund address so the aliased HubPool should receive excess funds. Implementation here:
-        //        https://github.com/makerdao/arbitrum-dai-bridge/blob/11a80385e2622968069c34d401b3d54a59060e87/contracts/l1/L1DaiGateway.sol#L109
-        if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
-            // This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
-            // contract address on L2, which we'd have to retrieve via a custom adapter, the Arbitrum_RescueAdapter.
-            // To do so, in a single transaction: 1) setCrossChainContracts to Arbitrum_RescueAdapter, 2) relayMessage
-            // with function data = abi.encode(amountToRescue), 3) setCrossChainContracts back to this adapter.
-            l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
-                l1Token,
-                to,
-                amount,
-                RELAY_TOKENS_L2_GAS_LIMIT,
-                l2GasPrice,
-                data
-            );
-        } else {
-            l1ERC20GatewayRouter.outboundTransferCustomRefund{ value: requiredL1CallValue }(
-                l1Token,
-                l2RefundL2Address,
-                to,
-                amount,
-                RELAY_TOKENS_L2_GAS_LIMIT,
-                l2GasPrice,
-                data
-            );
+            // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
+            // outboundTransfer(). Legacy routers are used for the following tokens that are currently enabled:
+            // - DAI: the implementation of `outboundTransfer` at the current DAI custom gateway
+            //        (https://etherscan.io/address/0xD3B5b60020504bc3489D6949d545893982BA3011#writeContract) sets the
+            //        sender as the refund address so the aliased HubPool should receive excess funds. Implementation here:
+            //        https://github.com/makerdao/arbitrum-dai-bridge/blob/11a80385e2622968069c34d401b3d54a59060e87/contracts/l1/L1DaiGateway.sol#L109
+            if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
+                // This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
+                // contract address on L2, which we'd have to retrieve via a custom adapter, the Arbitrum_RescueAdapter.
+                // To do so, in a single transaction: 1) setCrossChainContracts to Arbitrum_RescueAdapter, 2) relayMessage
+                // with function data = abi.encode(amountToRescue), 3) setCrossChainContracts back to this adapter.
+                l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
+                    l1Token,
+                    to,
+                    amount,
+                    RELAY_TOKENS_L2_GAS_LIMIT,
+                    l2GasPrice,
+                    data
+                );
+            } else {
+                l1ERC20GatewayRouter.outboundTransferCustomRefund{ value: requiredL1CallValue }(
+                    l1Token,
+                    l2RefundL2Address,
+                    to,
+                    amount,
+                    RELAY_TOKENS_L2_GAS_LIMIT,
+                    l2GasPrice,
+                    data
+                );
+            }
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
