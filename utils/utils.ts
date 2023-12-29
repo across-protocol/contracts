@@ -170,6 +170,14 @@ export async function createFake(contractName: string, targetAddress: string = "
   });
 }
 
+export async function createFakeFromABI(abi: any[], targetAddress: string = "") {
+  const signer = new ethers.VoidSigner(ethers.constants.AddressZero);
+  return smock.fake(abi, {
+    address: !targetAddress ? undefined : targetAddress,
+    provider: signer.provider,
+  });
+}
+
 function avmL1ToL2Alias(l1Address: string) {
   const offset = toBN("0x1111000000000000000000000000000000001111");
   const l1AddressAsNumber = toBN(l1Address);
