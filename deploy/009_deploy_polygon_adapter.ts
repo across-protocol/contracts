@@ -1,5 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { L1_ADDRESS_MAP } from "./consts";
+import { CIRCLE_DOMAIN_IDs, L1_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -21,6 +21,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].polygonERC20Predicate,
       L1_ADDRESS_MAP[chainId].matic,
       L1_ADDRESS_MAP[chainId].weth,
+      L1_ADDRESS_MAP[chainId].l1UsdcAddress,
+      L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+      CIRCLE_DOMAIN_IDs[137],
     ],
   });
 };

@@ -7,6 +7,9 @@ import "../external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./libraries/CCTPAdapter.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
+
 /**
  * @notice Send tokens to Polygon.
  */
@@ -68,7 +71,7 @@ interface DepositManager {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Polygon_Adapter is AdapterInterface {
+contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
     IFxStateSender public immutable fxStateSender;
@@ -85,6 +88,9 @@ contract Polygon_Adapter is AdapterInterface {
      * @param _erc20Predicate ERC20Predicate Polygon system contract to approve when depositing to the PoS bridge.
      * @param _l1Matic matic address on l1.
      * @param _l1Weth WETH address on L1.
+     * @param _l1Usdc USDC address on L1.
+     * @param _circleDomain Circle domain set for this chain. NOTE: this is issued by circle and is irrelevant of chain id
+     * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         IRootChainManager _rootChainManager,
@@ -92,8 +98,11 @@ contract Polygon_Adapter is AdapterInterface {
         DepositManager _depositManager,
         address _erc20Predicate,
         address _l1Matic,
-        WETH9Interface _l1Weth
-    ) {
+        WETH9Interface _l1Weth,
+        IERC20 _l1Usdc,
+        uint32 _circleDomain,
+        ITokenMessenger _tokenMessenger
+    ) CCTPAdapter(_l1Usdc, _circleDomain, _tokenMessenger) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
         depositManager = _depositManager;
@@ -130,6 +139,10 @@ contract Polygon_Adapter is AdapterInterface {
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             rootChainManager.depositEtherFor{ value: amount }(to);
+        }
+        // If the l1Token is USDC, then we send it to the CCTP bridge
+        else if (_isL1Usdc(l1Token)) {
+            _transferFromL1Usdc(to, amount);
         } else if (l1Token == l1Matic) {
             IERC20(l1Token).safeIncreaseAllowance(address(depositManager), amount);
             depositManager.depositERC20ForUser(l1Token, to, amount);
