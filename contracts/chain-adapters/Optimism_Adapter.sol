@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
+import "./libraries/CCTPAdapter.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
 
 // @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
 // this contract's state variables to be `immutable` because of the delegateCall call.
@@ -33,7 +35,7 @@ interface SynthetixBridgeToOptimism is IL1StandardBridge {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
+contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 200_000;
 
@@ -56,12 +58,18 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
      * @param _l1Weth WETH address on L1.
      * @param _crossDomainMessenger XDomainMessenger Optimism system contract.
      * @param _l1StandardBridge Standard bridge contract.
+     * @param _l1Usdc USDC address on L1.
+     * @param _circleDomain Circle domain set for this chain. NOTE: this is issued by circle and is irrelevant of chain id
+     * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
-        IL1StandardBridge _l1StandardBridge
-    ) CrossDomainEnabled(_crossDomainMessenger) {
+        IL1StandardBridge _l1StandardBridge,
+        IERC20 _l1Usdc,
+        uint32 _circleDomain,
+        ITokenMessenger _tokenMessenger
+    ) CrossDomainEnabled(_crossDomainMessenger) CCTPAdapter(_l1Usdc, _circleDomain, _tokenMessenger) {
         l1Weth = _l1Weth;
         l1StandardBridge = _l1StandardBridge;
     }
@@ -93,6 +101,10 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
+        }
+        // If the l1Token is USDC, then we send it to the CCTP bridge
+        else if (_isL1Usdc(l1Token)) {
+            _transferFromL1Usdc(to, amount);
         } else {
             address bridgeToUse = address(l1StandardBridge);
 
