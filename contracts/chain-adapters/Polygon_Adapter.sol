@@ -81,6 +81,13 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
     WETH9Interface public immutable l1Weth;
 
     /**
+     * @notice Domain identifier used for Circle's CCTP bridge on Base.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 public constant circleDomainId = 7;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _rootChainManager RootChainManager Polygon system contract to deposit tokens over the PoS bridge.
      * @param _fxStateSender FxStateSender Polygon system contract to send arbitrary messages to L2.
@@ -89,7 +96,6 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
      * @param _l1Matic matic address on l1.
      * @param _l1Weth WETH address on L1.
      * @param _l1Usdc USDC address on L1.
-     * @param _circleDomain Circle domain set for this chain. NOTE: this is issued by circle and is irrelevant of chain id
      * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
@@ -100,9 +106,8 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
         address _l1Matic,
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
-        uint32 _circleDomain,
         ITokenMessenger _tokenMessenger
-    ) CCTPAdapter(_l1Usdc, _circleDomain, _tokenMessenger) {
+    ) CCTPAdapter(_l1Usdc, circleDomainId, _tokenMessenger) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
         depositManager = _depositManager;

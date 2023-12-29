@@ -164,12 +164,18 @@ contract Arbitrum_Adapter is AdapterInterface, CCTPAdapter {
     ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
 
     /**
+     * @notice Domain identifier used for Circle's CCTP bridge on Arbitrum.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 public constant circleDomainId = 3;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
-     * @param _circleDomain Circle domain set for this chain. NOTE: this is issued by circle and is irrelevant of chain id
      * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
@@ -177,9 +183,8 @@ contract Arbitrum_Adapter is AdapterInterface, CCTPAdapter {
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        uint32 _circleDomain,
         ITokenMessenger _tokenMessenger
-    ) CCTPAdapter(_l1Usdc, _circleDomain, _tokenMessenger) {
+    ) CCTPAdapter(_l1Usdc, circleDomainId, _tokenMessenger) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
         l2RefundL2Address = _l2RefundL2Address;

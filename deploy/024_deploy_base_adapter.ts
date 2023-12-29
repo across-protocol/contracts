@@ -1,5 +1,4 @@
-import { ethers } from "ethers";
-import { CIRCLE_DOMAIN_IDs, L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -21,7 +20,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].baseStandardBridge,
       L1_ADDRESS_MAP[chainId].l1UsdcAddress,
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      CIRCLE_DOMAIN_IDs[8453],
     ],
   });
 };

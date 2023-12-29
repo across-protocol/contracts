@@ -54,12 +54,18 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CCTPAdapter {
     address public immutable snxOptimismBridge = 0x39Ea01a0298C315d149a490E34B59Dbf2EC7e48F;
 
     /**
+     * @notice Domain identifier used for Circle's CCTP bridge on Optimism.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 public constant circleDomainId = 2;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _crossDomainMessenger XDomainMessenger Optimism system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
-     * @param _circleDomain Circle domain set for this chain. NOTE: this is issued by circle and is irrelevant of chain id
      * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
@@ -67,9 +73,8 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CCTPAdapter {
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        uint32 _circleDomain,
         ITokenMessenger _tokenMessenger
-    ) CrossDomainEnabled(_crossDomainMessenger) CCTPAdapter(_l1Usdc, _circleDomain, _tokenMessenger) {
+    ) CrossDomainEnabled(_crossDomainMessenger) CCTPAdapter(_l1Usdc, circleDomainId, _tokenMessenger) {
         l1Weth = _l1Weth;
         l1StandardBridge = _l1StandardBridge;
     }
