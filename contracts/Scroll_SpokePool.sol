@@ -88,12 +88,11 @@ contract Scroll_SpokePool is SpokePool {
      * @param l2TokenAddress Address of the token to bridge.
      */
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
-        IL2GatewayRouter _l2GatewayRouter = l2GatewayRouter;
         // The scroll bridge handles arbitrary ERC20 tokens and is mindful of
         // the official WETH address on-chain. We don't need to do anything specific
         // to differentiate between WETH and a separate ERC20.
         // Note: This happens due to the L2GatewayRouter.getERC20Gateway() call
-        _l2GatewayRouter.withdrawERC20(l2TokenAddress, hubPool, amountToReturn, 0);
+        l2GatewayRouter.withdrawERC20(l2TokenAddress, hubPool, amountToReturn, 0);
         emit ScrollTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 
