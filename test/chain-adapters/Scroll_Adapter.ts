@@ -160,7 +160,7 @@ describe("Scroll Chain Adapter", function () {
 
     scrollAdapter = await (
       await getContractFactory("Scroll_Adapter", owner)
-    ).deploy(l1GatewayRouter.address, l1Messenger.address, l1GasPriceOracle.address);
+    ).deploy(l1GatewayRouter.address, l1Messenger.address, l1GasPriceOracle.address, 250_000 /* 250k gas limit */);
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
 

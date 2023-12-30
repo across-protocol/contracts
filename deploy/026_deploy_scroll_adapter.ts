@@ -18,6 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].scrollERC20GatewayRouter,
       L1_ADDRESS_MAP[chainId].scrollMessengerRelay,
       L1_ADDRESS_MAP[chainId].scrollGasPriceOracle,
+      250_000, // The gas limit for the L2 transaction : 250k wei
     ],
   });
 };

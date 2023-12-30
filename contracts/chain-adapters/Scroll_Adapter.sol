@@ -19,7 +19,7 @@ contract Scroll_Adapter is AdapterInterface {
     /**
      * @notice Used as the gas limit for relaying messages to L2.
      */
-    uint32 public constant l2GasLimit = 250_000;
+    uint32 public immutable l2GasLimit;
 
     /**
      * @notice The address of the official l1GatewayRouter contract for Scroll for bridging tokens from L1 -> L2
@@ -48,15 +48,18 @@ contract Scroll_Adapter is AdapterInterface {
      * @param _l1GatewayRouter Standard bridge contract.
      * @param _l1ScrollMessenger Scroll Messenger contract.
      * @param _l2GasPriceOracle Gas price oracle contract.
+     * @param _l2GasLimit Gas limit for relaying messages to L2.
      */
     constructor(
         IL1GatewayRouter _l1GatewayRouter,
         IL1ScrollMessenger _l1ScrollMessenger,
-        IL2GasPriceOracle _l2GasPriceOracle
+        IL2GasPriceOracle _l2GasPriceOracle,
+        uint32 _l2GasLimit
     ) {
         l1GatewayRouter = _l1GatewayRouter;
         l1ScrollMessenger = _l1ScrollMessenger;
         l2GasPriceOracle = _l2GasPriceOracle;
+        l2GasLimit = _l2GasLimit;
     }
 
     /**
