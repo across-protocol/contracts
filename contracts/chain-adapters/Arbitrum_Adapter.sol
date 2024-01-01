@@ -6,7 +6,7 @@ import "./interfaces/AdapterInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
-import "./libraries/CCTPAdapter.sol";
+import "../libraries/CCTPAdapter.sol";
 
 /**
  * @notice Interface for Arbitrum's L1 Inbox contract used to send messages to Arbitrum.
