@@ -21,11 +21,11 @@ library CircleCCTPLib {
      * @notice Transfers USDC from the current domain to the given address on the new domain.
      * @param usdcToken USDC token contract on the current domain.
      * @param tokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param circleDomain Domain identifier used for Circle's CCTP bridge on the current domain.
+     * @param circleDomain The new domain to transfer USDC to.
      * @param to Address to receive USDC on the new domain.
      * @param amount Amount of USDC to transfer.
      */
-    function _transferFromL1Usdc(
+    function _transferUsdc(
         IERC20 usdcToken,
         ITokenMessenger tokenMessenger,
         uint32 circleDomain,

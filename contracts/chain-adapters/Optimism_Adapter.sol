@@ -123,7 +123,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
         }
         // If the l1Token is USDC, then we send it to the CCTP bridge
         else if (address(l1Usdc) == l1Token) {
-            CircleCCTPLib._transferFromL1Usdc(l1Usdc, cctpTokenMessenger, circleDomainId, to, amount);
+            CircleCCTPLib._transferUsdc(l1Usdc, cctpTokenMessenger, circleDomainId, to, amount);
         } else {
             address bridgeToUse = address(l1StandardBridge);
 

@@ -245,7 +245,7 @@ contract Arbitrum_Adapter is AdapterInterface {
     ) external payable override {
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (address(l1Usdc) == l1Token) {
-            CircleCCTPLib._transferFromL1Usdc(l1Usdc, cctpTokenMessenger, circleDomainId, to, amount);
+            CircleCCTPLib._transferUsdc(l1Usdc, cctpTokenMessenger, circleDomainId, to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {
