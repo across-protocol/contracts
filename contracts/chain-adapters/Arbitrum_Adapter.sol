@@ -140,7 +140,7 @@ interface ArbitrumL1ERC20GatewayLike {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is AdapterInterface, CCTPAdapter {
+contract Arbitrum_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -171,23 +171,37 @@ contract Arbitrum_Adapter is AdapterInterface, CCTPAdapter {
     uint32 public constant circleDomainId = 3;
 
     /**
+     * @notice The official USDC contract address on this chain.
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
+     */
+    IERC20 public immutable l1Usdc;
+
+    /**
+     * @notice The official Circle CCTP token bridge contract endpoint.
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
+     */
+    ITokenMessenger public immutable cctpTokenMessenger;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
-     * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _tokenMessenger
-    ) CCTPAdapter(_l1Usdc, circleDomainId, _tokenMessenger) {
+        ITokenMessenger _cctpTokenMessenger
+    ) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
         l2RefundL2Address = _l2RefundL2Address;
+        l1Usdc = _l1Usdc;
+        cctpTokenMessenger = _cctpTokenMessenger;
     }
 
     /**
@@ -230,8 +244,8 @@ contract Arbitrum_Adapter is AdapterInterface, CCTPAdapter {
         address to
     ) external payable override {
         // Check if this token is USDC, which requires a custom bridge via CCTP.
-        if (_isL1Usdc(l1Token)) {
-            _transferFromL1Usdc(to, amount);
+        if (address(l1Usdc) == l1Token) {
+            CircleCCTPLib._transferFromL1Usdc(l1Usdc, cctpTokenMessenger, circleDomainId, to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {

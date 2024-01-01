@@ -71,7 +71,7 @@ interface DepositManager {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
+contract Polygon_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
     IFxStateSender public immutable fxStateSender;
@@ -88,6 +88,18 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
     uint32 public constant circleDomainId = 7;
 
     /**
+     * @notice The official USDC contract address on this chain.
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
+     */
+    IERC20 public immutable l1Usdc;
+
+    /**
+     * @notice The official Circle CCTP token bridge contract endpoint.
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
+     */
+    ITokenMessenger public immutable cctpTokenMessenger;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _rootChainManager RootChainManager Polygon system contract to deposit tokens over the PoS bridge.
      * @param _fxStateSender FxStateSender Polygon system contract to send arbitrary messages to L2.
@@ -96,7 +108,7 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
      * @param _l1Matic matic address on l1.
      * @param _l1Weth WETH address on L1.
      * @param _l1Usdc USDC address on L1.
-     * @param _tokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         IRootChainManager _rootChainManager,
@@ -106,14 +118,16 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
         address _l1Matic,
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
-        ITokenMessenger _tokenMessenger
-    ) CCTPAdapter(_l1Usdc, circleDomainId, _tokenMessenger) {
+        ITokenMessenger _cctpTokenMessenger
+    ) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
         depositManager = _depositManager;
         erc20Predicate = _erc20Predicate;
         l1Matic = _l1Matic;
         l1Weth = _l1Weth;
+        l1Usdc = _l1Usdc;
+        cctpTokenMessenger = _cctpTokenMessenger;
     }
 
     /**
@@ -146,8 +160,8 @@ contract Polygon_Adapter is AdapterInterface, CCTPAdapter {
             rootChainManager.depositEtherFor{ value: amount }(to);
         }
         // If the l1Token is USDC, then we send it to the CCTP bridge
-        else if (_isL1Usdc(l1Token)) {
-            _transferFromL1Usdc(to, amount);
+        else if (address(l1Usdc) == l1Token) {
+            CircleCCTPLib._transferFromL1Usdc(l1Usdc, cctpTokenMessenger, circleDomainId, to, amount);
         } else if (l1Token == l1Matic) {
             IERC20(l1Token).safeIncreaseAllowance(address(depositManager), amount);
             depositManager.depositERC20ForUser(l1Token, to, amount);
