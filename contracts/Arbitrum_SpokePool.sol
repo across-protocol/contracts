@@ -107,16 +107,21 @@ contract Arbitrum_SpokePool is SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        // Check that the Ethereum counterpart of the L2 token is stored on this contract.
-        address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
-        require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
-        //slither-disable-next-line unused-return
-        StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            amountToReturn, // _amount.
-            "" // _data. We don't need to send any data for the bridging action.
-        );
+        // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
+        if (l2TokenAddress == address(l2Usdc)) {
+            CircleCCTPLib._transferUsdc(l2Usdc, cctpTokenMessenger, l1CircleDomainId, hubPool, amountToReturn);
+        } else {
+            // Check that the Ethereum counterpart of the L2 token is stored on this contract.
+            address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
+            require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
+            //slither-disable-next-line unused-return
+            StandardBridgeLike(l2GatewayRouter).outboundTransfer(
+                ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
+                hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
+                amountToReturn, // _amount.
+                "" // _data. We don't need to send any data for the bridging action.
+            );
+        }
         emit ArbitrumTokensBridged(address(0), hubPool, amountToReturn);
     }
 
