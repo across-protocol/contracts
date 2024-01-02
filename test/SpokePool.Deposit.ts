@@ -8,8 +8,15 @@ import {
   toWei,
   randomAddress,
   BigNumber,
+  getContractFactory,
 } from "../utils/utils";
-import { spokePoolFixture, enableRoutes, getDepositParams } from "./fixtures/SpokePool.Fixture";
+import {
+  spokePoolFixture,
+  enableRoutes,
+  getDepositParams,
+  RelayData,
+  USSRelayData,
+} from "./fixtures/SpokePool.Fixture";
 import {
   amountToSeedWallets,
   amountToDeposit,
@@ -19,6 +26,7 @@ import {
   amountReceived,
   maxUint256,
   MAX_UINT32,
+  originChainId,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -401,23 +409,60 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
   });
 
-  describe("deposit USS", function () {
-    it("placeholder: gas test", async function () {
-      await spokePool.depositUSS(
-        depositor.address,
-        recipient.address,
-        // Input token
-        erc20.address,
-        // Output token
-        randomAddress(),
-        amountToDeposit,
-        amountToDeposit,
-        destinationChainId,
-        ZERO_ADDRESS,
+  describe.only("deposit USS", function () {
+    let relayData: USSRelayData, depositArgs: any[];
+    beforeEach(async function () {
+      relayData = {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        exclusiveRelayer: ZERO_ADDRESS,
+        inputToken: erc20.address,
+        outputToken: erc20.address,
+        inputAmount: amountToDeposit,
+        outputAmount: amountToDeposit,
+        originChainId: originChainId,
+        destinationChainId: destinationChainId,
+        depositId: 0,
+        fillDeadline: quoteTimestamp + 1000,
+        exclusivityDeadline: 0,
+        message: "0x",
+      };
+      depositArgs = [
+        relayData.depositor,
+        relayData.recipient,
+        relayData.inputToken,
+        relayData.outputToken,
+        relayData.inputAmount,
+        relayData.outputAmount,
+        relayData.destinationChainId,
+        relayData.exclusiveRelayer,
         quoteTimestamp,
-        quoteTimestamp + 100, // fill deadline
-        quoteTimestamp + 10, // exclusivity deadline
-        "0x"
+        relayData.fillDeadline,
+        relayData.exclusivityDeadline,
+        relayData.message,
+      ];
+    });
+    it("placeholder: gas test", async function () {
+      await spokePool.connect(depositor).depositUSS(...depositArgs);
+    });
+    it("deposits are not paused", async function () {
+      await spokePool.pauseDeposits(true);
+      await expect(spokePool.connect(depositor).depositUSS(...depositArgs)).to.be.revertedWith("Paused deposits");
+    });
+    it("reentrancy protected", async function () {
+      // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
+      // the spoke pool via the deposit function.
+      const callbackMessageHandler = await (
+        await getContractFactory("AcrossMessageHandlerCallbackMock", depositor)
+      ).deploy();
+      const functionCalldata = spokePool.interface.encodeFunctionData("depositUSS", [...depositArgs]);
+      const _relayData = {
+        ...relayData,
+        recipient: callbackMessageHandler.address,
+        message: functionCalldata,
+      };
+      await expect(spokePool.connect(depositor).fillUSSRelay(_relayData, destinationChainId)).to.be.revertedWith(
+        "ReentrancyGuard: reentrant call"
       );
     });
   });
