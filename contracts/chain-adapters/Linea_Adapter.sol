@@ -7,6 +7,10 @@ import "../external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Interface of Linea's Canonical Message Service
+ * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/interfaces/IMessageService.sol
+ */
 interface IMessageService {
     /**
      * @notice Sends a message for transporting from the given chain.
@@ -22,6 +26,10 @@ interface IMessageService {
     ) external payable;
 }
 
+/**
+ * @notice Interface of Linea's Canonical Token Bridge
+ * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/tokenBridge/interfaces/ITokenBridge.sol
+ */
 interface ITokenBridge {
     /**
      * @notice This function is the single entry point to bridge tokens to the
@@ -66,7 +74,6 @@ contract Linea_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
     WETH9Interface public immutable l1Weth;
-
     IMessageService public immutable l1MessageService;
     ITokenBridge public immutable l1TokenBridge;
     IUSDCBridge public immutable l1UsdcBridge;
@@ -96,7 +103,10 @@ contract Linea_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        l1MessageService.sendMessage{ value: msg.value }(target, 0, message);
+        // Linea currently does not support auto-claiming of cross-chain messages that have
+        // non-empty calldata. As we need to manually claim these messages, we can set the
+        // message fees to 0.
+        l1MessageService.sendMessage(target, 0, message);
         emit MessageRelayed(target, message);
     }
 

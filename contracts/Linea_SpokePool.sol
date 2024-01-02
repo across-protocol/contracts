@@ -8,6 +8,10 @@ import "./SpokePool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Interface of Linea's Canonical Message Service
+ * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/interfaces/IMessageService.sol
+ */
 interface IMessageService {
     /**
      * @notice Sends a message for transporting from the given chain.
@@ -24,11 +28,20 @@ interface IMessageService {
 
     /**
      * @notice Returns the original sender of the message on the origin layer.
-     * @return The original sender of the message on the origin layer.
      */
     function sender() external view returns (address);
+
+    /**
+     * @notice Minimum fee to use when sending a message. Currently, only exists on L2MessageService.
+     * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/messageService/l2/L2MessageService.sol#L37
+     */
+    function minimumFeeInWei() external view returns (uint256);
 }
 
+/**
+ * @notice Interface of Linea's Canonical Token Bridge
+ * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/tokenBridge/interfaces/ITokenBridge.sol
+ */
 interface ITokenBridge {
     /**
      * @notice This function is the single entry point to bridge tokens to the
@@ -165,21 +178,27 @@ contract Linea_SpokePool is SpokePool {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
+        uint256 minFee = IMessageService(l2MessageService).minimumFeeInWei();
+        if (address(this).balance < minFee) {
+            wrappedNativeToken.withdraw(minFee);
+        }
+
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
         // send ETH directly via the Canonical Message Service.
         if (l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
-            IMessageService(l2MessageService).sendMessage{ value: amountToReturn }(hubPool, 0, "");
+            IMessageService(l2MessageService).sendMessage{ value: amountToReturn + minFee }(hubPool, minFee, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
         else if (l2TokenAddress == l2UsdcBridge.usdc()) {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2UsdcBridge), amountToReturn);
-            l2UsdcBridge.depositTo(amountToReturn, hubPool);
+            l2UsdcBridge.depositTo{ value: minFee }(amountToReturn, hubPool);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
-            l2TokenBridge.bridgeToken(l2TokenAddress, amountToReturn, hubPool);
+            l2TokenBridge.bridgeToken{ value: minFee }(l2TokenAddress, amountToReturn, hubPool);
         }
         emit LineaTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
