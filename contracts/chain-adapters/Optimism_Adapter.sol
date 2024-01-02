@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
-import "../libraries/CCTPAdapter.sol";
+import "../libraries/CircleCCTPLib.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 // @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need

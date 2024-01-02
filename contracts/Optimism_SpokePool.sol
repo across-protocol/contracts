@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 import "./Ovm_SpokePool.sol";
-import "./libraries/CCTPAdapter.sol";
+import "./libraries/CircleCCTPLib.sol";
 
 /**
  * @notice Optimism Spoke pool.

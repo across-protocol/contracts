@@ -5,7 +5,7 @@ import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
-import "./libraries/CCTPAdapter.sol";
+import "./libraries/CircleCCTPLib.sol";
 
 /**
  * @notice IFxMessageProcessor represents interface to process messages.

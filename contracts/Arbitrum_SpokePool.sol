@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./libraries/CCTPAdapter.sol";
+import "./libraries/CircleCCTPLib.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
