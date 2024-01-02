@@ -113,6 +113,9 @@ contract SwapAndBridge is Lockable, MultiCaller {
         // swapTokenAmount != spentAmount). For now, set to 0 for simplicity.
 
         IERC20(swapDescription.dstToken).approve(address(oneInchRouter), swapTokenAmount);
+
+        // @dev: Example swap I used for comparison:
+        // https://optimistic.etherscan.io/tx/0x8a4e77ee1a62e94b42b21e849bcdabd60d43ac49191cd2878f6b47f395f26abc
         (uint256 returnAmount, uint256 spentAmount) = oneInchRouter.swap(
             aggregationExecutor,
             swapDescription,
