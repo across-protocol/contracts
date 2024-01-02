@@ -424,3 +424,37 @@ export async function modifyRelayHelper(
     signature,
   };
 }
+
+export async function getUpdatedUSSDepositSignature(
+  depositor: SignerWithAddress,
+  depositId: number,
+  originChainId: number,
+  updatedOutputAmount: BigNumber,
+  updatedRecipient: string,
+  updatedMessage: string
+): Promise<{ signature: string }> {
+  const typedData = {
+    types: {
+      UpdateDepositDetails: [
+        { name: "depositId", type: "uint32" },
+        { name: "originChainId", type: "uint256" },
+        { name: "updatedOutputAmount", type: "uint256" },
+        { name: "updatedRecipient", type: "address" },
+        { name: "updatedMessage", type: "bytes" },
+      ],
+    },
+    domain: {
+      name: "ACROSS-V2",
+      version: "1.0.0",
+      chainId: Number(originChainId),
+    },
+    message: {
+      depositId,
+      originChainId,
+      updatedOutputAmount,
+      updatedRecipient,
+      updatedMessage,
+    },
+  };
+  return await depositor._signTypedData(typedData.domain, typedData.types, typedData.message);
+}

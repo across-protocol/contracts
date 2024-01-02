@@ -16,6 +16,7 @@ import {
   getDepositParams,
   RelayData,
   USSRelayData,
+  getUpdatedUSSDepositSignature,
 } from "./fixtures/SpokePool.Fixture";
 import {
   amountToSeedWallets,
@@ -409,17 +410,33 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
   });
 
-  describe.only("deposit USS", function () {
+  describe("deposit USS", function () {
     let relayData: USSRelayData, depositArgs: any[];
+    function getDepositArgsFromRelayData(_relayData: USSRelayData, _quoteTimestamp = quoteTimestamp) {
+      return [
+        _relayData.depositor,
+        _relayData.recipient,
+        _relayData.inputToken,
+        _relayData.outputToken,
+        _relayData.inputAmount,
+        _relayData.outputAmount,
+        _relayData.destinationChainId,
+        _relayData.exclusiveRelayer,
+        _quoteTimestamp,
+        _relayData.fillDeadline,
+        _relayData.exclusivityDeadline,
+        _relayData.message,
+      ];
+    }
     beforeEach(async function () {
       relayData = {
         depositor: depositor.address,
         recipient: recipient.address,
         exclusiveRelayer: ZERO_ADDRESS,
         inputToken: erc20.address,
-        outputToken: erc20.address,
+        outputToken: randomAddress(),
         inputAmount: amountToDeposit,
-        outputAmount: amountToDeposit,
+        outputAmount: amountToDeposit.sub(19),
         originChainId: originChainId,
         destinationChainId: destinationChainId,
         depositId: 0,
@@ -427,23 +444,137 @@ describe("SpokePool Depositor Logic", async function () {
         exclusivityDeadline: 0,
         message: "0x",
       };
-      depositArgs = [
-        relayData.depositor,
-        relayData.recipient,
-        relayData.inputToken,
-        relayData.outputToken,
-        relayData.inputAmount,
-        relayData.outputAmount,
-        relayData.destinationChainId,
-        relayData.exclusiveRelayer,
-        quoteTimestamp,
-        relayData.fillDeadline,
-        relayData.exclusivityDeadline,
-        relayData.message,
-      ];
+      depositArgs = getDepositArgsFromRelayData(relayData);
     });
     it("placeholder: gas test", async function () {
       await spokePool.connect(depositor).depositUSS(...depositArgs);
+    });
+    it("route disabled", async function () {
+      // Verify that routes are disabled by default for a new route
+      const _depositArgs = getDepositArgsFromRelayData({ ...relayData, destinationChainId: 999 });
+      await expect(spokePool.connect(depositor).depositUSS(..._depositArgs)).to.be.revertedWith("DisabledRoute");
+
+      // Enable the route:
+      await spokePool.connect(depositor).setEnableRoute(erc20.address, 999, true);
+      await expect(spokePool.connect(depositor).depositUSS(..._depositArgs)).to.not.be.reverted;
+    });
+    it("invalid quoteTimestamp", async function () {
+      const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
+      const currentTime = await spokePool.getCurrentTime();
+
+      await expect(
+        spokePool.connect(depositor).depositUSS(
+          // quoteTimestamp too far into past (i.e. beyond the buffer)
+          ...getDepositArgsFromRelayData(relayData, currentTime.sub(quoteTimeBuffer).sub(100))
+        )
+      ).to.be.revertedWith("InvalidQuoteTimestamp");
+      await expect(
+        spokePool.connect(depositor).depositUSS(
+          // quoteTimestamp right at the buffer is OK
+          ...getDepositArgsFromRelayData(relayData, currentTime.sub(quoteTimeBuffer))
+        )
+      ).to.not.be.reverted;
+    });
+    it("invalid fillDeadline", async function () {
+      const fillDeadlineBuffer = await spokePool.fillDeadlineBuffer();
+      const currentTime = await spokePool.getCurrentTime();
+
+      await expect(
+        spokePool.connect(depositor).depositUSS(
+          // fillDeadline too far into future (i.e. beyond the buffer)
+          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer).add(100) })
+        )
+      ).to.be.revertedWith("InvalidFillDeadline");
+      await expect(
+        spokePool.connect(depositor).depositUSS(
+          // fillDeadline right at the buffer is OK
+          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
+        )
+      ).to.not.be.reverted;
+    });
+    it("if input token is WETH and msg.value > 0, msg.value must match inputAmount", async function () {
+      await expect(
+        spokePool
+          .connect(depositor)
+          .depositUSS(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 1 })
+      ).to.be.revertedWith("MsgValueDoesNotMatchInputAmount");
+
+      // Pulls ETH from depositor and deposits it into WETH via the wrapped contract.
+      await expect(() =>
+        spokePool
+          .connect(depositor)
+          .depositUSS(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), {
+            value: amountToDeposit,
+          })
+      ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]); // ETH should transfer from depositor to WETH contract.
+
+      // WETH balance for user should be same as start, but WETH balance in pool should increase.
+      expect(await weth.balanceOf(spokePool.address)).to.equal(amountToDeposit);
+    });
+    it("if input token is WETH and msg.value = 0, pulls ERC20 from depositor", async function () {
+      await expect(() =>
+        spokePool
+          .connect(depositor)
+          .depositUSS(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 0 })
+      ).to.changeTokenBalances(weth, [depositor, spokePool], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
+    });
+    it("pulls input token from caller", async function () {
+      await expect(() => spokePool.connect(depositor).depositUSS(...depositArgs)).to.changeTokenBalances(
+        erc20,
+        [depositor, spokePool],
+        [amountToDeposit.mul(toBN("-1")), amountToDeposit]
+      );
+    });
+    it("emits USSFundsDeposited event with correct deposit ID", async function () {
+      await expect(spokePool.connect(depositor).depositUSS(...depositArgs))
+        .to.emit(spokePool, "USSFundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          relayData.destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          quoteTimestamp,
+          relayData.fillDeadline,
+          relayData.exclusivityDeadline,
+          relayData.depositor,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
+          relayData.message
+        );
+    });
+    it("deposit ID state variable incremented", async function () {
+      await spokePool.connect(depositor).depositUSS(...depositArgs);
+      expect(await spokePool.numberOfDeposits()).to.equal(1);
+    });
+    it("tokens are always pulled from caller, even if different from specified depositor", async function () {
+      const balanceBefore = await erc20.balanceOf(depositor.address);
+      const newDepositor = randomAddress();
+      await expect(
+        spokePool
+          .connect(depositor)
+          .depositUSS(...getDepositArgsFromRelayData({ ...relayData, depositor: newDepositor }))
+      )
+        .to.emit(spokePool, "USSFundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          relayData.destinationChainId,
+          0,
+          quoteTimestamp,
+          relayData.fillDeadline,
+          relayData.exclusivityDeadline,
+          // New depositor
+          newDepositor,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
+          relayData.message
+        );
+      expect(await erc20.balanceOf(depositor.address)).to.equal(balanceBefore.sub(amountToDeposit));
     });
     it("deposits are not paused", async function () {
       await spokePool.pauseDeposits(true);
@@ -458,11 +589,37 @@ describe("SpokePool Depositor Logic", async function () {
       const functionCalldata = spokePool.interface.encodeFunctionData("depositUSS", [...depositArgs]);
       const _relayData = {
         ...relayData,
+        outputToken: erc20.address,
         recipient: callbackMessageHandler.address,
         message: functionCalldata,
       };
       await expect(spokePool.connect(depositor).fillUSSRelay(_relayData, destinationChainId)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
+      );
+    });
+  });
+  describe.only("speed up USS deposit", function () {
+    const updatedOutputAmount = amountToDeposit.add(1);
+    const updatedRecipient = randomAddress();
+    const updatedMessage = "0xrandombytes";
+    const depositId = 100;
+    it("_verifyUpdateUSSDepositMessage", async function () {
+      const signature = await getUpdatedUSSDepositSignature(
+        depositor,
+        depositId,
+        originChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage
+      );
+      await spokePool.verifyUpdateUSSDepositMessage(
+        depositor.address,
+        depositId,
+        originChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage,
+        signature
       );
     });
   });
