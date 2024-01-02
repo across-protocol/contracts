@@ -152,6 +152,10 @@ abstract contract SpokePool is
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
         );
 
+    bytes32 public constant UPDATE_USS_DEPOSIT_DETAILS_HASH =
+        keccak256(
+            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
+        );
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -1462,7 +1466,7 @@ abstract contract SpokePool is
             // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
             keccak256(
                 abi.encode(
-                    UPDATE_DEPOSIT_DETAILS_HASH,
+                    UPDATE_USS_DEPOSIT_DETAILS_HASH,
                     depositId,
                     originChainId,
                     updatedOutputAmount,

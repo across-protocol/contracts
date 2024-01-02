@@ -438,7 +438,7 @@ export async function getUpdatedUSSDepositSignature(
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
   updatedMessage: string
-): Promise<{ signature: string }> {
+): Promise<string> {
   const typedData = {
     types: {
       UpdateDepositDetails: [

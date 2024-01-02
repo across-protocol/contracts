@@ -598,10 +598,10 @@ describe("SpokePool Depositor Logic", async function () {
       );
     });
   });
-  describe.only("speed up USS deposit", function () {
+  describe("speed up USS deposit", function () {
     const updatedOutputAmount = amountToDeposit.add(1);
     const updatedRecipient = randomAddress();
-    const updatedMessage = "0xrandombytes";
+    const updatedMessage = "0x1234";
     const depositId = 100;
     it("_verifyUpdateUSSDepositMessage", async function () {
       const signature = await getUpdatedUSSDepositSignature(
@@ -621,6 +621,103 @@ describe("SpokePool Depositor Logic", async function () {
         updatedMessage,
         signature
       );
+
+      // Reverts if passed in depositor is the signer or if signature is incorrect
+      await expect(
+        spokePool.verifyUpdateUSSDepositMessage(
+          updatedRecipient,
+          depositId,
+          originChainId,
+          updatedOutputAmount,
+          updatedRecipient,
+          updatedMessage,
+          signature
+        )
+      ).to.be.revertedWith("invalid signature");
+
+      // @dev Creates an invalid signature using different params
+      const invalidSignature = await getUpdatedUSSDepositSignature(
+        depositor,
+        depositId + 1,
+        originChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage
+      );
+      await expect(
+        spokePool.verifyUpdateUSSDepositMessage(
+          depositor.address,
+          depositId,
+          originChainId,
+          updatedOutputAmount,
+          updatedRecipient,
+          updatedMessage,
+          invalidSignature
+        )
+      ).to.be.revertedWith("invalid signature");
+    });
+    it("passes spoke pool's chainId() as origin chainId", async function () {
+      const spokePoolChainId = await spokePool.chainId();
+
+      const expectedSignature = await getUpdatedUSSDepositSignature(
+        depositor,
+        depositId,
+        spokePoolChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage
+      );
+      await expect(
+        spokePool.speedUpUSSDeposit(
+          depositor.address,
+          depositId,
+          updatedOutputAmount,
+          updatedRecipient,
+          updatedMessage,
+          expectedSignature
+        )
+      )
+        .to.emit(spokePool, "RequestedSpeedUpUSSDeposit")
+        .withArgs(
+          updatedOutputAmount,
+          depositId,
+          depositor.address,
+          updatedRecipient,
+          updatedMessage,
+          expectedSignature
+        );
+
+      // Can't use a signature for a different chain ID, even if the signature is valid otherwise for the depositor.
+      const otherChainId = spokePoolChainId.add(1);
+      const invalidSignatureForChain = await getUpdatedUSSDepositSignature(
+        depositor,
+        depositId,
+        otherChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage
+      );
+      await expect(
+        spokePool.verifyUpdateUSSDepositMessage(
+          depositor.address,
+          depositId,
+          otherChainId,
+          updatedOutputAmount,
+          updatedRecipient,
+          updatedMessage,
+          invalidSignatureForChain
+        )
+      ).to.not.be.reverted;
+      await expect(
+        spokePool.speedUpUSSDeposit(
+          depositor.address,
+          depositId,
+          updatedOutputAmount,
+          updatedRecipient,
+          updatedMessage,
+          invalidSignatureForChain
+        )
+      ).to.be.revertedWith("invalid signature");
     });
   });
 });
