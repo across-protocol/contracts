@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
+import "./libraries/CCTPAdapter.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
@@ -23,6 +24,23 @@ contract Arbitrum_SpokePool is SpokePool {
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
+    /**
+     * @notice Domain identifier used for Circle's CCTP bridge to L1.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 public constant l1CircleDomainId = 0;
+    /**
+     * @notice The official USDC contract address on this chain.
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
+     */
+    IERC20 public l2Usdc;
+    /**
+     * @notice The official Circle CCTP token bridge contract endpoint.
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
+     */
+    ITokenMessenger public cctpTokenMessenger;
+
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
@@ -41,15 +59,21 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _l2Usdc USDC address on this L2 chain.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
-        address _hubPool
+        address _hubPool,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
     ) public initializer {
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         _setL2GatewayRouter(_l2GatewayRouter);
+        l2Usdc = _l2Usdc;
+        cctpTokenMessenger = _cctpTokenMessenger;
     }
 
     modifier onlyFromCrossDomainAdmin() {
