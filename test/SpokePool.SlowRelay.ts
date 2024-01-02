@@ -17,10 +17,11 @@ import {
   SlowFill,
   USSRelayData,
   getUSSRelayHash,
+  USSSlowFill,
 } from "./fixtures/SpokePool.Fixture";
 import { getFillRelayParams, getRelayHash } from "./fixtures/SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
-import { buildSlowRelayTree } from "./MerkleLib.utils";
+import { buildSlowRelayTree, buildUSSSlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";
 import { FillStatus } from "../utils/constants";
 
@@ -618,6 +619,49 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
         "InvalidSlowFillRequest"
+      );
+    });
+  });
+  describe("executeUSSSlowRelayLeaf", function () {
+    let relayData: USSRelayData, slowRelayLeaf: USSSlowFill;
+    beforeEach(async function () {
+      const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
+      relayData = {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        exclusiveRelayer: relayer.address,
+        inputToken: erc20.address,
+        outputToken: destErc20.address,
+        inputAmount: consts.amountToDeposit,
+        outputAmount: fullRelayAmountPostFees,
+        originChainId: consts.originChainId,
+        destinationChainId: consts.destinationChainId,
+        depositId: consts.firstDepositId,
+        fillDeadline: fillDeadline,
+        exclusivityDeadline: fillDeadline - 500,
+        message: "0x",
+      };
+      slowRelayLeaf = {
+        relayData,
+        updatedOutputAmount: relayData.outputAmount,
+      };
+    });
+    it("can send ERC20 with correct proof", async function () {
+      const tree = await buildUSSSlowRelayTree([slowRelayLeaf]);
+      await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
+      await expect(() =>
+        spokePool
+          .connect(relayer)
+          .executeUSSSlowRelayLeaf(
+            slowRelayLeaf,
+            1, // rootBundleId
+            tree.getHexProof(slowRelayLeaf)
+          )
+          .to.changeTokenBalances(
+            destErc20,
+            [spokePool, recipient],
+            [slowRelayLeaf.updatedOutputAmount.mul(-1), slowRelayLeaf.updatedOutputAmount]
+          )
       );
     });
   });

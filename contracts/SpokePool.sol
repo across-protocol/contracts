@@ -708,6 +708,36 @@ abstract contract SpokePool is
         );
     }
 
+    function speedUpUSSDeposit(
+        address depositor,
+        uint32 depositId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public override nonReentrant {
+        _verifyUpdateUSSDepositMessage(
+            depositor,
+            depositId,
+            chainId(),
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+
+        // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
+        // from the following event to submit a fill with updated relay data.
+        emit RequestedSpeedUpUSSDeposit(
+            updatedOutputAmount,
+            depositId,
+            depositor,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+    }
+
     /**************************************
      *         RELAYER FUNCTIONS          *
      **************************************/
@@ -898,13 +928,54 @@ abstract contract SpokePool is
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: bytes32(0),
+            relayHash: keccak256(abi.encode(relayData)),
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: repaymentChainId
         });
-        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
+
+        _fillRelayUSS(relayExecution, msg.sender, false);
+    }
+
+    function fillUSSRelayWithUpdatedDeposit(
+        USSRelayData memory relayData,
+        uint256 repaymentChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public override nonReentrant unpausedFills {
+        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
+        // to fill the relay.
+        // solhint-disable-next-line not-rely-on-time
+        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= block.timestamp) {
+            revert NotExclusiveRelayer();
+        }
+
+        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
+        // fill that was destined for a different chain. This is required because the relayData
+        // is used to form the relayHash which this contract uses to uniquely ID relays.
+        relayData.destinationChainId = chainId();
+
+        USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
+            relay: relayData,
+            relayHash: keccak256(abi.encode(relayData)),
+            updatedOutputAmount: updatedOutputAmount,
+            updatedRecipient: updatedRecipient,
+            updatedMessage: updatedMessage,
+            repaymentChainId: repaymentChainId
+        });
+
+        _verifyUpdateUSSDepositMessage(
+            relayData.depositor,
+            relayData.depositId,
+            relayData.originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
 
         _fillRelayUSS(relayExecution, msg.sender, false);
     }
@@ -1045,7 +1116,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         _validateRelayerRefundLeaf(
@@ -1095,7 +1166,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public override nonReentrant {
+    ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         _validateRelayerRefundLeaf(
@@ -1311,7 +1382,7 @@ abstract contract SpokePool is
         emit SetHubPool(newHubPool);
     }
 
-    function _preExecuteLeafHook(address l2TokenAddress) internal virtual {
+    function _preExecuteLeafHook(address) internal virtual {
         // This method by default is a no-op. Different child spoke pools might want to execute functionality here
         // such as wrapping any native tokens owned by the contract into wrapped tokens before proceeding with
         // executing the leaf.
@@ -1362,6 +1433,39 @@ abstract contract SpokePool is
                     depositId,
                     originChainId,
                     updatedRelayerFeePct,
+                    updatedRecipient,
+                    keccak256(updatedMessage)
+                )
+            ),
+            // By passing in the origin chain id, we enable the verification of the signature on a different chain
+            originChainId
+        );
+        _verifyDepositorSignature(depositor, expectedTypedDataV4Hash, depositorSignature);
+    }
+
+    function _verifyUpdateUSSDepositMessage(
+        address depositor,
+        uint32 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) internal view {
+        // A depositor can request to modify an un-relayed deposit by signing a hash containing the updated
+        // details and information uniquely identifying the deposit to relay. This information ensures
+        // that this signature cannot be re-used for other deposits.
+        // Note: We use the EIP-712 (https://eips.ethereum.org/EIPS/eip-712) standard for hashing and signing typed data.
+        // Specifically, we use the version of the encoding known as "v4", as implemented by the JSON RPC method
+        // `eth_signedTypedDataV4` in MetaMask (https://docs.metamask.io/guide/signing-data.html).
+        bytes32 expectedTypedDataV4Hash = _hashTypedDataV4(
+            // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+            keccak256(
+                abi.encode(
+                    UPDATE_DEPOSIT_DETAILS_HASH,
+                    depositId,
+                    originChainId,
+                    updatedOutputAmount,
                     updatedRecipient,
                     keccak256(updatedMessage)
                 )
@@ -1571,6 +1675,7 @@ abstract contract SpokePool is
         }
 
         if (relayExecution.updatedRecipient.isContract() && relayExecution.updatedMessage.length > 0) {
+            _preHandleMessageHook();
             AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
@@ -1579,6 +1684,10 @@ abstract contract SpokePool is
                 relayExecution.updatedMessage
             );
         }
+    }
+
+    function _preHandleMessageHook() internal virtual {
+        // This method by default is a no-op.
     }
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
@@ -1674,6 +1783,7 @@ abstract contract SpokePool is
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
+            _preHandleMessageHook();
             AcrossMessageHandler(recipientToSend).handleUSSAcrossMessage(
                 outputToken,
                 amountToSend,

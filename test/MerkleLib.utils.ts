@@ -1,7 +1,7 @@
 import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "../utils/utils";
 import { repaymentChainId, amountToReturn } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
-import { SlowFill } from "./fixtures/SpokePool.Fixture";
+import { SlowFill, USSSlowFill } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
   chainId: BigNumber;
   groupIndex: BigNumber;
@@ -37,6 +37,17 @@ export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundL
   return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 }
 
+export async function buildUSSRelayerRefundTree(relayerRefundLeaves: USSRelayerRefundLeaf[]) {
+  for (let i = 0; i < relayerRefundLeaves.length; i++) {
+    // The 2 provided parallel arrays must be of equal length.
+    expect(relayerRefundLeaves[i].refundAddresses.length).to.equal(relayerRefundLeaves[i].refundAmounts.length);
+  }
+
+  const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
+  const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  return new MerkleTree<USSRelayerRefundLeaf>(relayerRefundLeaves, hashFn);
+}
+
 export function buildRelayerRefundLeaves(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
@@ -54,6 +65,31 @@ export function buildRelayerRefundLeaves(
         l2TokenAddress: l2Tokens[i],
         refundAddresses: refundAddresses[i],
         refundAmounts: refundAmounts[i],
+      };
+    });
+}
+
+export function buildUSSRelayerRefundLeaves(
+  destinationChainIds: number[],
+  amountsToReturn: BigNumber[],
+  l2Tokens: string[],
+  refundAddresses: string[][],
+  refundAmounts: BigNumber[][],
+  fillsRefundedRoot: string[],
+  fillsRefundedHash: string[]
+): USSRelayerRefundLeaf[] {
+  return Array(destinationChainIds.length)
+    .fill(0)
+    .map((_, i) => {
+      return {
+        leafId: BigNumber.from(i),
+        chainId: BigNumber.from(destinationChainIds[i]),
+        amountToReturn: amountsToReturn[i],
+        l2TokenAddress: l2Tokens[i],
+        refundAddresses: refundAddresses[i],
+        refundAmounts: refundAmounts[i],
+        fillsRefundedRoot: fillsRefundedRoot[i],
+        fillsRefundedHash: fillsRefundedHash[i],
       };
     });
 }
@@ -135,4 +171,11 @@ export async function buildSlowRelayTree(slowFills: SlowFill[]) {
     return keccak256(defaultAbiCoder.encode([paramType!], [input]));
   };
   return new MerkleTree<SlowFill>(slowFills, hashFn);
+}
+export async function buildUSSSlowRelayTree(slowFills: USSSlowFill[]) {
+  const paramType = await getParamType("MerkleLibTest", "verifyUSSSlowRelayFulfillment", "slowFill");
+  const hashFn = (input: USSSlowFill) => {
+    return keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  };
+  return new MerkleTree<USSSlowFill>(slowFills, hashFn);
 }

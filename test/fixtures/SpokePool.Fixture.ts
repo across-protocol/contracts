@@ -10,6 +10,7 @@ import {
 } from "../../utils/utils";
 
 import * as consts from "../constants";
+import { RelayerRefundLeaf, USSRelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
@@ -230,6 +231,11 @@ export const enum FillStatus {
 export interface SlowFill {
   relayData: RelayData;
   payoutAdjustmentPct: BigNumber;
+}
+
+export interface USSSlowFill {
+  relayData: USSRelayData;
+  updatedOutputAmount: BigNumber;
 }
 
 export function getRelayHash(
@@ -457,4 +463,26 @@ export async function getUpdatedUSSDepositSignature(
     },
   };
   return await depositor._signTypedData(typedData.domain, typedData.types, typedData.message);
+}
+
+export async function deployMockSpokePoolCaller(
+  spokePool: Contract,
+  rootBundleId: number,
+  leaf: RelayerRefundLeaf,
+  proof: string[]
+): Promise<Contract> {
+  return await (
+    await getContractFactory("MockCaller", (await ethers.getSigners())[0])
+  ).deploy(spokePool.address, rootBundleId, leaf, proof);
+}
+
+export async function deployMockUSSSpokePoolCaller(
+  spokePool: Contract,
+  rootBundleId: number,
+  leaf: USSRelayerRefundLeaf,
+  proof: string[]
+): Promise<Contract> {
+  return await (
+    await getContractFactory("MockUSSCaller", (await ethers.getSigners())[0])
+  ).deploy(spokePool.address, rootBundleId, leaf, proof);
 }
