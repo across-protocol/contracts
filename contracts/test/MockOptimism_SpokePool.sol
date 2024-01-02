@@ -15,6 +15,14 @@ contract MockOptimism_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, l2Eth);
+        __OvmSpokePool_init(
+            _initialDepositId,
+            _crossDomainAdmin,
+            _hubPool,
+            l2Eth,
+            false,
+            IERC20(address(0)),
+            ITokenMessenger(address(0))
+        );
     }
 }

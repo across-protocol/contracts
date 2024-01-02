@@ -26,6 +26,14 @@ contract Boba_SpokePool is Ovm_SpokePool {
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, 0x4200000000000000000000000000000000000006);
+        __OvmSpokePool_init(
+            _initialDepositId,
+            _crossDomainAdmin,
+            _hubPool,
+            0x4200000000000000000000000000000000000006,
+            false, // No CCTP bridge for USDC so the rest of the params are zero
+            IERC20(address(0)), // Zero address mapped to an IERC20
+            ITokenMessenger(address(0)) // Zero address mapped to an ITokenMessenger
+        );
     }
 }
