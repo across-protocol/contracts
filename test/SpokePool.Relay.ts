@@ -604,19 +604,11 @@ describe("SpokePool Relayer Logic", async function () {
         );
       });
       it("reentrancy protected", async function () {
-        const callbackMessageHandler = await (
-          await getContractFactory("AcrossMessageHandlerCallbackMock", depositor)
-        ).deploy();
         const functionCalldata = spokePool.interface.encodeFunctionData("fillUSSRelay", [
           relayData,
           consts.repaymentChainId,
         ]);
-        const _relayData = {
-          ...relayData,
-          recipient: callbackMessageHandler.address,
-          message: functionCalldata,
-        };
-        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.be.revertedWith(
+        await expect(spokePool.connect(relayer).callback(functionCalldata)).to.be.revertedWith(
           "ReentrancyGuard: reentrant call"
         );
       });

@@ -14,7 +14,6 @@ import {
   spokePoolFixture,
   enableRoutes,
   getDepositParams,
-  RelayData,
   USSRelayData,
   getUpdatedUSSDepositSignature,
 } from "./fixtures/SpokePool.Fixture";
@@ -581,19 +580,8 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(spokePool.connect(depositor).depositUSS(...depositArgs)).to.be.revertedWith("Paused deposits");
     });
     it("reentrancy protected", async function () {
-      // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
-      // the spoke pool via the deposit function.
-      const callbackMessageHandler = await (
-        await getContractFactory("AcrossMessageHandlerCallbackMock", depositor)
-      ).deploy();
       const functionCalldata = spokePool.interface.encodeFunctionData("depositUSS", [...depositArgs]);
-      const _relayData = {
-        ...relayData,
-        outputToken: erc20.address,
-        recipient: callbackMessageHandler.address,
-        message: functionCalldata,
-      };
-      await expect(spokePool.connect(depositor).fillUSSRelay(_relayData, destinationChainId)).to.be.revertedWith(
+      await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
       );
     });

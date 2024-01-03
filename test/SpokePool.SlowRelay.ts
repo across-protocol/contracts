@@ -9,6 +9,7 @@ import {
   randomBigNumber,
   BigNumber,
   toWei,
+  getContractFactory,
 } from "../utils/utils";
 import {
   spokePoolFixture,
@@ -621,11 +622,23 @@ describe("SpokePool Slow Relay Logic", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
     });
     it("cannot request if FillStatus is Filled", async function () {
-      await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
       const relayHash = getUSSRelayHash(relayData);
+      await spokePool.setFillStatus(relayHash, FillStatus.Filled);
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
         "InvalidSlowFillRequest"
+      );
+    });
+    it("fills are not paused", async function () {
+      await spokePool.pauseFills(true);
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("Paused fills");
+    });
+    it("reentrancy protected", async function () {
+      // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
+      // the spoke pool via the tested function.
+      const functionCalldata = spokePool.interface.encodeFunctionData("requestUSSSlowFill", [relayData]);
+      await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
+        "ReentrancyGuard: reentrant call"
       );
     });
   });
