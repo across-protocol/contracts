@@ -79,15 +79,17 @@ async function main() {
     dstMessageService.contractAddress
   );
   for (const messageSentEvent of relevantMessageSentEvents) {
-    const messageStatus = await dstMessageService.getMessageStatus(messageSentEvent.messageHash);
+    console.log("Checking message", messageSentEvent.messageHash);
+    let messageStatus = await dstMessageService.getMessageStatus(messageSentEvent.messageHash);
+
+    // Wait for message to be received
+    while (messageStatus === OnChainMessageStatus.UNKNOWN) {
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+      messageStatus = await dstMessageService.getMessageStatus(messageSentEvent.messageHash);
+    }
 
     if (messageStatus === OnChainMessageStatus.CLAIMED) {
       console.log("Skipping already claimed message:", messageSentEvent.messageHash);
-      continue;
-    }
-
-    if (messageStatus === OnChainMessageStatus.UNKNOWN) {
-      console.log("Skipping not received message:", messageSentEvent.messageHash);
       continue;
     }
 
