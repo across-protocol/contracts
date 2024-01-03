@@ -598,25 +598,32 @@ describe("SpokePool Slow Relay Logic", async function () {
         message: "0x",
       };
     });
-    it("can send before fast fill", async function () {
+    it("fill deadline is expired", async function () {
+      relayData.fillDeadline = (await spokePool.getCurrentTime()).sub(1000);
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
+    });
+    it("can request before fast fill", async function () {
       const relayHash = getUSSRelayHash(relayData);
 
+      // FillStatus must be Unfilled:
+      expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Unfilled);
       expect(await spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.emit(spokePool, "RequestedUSSSlowFill");
+
+      // FillStatus gets reset to RequestedSlowFill:
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.RequestedSlowFill);
 
-      // Can't slow fill again
+      // Can't request slow fill again:
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
         "InvalidSlowFillRequest"
       );
 
-      // Can fast fill after.
+      // Can fast fill after:
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
     });
-    it("can't send after fast fill", async function () {
+    it("cannot request if FillStatus is Filled", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
       const relayHash = getUSSRelayHash(relayData);
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
-
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
         "InvalidSlowFillRequest"
       );

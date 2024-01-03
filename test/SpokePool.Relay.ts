@@ -1,14 +1,4 @@
-import {
-  expect,
-  Contract,
-  ethers,
-  SignerWithAddress,
-  seedWallet,
-  toWei,
-  toBN,
-  BigNumber,
-  createFake,
-} from "../utils/utils";
+import { expect, Contract, ethers, SignerWithAddress, seedWallet, toWei, toBN, createFake } from "../utils/utils";
 import {
   spokePoolFixture,
   getRelayHash,
@@ -17,7 +7,6 @@ import {
   getFillRelayUpdatedFeeParams,
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
-import { MAX_UINT_VAL } from "@uma/common";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract, erc1271: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -38,7 +27,7 @@ describe("SpokePool Relayer Logic", async function () {
     await weth.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
   });
   it("Relaying ERC20 tokens correctly pulls tokens and changes contract state", async function () {
-    const { relayHash, relayData } = getRelayHash(
+    const { relayData } = getRelayHash(
       depositor.address,
       recipient.address,
       consts.firstDepositId,
