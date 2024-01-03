@@ -670,11 +670,11 @@ describe("SpokePool Slow Relay Logic", async function () {
         updatedOutputAmount: relayData.outputAmount.add(1),
       };
     });
-    it("Happy case: can send ERC20 with correct proof out of contract balance", async function () {
+    it("Happy case: recipient can send ERC20 with correct proof out of contract balance", async function () {
       const tree = await buildUSSSlowRelayTree([slowRelayLeaf]);
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
       await expect(() =>
-        spokePool.connect(relayer).executeUSSSlowRelayLeaf(
+        spokePool.connect(recipient).executeUSSSlowRelayLeaf(
           slowRelayLeaf,
           1, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
