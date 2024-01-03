@@ -452,7 +452,7 @@ export async function getUpdatedUSSDepositSignature(
     domain: {
       name: "ACROSS-V2",
       version: "1.0.0",
-      chainId: Number(originChainId),
+      chainId: originChainId,
     },
     message: {
       depositId,
