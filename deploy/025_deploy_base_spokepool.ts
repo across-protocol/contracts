@@ -1,15 +1,22 @@
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
-  // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
-  // with deprecated spoke pool.
-  // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
-  const initArgs = [1_000_000, hubPool.address, hubPool.address];
-
+  const initArgs = [
+    // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
+    // with deprecated spoke pool.
+    1_000_000,
+    // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
+    hubPool.address,
+    hubPool.address,
+    // Native USDC address on L2
+    L2_ADDRESS_MAP[spokeChainId].l2Usdc,
+    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+  ];
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour

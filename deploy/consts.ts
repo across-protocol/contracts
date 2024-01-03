@@ -89,19 +89,29 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   421613: {
     l2GatewayRouter: "0xE5B9d8d42d656d1DcB8065A6c012FE3780246041",
     l2Weth: "0xe39Ab88f8A4777030A534146A9Ca3B52bd5D43A3",
+    l2Usdc: "0xfd064A18f3BF249cf1f87FC203E90D8f650f2d63",
+    cctpTokenMessenger: "0x12dcfd3fe2e9eac2859fd1ed86d2ab8c5a2f9352",
     cctpMessageTransmitter: "0x109bc137cb64eab7c0b1dddd1edf341467dc2d35",
   },
   42161: {
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
     l2Weth: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    l2Usdc: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    cctpTokenMessenger: "0x19330d10D9Cc8751218eaf51E8885D058642E08A",
+    cctpMessageTransmitter: "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
   },
   137: {
     wMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
+    l2Usdc: "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+    cctpTokenMessenger: "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",
+    cctpMessageTransmitter: "0xF3be9355363857F3e001be68856A2f96b4C39Ba9",
   },
   80001: {
     wMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
+    l2Usdc: "0x9999f7Fea5938fD3b1E26A12c3f2fb024e194f97",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0xe09A679F56207EF33F5b9d8fb4499Ec00792eA73",
   },
   280: {
@@ -112,17 +122,25 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
   },
-  420: {
-    cctpMessageTransmitter: "0x9ff9a4da6f2157a9c82ce756f8fd7e0d75be8895",
-  },
-  84531: {
-    cctpMessageTransmitter: "0x9ff9a4da6f2157A9c82CE756f8fD7E0d75be8895",
-  },
   10: {
     l2Usdc: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+    cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",
+    cctpMessageTransmitter: "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
   },
-  42: {
+  420: {
     l2Usdc: "0xe05606174bac4A6364B31bd0eCA4bf4dD368f8C6",
+    cctpTokenMessenger: "0x23a04d5935ed8bc8e3eb78db3541f0abfb001c6e",
+    cctpMessageTransmitter: "0x9ff9a4da6f2157a9c82ce756f8fd7e0d75be8895",
+  },
+  8453: {
+    l2Usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    cctpTokenMessenger: "0x1682Ae6375C4E4A97e4B583BC394c861A46D8962",
+    cctpMessageTransmitter: "0xAD09780d193884d503182aD4588450C416D6F9D4",
+  },
+  84531: {
+    l2Usdc: "0xf175520c52418dfe19c8098071a252da48cd1c19",
+    cctpTokenMessenger: "0x877b8e8c9e2383077809787ED6F279ce01CB4cc8",
+    cctpMessageTransmitter: "0x9ff9a4da6f2157A9c82CE756f8fD7E0d75be8895",
   },
 };
 

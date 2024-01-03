@@ -6,17 +6,20 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
-  // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
-  // with deprecated spoke pool.
-  // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const initArgs = [
+    // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
+    // with deprecated spoke pool.
     1_000_000,
     // The same token bridger must be deployed on mainnet and polygon, so its easier
     // to reuse it.
     "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
+    // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
     hubPool.address,
     hubPool.address,
     L2_ADDRESS_MAP[spokeChainId].fxChild,
+    // Native USDC address on L2
+    L2_ADDRESS_MAP[spokeChainId].l2Usdc,
+    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
 
   // Construct this spokepool with a:

@@ -8,20 +8,20 @@ import fetch from "node-fetch";
 const MAX_L1_BLOCK_LOOKBACK = 1000;
 const MAX_L2_BLOCK_LOOKBACK = 1000;
 
-const chainToSpokePoolName: Record<number, string> = {
-  1: "Ethereum_SpokePool",
-  5: "Ethereum_SpokePool",
-  10: "Optimism_SpokePool",
-  42: "Optimism_SpokePool",
-  42161: "Arbitrum_SpokePool",
-  421613: "Arbitrum_SpokePool",
-  8453: "Base_SpokePool",
-  84531: "Base_SpokePool",
-  137: "Polygon_SpokePool",
-  80001: "Polygon_SpokePool",
+const chainToArtifactPrefix: Record<number, string> = {
+  1: "Ethereum",
+  5: "Ethereum",
+  10: "Optimism",
+  420: "Optimism",
+  42161: "Arbitrum",
+  421613: "Arbitrum",
+  8453: "Base",
+  84531: "Base",
+  137: "Polygon",
+  80001: "Polygon",
 };
 
-const MESSAGE_TRANSMITTER_ABI = [
+const messageTransmitterAbi = [
   {
     inputs: [
       {
@@ -70,7 +70,7 @@ const MESSAGE_TRANSMITTER_ABI = [
 /**
  * Script to claim L1->L2 or L2->L1 messages. Run via
  * ```
- * CLAIM_MESSAGES_ON=l1 \
+ * RECEIVE_MESSAGES_ON=l1 \
  * yarn hardhat run ./scripts/claimLineaMessages.ts \
  * --network linea-goerli \
  * ```
@@ -106,7 +106,10 @@ async function main() {
 
   // Get relevant message hashes and bytes
   const uniqueTxHashes = new Set(srcEvents.map((event) => event.transactionHash));
-  const messageHashesAndBytes = await parseMessageHashesAndBytes(Array.from(uniqueTxHashes), l1Provider);
+  const messageHashesAndBytes = await parseMessageHashesAndBytes(
+    Array.from(uniqueTxHashes),
+    receiveMessagesOn === "l1" ? l2Provider : l1Provider
+  );
   const relevantMessageHashesAndBytes = messageHashesAndBytes.filter(
     (messageHashAndBytes) =>
       messageHashAndBytes.destinationDomain === CIRCLE_DOMAIN_IDs[receiveMessagesOn === "l1" ? l1ChainId : l2ChainId]
@@ -131,7 +134,7 @@ async function main() {
     receiveMessagesOn === "l1"
       ? L1_ADDRESS_MAP[l1ChainId].cctpMessageTransmitter
       : L2_ADDRESS_MAP[l2ChainId].cctpMessageTransmitter,
-    MESSAGE_TRANSMITTER_ABI,
+    messageTransmitterAbi,
     receiveMessagesOn === "l1" ? l1Signer : l2Signer
   );
 
@@ -142,6 +145,7 @@ async function main() {
   for (const [i, messageHashAndBytes] of relevantMessageHashesAndBytes.entries()) {
     const attestation = attestations[i];
     const { messageBytes, messageHash, nonceHash } = messageHashAndBytes;
+    console.log(`Receiving message ${messageHash}...`);
 
     try {
       // Skip message if already received
@@ -151,7 +155,6 @@ async function main() {
         continue;
       }
 
-      console.log(`Receiving message ${messageHash}...`);
       const receiveTx = await messageTransmitter.receiveMessage(messageBytes, attestation);
       console.log(`Tx hash: ${receiveTx.hash}`);
       await receiveTx.wait();
@@ -165,14 +168,14 @@ async function main() {
 
 async function requestAttestation(messageHash: string) {
   console.log(`Attesting message hash: ${messageHash}`);
-  let attestationResponse = { status: "pending" };
+  let attestationResponse = { status: "pending", attestation: "" };
   while (attestationResponse.status !== "complete") {
     const response = await fetch(`https://iris-api-sandbox.circle.com/attestations/${messageHash}`);
     attestationResponse = await response.json();
     await new Promise((resolve) => setTimeout(resolve, 2_000));
   }
   console.log("Attested");
-  return attestationResponse.attestation as string;
+  return attestationResponse.attestation;
 }
 
 async function parseMessageHashesAndBytes(txHashes: string[], srcProvider: providers.JsonRpcProvider) {
@@ -211,10 +214,9 @@ async function getL1SrcEvents(
   const l1LatestBlock = await l1Provider.getBlockNumber();
 
   const hubPoolDeployment = await hre.companionNetworks.l1.deployments.get("HubPool");
-  const adapter = (await getContractFactory("Optimism_Adapter", { signer: l1Signer })).attach(
-    // hubPoolDeployment.address
-    "0x33e76207af8AeAc2072213C9Bc33eB844b0e26e4"
-  );
+  const adapter = (
+    await getContractFactory(`${chainToArtifactPrefix[l1ChainId]}_Adapter`, { signer: l1Signer })
+  ).attach(hubPoolDeployment.address);
 
   console.log("\nQuerying L1 src events...", {
     hubPool: hubPoolDeployment.address,
@@ -246,8 +248,13 @@ async function getL2SrcEvents(
 ) {
   const l2LatestBlock = await l2Provider.getBlockNumber();
 
-  const spokePoolDeployment = await hre.deployments.get(chainToSpokePoolName[l2ChainId]);
-  const spokePool = (await getContractFactory(chainToSpokePoolName[l2ChainId], { signer: l2Signer })).attach(
+  const spokePoolArtifactPrefix = chainToArtifactPrefix[l2ChainId];
+  const spokePoolArtifactName = `${spokePoolArtifactPrefix}_SpokePool`;
+  const spokePoolEventName = `${
+    spokePoolArtifactPrefix === "Base" ? "Optimism" : spokePoolArtifactPrefix
+  }TokensBridged`;
+  const spokePoolDeployment = await hre.deployments.get(spokePoolArtifactName);
+  const spokePool = (await getContractFactory(spokePoolArtifactName, { signer: l2Signer })).attach(
     spokePoolDeployment.address
   );
 
@@ -261,9 +268,9 @@ async function getL2SrcEvents(
     blockLookback,
     async (fromBlock: number, toBlock: number) => {
       console.log(`Querying blocks ${fromBlock} - ${toBlock}...`);
-      const lineaTokensBridgedEvents = await spokePool.queryFilter("LineaTokensBridged", fromBlock, toBlock);
-      console.log(`${lineaTokensBridgedEvents.length} 'LineaTokensBridged'`);
-      return lineaTokensBridgedEvents;
+      const tokensBridgedEvents = await spokePool.queryFilter(spokePoolEventName, fromBlock, toBlock);
+      console.log(`${tokensBridgedEvents.length} '${spokePoolEventName}'`);
+      return tokensBridgedEvents;
     },
     maxBlockLookback
   );
