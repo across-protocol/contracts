@@ -138,10 +138,22 @@ describe("SpokePool Root Bundle Execution", function () {
       );
       tree = await buildUSSRelayerRefundTree(leaves);
     });
-    it("Can execute ERC20 leaf", async function () {
+    it("Happy case: relayer can execute leaf to payout ERC20 tokens from spoke pool", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
-      await spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+      await expect(() =>
+        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.changeTokenBalances(destErc20, [relayer, spokePool], [consts.amountToRelay, -consts.amountToRelay]);
     });
+    it("calls _preExecuteLeafHook", async function () {});
+    it("incorrect leaf destination chain ID", async function () {});
+    it("refund address length mismatch", async function () {});
+    it("invalid merkle proof", async function () {
+      // Incorrect root bundle ID
+      // Incorrect relayer refund leaf for proof
+      // Incorrect proof
+    });
+    it("cannot double claim", async function () {});
+    it("emits expected events", async function () {});
   });
 
   describe("Gas test", function () {
