@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-// Linea only supports v0.8.19
+// Arbitrum only supports v0.8.19
 // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
 pragma solidity 0.8.19;
 
