@@ -19,6 +19,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
     l1UsdcAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
+    cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -51,6 +52,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     baseStandardBridge: "0xfA6D8Ee5BE770F84FC001D098C4bD604Fe01284a",
     l1UsdcAddress: "0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
     cctpTokenMessenger: "0xD0C3da58f55358142b8d3e06C1C30c5C6114EFE8",
+    cctpMessageTransmitter: "0x26413e8157cd32011e726065a5462e97dd4d03d9",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
@@ -87,6 +89,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   421613: {
     l2GatewayRouter: "0xE5B9d8d42d656d1DcB8065A6c012FE3780246041",
     l2Weth: "0xe39Ab88f8A4777030A534146A9Ca3B52bd5D43A3",
+    cctpMessageTransmitter: "0x109bc137cb64eab7c0b1dddd1edf341467dc2d35",
   },
   42161: {
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
@@ -99,6 +102,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   80001: {
     wMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
+    cctpMessageTransmitter: "0xe09A679F56207EF33F5b9d8fb4499Ec00792eA73",
   },
   280: {
     l2Weth: "0x20b28B1e4665FFf290650586ad76E977EAb90c5D",
@@ -107,6 +111,18 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+  },
+  420: {
+    cctpMessageTransmitter: "0x9ff9a4da6f2157a9c82ce756f8fd7e0d75be8895",
+  },
+  84531: {
+    cctpMessageTransmitter: "0x9ff9a4da6f2157A9c82CE756f8fD7E0d75be8895",
+  },
+  10: {
+    l2Usdc: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+  },
+  42: {
+    l2Usdc: "0xe05606174bac4A6364B31bd0eCA4bf4dD368f8C6",
   },
 };
 
@@ -127,4 +143,10 @@ export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   42161: 3, // Arbitrum
   8453: 6, // Base
   137: 7, // Polygon
+  // testnets
+  5: 0, // Goerli
+  420: 2, // Optimism Goerli
+  421613: 3, // Arbitrum Goerli
+  84531: 6, // Base Goerli
+  80001: 7, // Polygon Mumbai
 };
