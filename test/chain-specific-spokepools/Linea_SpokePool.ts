@@ -42,6 +42,18 @@ const lineaMessageServiceAbi = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "minimumFeeInWei",
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
 ];
 
 const lineaTokenBridgeAbi = [
@@ -91,6 +103,7 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService = await smock.fake(lineaMessageServiceAbi, {
       address: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     });
+    lineaMessageService.minimumFeeInWei.returns(0);
     lineaMessageService.sender.reset();
     lineaTokenBridge = await smock.fake(lineaTokenBridgeAbi, { address: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9" });
     lineaUsdcBridge = await smock.fake(lineaUsdcBridgeAbi, {
@@ -152,8 +165,20 @@ describe("Linea Spoke Pool", function () {
       "ONLY_COUNTERPART_GATEWAY"
     );
   });
+  it("Anti-DDoS message fee needs to be set", async function () {
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      dai.address,
+      await lineaSpokePool.callStatic.chainId()
+    );
+    lineaMessageService.sender.returns(owner.address);
+    await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    lineaMessageService.sender.reset();
+    lineaMessageService.minimumFeeInWei.returns(1);
+    await expect(
+      lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("MESSAGE_FEE_TOO_LOW");
+  });
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
-    console.log("l2Dai", await lineaSpokePool.callStatic.chainId());
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
       await lineaSpokePool.callStatic.chainId()

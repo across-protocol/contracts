@@ -191,7 +191,7 @@ interface USSSpokePoolInterface {
         uint32 rootBundleId,
         USSRelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) external;
+    ) external payable;
 
     error DisabledRoute();
     error InvalidQuoteTimestamp();

@@ -180,26 +180,25 @@ contract Linea_SpokePool is SpokePool {
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
         uint256 minFee = IMessageService(l2MessageService).minimumFeeInWei();
-        if (address(this).balance < minFee) {
-            wrappedNativeToken.withdraw(minFee);
-        }
+        require(msg.value >= minFee, "MESSAGE_FEE_TOO_LOW");
 
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
         // send ETH directly via the Canonical Message Service.
         if (l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
-            IMessageService(l2MessageService).sendMessage{ value: amountToReturn + minFee }(hubPool, minFee, "");
+            IMessageService(l2MessageService).sendMessage{ value: amountToReturn + msg.value }(hubPool, msg.value, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
         else if (l2TokenAddress == l2UsdcBridge.usdc()) {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2UsdcBridge), amountToReturn);
-            l2UsdcBridge.depositTo{ value: minFee }(amountToReturn, hubPool);
+            l2UsdcBridge.depositTo{ value: msg.value }(amountToReturn, hubPool);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
-            l2TokenBridge.bridgeToken{ value: minFee }(l2TokenAddress, amountToReturn, hubPool);
+            l2TokenBridge.bridgeToken{ value: msg.value }(l2TokenAddress, amountToReturn, hubPool);
         }
+
         emit LineaTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 

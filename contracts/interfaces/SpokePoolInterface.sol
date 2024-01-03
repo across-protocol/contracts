@@ -180,7 +180,7 @@ interface SpokePoolInterface {
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) external;
+    ) external payable;
 
     function chainId() external view returns (uint256);
 }
