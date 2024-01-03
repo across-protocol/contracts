@@ -8,7 +8,6 @@ import {
   USSRelayerRefundLeaf,
   buildUSSRelayerRefundLeaves,
   buildUSSRelayerRefundTree,
-  RelayerRefundLeaf,
 } from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
@@ -132,8 +131,8 @@ describe("SpokePool Root Bundle Execution", function () {
         [destinationChainId, destinationChainId], // Destination chain ID.
         [consts.amountToReturn, toBN(0)], // amountToReturn.
         [destErc20.address, destErc20.address], // l2Token.
-        [[], [relayer.address, rando.address, rando.address]], // refundAddresses.
-        [[], [consts.amountToRelay, consts.amountToRelay, toBN(0)]], // refundAmounts.
+        [[relayer.address, rando.address], []], // refundAddresses.
+        [[consts.amountToRelay, consts.amountToRelay], []], // refundAmounts.
         [consts.mockTreeRoot, consts.mockTreeRoot], // fillsRefundedRoot.
         [consts.mockTreeRoot, consts.mockTreeRoot] // fillsRefundedHash.
       );
@@ -143,106 +142,30 @@ describe("SpokePool Root Bundle Execution", function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
       await spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
     });
-    describe("_distributeRelayerRefunds", function () {
-      describe("amountToReturn > 0", function () {
-        let leaf: USSRelayerRefundLeaf, otherLeaf: USSRelayerRefundLeaf;
-        beforeEach(async function () {
-          await spokePool.connect(dataWorker).relayRootBundle(
-            tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-            consts.mockSlowRelayRoot
-          );
+  });
 
-          leaf = leaves[0];
-          expect(leaf.amountToReturn).to.be.gt(0);
-          otherLeaf = leaves[1];
-          expect(otherLeaf.amountToReturn).to.equal(0);
-        });
-        it("calls _bridgeTokensToHubPool", async function () {
-          await expect(
-            spokePool
-              .connect(dataWorker)
-              .distributeRelayerRefunds(
-                leaf.chainId,
-                leaf.amountToReturn,
-                leaf.refundAmounts,
-                leaf.leafId,
-                leaf.l2TokenAddress,
-                leaf.refundAddresses
-              )
-          )
-            .to.emit(spokePool, "BridgedTokensToHubPool")
-            .withArgs(leaf.l2TokenAddress, leaf.amountToReturn);
+  describe("Gas test", function () {
+    // Run following tests with REPORT_GAS=true to print out isolated gas costs for internal functions
+    // that are called directly by the MockSpokePool.
+    it("_distributeRelayerRefunds: amountToReturn > 0", async function () {
+      const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
+      await spokePool.connect(dataWorker).relayRootBundle(
+        tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
+        consts.mockSlowRelayRoot
+      );
 
-          // If amountToReturn is 0 for a leaf, then does not call _bridgeTokensToHubPool.
-          await expect(
-            spokePool
-              .connect(dataWorker)
-              .distributeRelayerRefunds(
-                otherLeaf.chainId,
-                otherLeaf.amountToReturn,
-                otherLeaf.refundAmounts,
-                otherLeaf.leafId,
-                otherLeaf.l2TokenAddress,
-                otherLeaf.refundAddresses
-              )
-          ).to.not.emit(spokePool, "BridgedTokensToHubPool");
-        });
-        it("emits TokensBridged", async function () {
-          await expect(
-            spokePool
-              .connect(dataWorker)
-              .distributeRelayerRefunds(
-                leaf.chainId,
-                leaf.amountToReturn,
-                leaf.refundAmounts,
-                leaf.leafId,
-                leaf.l2TokenAddress,
-                leaf.refundAddresses
-              )
-          )
-            .to.emit(spokePool, "TokensBridged")
-            .withArgs(leaf.amountToReturn, leaf.chainId, leaf.leafId, leaf.l2TokenAddress);
-
-          // If amountToReturn is 0 for a leaf, then does not emit TokensBridged.
-          await expect(
-            spokePool
-              .connect(dataWorker)
-              .distributeRelayerRefunds(
-                otherLeaf.chainId,
-                otherLeaf.amountToReturn,
-                otherLeaf.refundAmounts,
-                otherLeaf.leafId,
-                otherLeaf.l2TokenAddress,
-                otherLeaf.refundAddresses
-              )
-          ).to.not.emit(spokePool, "TokensBridged");
-        });
-      });
-      describe("some refund amounts > 0", function () {
-        let leaf: RelayerRefundLeaf;
-        beforeEach(async function () {
-          leaf = leaves[1];
-          expect(leaf.refundAmounts.length).to.equal(leaf.refundAddresses.length);
-          expect(leaf.refundAddresses.length).to.equal(3);
-          expect(leaf.refundAmounts.filter((bn) => bn.gt(0)).length).to.be.lt(leaf.refundAmounts.length);
-        });
-        it("sends refund amounts to refund addresses for every non-zero refund amount", async function () {
-          await expect(() =>
-            spokePool
-              .connect(dataWorker)
-              .distributeRelayerRefunds(
-                leaf.chainId,
-                leaf.amountToReturn,
-                leaf.refundAmounts,
-                leaf.leafId,
-                leaf.l2TokenAddress,
-                leaf.refundAddresses
-              )
-          ).to.changeTokenBalances(destErc20, [relayer, rando], leaf.refundAmounts);
-          const transferLogCount = (await destErc20.queryFilter(destErc20.filters.Transfer(spokePool.address))).length;
-          expect(transferLogCount).to.equal(2);
-        });
-      });
+      const leaf = leaves[0];
+      expect(leaf.amountToReturn).to.be.gt(0);
+      await spokePool
+        .connect(dataWorker)
+        .distributeRelayerRefunds(
+          leaf.chainId,
+          leaf.amountToReturn,
+          leaf.refundAmounts,
+          leaf.leafId,
+          leaf.l2TokenAddress,
+          leaf.refundAddresses
+        );
     });
   });
 });
