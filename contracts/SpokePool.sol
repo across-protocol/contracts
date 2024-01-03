@@ -1094,13 +1094,12 @@ abstract contract SpokePool is
         // deposit params like outputAmount, message and recipient.
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: bytes32(0),
+            relayHash: keccak256(abi.encode(relayData)),
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: 0 // Hardcoded to 0 for slow fills
         });
-        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
         _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
 
