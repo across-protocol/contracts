@@ -36,15 +36,32 @@ import {
   getFillRelayParams,
   getRelayHash,
 } from "../fixtures/SpokePool.Fixture";
+import { smock } from "@defi-wonderland/smock";
 
-let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string;
-let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
+let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
+let polygonRegistry: FakeContract, erc20Predicate: FakeContract, l2CctpTokenMessenger: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
+
+const cctpTokenMessengerAbi = [
+  {
+    inputs: [
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "uint32", name: "destinationDomain", type: "uint32" },
+      { internalType: "bytes32", name: "mintRecipient", type: "bytes32" },
+      { internalType: "address", name: "burnToken", type: "address" },
+    ],
+    name: "depositForBurn",
+    outputs: [{ internalType: "uint64", name: "_nonce", type: "uint64" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
+
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
-    ({ weth, hubPool, l2Dai } = await hubPoolFixture());
+    ({ weth, hubPool, l2Dai, l2Usdc } = await hubPoolFixture());
 
     // The spoke pool exists on l2, so add a random chainId for L1 to ensure that the L2's block.chainid will not match.
     const l1ChainId = randomBigNumber();
@@ -52,6 +69,9 @@ describe("Polygon Spoke Pool", function () {
 
     polygonRegistry = await createFake("PolygonRegistryMock");
     erc20Predicate = await createFake("PolygonERC20PredicateMock");
+    l2CctpTokenMessenger = await smock.fake(cctpTokenMessengerAbi, {
+      address: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    });
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 
@@ -64,7 +84,15 @@ describe("Polygon Spoke Pool", function () {
 
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
-      [0, polygonTokenBridger.address, owner.address, hubPool.address, fxChild.address],
+      [
+        0,
+        polygonTokenBridger.address,
+        owner.address,
+        hubPool.address,
+        fxChild.address,
+        l2Usdc,
+        l2CctpTokenMessenger.address,
+      ],
       { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
