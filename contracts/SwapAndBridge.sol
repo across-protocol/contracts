@@ -117,27 +117,29 @@ contract SwapAndBridge is Lockable, MultiCaller {
 
         IERC20(swapDescription.dstToken).approve(address(oneInchRouter), swapTokenAmount);
 
-        uint256 balanceBefore = IERC20(swapDescription.dstToken).balanceOf(address(this));
+        uint256 srcBalanceBefore = IERC20(swapDescription.srcToken).balanceOf(address(this));
+        uint256 dstBalanceBefore = IERC20(swapDescription.dstToken).balanceOf(address(this));
         // @dev: Example swap I used for comparison:
         // https://optimistic.etherscan.io/tx/0x8a4e77ee1a62e94b42b21e849bcdabd60d43ac49191cd2878f6b47f395f26abc
-        (uint256 returnAmount, uint256 spentAmount) = oneInchRouter.swap(
+        (uint256 returnAmount, ) = oneInchRouter.swap(
             aggregationExecutor,
             swapDescription,
             new bytes(0), // TODO: No IERC20Permit.permit needed since we're sending an approval?
             new bytes(0) // TODO: We don't want to execute any data on swaps but I'm not sure how this is used.
         );
 
-        // Sanity check that 1inch doesn't partial fill.
-        require(spentAmount == swapTokenAmount, "spent amount != swap amount");
+        uint256 amountReceivedFromSwap = dstBalanceBefore - IERC20(swapDescription.dstToken).balanceOf(address(this));
+        require(returnAmount == amountReceivedFromSwap, "return amount");
         // Sanity check that received amount from swap is enough to submit Across deposit with.
-        require(returnAmount >= minExpectedInputTokenAmount, "min expected input amount");
+        require(amountReceivedFromSwap >= minExpectedInputTokenAmount, "min expected input amount");
         // Sanity check that we don't have any leftover swap tokens that would be locked in this contract.
         require(
-            balanceBefore - IERC20(swapDescription.dstToken).balanceOf(address(this)) == swapTokenAmount,
-            "leftover swap tokens"
+            srcBalanceBefore - IERC20(swapDescription.srcToken).balanceOf(address(this)) == swapTokenAmount,
+            "leftover src tokens"
         );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
+        IERC20(swapDescription.dstToken).safeApprove(address(spokePool), returnAmount);
         spokePool.depositUSS(
             depositor,
             recipient,
