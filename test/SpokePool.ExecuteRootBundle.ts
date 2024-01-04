@@ -163,6 +163,22 @@ describe("SpokePool Root Bundle Execution", function () {
         .to.emit(spokePool, "PreLeafExecuteHook")
         .withArgs(leaves[0].l2TokenAddress);
     });
+    it("cannot re-enter", async function () {
+      const functionCalldata = spokePool.interface.encodeFunctionData("executeUSSRelayerRefundLeaf", [
+        0,
+        leaves[0],
+        tree.getHexProof(leaves[0]),
+      ]);
+      await expect(spokePool.connect(dataWorker).callback(functionCalldata)).to.be.revertedWith(
+        "ReentrancyGuard: reentrant call"
+      );
+    });
+    it("can execute even if fills are paused", async function () {
+      await spokePool.pauseFills(true);
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await expect(spokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
+        .not.be.reverted;
+    });
     it("cannot execute leaves with chain IDs not matching spoke pool's chain ID", async function () {
       // In this test, the merkle proof is valid for the tree relayed to the spoke pool, but the merkle leaf
       // destination chain ID does not match the spoke pool's chainId() and therefore cannot be executed.
