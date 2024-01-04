@@ -465,7 +465,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.connect(depositor).depositUSS(
           // quoteTimestamp too far into past (i.e. beyond the buffer)
-          ...getDepositArgsFromRelayData(relayData, currentTime.sub(quoteTimeBuffer).sub(100))
+          ...getDepositArgsFromRelayData(relayData, currentTime.sub(quoteTimeBuffer).sub(1))
         )
       ).to.be.revertedWith("InvalidQuoteTimestamp");
       await expect(
