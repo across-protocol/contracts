@@ -1,5 +1,14 @@
 import { MerkleTree } from "../utils/MerkleTree";
-import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../utils/utils";
+import {
+  SignerWithAddress,
+  seedContract,
+  toBN,
+  expect,
+  Contract,
+  ethers,
+  BigNumber,
+  randomAddress,
+} from "../utils/utils";
 import * as consts from "./constants";
 import { deployMockSpokePoolCaller, spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import {
@@ -144,28 +153,93 @@ describe("SpokePool Root Bundle Execution", function () {
     });
   });
 
-  describe("Gas test", function () {
-    // Run following tests with REPORT_GAS=true to print out isolated gas costs for internal functions
-    // that are called directly by the MockSpokePool.
-    it("_distributeRelayerRefunds: amountToReturn > 0", async function () {
-      const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
-      await spokePool.connect(dataWorker).relayRootBundle(
-        tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-        consts.mockSlowRelayRoot
+  describe.only("_distributeRelayerRefunds", function () {
+    let leaves: USSRelayerRefundLeaf[], tree: MerkleTree<USSRelayerRefundLeaf>;
+    beforeEach(async function () {
+      leaves = buildUSSRelayerRefundLeaves(
+        [destinationChainId, destinationChainId], // Destination chain ID.
+        [consts.amountToReturn, toBN(0)], // amountToReturn.
+        [destErc20.address, destErc20.address], // l2Token.
+        [[], [relayer.address, rando.address, rando.address]], // refundAddresses.
+        [[], [consts.amountToRelay, consts.amountToRelay, toBN(0)]], // refundAmounts.
+        [consts.mockTreeRoot, consts.mockTreeRoot], // fillsRefundedRoot.
+        [consts.mockTreeRoot, consts.mockTreeRoot] // fillsRefundedHash.
       );
-
-      const leaf = leaves[0];
-      expect(leaf.amountToReturn).to.be.gt(0);
-      await spokePool
-        .connect(dataWorker)
-        .distributeRelayerRefunds(
-          leaf.chainId,
-          leaf.amountToReturn,
-          leaf.refundAmounts,
-          leaf.leafId,
-          leaf.l2TokenAddress,
-          leaf.refundAddresses
+      tree = await buildUSSRelayerRefundTree(leaves);
+    });
+    describe("amountToReturn > 0", function () {
+      it("calls _bridgeTokensToHubPool", async function () {
+        await expect(
+          spokePool
+            .connect(dataWorker)
+            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
+        )
+          .to.emit(spokePool, "BridgedToHubPool")
+          .withArgs(toBN(1), destErc20.address);
+      });
+      it("emits TokensBridged", async function () {
+        await expect(
+          spokePool
+            .connect(dataWorker)
+            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
+        )
+          .to.emit(spokePool, "TokensBridged")
+          .withArgs(toBN(1), destinationChainId, 0, destErc20.address);
+      });
+    });
+    describe("amountToReturn = 0", function () {
+      it("does not call _bridgeTokensToHubPool", async function () {
+        await expect(
+          spokePool
+            .connect(dataWorker)
+            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, [])
+        ).to.not.emit(spokePool, "BridgedToHubPool");
+      });
+      it("does not emit TokensBridged", async function () {
+        await expect(
+          spokePool
+            .connect(dataWorker)
+            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, [])
+        ).to.not.emit(spokePool, "TokensBridged");
+      });
+    });
+    describe("some refundAmounts > 0", function () {
+      it("sends one Transfer per nonzero refundAmount", async function () {
+        await expect(() =>
+          spokePool
+            .connect(dataWorker)
+            .distributeRelayerRefunds(
+              destinationChainId,
+              toBN(1),
+              [consts.amountToRelay, consts.amountToRelay, toBN(0)],
+              0,
+              destErc20.address,
+              [relayer.address, rando.address, rando.address]
+            )
+        ).to.changeTokenBalances(
+          destErc20,
+          [spokePool, relayer, rando],
+          [consts.amountToRelay.mul(-2), consts.amountToRelay, consts.amountToRelay]
         );
+        const transferLogCount = (await destErc20.queryFilter(destErc20.filters.Transfer(spokePool.address))).length;
+        expect(transferLogCount).to.equal(2);
+      });
+      it("also bridges tokens to hub pool if amountToReturn > 0", async function () {
+        await expect(
+          spokePool
+            .connect(dataWorker)
+            .distributeRelayerRefunds(
+              destinationChainId,
+              toBN(1),
+              [consts.amountToRelay, consts.amountToRelay, toBN(0)],
+              0,
+              destErc20.address,
+              [relayer.address, rando.address, rando.address]
+            )
+        )
+          .to.emit(spokePool, "BridgedToHubPool")
+          .withArgs(toBN(1), destErc20.address);
+      });
     });
   });
 });

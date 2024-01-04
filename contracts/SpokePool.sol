@@ -1104,11 +1104,7 @@ abstract contract SpokePool is
     ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
-        _validateRelayerRefundLeaf(
-            relayerRefundLeaf.chainId,
-            relayerRefundLeaf.refundAddresses,
-            relayerRefundLeaf.refundAmounts
-        );
+        if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
@@ -1154,11 +1150,7 @@ abstract contract SpokePool is
     ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
-        _validateRelayerRefundLeaf(
-            relayerRefundLeaf.chainId,
-            relayerRefundLeaf.refundAddresses,
-            relayerRefundLeaf.refundAmounts
-        );
+        if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
@@ -1284,6 +1276,8 @@ abstract contract SpokePool is
         address l2TokenAddress,
         address[] memory refundAddresses
     ) internal {
+        if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
+
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
         uint256 length = refundAmounts.length;
@@ -1375,15 +1369,6 @@ abstract contract SpokePool is
 
     // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual;
-
-    function _validateRelayerRefundLeaf(
-        uint256 _chainId,
-        address[] memory refundAddresses,
-        uint256[] memory refundAmounts
-    ) internal view {
-        if (_chainId != chainId()) revert InvalidChainId();
-        if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
-    }
 
     function _setClaimedLeaf(uint32 rootBundleId, uint32 leafId) internal {
         RootBundle storage rootBundle = rootBundles[rootBundleId];
