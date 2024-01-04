@@ -15,6 +15,7 @@ import {
   enableRoutes,
   getExecuteSlowRelayParams,
   SlowFill,
+  USSRelayData,
   getUSSRelayHash,
   USSSlowFill,
 } from "./fixtures/SpokePool.Fixture";

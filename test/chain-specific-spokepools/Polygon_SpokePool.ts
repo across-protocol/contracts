@@ -31,6 +31,7 @@ import {
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
 import {
+  USSRelayData,
   deployMockSpokePoolCaller,
   deployMockUSSSpokePoolCaller,
   getFillRelayParams,
