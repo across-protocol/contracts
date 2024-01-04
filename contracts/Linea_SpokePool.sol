@@ -180,7 +180,7 @@ contract Linea_SpokePool is SpokePool {
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
         uint256 minFee = IMessageService(l2MessageService).minimumFeeInWei();
-        require(msg.value >= minFee, "MESSAGE_FEE_TOO_LOW");
+        require(msg.value == minFee, "MESSAGE_FEE_MISMATCH");
 
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
         // send ETH directly via the Canonical Message Service.

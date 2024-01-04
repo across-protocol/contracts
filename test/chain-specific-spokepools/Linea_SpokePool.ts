@@ -176,7 +176,7 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.minimumFeeInWei.returns(1);
     await expect(
       lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.be.revertedWith("MESSAGE_FEE_TOO_LOW");
+    ).to.be.revertedWith("MESSAGE_FEE_MISMATCH");
   });
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
