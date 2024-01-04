@@ -110,6 +110,15 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
+    event RequestedSpeedUpUSSDeposit(
+        uint256 updatedOutputAmount,
+        uint32 indexed depositId,
+        address indexed depositor,
+        address updatedRecipient,
+        bytes updatedMessage,
+        bytes depositorSignature
+    );
+
     struct USSRelayExecutionEventInfo {
         address updatedRecipient;
         bytes updatedMessage;
@@ -177,9 +186,27 @@ interface USSSpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId) external;
+    function speedUpUSSDeposit(
+        address depositor,
+        uint32 depositId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
+    ) external;
 
-    function requestUSSSlowFill(USSRelayData memory relayData) external;
+    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId) external;
+
+    function fillUSSRelayWithUpdatedDeposit(
+        USSRelayData calldata relayData,
+        uint256 repaymentChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
+    ) external;
+
+    function requestUSSSlowFill(USSRelayData calldata relayData) external;
 
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
@@ -189,8 +216,8 @@ interface USSSpokePoolInterface {
 
     function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
-        USSRelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
+        USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        bytes32[] calldata proof
     ) external payable;
 
     error DisabledRoute();

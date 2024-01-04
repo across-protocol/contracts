@@ -1,7 +1,14 @@
+import { MerkleTree } from "../utils/MerkleTree";
 import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../utils/utils";
 import * as consts from "./constants";
-import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
-import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";
+import { deployMockSpokePoolCaller, spokePoolFixture } from "./fixtures/SpokePool.Fixture";
+import {
+  buildRelayerRefundTree,
+  buildRelayerRefundLeaves,
+  USSRelayerRefundLeaf,
+  buildUSSRelayerRefundLeaves,
+  buildUSSRelayerRefundTree,
+} from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -115,6 +122,26 @@ describe("SpokePool Root Bundle Execution", function () {
     await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
     await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
       .be.reverted;
+  });
+
+  describe("USS relayer refund leaves", function () {
+    let leaves: USSRelayerRefundLeaf[], tree: MerkleTree<USSRelayerRefundLeaf>;
+    beforeEach(async function () {
+      leaves = buildUSSRelayerRefundLeaves(
+        [destinationChainId, destinationChainId], // Destination chain ID.
+        [consts.amountToReturn, toBN(0)], // amountToReturn.
+        [destErc20.address, destErc20.address], // l2Token.
+        [[relayer.address, rando.address], []], // refundAddresses.
+        [[consts.amountToRelay, consts.amountToRelay], []], // refundAmounts.
+        [consts.mockTreeRoot, consts.mockTreeRoot], // fillsRefundedRoot.
+        [consts.mockTreeRoot, consts.mockTreeRoot] // fillsRefundedHash.
+      );
+      tree = await buildUSSRelayerRefundTree(leaves);
+    });
+    it("Can execute ERC20 leaf", async function () {
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    });
   });
 
   describe("Gas test", function () {

@@ -10,6 +10,7 @@ import {
 } from "../../utils/utils";
 
 import * as consts from "../constants";
+import { RelayerRefundLeaf, USSRelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
@@ -206,9 +207,35 @@ export interface USSRelayData {
   message: string;
 }
 
+export interface USSRelayExecutionParams {
+  relay: USSRelayData;
+  relayHash: string;
+  updatedOutputAmount: BigNumber;
+  updatedRecipient: string;
+  updatedMessage: string;
+  repaymentChainId: number;
+}
+
+export const enum FillType {
+  FastFill,
+  ReplacedSlowFill,
+  SlowFill,
+}
+
+export const enum FillStatus {
+  Unfilled,
+  RequestedSlowFill,
+  Filled,
+}
+
 export interface SlowFill {
   relayData: RelayData;
   payoutAdjustmentPct: BigNumber;
+}
+
+export interface USSSlowFill {
+  relayData: USSRelayData;
+  updatedOutputAmount: BigNumber;
 }
 
 export function getRelayHash(
@@ -402,4 +429,60 @@ export async function modifyRelayHelper(
   return {
     signature,
   };
+}
+
+export async function getUpdatedUSSDepositSignature(
+  depositor: SignerWithAddress,
+  depositId: number,
+  originChainId: number,
+  updatedOutputAmount: BigNumber,
+  updatedRecipient: string,
+  updatedMessage: string
+): Promise<string> {
+  const typedData = {
+    types: {
+      UpdateDepositDetails: [
+        { name: "depositId", type: "uint32" },
+        { name: "originChainId", type: "uint256" },
+        { name: "updatedOutputAmount", type: "uint256" },
+        { name: "updatedRecipient", type: "address" },
+        { name: "updatedMessage", type: "bytes" },
+      ],
+    },
+    domain: {
+      name: "ACROSS-V2",
+      version: "1.0.0",
+      chainId: originChainId,
+    },
+    message: {
+      depositId,
+      originChainId,
+      updatedOutputAmount,
+      updatedRecipient,
+      updatedMessage,
+    },
+  };
+  return await depositor._signTypedData(typedData.domain, typedData.types, typedData.message);
+}
+
+export async function deployMockSpokePoolCaller(
+  spokePool: Contract,
+  rootBundleId: number,
+  leaf: RelayerRefundLeaf,
+  proof: string[]
+): Promise<Contract> {
+  return await (
+    await getContractFactory("MockCaller", (await ethers.getSigners())[0])
+  ).deploy(spokePool.address, rootBundleId, leaf, proof);
+}
+
+export async function deployMockUSSSpokePoolCaller(
+  spokePool: Contract,
+  rootBundleId: number,
+  leaf: USSRelayerRefundLeaf,
+  proof: string[]
+): Promise<Contract> {
+  return await (
+    await getContractFactory("MockUSSCaller", (await ethers.getSigners())[0])
+  ).deploy(spokePool.address, rootBundleId, leaf, proof);
 }

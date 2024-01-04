@@ -9,6 +9,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // with deprecated spoke pool.
   // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
   const initArgs = [1_000_000, hubPool.address, hubPool.address];
+
+  // Construct this spokepool with a:
+  //    * A WETH address of the WETH address
+  //    * A depositQuoteTimeBuffer of 1 hour
+  //    * A fillDeadlineBuffer of 9 hours
   const constructorArgs = ["0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", 3600, 32400];
   await deployNewProxy("Boba_SpokePool", constructorArgs, initArgs);
 };
