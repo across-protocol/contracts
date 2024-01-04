@@ -1165,8 +1165,8 @@ abstract contract SpokePool is
      */
     function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
-        USSSpokePoolInterface.USSRelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
+        USSSpokePoolInterface.USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        bytes32[] calldata proof
     ) public payable virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
