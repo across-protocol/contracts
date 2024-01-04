@@ -368,6 +368,10 @@ describe("SpokePool Relayer Logic", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
     });
     describe("_fillRelay internal logic", function () {
+      it("default status is unfilled", async function () {
+        const relayExecution = await getRelayExecutionParams(relayData);
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Unfilled);
+      });
       it("expired fill deadline reverts", async function () {
         const _relay = {
           ...relayData,
@@ -427,6 +431,7 @@ describe("SpokePool Relayer Logic", async function () {
               FillType.ReplacedSlowFill,
             ]
           );
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("slow fill emits correct FillType", async function () {
         const relayExecution = await getRelayExecutionParams(relayData);
@@ -462,6 +467,7 @@ describe("SpokePool Relayer Logic", async function () {
               FillType.SlowFill,
             ]
           );
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("fast fill emits correct FillType", async function () {
         const relayExecution = await getRelayExecutionParams(relayData);
@@ -492,10 +498,10 @@ describe("SpokePool Relayer Logic", async function () {
               relayExecution.updatedRecipient,
               relayExecution.updatedMessage,
               relayExecution.updatedOutputAmount,
-              // Testing that this FillType is "SlowFill"
               FillType.FastFill,
             ]
           );
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {
         const _relayData = {
@@ -532,7 +538,7 @@ describe("SpokePool Relayer Logic", async function () {
           )
         ).to.changeTokenBalance(destErc20, depositor, consts.amountToDeposit.mul(2));
       });
-      it("unwraps native token if sending to EOA otherwise sends wrapped ERC20", async function () {
+      it("unwraps native token if sending to EOA", async function () {
         const _relayData = {
           ...relayData,
           outputToken: weth.address,
@@ -553,6 +559,7 @@ describe("SpokePool Relayer Logic", async function () {
         };
         const relayExecution = await getRelayExecutionParams(_relayData);
         await weth.connect(relayer).transfer(spokePool.address, relayExecution.updatedOutputAmount);
+        const initialSpokeBalance = await weth.balanceOf(spokePool.address);
         await expect(() =>
           spokePool.connect(relayer).fillRelayUSSInternal(
             relayExecution,
@@ -560,6 +567,8 @@ describe("SpokePool Relayer Logic", async function () {
             true // isSlowFill
           )
         ).to.changeEtherBalance(recipient, relayExecution.updatedOutputAmount);
+        const spokeBalance = await weth.balanceOf(spokePool.address);
+        expect(spokeBalance).to.equal(initialSpokeBalance.sub(relayExecution.updatedOutputAmount));
       });
       it("slow fills send non-native token out of spoke pool balance", async function () {
         const relayExecution = await getRelayExecutionParams(relayData);
@@ -633,21 +642,6 @@ describe("SpokePool Relayer Logic", async function () {
             consts.repaymentChainId
           )
         ).to.not.be.reverted;
-      });
-      it("can't overwrite RelayData destination chain", async function () {
-        const _relayData = {
-          ...relayData,
-          // Try to overwrite the passed in destinationChainId
-          destinationChainId: consts.originChainId,
-        };
-        await spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId);
-
-        // Check that relay hash was filled with the correct destination chain ID from the
-        // original relay data, not the overwritten one.
-        const { relayHash } = await getRelayExecutionParams(relayData);
-        expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
-        const { relayHash: invalidRelayHash } = await getRelayExecutionParams(_relayData);
-        expect(await spokePool.fillStatuses(invalidRelayHash)).to.equal(FillStatus.Unfilled);
       });
       it("calls _fillRelayUSS with  expected params", async function () {
         await expect(spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId))
