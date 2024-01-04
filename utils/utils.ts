@@ -8,6 +8,7 @@ import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
+import { SignerWithAddress, TokenRolesEnum } from "../test-utils";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers);
@@ -144,6 +145,12 @@ export async function seedContract(
   await seedWallet(walletToFund, tokens, weth, amountToSeedWith);
   for (const token of tokens) await token.connect(walletToFund).transfer(contract.address, amountToSeedWith);
   if (weth) await weth.connect(walletToFund).transfer(contract.address, amountToSeedWith);
+}
+
+export async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSymbol: string) {
+  const erc20 = await (await getContractFactory("ExpandedERC20", signer)).deploy(tokenName, tokenSymbol, 18);
+  await erc20.addMember(TokenRolesEnum.MINTER, signer.address);
+  return erc20;
 }
 
 export function randomBigNumber(bytes = 32, signed = false) {

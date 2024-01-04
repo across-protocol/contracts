@@ -77,49 +77,6 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   }
 }
 
-export async function deposit(
-  spokePool: Contract,
-  token: Contract,
-  recipient: SignerWithAddress,
-  depositor: SignerWithAddress,
-  destinationChainId: number = consts.destinationChainId,
-  amount = consts.amountToDeposit,
-  relayerFeePct = consts.depositRelayerFeePct,
-  quoteTimestamp?: number,
-  message?: string
-): Promise<Record<string, number | BigNumber | string> | null> {
-  await spokePool.connect(depositor).deposit(
-    ...getDepositParams({
-      recipient: recipient.address,
-      originToken: token.address,
-      amount,
-      destinationChainId,
-      relayerFeePct,
-      quoteTimestamp: quoteTimestamp ?? (await spokePool.getCurrentTime()).toNumber(),
-      message,
-    })
-  );
-  const [events, originChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.USSFundsDeposited()),
-    spokePool.chainId(),
-  ]);
-
-  const lastEvent = events[events.length - 1];
-  return lastEvent.args === undefined
-    ? null
-    : {
-        amount: lastEvent.args.amount,
-        originChainId: Number(originChainId),
-        destinationChainId: Number(lastEvent.args.destinationChainId),
-        relayerFeePct: lastEvent.args.relayerFeePct,
-        depositId: lastEvent.args.depositId,
-        quoteTimestamp: lastEvent.args.quoteTimestamp,
-        originToken: lastEvent.args.originToken,
-        recipient: lastEvent.args.recipient,
-        depositor: lastEvent.args.depositor,
-        message: lastEvent.args.message,
-      };
-}
 export async function fillRelay(
   spokePool: Contract,
   destErc20: Contract | string,
@@ -286,28 +243,6 @@ export function getUSSRelayHash(relayData: USSRelayData, destinationChainId: num
   );
 }
 
-export function getDepositParams(args: {
-  recipient?: string;
-  originToken: string;
-  amount: BigNumber;
-  destinationChainId: number;
-  relayerFeePct: BigNumber;
-  quoteTimestamp: number;
-  message?: string;
-  maxCount?: BigNumber;
-}): string[] {
-  return [
-    args.recipient ?? randomAddress(),
-    args.originToken,
-    args.amount.toString(),
-    args.destinationChainId.toString(),
-    args.relayerFeePct.toString(),
-    args.quoteTimestamp.toString(),
-    args.message ?? "0x",
-    args?.maxCount?.toString() ?? consts.maxUint256.toString(),
-  ];
-}
-
 export function getFillRelayParams(
   _relayData: RelayData,
   _maxTokensToSend: BigNumber,
@@ -359,37 +294,6 @@ export function getFillRelayUpdatedFeeParams(
     _maxCount ? _maxCount.toString() : consts.maxUint256.toString(),
   ];
 }
-
-export function getExecuteSlowRelayParams(
-  _depositor: string,
-  _recipient: string,
-  _destToken: string,
-  _amount: BigNumber,
-  _originChainId: number,
-  _realizedLpFeePct: BigNumber,
-  _relayerFeePct: BigNumber,
-  _depositId: number,
-  _relayerRefundId: number,
-  _message: string,
-  _payoutAdjustment: BigNumber,
-  _proof: string[]
-): (string | string[])[] {
-  return [
-    _depositor,
-    _recipient,
-    _destToken,
-    _amount.toString(),
-    _originChainId.toString(),
-    _realizedLpFeePct.toString(),
-    _relayerFeePct.toString(),
-    _depositId.toString(),
-    _relayerRefundId.toString(),
-    _message,
-    _payoutAdjustment.toString(),
-    _proof,
-  ];
-}
-
 export interface UpdatedRelayerFeeData {
   newRelayerFeePct: string;
   depositorMessageHash: string;
