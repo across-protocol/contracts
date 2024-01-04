@@ -357,7 +357,6 @@ describe("SpokePool Relayer Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: consts.amountToDeposit,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,

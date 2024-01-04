@@ -410,7 +410,11 @@ describe("SpokePool Depositor Logic", async function () {
 
   describe("deposit USS", function () {
     let relayData: USSRelayData, depositArgs: any[];
-    function getDepositArgsFromRelayData(_relayData: USSRelayData, _quoteTimestamp = quoteTimestamp) {
+    function getDepositArgsFromRelayData(
+      _relayData: USSRelayData,
+      _destinationChainId = destinationChainId,
+      _quoteTimestamp = quoteTimestamp
+    ) {
       return [
         _relayData.depositor,
         _relayData.recipient,
@@ -418,7 +422,7 @@ describe("SpokePool Depositor Logic", async function () {
         _relayData.outputToken,
         _relayData.inputAmount,
         _relayData.outputAmount,
-        _relayData.destinationChainId,
+        _destinationChainId,
         _relayData.exclusiveRelayer,
         _quoteTimestamp,
         _relayData.fillDeadline,
@@ -436,7 +440,6 @@ describe("SpokePool Depositor Logic", async function () {
         inputAmount: amountToDeposit,
         outputAmount: amountToDeposit.sub(19),
         originChainId: originChainId,
-        destinationChainId: destinationChainId,
         depositId: 0,
         fillDeadline: quoteTimestamp + 1000,
         exclusivityDeadline: 0,
@@ -449,7 +452,7 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("route disabled", async function () {
       // Verify that routes are disabled by default for a new route
-      const _depositArgs = getDepositArgsFromRelayData({ ...relayData, destinationChainId: 999 });
+      const _depositArgs = getDepositArgsFromRelayData(relayData, 999);
       await expect(spokePool.connect(depositor).depositUSS(..._depositArgs)).to.be.revertedWith("DisabledRoute");
 
       // Enable the route:
@@ -463,13 +466,13 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.connect(depositor).depositUSS(
           // quoteTimestamp too far into past (i.e. beyond the buffer)
-          ...getDepositArgsFromRelayData(relayData, currentTime.sub(quoteTimeBuffer).sub(1))
+          ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer).sub(1))
         )
       ).to.be.revertedWith("InvalidQuoteTimestamp");
       await expect(
         spokePool.connect(depositor).depositUSS(
           // quoteTimestamp right at the buffer is OK
-          ...getDepositArgsFromRelayData(relayData, currentTime.sub(quoteTimeBuffer))
+          ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer))
         )
       ).to.not.be.reverted;
     });
@@ -531,7 +534,7 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.outputToken,
           relayData.inputAmount,
           relayData.outputAmount,
-          relayData.destinationChainId,
+          destinationChainId,
           // deposit ID is 0 for first deposit
           0,
           quoteTimestamp,
@@ -561,7 +564,7 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.outputToken,
           relayData.inputAmount,
           relayData.outputAmount,
-          relayData.destinationChainId,
+          destinationChainId,
           0,
           quoteTimestamp,
           relayData.fillDeadline,

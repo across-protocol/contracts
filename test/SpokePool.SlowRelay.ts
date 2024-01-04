@@ -594,7 +594,6 @@ describe("SpokePool Slow Relay Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
@@ -606,7 +605,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
     });
     it("can request before fast fill", async function () {
-      const relayHash = getUSSRelayHash(relayData);
+      const relayHash = getUSSRelayHash(relayData, consts.destinationChainId);
 
       // FillStatus must be Unfilled:
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Unfilled);
@@ -624,7 +623,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
     });
     it("cannot request if FillStatus is Filled", async function () {
-      const relayHash = getUSSRelayHash(relayData);
+      const relayHash = getUSSRelayHash(relayData, consts.destinationChainId);
       await spokePool.setFillStatus(relayHash, FillStatus.Filled);
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
@@ -657,7 +656,6 @@ describe("SpokePool Slow Relay Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
@@ -665,6 +663,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       };
       slowRelayLeaf = {
         relayData,
+        chainId: consts.destinationChainId,
         // Make updated output amount different to test whether it is used instead of
         // outputAmount when calling _verifyUSSSlowFill.
         updatedOutputAmount: relayData.outputAmount.add(1),
