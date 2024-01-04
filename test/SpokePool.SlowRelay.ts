@@ -684,7 +684,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         [slowRelayLeaf.updatedOutputAmount.mul(-1), slowRelayLeaf.updatedOutputAmount]
       );
     });
-    it("cannot double send", async function () {
+    it("cannot double execute leaf", async function () {
       const tree = await buildUSSSlowRelayTree([slowRelayLeaf]);
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
       await spokePool.connect(relayer).executeUSSSlowRelayLeaf(
@@ -692,6 +692,25 @@ describe("SpokePool Slow Relay Logic", async function () {
         1, // rootBundleId
         tree.getHexProof(slowRelayLeaf)
       );
+      await expect(
+        spokePool.connect(relayer).executeUSSSlowRelayLeaf(
+          slowRelayLeaf,
+          1, // rootBundleId
+          tree.getHexProof(slowRelayLeaf)
+        )
+      ).to.be.revertedWith("RelayFilled");
+
+      // Cannot fast fill after slow fill
+      await expect(
+        spokePool.connect(relayer).fillUSSRelay(slowRelayLeaf.relayData, consts.repaymentChainId)
+      ).to.be.revertedWith("RelayFilled");
+    });
+    it("cannot be used to double send a fill", async function () {
+      const tree = await buildUSSSlowRelayTree([slowRelayLeaf]);
+      await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
+
+      // Fill before executing slow fill
+      await spokePool.connect(relayer).fillUSSRelay(slowRelayLeaf.relayData, consts.repaymentChainId);
       await expect(
         spokePool.connect(relayer).executeUSSSlowRelayLeaf(
           slowRelayLeaf,
