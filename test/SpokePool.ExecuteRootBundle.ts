@@ -153,19 +153,20 @@ describe("SpokePool Root Bundle Execution", function () {
     });
   });
 
-  describe.only("_distributeRelayerRefunds", function () {
-    let leaves: USSRelayerRefundLeaf[], tree: MerkleTree<USSRelayerRefundLeaf>;
-    beforeEach(async function () {
-      leaves = buildUSSRelayerRefundLeaves(
-        [destinationChainId, destinationChainId], // Destination chain ID.
-        [consts.amountToReturn, toBN(0)], // amountToReturn.
-        [destErc20.address, destErc20.address], // l2Token.
-        [[], [relayer.address, rando.address, rando.address]], // refundAddresses.
-        [[], [consts.amountToRelay, consts.amountToRelay, toBN(0)]], // refundAmounts.
-        [consts.mockTreeRoot, consts.mockTreeRoot], // fillsRefundedRoot.
-        [consts.mockTreeRoot, consts.mockTreeRoot] // fillsRefundedHash.
-      );
-      tree = await buildUSSRelayerRefundTree(leaves);
+  describe("_distributeRelayerRefunds", function () {
+    it("refund address length mismatch", async function () {
+      await expect(
+        spokePool
+          .connect(dataWorker)
+          .distributeRelayerRefunds(
+            destinationChainId,
+            toBN(1),
+            [consts.amountToRelay, consts.amountToRelay, toBN(0)],
+            0,
+            destErc20.address,
+            [relayer.address, rando.address]
+          )
+      ).to.be.revertedWith("InvalidMerkleLeaf");
     });
     describe("amountToReturn > 0", function () {
       it("calls _bridgeTokensToHubPool", async function () {
