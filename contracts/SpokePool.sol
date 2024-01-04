@@ -926,7 +926,7 @@ abstract contract SpokePool is
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: keccak256(abi.encode(relayData, chainId())),
+            relayHash: _getUSSRelayHash(relayData),
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
@@ -952,7 +952,7 @@ abstract contract SpokePool is
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: keccak256(abi.encode(relayData, chainId())),
+            relayHash: _getUSSRelayHash(relayData),
             updatedOutputAmount: updatedOutputAmount,
             updatedRecipient: updatedRecipient,
             updatedMessage: updatedMessage,
@@ -984,7 +984,7 @@ abstract contract SpokePool is
     function requestUSSSlowFill(USSRelayData calldata relayData) public override nonReentrant unpausedFills {
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
-        bytes32 relayHash = keccak256(abi.encode(relayData, chainId()));
+        bytes32 relayHash = _getUSSRelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
@@ -1076,7 +1076,7 @@ abstract contract SpokePool is
         // deposit params like outputAmount, message and recipient.
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: keccak256(abi.encode(relayData, chainId())),
+            relayHash: _getUSSRelayHash(relayData),
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
@@ -1522,6 +1522,10 @@ abstract contract SpokePool is
 
     function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(relayData));
+    }
+
+    function _getUSSRelayHash(USSRelayData memory relayData) private view returns (bytes32) {
+        return keccak256(abi.encode(relayData, chainId()));
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
