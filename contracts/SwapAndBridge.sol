@@ -60,6 +60,23 @@ contract SwapAndBridge is Lockable, MultiCaller {
         IAggregationExecutor aggregationExecutor
     );
 
+    // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
+    // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
+    // until after the swap.
+    struct DepositData {
+        address inputToken;
+        address outputToken;
+        uint256 outputAmount;
+        address depositor;
+        address recipient;
+        uint256 destinationChainid;
+        address exclusiveRelayer;
+        uint32 quoteTimestamp;
+        uint32 fillDeadline;
+        uint32 exclusivityDeadline;
+        bytes message;
+    }
+
     constructor() {
         // Addresses are hard-coded below for Optimism-network for demonstration purposes. In production, these
         // would be passed in as constructor args. They are left here to help debugging and testing.
@@ -71,56 +88,45 @@ contract SwapAndBridge is Lockable, MultiCaller {
      * @notice Swaps tokens on this chain via 1Inch and bridges them via Across atomically. Caller can fully specify
      * their slippage tolerance for the swap and also the full Across deposit params.
      * @param aggregationExecutor Address of 1inch contract that executes calls described in `oneInchData`.
-     * @param swapDescription 1Inch SwapDescription struct, packed to consolidate function params:
-     *     - srcToken: Token to pull from msg.sender into contract and swap on 1inch into dstToken.
-     *     - dstToken: Token to receive from 1inch swap and to be deposited into Across.
-     *     - srcReceiver: Address to receive `srcToken` from msg.sender. Overwritten by this function to be this contract.
-     *     - dstReceiver: Address to receive `dstToken` from 1inch swap. Overwritten by this function to be this contract.
-     *     - amount: Amount of `srcToken` to swap. Return amount is deposited into Across.
-     *     - minReturnAmount: Minimum amount of `dstToken` to receive from 1inch swap.
-     *     - flags: Overwritten by this contract.
-     * @param minExpectedInputTokenAmount Minimum amount of `dstToken` to receive after swap and to submit to Across
-     * as deposit.inputAmount.
-     * @param outputToken Token to receive from Across deposit on destination chain.
-     * @param outputAmount of `outputToken` to receive from Across deposit on
-     * destination chain.
+     * @param swapToken Token to pull from msg.sender into contract and swap on 1inch into depositData.inputToken.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
      */
     function swap1InchAndBridge(
         IAggregationExecutor aggregationExecutor,
-        I1InchAggregationRouterV5.SwapDescription memory swapDescription,
+        address swapToken,
+        uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
-        address outputToken,
-        uint256 outputAmount,
-        address depositor,
-        address recipient,
-        uint256 destinationChainid,
-        address exclusiveRelayer,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes memory message
+        DepositData calldata depositData
     ) external nonReentrant {
         // @dev: Don't let caller use WETH, or better, hardcode the swap and acrossInput tokens to be USDC.e/USDC
         // because 1Inch has special rules to handle WETH<-->ETH.
 
         // Pull tokens from caller into this contract.
-        address swapToken = address(swapDescription.srcToken);
-        uint256 swapTokenAmount = swapDescription.amount;
         IERC20(swapToken).transferFrom(msg.sender, address(this), swapTokenAmount);
 
         // Craft 1Inch swap arguments to swap `swapToken` for `acrossInputToken` using this contract as the recipient
         // of the swap.
-        swapDescription.srcReceiver = payable(address(this));
-        swapDescription.dstReceiver = payable(address(this));
-        swapDescription.flags = 0; // TODO: Change this if we want to support ETH swaps and/or partial fills (i.e.
-        // swapTokenAmount != spentAmount). For now, set to 0 for simplicity.
+        I1InchAggregationRouterV5.SwapDescription memory swapDescription = I1InchAggregationRouterV5.SwapDescription({
+            srcToken: IERC20(swapToken),
+            dstToken: IERC20(depositData.inputToken),
+            srcReceiver: payable(address(this)),
+            dstReceiver: payable(address(this)),
+            amount: swapTokenAmount,
+            minReturnAmount: minExpectedInputTokenAmount,
+            flags: 0 // TODO: Change this if we want to support ETH swaps and/or partial fills (i.e.
+            // swapTokenAmount != spentAmount). For now, set to 0 for simplicity.
+        });
 
-        IERC20(swapDescription.dstToken).approve(address(oneInchRouter), swapTokenAmount);
+        // Swap and run safety checks.
+        uint256 srcBalanceBefore = IERC20(swapToken).balanceOf(address(this));
+        uint256 dstBalanceBefore = IERC20(depositData.inputToken).balanceOf(address(this));
 
-        uint256 srcBalanceBefore = IERC20(swapDescription.srcToken).balanceOf(address(this));
-        uint256 dstBalanceBefore = IERC20(swapDescription.dstToken).balanceOf(address(this));
         // @dev: Example swap I used for comparison:
         // https://optimistic.etherscan.io/tx/0x8a4e77ee1a62e94b42b21e849bcdabd60d43ac49191cd2878f6b47f395f26abc
+        IERC20(depositData.inputToken).safeIncreaseAllowance(address(oneInchRouter), swapTokenAmount);
         (uint256 returnAmount, ) = oneInchRouter.swap(
             aggregationExecutor,
             swapDescription,
@@ -128,31 +134,36 @@ contract SwapAndBridge is Lockable, MultiCaller {
             new bytes(0) // TODO: We don't want to execute any data on swaps but I'm not sure how this is used.
         );
 
-        uint256 amountReceivedFromSwap = dstBalanceBefore - IERC20(swapDescription.dstToken).balanceOf(address(this));
-        require(returnAmount == amountReceivedFromSwap, "return amount");
-        // Sanity check that received amount from swap is enough to submit Across deposit with.
-        require(amountReceivedFromSwap >= minExpectedInputTokenAmount, "min expected input amount");
-        // Sanity check that we don't have any leftover swap tokens that would be locked in this contract.
+        // Sanity check that we received exactly as much as the oneInchRouter said we did.
         require(
-            srcBalanceBefore - IERC20(swapDescription.srcToken).balanceOf(address(this)) == swapTokenAmount,
+            returnAmount == dstBalanceBefore - IERC20(depositData.inputToken).balanceOf(address(this)),
+            "return amount"
+        );
+        // Sanity check that received amount from swap is enough to submit Across deposit with.
+        require(returnAmount >= minExpectedInputTokenAmount, "min expected input amount");
+        // Sanity check that we don't have any leftover swap tokens that would be locked in this contract (i.e. check
+        // that we weren't partial filled).
+        require(
+            srcBalanceBefore - IERC20(swapToken).balanceOf(address(this)) == swapTokenAmount,
             "leftover src tokens"
         );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        IERC20(swapDescription.dstToken).safeApprove(address(spokePool), returnAmount);
+        IERC20(depositData.inputToken).safeApprove(address(spokePool), returnAmount);
         spokePool.depositUSS(
-            depositor,
-            recipient,
-            address(swapDescription.dstToken), // input token
-            outputToken, // output token
-            returnAmount, // input amount
-            outputAmount, // output amount
-            destinationChainid,
-            exclusiveRelayer,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityDeadline,
-            message
+            depositData.depositor,
+            depositData.recipient,
+            depositData.inputToken, // input token
+            depositData.outputToken, // output token
+            returnAmount, // input amount. Note: this is the amount we received from the swap and checked its value
+            // above.
+            depositData.outputAmount, // output amount
+            depositData.destinationChainid,
+            depositData.exclusiveRelayer,
+            depositData.quoteTimestamp,
+            depositData.fillDeadline,
+            depositData.exclusivityDeadline,
+            depositData.message
         );
 
         emit SwapAndBridge1Inch(swapDescription, aggregationExecutor);
