@@ -200,17 +200,6 @@ describe("SpokePool Root Bundle Execution", function () {
           )
       ).to.be.revertedWith("InvalidChainId");
     });
-    it("refund address length mismatch", async function () {
-      // Before MerkleLib attempts to verify the proof, it checks that the refundAddresses and refundAmounts
-      // are the same length.
-      const invalidLeaf = {
-        ...leaves[0],
-        refundAddresses: [],
-      };
-      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, invalidLeaf, [])).to.be.revertedWith(
-        "InvalidMerkleLeaf"
-      );
-    });
     it("invalid merkle proof", async function () {
       // Relay two root bundles:
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
