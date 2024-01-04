@@ -69,6 +69,13 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         _fillRelayUSS(relayExecution, relayer, isSlowFill);
     }
 
+    // This function is nonReentrant in order to allow caller to test whether a different function
+    // is reentrancy protected or not.
+    function callback(bytes memory data) external payable nonReentrant {
+        (bool success, bytes memory result) = address(this).call{ value: msg.value }(data);
+        require(success, string(result));
+    }
+
     function setFillStatus(bytes32 relayHash, FillType fillType) external {
         fillStatuses[relayHash] = uint256(fillType);
     }

@@ -357,7 +357,6 @@ describe("SpokePool Relayer Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: consts.amountToDeposit,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
@@ -613,19 +612,10 @@ describe("SpokePool Relayer Logic", async function () {
         );
       });
       it("reentrancy protected", async function () {
-        const callbackMessageHandler = await (
-          await getContractFactory("AcrossMessageHandlerCallbackMock", depositor)
-        ).deploy();
-        const functionCalldata = spokePool.interface.encodeFunctionData("fillUSSRelay", [
-          relayData,
-          consts.repaymentChainId,
-        ]);
-        const _relayData = {
-          ...relayData,
-          recipient: callbackMessageHandler.address,
-          message: functionCalldata,
-        };
-        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.be.revertedWith(
+        // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
+        // the spoke pool via the tested function.
+        const functionCalldata = spokePool.interface.encodeFunctionData("requestUSSSlowFill", [relayData]);
+        await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
           "ReentrancyGuard: reentrant call"
         );
       });
@@ -650,16 +640,6 @@ describe("SpokePool Relayer Logic", async function () {
             consts.repaymentChainId
           )
         ).to.not.be.reverted;
-      });
-      it("can't overwrite RelayData destination chain", async function () {
-        const _relayData = {
-          ...relayData,
-          // Try to overwrite the passed in destinationChainId
-          destinationChainId: consts.originChainId,
-        };
-        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.revertedWith(
-          "InvalidChainId"
-        );
       });
       it("calls _fillRelayUSS with  expected params", async function () {
         await expect(spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId))

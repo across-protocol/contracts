@@ -591,7 +591,6 @@ describe("SpokePool Slow Relay Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
@@ -599,7 +598,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       };
     });
     it("can send before fast fill", async function () {
-      const relayHash = getUSSRelayHash(relayData);
+      const relayHash = getUSSRelayHash(relayData, consts.destinationChainId);
 
       expect(await spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.emit(spokePool, "RequestedUSSSlowFill");
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.RequestedSlowFill);
@@ -614,7 +613,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     });
     it("can't send after fast fill", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
-      const relayHash = getUSSRelayHash(relayData);
+      const relayHash = getUSSRelayHash(relayData, consts.destinationChainId);
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
 
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith(
@@ -635,7 +634,6 @@ describe("SpokePool Slow Relay Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
@@ -643,6 +641,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       };
       slowRelayLeaf = {
         relayData,
+        chainId: consts.destinationChainId,
         updatedOutputAmount: relayData.outputAmount,
       };
     });
