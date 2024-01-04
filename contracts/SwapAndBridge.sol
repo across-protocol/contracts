@@ -79,6 +79,8 @@ contract SwapAndBridge is Lockable, MultiCaller {
      *     - amount: Amount of `srcToken` to swap. Return amount is deposited into Across.
      *     - minReturnAmount: Minimum amount of `dstToken` to receive from 1inch swap.
      *     - flags: Overwritten by this contract.
+     * @param minExpectedInputTokenAmount Minimum amount of `dstToken` to receive after swap and to submit to Across
+     * as deposit.inputAmount.
      * @param outputToken Token to receive from Across deposit on destination chain.
      * @param outputAmount of `outputToken` to receive from Across deposit on
      * destination chain.
@@ -86,6 +88,7 @@ contract SwapAndBridge is Lockable, MultiCaller {
     function swap1InchAndBridge(
         IAggregationExecutor aggregationExecutor,
         I1InchAggregationRouterV5.SwapDescription memory swapDescription,
+        uint256 minExpectedInputTokenAmount,
         address outputToken,
         uint256 outputAmount,
         address depositor,
@@ -114,6 +117,7 @@ contract SwapAndBridge is Lockable, MultiCaller {
 
         IERC20(swapDescription.dstToken).approve(address(oneInchRouter), swapTokenAmount);
 
+        uint256 balanceBefore = IERC20(swapDescription.dstToken).balanceOf(address(this));
         // @dev: Example swap I used for comparison:
         // https://optimistic.etherscan.io/tx/0x8a4e77ee1a62e94b42b21e849bcdabd60d43ac49191cd2878f6b47f395f26abc
         (uint256 returnAmount, uint256 spentAmount) = oneInchRouter.swap(
@@ -123,11 +127,15 @@ contract SwapAndBridge is Lockable, MultiCaller {
             new bytes(0) // TODO: We don't want to execute any data on swaps but I'm not sure how this is used.
         );
 
-        // TODO: I don't think we need the following check if we set flags to 0 but just in case:
+        // Sanity check that 1inch doesn't partial fill.
         require(spentAmount == swapTokenAmount, "spent amount != swap amount");
-
-        // TODO: I don't think we need to check the returnAmount against the minAcrossInputTokenAmount here because
-        // it should be enforced by the 1Inch router.
+        // Sanity check that received amount from swap is enough to submit Across deposit with.
+        require(returnAmount >= minExpectedInputTokenAmount, "min expected input amount");
+        // Sanity check that we don't have any leftover swap tokens that would be locked in this contract.
+        require(
+            balanceBefore - IERC20(swapDescription.dstToken).balanceOf(address(this)) == swapTokenAmount,
+            "leftover swap tokens"
+        );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         spokePool.depositUSS(
