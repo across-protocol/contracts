@@ -17,7 +17,6 @@ import {
   SlowFill,
   getUSSRelayHash,
   USSSlowFill,
-  USSFillDepositData,
 } from "./fixtures/SpokePool.Fixture";
 import { getFillRelayParams, getRelayHash } from "./fixtures/SpokePool.Fixture";
 import { MerkleTree } from "../utils/MerkleTree";
@@ -579,7 +578,7 @@ describe("SpokePool Slow Relay Logic", async function () {
   });
 
   describe("requestUSSSlowFill", function () {
-    let relayData: USSFillDepositData;
+    let relayData: USSRelayData;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
@@ -622,7 +621,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     });
   });
   describe("executeUSSSlowRelayLeaf", function () {
-    let relayData: USSFillDepositData, slowRelayLeaf: USSSlowFill;
+    let relayData: USSRelayData, slowRelayLeaf: USSSlowFill;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {

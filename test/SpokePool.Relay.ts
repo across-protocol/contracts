@@ -22,7 +22,6 @@ import {
   USSRelayExecutionParams,
   FillStatus,
   FillType,
-  USSFillDepositData,
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 
@@ -31,7 +30,7 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerW
 
 // _fillRelay takes a USSRelayExecutionParams object as a param. This function returns the correct object
 // as a convenience.
-async function getRelayExecutionParams(_relayData: USSFillDepositData): Promise<USSRelayExecutionParams> {
+async function getRelayExecutionParams(_relayData: USSRelayData): Promise<USSRelayExecutionParams> {
   const paramType = await getParamType("MockSpokePool", "fillUSSRelay", "relayData");
   return {
     relay: _relayData,
@@ -346,7 +345,7 @@ describe("SpokePool Relayer Logic", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
   });
   describe("fill USS", function () {
-    let relayData: USSFillDepositData;
+    let relayData: USSRelayData;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {

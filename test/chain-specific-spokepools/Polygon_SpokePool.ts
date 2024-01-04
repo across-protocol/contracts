@@ -31,7 +31,6 @@ import {
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
 import {
-  USSFillDepositData,
   deployMockSpokePoolCaller,
   deployMockUSSSpokePoolCaller,
   getFillRelayParams,
@@ -441,7 +440,7 @@ describe("Polygon Spoke Pool", function () {
         tree.getHexProof(leaves[1]),
       ]),
     ];
-    const relayData: USSFillDepositData = {
+    const relayData: USSRelayData = {
       depositor: owner.address,
       recipient: acrossMessageHandler.address,
       exclusiveRelayer: relayer.address,

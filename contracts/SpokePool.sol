@@ -91,7 +91,7 @@ abstract contract SpokePool is
     mapping(bytes32 => uint256) private DEPRECATED_relayFills;
 
     // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
-    // to eliminate any chance of collision between RelayData hashes and USSRelayData hashes.
+    // to eliminate any chance of collision between pre and post USS relay hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
     // Note: We will likely un-deprecate the fill and deposit counters to implement a better
@@ -912,7 +912,7 @@ abstract contract SpokePool is
      *         USS RELAYER FUNCTIONS          *
      ******************************************/
 
-    function fillUSSRelay(DepositData calldata relayData, uint256 repaymentChainId)
+    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId)
         public
         override
         nonReentrant
@@ -937,7 +937,7 @@ abstract contract SpokePool is
     }
 
     function fillUSSRelayWithUpdatedDeposit(
-        DepositData calldata relayData,
+        USSRelayData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -977,11 +977,11 @@ abstract contract SpokePool is
      * for a deposit in the next bundle.
      * @dev Slow fills are not possible unless the input and output tokens are "equivalent", i.e.
      * they route to the same L1 token via PoolRebalanceRoutes.
-     * @param relayData USSRelayData struct containing all the data needed to identify the deposit that should be
+     * @param relayData struct containing all the data needed to identify the deposit that should be
      * slow filled. If any of the params are missing or different then Across will not include a slow
      * fill for the intended deposit.
      */
-    function requestUSSSlowFill(DepositData calldata relayData) public override nonReentrant unpausedFills {
+    function requestUSSSlowFill(USSRelayData calldata relayData) public override nonReentrant unpausedFills {
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData, chainId()));
@@ -1068,7 +1068,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         bytes32[] calldata proof
     ) public override nonReentrant {
-        DepositData memory relayData = slowFillLeaf.relayData;
+        USSRelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken);
 
@@ -1683,7 +1683,7 @@ abstract contract SpokePool is
         address relayer,
         bool isSlowFill
     ) internal {
-        DepositData memory relayData = relayExecution.relay;
+        USSRelayData memory relayData = relayExecution.relay;
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 

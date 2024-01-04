@@ -200,23 +200,6 @@ export interface USSRelayData {
   inputAmount: BigNumber;
   outputAmount: BigNumber;
   originChainId: number;
-  destinationChainId: number;
-  depositId: number;
-  fillDeadline: number;
-  exclusivityDeadline: number;
-  message: string;
-}
-
-// The structure passed into the SpokePool's fillUSS related functions like fillUSSRelay and executeUSSSlowFill.
-export interface USSFillDepositData {
-  depositor: string;
-  recipient: string;
-  exclusiveRelayer: string;
-  inputToken: string;
-  outputToken: string;
-  inputAmount: BigNumber;
-  outputAmount: BigNumber;
-  originChainId: number;
   depositId: number;
   fillDeadline: number;
   exclusivityDeadline: number;
@@ -224,7 +207,7 @@ export interface USSFillDepositData {
 }
 
 export interface USSRelayExecutionParams {
-  relay: USSFillDepositData;
+  relay: USSRelayData;
   relayHash: string;
   updatedOutputAmount: BigNumber;
   updatedRecipient: string;
@@ -250,7 +233,7 @@ export interface SlowFill {
 }
 
 export interface USSSlowFill {
-  relayData: USSFillDepositData;
+  relayData: USSRelayData;
   chainId: number;
   updatedOutputAmount: BigNumber;
 }
@@ -291,7 +274,7 @@ export function getRelayHash(
   return { relayHash, relayData };
 }
 
-export function getUSSRelayHash(relayData: USSFillDepositData, destinationChainId: number): string {
+export function getUSSRelayHash(relayData: USSRelayData, destinationChainId: number): string {
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
