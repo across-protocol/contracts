@@ -612,10 +612,11 @@ describe("SpokePool Relayer Logic", async function () {
         );
       });
       it("reentrancy protected", async function () {
-        // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
-        // the spoke pool via the tested function.
-        const functionCalldata = spokePool.interface.encodeFunctionData("requestUSSSlowFill", [relayData]);
-        await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
+        const functionCalldata = spokePool.interface.encodeFunctionData("fillUSSRelay", [
+          relayData,
+          consts.repaymentChainId,
+        ]);
+        await expect(spokePool.connect(relayer).callback(functionCalldata)).to.be.revertedWith(
           "ReentrancyGuard: reentrant call"
         );
       });

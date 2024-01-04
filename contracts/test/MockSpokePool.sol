@@ -12,6 +12,8 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
     uint256 private chainId_;
     uint256 private currentTime;
 
+    event PreLeafExecuteHook(address token);
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
 
@@ -82,6 +84,10 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
 
     function getCurrentTime() public view override returns (uint256) {
         return currentTime;
+    }
+
+    function _preExecuteLeafHook(address token) internal override {
+        emit PreLeafExecuteHook(token);
     }
 
     // solhint-disable-next-line no-empty-blocks
