@@ -368,6 +368,10 @@ describe("SpokePool Relayer Logic", async function () {
       await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
     });
     describe("_fillRelay internal logic", function () {
+      it("default status is unfilled", async function () {
+        const relayExecution = await getRelayExecutionParams(relayData);
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Unfilled);
+      });
       it("expired fill deadline reverts", async function () {
         const _relay = {
           ...relayData,
@@ -427,6 +431,7 @@ describe("SpokePool Relayer Logic", async function () {
               FillType.ReplacedSlowFill,
             ]
           );
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("slow fill emits correct FillType", async function () {
         const relayExecution = await getRelayExecutionParams(relayData);
@@ -462,6 +467,7 @@ describe("SpokePool Relayer Logic", async function () {
               FillType.SlowFill,
             ]
           );
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("fast fill emits correct FillType", async function () {
         const relayExecution = await getRelayExecutionParams(relayData);
@@ -496,6 +502,7 @@ describe("SpokePool Relayer Logic", async function () {
               FillType.FastFill,
             ]
           );
+        expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {
         const _relayData = {
