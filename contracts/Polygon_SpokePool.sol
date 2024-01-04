@@ -183,8 +183,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
-        USSRelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
+        USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        bytes32[] calldata proof
     ) public override {
         // AddressLibUpgradeable.isContract isn't a sufficient check because it checks the contract code size of
         // msg.sender which is 0 if called from a constructor function on msg.sender. This is why we check if
