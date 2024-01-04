@@ -498,7 +498,6 @@ describe("SpokePool Relayer Logic", async function () {
               relayExecution.updatedRecipient,
               relayExecution.updatedMessage,
               relayExecution.updatedOutputAmount,
-              // Testing that this FillType is "SlowFill"
               FillType.FastFill,
             ]
           );
