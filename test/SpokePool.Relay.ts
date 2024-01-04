@@ -22,6 +22,7 @@ import {
   USSRelayExecutionParams,
   FillStatus,
   FillType,
+  USSFillDepositData,
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 
@@ -30,7 +31,7 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerW
 
 // _fillRelay takes a USSRelayExecutionParams object as a param. This function returns the correct object
 // as a convenience.
-async function getRelayExecutionParams(_relayData: USSRelayData): Promise<USSRelayExecutionParams> {
+async function getRelayExecutionParams(_relayData: USSFillDepositData): Promise<USSRelayExecutionParams> {
   const paramType = await getParamType("MockSpokePool", "fillUSSRelay", "relayData");
   return {
     relay: _relayData,
@@ -345,7 +346,7 @@ describe("SpokePool Relayer Logic", async function () {
     await testUpdatedFeeSignatureFailCases(erc1271.address);
   });
   describe("fill USS", function () {
-    let relayData: USSRelayData;
+    let relayData: USSFillDepositData;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
@@ -357,7 +358,6 @@ describe("SpokePool Relayer Logic", async function () {
         inputAmount: consts.amountToDeposit,
         outputAmount: consts.amountToDeposit,
         originChainId: consts.originChainId,
-        destinationChainId: consts.destinationChainId,
         depositId: consts.firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
@@ -613,19 +613,10 @@ describe("SpokePool Relayer Logic", async function () {
         );
       });
       it("reentrancy protected", async function () {
-        const callbackMessageHandler = await (
-          await getContractFactory("AcrossMessageHandlerCallbackMock", depositor)
-        ).deploy();
-        const functionCalldata = spokePool.interface.encodeFunctionData("fillUSSRelay", [
-          relayData,
-          consts.repaymentChainId,
-        ]);
-        const _relayData = {
-          ...relayData,
-          recipient: callbackMessageHandler.address,
-          message: functionCalldata,
-        };
-        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.be.revertedWith(
+        // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
+        // the spoke pool via the tested function.
+        const functionCalldata = spokePool.interface.encodeFunctionData("requestUSSSlowFill", [relayData]);
+        await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
           "ReentrancyGuard: reentrant call"
         );
       });
@@ -650,16 +641,6 @@ describe("SpokePool Relayer Logic", async function () {
             consts.repaymentChainId
           )
         ).to.not.be.reverted;
-      });
-      it("can't overwrite RelayData destination chain", async function () {
-        const _relayData = {
-          ...relayData,
-          // Try to overwrite the passed in destinationChainId
-          destinationChainId: consts.originChainId,
-        };
-        await expect(spokePool.connect(relayer).fillUSSRelay(_relayData, consts.repaymentChainId)).to.revertedWith(
-          "InvalidChainId"
-        );
       });
       it("calls _fillRelayUSS with  expected params", async function () {
         await expect(spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId))

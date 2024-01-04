@@ -54,8 +54,41 @@ interface USSSpokePoolInterface {
         bytes message;
     }
 
+    // This struct is used to pack params together when calling fillUSS functions which otherwise would fail to compile
+    // because of the large number of params. It is identical to USSRelayData except that it does not contain
+    // the destinationChainId which should not be overriddable by the caller and can always be inferred by the chainId()
+    // of the SpokePool network.
+    struct DepositData {
+        // The address that made the deposit on the origin chain.
+        address depositor;
+        // The recipient address on the destination chain.
+        address recipient;
+        // This is the exclusive relayer who can fill the deposit before the exclusivity deadline.
+        address exclusiveRelayer;
+        // Token that is deposited on origin chain by depositor.
+        address inputToken;
+        // Token that is received on destination chain by recipient.
+        address outputToken;
+        // The amount of input token deposited by depositor.
+        uint256 inputAmount;
+        // The amount of output token to be received by recipient.
+        uint256 outputAmount;
+        // Origin chain id.
+        uint256 originChainId;
+        // The id uniquely identifying this deposit on the origin chain.
+        uint32 depositId;
+        // The timestamp on the destination chain after which this deposit can no longer be filled.
+        uint32 fillDeadline;
+        // The timestamp on the destination chain after which any relayer can fill the deposit.
+        uint32 exclusivityDeadline;
+        // Data that is forwarded to the recipient.
+        bytes message;
+    }
+
+    // Contains parameters passed in by someone who wants to execute a slow relay leaf.
     struct USSSlowFill {
-        USSRelayData relayData;
+        DepositData relayData;
+        uint256 chainId;
         uint256 updatedOutputAmount;
     }
 
@@ -86,7 +119,7 @@ interface USSSpokePoolInterface {
     // by the relayer to modify fields of the relay with the depositor's permission, and "repaymentChainId" is specified
     // by the relayer to determine where to take a relayer refund, but doesn't affect the uniqueness of the relay.
     struct USSRelayExecutionParams {
-        USSRelayData relay;
+        DepositData relay;
         bytes32 relayHash;
         uint256 updatedOutputAmount;
         address updatedRecipient;
@@ -195,10 +228,10 @@ interface USSSpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId) external;
+    function fillUSSRelay(DepositData calldata relayData, uint256 repaymentChainId) external;
 
     function fillUSSRelayWithUpdatedDeposit(
-        USSRelayData calldata relayData,
+        DepositData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -206,7 +239,7 @@ interface USSSpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function requestUSSSlowFill(USSRelayData calldata relayData) external;
+    function requestUSSSlowFill(DepositData calldata relayData) external;
 
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,

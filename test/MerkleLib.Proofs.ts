@@ -13,7 +13,7 @@ import {
   createRandomBytes32,
   ethers,
 } from "../utils/utils";
-import { USSRelayData, USSSlowFill } from "../test-utils";
+import { USSFillDepositData, USSRelayData, USSSlowFill } from "../test-utils";
 
 let merkleLibTest: Contract;
 
@@ -151,7 +151,7 @@ describe("MerkleLib Proofs", async function () {
     const slowFillLeaves: USSSlowFill[] = [];
     const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
     for (let i = 0; i < numDistributions; i++) {
-      const relayData: USSRelayData = {
+      const relayData: USSFillDepositData = {
         depositor: randomAddress(),
         recipient: randomAddress(),
         exclusiveRelayer: randomAddress(),
@@ -160,7 +160,6 @@ describe("MerkleLib Proofs", async function () {
         inputAmount: randomBigNumber(),
         outputAmount: randomBigNumber(),
         originChainId: randomBigNumber(2).toNumber(),
-        destinationChainId: randomBigNumber(2).toNumber(),
         depositId: BigNumber.from(i).toNumber(),
         fillDeadline: randomBigNumber(2).toNumber(),
         exclusivityDeadline: randomBigNumber(2).toNumber(),
@@ -168,6 +167,7 @@ describe("MerkleLib Proofs", async function () {
       };
       slowFillLeaves.push({
         relayData,
+        chainId: randomBigNumber(2).toNumber(),
         updatedOutputAmount: relayData.outputAmount,
       });
     }

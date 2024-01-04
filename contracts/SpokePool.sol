@@ -912,7 +912,7 @@ abstract contract SpokePool is
      *         USS RELAYER FUNCTIONS          *
      ******************************************/
 
-    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId)
+    function fillUSSRelay(DepositData calldata relayData, uint256 repaymentChainId)
         public
         override
         nonReentrant
@@ -925,14 +925,9 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
-        // fill that was destined for a different chain. This is required because the relayData
-        // is used to form the relayHash which this contract uses to uniquely ID relays.
-        if (relayData.destinationChainId != chainId()) revert InvalidChainId();
-
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: keccak256(abi.encode(relayData)),
+            relayHash: _getUSSRelayHash(relayData),
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
@@ -943,7 +938,7 @@ abstract contract SpokePool is
     }
 
     function fillUSSRelayWithUpdatedDeposit(
-        USSRelayData calldata relayData,
+        DepositData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -957,14 +952,9 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
-        // fill that was destined for a different chain. This is required because the relayData
-        // is used to form the relayHash which this contract uses to uniquely ID relays.
-        if (relayData.destinationChainId != chainId()) revert InvalidChainId();
-
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: keccak256(abi.encode(relayData)),
+            relayHash: _getUSSRelayHash(relayData),
             updatedOutputAmount: updatedOutputAmount,
             updatedRecipient: updatedRecipient,
             updatedMessage: updatedMessage,
@@ -993,11 +983,11 @@ abstract contract SpokePool is
      * slow filled. If any of the params are missing or different then Across will not include a slow
      * fill for the intended deposit.
      */
-    function requestUSSSlowFill(USSRelayData calldata relayData) public override nonReentrant unpausedFills {
+    function requestUSSSlowFill(DepositData calldata relayData) public override nonReentrant unpausedFills {
         // solhint-disable-next-line not-rely-on-time
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
 
-        bytes32 relayHash = keccak256(abi.encode(relayData));
+        bytes32 relayHash = _getUSSRelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
@@ -1081,26 +1071,20 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         bytes32[] calldata proof
     ) public override nonReentrant {
-        USSRelayData memory relayData = slowFillLeaf.relayData;
+        DepositData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken);
-
-        // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
-        // fill that was destined for a different chain. This is required because the relayData
-        // is used to form the relayHash which this contract uses to uniquely ID relays.
-        if (relayData.destinationChainId != chainId()) revert InvalidChainId();
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
-            relayHash: bytes32(0),
+            relayHash: _getUSSRelayHash(relayData),
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: 0 // Hardcoded to 0 for slow fills
         });
-        relayExecution.relayHash = keccak256(abi.encode(relayExecution.relay));
 
         _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
 
@@ -1523,6 +1507,7 @@ abstract contract SpokePool is
     ) internal view {
         USSSlowFill memory slowFill = USSSlowFill({
             relayData: relayExecution.relay,
+            chainId: chainId(),
             updatedOutputAmount: relayExecution.updatedOutputAmount
         });
 
@@ -1540,6 +1525,10 @@ abstract contract SpokePool is
 
     function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(relayData));
+    }
+
+    function _getUSSRelayHash(DepositData memory relayData) private view returns (bytes32) {
+        return keccak256(abi.encode(relayData, chainId()));
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
@@ -1701,7 +1690,7 @@ abstract contract SpokePool is
         address relayer,
         bool isSlowFill
     ) internal {
-        USSRelayData memory relayData = relayExecution.relay;
+        DepositData memory relayData = relayExecution.relay;
 
         // solhint-disable-next-line not-rely-on-time
         if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
