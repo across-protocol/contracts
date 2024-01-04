@@ -920,8 +920,7 @@ abstract contract SpokePool is
     {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= block.timestamp) {
+        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= getCurrentTime()) {
             revert NotExclusiveRelayer();
         }
 
@@ -952,8 +951,7 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= block.timestamp) {
+        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= getCurrentTime()) {
             revert NotExclusiveRelayer();
         }
 
@@ -993,9 +991,8 @@ abstract contract SpokePool is
      * slow filled. If any of the params are missing or different then Across will not include a slow
      * fill for the intended deposit.
      */
-    function requestUSSSlowFill(USSRelayData calldata relayData) public override nonReentrant unpausedFills {
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
+    function requestUSSSlowFill(USSRelayData memory relayData) public override nonReentrant unpausedFills {
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData));
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
@@ -1703,8 +1700,7 @@ abstract contract SpokePool is
     ) internal {
         USSRelayData memory relayData = relayExecution.relay;
 
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = relayExecution.relayHash;
 
