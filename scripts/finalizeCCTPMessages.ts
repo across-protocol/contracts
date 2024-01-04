@@ -77,7 +77,7 @@ const messageTransmitterAbi = [
  * Environment variables:
  * - `RECEIVE_MESSAGES_ON`: Which messages to claim. Either `l1` or `l2`.
  * Flags:
- * - `--network`: The L2 network, i.e. `linea-goerli` or `linea`.
+ * - `--network`: The L2 network, i.e. `arbitrum-goerli` or `arbitrum`.
  *
  */
 async function main() {
