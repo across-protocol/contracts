@@ -482,7 +482,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.connect(depositor).depositUSS(
           // fillDeadline too far into future (i.e. beyond the buffer)
-          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer).add(100) })
+          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer).add(1) })
         )
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
