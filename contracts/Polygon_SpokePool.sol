@@ -197,22 +197,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
         super.executeUSSRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
-    function executeRelayerRefundLeaf(
-        uint32 rootBundleId,
-        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
-    ) public override {
-        // AddressLibUpgradeable.isContract isn't a sufficient check because it checks the contract code size of
-        // msg.sender which is 0 if called from a constructor function on msg.sender. This is why we check if
-        // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode.
-        // solhint-disable-next-line avoid-tx-origin
-        if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
-        // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
-        _revertIfFunctionCalledAtomically(FILL_LOCK_IDENTIFIER);
-        _setFunctionLock(EXECUTE_LOCK_IDENTIFIER);
-        super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
-    }
-
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/

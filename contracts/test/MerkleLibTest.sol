@@ -21,28 +21,12 @@ contract MerkleLibTest {
         return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
     }
 
-    function verifyRelayerRefund(
-        bytes32 root,
-        SpokePoolInterface.RelayerRefundLeaf memory refund,
-        bytes32[] memory proof
-    ) public pure returns (bool) {
-        return MerkleLib.verifyRelayerRefund(root, refund, proof);
-    }
-
     function verifyUSSRelayerRefund(
         bytes32 root,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleLib.verifyUSSRelayerRefund(root, refund, proof);
-    }
-
-    function verifySlowRelayFulfillment(
-        bytes32 root,
-        SpokePoolInterface.SlowFill memory slowFill,
-        bytes32[] memory proof
-    ) public pure returns (bool) {
-        return MerkleLib.verifySlowRelayFulfillment(root, slowFill, proof);
     }
 
     function verifyUSSSlowRelayFulfillment(

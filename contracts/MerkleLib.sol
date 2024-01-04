@@ -26,42 +26,12 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(rebalance)));
     }
 
-    /**
-     * @notice Verifies that a relayer refund is contained within a merkle root.
-     * @param root the merkle root.
-     * @param refund the refund struct.
-     * @param proof the merkle proof.
-     * @return bool to signal if the relayer refund proof correctly shows inclusion of the refund within the tree.
-     */
-    function verifyRelayerRefund(
-        bytes32 root,
-        SpokePoolInterface.RelayerRefundLeaf memory refund,
-        bytes32[] memory proof
-    ) internal pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
-    }
-
     function verifyUSSRelayerRefund(
         bytes32 root,
         USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
-    }
-
-    /**
-     * @notice Verifies that a distribution is contained within a merkle root.
-     * @param root the merkle root.
-     * @param slowRelayFulfillment the relayData fulfillment struct.
-     * @param proof the merkle proof.
-     * @return bool to signal if the slow relay's proof correctly shows inclusion of the slow relay within the tree.
-     */
-    function verifySlowRelayFulfillment(
-        bytes32 root,
-        SpokePoolInterface.SlowFill memory slowRelayFulfillment,
-        bytes32[] memory proof
-    ) internal pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
     function verifyUSSSlowRelayFulfillment(

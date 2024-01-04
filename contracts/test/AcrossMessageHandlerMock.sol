@@ -5,14 +5,6 @@ import "../SpokePool.sol";
 import "../interfaces/USSSpokePoolInterface.sol";
 
 contract AcrossMessageHandlerMock is AcrossMessageHandler {
-    function handleAcrossMessage(
-        address tokenSent,
-        uint256 amount,
-        bool fillCompleted,
-        address relayer,
-        bytes memory message
-    ) external override {}
-
     function handleUSSAcrossMessage(
         address tokenSent,
         uint256 amount,
