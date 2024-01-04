@@ -8,9 +8,12 @@ import {
   ethers,
   BigNumber,
   createRandomBytes32,
+  getParamType,
+  keccak256,
+  defaultAbiCoder,
 } from "../utils/utils";
 import * as consts from "./constants";
-import { deployMockSpokePoolCaller, spokePoolFixture } from "./fixtures/SpokePool.Fixture";
+import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import {
   buildRelayerRefundTree,
   buildRelayerRefundLeaves,
@@ -201,15 +204,17 @@ describe("SpokePool Root Bundle Execution", function () {
       ).to.be.revertedWith("InvalidChainId");
     });
     it("refund address length mismatch", async function () {
-      // Before MerkleLib attempts to verify the proof, it checks that the refundAddresses and refundAmounts
-      // are the same length.
       const invalidLeaf = {
         ...leaves[0],
         refundAddresses: [],
       };
-      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, invalidLeaf, [])).to.be.revertedWith(
-        "InvalidMerkleLeaf"
-      );
+      const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
+      const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+      const invalidTree = new MerkleTree<USSRelayerRefundLeaf>([invalidLeaf], hashFn);
+      await spokePool.connect(dataWorker).relayRootBundle(invalidTree.getHexRoot(), consts.mockSlowRelayRoot);
+      await expect(
+        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, invalidLeaf, invalidTree.getHexProof(invalidLeaf))
+      ).to.be.revertedWith("InvalidMerkleLeaf");
     });
     it("invalid merkle proof", async function () {
       // Relay two root bundles:
