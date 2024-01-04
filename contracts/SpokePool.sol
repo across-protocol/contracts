@@ -928,7 +928,7 @@ abstract contract SpokePool is
         // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
         // fill that was destined for a different chain. This is required because the relayData
         // is used to form the relayHash which this contract uses to uniquely ID relays.
-        relayData.destinationChainId = chainId();
+        if (relayData.destinationChainId != chainId()) revert InvalidChainId();
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
@@ -960,7 +960,7 @@ abstract contract SpokePool is
         // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
         // fill that was destined for a different chain. This is required because the relayData
         // is used to form the relayHash which this contract uses to uniquely ID relays.
-        relayData.destinationChainId = chainId();
+        if (relayData.destinationChainId != chainId()) revert InvalidChainId();
 
         USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
             relay: relayData,
@@ -1088,7 +1088,7 @@ abstract contract SpokePool is
         // Don't let caller override destination chain ID so they can't attempt a replay attack of an identical
         // fill that was destined for a different chain. This is required because the relayData
         // is used to form the relayHash which this contract uses to uniquely ID relays.
-        relayData.destinationChainId = chainId();
+        if (relayData.destinationChainId != chainId()) revert InvalidChainId();
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
