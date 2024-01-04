@@ -736,13 +736,13 @@ describe("SpokePool Slow Relay Logic", async function () {
         .to.emit(spokePool, "PreLeafExecuteHook")
         .withArgs(slowRelayLeaf.relayData.outputToken);
     });
-    it("does not allow caller to override destinationChainId on leaf", async function () {
+    it("cannot execute leaves with chain IDs not matching spoke pool's chain ID", async function () {
       // In this test, the merkle proof is valid for the tree relayed to the spoke pool, but the merkle leaf
       // destination chain ID does not match the spoke pool's chainId() and therefore cannot be executed.
-      const slowRelayLeafWithWrongDestinationChain = {
+      const slowRelayLeafWithWrongDestinationChain: USSSlowFill = {
         ...slowRelayLeaf,
+        chainId: slowRelayLeaf.chainId + 1,
       };
-      slowRelayLeafWithWrongDestinationChain.relayData.destinationChainId += 1;
       const treeWithWrongDestinationChain = await buildUSSSlowRelayTree([slowRelayLeafWithWrongDestinationChain]);
       await spokePool
         .connect(depositor)

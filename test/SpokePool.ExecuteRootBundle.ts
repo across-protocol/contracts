@@ -1,5 +1,14 @@
 import { MerkleTree } from "../utils/MerkleTree";
-import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../utils/utils";
+import {
+  SignerWithAddress,
+  seedContract,
+  toBN,
+  expect,
+  Contract,
+  ethers,
+  BigNumber,
+  createRandomBytes32,
+} from "../utils/utils";
 import * as consts from "./constants";
 import { deployMockSpokePoolCaller, spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import {
@@ -133,8 +142,8 @@ describe("SpokePool Root Bundle Execution", function () {
         [destErc20.address, destErc20.address], // l2Token.
         [[relayer.address, rando.address], []], // refundAddresses.
         [[consts.amountToRelay, consts.amountToRelay], []], // refundAmounts.
-        [consts.mockTreeRoot, consts.mockTreeRoot], // fillsRefundedRoot.
-        [consts.mockTreeRoot, consts.mockTreeRoot] // fillsRefundedHash.
+        [createRandomBytes32(), consts.mockTreeRoot], // fillsRefundedRoot.
+        [createRandomBytes32(), consts.mockTreeRoot] // fillsRefundedHash.
       );
       tree = await buildUSSRelayerRefundTree(leaves);
     });
@@ -142,18 +151,105 @@ describe("SpokePool Root Bundle Execution", function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
       await expect(() =>
         spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-      ).to.changeTokenBalances(destErc20, [relayer, spokePool], [consts.amountToRelay, -consts.amountToRelay]);
+      ).to.changeTokenBalances(
+        destErc20,
+        [relayer, rando, spokePool],
+        [consts.amountToRelay, consts.amountToRelay, consts.amountToRelay.mul(-2)]
+      );
     });
-    it("calls _preExecuteLeafHook", async function () {});
-    it("incorrect leaf destination chain ID", async function () {});
-    it("refund address length mismatch", async function () {});
+    it("calls _preExecuteLeafHook", async function () {
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
+        .to.emit(spokePool, "PreLeafExecuteHook")
+        .withArgs(leaves[0].l2TokenAddress);
+    });
+    it("cannot execute leaves with chain IDs not matching spoke pool's chain ID", async function () {
+      // In this test, the merkle proof is valid for the tree relayed to the spoke pool, but the merkle leaf
+      // destination chain ID does not match the spoke pool's chainId() and therefore cannot be executed.
+      const leafWithWrongDestinationChain: USSRelayerRefundLeaf = {
+        ...leaves[0],
+        chainId: leaves[0].chainId.add(1),
+      };
+      const treeWithWrongDestinationChain = await buildUSSRelayerRefundTree([leafWithWrongDestinationChain]);
+      await spokePool
+        .connect(dataWorker)
+        .relayRootBundle(treeWithWrongDestinationChain.getHexRoot(), consts.mockSlowRelayRoot);
+      await expect(
+        spokePool
+          .connect(dataWorker)
+          .executeUSSRelayerRefundLeaf(
+            0,
+            leafWithWrongDestinationChain,
+            treeWithWrongDestinationChain.getHexProof(leafWithWrongDestinationChain)
+          )
+      ).to.be.revertedWith("InvalidChainId");
+    });
+    it("refund address length mismatch", async function () {
+      // Before MerkleLib attempts to verify the proof, it checks that the refundAddresses and refundAmounts
+      // are the same length.
+      const invalidLeaf = {
+        ...leaves[0],
+        refundAddresses: [],
+      };
+      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, invalidLeaf, [])).to.be.revertedWith(
+        "InvalidMerkleLeaf"
+      );
+    });
     it("invalid merkle proof", async function () {
+      // Relay two root bundles:
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool.connect(dataWorker).relayRootBundle(consts.mockSlowRelayRoot, consts.mockSlowRelayRoot);
+
       // Incorrect root bundle ID
+      await expect(
+        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(
+          1, // rootBundleId should be 0
+          leaves[0],
+          tree.getHexProof(leaves[0])
+        )
+      ).to.revertedWith("InvalidMerkleProof");
+
       // Incorrect relayer refund leaf for proof
+      await expect(
+        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(
+          0,
+          leaves[1], // Should be leaves[0]
+          tree.getHexProof(leaves[0])
+        )
+      ).to.revertedWith("InvalidMerkleProof");
+
       // Incorrect proof
+      await expect(
+        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(
+          0,
+          leaves[0],
+          tree.getHexProof(leaves[1]) // Should be leaves[0]
+        )
+      ).to.revertedWith("InvalidMerkleProof");
     });
-    it("cannot double claim", async function () {});
-    it("emits expected events", async function () {});
+    it("cannot double claim", async function () {
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+      await expect(
+        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("ClaimedMerkleLeaf");
+    });
+    it("emits expected events", async function () {
+      await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
+      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
+        .to.emit(spokePool, "ExecutedUSSRelayerRefundRoot")
+        .withArgs(
+          leaves[0].amountToReturn,
+          leaves[0].chainId,
+          leaves[0].refundAmounts,
+          0, // rootBundleId
+          leaves[0].leafId,
+          leaves[0].l2TokenAddress,
+          leaves[0].refundAddresses,
+          leaves[0].fillsRefundedRoot,
+          leaves[0].fillsRefundedHash
+        );
+    });
   });
 
   describe("Gas test", function () {
