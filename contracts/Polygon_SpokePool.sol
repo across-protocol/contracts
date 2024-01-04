@@ -244,15 +244,15 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     }
 
     function _setFunctionLock(bytes32 funcIdentifier) internal {
-        // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
-        bytes32 lockValue = keccak256(abi.encodePacked(block.timestamp, tx.origin));
+        // solhint-disable-next-line avoid-tx-origin
+        bytes32 lockValue = keccak256(abi.encodePacked(getCurrentTime(), tx.origin));
         if (funcLocks[funcIdentifier] != lockValue) funcLocks[funcIdentifier] = lockValue;
     }
 
     // Revert if function was called during this block with the same tx.origin.
     function _revertIfFunctionCalledAtomically(bytes32 funcIdentifier) internal view {
-        // solhint-disable-next-line not-rely-on-time, avoid-tx-origin
-        if (funcLocks[funcIdentifier] == keccak256(abi.encodePacked(block.timestamp, tx.origin)))
+        // solhint-disable-next-line avoid-tx-origin
+        if (funcLocks[funcIdentifier] == keccak256(abi.encodePacked(getCurrentTime(), tx.origin)))
             revert CrossFunctionLock();
     }
 

@@ -920,8 +920,7 @@ abstract contract SpokePool is
     {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= block.timestamp) {
+        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= getCurrentTime()) {
             revert NotExclusiveRelayer();
         }
 
@@ -947,8 +946,7 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= block.timestamp) {
+        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= getCurrentTime()) {
             revert NotExclusiveRelayer();
         }
 
@@ -984,8 +982,7 @@ abstract contract SpokePool is
      * fill for the intended deposit.
      */
     function requestUSSSlowFill(DepositData calldata relayData) public override nonReentrant unpausedFills {
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = keccak256(abi.encode(relayData, chainId()));
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
@@ -1688,8 +1685,7 @@ abstract contract SpokePool is
     ) internal {
         DepositData memory relayData = relayExecution.relay;
 
-        // solhint-disable-next-line not-rely-on-time
-        if (relayData.fillDeadline < block.timestamp) revert ExpiredFillDeadline();
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = relayExecution.relayHash;
 
