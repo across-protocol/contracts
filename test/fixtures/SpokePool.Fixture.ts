@@ -207,6 +207,27 @@ export interface USSRelayData {
   message: string;
 }
 
+export interface USSRelayExecutionParams {
+  relay: USSRelayData;
+  relayHash: string;
+  updatedOutputAmount: BigNumber;
+  updatedRecipient: string;
+  updatedMessage: string;
+  repaymentChainId: number;
+}
+
+export const enum FillType {
+  FastFill,
+  ReplacedSlowFill,
+  SlowFill,
+}
+
+export const enum FillStatus {
+  Unfilled,
+  RequestedSlowFill,
+  Filled,
+}
+
 export interface SlowFill {
   relayData: RelayData;
   payoutAdjustmentPct: BigNumber;
