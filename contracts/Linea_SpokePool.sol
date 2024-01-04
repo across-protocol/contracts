@@ -127,6 +127,14 @@ contract Linea_SpokePool is SpokePool {
         _setL2UsdcBridge(_l2UsdcBridge);
     }
 
+    /**
+     * @notice Returns current min. fee set by Linea's Canonical Message Service for
+     * sending L2->L1 messages.
+     */
+    function minimumFeeInWei() public view returns (uint256) {
+        return IMessageService(l2MessageService).minimumFeeInWei();
+    }
+
     /****************************************
      *    LINEA-SPECIFIC ADMIN FUNCTIONS    *
      ****************************************/
