@@ -601,7 +601,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       };
     });
     it("fill deadline is expired", async function () {
-      relayData.fillDeadline = (await spokePool.getCurrentTime()).sub(1000);
+      relayData.fillDeadline = (await spokePool.getCurrentTime()).sub(1);
       await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
     });
     it("can request before fast fill", async function () {
