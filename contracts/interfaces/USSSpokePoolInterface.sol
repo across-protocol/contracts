@@ -191,22 +191,22 @@ interface USSSpokePoolInterface {
         uint32 depositId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
     ) external;
 
-    function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId) external;
+    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId) external;
 
     function fillUSSRelayWithUpdatedDeposit(
-        USSRelayData memory relayData,
+        USSRelayData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
     ) external;
 
-    function requestUSSSlowFill(USSRelayData memory relayData) external;
+    function requestUSSSlowFill(USSRelayData calldata relayData) external;
 
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
@@ -216,8 +216,8 @@ interface USSSpokePoolInterface {
 
     function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
-        USSRelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
+        USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        bytes32[] calldata proof
     ) external;
 
     error DisabledRoute();
