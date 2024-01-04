@@ -538,7 +538,7 @@ describe("SpokePool Relayer Logic", async function () {
           )
         ).to.changeTokenBalance(destErc20, depositor, consts.amountToDeposit.mul(2));
       });
-      it("unwraps native token if sending to EOA otherwise sends wrapped ERC20", async function () {
+      it("unwraps native token if sending to EOA", async function () {
         const _relayData = {
           ...relayData,
           outputToken: weth.address,
