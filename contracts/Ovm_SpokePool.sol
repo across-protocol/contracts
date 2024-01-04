@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./external/interfaces/WETH9Interface.sol";
-import "./libraries/CircleCCTPLib.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
@@ -27,7 +27,7 @@ interface IL2ERC20Bridge {
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  */
-contract Ovm_SpokePool is SpokePool {
+contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
     uint32 public l1Gas;
@@ -44,29 +44,6 @@ contract Ovm_SpokePool is SpokePool {
     // Address of SNX ERC20
     address private constant SNX = 0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4;
 
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge to L1.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 public constant l1CircleDomainId = 0;
-    /**
-     * @notice The official USDC contract address on this chain.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
-     */
-    IERC20 public l2Usdc;
-    /**
-     * @notice The official Circle CCTP token bridge contract endpoint.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
-     */
-    ITokenMessenger public cctpTokenMessenger;
-
-    /**
-     * @notice Whether or not this OVM Spoke will attempt to bridge USDC via CCTP.
-     * @dev This is only enabled on Base & Optimism spoke pools.
-     */
-    bool public enableCctpBridge;
-
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
     mapping(address => address) public tokenBridges;
@@ -79,8 +56,13 @@ contract Ovm_SpokePool is SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the OVM SpokePool.
@@ -90,27 +72,18 @@ contract Ovm_SpokePool is SpokePool {
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _l2Eth Address of L2 ETH token. Usually should be Lib_PreeployAddresses.OVM_ETH but sometimes this can
      * be different, like with Boba which flips the WETH and OVM_ETH addresses.
-     * @param _enableCctpBridge Whether to enable CCTP bridge for USDC.
-     * @param _l2Usdc USDC address on this L2 chain.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     function __OvmSpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
         address _hubPool,
-        address _l2Eth,
-        bool _enableCctpBridge,
-        IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        address _l2Eth
     ) public onlyInitializing {
         l1Gas = 5_000_000;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
-        l2Usdc = _l2Usdc;
-        cctpTokenMessenger = _cctpTokenMessenger;
-        enableCctpBridge = _enableCctpBridge;
     }
 
     /*******************************************
@@ -172,9 +145,8 @@ contract Ovm_SpokePool is SpokePool {
             );
         }
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
-        else if (enableCctpBridge && l2TokenAddress == address(l2Usdc)) {
-            // Bridge USDC via CCTP.
-            CircleCCTPLib._transferUsdc(l2Usdc, cctpTokenMessenger, l1CircleDomainId, hubPool, amountToReturn);
+        else if (_isCCTPEnabledForToken(l2TokenAddress)) {
+            _transferUsdc(hubPool, amountToReturn);
         }
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
         else if (l2TokenAddress == SNX)
