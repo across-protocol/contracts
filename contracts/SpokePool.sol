@@ -18,8 +18,6 @@ import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 // This interface is expected to be implemented by any contract that expects to receive messages from the SpokePool.
 interface AcrossMessageHandler {
-    // New function interface to be used with USS functions since fillCompleted no longer has any
-    // meaning now that partial fills are impossible.
     function handleUSSAcrossMessage(
         address tokenSent,
         uint256 amount,
@@ -128,21 +126,6 @@ abstract contract SpokePool is
     // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable fillDeadlineBuffer;
-
-    uint256 public constant MAX_TRANSFER_SIZE = 1e36;
-
-    // Note: this needs to be larger than the max transfer size to ensure that all slow fills are fillable, even if
-    // their fees are negative.
-    // It's important that it isn't too large, however, as it should be multipliable by ~2e18 without overflowing.
-    // 1e40 * 2e18 = 2e58 << 2^255 ~= 5e76
-    uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
-
-    // Set max payout adjustment to something
-
-    bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
-        keccak256(
-            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
-        );
 
     bytes32 public constant UPDATE_USS_DEPOSIT_DETAILS_HASH =
         keccak256(
@@ -576,11 +559,7 @@ abstract contract SpokePool is
     ) public virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
-        _validateRelayerRefundLeaf(
-            relayerRefundLeaf.chainId,
-            relayerRefundLeaf.refundAddresses,
-            relayerRefundLeaf.refundAmounts
-        );
+        if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
 
         RootBundle storage rootBundle = rootBundles[rootBundleId];
 
@@ -644,6 +623,8 @@ abstract contract SpokePool is
         address l2TokenAddress,
         address[] memory refundAddresses
     ) internal {
+        if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
+
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
         uint256 length = refundAmounts.length;
@@ -681,15 +662,6 @@ abstract contract SpokePool is
 
     // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual;
-
-    function _validateRelayerRefundLeaf(
-        uint256 _chainId,
-        address[] memory refundAddresses,
-        uint256[] memory refundAmounts
-    ) internal view {
-        if (_chainId != chainId()) revert InvalidChainId();
-        if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
-    }
 
     function _setClaimedLeaf(uint32 rootBundleId, uint32 leafId) internal {
         RootBundle storage rootBundle = rootBundles[rootBundleId];
