@@ -115,7 +115,6 @@ contract Scroll_Adapter is AdapterInterface {
         address _l2Token = _l1GatewayRouter.getL2ERC20Address(l1Token);
         require(_l2Token == l2Token, "l2Token Mismatch");
 
-        // Bump the allowance
         IERC20(l1Token).safeIncreaseAllowance(address(_l1GatewayRouter), amount);
 
         // The scroll bridge handles arbitrary ERC20 tokens and is mindful of
