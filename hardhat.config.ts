@@ -214,7 +214,7 @@ const config: HardhatUserConfig = {
       sepolia: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      "optimism-sepolia": process.env.OPTIMISM_ETHERSCAN_API_KEY!,
+      optimismSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
@@ -239,7 +239,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "optimism-sepolia",
+        network: "optimismSepolia",
         chainId: 11155420,
         urls: {
           apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
