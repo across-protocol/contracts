@@ -1,0 +1,25 @@
+[profile.default]
+src = "contracts"
+out = "artifacts"
+libs = ["node_modules", "lib"]
+remappings = [
+    "@across-protocol/=node_modules/@across-protocol/",
+    "@ensdomains/=node_modules/@ensdomains/",
+    "@eth-optimism/=node_modules/@eth-optimism/",
+    "@gnosis.pm/=node_modules/@gnosis.pm/",
+    "@maticnetwork/=node_modules/@maticnetwork/",
+    "@matterlabs/=node_modules/@matterlabs/",
+    "@openzeppelin/=node_modules/@openzeppelin/",
+    "@uma/=node_modules/@uma/",
+    "@uniswap/=node_modules/@uniswap/",
+    "arb-bridge-eth/=node_modules/arb-bridge-eth/",
+    "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
+    "arbos-precompiles/=node_modules/arbos-precompiles/",
+    "base64-sol/=node_modules/base64-sol/",
+    "eth-gas-reporter/=node_modules/eth-gas-reporter/",
+    "hardhat-deploy/=node_modules/hardhat-deploy/",
+    "hardhat/=node_modules/hardhat/",
+]
+via_ir = true
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
