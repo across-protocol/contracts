@@ -8,7 +8,6 @@ import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
-import { SignerWithAddress, TokenRolesEnum } from "../test-utils";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers);
