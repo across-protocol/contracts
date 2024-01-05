@@ -13,18 +13,21 @@ abstract contract CircleCCTPAdapter {
      * @dev This identifier is assigned by Circle and is not related to a chain ID.
      * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
      */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable recipientCircleDomainId;
 
     /**
      * @notice The official USDC contract address on this chain.
      * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
      */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     IERC20 public immutable usdcToken;
 
     /**
      * @notice The official Circle CCTP token bridge contract endpoint.
      * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
      */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     ITokenMessenger public immutable cctpTokenMessenger;
 
     /**
@@ -33,6 +36,7 @@ abstract contract CircleCCTPAdapter {
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _recipientCircleDomainId The domain ID that CCTP will transfer funds to.
      */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdcToken,
         ITokenMessenger _cctpTokenMessenger,

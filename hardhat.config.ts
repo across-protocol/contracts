@@ -48,7 +48,12 @@ const config: HardhatUserConfig = {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ethereum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Boba_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Arbitrum_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Arbitrum_SpokePool.sol": {
+        ...XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+        // NOTE: Arbitrum, only supports 0.8.19.
+        // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
+        version: "0.8.19",
+      },
       "contracts/Succinct_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/ZkSync_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
