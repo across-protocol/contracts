@@ -17,6 +17,7 @@ interface IAggregationExecutor {
 // - Polygon: https://polygonscan.com/address/0x1111111254eeb25477b68fb85ed929f73a960582
 // - Optimism: https://optimistic.etherscan.io/address/0x1111111254eeb25477b68fb85ed929f73a960582
 // - Arbitrum: https://arbiscan.io/address/0x1111111254eeb25477b68fb85ed929f73a960582
+// - Base: https://basescan.org/address/0x1111111254eeb25477b68fb85ed929f73a960582
 interface I1InchAggregationRouterV5 {
     struct SwapDescription {
         IERC20 srcToken;
@@ -52,6 +53,7 @@ interface I1InchAggregationRouterV5 {
 // - Arbitrum: https://arbiscan.io/address/0x8e295789c9465487074a65b1ae9ce0351172393f
 // - Optimism: https://optimistic.etherscan.io/address/0x2ab22ac86b25bd448a4d9dc041bd2384655299c4
 // - Polygon: https://polygonscan.com/address/0xd36ec33c8bed5a9f7b6630855f1533455b98a418
+// - Base: https://basescan.org/address/0x06959273e9a65433de71f5a452d529544e07ddd0
 interface IUniswapV3Pool {
     /// @notice Swap token0 for token1, or token1 for token0
     /// @dev The caller of this method receives a callback in the form of IUniswapV3SwapCallback#uniswapV3SwapCallback
