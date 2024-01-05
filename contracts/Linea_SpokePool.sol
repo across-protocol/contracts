@@ -87,15 +87,37 @@ interface IUSDCBridge {
 contract Linea_SpokePool is SpokePool {
     using SafeERC20 for IERC20;
 
+    /**
+     * @notice Address of Linea's Canonical Message Service contract on L2.
+     */
     IMessageService public l2MessageService;
+
+    /**
+     * @notice Address of Linea's Canonical Token Bridge contract on L2.
+     */
     ITokenBridge public l2TokenBridge;
+
+    /**
+     * @notice Address of Linea's USDC Bridge contract on L2.
+     */
     IUSDCBridge public l2UsdcBridge;
 
+    /**************************************
+     *               EVENTS               *
+     **************************************/
     event LineaTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
     event SetL2TokenBridge(address indexed newTokenBridge, address oldTokenBridge);
     event SetL2MessageService(address indexed newMessageService, address oldMessageService);
     event SetL2UsdcBridge(address indexed newUsdcBridge, address oldUsdcBridge);
 
+    /**
+     * @notice Construct Linea-specific SpokePool.
+     * @param _wrappedNativeTokenAddress Address of WETH on Linea.
+     * @param _depositQuoteTimeBuffer Quote timestamps can't be set more than this amount
+     * into the past from the block time of the deposit.
+     * @param _fillDeadlineBuffer Fill deadlines can't be set more than this amount
+     * into the future from the block time of the deposit.
+     */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
@@ -104,7 +126,7 @@ contract Linea_SpokePool is SpokePool {
     ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
 
     /**
-     * @notice Construct the Linea SpokePool.
+     * @notice Initialize Linea-specific SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _l2MessageService Address of Canonical Message Service. Can be reset by admin.
@@ -188,6 +210,9 @@ contract Linea_SpokePool is SpokePool {
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
         uint256 minFee = minimumFeeInWei();
+        // We require that the caller pass in the fees as msg.value instead of pulling ETH out of this contract's balance.
+        // Using the contract's balance would require a separate accounting system to keep LP funds separated from system funds
+        // used to pay for L2->L1 messages.
         require(msg.value == minFee, "MESSAGE_FEE_MISMATCH");
 
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
