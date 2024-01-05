@@ -136,7 +136,7 @@ contract SwapAndBridge is Lockable, MultiCaller {
 
         // Sanity check that we received exactly as much as the oneInchRouter said we did.
         require(
-            returnAmount == dstBalanceBefore - IERC20(depositData.inputToken).balanceOf(address(this)),
+            returnAmount == IERC20(depositData.inputToken).balanceOf(address(this)) - dstBalanceBefore,
             "return amount"
         );
         // Sanity check that received amount from swap is enough to submit Across deposit with.
