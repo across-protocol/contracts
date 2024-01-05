@@ -149,7 +149,7 @@ contract SwapAndBridge is Lockable, MultiCaller {
         );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        IERC20(depositData.inputToken).safeApprove(address(spokePool), returnAmount);
+        IERC20(depositData.inputToken).safeIncreaseAllowance(address(spokePool), returnAmount);
         spokePool.depositUSS(
             depositData.depositor,
             depositData.recipient,
