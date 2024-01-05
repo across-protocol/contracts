@@ -1,5 +1,14 @@
-import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "../utils/utils";
-import { repaymentChainId, amountToReturn } from "./constants";
+import {
+  getParamType,
+  expect,
+  BigNumber,
+  defaultAbiCoder,
+  keccak256,
+  toBNWei,
+  createRandomBytes32,
+  Contract,
+} from "../utils/utils";
+import { amountToReturn, repaymentChainId, zeroAddress } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
 import { USSSlowFill } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
@@ -26,18 +35,9 @@ export interface USSRelayerRefundLeaf extends RelayerRefundLeaf {
   fillsRefundedHash: string;
 }
 
-export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundLeaf[]) {
-  for (let i = 0; i < relayerRefundLeaves.length; i++) {
-    // The 2 provided parallel arrays must be of equal length.
-    expect(relayerRefundLeaves[i].refundAddresses.length).to.equal(relayerRefundLeaves[i].refundAmounts.length);
-  }
-
-  const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
-  const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
-}
-
-export async function buildUSSRelayerRefundTree(relayerRefundLeaves: USSRelayerRefundLeaf[]) {
+export async function buildUSSRelayerRefundTree(
+  relayerRefundLeaves: USSRelayerRefundLeaf[]
+): Promise<MerkleTree<USSRelayerRefundLeaf>> {
   for (let i = 0; i < relayerRefundLeaves.length; i++) {
     // The 2 provided parallel arrays must be of equal length.
     expect(relayerRefundLeaves[i].refundAddresses.length).to.equal(relayerRefundLeaves[i].refundAmounts.length);
@@ -46,27 +46,6 @@ export async function buildUSSRelayerRefundTree(relayerRefundLeaves: USSRelayerR
   const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
   const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
   return new MerkleTree<USSRelayerRefundLeaf>(relayerRefundLeaves, hashFn);
-}
-
-export function buildRelayerRefundLeaves(
-  destinationChainIds: number[],
-  amountsToReturn: BigNumber[],
-  l2Tokens: string[],
-  refundAddresses: string[][],
-  refundAmounts: BigNumber[][]
-): RelayerRefundLeaf[] {
-  return Array(destinationChainIds.length)
-    .fill(0)
-    .map((_, i) => {
-      return {
-        leafId: BigNumber.from(i),
-        chainId: BigNumber.from(destinationChainIds[i]),
-        amountToReturn: amountsToReturn[i],
-        l2TokenAddress: l2Tokens[i],
-        refundAddresses: refundAddresses[i],
-        refundAmounts: refundAmounts[i],
-      };
-    });
 }
 
 export function buildUSSRelayerRefundLeaves(
@@ -136,15 +115,17 @@ export function buildPoolRebalanceLeaves(
 }
 
 export async function constructSingleRelayerRefundTree(l2Token: Contract | String, destinationChainId: number) {
-  const leaves = buildRelayerRefundLeaves(
+  const leaves = buildUSSRelayerRefundLeaves(
     [destinationChainId], // Destination chain ID.
     [amountToReturn], // amountToReturn.
     [l2Token as string], // l2Token.
     [[]], // refundAddresses.
-    [[]] // refundAmounts.
+    [[]], // refundAmounts.
+    [createRandomBytes32()], // fillsRefundedRoot.
+    [createRandomBytes32()] // fillsRefundedHash.
   );
 
-  const tree = await buildRelayerRefundTree(leaves);
+  const tree = await buildUSSRelayerRefundTree(leaves);
 
   return { leaves, tree };
 }
