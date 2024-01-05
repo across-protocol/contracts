@@ -21,11 +21,7 @@ interface IFxMessageProcessor {
      * @param rootMessageSender Original L1 sender of data.
      * @param data ABI encoded function call to execute on this contract.
      */
-    function processMessageFromRoot(
-        uint256 stateId,
-        address rootMessageSender,
-        bytes calldata data
-    ) external;
+    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
 }
 
 /**
@@ -151,7 +147,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param data ABI encoded function call to execute on this contract.
      */
     function processMessageFromRoot(
-        uint256, /*stateId*/
+        uint256 /*stateId*/,
         address rootMessageSender,
         bytes calldata data
     ) public validateInternalCalls {
@@ -236,7 +232,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
-        if (_isCCTPEnabledForToken(l2TokenAddress)) {
+        if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
         } else {
             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(

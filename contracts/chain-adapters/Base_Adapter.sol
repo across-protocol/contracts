@@ -88,7 +88,7 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         }
         // Check if this token is USDC, which requires a custom bridge via CCTP.
-        else if (_isCCTPEnabledForToken(l1Token)) {
+        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = l1StandardBridge;

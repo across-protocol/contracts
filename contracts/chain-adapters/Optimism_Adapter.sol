@@ -108,7 +108,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
         }
         // If the l1Token is USDC, then we send it to the CCTP bridge
-        else if (_isCCTPEnabledForToken(l1Token)) {
+        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else {
             address bridgeToUse = address(l1StandardBridge);

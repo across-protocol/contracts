@@ -145,7 +145,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
             );
         }
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
-        else if (_isCCTPEnabledForToken(l2TokenAddress)) {
+        else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
         }
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.

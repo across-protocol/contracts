@@ -93,7 +93,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
-        if (_isCCTPEnabledForToken(l2TokenAddress)) {
+        if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.

@@ -26,11 +26,7 @@ interface IRootChainManager {
      * @param rootToken L1 Address of token to send.
      * @param depositData Data to pass to L2 including amount of tokens to send. Should be abi.encode(amount).
      */
-    function depositFor(
-        address user,
-        address rootToken,
-        bytes calldata depositData
-    ) external;
+    function depositFor(address user, address rootToken, bytes calldata depositData) external;
 }
 
 /**
@@ -55,11 +51,7 @@ interface DepositManager {
      * @param user Recipient of L2 equivalent tokens on Polygon.
      * @param amount Amount of `token` to send.
      */
-    function depositERC20ForUser(
-        address token,
-        address user,
-        uint256 amount
-    ) external;
+    function depositERC20ForUser(address token, address user, uint256 amount) external;
 }
 
 /**
@@ -134,19 +126,14 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             rootChainManager.depositEtherFor{ value: amount }(to);
         }
         // If the l1Token is USDC, then we send it to the CCTP bridge
-        else if (_isCCTPEnabledForToken(l1Token)) {
+        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else if (l1Token == l1Matic) {
             IERC20(l1Token).safeIncreaseAllowance(address(depositManager), amount);

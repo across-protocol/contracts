@@ -54,8 +54,9 @@ abstract contract CircleCCTPAdapter {
 
     /**
      * @notice Returns whether or not the CCTP bridge is enabled.
+     * @dev If the CCTPTokenMessenger is the zero address, CCTP bridging is disabled.
      */
-    function _isCCTPEnabled() private view returns (bool) {
+    function _isCCTPEnabled() internal view returns (bool) {
         return address(cctpTokenMessenger) != address(0);
     }
 
@@ -70,14 +71,5 @@ abstract contract CircleCCTPAdapter {
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger
         cctpTokenMessenger.depositForBurn(amount, recipientCircleDomainId, _addressToBytes32(to), address(usdcToken));
-    }
-
-    /**
-     * @notice Returns whether or not the CCTP bridge is enabled for the given token.
-     * @dev If the CCTP bridge is disabled, this will always return false
-     * @param token Address of the token to check.
-     */
-    function _isCCTPEnabledForToken(address token) internal view returns (bool) {
-        return _isCCTPEnabled() && token == address(usdcToken);
     }
 }
