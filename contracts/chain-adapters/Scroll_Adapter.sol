@@ -19,7 +19,12 @@ contract Scroll_Adapter is AdapterInterface {
     /**
      * @notice Used as the gas limit for relaying messages to L2.
      */
-    uint32 public immutable l2GasLimit;
+    uint32 public immutable l2MessageRelayGasLimit;
+
+    /**
+     * @notice Use as the gas limit for relaying tokens to L2.
+     */
+    uint32 public immutable l2TokenRelayGasLimit;
 
     /**
      * @notice The address of the official l1GatewayRouter contract for Scroll for bridging tokens from L1 -> L2
@@ -48,18 +53,21 @@ contract Scroll_Adapter is AdapterInterface {
      * @param _l1GatewayRouter Standard bridge contract.
      * @param _l1ScrollMessenger Scroll Messenger contract.
      * @param _l2GasPriceOracle Gas price oracle contract.
-     * @param _l2GasLimit Gas limit for relaying messages to L2.
+     * @param _l2MessageRelayGasLimit Gas limit for relaying messages to L2.
+     * @param _l2TokenRelayGasLimit Gas limit for relaying tokens to L2.
      */
     constructor(
         IL1GatewayRouter _l1GatewayRouter,
         IL1ScrollMessenger _l1ScrollMessenger,
         IL2GasPriceOracle _l2GasPriceOracle,
-        uint32 _l2GasLimit
+        uint32 _l2MessageRelayGasLimit,
+        uint32 _l2TokenRelayGasLimit
     ) {
         l1GatewayRouter = _l1GatewayRouter;
         l1ScrollMessenger = _l1ScrollMessenger;
         l2GasPriceOracle = _l2GasPriceOracle;
-        l2GasLimit = _l2GasLimit;
+        l2MessageRelayGasLimit = _l2MessageRelayGasLimit;
+        l2TokenRelayGasLimit = _l2TokenRelayGasLimit;
     }
 
     /**
@@ -75,7 +83,12 @@ contract Scroll_Adapter is AdapterInterface {
         // and it will not forward any ETH to the target contract on L2. However,
         // we need to set the payable value to msg.value to ensure that the Scroll
         // Bridge has enough gas to forward the message to L2.
-        l1ScrollMessenger.sendMessage{ value: _generateRelayerFee() }(target, 0, message, l2GasLimit);
+        l1ScrollMessenger.sendMessage{ value: _generateRelayerFeeForMessageRelay() }(
+            target,
+            0,
+            message,
+            l2MessageRelayGasLimit
+        );
         emit MessageRelayed(target, message);
     }
 
@@ -110,7 +123,12 @@ contract Scroll_Adapter is AdapterInterface {
         // to differentiate between WETH and a separate ERC20.
         // Note: This happens due to the L1GatewayRouter.getERC20Gateway() call
         // Note: dev docs: https://docs.scroll.io/en/developers/l1-and-l2-bridging/eth-and-erc20-token-bridge/
-        _l1GatewayRouter.depositERC20{ value: _generateRelayerFee() }(l1Token, to, amount, l2GasLimit);
+        _l1GatewayRouter.depositERC20{ value: _generateRelayerFeeForTokenRelay() }(
+            l1Token,
+            to,
+            amount,
+            l2TokenRelayGasLimit
+        );
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
@@ -122,8 +140,17 @@ contract Scroll_Adapter is AdapterInterface {
      * @notice Generates the relayer fee for a message to be sent to L2.
      * @dev Function will revert if the contract does not have enough ETH to pay the fee.
      */
-    function _generateRelayerFee() internal view returns (uint256 l2Fee) {
-        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(l2GasLimit);
+    function _generateRelayerFeeForMessageRelay() internal view returns (uint256 l2Fee) {
+        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(l2MessageRelayGasLimit);
+        require(address(this).balance >= l2Fee, "Insufficient ETH balance");
+    }
+
+    /**
+     * @notice Generates the relayer fee for tokens to be sent to L2.
+     * @dev Function will revert if the contract does not have enough ETH to pay the fee.
+     */
+    function _generateRelayerFeeForTokenRelay() internal view returns (uint256 l2Fee) {
+        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(l2TokenRelayGasLimit);
         require(address(this).balance >= l2Fee, "Insufficient ETH balance");
     }
 }

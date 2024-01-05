@@ -160,7 +160,13 @@ describe("Scroll Chain Adapter", function () {
 
     scrollAdapter = await (
       await getContractFactory("Scroll_Adapter", owner)
-    ).deploy(l1GatewayRouter.address, l1Messenger.address, l1GasPriceOracle.address, 250_000 /* 250k gas limit */);
+    ).deploy(
+      l1GatewayRouter.address,
+      l1Messenger.address,
+      l1GasPriceOracle.address,
+      2_000_000 /* 2M gas limit for arbitrary messages */,
+      250_000 /* 250k gas limit for tokens */
+    );
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
 
@@ -210,7 +216,7 @@ describe("Scroll Chain Adapter", function () {
       mockSpoke.address,
       toBN(0),
       functionCallData,
-      toBN(250_000) // This is baked into the adapter.
+      toBN(2_000_000) // This is baked into the adapter.
     );
   });
 
