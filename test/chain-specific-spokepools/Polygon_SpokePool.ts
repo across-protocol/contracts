@@ -5,7 +5,6 @@ import {
   zeroAddress,
   TokenRolesEnum,
   originChainId,
-  maxUint256,
 } from "../constants";
 import {
   ethers,
@@ -19,6 +18,7 @@ import {
   randomBigNumber,
   seedWallet,
   FakeContract,
+  createFakeFromABI,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -36,27 +36,12 @@ import {
   getFillRelayParams,
   getRelayHash,
 } from "../fixtures/SpokePool.Fixture";
-import { smock } from "@defi-wonderland/smock";
+import { cctpTokenMessengerAbi } from "../constants";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
 let polygonRegistry: FakeContract, erc20Predicate: FakeContract, l2CctpTokenMessenger: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
-
-const cctpTokenMessengerAbi = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "amount", type: "uint256" },
-      { internalType: "uint32", name: "destinationDomain", type: "uint32" },
-      { internalType: "bytes32", name: "mintRecipient", type: "bytes32" },
-      { internalType: "address", name: "burnToken", type: "address" },
-    ],
-    name: "depositForBurn",
-    outputs: [{ internalType: "uint64", name: "_nonce", type: "uint64" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
 
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
@@ -69,9 +54,7 @@ describe("Polygon Spoke Pool", function () {
 
     polygonRegistry = await createFake("PolygonRegistryMock");
     erc20Predicate = await createFake("PolygonERC20PredicateMock");
-    l2CctpTokenMessenger = await smock.fake(cctpTokenMessengerAbi, {
-      address: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
-    });
+    l2CctpTokenMessenger = await createFakeFromABI(cctpTokenMessengerAbi);
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 
@@ -84,16 +67,12 @@ describe("Polygon Spoke Pool", function () {
 
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
-      [
-        0,
-        polygonTokenBridger.address,
-        owner.address,
-        hubPool.address,
-        fxChild.address,
-        l2Usdc,
-        l2CctpTokenMessenger.address,
-      ],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      [0, polygonTokenBridger.address, owner.address, hubPool.address, fxChild.address],
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -104,7 +83,11 @@ describe("Polygon Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Polygon_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     // upgradeTo fails unless called by cross domain admin

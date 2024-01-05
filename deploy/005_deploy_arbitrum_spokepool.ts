@@ -14,16 +14,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
     hubPool.address,
     hubPool.address,
-    // Native USDC address on L2
-    L2_ADDRESS_MAP[spokeChainId].l2Usdc,
-    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
 
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
   //    * A fillDeadlineBuffer of 9 hours
-  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 32400];
+  //    * Native USDC address on L2
+  //    * CCTP token messenger address on L2
+  const constructorArgs = [
+    L2_ADDRESS_MAP[spokeChainId].l2Weth,
+    3600,
+    32400,
+    L2_ADDRESS_MAP[spokeChainId].l2Usdc,
+    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+  ];
   await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;

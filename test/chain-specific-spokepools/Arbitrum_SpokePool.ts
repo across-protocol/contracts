@@ -10,32 +10,18 @@ import {
   getContractFactory,
   seedContract,
   avmL1ToL2Alias,
+  createFakeFromABI,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
-import { smock } from "@defi-wonderland/smock";
+import { cctpTokenMessengerAbi } from "../constants";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string, crossDomainAliasAddress;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
 let l2GatewayRouter: FakeContract, l2CctpTokenMessenger: FakeContract;
-
-const cctpTokenMessengerAbi = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "amount", type: "uint256" },
-      { internalType: "uint32", name: "destinationDomain", type: "uint32" },
-      { internalType: "bytes32", name: "mintRecipient", type: "bytes32" },
-      { internalType: "address", name: "burnToken", type: "address" },
-    ],
-    name: "depositForBurn",
-    outputs: [{ internalType: "uint64", name: "_nonce", type: "uint64" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
 
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
@@ -49,14 +35,16 @@ describe("Arbitrum Spoke Pool", function () {
     await owner.sendTransaction({ to: crossDomainAliasAddress, value: toWei("1") });
 
     l2GatewayRouter = await createFake("L2GatewayRouter");
-    l2CctpTokenMessenger = await smock.fake(cctpTokenMessengerAbi, {
-      address: "0x12dcfd3fe2e9eac2859fd1ed86d2ab8c5a2f9352",
-    });
+    l2CctpTokenMessenger = await createFakeFromABI(cctpTokenMessengerAbi);
 
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      [0, l2GatewayRouter.address, owner.address, hubPool.address, l2Usdc, l2CctpTokenMessenger.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60] }
+      [0, l2GatewayRouter.address, owner.address, hubPool.address],
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -67,7 +55,11 @@ describe("Arbitrum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Arbitrum_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60] }
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     // upgradeTo fails unless called by cross domain admin

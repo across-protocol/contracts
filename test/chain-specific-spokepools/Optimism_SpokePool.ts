@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, cctpTokenMessengerAbi } from "../constants";
 import {
   ethers,
   expect,
@@ -9,6 +9,7 @@ import {
   toWei,
   getContractFactory,
   seedContract,
+  createFakeFromABI,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 
@@ -16,20 +17,21 @@ import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 
 let hubPool: Contract, optimismSpokePool: Contract, dai: Contract, weth: Contract;
-let l2Dai: string;
+let l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract;
+let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2CctpTokenMessenger: FakeContract;
 
 const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
 
 describe("Optimism Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, dai, l2Dai, hubPool } = await hubPoolFixture());
+    ({ weth, dai, l2Dai, hubPool, l2Usdc } = await hubPoolFixture());
 
     // Create the fake at the optimism cross domain messenger and l2StandardBridge pre-deployment addresses.
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
     l2StandardBridge = await createFake("MockBedrockL2StandardBridge", "0x4200000000000000000000000000000000000010");
+    l2CctpTokenMessenger = await createFakeFromABI(cctpTokenMessengerAbi);
 
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
@@ -50,7 +52,11 @@ describe("Optimism Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Optimism_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     // upgradeTo fails unless called by cross domain admin via messenger contract
