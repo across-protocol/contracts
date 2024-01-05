@@ -82,6 +82,24 @@ interface IUniswapV3Pool {
     function token1() external view returns (address);
 }
 
+// This is the interface for the Uniswap UniversalRouter that we can use to propose a more complex set of
+// transactions to swap between tokens.
+// - Arbitrum: https://arbiscan.io/address/0xec8b0f7ffe3ae75d7ffab09429e3675bb63503e4
+// - Optimism: https://optimistic.etherscan.io/address/0xeC8B0F7Ffe3ae75d7FfAb09429e3675bb63503e4
+// - Polygon: https://polygonscan.com/address/0x643770e279d5d0733f21d6dc03a8efbabf3255b4
+// - Base: https://basescan.org/address/0xeC8B0F7Ffe3ae75d7FfAb09429e3675bb63503e4
+interface IUniversalRouter {
+    /// @notice Executes encoded commands along with provided inputs. Reverts if deadline has expired.
+    /// @param commands A set of concatenated commands, each 1 byte in length
+    /// @param inputs An array of byte strings containing abi encoded inputs for each command
+    /// @param deadline The deadline by which the transaction must be executed
+    function execute(
+        bytes calldata commands,
+        bytes[] calldata inputs,
+        uint256 deadline
+    ) external payable;
+}
+
 /**
  * @title SwapAndBridge
  * @notice Allows caller to swap a specific on a chain and bridge them via Across atomically.
@@ -97,6 +115,9 @@ contract SwapAndBridge is Lockable, MultiCaller {
 
     // UniswapV3Pool we'll use to swap swapToken for acrossInputToken.
     IUniswapV3Pool public immutable uniswapV3Pool;
+
+    // Uniswap UniversalRouter we can use to express a more complex swapping route.
+    IUniversalRouter public immutable universalRouter;
 
     // The direction of the UniswapV3 swap, true for token0 to token1, false for token1 to token0
     bool public immutable uniswapSwapZeroForOne;
@@ -143,6 +164,7 @@ contract SwapAndBridge is Lockable, MultiCaller {
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _oneInchRouter Address of the 1InchAggregationRouterV5 contract that we'll use to swap tokens.
      * @param _uniswapV3Pool Address of the UniswapV3Pool contract that we'll use to swap tokens.
+     * @param _universalRouter Address of the Uniswap UniversalRouter contract that we'll use to swap tokens.
      * @param _swapToken Address of the token that will be swapped for acrossInputToken. Cannot be 0x0
      * @param _acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      */
@@ -150,6 +172,7 @@ contract SwapAndBridge is Lockable, MultiCaller {
         USSSpokePoolInterface _spokePool,
         I1InchAggregationRouterV5 _oneInchRouter,
         IUniswapV3Pool _uniswapV3Pool,
+        IUniversalRouter _universalRouter,
         IERC20 _swapToken,
         IERC20 _acrossInputToken
     ) {
@@ -159,6 +182,9 @@ contract SwapAndBridge is Lockable, MultiCaller {
 
         // Validate 1InchAggregationRouterV5:
         oneInchRouter = _oneInchRouter;
+
+        // Validate UniversalRouter:
+        universalRouter = _universalRouter;
 
         // Validate UniswapV3Pool:
         uniswapV3Pool = _uniswapV3Pool;
@@ -261,6 +287,46 @@ contract SwapAndBridge is Lockable, MultiCaller {
             // Set to 0 to make inactive as we'll check the returned output in the next step.
             new bytes(0) // We don't want to execute any extra data on swaps.
         );
+
+        _checkSwapOutputAndDeposit(
+            swapTokenAmount,
+            srcBalanceBefore,
+            dstBalanceBefore,
+            minExpectedInputTokenAmount,
+            depositData
+        );
+    }
+
+    /**
+     * @notice Swaps tokens on this chain via a UniversalRouter and bridges them via Across atomically. Caller can
+     * specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
+     * the assumption is that this function will handle only ERC20 tokens.
+     * @param commands A set of concatenated commands to send to the UniversalRouter, each 1 byte in length.
+     * @param inputs An array of byte strings containing abi encoded inputs for each command.
+     * @param deadline The deadline by which the transaction must be executed.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     */
+    function swapUniversalRouter(
+        bytes calldata commands,
+        bytes[] calldata inputs,
+        uint256 deadline,
+        uint256 swapTokenAmount,
+        uint256 minExpectedInputTokenAmount,
+        DepositData calldata depositData
+    ) external nonReentrant {
+        // Pull tokens from caller into this contract.
+        swapToken.transferFrom(msg.sender, address(this), swapTokenAmount);
+
+        // Swap and run safety checks.
+        uint256 srcBalanceBefore = swapToken.balanceOf(address(this));
+        uint256 dstBalanceBefore = acrossInputToken.balanceOf(address(this));
+
+        acrossInputToken.safeIncreaseAllowance(address(uniswapV3Pool), swapTokenAmount);
+        universalRouter.execute(commands, inputs, deadline);
 
         _checkSwapOutputAndDeposit(
             swapTokenAmount,
