@@ -60,7 +60,7 @@ abstract contract CircleCCTPAdapter {
      * @notice Returns whether or not the CCTP bridge is enabled.
      */
     function _isCCTPEnabled() private view returns (bool) {
-        return address(cctpTokenMessenger) != address(0) && address(usdcToken) != address(0);
+        return address(cctpTokenMessenger) != address(0);
     }
 
     /**
