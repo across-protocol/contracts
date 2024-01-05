@@ -83,7 +83,7 @@ contract Scroll_Adapter is AdapterInterface {
         // and it will not forward any ETH to the target contract on L2. However,
         // we need to set the payable value to msg.value to ensure that the Scroll
         // Bridge has enough gas to forward the message to L2.
-        l1ScrollMessenger.sendMessage{ value: _generateRelayerFeeForMessageRelay() }(
+        l1ScrollMessenger.sendMessage{ value: _generateRelayerFee(l2MessageRelayGasLimit) }(
             target,
             0,
             message,
@@ -122,7 +122,7 @@ contract Scroll_Adapter is AdapterInterface {
         // to differentiate between WETH and a separate ERC20.
         // Note: This happens due to the L1GatewayRouter.getERC20Gateway() call
         // Note: dev docs: https://docs.scroll.io/en/developers/l1-and-l2-bridging/eth-and-erc20-token-bridge/
-        _l1GatewayRouter.depositERC20{ value: _generateRelayerFeeForTokenRelay() }(
+        _l1GatewayRouter.depositERC20{ value: _generateRelayerFee(l2TokenRelayGasLimit) }(
             l1Token,
             to,
             amount,
@@ -138,18 +138,11 @@ contract Scroll_Adapter is AdapterInterface {
     /**
      * @notice Generates the relayer fee for a message to be sent to L2.
      * @dev Function will revert if the contract does not have enough ETH to pay the fee.
+     * @param _l2GasLimit Gas limit for relaying message to L2.
+     * @return l2Fee The relayer fee for the message.
      */
-    function _generateRelayerFeeForMessageRelay() internal view returns (uint256 l2Fee) {
-        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(l2MessageRelayGasLimit);
-        require(address(this).balance >= l2Fee, "Insufficient ETH balance");
-    }
-
-    /**
-     * @notice Generates the relayer fee for tokens to be sent to L2.
-     * @dev Function will revert if the contract does not have enough ETH to pay the fee.
-     */
-    function _generateRelayerFeeForTokenRelay() internal view returns (uint256 l2Fee) {
-        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(l2TokenRelayGasLimit);
+    function _generateRelayerFee(uint32 _l2GasLimit) internal view returns (uint256 l2Fee) {
+        l2Fee = l2GasPriceOracle.estimateCrossDomainMessageFee(_l2GasLimit);
         require(address(this).balance >= l2Fee, "Insufficient ETH balance");
     }
 }
