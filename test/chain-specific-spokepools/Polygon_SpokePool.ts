@@ -36,7 +36,7 @@ import {
   getFillRelayParams,
   getRelayHash,
 } from "../fixtures/SpokePool.Fixture";
-import { cctpTokenMessengerAbi } from "../constants";
+import { CCTPTokenMessengerInterface } from "../../utils/abis";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
 let polygonRegistry: FakeContract, erc20Predicate: FakeContract, l2CctpTokenMessenger: FakeContract;
@@ -54,7 +54,7 @@ describe("Polygon Spoke Pool", function () {
 
     polygonRegistry = await createFake("PolygonRegistryMock");
     erc20Predicate = await createFake("PolygonERC20PredicateMock");
-    l2CctpTokenMessenger = await createFakeFromABI(cctpTokenMessengerAbi);
+    l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 

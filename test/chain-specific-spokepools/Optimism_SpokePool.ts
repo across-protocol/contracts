@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool, cctpTokenMessengerAbi } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import {
   ethers,
   expect,
@@ -11,6 +11,7 @@ import {
   seedContract,
   createFakeFromABI,
 } from "../../utils/utils";
+import { CCTPTokenMessengerInterface } from "../../utils/abis";
 import { hre } from "../../utils/utils.hre";
 
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -31,7 +32,7 @@ describe("Optimism Spoke Pool", function () {
     // Create the fake at the optimism cross domain messenger and l2StandardBridge pre-deployment addresses.
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
     l2StandardBridge = await createFake("MockBedrockL2StandardBridge", "0x4200000000000000000000000000000000000010");
-    l2CctpTokenMessenger = await createFakeFromABI(cctpTokenMessengerAbi);
+    l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
 
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
