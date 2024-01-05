@@ -1,6 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { L1_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { ZERO_ADDRESS } from "@uma/common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -22,7 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].matic,
       L1_ADDRESS_MAP[chainId].weth,
       L1_ADDRESS_MAP[chainId].l1UsdcAddress,
-      L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+      // L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+      // For now, we are not using the CCTP bridge and can disable by setting
+      // the cctpTokenMessenger to the zero address.
+      ZERO_ADDRESS,
     ],
   });
 };

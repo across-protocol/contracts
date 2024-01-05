@@ -2,6 +2,7 @@ import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { L2_ADDRESS_MAP } from "./consts";
+import { ZERO_ADDRESS } from "@uma/common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -25,7 +26,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     3600,
     32400,
     L2_ADDRESS_MAP[spokeChainId].l2Usdc,
-    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    // For now, we are not using the CCTP bridge and can disable by setting
+    // the cctpTokenMessenger to the zero address.
+    ZERO_ADDRESS,
   ];
   await deployNewProxy("Base_SpokePool", constructorArgs, initArgs);
 };
