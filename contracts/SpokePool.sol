@@ -90,10 +90,6 @@ abstract contract SpokePool is
     // relay, the fees, and the agents are all parameters included in the hash key.
     mapping(bytes32 => uint256) private DEPRECATED_relayFills;
 
-    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
-    // to eliminate any chance of collision between pre and post USS relay hashes.
-    mapping(bytes32 => uint256) public fillStatuses;
-
     // Note: We will likely un-deprecate the fill and deposit counters to implement a better
     // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
     // in deposit/fill functions. This can be used to implement a UBA-esque fee mechanism.
@@ -112,6 +108,10 @@ abstract contract SpokePool is
     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
     // requests are known and accounted for.
     mapping(bytes32 => uint256) private DEPRECATED_refundsRequested;
+
+    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
+    // to eliminate any chance of collision between pre and post USS relay hashes.
+    mapping(bytes32 => uint256) public fillStatuses;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
