@@ -83,4 +83,15 @@ contract MockHubPool {
         );
         require(success, "delegatecall failed");
     }
+
+    /// @notice Relays an arbitrary message to the L2 chain via the adapter contract.
+    /// @dev This function delegates the call to the adapter contract to execute the message relay.
+    /// @param target The address of the target contract on L2.
+    /// @param l2CallData The calldata to send to the target contract on L2. (must be abi encoded)
+    function arbitraryMessage(address target, bytes memory l2CallData) external {
+        (bool success, ) = adapter.delegatecall(
+            abi.encodeWithSignature("relayMessage(address,bytes)", target, l2CallData)
+        );
+        require(success, "delegatecall failed");
+    }
 }
