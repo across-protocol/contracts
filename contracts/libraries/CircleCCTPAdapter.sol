@@ -37,7 +37,11 @@ abstract contract CircleCCTPAdapter {
      * @param _recipientCircleDomainId The domain ID that CCTP will transfer funds to.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(IERC20 _usdcToken, ITokenMessenger _cctpTokenMessenger, uint32 _recipientCircleDomainId) {
+    constructor(
+        IERC20 _usdcToken,
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _recipientCircleDomainId
+    ) {
         usdcToken = _usdcToken;
         cctpTokenMessenger = _cctpTokenMessenger;
         recipientCircleDomainId = _recipientCircleDomainId;

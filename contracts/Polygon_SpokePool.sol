@@ -21,7 +21,11 @@ interface IFxMessageProcessor {
      * @param rootMessageSender Original L1 sender of data.
      * @param data ABI encoded function call to execute on this contract.
      */
-    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
+    function processMessageFromRoot(
+        uint256 stateId,
+        address rootMessageSender,
+        bytes calldata data
+    ) external;
 }
 
 /**
@@ -147,7 +151,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param data ABI encoded function call to execute on this contract.
      */
     function processMessageFromRoot(
-        uint256 /*stateId*/,
+        uint256, /*stateId*/
         address rootMessageSender,
         bytes calldata data
     ) public validateInternalCalls {
