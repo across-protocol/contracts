@@ -5,7 +5,7 @@
 pragma solidity 0.8.19;
 
 import "./SpokePool.sol";
-import "./libraries/CircleCCTPLib.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
@@ -19,30 +19,13 @@ interface StandardBridgeLike {
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  */
-contract Arbitrum_SpokePool is SpokePool {
+contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
     // Admin controlled mapping of arbitrum tokens to L1 counterpart. L1 counterpart addresses
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
-
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge to L1.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 public constant l1CircleDomainId = 0;
-    /**
-     * @notice The official USDC contract address on this chain.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
-     */
-    IERC20 public l2Usdc;
-    /**
-     * @notice The official Circle CCTP token bridge contract endpoint.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
-     */
-    ITokenMessenger public cctpTokenMessenger;
 
     event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
@@ -52,8 +35,13 @@ contract Arbitrum_SpokePool is SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the AVM SpokePool.
@@ -62,21 +50,15 @@ contract Arbitrum_SpokePool is SpokePool {
      * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _l2Usdc USDC address on this L2 chain.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
-        address _hubPool,
-        IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        address _hubPool
     ) public initializer {
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         _setL2GatewayRouter(_l2GatewayRouter);
-        l2Usdc = _l2Usdc;
-        cctpTokenMessenger = _cctpTokenMessenger;
     }
 
     modifier onlyFromCrossDomainAdmin() {
@@ -111,8 +93,8 @@ contract Arbitrum_SpokePool is SpokePool {
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
-        if (l2TokenAddress == address(l2Usdc)) {
-            CircleCCTPLib._transferUsdc(l2Usdc, cctpTokenMessenger, l1CircleDomainId, hubPool, amountToReturn);
+        if (_isCCTPEnabledForToken(l2TokenAddress)) {
+            _transferUsdc(hubPool, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];

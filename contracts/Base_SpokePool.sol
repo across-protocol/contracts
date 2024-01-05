@@ -13,8 +13,18 @@ contract Base_SpokePool is Ovm_SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) Ovm_SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        Ovm_SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            _l2Usdc,
+            _cctpTokenMessenger
+        )
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the OVM Base SpokePool.
@@ -22,24 +32,12 @@ contract Base_SpokePool is Ovm_SpokePool {
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
-     * @param _l2Usdc USDC address on this L2 chain.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     function initialize(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
-        IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        address _hubPool
     ) public initializer {
-        __OvmSpokePool_init(
-            _initialDepositId,
-            _crossDomainAdmin,
-            _hubPool,
-            Lib_PredeployAddresses.OVM_ETH,
-            true,
-            _l2Usdc,
-            _cctpTokenMessenger
-        );
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, Lib_PredeployAddresses.OVM_ETH);
     }
 }

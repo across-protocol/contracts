@@ -5,7 +5,7 @@ import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
-import "./libraries/CircleCCTPLib.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 /**
  * @notice IFxMessageProcessor represents interface to process messages.
@@ -31,25 +31,8 @@ interface IFxMessageProcessor {
 /**
  * @notice Polygon specific SpokePool.
  */
-contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
+contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
-
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge to L1.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 public constant l1CircleDomainId = 0;
-    /**
-     * @notice The official USDC contract address on this chain.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/usdc-on-main-networks
-     */
-    IERC20 public l2Usdc;
-    /**
-     * @notice The official Circle CCTP token bridge contract endpoint.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
-     */
-    ITokenMessenger public cctpTokenMessenger;
 
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
@@ -103,8 +86,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Polygon SpokePool.
@@ -114,25 +102,19 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      * @param _fxChild FxChild contract, changeable by Admin.
-     * @param _l2Usdc USDC address on this L2 chain.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     function initialize(
         uint32 _initialDepositId,
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
         address _hubPool,
-        address _fxChild,
-        IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        address _fxChild
     ) public initializer {
         callValidated = false;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         polygonTokenBridger = _polygonTokenBridger;
         //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
-        l2Usdc = _l2Usdc;
-        cctpTokenMessenger = _cctpTokenMessenger;
     }
 
     /********************************************************
@@ -254,8 +236,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
-        if (l2TokenAddress == address(l2Usdc)) {
-            CircleCCTPLib._transferUsdc(l2Usdc, cctpTokenMessenger, l1CircleDomainId, hubPool, amountToReturn);
+        if (_isCCTPEnabledForToken(l2TokenAddress)) {
+            _transferUsdc(hubPool, amountToReturn);
         } else {
             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
                 address(polygonTokenBridger),
