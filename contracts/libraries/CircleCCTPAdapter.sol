@@ -37,11 +37,7 @@ abstract contract CircleCCTPAdapter {
      * @param _recipientCircleDomainId The domain ID that CCTP will transfer funds to.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(
-        IERC20 _usdcToken,
-        ITokenMessenger _cctpTokenMessenger,
-        uint32 _recipientCircleDomainId
-    ) {
+    constructor(IERC20 _usdcToken, ITokenMessenger _cctpTokenMessenger, uint32 _recipientCircleDomainId) {
         usdcToken = _usdcToken;
         cctpTokenMessenger = _cctpTokenMessenger;
         recipientCircleDomainId = _recipientCircleDomainId;
@@ -65,12 +61,11 @@ abstract contract CircleCCTPAdapter {
 
     /**
      * @notice Transfers USDC from the current domain to the given address on the new domain.
+     * @dev This function will revert if the CCTP bridge is disabled. I.e. if the zero address is passed to the constructor for the cctpTokenMessenger.
      * @param to Address to receive USDC on the new domain.
      * @param amount Amount of USDC to transfer.
      */
     function _transferUsdc(address to, uint256 amount) internal {
-        // Require that the CCTP bridge is enabled
-        require(_isCCTPEnabled(), "CCTP bridge is disabled");
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger
