@@ -13,8 +13,12 @@ interface IAggregationExecutor {
     function execute(address msgSender) external payable; // 0x4b64e492
 }
 
-// Grabbed from source code of Optimism V5 router: https://optimistic.etherscan.io/address/0x1111111254eeb25477b68fb85ed929f73a960582#code
+// Grabbed from source code of Optimism V5 router:
 // - readable source: https://vscode.blockscan.com/optimism/0x1111111254eeb25477b68fb85ed929f73a960582
+// This 1Inch router used to swap USDC on the following networks:
+// - Polygon: https://polygonscan.com/address/0x1111111254eeb25477b68fb85ed929f73a960582#code
+// - Optimism: https://optimistic.etherscan.io/address/0x1111111254eeb25477b68fb85ed929f73a960582#code
+// - Arbitrum: https://arbiscan.io/address/0x1111111254eeb25477b68fb85ed929f73a960582
 interface I1InchAggregationRouterV5 {
     struct SwapDescription {
         IERC20 srcToken;
@@ -47,13 +51,20 @@ interface I1InchAggregationRouterV5 {
 
 /**
  * @title SwapAndBridge
- * @notice Allows caller to swap tokens on a chain and bridge them via Across atomically.
+ * @notice Allows caller to swap a specific on a chain and bridge them via Across atomically.
  */
 contract SwapAndBridge is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
     USSSpokePoolInterface public immutable spokePool;
     I1InchAggregationRouterV5 public immutable oneInchRouter;
+
+    // This contract simply enables the caller to swap a token on this chain for another specified one
+    // and bridge it as the input token via Across. This simplification is made to make the code
+    // easier to reason about and solve a specific use case for Across.
+    IERC20 public immutable swapToken;
+    // The token that will be bridged via Across as the inputToken.
+    IERC20 public immutable acrossInputToken;
 
     event SwapAndBridge1Inch(
         I1InchAggregationRouterV5.SwapDescription swapDescription,
@@ -64,7 +75,6 @@ contract SwapAndBridge is Lockable, MultiCaller {
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
     // until after the swap.
     struct DepositData {
-        address inputToken;
         address outputToken;
         uint256 outputAmount;
         address depositor;
@@ -77,18 +87,25 @@ contract SwapAndBridge is Lockable, MultiCaller {
         bytes message;
     }
 
-    constructor() {
-        // Addresses are hard-coded below for Optimism-network for demonstration purposes. In production, these
-        // would be passed in as constructor args. They are left here to help debugging and testing.
-        spokePool = USSSpokePoolInterface(0x6f26Bf09B1C792e3228e5467807a900A503c0281);
-        oneInchRouter = I1InchAggregationRouterV5(0x11111112542D85B3EF69AE05771c2dCCff4fAa26);
+    constructor(
+        USSSpokePoolInterface _spokePool,
+        I1InchAggregationRouterV5 _oneInchRouter,
+        IERC20 _swapToken,
+        IERC20 _acrossInputToken
+    ) {
+        spokePool = _spokePool;
+        oneInchRouter = _oneInchRouter;
+        // 1InchRouter lets caller swap native ETH into an ERC20 and has special logic to handle it
+        // so we explicitly remove this case to reduce complexity.
+        require(address(_swapToken) != address(0), "eth unsupported");
+        swapToken = _swapToken;
+        acrossInputToken = _acrossInputToken;
     }
 
     /**
      * @notice Swaps tokens on this chain via 1Inch and bridges them via Across atomically. Caller can fully specify
-     * their slippage tolerance for the swap and also the full Across deposit params.
+     * their slippage tolerance for the swap and Across deposit params.
      * @param aggregationExecutor Address of 1inch contract that executes calls described in `oneInchData`.
-     * @param swapToken Token to pull from msg.sender into contract and swap on 1inch into depositData.inputToken.
      * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
      * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
      * deposit with.
@@ -96,49 +113,42 @@ contract SwapAndBridge is Lockable, MultiCaller {
      */
     function swap1InchAndBridge(
         IAggregationExecutor aggregationExecutor,
-        address swapToken,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData
     ) external nonReentrant {
-        // @dev: Don't let caller use WETH, or better, hardcode the swap and acrossInput tokens to be USDC.e/USDC
-        // because 1Inch has special rules to handle WETH<-->ETH.
-
         // Pull tokens from caller into this contract.
-        IERC20(swapToken).transferFrom(msg.sender, address(this), swapTokenAmount);
+        swapToken.transferFrom(msg.sender, address(this), swapTokenAmount);
 
         // Craft 1Inch swap arguments to swap `swapToken` for `acrossInputToken` using this contract as the recipient
         // of the swap.
         I1InchAggregationRouterV5.SwapDescription memory swapDescription = I1InchAggregationRouterV5.SwapDescription({
-            srcToken: IERC20(swapToken),
-            dstToken: IERC20(depositData.inputToken),
+            srcToken: swapToken,
+            dstToken: acrossInputToken,
             srcReceiver: payable(address(this)),
             dstReceiver: payable(address(this)),
             amount: swapTokenAmount,
             minReturnAmount: minExpectedInputTokenAmount,
-            flags: 0 // TODO: Change this if we want to support ETH swaps and/or partial fills (i.e.
-            // swapTokenAmount != spentAmount). For now, set to 0 for simplicity.
+            flags: 0 // By setting flags=0x0, we're telling 1InchRouter that we don't want
+            // partial fills where our swapTokenAmount is not fully used. The other flag we could set would allow
+            // the caller to pass in extra msg.value to pay for ETH swaps but we don't support ETH swaps.
         });
 
         // Swap and run safety checks.
-        uint256 srcBalanceBefore = IERC20(swapToken).balanceOf(address(this));
-        uint256 dstBalanceBefore = IERC20(depositData.inputToken).balanceOf(address(this));
+        uint256 srcBalanceBefore = swapToken.balanceOf(address(this));
+        uint256 dstBalanceBefore = acrossInputToken.balanceOf(address(this));
 
-        // @dev: Example swap I used for comparison:
-        // https://optimistic.etherscan.io/tx/0x8a4e77ee1a62e94b42b21e849bcdabd60d43ac49191cd2878f6b47f395f26abc
-        IERC20(depositData.inputToken).safeIncreaseAllowance(address(oneInchRouter), swapTokenAmount);
+        acrossInputToken.safeIncreaseAllowance(address(oneInchRouter), swapTokenAmount);
         (uint256 returnAmount, ) = oneInchRouter.swap(
             aggregationExecutor,
             swapDescription,
-            new bytes(0), // TODO: No IERC20Permit.permit needed since we're sending an approval?
-            new bytes(0) // TODO: We don't want to execute any data on swaps but I'm not sure how this is used.
+            new bytes(0), // No IERC20Permit.permit needed since we're going to approve 1InchRouter to pull tokens
+            // from this contract.
+            new bytes(0) // We don't want to execute any extra data on swaps.
         );
 
         // Sanity check that we received exactly as much as the oneInchRouter said we did.
-        require(
-            returnAmount == IERC20(depositData.inputToken).balanceOf(address(this)) - dstBalanceBefore,
-            "return amount"
-        );
+        require(returnAmount == acrossInputToken.balanceOf(address(this)) - dstBalanceBefore, "return amount");
         // Sanity check that received amount from swap is enough to submit Across deposit with.
         require(returnAmount >= minExpectedInputTokenAmount, "min expected input amount");
         // Sanity check that we don't have any leftover swap tokens that would be locked in this contract (i.e. check
@@ -149,11 +159,11 @@ contract SwapAndBridge is Lockable, MultiCaller {
         );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        IERC20(depositData.inputToken).safeIncreaseAllowance(address(spokePool), returnAmount);
+        acrossInputToken.safeIncreaseAllowance(address(spokePool), returnAmount);
         spokePool.depositUSS(
             depositData.depositor,
             depositData.recipient,
-            depositData.inputToken, // input token
+            address(acrossInputToken), // input token
             depositData.outputToken, // output token
             returnAmount, // input amount. Note: this is the amount we received from the swap and checked its value
             // above.
