@@ -20,7 +20,7 @@ import {
 } from "./fixtures/SpokePool.Fixture";
 import * as consts from "./constants";
 
-let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract, erc1271: Contract;
+let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
 
 // _fillRelay takes a USSRelayExecutionParams object as a param. This function returns the correct object
@@ -42,7 +42,7 @@ async function getRelayExecutionParams(
 describe("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
-    ({ weth, erc20, spokePool, destErc20, erc1271 } = await spokePoolFixture());
+    ({ weth, erc20, spokePool, destErc20 } = await spokePoolFixture());
 
     // mint some fresh tokens and deposit ETH for weth for depositor and relayer.
     await seedWallet(depositor, [erc20], weth, consts.amountToSeedWallets);

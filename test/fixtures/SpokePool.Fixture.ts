@@ -1,8 +1,16 @@
 import { hre } from "../../utils/utils.hre";
-import { getContractFactory, SignerWithAddress, Contract, ethers, BigNumber, defaultAbiCoder } from "../../utils/utils";
+import {
+  getContractFactory,
+  randomAddress,
+  SignerWithAddress,
+  Contract,
+  ethers,
+  BigNumber,
+  defaultAbiCoder,
+} from "../../utils/utils";
 
 import * as consts from "../constants";
-import { USSRelayerRefundLeaf } from "../MerkleLib.utils";
+import { RelayerRefundLeaf, USSRelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
@@ -94,13 +102,13 @@ export interface USSRelayExecutionParams {
 }
 
 export const enum FillType {
-  FastFill,
+  FastFill = 0,
   ReplacedSlowFill,
   SlowFill,
 }
 
 export const enum FillStatus {
-  Unfilled,
+  Unfilled = 0,
   RequestedSlowFill,
   Filled,
 }

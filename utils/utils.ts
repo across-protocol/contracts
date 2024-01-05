@@ -147,12 +147,6 @@ export async function seedContract(
   if (weth) await weth.connect(walletToFund).transfer(contract.address, amountToSeedWith);
 }
 
-export async function deployErc20(signer: SignerWithAddress, tokenName: string, tokenSymbol: string) {
-  const erc20 = await (await getContractFactory("ExpandedERC20", signer)).deploy(tokenName, tokenSymbol, 18);
-  await erc20.addMember(TokenRolesEnum.MINTER, signer.address);
-  return erc20;
-}
-
 export function randomBigNumber(bytes = 32, signed = false) {
   const sign = signed && Math.random() < 0.5 ? "-" : "";
   const byteString = "0x" + Buffer.from(ethers.utils.randomBytes(signed ? bytes - 1 : bytes)).toString("hex");

@@ -235,7 +235,9 @@ describe("Polygon Spoke Pool", function () {
     const bridger = await polygonSpokePool.polygonTokenBridger();
 
     // Checks that there's a burn event from the bridger.
-    await expect(polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
+    await expect(
+      polygonSpokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    )
       .to.emit(dai, "Transfer")
       .withArgs(bridger, zeroAddress, amountToReturn);
   });
