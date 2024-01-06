@@ -38,7 +38,7 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
      * @dev This identifier is assigned by Circle and is not related to a chain ID.
      * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
      */
-    uint32 public constant circleDomainId = 6;
+    uint32 private constant BASE_CIRCLE_CCTP_DOMAIN_ID = 6;
 
     /**
      * @notice Constructs new Adapter.
@@ -54,7 +54,10 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger
-    ) CrossDomainEnabled(_crossDomainMessenger) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, circleDomainId) {
+    )
+        CrossDomainEnabled(_crossDomainMessenger)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, BASE_CIRCLE_CCTP_DOMAIN_ID)
+    {
         l1Weth = _l1Weth;
         l1StandardBridge = _l1StandardBridge;
     }

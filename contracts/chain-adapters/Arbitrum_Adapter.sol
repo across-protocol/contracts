@@ -168,7 +168,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @dev This identifier is assigned by Circle and is not related to a chain ID.
      * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
      */
-    uint32 public constant circleDomainId = 3;
+    uint32 private constant ARBITRUM_CIRCLE_CCTP_DOMAIN_ID = 3;
 
     /**
      * @notice Constructs new Adapter.
@@ -184,7 +184,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, circleDomainId) {
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, ARBITRUM_CIRCLE_CCTP_DOMAIN_ID) {
         l1Inbox = _l1ArbitrumInbox;
         l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
         l2RefundL2Address = _l2RefundL2Address;

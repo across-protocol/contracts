@@ -85,7 +85,7 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @dev This identifier is assigned by Circle and is not related to a chain ID.
      * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
      */
-    uint32 public constant circleDomainId = 7;
+    uint32 private constant POLYGON_CIRCLE_CCTP_DOMAIN_ID = 7;
 
     /**
      * @notice Constructs new Adapter.
@@ -107,7 +107,7 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, circleDomainId) {
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, POLYGON_CIRCLE_CCTP_DOMAIN_ID) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
         depositManager = _depositManager;
