@@ -127,6 +127,8 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable fillDeadlineBuffer;
 
+    uint256 public constant MAX_TRANSFER_SIZE = 1e36;
+
     bytes32 public constant UPDATE_USS_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
@@ -315,6 +317,163 @@ abstract contract SpokePool is
         //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
         emit EmergencyDeleteRootBundle(rootBundleId);
+    }
+
+    /**************************************
+     *    LEGACY DEPOSITOR FUNCTIONS      *
+     **************************************/
+
+    // Note: The following deposit functions will be removed in favor of the
+    // depositUSS_ functions. These are maintained for backwards compatibility with
+    // UI's that expect to call this interface.
+
+    /**
+     * @notice Called by user to bridge funds from origin to destination chain. Depositor will effectively lock
+     * tokens in this contract and receive a destination token on the destination chain. The origin => destination
+     * token mapping is stored on the L1 HubPool.
+     * @notice The caller must first approve this contract to spend amount of originToken.
+     * @notice The originToken => destinationChainId must be enabled.
+     * @notice This method is payable because the caller is able to deposit native token if the originToken is
+     * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
+     * to LP pool on HubPool.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     */
+    function deposit(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 // maxCount. Deprecated.
+    ) public payable override nonReentrant unpausedDeposits {
+        _deposit(
+            msg.sender,
+            recipient,
+            originToken,
+            amount,
+            destinationChainId,
+            relayerFeePct,
+            quoteTimestamp,
+            message
+        );
+    }
+
+    /**
+     * @notice The only difference between depositFor and deposit is that the depositor address stored
+     * in the relay hash can be overridden by the caller. This means that the passed in depositor
+     * can speed up the deposit, which is useful if the deposit is taken from the end user to a middle layer
+     * contract, like an aggregator or the SpokePoolVerifier, before calling deposit on this contract.
+     * @notice The caller must first approve this contract to spend amount of originToken.
+     * @notice The originToken => destinationChainId must be enabled.
+     * @notice This method is payable because the caller is able to deposit native token if the originToken is
+     * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
+     * @param depositor Address who is credited for depositing funds on origin chain and can speed up the deposit.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
+     * to LP pool on HubPool.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     */
+    function depositFor(
+        address depositor,
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 // maxCount. Deprecated.
+    ) public payable nonReentrant unpausedDeposits {
+        _deposit(depositor, recipient, originToken, amount, destinationChainId, relayerFeePct, quoteTimestamp, message);
+    }
+
+    /**
+     * @notice This is a simple wrapper for deposit() that sets the quoteTimestamp to the current SpokePool timestamp.
+     * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
+     * the quoteTimestamp buffer constraint.
+     * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
+     * @dev The existing function modifiers are already enforced by _deposit(), so no additional modifiers are imposed.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
+     */
+    function depositNow(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        bytes memory message,
+        uint256 maxCount
+    ) public payable {
+        deposit(
+            recipient,
+            originToken,
+            amount,
+            destinationChainId,
+            relayerFeePct,
+            uint32(getCurrentTime()),
+            message,
+            maxCount
+        );
+    }
+
+    /**
+     * @notice This is a simple wrapper for depositFor() that sets the quoteTimestamp to the current SpokePool timestamp.
+     * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
+     * the quoteTimestamp buffer constraint.
+     * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
+     * @dev The existing function modifiers are already enforced by _deposit(), so no additional modifiers are imposed.
+     * @param depositor Address who is credited for depositing funds on origin chain and can speed up the deposit.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
+     */
+    function depositForNow(
+        address depositor,
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        bytes memory message,
+        uint256 maxCount
+    ) public payable {
+        depositFor(
+            depositor,
+            recipient,
+            originToken,
+            amount,
+            destinationChainId,
+            relayerFeePct,
+            uint32(getCurrentTime()),
+            message,
+            maxCount
+        );
     }
 
     /********************************************
@@ -615,6 +774,68 @@ abstract contract SpokePool is
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
+    function _deposit(
+        address depositor,
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message
+    ) internal {
+        // Check that deposit route is enabled.
+        require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
+
+        // We limit the relay fees to prevent the user spending all their funds on fees.
+        require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
+        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
+
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
+        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+
+        // Increment count of deposits so that deposit ID for this spoke pool is unique.
+        uint32 newDepositId = numberOfDeposits++;
+
+        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
+        // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
+        if (originToken == address(wrappedNativeToken) && msg.value > 0) {
+            require(msg.value == amount, "msg.value must match amount");
+            wrappedNativeToken.deposit{ value: msg.value }();
+            // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
+            // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
+            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+
+        emit USSFundsDeposited(
+            originToken, // inputToken
+            address(0), // outputToken
+            // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
+            // token as the inputToken for the destination chain should be replaced here.
+            amount, // inputAmount
+            _computeAmountPostFees(amount, relayerFeePct), // outputAmount
+            // - output amount will be the deposit amount less relayerFeePct, which should now be set
+            // equal to realizedLpFeePct + gasFeePct + capitalCostFeePct where (gasFeePct + capitalCostFeePct)
+            // is equal to the old usage of `relayerFeePct`.
+            destinationChainId,
+            newDepositId,
+            quoteTimestamp,
+            type(uint32).max, // fillDeadline. Older deposits don't expire.
+            0, // exclusivityDeadline.
+            depositor,
+            recipient,
+            address(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
+            // is no exclusive relayer.
+            message
+        );
+    }
+
     function _distributeRelayerRefunds(
         uint256 _chainId,
         uint256 amountToReturn,
@@ -739,6 +960,10 @@ abstract contract SpokePool is
 
         if (!MerkleLib.verifyUSSSlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
             revert InvalidMerkleProof();
+    }
+
+    function _computeAmountPostFees(uint256 amount, int256 feesPct) private pure returns (uint256) {
+        return (amount * uint256(int256(1e18) - feesPct)) / 1e18;
     }
 
     function _getUSSRelayHash(USSRelayData memory relayData) private view returns (bytes32) {

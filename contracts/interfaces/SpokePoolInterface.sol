@@ -35,6 +35,39 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
+    function deposit(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 maxCount
+    ) external payable;
+
+    function depositFor(
+        address depositor,
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 maxCount
+    ) external payable;
+
+    function depositNow(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        bytes memory message,
+        uint256 maxCount
+    ) external payable;
+
     function chainId() external view returns (uint256);
 
     error NotEOA();
