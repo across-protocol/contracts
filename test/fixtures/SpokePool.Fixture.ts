@@ -131,6 +131,28 @@ export function getUSSRelayHash(relayData: USSRelayData, destinationChainId: num
   );
 }
 
+export function getDepositParams(args: {
+  recipient?: string;
+  originToken: string;
+  amount: BigNumber;
+  destinationChainId: number;
+  relayerFeePct: BigNumber;
+  quoteTimestamp: number;
+  message?: string;
+  maxCount?: BigNumber;
+}): string[] {
+  return [
+    args.recipient ?? randomAddress(),
+    args.originToken,
+    args.amount.toString(),
+    args.destinationChainId.toString(),
+    args.relayerFeePct.toString(),
+    args.quoteTimestamp.toString(),
+    args.message ?? "0x",
+    args?.maxCount?.toString() ?? consts.maxUint256.toString(),
+  ];
+}
+
 export async function getUpdatedUSSDepositSignature(
   depositor: SignerWithAddress,
   depositId: number,
