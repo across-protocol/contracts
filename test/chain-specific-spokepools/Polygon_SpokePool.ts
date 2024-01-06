@@ -31,6 +31,7 @@ import {
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
 import {
+  USSRelayData,
   deployMockSpokePoolCaller,
   deployMockUSSSpokePoolCaller,
   getFillRelayParams,
@@ -308,7 +309,7 @@ describe("Polygon Spoke Pool", function () {
     ]);
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
 
-    // Deploying  mock caller tries to execute leaf from within constructor:
+    // Deploying mock caller tries to execute leaf from within constructor:
     await expect(
       deployMockSpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("NotEOA");
@@ -451,7 +452,7 @@ describe("Polygon Spoke Pool", function () {
         tree.getHexProof(leaves[1]),
       ]),
     ];
-    const relayData = {
+    const relayData: USSRelayData = {
       depositor: owner.address,
       recipient: acrossMessageHandler.address,
       exclusiveRelayer: relayer.address,
@@ -460,7 +461,6 @@ describe("Polygon Spoke Pool", function () {
       inputAmount: toWei("1"),
       outputAmount: toWei("1"),
       originChainId,
-      destinationChainId: l2ChainId,
       depositId: 0,
       fillDeadline: (await polygonSpokePool.getCurrentTime()).toNumber() + 1000,
       exclusivityDeadline: 0,

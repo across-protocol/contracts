@@ -23,8 +23,10 @@ interface USSSpokePoolInterface {
         // the slow fill is validated.
     }
 
-    // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
-    // to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
+    // This struct represents the data to fully specify a **unique** relay submitted on this chain.
+    // This data is hashed with the chainId() and saved by the SpokePool to prevent collisions and protect against
+    // replay attacks on other chains. If any portion of this data differs, the relay is considered to be
+    // completely distinct.
     struct USSRelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
@@ -42,8 +44,6 @@ interface USSSpokePoolInterface {
         uint256 outputAmount;
         // Origin chain id.
         uint256 originChainId;
-        // Destination chain id.
-        uint256 destinationChainId;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
@@ -54,8 +54,10 @@ interface USSSpokePoolInterface {
         bytes message;
     }
 
+    // Contains parameters passed in by someone who wants to execute a slow relay leaf.
     struct USSSlowFill {
         USSRelayData relayData;
+        uint256 chainId;
         uint256 updatedOutputAmount;
     }
 
@@ -191,22 +193,22 @@ interface USSSpokePoolInterface {
         uint32 depositId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
     ) external;
 
-    function fillUSSRelay(USSRelayData memory relayData, uint256 repaymentChainId) external;
+    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId) external;
 
     function fillUSSRelayWithUpdatedDeposit(
-        USSRelayData memory relayData,
+        USSRelayData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
     ) external;
 
-    function requestUSSSlowFill(USSRelayData memory relayData) external;
+    function requestUSSSlowFill(USSRelayData calldata relayData) external;
 
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
@@ -216,8 +218,8 @@ interface USSSpokePoolInterface {
 
     function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
-        USSRelayerRefundLeaf memory relayerRefundLeaf,
-        bytes32[] memory proof
+        USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        bytes32[] calldata proof
     ) external;
 
     error DisabledRoute();

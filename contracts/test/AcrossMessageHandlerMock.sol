@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../SpokePool.sol";
+import "../interfaces/USSSpokePoolInterface.sol";
 
 contract AcrossMessageHandlerMock is AcrossMessageHandler {
     function handleAcrossMessage(

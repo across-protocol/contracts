@@ -20,6 +20,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1UsdcAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
+    scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
+    scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -77,7 +79,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   11155111: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
-    weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+    weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
+    scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
+    scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
   },
 };
 
@@ -141,6 +146,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0xf175520c52418dfe19c8098071a252da48cd1c19",
     cctpTokenMessenger: "0x877b8e8c9e2383077809787ED6F279ce01CB4cc8",
     cctpMessageTransmitter: "0x9ff9a4da6f2157A9c82CE756f8fD7E0d75be8895",
+  },
+  534351: {
+    l2Weth: "0x5300000000000000000000000000000000000004",
+    scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
+    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
+    scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
   },
 };
 

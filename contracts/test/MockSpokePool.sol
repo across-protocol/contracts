@@ -12,6 +12,9 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
     uint256 private chainId_;
     uint256 private currentTime;
 
+    event BridgedToHubPool(uint256 amount, address token);
+    event PreLeafExecuteHook(address token);
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
 
@@ -40,12 +43,57 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
     }
 
+    function verifyUpdateUSSDepositMessage(
+        address depositor,
+        uint32 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public view {
+        return
+            _verifyUpdateUSSDepositMessage(
+                depositor,
+                depositId,
+                originChainId,
+                updatedOutputAmount,
+                updatedRecipient,
+                updatedMessage,
+                depositorSignature
+            );
+    }
+
+    function fillRelayUSSInternal(
+        USSRelayExecutionParams memory relayExecution,
+        address relayer,
+        bool isSlowFill
+    ) external {
+        _fillRelayUSS(relayExecution, relayer, isSlowFill);
+    }
+
+    // This function is nonReentrant in order to allow caller to test whether a different function
+    // is reentrancy protected or not.
+    function callback(bytes memory data) external payable nonReentrant {
+        (bool success, bytes memory result) = address(this).call{ value: msg.value }(data);
+        require(success, string(result));
+    }
+
+    function setFillStatus(bytes32 relayHash, FillType fillType) external {
+        fillStatuses[relayHash] = uint256(fillType);
+    }
+
     function getCurrentTime() public view override returns (uint256) {
         return currentTime;
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _bridgeTokensToHubPool(uint256, address) internal override {}
+    function _preExecuteLeafHook(address token) internal override {
+        emit PreLeafExecuteHook(token);
+    }
+
+    function _bridgeTokensToHubPool(uint256 amount, address token) internal override {
+        emit BridgedToHubPool(amount, token);
+    }
 
     function _requireAdminSender() internal override onlyOwner {} // solhint-disable-line no-empty-blocks
 
