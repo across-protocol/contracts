@@ -17,6 +17,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
+    scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -71,7 +73,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   11155111: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
-    weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+    weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
+    scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
+    scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
   },
 };
 
@@ -103,6 +108,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+  },
+  534351: {
+    l2Weth: "0x5300000000000000000000000000000000000004",
+    scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
+    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
+    scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
   },
 };
 

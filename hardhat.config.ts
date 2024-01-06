@@ -17,6 +17,7 @@ import "@openzeppelin/hardhat-upgrades";
 // Custom tasks to add to HRE.
 // eslint-disable-next-line node/no-missing-require
 require("./tasks/enableL1TokenAcrossEcosystem");
+require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ const config: HardhatUserConfig = {
       "contracts/test/MockSpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockOptimism_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ovm_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Scroll_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -196,6 +198,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    "scroll-sepolia": {
+      chainId: 534351,
+      url: "https://sepolia-rpc.scroll.io",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -212,6 +221,7 @@ const config: HardhatUserConfig = {
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
       base: process.env.BASE_ETHERSCAN_API_KEY!,
       "base-goerli": process.env.ETHERSCAN_API_KEY!,
+      "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -228,6 +238,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-goerli.basescan.org/api",
           browserURL: "https://goerli.basescan.org",
+        },
+      },
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io",
+        },
+      },
+      {
+        network: "scroll-sepolia",
+        chainId: 534351,
+        urls: {
+          apiURL: "https://api-sepolia.scrollscan.com/api",
+          browserURL: "https://api-sepolia.scrollscan.com",
         },
       },
     ],
