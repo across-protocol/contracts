@@ -159,6 +159,13 @@ contract SwapAndBridge is Lockable, MultiCaller {
         bytes message;
     }
 
+    /****************************************
+     *                ERRORS                *
+     ****************************************/
+    error InvalidToken0Token1();
+    error MinimumExpectedInputAmount();
+    error LeftoverSrcTokens();
+
     /**
      * @notice Construct a new SwapAndBridge contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -190,11 +197,11 @@ contract SwapAndBridge is Lockable, MultiCaller {
         uniswapV3Pool = _uniswapV3Pool;
         // - should have token0/token1 equal to swapToken/acrossInputToken.
         if (address(_swapToken) == _uniswapV3Pool.token0()) {
-            require(address(_acrossInputToken) == _uniswapV3Pool.token1(), "token1");
+            if (address(_acrossInputToken) != _uniswapV3Pool.token1()) revert InvalidToken0Token1();
         } else if (address(_swapToken) == _uniswapV3Pool.token1()) {
-            require(address(_acrossInputToken) == _uniswapV3Pool.token0(), "token0");
+            if (address(_acrossInputToken) != _uniswapV3Pool.token0()) revert InvalidToken0Token1();
         } else {
-            revert("token0/token1");
+            revert InvalidToken0Token1();
         }
         // This contract should swap swapToken for acrossInputToken, so set zeroForOne=true if swapToken is token0.
         uniswapSwapZeroForOne = (address(_swapToken) == _uniswapV3Pool.token0());
@@ -354,10 +361,10 @@ contract SwapAndBridge is Lockable, MultiCaller {
         // Sanity check that we received as many tokens as we require:
         uint256 returnAmount = acrossInputToken.balanceOf(address(this)) - inputTokenBalanceBefore;
         // Sanity check that received amount from swap is enough to submit Across deposit with.
-        require(returnAmount >= minExpectedInputTokenAmount, "min expected input amount");
+        if (returnAmount < minExpectedInputTokenAmount) revert MinimumExpectedInputAmount();
         // Sanity check that we don't have any leftover swap tokens that would be locked in this contract (i.e. check
         // that we weren't partial filled).
-        require(swapTokenBalanceBefore - swapToken.balanceOf(address(this)) == swapTokenAmount, "leftover src tokens");
+        if (swapTokenBalanceBefore - swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         acrossInputToken.safeIncreaseAllowance(address(spokePool), returnAmount);
