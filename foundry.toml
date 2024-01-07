@@ -10,6 +10,7 @@ remappings = [
     "@maticnetwork/=node_modules/@maticnetwork/",
     "@matterlabs/=node_modules/@matterlabs/",
     "@openzeppelin/=node_modules/@openzeppelin/",
+    "@scroll-tech/=node_modules/@scroll-tech/",
     "@uma/=node_modules/@uma/",
     "@uniswap/=node_modules/@uniswap/",
     "arb-bridge-eth/=node_modules/arb-bridge-eth/",
