@@ -17,6 +17,12 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
+    lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
+    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce",
+    scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
+    scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -47,6 +53,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
     baseCrossDomainMessenger: "0x8e5693140eA606bcEB98761d9beB1BC87383706D",
     baseStandardBridge: "0xfA6D8Ee5BE770F84FC001D098C4bD604Fe01284a",
+    usdc: "0x07865c6e87b9f70255377e024ace6630c1eaa37f",
+    lineaMessageService: "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
+    lineaTokenBridge: "0x5506A3805fB8A58Fa58248CC52d2b06D92cA94e6",
+    lineaUsdcBridge: "0x32D123756d32d3eD6580935f8edF416e57b940f4",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
@@ -71,7 +81,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   11155111: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
-    weth: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+    weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
+    scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
+    scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
   },
 };
 
@@ -103,6 +116,24 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+  },
+  59144: {
+    l2Weth: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
+    lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
+    lineaUsdcBridge: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
+    lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
+  },
+  59140: {
+    l2Weth: "0x2C1b868d6596a18e32E61B901E4060C872647b6C",
+    lineaMessageService: "0xC499a572640B64eA1C8c194c43Bc3E19940719dC",
+    lineaUsdcBridge: "0xDFa112375c9be9D124932b1d104b73f888655329",
+    lineaTokenBridge: "0x3ccd0F623B7a25Eab5dFc6a3fD723dCE5520489B",
+  },
+  534351: {
+    l2Weth: "0x5300000000000000000000000000000000000004",
+    scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
+    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
+    scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
   },
 };
 

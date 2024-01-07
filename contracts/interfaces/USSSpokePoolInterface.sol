@@ -220,7 +220,7 @@ interface USSSpokePoolInterface {
         uint32 rootBundleId,
         USSRelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
-    ) external;
+    ) external payable;
 
     error DisabledRoute();
     error InvalidQuoteTimestamp();
