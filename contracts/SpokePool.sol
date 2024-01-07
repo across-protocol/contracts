@@ -678,8 +678,8 @@ abstract contract SpokePool is
      * as a valid deposit route from this spoke pool or this transaction will revert.
      * @param exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
      * exclusivity deadline timestamp.
-     * @param quoteTimestamp The approximate Ethereum timestamp that the deposit was initiated. This is used to charge
-     * fees for this deposit. This must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime]
+     * @param quoteTimestamp The HubPool timestamp that is used to determine the system fee paid by the depositor.
+     *  This must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
