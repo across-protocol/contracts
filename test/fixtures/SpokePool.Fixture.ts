@@ -200,7 +200,6 @@ export interface USSRelayData {
   inputAmount: BigNumber;
   outputAmount: BigNumber;
   originChainId: number;
-  destinationChainId: number;
   depositId: number;
   fillDeadline: number;
   exclusivityDeadline: number;
@@ -235,6 +234,7 @@ export interface SlowFill {
 
 export interface USSSlowFill {
   relayData: USSRelayData;
+  chainId: number;
   updatedOutputAmount: BigNumber;
 }
 
@@ -274,13 +274,14 @@ export function getRelayHash(
   return { relayHash, relayData };
 }
 
-export function getUSSRelayHash(relayData: USSRelayData): string {
+export function getUSSRelayHash(relayData: USSRelayData, destinationChainId: number): string {
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
-        "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 destinationChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "uint256 destinationChainId",
       ],
-      [relayData]
+      [relayData, destinationChainId]
     )
   );
 }
