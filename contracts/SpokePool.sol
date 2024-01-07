@@ -652,7 +652,7 @@ abstract contract SpokePool is
      * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
      * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
      * chain will send outputAmount of outputTokens to the recipient and receive inputTokens on a repayment
-     * chain of their choice plus system fees. Therefore, the fee should account for destination fee transaction costs,
+     * chain of their choice. Therefore, the fee should account for destination fee transaction costs,
      * the relayer's opportunity cost of capital while they wait to be refunded following an optimistic challenge
      * window in the HubPool, and the system fee that they'll be charged.
      * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
