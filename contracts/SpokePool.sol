@@ -686,8 +686,8 @@ abstract contract SpokePool is
      * where currentTime is block.timestamp on this chain or this transaction will revert.
      * @param exclusivityDeadline The deadline for the exclusive relayer to fill the deposit. After this
      * destination chain timestamp, anyone can fill this deposit on the destination chain.
-     * @param message The message to send to the recipient on the destination chain if the recipient is a contract
-     * that implements the handleUSSAcrossMessage.
+     * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
+     * If the message is not empty, the recipient contract must implement handleUSSAcrossMessage() or the fill will revert.
      */
     function depositUSS(
         address depositor,
