@@ -1006,7 +1006,6 @@ abstract contract SpokePool is
      * exclusivity deadline timestamp.
      * - fillDeadline The deadline for the caller to fill the deposit. After this timestamp,
      * the fill will revert on the destination chain.
-     * where currentTime is block.timestamp on this chain or this transaction will revert.
      * - exclusivityDeadline: The deadline for the exclusive relayer to fill the deposit. After this
      * timestamp, anyone can fill this deposit.
      * - message The message to send to the recipient if the recipient is a contract that implements a
