@@ -15,6 +15,7 @@ remappings = [
     "arb-bridge-eth/=node_modules/arb-bridge-eth/",
     "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
     "arbos-precompiles/=node_modules/arbos-precompiles/",
+    "@scroll-tech/=node_modules/@scroll-tech/",
     "base64-sol/=node_modules/base64-sol/",
     "eth-gas-reporter/=node_modules/eth-gas-reporter/",
     "hardhat-deploy/=node_modules/hardhat-deploy/",
