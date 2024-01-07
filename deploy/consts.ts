@@ -128,6 +128,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     lineaMessageService: "0xC499a572640B64eA1C8c194c43Bc3E19940719dC",
     lineaUsdcBridge: "0xDFa112375c9be9D124932b1d104b73f888655329",
     lineaTokenBridge: "0x3ccd0F623B7a25Eab5dFc6a3fD723dCE5520489B",
+  },
   534351: {
     l2Weth: "0x5300000000000000000000000000000000000004",
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",

@@ -217,6 +217,7 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
+    },
     "scroll-sepolia": {
       chainId: 534351,
       url: "https://sepolia-rpc.scroll.io",
