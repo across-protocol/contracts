@@ -1039,21 +1039,20 @@ abstract contract SpokePool is
 
     /**
      * @notice Identical to fillUSSRelay except that the relayer wants to use a depositor's updated output amount,
-     * recipient, and/or message. The relayer should only use this function if the depositor has signed a message
-     * on the origin chain asking for a modification via speedUpUSSDeposit(). If a RequestedSpeedUpUSSDeposit
-     * event matching this relayData was not emitted, then this fill will not be refunded.
+     * recipient, and/or message. The relayer should only use this function if they can supply a message signed
+     * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
+     * If the signature can be verified, then this function will emit a FilledUSSEvent that will be used by
+     * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
+     * a deposit than fillUSSRelay.
      * @dev Subject to same exclusivity deadline rules as fillUSSRelay().
      * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillUSSRelay().
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. See fillUSSRelay().
-     * @param updatedOutputAmount New output amount to use for this deposit. Should be equivalent to value emitted
-     * on origin chain RequestedSpeedUpUSSDeposit event.
-     * @param updatedRecipient New recipient to use for this deposit. Should be equivalent to value emitted
-     * on origin chain RequestedSpeedUpUSSDeposit event.
-     * @param updatedMessage New message to use for this deposit. Should be equivalent to value emitted
-     * on origin chain RequestedSpeedUpUSSDeposit event.
+     * @param updatedOutputAmount New output amount to use for this deposit.
+     * @param updatedRecipient New recipient to use for this deposit.
+     * @param updatedMessage New message to use for this deposit.
      * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
-     * account. Should match the signature emitted on the origin chain's RequestedSpeedUpUSSDeposit event.
+     * account.
      */
     function fillUSSRelayWithUpdatedDeposit(
         USSRelayData calldata relayData,
