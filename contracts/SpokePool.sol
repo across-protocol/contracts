@@ -998,8 +998,8 @@ abstract contract SpokePool is
      * token on the repayment chain will be sent as a refund to the caller.
      * - outputToken The token that the caller will send to the recipient on the destination chain. Must be an
      * ERC20.
-     * - inputAmount: This amount will be sent to the caller on their repayment chain of choice as a refund
-     * following an optimistic challenge window in the HubPool, plus a system fee.
+     * - inputAmount: This amount, less a system fee, will be sent to the caller on their repayment chain of choice as a refund
+     * following an optimistic challenge window in the HubPool.
      * - outputAmount: The amount of output tokens that the caller will send to the recipient.
      * - originChainId: The origin chain identifier.
      * - exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
