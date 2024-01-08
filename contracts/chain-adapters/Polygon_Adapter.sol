@@ -7,6 +7,9 @@ import "../external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../libraries/CircleCCTPAdapter.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
+
 /**
  * @notice Send tokens to Polygon.
  */
@@ -68,7 +71,7 @@ interface DepositManager {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Polygon_Adapter is AdapterInterface {
+contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     IRootChainManager public immutable rootChainManager;
     IFxStateSender public immutable fxStateSender;
@@ -78,6 +81,13 @@ contract Polygon_Adapter is AdapterInterface {
     WETH9Interface public immutable l1Weth;
 
     /**
+     * @notice Domain identifier used for Circle's CCTP bridge on Base.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 private constant POLYGON_CIRCLE_CCTP_DOMAIN_ID = 7;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _rootChainManager RootChainManager Polygon system contract to deposit tokens over the PoS bridge.
      * @param _fxStateSender FxStateSender Polygon system contract to send arbitrary messages to L2.
@@ -85,6 +95,8 @@ contract Polygon_Adapter is AdapterInterface {
      * @param _erc20Predicate ERC20Predicate Polygon system contract to approve when depositing to the PoS bridge.
      * @param _l1Matic matic address on l1.
      * @param _l1Weth WETH address on L1.
+     * @param _l1Usdc USDC address on L1.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         IRootChainManager _rootChainManager,
@@ -92,8 +104,10 @@ contract Polygon_Adapter is AdapterInterface {
         DepositManager _depositManager,
         address _erc20Predicate,
         address _l1Matic,
-        WETH9Interface _l1Weth
-    ) {
+        WETH9Interface _l1Weth,
+        IERC20 _l1Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, POLYGON_CIRCLE_CCTP_DOMAIN_ID) {
         rootChainManager = _rootChainManager;
         fxStateSender = _fxStateSender;
         depositManager = _depositManager;
@@ -130,6 +144,10 @@ contract Polygon_Adapter is AdapterInterface {
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             rootChainManager.depositEtherFor{ value: amount }(to);
+        }
+        // If the l1Token is USDC, then we send it to the CCTP bridge
+        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
+            _transferUsdc(to, amount);
         } else if (l1Token == l1Matic) {
             IERC20(l1Token).safeIncreaseAllowance(address(depositManager), amount);
             depositManager.depositERC20ForUser(l1Token, to, amount);

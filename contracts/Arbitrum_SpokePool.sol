@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+
+// Arbitrum only supports v0.8.19
+// See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
+pragma solidity 0.8.19;
 
 import "./SpokePool.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
@@ -15,7 +19,7 @@ interface StandardBridgeLike {
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  */
-contract Arbitrum_SpokePool is SpokePool {
+contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
@@ -31,8 +35,13 @@ contract Arbitrum_SpokePool is SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the AVM SpokePool.
@@ -83,16 +92,21 @@ contract Arbitrum_SpokePool is SpokePool {
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        // Check that the Ethereum counterpart of the L2 token is stored on this contract.
-        address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
-        require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
-        //slither-disable-next-line unused-return
-        StandardBridgeLike(l2GatewayRouter).outboundTransfer(
-            ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
-            hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
-            amountToReturn, // _amount.
-            "" // _data. We don't need to send any data for the bridging action.
-        );
+        // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
+        if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(hubPool, amountToReturn);
+        } else {
+            // Check that the Ethereum counterpart of the L2 token is stored on this contract.
+            address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
+            require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
+            //slither-disable-next-line unused-return
+            StandardBridgeLike(l2GatewayRouter).outboundTransfer(
+                ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
+                hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
+                amountToReturn, // _amount.
+                "" // _data. We don't need to send any data for the bridging action.
+            );
+        }
         emit ArbitrumTokensBridged(address(0), hubPool, amountToReturn);
     }
 
