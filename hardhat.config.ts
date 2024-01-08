@@ -147,6 +147,13 @@ const config: HardhatUserConfig = {
       chainId: 420,
       companionNetworks: { l1: "goerli" },
     },
+    "optimism-sepolia": {
+      url: getNodeUrl("optimism-goerli", true, 11155420),
+      accounts: { mnemonic },
+      saveDeployments: true,
+      chainId: 11155420,
+      companionNetworks: { l1: "sepolia" },
+    },
     arbitrum: {
       chainId: 42161,
       url: getNodeUrl("arbitrum", true, 42161),
@@ -252,6 +259,7 @@ const config: HardhatUserConfig = {
       sepolia: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
+      optimisticSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
@@ -308,6 +316,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.scrollscan.com/api",
           browserURL: "https://api-sepolia.scrollscan.com",
+        },
+      },
+      {
+        network: "optimisticSepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io",
         },
       },
     ],
