@@ -203,6 +203,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         super.executeUSSRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,

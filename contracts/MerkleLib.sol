@@ -33,6 +33,7 @@ library MerkleLib {
      * @param proof the merkle proof.
      * @return bool to signal if the relayer refund proof correctly shows inclusion of the refund within the tree.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function verifyRelayerRefund(
         bytes32 root,
         SpokePoolInterface.RelayerRefundLeaf memory refund,
@@ -56,6 +57,7 @@ library MerkleLib {
      * @param proof the merkle proof.
      * @return bool to signal if the slow relay's proof correctly shows inclusion of the slow relay within the tree.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function verifySlowRelayFulfillment(
         bytes32 root,
         SpokePoolInterface.SlowFill memory slowRelayFulfillment,
