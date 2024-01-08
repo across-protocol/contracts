@@ -21,8 +21,6 @@ require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
 
-const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
-
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
@@ -44,6 +42,16 @@ const config: HardhatUserConfig = {
     compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true } }],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Arbitrum_SpokePool.sol": {
+        // NOTE: Arbitrum, only supports 0.8.19.
+        // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
+        version: "0.8.19",
+      },
+      "contracts/Linea_SpokePool.sol": {
+        // NOTE: Linea only supports 0.8.19.
+        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
+        version: "0.8.19",
+      },
     },
   },
   zksolc: {
