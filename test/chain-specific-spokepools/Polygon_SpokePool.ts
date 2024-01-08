@@ -28,13 +28,7 @@ import {
   constructSingleRelayerRefundTree,
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
-import {
-  USSRelayData,
-  deployMockSpokePoolCaller,
-  deployMockUSSSpokePoolCaller,
-  getFillRelayParams,
-  getRelayHash,
-} from "../fixtures/SpokePool.Fixture";
+import { USSRelayData, deployMockUSSSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
 import { CCTPTokenMessengerInterface } from "../../utils/abis";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;

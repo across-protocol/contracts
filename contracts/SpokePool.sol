@@ -638,7 +638,7 @@ abstract contract SpokePool is
     /**************************************
      *         RELAYER FUNCTIONS          *
      **************************************/
-     
+
     function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId)
         public
         override
