@@ -816,23 +816,6 @@ abstract contract SpokePool is
      * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
      */
-    /**
-     * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
-     * @dev Executing a slow fill leaf is equivalent to filling the relayData so this function cannot be used to
-     * double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-     * like any other fill sent through fillUSSRelay().
-     * @dev There is no relayer credited with filling this relay since funds are sent directly out of this contract.
-     * @param slowFillLeaf Contains all data necessary to uniquely identify a relay for this chain. This struct is
-     * hashed and included in a merkle root that is relayed to all spoke pools.
-     * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
-     * - chainId: chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
-     * chainId, then this function will revert.
-     * - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
-     * from relayData.outputAmount to charge a different fee because this deposit was "slow" filled. Usually,
-     * this will be set higher to reimburse the recipient for waiting for the slow fill.
-     * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
-     * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
-     */
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
