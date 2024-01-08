@@ -315,7 +315,7 @@ describe("SpokePool Relayer Logic", async function () {
       it("fills are not paused", async function () {
         await spokePool.pauseFills(true);
         await expect(spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId)).to.be.revertedWith(
-          "Paused fills"
+          "FillsArePaused"
         );
       });
       it("reentrancy protected", async function () {
@@ -489,7 +489,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               signature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect signature for new deposit ID
         const otherSignature = await getUpdatedUSSDepositSignature(
@@ -511,7 +511,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               otherSignature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect origin chain ID
         await expect(
@@ -525,7 +525,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               signature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect deposit ID
         await expect(
@@ -539,7 +539,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               signature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect updated output amount
         await expect(
@@ -553,7 +553,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               signature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect updated recipient
         await expect(
@@ -567,7 +567,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               signature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect updated message
         await expect(
@@ -581,7 +581,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               createRandomBytes32()
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
       });
       it("validates ERC-1271 depositor contract signature", async function () {
         // The MockERC1271 contract returns true for isValidSignature if the signature was signed by the contract's
@@ -605,7 +605,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               incorrectSignature
             )
-        ).to.be.revertedWith("invalid signature");
+        ).to.be.revertedWith("InvalidDepositorSignature");
         await expect(
           spokePool
             .connect(relayer)

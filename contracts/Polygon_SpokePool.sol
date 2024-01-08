@@ -61,6 +61,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     event SetPolygonTokenBridger(address indexed polygonTokenBridger);
     event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
 
+    error CallValidatedAlreadySet();
+    error CallValidatedNotSet();
+    error DelegateCallFailed();
+    error NotHubPool();
+    error NotFxChild();
+
     // Note: validating calls this way ensures that strange calls coming from the fxChild won't be misinterpreted.
     // Put differently, just checking that msg.sender == fxChild is not sufficient.
     // All calls that have admin privileges must be fired from within the processMessageFromRoot method that's gone
@@ -69,7 +75,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     modifier validateInternalCalls() {
         // Make sure callValidated is set to True only once at beginning of processMessageFromRoot, which prevents
         // processMessageFromRoot from being re-entered.
-        require(!callValidated, "callValidated already set");
+        if (callValidated) revert CallValidatedAlreadySet();
 
         // This sets a variable indicating that we're now inside a validated call.
         // Note: this is used by other methods to ensure that this call has been validated by this method and is not
@@ -156,8 +162,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         bytes calldata data
     ) public validateInternalCalls {
         // Validation logic.
-        require(msg.sender == fxChild, "Not from fxChild");
-        require(rootMessageSender == crossDomainAdmin, "Not from mainnet admin");
+        if (msg.sender != fxChild) revert NotFxChild();
+        if (rootMessageSender != crossDomainAdmin) revert NotHubPool();
 
         // This uses delegatecall to take the information in the message and process it as a function call on this contract.
         /// This is a safe delegatecall because its made to address(this) so there is no risk of delegating to a
@@ -166,7 +172,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(data);
         //slither-disable-end low-level-calls
-        require(success, "delegatecall failed");
+        if (!success) revert DelegateCallFailed();
 
         emit ReceivedMessageFromL1(msg.sender, rootMessageSender);
     }
@@ -257,6 +263,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     // `processMessageFromRoot`. This prevents calling the admin functions from any other method besides
     // `processMessageFromRoot`.
     function _requireAdminSender() internal view override {
-        require(callValidated, "Must call processMessageFromRoot");
+        if (!callValidated) revert CallValidatedNotSet();
     }
 }

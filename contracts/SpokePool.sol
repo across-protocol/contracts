@@ -216,12 +216,12 @@ abstract contract SpokePool is
     }
 
     modifier unpausedDeposits() {
-        require(!pausedDeposits, "Paused deposits");
+        if (pausedDeposits) revert DepositsArePaused();
         _;
     }
 
     modifier unpausedFills() {
-        require(!pausedFills, "Paused fills");
+        if (pausedFills) revert FillsArePaused();
         _;
     }
 
@@ -367,115 +367,6 @@ abstract contract SpokePool is
         );
     }
 
-    /**
-     * @notice The only difference between depositFor and deposit is that the depositor address stored
-     * in the relay hash can be overridden by the caller. This means that the passed in depositor
-     * can speed up the deposit, which is useful if the deposit is taken from the end user to a middle layer
-     * contract, like an aggregator or the SpokePoolVerifier, before calling deposit on this contract.
-     * @notice The caller must first approve this contract to spend amount of originToken.
-     * @notice The originToken => destinationChainId must be enabled.
-     * @notice This method is payable because the caller is able to deposit native token if the originToken is
-     * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
-     * @param depositor Address who is credited for depositing funds on origin chain and can speed up the deposit.
-     * @param recipient Address to receive funds at on destination chain.
-     * @param originToken Token to lock into this contract to initiate deposit.
-     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
-     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
-     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
-     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
-     * to LP pool on HubPool.
-     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
-     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     */
-    function depositFor(
-        address depositor,
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        uint32 quoteTimestamp,
-        bytes memory message,
-        uint256 // maxCount. Deprecated.
-    ) public payable nonReentrant unpausedDeposits {
-        _deposit(depositor, recipient, originToken, amount, destinationChainId, relayerFeePct, quoteTimestamp, message);
-    }
-
-    /**
-     * @notice This is a simple wrapper for deposit() that sets the quoteTimestamp to the current SpokePool timestamp.
-     * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
-     * the quoteTimestamp buffer constraint.
-     * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
-     * @dev The existing function modifiers are already enforced by _deposit(), so no additional modifiers are imposed.
-     * @param recipient Address to receive funds at on destination chain.
-     * @param originToken Token to lock into this contract to initiate deposit.
-     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
-     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
-     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
-     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
-     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
-     */
-    function depositNow(
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        bytes memory message,
-        uint256 maxCount
-    ) public payable {
-        deposit(
-            recipient,
-            originToken,
-            amount,
-            destinationChainId,
-            relayerFeePct,
-            uint32(getCurrentTime()),
-            message,
-            maxCount
-        );
-    }
-
-    /**
-     * @notice This is a simple wrapper for depositFor() that sets the quoteTimestamp to the current SpokePool timestamp.
-     * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
-     * the quoteTimestamp buffer constraint.
-     * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
-     * @dev The existing function modifiers are already enforced by _deposit(), so no additional modifiers are imposed.
-     * @param depositor Address who is credited for depositing funds on origin chain and can speed up the deposit.
-     * @param recipient Address to receive funds at on destination chain.
-     * @param originToken Token to lock into this contract to initiate deposit.
-     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
-     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
-     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
-     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
-     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
-     */
-    function depositForNow(
-        address depositor,
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        bytes memory message,
-        uint256 maxCount
-    ) public payable {
-        depositFor(
-            depositor,
-            recipient,
-            originToken,
-            amount,
-            destinationChainId,
-            relayerFeePct,
-            uint32(getCurrentTime()),
-            message,
-            maxCount
-        );
-    }
-
     /********************************************
      *            DEPOSITOR FUNCTIONS           *
      ********************************************/
@@ -588,6 +479,67 @@ abstract contract SpokePool is
     }
 
     /**
+     * @notice Submits deposit and sets quoteTimestamp to current Time. Sets fill and exclusivity
+     * deadlines as offsets added to the current time. This function is designed to be called by users
+     * such as Multisig contracts who do not have certainty when their transaction will mine.
+     * @param depositor The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to
+     * initiate the deposit. The equivalent of this token on the relayer's repayment chain of choice will be sent
+     * as a refund. If this is equal to the wrapped native token then the caller can optionally pass in native token as
+     * msg.value, as long as msg.value = inputTokenAmount.
+     * @param outputToken The token that the relayer will send to the recipient on the destination chain. Must be an
+     * ERC20.
+     * @param inputAmount The amount of input tokens to pull from the caller's account and lock into this contract.
+     * This amount will be sent to the relayer on their repayment chain of choice as a refund following an optimistic
+     * challenge window in the HubPool, plus a system fee.
+     * @param outputAmount The amount of output tokens that the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled along with the input token
+     * as a valid deposit route from this spoke pool or this transaction will revert.
+     * @param exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
+     * exclusivity deadline timestamp.
+     * @param fillDeadlineOffset Added to the current time to set the fill deadline, which is the deadline for the
+     * relayer to fill the deposit. After this destination chain timestamp, the fill will revert on the
+     * destination chain.
+     * @param exclusivityDeadlineOffset Added to the current time to set the exclusive relayer deadline, which is
+     * the latest timestamp that only the exclusive relayer can fill the deposit. After this
+     * destination chain timestamp, anyone can fill this deposit on the destination chain.
+     * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
+     * If the message is not empty, the recipient contract must implement handleUSSAcrossMessage() or the fill will revert.
+     */
+    function depositUSSNow(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 fillDeadlineOffset,
+        uint32 exclusivityDeadlineOffset,
+        bytes calldata message
+    ) external payable {
+        depositUSS(
+            depositor,
+            recipient,
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer,
+            uint32(getCurrentTime()),
+            uint32(getCurrentTime()) + fillDeadlineOffset,
+            uint32(getCurrentTime()) + exclusivityDeadlineOffset,
+            message
+        );
+    }
+
+    /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
      * and/or message.
      * @dev the depositor and depositId must match the params in a USSFundsDeposited event that the depositor
@@ -639,6 +591,47 @@ abstract contract SpokePool is
      *         RELAYER FUNCTIONS          *
      **************************************/
 
+    /**
+     * @notice Fulfill request to bridge cross chain by sending specified output tokens to the recipient.
+     * @dev The fee paid to relayers and the system should be captured in the spread between output
+     * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
+     * chain will send outputAmount of outputTokens to the recipient and receive inputTokens on a repayment
+     * chain of their choice. Therefore, the fee should account for destination fee transaction costs, the
+     * relayer's opportunity cost of capital while they wait to be refunded following an optimistic challenge
+     * window in the HubPool, and a system fee charged to relayers.
+     * @dev The hash of the relayData will be used to uniquely identify the deposit to fill, so
+     * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
+     * all parameters passed to depositUSS() on the origin chain along with that chain's chainId(). This chain's
+     * chainId() must therefore match the destinationChainId passed into depositUSS.
+     * Relayers are only refunded for filling deposits with deposit hashes that map exactly to the one emitted by the
+     * origin SpokePool therefore the relayer should not modify any params in relayData.
+     * @dev Cannot fill more than once. Partial fills are not supported.
+     * @param relayData struct containing all the data needed to identify the deposit to be filled. Should match
+     * all the same-named parameters emitted in the origin chain USSFundsDeposited event.
+     * - depositor: The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * - recipient The account receiving funds on this chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * - inputToken: The token pulled from the caller's account to initiate the deposit. The equivalent of this
+     * token on the repayment chain will be sent as a refund to the caller.
+     * - outputToken The token that the caller will send to the recipient on the destination chain. Must be an
+     * ERC20.
+     * - inputAmount: This amount, less a system fee, will be sent to the caller on their repayment chain of choice as a refund
+     * following an optimistic challenge window in the HubPool.
+     * - outputAmount: The amount of output tokens that the caller will send to the recipient.
+     * - originChainId: The origin chain identifier.
+     * - exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
+     * exclusivity deadline timestamp.
+     * - fillDeadline The deadline for the caller to fill the deposit. After this timestamp,
+     * the fill will revert on the destination chain.
+     * - exclusivityDeadline: The deadline for the exclusive relayer to fill the deposit. After this
+     * timestamp, anyone can fill this deposit.
+     * - message The message to send to the recipient if the recipient is a contract that implements a
+     * handleUSSAcrossMessage() public function
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
+     */
     function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId)
         public
         override
@@ -802,11 +795,22 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Executes a relayer refund leaf stored as part of a root bundle. Will send the relayer the amount they
-     * sent to the recipient plus a relayer fee.
+     * @notice Executes a relayer refund leaf stored as part of a root bundle relayed by the HubPool. Sends
+     * to relayers their amount refunded by the system for successfully filling relays.
+     * @param relayerRefundLeaf Contains all data necessary to uniquely identify refunds for this chain. This struct is
+     * hashed and included in a merkle root that is relayed to all spoke pools. See USSRelayerRefundLeaf struct
+     * for more detailed comments.
+     * - amountToReturn: amount of tokens to return to HubPool out of this contract.
+     * - refundAmounts: array of amounts to refund to relayers.
+     * - refundAddresses: array of relayer addresses to refund
+     * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
+     * - chainId: chain identifier where relayer refund leaf should be executed. If this doesn't match this chain's
+     * chainId, then this function will revert.
+     * - leafId: index of this leaf within the merkle root, used to track whether this leaf has been executed.
+     * - fillsRefundedRoot: Merkle root of all successful fills refunded by this leaf. Can be used by third parties
+     * to track which fills were successful.
+     * - fillsRefundedHash: Unique identifier where anyone can find the full fills refunded tree.
      * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
-     * @param relayerRefundLeaf Contains all data necessary to reconstruct leaf contained in root bundle and to
-     * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */
     function executeUSSRelayerRefundLeaf(
@@ -883,11 +887,11 @@ abstract contract SpokePool is
         bytes memory message
     ) internal {
         // Check that deposit route is enabled.
-        require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
+        if (!enabledDepositRoutes[originToken][destinationChainId]) revert DisabledRoute();
 
         // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
-        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
+        if (SignedMath.abs(relayerFeePct) >= 0.5e18) revert InvalidRelayerFeePct();
+        if (amount > MAX_TRANSFER_SIZE) revert MaxTransferSizeExceeded();
 
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
@@ -896,7 +900,7 @@ abstract contract SpokePool is
         // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
+        if (getCurrentTime() - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
 
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
@@ -904,7 +908,7 @@ abstract contract SpokePool is
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
-            require(msg.value == amount, "msg.value must match amount");
+            if (msg.value != amount) revert MsgValueDoesNotMatchInputAmount();
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
@@ -962,13 +966,13 @@ abstract contract SpokePool is
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
-        require(newCrossDomainAdmin != address(0), "Bad bridge router address");
+        if (newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         crossDomainAdmin = newCrossDomainAdmin;
         emit SetXDomainAdmin(newCrossDomainAdmin);
     }
 
     function _setHubPool(address newHubPool) internal {
-        require(newHubPool != address(0), "Bad hub pool address");
+        if (newHubPool == address(0)) revert InvalidHubPool();
         hubPool = newHubPool;
         emit SetHubPool(newHubPool);
     }
@@ -1042,7 +1046,7 @@ abstract contract SpokePool is
         //   chain that can validate the signature.
         // - Regular signatures from an EOA are also supported.
         bool isValid = SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature);
-        require(isValid, "invalid signature");
+        if (!isValid) revert InvalidDepositorSignature();
     }
 
     function _verifyUSSSlowFill(

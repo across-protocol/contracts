@@ -55,7 +55,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
 
   it("Depositing ERC20 tokens correctly pulls tokens and changes contract state", async function () {
-    const revertReason = "Paused deposits";
+    const revertReason = "DepositsArePaused";
 
     // Can't deposit when paused:
     await spokePool.connect(depositor).pauseDeposits(true);
@@ -110,40 +110,8 @@ describe("SpokePool Depositor Logic", async function () {
     expect(await spokePool.numberOfDeposits()).to.equal(1);
   });
 
-  it("DepositFor overrrides the depositor", async function () {
-    const newDepositor = randomAddress();
-    await expect(
-      spokePool.connect(depositor).depositFor(
-        newDepositor,
-        ...getDepositParams({
-          recipient: recipient.address,
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-        })
-      )
-    )
-      .to.emit(spokePool, "USSFundsDeposited")
-      .withArgs(
-        erc20.address,
-        ZERO_ADDRESS,
-        amountToDeposit,
-        amountReceived,
-        destinationChainId,
-        0,
-        quoteTimestamp,
-        BigNumber.from("0xFFFFFFFF"),
-        0,
-        newDepositor, // Depositor is overridden.
-        recipient.address,
-        ZERO_ADDRESS,
-        "0x"
-      );
-  });
   it("Depositing ETH correctly wraps into WETH", async function () {
-    const revertReason = "msg.value must match amount";
+    const revertReason = "MsgValueDoesNotMatchInputAmount";
 
     // Fails if msg.value > 0 but doesn't match amount to deposit.
     await expect(
@@ -224,7 +192,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
 
   it("Deposit route is disabled", async function () {
-    const revertReason = "Disabled route";
+    const revertReason = "DisabledRoute";
 
     // Verify that routes are disabled by default.
     await expect(
@@ -283,7 +251,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
 
   it("Relayer fee is invalid", async function () {
-    const revertReason = "Invalid relayer fee";
+    const revertReason = "InvalidRelayerFee";
 
     await expect(
       spokePool.connect(depositor).deposit(
@@ -299,7 +267,7 @@ describe("SpokePool Depositor Logic", async function () {
   });
 
   it("quoteTimestamp is out of range", async function () {
-    const revertReason = "invalid quoteTimestamp";
+    const revertReason = "InvalidQuoteTimestamp";
     const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
 
     await expect(
@@ -341,71 +309,6 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.emit(spokePool, "USSFundsDeposited");
     }
-  });
-
-  it("quoteTimestamp is set correctly by depositNow()", async function () {
-    // ERC20 deposit
-    await expect(
-      spokePool
-        .connect(depositor)
-        .depositNow(
-          recipient.address,
-          erc20.address,
-          amountToDeposit.toString(),
-          destinationChainId.toString(),
-          relayerFeePct.toString(),
-          "0x",
-          maxUint256
-        )
-    )
-      .to.emit(spokePool, "USSFundsDeposited")
-      .withArgs(
-        erc20.address,
-        ZERO_ADDRESS,
-        amountToDeposit,
-        amountReceived,
-        destinationChainId,
-        0,
-        quoteTimestamp,
-        BigNumber.from("0xFFFFFFFF"),
-        0,
-        depositor.address,
-        recipient.address,
-        ZERO_ADDRESS,
-        "0x"
-      );
-
-    // Native token deposit - amount != msg.value
-    await expect(
-      spokePool
-        .connect(depositor)
-        .depositNow(
-          recipient.address,
-          weth.address,
-          amountToDeposit.toString(),
-          destinationChainId.toString(),
-          relayerFeePct.toString(),
-          "0x",
-          maxUint256,
-          { value: amountToDeposit.add(1) }
-        )
-    ).to.be.revertedWith("msg.value must match amount");
-
-    // Native token deposit - amount == msg.value.
-    await expect(() =>
-      spokePool
-        .connect(depositor)
-        .depositNow(
-          recipient.address,
-          weth.address,
-          amountToDeposit.toString(),
-          destinationChainId.toString(),
-          relayerFeePct.toString(),
-          "0x",
-          maxUint256,
-          { value: amountToDeposit }
-        )
-    ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
   });
 
   describe("deposit USS", function () {
@@ -579,7 +482,7 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("deposits are not paused", async function () {
       await spokePool.pauseDeposits(true);
-      await expect(spokePool.connect(depositor).depositUSS(...depositArgs)).to.be.revertedWith("Paused deposits");
+      await expect(spokePool.connect(depositor).depositUSS(...depositArgs)).to.be.revertedWith("DepositsArePaused");
     });
     it("reentrancy protected", async function () {
       const functionCalldata = spokePool.interface.encodeFunctionData("depositUSS", [...depositArgs]);
@@ -623,7 +526,7 @@ describe("SpokePool Depositor Logic", async function () {
           updatedMessage,
           signature
         )
-      ).to.be.revertedWith("invalid signature");
+      ).to.be.revertedWith("InvalidDepositorSignature");
 
       // @dev Creates an invalid signature using different params
       const invalidSignature = await getUpdatedUSSDepositSignature(
@@ -644,7 +547,7 @@ describe("SpokePool Depositor Logic", async function () {
           updatedMessage,
           invalidSignature
         )
-      ).to.be.revertedWith("invalid signature");
+      ).to.be.revertedWith("InvalidDepositorSignature");
     });
     it("passes spoke pool's chainId() as origin chainId", async function () {
       const spokePoolChainId = await spokePool.chainId();
@@ -707,7 +610,7 @@ describe("SpokePool Depositor Logic", async function () {
           updatedMessage,
           invalidSignatureForChain
         )
-      ).to.be.revertedWith("invalid signature");
+      ).to.be.revertedWith("InvalidDepositorSignature");
     });
   });
 });

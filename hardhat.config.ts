@@ -32,10 +32,6 @@ const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
-const XTRA_LARGE_CONTRACT_COMPILER_SETTINGS = {
-  version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 100 }, viaIR: true },
-};
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: { optimizer: { enabled: true, runs: 1000 }, viaIR: true },
@@ -54,20 +50,15 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Boba_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Arbitrum, only supports 0.8.19.
         // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
         version: "0.8.19",
       },
-      "contracts/Optimism_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Base_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
       "contracts/Polygon_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
-      "contracts/test/MockOptimism_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Ovm_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Linea_SpokePool.sol": {
-        ...MEDIUM_CONTRACT_COMPILER_SETTINGS,
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",

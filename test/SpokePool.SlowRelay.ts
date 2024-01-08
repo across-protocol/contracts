@@ -77,7 +77,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     });
     it("fills are not paused", async function () {
       await spokePool.pauseFills(true);
-      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("Paused fills");
+      await expect(spokePool.connect(relayer).requestUSSSlowFill(relayData)).to.be.revertedWith("FillsArePaused");
     });
     it("reentrancy protected", async function () {
       // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into

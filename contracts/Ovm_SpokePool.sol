@@ -52,6 +52,8 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
 
+    error NotCrossDomainAdmin();
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
@@ -172,10 +174,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
-        require(
-            LibOptimismUpgradeable.crossChainSender(messenger) == crossDomainAdmin,
-            "OVM_XCHAIN: wrong sender of cross-domain message"
-        );
+        if (LibOptimismUpgradeable.crossChainSender(messenger) != crossDomainAdmin) revert NotCrossDomainAdmin();
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
