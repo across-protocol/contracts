@@ -7,7 +7,9 @@ import "../Ovm_SpokePool.sol";
  */
 contract MockOptimism_SpokePool is Ovm_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _wrappedNativeTokenAddress) Ovm_SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
+    constructor(address _wrappedNativeTokenAddress)
+        Ovm_SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours, IERC20(address(0)), ITokenMessenger(address(0)))
+    {} // solhint-disable-line no-empty-blocks
 
     function initialize(
         address l2Eth,
