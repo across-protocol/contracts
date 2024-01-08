@@ -89,12 +89,12 @@ describe("Polygon Spoke Pool", function () {
     // Wrong rootMessageSender address.
     await expect(
       polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, upgradeData)
-    ).to.be.revertedWith("Not from mainnet admin");
+    ).to.be.revertedWith("NotHubPool");
 
     // Wrong calling address.
     await expect(
       polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, upgradeData)
-    ).to.be.revertedWith("Not from fxChild");
+    ).to.be.revertedWith("NotFxChild");
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, upgradeData);
   });
