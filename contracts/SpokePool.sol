@@ -1101,7 +1101,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
-    ) public virtual override nonReentrant {
+    ) public payable virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
@@ -1147,7 +1147,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
-    ) public virtual override nonReentrant {
+    ) public payable virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();

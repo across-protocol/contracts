@@ -879,6 +879,42 @@ describe("SpokePool Relayer Logic", async function () {
             )
         ).to.be.revertedWith("invalid signature");
       });
+      it("validates ERC-1271 depositor contract signature", async function () {
+        // The MockERC1271 contract returns true for isValidSignature if the signature was signed by the contract's
+        // owner, so using the depositor's signature should succeed and using someone else's signature should fail.
+        const incorrectSignature = await getUpdatedUSSDepositSignature(
+          relayer, // not depositor
+          relayData.depositId,
+          relayData.originChainId,
+          updatedOutputAmount,
+          updatedRecipient,
+          updatedMessage
+        );
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillUSSRelayWithUpdatedDeposit(
+              { ...relayData, depositor: erc1271.address },
+              consts.repaymentChainId,
+              updatedOutputAmount,
+              updatedRecipient,
+              updatedMessage,
+              incorrectSignature
+            )
+        ).to.be.revertedWith("invalid signature");
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillUSSRelayWithUpdatedDeposit(
+              { ...relayData, depositor: erc1271.address },
+              consts.repaymentChainId,
+              updatedOutputAmount,
+              updatedRecipient,
+              updatedMessage,
+              signature
+            )
+        ).to.not.be.reverted;
+      });
       it("cannot send updated fill after original fill", async function () {
         await spokePool.connect(relayer).fillUSSRelay(relayData, consts.repaymentChainId);
         await expect(
