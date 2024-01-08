@@ -445,10 +445,6 @@ abstract contract SpokePool is
      *         DEPOSITOR FUNCTIONS        *
      **************************************/
 
-    // Note: The following deposit functions will be removed in favor of the
-    // depositUSS_ functions. These are maintained for backwards compatibility with
-    // UI's that expect to call this interface.
-
     /**
      * @notice Called by user to bridge funds from origin to destination chain. Depositor will effectively lock
      * tokens in this contract and receive a destination token on the destination chain. The origin => destination
@@ -467,6 +463,7 @@ abstract contract SpokePool is
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function deposit(
         address recipient,
         address originToken,
@@ -509,6 +506,7 @@ abstract contract SpokePool is
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function depositFor(
         address depositor,
         address recipient,
@@ -538,6 +536,7 @@ abstract contract SpokePool is
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function depositNow(
         address recipient,
         address originToken,
@@ -575,6 +574,7 @@ abstract contract SpokePool is
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      * @param maxCount used to protect the depositor from frontrunning to guarantee their quote remains valid.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function depositForNow(
         address depositor,
         address recipient,

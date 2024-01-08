@@ -88,6 +88,7 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function deposit(
         address recipient,
         address originToken,
@@ -99,6 +100,7 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function depositFor(
         address depositor,
         address recipient,
@@ -111,6 +113,7 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function depositNow(
         address recipient,
         address originToken,
