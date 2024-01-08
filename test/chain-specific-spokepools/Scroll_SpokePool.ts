@@ -141,7 +141,7 @@ describe("Scroll Spoke Pool", function () {
     l2Messenger.xDomainMessageSender.returns(owner.address);
     await scrollSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     l2Messenger.xDomainMessageSender.reset();
-    await scrollSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await scrollSpokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2GatewayRouter.withdrawERC20).to.have.been.calledWith(
