@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 // This interface is expected to be implemented by any contract that expects to receive messages from the SpokePool.
 interface AcrossMessageHandler {
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function handleAcrossMessage(
         address tokenSent,
         uint256 amount,
@@ -143,10 +144,11 @@ abstract contract SpokePool is
     // their fees are negative.
     // It's important that it isn't too large, however, as it should be multipliable by ~2e18 without overflowing.
     // 1e40 * 2e18 = 2e58 << 2^255 ~= 5e76
+    /// @custom:audit FOLLOWING VARIABLE TO BE DEPRECATED
     uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
 
     // Set max payout adjustment to something
-
+    /// @custom:audit FOLLOWING VARIABLE TO BE DEPRECATED
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
@@ -162,6 +164,7 @@ abstract contract SpokePool is
     event SetXDomainAdmin(address indexed newAdmin);
     event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
     event RequestedSpeedUpDeposit(
         int64 newRelayerFeePct,
         uint32 indexed depositId,
@@ -170,6 +173,7 @@ abstract contract SpokePool is
         bytes updatedMessage,
         bytes depositorSignature
     );
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
     event FilledRelay(
         uint256 amount,
         uint256 totalFilledAmount,
@@ -187,6 +191,7 @@ abstract contract SpokePool is
         bytes message,
         RelayExecutionInfo updatableRelayData
     );
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
     event RefundRequested(
         address indexed relayer,
         address refundToken,
@@ -203,6 +208,7 @@ abstract contract SpokePool is
         bytes32 indexed relayerRefundRoot,
         bytes32 indexed slowRelayRoot
     );
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
@@ -237,6 +243,7 @@ abstract contract SpokePool is
      * @param payoutAdjustmentPct Adjustment to the payout amount. Can be used to increase or decrease the payout to
      * allow for rewards or penalties. Used in slow fills.
      */
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
     struct RelayExecution {
         RelayData relay;
         bytes32 relayHash;
@@ -260,6 +267,7 @@ abstract contract SpokePool is
      * @param isSlowRelay Whether this is a slow relay.
      * @param payoutAdjustmentPct Adjustment to the payout amount.
      */
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
     struct RelayExecutionInfo {
         address recipient;
         bytes message;
@@ -611,6 +619,7 @@ abstract contract SpokePool is
      * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
      * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function speedUpDeposit(
         address depositor,
         int64 updatedRelayerFeePct,
@@ -806,12 +815,6 @@ abstract contract SpokePool is
      *         RELAYER FUNCTIONS          *
      **************************************/
 
-    // Note: The following fill functions will be removed in favor of the
-    // fillRelayUSS_ functions. These are maintained for backwards compatibility with
-    // relayers so that they can fill old deposits that emitted FundsDepositted events
-    // pre-upgrade. All future deposits that emit USSFundsDeposited events will be
-    // fillable only with fillRelayUSS_ functions.
-
     /**
     /**
      * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
@@ -840,6 +843,7 @@ abstract contract SpokePool is
      * @param message Message to send to recipient along with tokens.
      * @param maxCount Max count to protect the relayer from frontrunning.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function fillRelay(
         address depositor,
         address recipient,
@@ -912,6 +916,7 @@ abstract contract SpokePool is
      * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
      * @param maxCount Max fill count to protect the relayer from frontrunning.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function fillRelayWithUpdatedDeposit(
         address depositor,
         address recipient,
@@ -1153,6 +1158,7 @@ abstract contract SpokePool is
      * for rewards or penalties.
      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeSlowRelayLeaf(
         address depositor,
         address recipient,
@@ -1202,6 +1208,7 @@ abstract contract SpokePool is
      * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
@@ -1447,6 +1454,7 @@ abstract contract SpokePool is
     }
 
     // Verifies inclusion proof of leaf in root and sends recipient remainder of relay. Marks relay as filled.
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _executeSlowRelayLeaf(
         address depositor,
         address recipient,
@@ -1531,6 +1539,7 @@ abstract contract SpokePool is
         MerkleLib.setClaimed(rootBundle.claimedBitmap, leafId);
     }
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _verifyUpdateDepositMessage(
         address depositor,
         uint32 depositId,
@@ -1633,6 +1642,7 @@ abstract contract SpokePool is
         );
     }
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _verifyUSSSlowFill(
         USSRelayExecutionParams memory relayExecution,
         uint32 rootBundleId,
@@ -1648,6 +1658,7 @@ abstract contract SpokePool is
             revert InvalidMerkleProof();
     }
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _computeAmountPreFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
         return (1e18 * amount) / uint256((int256(1e18) - feesPct));
     }
@@ -1656,6 +1667,7 @@ abstract contract SpokePool is
         return (amount * uint256(int256(1e18) - feesPct)) / 1e18;
     }
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _getRelayHash(SpokePoolInterface.RelayData memory relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(relayData));
     }
@@ -1684,6 +1696,7 @@ abstract contract SpokePool is
      * @dev Caller must approve this contract to transfer up to maxTokensToSend of the relayData.destinationToken.
      * The amount to be sent might end up less if there is insufficient relay amount remaining to be sent.
      */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _fillRelay(RelayExecution memory relayExecution) internal returns (uint256 fillAmountPreFees) {
         RelayData memory relayData = relayExecution.relay;
         // We limit the relay fees to prevent the user spending all their funds on fees. Note that 0.5e18 (i.e. 50%)
@@ -1918,6 +1931,7 @@ abstract contract SpokePool is
         }
     }
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
         RelayExecutionInfo memory relayExecutionInfo = RelayExecutionInfo({
             relayerFeePct: relayExecution.updatedRelayerFeePct,

@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
  * @notice Contains common data structures and functions used by all SpokePool implementations.
  */
 interface SpokePoolInterface {
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
     // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
     struct RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that
@@ -26,6 +27,7 @@ interface SpokePoolInterface {
     // considered to be completely distinct. Only one relay for a particular depositId, chainId pair should be
     // considered valid and repaid. This data is hashed and inserted into the slow relay merkle root so that an off
     // chain validator can choose when to refund slow relayers.
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
     struct RelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
@@ -50,6 +52,7 @@ interface SpokePoolInterface {
         bytes message;
     }
 
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
     struct SlowFill {
         RelayData relayData;
         int256 payoutAdjustmentPct;
@@ -118,6 +121,7 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function speedUpDeposit(
         address depositor,
         int64 updatedRelayerFeePct,
@@ -127,6 +131,7 @@ interface SpokePoolInterface {
         bytes memory depositorSignature
     ) external;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function fillRelay(
         address depositor,
         address recipient,
@@ -142,6 +147,7 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function fillRelayWithUpdatedDeposit(
         address depositor,
         address recipient,
@@ -161,6 +167,7 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeSlowRelayLeaf(
         address depositor,
         address recipient,
@@ -176,6 +183,7 @@ interface SpokePoolInterface {
         bytes32[] memory proof
     ) external;
 
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
