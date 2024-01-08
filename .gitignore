@@ -15,5 +15,8 @@ artifacts-zk
 # Upgradeability files
 .openzeppelin
 
+# Storage layouts. Only save latest deployed storage layouts.
+storage-layouts/proposed*
+
 # IDE
 .idea
