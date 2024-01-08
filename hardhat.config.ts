@@ -21,6 +21,8 @@ require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
 
+const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
@@ -53,7 +55,11 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },
+    hardhat: {
+      accounts: { accountsBalance: "1000000000000000000000000" },
+      zksync: compileZk,
+      allowUnlimitedContractSize: true,
+    },
     mainnet: {
       url: getNodeUrl("mainnet", true, 1),
       accounts: { mnemonic },
@@ -106,6 +112,13 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       chainId: 420,
       companionNetworks: { l1: "goerli" },
+    },
+    "optimism-sepolia": {
+      url: getNodeUrl("optimism-goerli", true, 11155420),
+      accounts: { mnemonic },
+      saveDeployments: true,
+      chainId: 11155420,
+      companionNetworks: { l1: "sepolia" },
     },
     arbitrum: {
       chainId: 42161,
@@ -212,6 +225,7 @@ const config: HardhatUserConfig = {
       sepolia: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
+      optimisticSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
@@ -268,6 +282,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.scrollscan.com/api",
           browserURL: "https://api-sepolia.scrollscan.com",
+        },
+      },
+      {
+        network: "optimisticSepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io",
         },
       },
     ],

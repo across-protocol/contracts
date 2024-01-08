@@ -18,6 +18,7 @@ import {
   randomBigNumber,
   seedWallet,
   FakeContract,
+  createFakeFromABI,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -28,15 +29,17 @@ import {
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
 import { USSRelayData, deployMockUSSSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
+import { CCTPTokenMessengerInterface } from "../../utils/abis";
 
-let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string;
-let polygonRegistry: FakeContract, erc20Predicate: FakeContract;
+let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
+let polygonRegistry: FakeContract, erc20Predicate: FakeContract, l2CctpTokenMessenger: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
+
 describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
-    ({ weth, hubPool, l2Dai } = await hubPoolFixture());
+    ({ weth, hubPool, l2Dai, l2Usdc } = await hubPoolFixture());
 
     // The spoke pool exists on l2, so add a random chainId for L1 to ensure that the L2's block.chainid will not match.
     const l1ChainId = randomBigNumber();
@@ -44,6 +47,7 @@ describe("Polygon Spoke Pool", function () {
 
     polygonRegistry = await createFake("PolygonRegistryMock");
     erc20Predicate = await createFake("PolygonERC20PredicateMock");
+    l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 
@@ -57,7 +61,11 @@ describe("Polygon Spoke Pool", function () {
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
       [0, polygonTokenBridger.address, owner.address, hubPool.address, fxChild.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -68,7 +76,11 @@ describe("Polygon Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Polygon_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     // upgradeTo fails unless called by cross domain admin

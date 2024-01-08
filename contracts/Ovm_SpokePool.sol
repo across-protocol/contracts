@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./external/interfaces/WETH9Interface.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
@@ -24,9 +25,9 @@ interface IL2ERC20Bridge {
 }
 
 /**
- * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
+ * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  */
-contract Ovm_SpokePool is SpokePool {
+contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
     uint32 public l1Gas;
@@ -55,8 +56,13 @@ contract Ovm_SpokePool is SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the OVM SpokePool.
@@ -137,6 +143,10 @@ contract Ovm_SpokePool is SpokePool {
                 l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                 "" // _data. We don't need to send any data for the bridging action.
             );
+        }
+        // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
+        else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(hubPool, amountToReturn);
         }
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
         else if (l2TokenAddress == SNX)
