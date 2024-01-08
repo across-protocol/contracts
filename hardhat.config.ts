@@ -21,6 +21,8 @@ require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
 
+const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
@@ -34,15 +36,28 @@ const mnemonic = getMnemonic();
 // limit.
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 1000 }, viaIR: true },
+  settings: {
+    optimizer: { enabled: true, runs: 1000 },
+    viaIR: true,
+    debug: { revertStrings: isTest ? "default" : "strip" },
+  },
 };
 const MEDIUM_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 10000 }, viaIR: true },
+  settings: {
+    optimizer: { enabled: true, runs: 10000 },
+    viaIR: true,
+    debug: { revertStrings: isTest ? "default" : "strip" },
+  },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 1000000 }, viaIR: true },
+  settings: {
+    optimizer: { enabled: true, runs: 1000000 },
+    viaIR: true,
+    // Only strip revert strings if not testing or in ci.
+    debug: { revertStrings: isTest ? "default" : "strip" },
+  },
 };
 
 const config: HardhatUserConfig = {
