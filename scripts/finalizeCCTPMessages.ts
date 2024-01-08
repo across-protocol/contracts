@@ -230,7 +230,7 @@ async function getL1SrcEvents(
       console.log(`Querying blocks ${fromBlock} - ${toBlock}...`);
       const tokensRelayedEvents = await adapter.queryFilter("TokensRelayed", fromBlock, toBlock);
       const usdcRelayedEvents = tokensRelayedEvents.filter(
-        (event) => event.args?.l1Token === L1_ADDRESS_MAP[l1ChainId].l1UsdcAddress
+        (event) => event.args?.l1Token === L1_ADDRESS_MAP[l1ChainId].usdc
       );
       console.log(`${usdcRelayedEvents.length} 'TokensRelayed'`);
       return usdcRelayedEvents;

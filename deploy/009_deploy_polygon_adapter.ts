@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].polygonERC20Predicate,
       L1_ADDRESS_MAP[chainId].matic,
       L1_ADDRESS_MAP[chainId].weth,
-      L1_ADDRESS_MAP[chainId].l1UsdcAddress,
+      L1_ADDRESS_MAP[chainId].usdc,
       // L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
       // For now, we are not using the CCTP bridge and can disable by setting
       // the cctpTokenMessenger to the zero address.
