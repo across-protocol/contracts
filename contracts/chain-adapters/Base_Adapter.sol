@@ -12,6 +12,9 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../libraries/CircleCCTPAdapter.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
+
 /**
  * @notice Contract containing logic to send messages from L1 to Base. This is a modified version of the Optimism adapter
  * that excludes the custom bridging logic.
@@ -22,7 +25,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Base_Adapter is CrossDomainEnabled, AdapterInterface {
+contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 200_000;
 
@@ -31,16 +34,30 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface {
     IL1StandardBridge public immutable l1StandardBridge;
 
     /**
+     * @notice Domain identifier used for Circle's CCTP bridge on Base.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 private constant BASE_CIRCLE_CCTP_DOMAIN_ID = 6;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _crossDomainMessenger XDomainMessenger Base system contract.
      * @param _l1StandardBridge Standard bridge contract.
+     * @param _l1Usdc USDC address on L1.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
-        IL1StandardBridge _l1StandardBridge
-    ) CrossDomainEnabled(_crossDomainMessenger) {
+        IL1StandardBridge _l1StandardBridge,
+        IERC20 _l1Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        CrossDomainEnabled(_crossDomainMessenger)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, BASE_CIRCLE_CCTP_DOMAIN_ID)
+    {
         l1Weth = _l1Weth;
         l1StandardBridge = _l1StandardBridge;
     }
@@ -72,6 +89,10 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface {
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
+        }
+        // Check if this token is USDC, which requires a custom bridge via CCTP.
+        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
+            _transferUsdc(to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = l1StandardBridge;
 

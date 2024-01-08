@@ -5,6 +5,7 @@ import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 /**
  * @notice IFxMessageProcessor represents interface to process messages.
@@ -30,7 +31,7 @@ interface IFxMessageProcessor {
 /**
  * @notice Polygon specific SpokePool.
  */
-contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
+contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
 
     // Address of FxChild which sends and receives messages to and from L1.
@@ -85,8 +86,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Polygon SpokePool.
@@ -229,11 +235,17 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(address(polygonTokenBridger), amountToReturn);
-
-        // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
-        polygonTokenBridger.send(PolygonIERC20Upgradeable(l2TokenAddress), amountToReturn);
-
+        // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
+        if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(hubPool, amountToReturn);
+        } else {
+            PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
+                address(polygonTokenBridger),
+                amountToReturn
+            );
+            // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
+            polygonTokenBridger.send(PolygonIERC20Upgradeable(l2TokenAddress), amountToReturn);
+        }
         emit PolygonTokensBridged(l2TokenAddress, address(this), amountToReturn);
     }
 
