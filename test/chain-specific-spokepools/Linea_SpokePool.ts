@@ -175,7 +175,7 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.sender.reset();
     lineaMessageService.minimumFeeInWei.returns(1);
     await expect(
-      lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      lineaSpokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("MESSAGE_FEE_MISMATCH");
   });
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
@@ -186,7 +186,7 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     lineaMessageService.sender.reset();
-    await lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await lineaSpokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(lineaTokenBridge.bridgeToken).to.have.been.calledWith(dai.address, amountToReturn, hubPool.address);
@@ -198,7 +198,7 @@ describe("Linea Spoke Pool", function () {
     );
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await lineaSpokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(lineaUsdcBridge.depositTo).to.have.been.calledWith(amountToReturn, hubPool.address);
