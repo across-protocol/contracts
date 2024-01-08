@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
+import "../libraries/CircleCCTPAdapter.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
 
 // @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
 // this contract's state variables to be `immutable` because of the delegateCall call.
@@ -33,7 +35,7 @@ interface SynthetixBridgeToOptimism is IL1StandardBridge {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
+contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public immutable l2GasLimit = 200_000;
 
@@ -52,16 +54,30 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
     address public immutable snxOptimismBridge = 0x39Ea01a0298C315d149a490E34B59Dbf2EC7e48F;
 
     /**
+     * @notice Domain identifier used for Circle's CCTP bridge on Optimism.
+     * @dev This identifier is assigned by Circle and is not related to a chain ID.
+     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
+     */
+    uint32 private constant OPTIMISM_CIRCLE_CCTP_DOMAIN_ID = 2;
+
+    /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _crossDomainMessenger XDomainMessenger Optimism system contract.
      * @param _l1StandardBridge Standard bridge contract.
+     * @param _l1Usdc USDC address on L1.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
-        IL1StandardBridge _l1StandardBridge
-    ) CrossDomainEnabled(_crossDomainMessenger) {
+        IL1StandardBridge _l1StandardBridge,
+        IERC20 _l1Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        CrossDomainEnabled(_crossDomainMessenger)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, OPTIMISM_CIRCLE_CCTP_DOMAIN_ID)
+    {
         l1Weth = _l1Weth;
         l1StandardBridge = _l1StandardBridge;
     }
@@ -93,6 +109,10 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface {
         if (l1Token == address(l1Weth)) {
             l1Weth.withdraw(amount);
             l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
+        }
+        // If the l1Token is USDC, then we send it to the CCTP bridge
+        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
+            _transferUsdc(to, amount);
         } else {
             address bridgeToUse = address(l1StandardBridge);
 

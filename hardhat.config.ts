@@ -17,8 +17,11 @@ import "@openzeppelin/hardhat-upgrades";
 // Custom tasks to add to HRE.
 // eslint-disable-next-line node/no-missing-require
 require("./tasks/enableL1TokenAcrossEcosystem");
+require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
+
+const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
@@ -38,7 +41,12 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
 
 const XTRA_LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 1 }, viaIR: true },
+  settings: {
+    optimizer: { enabled: true, runs: 1 },
+    viaIR: true,
+    // Only strip revert strings if not testing or in ci.
+    debug: { revertStrings: isTest ? "default" : "strip" },
+  },
 };
 
 const config: HardhatUserConfig = {
@@ -48,7 +56,12 @@ const config: HardhatUserConfig = {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ethereum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Boba_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Arbitrum_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Arbitrum_SpokePool.sol": {
+        ...XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+        // NOTE: Arbitrum, only supports 0.8.19.
+        // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
+        version: "0.8.19",
+      },
       "contracts/Succinct_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/ZkSync_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -58,6 +71,13 @@ const config: HardhatUserConfig = {
       "contracts/test/MockSpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/test/MockOptimism_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ovm_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Linea_SpokePool.sol": {
+        ...XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+        // NOTE: Linea only supports 0.8.19.
+        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
+        version: "0.8.19",
+      },
+      "contracts/Scroll_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -69,7 +89,11 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },
+    hardhat: {
+      accounts: { accountsBalance: "1000000000000000000000000" },
+      zksync: compileZk,
+      allowUnlimitedContractSize: true,
+    },
     mainnet: {
       url: getNodeUrl("mainnet", true, 1),
       accounts: { mnemonic },
@@ -203,6 +227,27 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    linea: {
+      chainId: 59144,
+      url: `https://linea.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "linea-goerli": {
+      chainId: 59140,
+      url: `https://linea-goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
+    },
+    "scroll-sepolia": {
+      chainId: 534351,
+      url: "https://sepolia-rpc.scroll.io",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -220,6 +265,9 @@ const config: HardhatUserConfig = {
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
       base: process.env.BASE_ETHERSCAN_API_KEY!,
       "base-goerli": process.env.ETHERSCAN_API_KEY!,
+      linea: process.env.LINEA_ETHERSCAN_API_KEY!,
+      "linea-goerli": process.env.LINEA_ETHERSCAN_API_KEY!,
+      "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -239,11 +287,42 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "optimisticSepolia",
-        chainId: 11155420,
+        network: "linea",
+        chainId: 59144,
         urls: {
-          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
-          browserURL: "https://sepolia-optimism.etherscan.io",
+          apiURL: "https://api.lineascan.build/api",
+          browserURL: "https://lineascan.org",
+        },
+      },
+      {
+        network: "linea-goerli",
+        chainId: 59140,
+        urls: {
+          apiURL: "https://api-testnet.lineascan.build/api",
+          browserURL: "https://goerli.lineascan.build",
+        },
+      },
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io",
+        },
+      },
+      {
+        network: "scroll-sepolia",
+        chainId: 534351,
+        urls: {
+          apiURL: "https://api-sepolia.scrollscan.com/api",
+          browserURL: "https://api-sepolia.scrollscan.com",
+        },
+        {
+          network: "optimisticSepolia",
+          chainId: 11155420,
+          urls: {
+            apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+            browserURL: "https://sepolia-optimism.etherscan.io",
         },
       },
     ],

@@ -3,6 +3,10 @@ pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
 interface USSSpokePoolInterface {
+    /**************************************
+     *              ENUMS                 *
+     **************************************/
+
     // Fill status tracks on-chain state of deposit, uniquely identified by relayHash.
     enum FillStatus {
         Unfilled,
@@ -23,8 +27,14 @@ interface USSSpokePoolInterface {
         // the slow fill is validated.
     }
 
-    // This struct represents the data to fully specify a **unique** relay. This data is hashed and saved by the SpokePool
-    // to prevent collisions. If any portion of this data differs, the relay is considered to be completely distinct.
+    /**************************************
+     *              STRUCTS               *
+     **************************************/
+
+    // This struct represents the data to fully specify a **unique** relay submitted on this chain.
+    // This data is hashed with the chainId() and saved by the SpokePool to prevent collisions and protect against
+    // replay attacks on other chains. If any portion of this data differs, the relay is considered to be
+    // completely distinct.
     struct USSRelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
@@ -42,8 +52,6 @@ interface USSSpokePoolInterface {
         uint256 outputAmount;
         // Origin chain id.
         uint256 originChainId;
-        // Destination chain id.
-        uint256 destinationChainId;
         // The id uniquely identifying this deposit on the origin chain.
         uint32 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
@@ -54,8 +62,10 @@ interface USSSpokePoolInterface {
         bytes message;
     }
 
+    // Contains parameters passed in by someone who wants to execute a slow relay leaf.
     struct USSSlowFill {
         USSRelayData relayData;
+        uint256 chainId;
         uint256 updatedOutputAmount;
     }
 
@@ -94,6 +104,20 @@ interface USSSpokePoolInterface {
         uint256 repaymentChainId;
     }
 
+    // Packs together parameters emitted in FilledUSSRelay because there are too many emitted otherwise.
+    // Similar to USSRelayExecutionParams, these parameters are not used to uniquely identify the deposit being
+    // filled so they don't have to be unpacked by all clients.
+    struct USSRelayExecutionEventInfo {
+        address updatedRecipient;
+        bytes updatedMessage;
+        uint256 updatedOutputAmount;
+        FillType fillType;
+    }
+
+    /**************************************
+     *              EVENTS                *
+     **************************************/
+
     event USSFundsDeposited(
         address inputToken,
         address outputToken,
@@ -118,13 +142,6 @@ interface USSSpokePoolInterface {
         bytes updatedMessage,
         bytes depositorSignature
     );
-
-    struct USSRelayExecutionEventInfo {
-        address updatedRecipient;
-        bytes updatedMessage;
-        uint256 updatedOutputAmount;
-        FillType fillType;
-    }
 
     event FilledUSSRelay(
         address inputToken,
@@ -170,6 +187,10 @@ interface USSSpokePoolInterface {
         bytes32 fillsRefundedRoot,
         string fillsRefundedIpfsHash
     );
+
+    /**************************************
+     *              FUNCTIONS             *
+     **************************************/
 
     function depositUSS(
         address depositor,
@@ -218,7 +239,11 @@ interface USSSpokePoolInterface {
         uint32 rootBundleId,
         USSRelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
-    ) external;
+    ) external payable;
+
+    /**************************************
+     *              ERRORS                *
+     **************************************/
 
     error DisabledRoute();
     error InvalidQuoteTimestamp();

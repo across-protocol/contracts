@@ -160,7 +160,6 @@ describe("MerkleLib Proofs", async function () {
         inputAmount: randomBigNumber(),
         outputAmount: randomBigNumber(),
         originChainId: randomBigNumber(2).toNumber(),
-        destinationChainId: randomBigNumber(2).toNumber(),
         depositId: BigNumber.from(i).toNumber(),
         fillDeadline: randomBigNumber(2).toNumber(),
         exclusivityDeadline: randomBigNumber(2).toNumber(),
@@ -168,6 +167,7 @@ describe("MerkleLib Proofs", async function () {
       };
       slowFillLeaves.push({
         relayData,
+        chainId: randomBigNumber(2).toNumber(),
         updatedOutputAmount: relayData.outputAmount,
       });
     }
