@@ -647,6 +647,48 @@ abstract contract SpokePool is
      *         USS DEPOSITOR FUNCTIONS          *
      ********************************************/
 
+    /**
+     * @notice Request to bridge input token cross chain to a destination chain and receive a specified amount
+     * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
+     * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
+     * chain will send outputAmount of outputTokens to the recipient and receive inputTokens on a repayment
+     * chain of their choice. Therefore, the fee should account for destination fee transaction costs,
+     * the relayer's opportunity cost of capital while they wait to be refunded following an optimistic challenge
+     * window in the HubPool, and the system fee that they'll be charged.
+     * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
+     * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
+     * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
+     * deposits with deposit hashes that map exactly to the one emitted by this contract.
+     * @param depositor The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to
+     * initiate the deposit. The equivalent of this token on the relayer's repayment chain of choice will be sent
+     * as a refund. If this is equal to the wrapped native token then the caller can optionally pass in native token as
+     * msg.value, as long as msg.value = inputTokenAmount.
+     * @param outputToken The token that the relayer will send to the recipient on the destination chain. Must be an
+     * ERC20.
+     * @param inputAmount The amount of input tokens to pull from the caller's account and lock into this contract.
+     * This amount will be sent to the relayer on their repayment chain of choice as a refund following an optimistic
+     * challenge window in the HubPool, plus a system fee.
+     * @param outputAmount The amount of output tokens that the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled along with the input token
+     * as a valid deposit route from this spoke pool or this transaction will revert.
+     * @param exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
+     * exclusivity deadline timestamp.
+     * @param quoteTimestamp The HubPool timestamp that is used to determine the system fee paid by the depositor.
+     *  This must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime]
+     * where currentTime is block.timestamp on this chain or this transaction will revert.
+     * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
+     * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
+     * where currentTime is block.timestamp on this chain or this transaction will revert.
+     * @param exclusivityDeadline The deadline for the exclusive relayer to fill the deposit. After this
+     * destination chain timestamp, anyone can fill this deposit on the destination chain.
+     * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
+     * If the message is not empty, the recipient contract must implement handleUSSAcrossMessage() or the fill will revert.
+     */
     function depositUSS(
         address depositor,
         address recipient,
@@ -712,6 +754,24 @@ abstract contract SpokePool is
         );
     }
 
+    /**
+     * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
+     * and/or message.
+     * @dev the depositor and depositId must match the params in a USSFundsDeposited event that the depositor
+     * wants to speed up. The relayer has the option but not the obligation to use this updated information
+     * when filling the deposit via fillUSSRelayWithUpdatedDeposit().
+     * @param depositor Depositor that must sign the depositorSignature and was the original depositor.
+     * @param depositId Deposit ID to speed up.
+     * @param updatedOutputAmount New output amount to use for this deposit. Should be lower than previous value
+     * otherwise relayer has no incentive to use this updated value.
+     * @param updatedRecipient New recipient to use for this deposit. Can be modified if the recipient is a contract
+     * that expects to receive a message from the relay and for some reason needs to be modified.
+     * @param updatedMessage New message to use for this deposit. Can be modified if the recipient is a contract
+     * that expects to receive a message from the relay and for some reason needs to be modified.
+     * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
+     * account. If depositor is a contract, then should implement EIP1271 to sign as a contract. See
+     * _verifyUpdateUSSDepositMessage() for more details about how this signature should be constructed.
+     */
     function speedUpUSSDeposit(
         address depositor,
         uint32 depositId,
@@ -912,6 +972,47 @@ abstract contract SpokePool is
      *         USS RELAYER FUNCTIONS          *
      ******************************************/
 
+    /**
+     * @notice Fulfill request to bridge cross chain by sending specified output tokens to the recipient.
+     * @dev The fee paid to relayers and the system should be captured in the spread between output
+     * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
+     * chain will send outputAmount of outputTokens to the recipient and receive inputTokens on a repayment
+     * chain of their choice. Therefore, the fee should account for destination fee transaction costs, the
+     * relayer's opportunity cost of capital while they wait to be refunded following an optimistic challenge
+     * window in the HubPool, and a system fee charged to relayers.
+     * @dev The hash of the relayData will be used to uniquely identify the deposit to fill, so
+     * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
+     * all parameters passed to depositUSS() on the origin chain along with that chain's chainId(). This chain's
+     * chainId() must therefore match the destinationChainId passed into depositUSS.
+     * Relayers are only refunded for filling deposits with deposit hashes that map exactly to the one emitted by the
+     * origin SpokePool therefore the relayer should not modify any params in relayData.
+     * @dev Cannot fill more than once. Partial fills are not supported.
+     * @param relayData struct containing all the data needed to identify the deposit to be filled. Should match
+     * all the same-named parameters emitted in the origin chain USSFundsDeposited event.
+     * - depositor: The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * - recipient The account receiving funds on this chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * - inputToken: The token pulled from the caller's account to initiate the deposit. The equivalent of this
+     * token on the repayment chain will be sent as a refund to the caller.
+     * - outputToken The token that the caller will send to the recipient on the destination chain. Must be an
+     * ERC20.
+     * - inputAmount: This amount, less a system fee, will be sent to the caller on their repayment chain of choice as a refund
+     * following an optimistic challenge window in the HubPool.
+     * - outputAmount: The amount of output tokens that the caller will send to the recipient.
+     * - originChainId: The origin chain identifier.
+     * - exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
+     * exclusivity deadline timestamp.
+     * - fillDeadline The deadline for the caller to fill the deposit. After this timestamp,
+     * the fill will revert on the destination chain.
+     * - exclusivityDeadline: The deadline for the exclusive relayer to fill the deposit. After this
+     * timestamp, anyone can fill this deposit.
+     * - message The message to send to the recipient if the recipient is a contract that implements a
+     * handleUSSAcrossMessage() public function
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
+     */
     function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId)
         public
         override
@@ -936,6 +1037,23 @@ abstract contract SpokePool is
         _fillRelayUSS(relayExecution, msg.sender, false);
     }
 
+    /**
+     * @notice Identical to fillUSSRelay except that the relayer wants to use a depositor's updated output amount,
+     * recipient, and/or message. The relayer should only use this function if they can supply a message signed
+     * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
+     * If the signature can be verified, then this function will emit a FilledUSSEvent that will be used by
+     * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
+     * a deposit than fillUSSRelay.
+     * @dev Subject to same exclusivity deadline rules as fillUSSRelay().
+     * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillUSSRelay().
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed. See fillUSSRelay().
+     * @param updatedOutputAmount New output amount to use for this deposit.
+     * @param updatedRecipient New recipient to use for this deposit.
+     * @param updatedMessage New message to use for this deposit.
+     * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
+     * account.
+     */
     function fillUSSRelayWithUpdatedDeposit(
         USSRelayData calldata relayData,
         uint256 repaymentChainId,
@@ -977,9 +1095,15 @@ abstract contract SpokePool is
      * for a deposit in the next bundle.
      * @dev Slow fills are not possible unless the input and output tokens are "equivalent", i.e.
      * they route to the same L1 token via PoolRebalanceRoutes.
+     * @dev Slow fills are created by inserting slow fill objects into a merkle tree that is included
+     * in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool
+     * will relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed,
+     * the slow fill can be executed by anyone who calls executeUSSSlowRelayLeaf().
+     * @dev Cannot request a slow fill if the fill deadline has passed.
+     * @dev Cannot request a slow fill if the relay has already been filled or a slow fill has already been requested.
      * @param relayData struct containing all the data needed to identify the deposit that should be
-     * slow filled. If any of the params are missing or different then Across will not include a slow
-     * fill for the intended deposit.
+     * slow filled. If any of the params are missing or different from the origin chain deposit,
+     * then Across will not include a slow fill for the intended deposit.
      */
     function requestUSSSlowFill(USSRelayData calldata relayData) public override nonReentrant unpausedFills {
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
@@ -1061,8 +1185,23 @@ abstract contract SpokePool is
         );
     }
 
-    // @dev We pack the function params into USSSlowFill to avoid stack-to-deep error that occurs
-    // when a function is called with more than 13 params.
+    /**
+     * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
+     * @dev Executing a slow fill leaf is equivalent to filling the relayData so this function cannot be used to
+     * double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
+     * like any other fill sent through fillUSSRelay().
+     * @dev There is no relayer credited with filling this relay since funds are sent directly out of this contract.
+     * @param slowFillLeaf Contains all data necessary to uniquely identify a relay for this chain. This struct is
+     * hashed and included in a merkle root that is relayed to all spoke pools.
+     * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
+     * - chainId: chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
+     * chainId, then this function will revert.
+     * - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
+     * from relayData.outputAmount to charge a different fee because this deposit was "slow" filled. Usually,
+     * this will be set higher to reimburse the recipient for waiting for the slow fill.
+     * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
+     * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
+     */
     function executeUSSSlowRelayLeaf(
         USSSlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
@@ -1136,13 +1275,25 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Executes a relayer refund leaf stored as part of a root bundle. Will send the relayer the amount they
-     * sent to the recipient plus a relayer fee.
+     * @notice Executes a relayer refund leaf stored as part of a root bundle relayed by the HubPool. Sends
+     * to relayers their amount refunded by the system for successfully filling relays.
+     * @param relayerRefundLeaf Contains all data necessary to uniquely identify refunds for this chain. This struct is
+     * hashed and included in a merkle root that is relayed to all spoke pools. See USSRelayerRefundLeaf struct
+     * for more detailed comments.
+     * - amountToReturn: amount of tokens to return to HubPool out of this contract.
+     * - refundAmounts: array of amounts to refund to relayers.
+     * - refundAddresses: array of relayer addresses to refund
+     * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
+     * - chainId: chain identifier where relayer refund leaf should be executed. If this doesn't match this chain's
+     * chainId, then this function will revert.
+     * - leafId: index of this leaf within the merkle root, used to track whether this leaf has been executed.
+     * - fillsRefundedRoot: Merkle root of all successful fills refunded by this leaf. Can be used by third parties
+     * to track which fills were successful.
+     * - fillsRefundedHash: Unique identifier where anyone can find the full fills refunded tree.
      * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
-     * @param relayerRefundLeaf Contains all data necessary to reconstruct leaf contained in root bundle and to
-     * refund relayer. This data structure is explained in detail in the SpokePoolInterface.
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */
+
     function executeUSSRelayerRefundLeaf(
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf calldata relayerRefundLeaf,
