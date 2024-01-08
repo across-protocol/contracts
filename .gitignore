@@ -6,6 +6,9 @@ typechain
 dist
 typechain-types
 
+# Vim files
+*.swp
+
 # Hardhat files
 cache
 artifacts
