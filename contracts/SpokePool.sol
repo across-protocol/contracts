@@ -80,10 +80,6 @@ abstract contract SpokePool is
     // relay, the fees, and the agents are all parameters included in the hash key.
     mapping(bytes32 => uint256) private DEPRECATED_relayFills;
 
-    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
-    // to eliminate any chance of collision between pre and post USS relay hashes.
-    mapping(bytes32 => uint256) public fillStatuses;
-
     // Note: We will likely un-deprecate the fill and deposit counters to implement a better
     // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
     // in deposit/fill functions. This can be used to implement a UBA-esque fee mechanism.
@@ -102,6 +98,10 @@ abstract contract SpokePool is
     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
     // requests are known and accounted for.
     mapping(bytes32 => uint256) private DEPRECATED_refundsRequested;
+
+    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
+    // to eliminate any chance of collision between pre and post USS relay hashes.
+    mapping(bytes32 => uint256) public fillStatuses;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
@@ -715,7 +715,7 @@ abstract contract SpokePool is
         uint32 rootBundleId,
         USSSpokePoolInterface.USSRelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
-    ) public virtual override nonReentrant {
+    ) public payable virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
@@ -1097,5 +1097,5 @@ abstract contract SpokePool is
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    uint256[1000] private __gap;
+    uint256[999] private __gap;
 }

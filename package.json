@@ -41,12 +41,15 @@
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.3",
     "@openzeppelin/contracts-upgradeable": "4.9.3",
+    "@scroll-tech/contracts": "^0.1.0",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
     "@uma/core": "^2.56.0",
+    "axios": "^1.6.2",
     "zksync-web3": "^0.14.3"
   },
   "devDependencies": {
+    "@consensys/linea-sdk": "^0.1.6",
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
     "@matterlabs/hardhat-zksync-solc": "^0.4.1",
     "@matterlabs/hardhat-zksync-upgradable": "^0.1.0",
