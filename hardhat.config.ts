@@ -21,6 +21,8 @@ require("./tasks/finalizeScrollClaims");
 
 dotenv.config();
 
+const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
@@ -39,7 +41,12 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
 
 const XTRA_LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
-  settings: { optimizer: { enabled: true, runs: 1 }, viaIR: true, debug: { revertStrings: "strip" } },
+  settings: {
+    optimizer: { enabled: true, runs: 1 },
+    viaIR: true,
+    // Only strip revert strings if not testing or in ci.
+    debug: { revertStrings: isTest ? "default" : "strip" },
+  },
 };
 
 const config: HardhatUserConfig = {
@@ -76,7 +83,11 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    hardhat: { accounts: { accountsBalance: "1000000000000000000000000" }, zksync: compileZk },
+    hardhat: {
+      accounts: { accountsBalance: "1000000000000000000000000" },
+      zksync: compileZk,
+      allowUnlimitedContractSize: true,
+    },
     mainnet: {
       url: getNodeUrl("mainnet", true, 1),
       accounts: { mnemonic },
