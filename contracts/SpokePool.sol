@@ -323,10 +323,6 @@ abstract contract SpokePool is
      *    LEGACY DEPOSITOR FUNCTIONS      *
      **************************************/
 
-    // Note: The following deposit functions will be removed in favor of the
-    // depositUSS_ functions. These are maintained for backwards compatibility with
-    // UI's that expect to call this interface.
-
     /**
      * @notice Called by user to bridge funds from origin to destination chain. Depositor will effectively lock
      * tokens in this contract and receive a destination token on the destination chain. The origin => destination
