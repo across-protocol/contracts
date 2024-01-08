@@ -1,14 +1,4 @@
-import {
-  expect,
-  ethers,
-  Contract,
-  SignerWithAddress,
-  seedWallet,
-  toBN,
-  toWei,
-  randomAddress,
-  BigNumber,
-} from "../utils/utils";
+import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei, randomAddress } from "../utils/utils";
 import {
   spokePoolFixture,
   enableRoutes,
@@ -23,7 +13,6 @@ import {
   depositRelayerFeePct,
   realizedLpFeePct,
   amountReceived,
-  maxUint256,
   MAX_UINT32,
   originChainId,
 } from "./constants";
@@ -428,6 +417,45 @@ describe("SpokePool Depositor Logic", async function () {
         [depositor, spokePool],
         [amountToDeposit.mul(toBN("-1")), amountToDeposit]
       );
+    });
+    it("depositNow uses current time as quote time", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadlineOffset = 1000;
+      const exclusiviyDeadlineOffset = 200;
+      await expect(
+        spokePool
+          .connect(depositor)
+          .depositUSSNow(
+            relayData.depositor,
+            relayData.recipient,
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            destinationChainId,
+            relayData.exclusiveRelayer,
+            fillDeadlineOffset,
+            exclusiviyDeadlineOffset,
+            relayData.message
+          )
+      )
+        .to.emit(spokePool, "USSFundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          currentTime, // quoteTimestamp should be current time
+          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+          currentTime + exclusiviyDeadlineOffset, // exclusivityDeadline should be current time + offset
+          relayData.depositor,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
+          relayData.message
+        );
     });
     it("emits USSFundsDeposited event with correct deposit ID", async function () {
       await expect(spokePool.connect(depositor).depositUSS(...depositArgs))
