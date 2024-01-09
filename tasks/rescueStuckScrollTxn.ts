@@ -1,9 +1,7 @@
 /* eslint-disable camelcase */
-import axios from "axios";
 import { task } from "hardhat/config";
 import { Contract, Signer, ethers } from "ethers";
 import { L1_ADDRESS_MAP } from "../deploy/consts";
-import { ZERO_ADDRESS } from "@uma/common";
 
 require("dotenv").config();
 
@@ -116,15 +114,19 @@ task("rescue-stuck-scroll-txn", "Rescue a failed Scroll transaction")
     }
     const decodedEvent = messengerContract.interface.parseLog(relevantEvent);
     const { sender, target, value, messageNonce, message } = decodedEvent.args;
-    console.log("Decoded event:", {
-      sender,
-      target,
-      value: value.toString(),
-      messageNonce: messageNonce.toString(),
-      message: message.toString(),
-    });
+    const refundAddress = await signer.getAddress();
 
-    console.log("Replaying message...");
+    console.debug("Log found. Event Decoded.");
+    console.debug("Will replay with these parameters:", {
+      _from: sender,
+      _to: target,
+      _value: value.toString(),
+      _messageNonce: messageNonce.toString(),
+      _message: message.toString(),
+      _newGasLimit: taskArguments.gasLimit,
+      _refundAddress: refundAddress,
+    });
+    console.debug("Replaying message (sending with 0.001ETH )...");
     const resultingTxn = await messengerContract.replayMessage(
       sender, // _from
       target, // _to
@@ -132,12 +134,12 @@ task("rescue-stuck-scroll-txn", "Rescue a failed Scroll transaction")
       messageNonce, // _messageNonce
       message, // _message
       ethers.BigNumber.from(taskArguments.gasLimit), // _newGasLimit
-      await signer.getAddress(), // _refundAddress
+      refundAddress, // _refundAddress
       {
-        // 0.00001 ETH to be sent to the Scroll relayer (to cover L1 gas costs)
+        // 0.001 ETH to be sent to the Scroll relayer (to cover L1 gas costs)
         // Using recommended value default as described here: https://docs.scroll.io/en/developers/l1-and-l2-bridging/eth-and-erc20-token-bridge/
-        // *Any* leftover ETH will be immediately refunded to the signer - this is just the L1 gas cost
-        value: ethers.utils.parseEther("0.00001"),
+        // *Any* leftover ETH will be immediately refunded to the signer - this is just the L1 gas cost for submitting the transaction
+        value: ethers.utils.parseEther("0.001"),
       }
     );
     console.log("Replay transaction hash:", resultingTxn.hash);
