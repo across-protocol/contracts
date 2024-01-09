@@ -104,12 +104,13 @@ task("rescue-stuck-scroll-txn", "Rescue a failed Scroll transaction")
     if (!["1", "11155111"].includes(String(chainId))) {
       throw new Error("This script can only be run on Sepolia or Ethereum mainnet");
     }
-    const signer = (await (hre_ as any).ethers.getSigners())[0] as unknown as Signer;
+    const signer = (await hre_.ethers.getSigners())[0] as unknown as Signer;
     const messengerContract = new Contract(L1_ADDRESS_MAP[chainId].scrollMessengerRelay, relayMessengerAbi, signer);
 
     const txn = await signer.provider?.getTransactionReceipt(taskArguments.l1Hash);
-    const eventSignature = ethers.utils.id("SentMessage(address,address,uint256,uint256,uint256,bytes)");
-    const relevantEvent = txn?.logs?.find((log) => log.topics[0] === eventSignature);
+    const relevantEvent = txn?.logs?.find(
+      (log) => log.topics[0] === messengerContract.interface.getEventTopic("SentMessage")
+    );
     if (!relevantEvent) {
       throw new Error("No relevant event found. Is this a Scroll bridge transaction?");
     }
