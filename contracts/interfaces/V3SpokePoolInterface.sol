@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // Contains structs and functions used by SpokePool contracts to facilitate universal settlement.
-interface USSSpokePoolInterface {
+interface V3SpokePoolInterface {
     /**************************************
      *              ENUMS                 *
      **************************************/
@@ -35,7 +35,7 @@ interface USSSpokePoolInterface {
     // This data is hashed with the chainId() and saved by the SpokePool to prevent collisions and protect against
     // replay attacks on other chains. If any portion of this data differs, the relay is considered to be
     // completely distinct.
-    struct USSRelayData {
+    struct V3RelayData {
         // The address that made the deposit on the origin chain.
         address depositor;
         // The recipient address on the destination chain.
@@ -63,13 +63,13 @@ interface USSSpokePoolInterface {
     }
 
     // Contains parameters passed in by someone who wants to execute a slow relay leaf.
-    struct USSSlowFill {
-        USSRelayData relayData;
+    struct V3SlowFill {
+        V3RelayData relayData;
         uint256 chainId;
         uint256 updatedOutputAmount;
     }
 
-    struct USSRelayerRefundLeaf {
+    struct V3RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that
         // is negative. This is just the negative of this value.
         uint256 amountToReturn;
@@ -95,8 +95,8 @@ interface USSSpokePoolInterface {
     // relay itself but is required to know how to process the relay. For example, "updatedX" fields can be used
     // by the relayer to modify fields of the relay with the depositor's permission, and "repaymentChainId" is specified
     // by the relayer to determine where to take a relayer refund, but doesn't affect the uniqueness of the relay.
-    struct USSRelayExecutionParams {
-        USSRelayData relay;
+    struct V3RelayExecutionParams {
+        V3RelayData relay;
         bytes32 relayHash;
         uint256 updatedOutputAmount;
         address updatedRecipient;
@@ -104,10 +104,10 @@ interface USSSpokePoolInterface {
         uint256 repaymentChainId;
     }
 
-    // Packs together parameters emitted in FilledUSSRelay because there are too many emitted otherwise.
-    // Similar to USSRelayExecutionParams, these parameters are not used to uniquely identify the deposit being
+    // Packs together parameters emitted in FilledV3Relay because there are too many emitted otherwise.
+    // Similar to V3RelayExecutionParams, these parameters are not used to uniquely identify the deposit being
     // filled so they don't have to be unpacked by all clients.
-    struct USSRelayExecutionEventInfo {
+    struct V3RelayExecutionEventInfo {
         address updatedRecipient;
         bytes updatedMessage;
         uint256 updatedOutputAmount;
@@ -118,7 +118,7 @@ interface USSSpokePoolInterface {
      *              EVENTS                *
      **************************************/
 
-    event USSFundsDeposited(
+    event V3FundsDeposited(
         address inputToken,
         address outputToken,
         uint256 inputAmount,
@@ -134,7 +134,7 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
-    event RequestedSpeedUpUSSDeposit(
+    event RequestedSpeedUpV3Deposit(
         uint256 updatedOutputAmount,
         uint32 indexed depositId,
         address indexed depositor,
@@ -143,7 +143,7 @@ interface USSSpokePoolInterface {
         bytes depositorSignature
     );
 
-    event FilledUSSRelay(
+    event FilledV3Relay(
         address inputToken,
         address outputToken,
         uint256 inputAmount,
@@ -158,10 +158,10 @@ interface USSSpokePoolInterface {
         address depositor,
         address recipient,
         bytes message,
-        USSRelayExecutionEventInfo relayExecutionInfo
+        V3RelayExecutionEventInfo relayExecutionInfo
     );
 
-    event RequestedUSSSlowFill(
+    event RequestedV3SlowFill(
         address inputToken,
         address outputToken,
         uint256 inputAmount,
@@ -176,7 +176,7 @@ interface USSSpokePoolInterface {
         bytes message
     );
 
-    event ExecutedUSSRelayerRefundRoot(
+    event ExecutedV3RelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
         uint256[] refundAmounts,
@@ -192,7 +192,7 @@ interface USSSpokePoolInterface {
      *              FUNCTIONS             *
      **************************************/
 
-    function depositUSS(
+    function depositV3(
         address depositor,
         address recipient,
         address inputToken,
@@ -207,7 +207,7 @@ interface USSSpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function depositUSSNow(
+    function depositV3Now(
         address depositor,
         address recipient,
         address inputToken,
@@ -221,7 +221,7 @@ interface USSSpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function speedUpUSSDeposit(
+    function speedUpV3Deposit(
         address depositor,
         uint32 depositId,
         uint256 updatedOutputAmount,
@@ -230,10 +230,10 @@ interface USSSpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId) external;
+    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId) external;
 
-    function fillUSSRelayWithUpdatedDeposit(
-        USSRelayData calldata relayData,
+    function fillV3RelayWithUpdatedDeposit(
+        V3RelayData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -241,17 +241,17 @@ interface USSSpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function requestUSSSlowFill(USSRelayData calldata relayData) external;
+    function requestV3SlowFill(V3RelayData calldata relayData) external;
 
-    function executeUSSSlowRelayLeaf(
-        USSSlowFill calldata slowFillLeaf,
+    function executeV3SlowRelayLeaf(
+        V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
     ) external;
 
-    function executeUSSRelayerRefundLeaf(
+    function executeV3RelayerRefundLeaf(
         uint32 rootBundleId,
-        USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        V3RelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
     ) external payable;
 

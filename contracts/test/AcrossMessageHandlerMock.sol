@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../SpokePool.sol";
-import "../interfaces/USSSpokePoolInterface.sol";
+import "../interfaces/V3SpokePoolInterface.sol";
 
 contract AcrossMessageHandlerMock is AcrossMessageHandler {
-    function handleUSSAcrossMessage(
+    function handleV3AcrossMessage(
         address tokenSent,
         uint256 amount,
         address relayer,

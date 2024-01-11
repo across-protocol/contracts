@@ -1,4 +1,4 @@
-import { PoolRebalanceLeaf, USSRelayerRefundLeaf } from "./MerkleLib.utils";
+import { PoolRebalanceLeaf, V3RelayerRefundLeaf } from "./MerkleLib.utils";
 import { merkleLibFixture } from "./fixtures/MerkleLib.Fixture";
 import { MerkleTree, EMPTY_MERKLE_ROOT } from "../utils/MerkleTree";
 import {
@@ -13,7 +13,7 @@ import {
   createRandomBytes32,
   ethers,
 } from "../utils/utils";
-import { USSRelayData, USSSlowFill } from "../test-utils";
+import { V3RelayData, V3SlowFill } from "../test-utils";
 
 let merkleLibTest: Contract;
 
@@ -73,8 +73,8 @@ describe("MerkleLib Proofs", async function () {
     expect(() => merkleTree.getHexProof(invalidPoolRebalanceLeaf)).to.throw();
     expect(await merkleLibTest.verifyPoolRebalance(root, invalidPoolRebalanceLeaf, proof)).to.equal(false);
   });
-  it("USSRelayerRefundLeafProof", async function () {
-    const relayerRefundLeaves: USSRelayerRefundLeaf[] = [];
+  it("V3RelayerRefundLeafProof", async function () {
+    const relayerRefundLeaves: V3RelayerRefundLeaf[] = [];
     const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
     for (let i = 0; i < numDistributions; i++) {
       const numAddresses = 10;
@@ -99,23 +99,23 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidRelayerRefundLeaf = relayerRefundLeaves.pop()!;
 
-    const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
-    const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const merkleTree = new MerkleTree<USSRelayerRefundLeaf>(relayerRefundLeaves, hashFn);
+    const paramType = await getParamType("MerkleLibTest", "verifyV3RelayerRefund", "refund");
+    const hashFn = (input: V3RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const merkleTree = new MerkleTree<V3RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(relayerRefundLeaves[14]);
-    expect(await merkleLibTest.verifyUSSRelayerRefund(root, relayerRefundLeaves[14], proof)).to.equal(true);
+    expect(await merkleLibTest.verifyV3RelayerRefund(root, relayerRefundLeaves[14], proof)).to.equal(true);
 
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     expect(() => merkleTree.getHexProof(invalidRelayerRefundLeaf)).to.throw();
-    expect(await merkleLibTest.verifyUSSRelayerRefund(root, invalidRelayerRefundLeaf, proof)).to.equal(false);
+    expect(await merkleLibTest.verifyV3RelayerRefund(root, invalidRelayerRefundLeaf, proof)).to.equal(false);
   });
-  it("USSSlowFillProof", async function () {
-    const slowFillLeaves: USSSlowFill[] = [];
+  it("V3SlowFillProof", async function () {
+    const slowFillLeaves: V3SlowFill[] = [];
     const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
     for (let i = 0; i < numDistributions; i++) {
-      const relayData: USSRelayData = {
+      const relayData: V3RelayData = {
         depositor: randomAddress(),
         recipient: randomAddress(),
         exclusiveRelayer: randomAddress(),
@@ -139,16 +139,16 @@ describe("MerkleLib Proofs", async function () {
     // Remove the last element.
     const invalidLeaf = slowFillLeaves.pop()!;
 
-    const paramType = await getParamType("MerkleLibTest", "verifyUSSSlowRelayFulfillment", "slowFill");
-    const hashFn = (input: USSSlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const merkleTree = new MerkleTree<USSSlowFill>(slowFillLeaves, hashFn);
+    const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
+    const hashFn = (input: V3SlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const merkleTree = new MerkleTree<V3SlowFill>(slowFillLeaves, hashFn);
 
     const root = merkleTree.getHexRoot();
     const proof = merkleTree.getHexProof(slowFillLeaves[14]);
-    expect(await merkleLibTest.verifyUSSSlowRelayFulfillment(root, slowFillLeaves[14], proof)).to.equal(true);
+    expect(await merkleLibTest.verifyV3SlowRelayFulfillment(root, slowFillLeaves[14], proof)).to.equal(true);
 
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     expect(() => merkleTree.getHexProof(invalidLeaf)).to.throw();
-    expect(await merkleLibTest.verifyUSSSlowRelayFulfillment(root, invalidLeaf, proof)).to.equal(false);
+    expect(await merkleLibTest.verifyV3SlowRelayFulfillment(root, invalidLeaf, proof)).to.equal(false);
   });
 });

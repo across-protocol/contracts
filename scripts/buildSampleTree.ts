@@ -11,9 +11,9 @@ import {
   createRandomBytes32,
 } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
-import { USSSlowFill } from "../test/fixtures/SpokePool.Fixture";
+import { V3SlowFill } from "../test/fixtures/SpokePool.Fixture";
 
-import { PoolRebalanceLeaf, USSRelayerRefundLeaf } from "../test/MerkleLib.utils";
+import { PoolRebalanceLeaf, V3RelayerRefundLeaf } from "../test/MerkleLib.utils";
 import { zeroAddress } from "../test-utils";
 
 // Any variables not configurable in this set of constants is not used in this script and not important for testing in
@@ -87,7 +87,7 @@ async function main() {
         RELAYER_REFUND_LEAF_COUNT > 1 ? "ves" : "f"
       }`
     );
-    const leaves: USSRelayerRefundLeaf[] = [];
+    const leaves: V3RelayerRefundLeaf[] = [];
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
       leaves.push({
         amountToReturn: toBNWeiWithDecimals(RELAYER_REFUND_AMOUNT_TO_RETURN, DECIMALS),
@@ -111,9 +111,9 @@ async function main() {
       } amount of ${L2_TOKEN} to bridge to the HubPool and send ${RELAYER_REFUND_LEAF_COUNT} refunds`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
-    const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const tree = new MerkleTree<USSRelayerRefundLeaf>(leaves, hashFn);
+    const paramType = await getParamType("MerkleLibTest", "verifyV3RelayerRefund", "refund");
+    const hashFn = (input: V3RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const tree = new MerkleTree<V3RelayerRefundLeaf>(leaves, hashFn);
     console.log("- Relayer refund root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
@@ -130,7 +130,7 @@ async function main() {
         SLOW_RELAY_LEAF_COUNT > 1 ? "ves" : "f"
       }`
     );
-    const leaves: USSSlowFill[] = [];
+    const leaves: V3SlowFill[] = [];
     for (let i = 0; i < SLOW_RELAY_LEAF_COUNT; i++) {
       leaves.push({
         relayData: {
@@ -165,9 +165,9 @@ async function main() {
       } amount of ${L2_TOKEN} to fulfill ${SLOW_RELAY_LEAF_COUNT} relays`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifyUSSSlowRelayFulfillment", "slowFill");
-    const hashFn = (input: USSSlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const tree = new MerkleTree<USSSlowFill>(leaves, hashFn);
+    const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
+    const hashFn = (input: V3SlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const tree = new MerkleTree<V3SlowFill>(leaves, hashFn);
     console.log("- Slow relay root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < SLOW_RELAY_LEAF_COUNT; i++) {

@@ -23,12 +23,12 @@ import {
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import {
-  buildUSSRelayerRefundLeaves,
-  buildUSSRelayerRefundTree,
+  buildV3RelayerRefundLeaves,
+  buildV3RelayerRefundTree,
   constructSingleRelayerRefundTree,
 } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
-import { USSRelayData, deployMockUSSSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
+import { V3RelayData, deployMockV3SpokePoolCaller } from "../fixtures/SpokePool.Fixture";
 import { CCTPTokenMessengerInterface } from "../../utils/abis";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
@@ -248,15 +248,15 @@ describe("Polygon Spoke Pool", function () {
 
     // Checks that there's a burn event from the bridger.
     await expect(
-      polygonSpokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      polygonSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     )
       .to.emit(dai, "Transfer")
       .withArgs(bridger, zeroAddress, amountToReturn);
   });
 
-  it("Must be EOA to execute USS relayer refund leaf with amountToReturn > 0", async function () {
+  it("Must be EOA to execute V3 relayer refund leaf with amountToReturn > 0", async function () {
     const l2ChainId = await owner.getChainId();
-    const leaves = buildUSSRelayerRefundLeaves(
+    const leaves = buildV3RelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [amountToReturn, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
@@ -265,7 +265,7 @@ describe("Polygon Spoke Pool", function () {
       [mockTreeRoot, mockTreeRoot], // fillsRefundedRoot.
       [mockTreeRoot, mockTreeRoot] // fillsRefundedHash.
     );
-    const tree = await buildUSSRelayerRefundTree(leaves);
+    const tree = await buildV3RelayerRefundTree(leaves);
 
     // Relay leaves to Spoke
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
@@ -277,17 +277,17 @@ describe("Polygon Spoke Pool", function () {
 
     // Deploying  mock caller tries to execute leaf from within constructor:
     await expect(
-      deployMockUSSSpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
+      deployMockV3SpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("NotEOA");
 
     // Executing leaf with amountToReturn == 0 is fine through contract caller.
-    await expect(deployMockUSSSpokePoolCaller(polygonSpokePool, 0, leaves[1], tree.getHexProof(leaves[1]))).to.not.be
+    await expect(deployMockV3SpokePoolCaller(polygonSpokePool, 0, leaves[1], tree.getHexProof(leaves[1]))).to.not.be
       .reverted;
   });
 
-  it("Cannot combine fill and execute USS leaf functions in same tx", async function () {
+  it("Cannot combine fill and execute V3 leaf functions in same tx", async function () {
     const l2ChainId = await owner.getChainId();
-    const leaves = buildUSSRelayerRefundLeaves(
+    const leaves = buildV3RelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
@@ -296,7 +296,7 @@ describe("Polygon Spoke Pool", function () {
       [mockTreeRoot, mockTreeRoot], // fillsRefundedRoot.
       [mockTreeRoot, mockTreeRoot] // fillsRefundedHash.
     );
-    const tree = await buildUSSRelayerRefundTree(leaves);
+    const tree = await buildV3RelayerRefundTree(leaves);
 
     // Relay leaves to Spoke
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
@@ -311,18 +311,18 @@ describe("Polygon Spoke Pool", function () {
     await dai.connect(relayer).approve(polygonSpokePool.address, toWei("2"));
 
     const executeLeafData = [
-      polygonSpokePool.interface.encodeFunctionData("executeUSSRelayerRefundLeaf", [
+      polygonSpokePool.interface.encodeFunctionData("executeV3RelayerRefundLeaf", [
         0,
         leaves[0],
         tree.getHexProof(leaves[0]),
       ]),
-      polygonSpokePool.interface.encodeFunctionData("executeUSSRelayerRefundLeaf", [
+      polygonSpokePool.interface.encodeFunctionData("executeV3RelayerRefundLeaf", [
         0,
         leaves[1],
         tree.getHexProof(leaves[1]),
       ]),
     ];
-    const relayData: USSRelayData = {
+    const relayData: V3RelayData = {
       depositor: owner.address,
       recipient: acrossMessageHandler.address,
       exclusiveRelayer: relayer.address,
@@ -338,8 +338,8 @@ describe("Polygon Spoke Pool", function () {
     };
 
     const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillUSSRelay", [relayData, l2ChainId]),
-      polygonSpokePool.interface.encodeFunctionData("fillUSSRelay", [{ ...relayData, depositId: 1 }, l2ChainId]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, l2ChainId]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, l2ChainId]),
     ];
 
     // Fills and execute leaf should succeed in isolation:

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./interfaces/USSSpokePoolInterface.sol";
+import "./interfaces/V3SpokePoolInterface.sol";
 
 /**
  * @notice SpokePoolVerifier is a contract that verifies that the SpokePool exists on this chain before sending ETH to it.
@@ -35,7 +35,7 @@ contract SpokePoolVerifier {
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      */
     function deposit(
-        USSSpokePoolInterface spokePool,
+        V3SpokePoolInterface spokePool,
         address recipient,
         address inputToken,
         address outputToken,
@@ -51,7 +51,7 @@ contract SpokePoolVerifier {
         require(msg.value == inputAmount, "msg.value != amount");
         require(address(spokePool).isContract(), "spokePool is not a contract");
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
-        spokePool.depositUSS{ value: msg.value }(
+        spokePool.depositV3{ value: msg.value }(
             msg.sender,
             recipient,
             inputToken,

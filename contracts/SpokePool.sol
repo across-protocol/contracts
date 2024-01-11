@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolInterface.sol";
-import "./interfaces/USSSpokePoolInterface.sol";
+import "./interfaces/V3SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 // This interface is expected to be implemented by any contract that expects to receive messages from the SpokePool.
 interface AcrossMessageHandler {
-    function handleUSSAcrossMessage(
+    function handleV3AcrossMessage(
         address tokenSent,
         uint256 amount,
         address relayer,
@@ -36,7 +36,7 @@ interface AcrossMessageHandler {
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  */
 abstract contract SpokePool is
-    USSSpokePoolInterface,
+    V3SpokePoolInterface,
     SpokePoolInterface,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -99,8 +99,8 @@ abstract contract SpokePool is
     // requests are known and accounted for.
     mapping(bytes32 => uint256) private DEPRECATED_refundsRequested;
 
-    // Mapping of USS relay hashes to fill statuses. Distinguished from relayFills
-    // to eliminate any chance of collision between pre and post USS relay hashes.
+    // Mapping of V3 relay hashes to fill statuses. Distinguished from relayFills
+    // to eliminate any chance of collision between pre and post V3 relay hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
     /**************************************************************
@@ -129,7 +129,7 @@ abstract contract SpokePool is
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
-    bytes32 public constant UPDATE_USS_DEPOSIT_DETAILS_HASH =
+    bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
@@ -407,9 +407,9 @@ abstract contract SpokePool is
      * @param exclusivityDeadline The deadline for the exclusive relayer to fill the deposit. After this
      * destination chain timestamp, anyone can fill this deposit on the destination chain.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
-     * If the message is not empty, the recipient contract must implement handleUSSAcrossMessage() or the fill will revert.
+     * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
-    function depositUSS(
+    function depositV3(
         address depositor,
         address recipient,
         address inputToken,
@@ -456,7 +456,7 @@ abstract contract SpokePool is
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
 
-        emit USSFundsDeposited(
+        emit V3FundsDeposited(
             inputToken,
             outputToken,
             inputAmount,
@@ -504,9 +504,9 @@ abstract contract SpokePool is
      * the latest timestamp that only the exclusive relayer can fill the deposit. After this
      * destination chain timestamp, anyone can fill this deposit on the destination chain.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
-     * If the message is not empty, the recipient contract must implement handleUSSAcrossMessage() or the fill will revert.
+     * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
-    function depositUSSNow(
+    function depositV3Now(
         address depositor,
         address recipient,
         address inputToken,
@@ -519,7 +519,7 @@ abstract contract SpokePool is
         uint32 exclusivityDeadlineOffset,
         bytes calldata message
     ) external payable {
-        depositUSS(
+        depositV3(
             depositor,
             recipient,
             inputToken,
@@ -538,9 +538,9 @@ abstract contract SpokePool is
     /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
      * and/or message.
-     * @dev the depositor and depositId must match the params in a USSFundsDeposited event that the depositor
+     * @dev the depositor and depositId must match the params in a V3FundsDeposited event that the depositor
      * wants to speed up. The relayer has the option but not the obligation to use this updated information
-     * when filling the deposit via fillUSSRelayWithUpdatedDeposit().
+     * when filling the deposit via fillV3RelayWithUpdatedDeposit().
      * @param depositor Depositor that must sign the depositorSignature and was the original depositor.
      * @param depositId Deposit ID to speed up.
      * @param updatedOutputAmount New output amount to use for this deposit. Should be lower than previous value
@@ -551,9 +551,9 @@ abstract contract SpokePool is
      * that expects to receive a message from the relay and for some reason needs to be modified.
      * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
      * account. If depositor is a contract, then should implement EIP1271 to sign as a contract. See
-     * _verifyUpdateUSSDepositMessage() for more details about how this signature should be constructed.
+     * _verifyUpdateV3DepositMessage() for more details about how this signature should be constructed.
      */
-    function speedUpUSSDeposit(
+    function speedUpV3Deposit(
         address depositor,
         uint32 depositId,
         uint256 updatedOutputAmount,
@@ -561,7 +561,7 @@ abstract contract SpokePool is
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) public override nonReentrant {
-        _verifyUpdateUSSDepositMessage(
+        _verifyUpdateV3DepositMessage(
             depositor,
             depositId,
             chainId(),
@@ -573,7 +573,7 @@ abstract contract SpokePool is
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
         // from the following event to submit a fill with updated relay data.
-        emit RequestedSpeedUpUSSDeposit(
+        emit RequestedSpeedUpV3Deposit(
             updatedOutputAmount,
             depositId,
             depositor,
@@ -597,13 +597,13 @@ abstract contract SpokePool is
      * window in the HubPool, and a system fee charged to relayers.
      * @dev The hash of the relayData will be used to uniquely identify the deposit to fill, so
      * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
-     * all parameters passed to depositUSS() on the origin chain along with that chain's chainId(). This chain's
-     * chainId() must therefore match the destinationChainId passed into depositUSS.
+     * all parameters passed to depositV3() on the origin chain along with that chain's chainId(). This chain's
+     * chainId() must therefore match the destinationChainId passed into depositV3.
      * Relayers are only refunded for filling deposits with deposit hashes that map exactly to the one emitted by the
      * origin SpokePool therefore the relayer should not modify any params in relayData.
      * @dev Cannot fill more than once. Partial fills are not supported.
      * @param relayData struct containing all the data needed to identify the deposit to be filled. Should match
-     * all the same-named parameters emitted in the origin chain USSFundsDeposited event.
+     * all the same-named parameters emitted in the origin chain V3FundsDeposited event.
      * - depositor: The account credited with the deposit who can request to "speed up" this deposit by modifying
      * the output amount, recipient, and message.
      * - recipient The account receiving funds on this chain. Can be an EOA or a contract. If
@@ -624,11 +624,11 @@ abstract contract SpokePool is
      * - exclusivityDeadline: The deadline for the exclusive relayer to fill the deposit. After this
      * timestamp, anyone can fill this deposit.
      * - message The message to send to the recipient if the recipient is a contract that implements a
-     * handleUSSAcrossMessage() public function
+     * handleV3AcrossMessage() public function
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
-    function fillUSSRelay(USSRelayData calldata relayData, uint256 repaymentChainId)
+    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId)
         public
         override
         nonReentrant
@@ -640,37 +640,37 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
-            relayHash: _getUSSRelayHash(relayData),
+            relayHash: _getV3RelayHash(relayData),
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: repaymentChainId
         });
 
-        _fillRelayUSS(relayExecution, msg.sender, false);
+        _fillRelayV3(relayExecution, msg.sender, false);
     }
 
     /**
-     * @notice Identical to fillUSSRelay except that the relayer wants to use a depositor's updated output amount,
+     * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
      * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
-     * If the signature can be verified, then this function will emit a FilledUSSEvent that will be used by
+     * If the signature can be verified, then this function will emit a FilledV3Event that will be used by
      * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
-     * a deposit than fillUSSRelay.
-     * @dev Subject to same exclusivity deadline rules as fillUSSRelay().
-     * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillUSSRelay().
+     * a deposit than fillV3Relay.
+     * @dev Subject to same exclusivity deadline rules as fillV3Relay().
+     * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
-     * passed. See fillUSSRelay().
+     * passed. See fillV3Relay().
      * @param updatedOutputAmount New output amount to use for this deposit.
      * @param updatedRecipient New recipient to use for this deposit.
      * @param updatedMessage New message to use for this deposit.
      * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
      * account.
      */
-    function fillUSSRelayWithUpdatedDeposit(
-        USSRelayData calldata relayData,
+    function fillV3RelayWithUpdatedDeposit(
+        V3RelayData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -683,16 +683,16 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
-            relayHash: _getUSSRelayHash(relayData),
+            relayHash: _getV3RelayHash(relayData),
             updatedOutputAmount: updatedOutputAmount,
             updatedRecipient: updatedRecipient,
             updatedMessage: updatedMessage,
             repaymentChainId: repaymentChainId
         });
 
-        _verifyUpdateUSSDepositMessage(
+        _verifyUpdateV3DepositMessage(
             relayData.depositor,
             relayData.depositId,
             relayData.originChainId,
@@ -702,7 +702,7 @@ abstract contract SpokePool is
             depositorSignature
         );
 
-        _fillRelayUSS(relayExecution, msg.sender, false);
+        _fillRelayV3(relayExecution, msg.sender, false);
     }
 
     /**
@@ -713,21 +713,21 @@ abstract contract SpokePool is
      * @dev Slow fills are created by inserting slow fill objects into a merkle tree that is included
      * in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool
      * will relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed,
-     * the slow fill can be executed by anyone who calls executeUSSSlowRelayLeaf().
+     * the slow fill can be executed by anyone who calls executeV3SlowRelayLeaf().
      * @dev Cannot request a slow fill if the fill deadline has passed.
      * @dev Cannot request a slow fill if the relay has already been filled or a slow fill has already been requested.
      * @param relayData struct containing all the data needed to identify the deposit that should be
      * slow filled. If any of the params are missing or different from the origin chain deposit,
      * then Across will not include a slow fill for the intended deposit.
      */
-    function requestUSSSlowFill(USSRelayData calldata relayData) public override nonReentrant unpausedFills {
+    function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
-        bytes32 relayHash = _getUSSRelayHash(relayData);
+        bytes32 relayHash = _getV3RelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
-        emit RequestedUSSSlowFill(
+        emit RequestedV3SlowFill(
             relayData.inputToken,
             relayData.outputToken,
             relayData.inputAmount,
@@ -751,7 +751,7 @@ abstract contract SpokePool is
      * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
      * @dev Executing a slow fill leaf is equivalent to filling the relayData so this function cannot be used to
      * double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-     * like any other fill sent through fillUSSRelay().
+     * like any other fill sent through fillV3Relay().
      * @dev There is no relayer credited with filling this relay since funds are sent directly out of this contract.
      * @param slowFillLeaf Contains all data necessary to uniquely identify a relay for this chain. This struct is
      * hashed and included in a merkle root that is relayed to all spoke pools.
@@ -764,37 +764,37 @@ abstract contract SpokePool is
      * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
      */
-    function executeUSSSlowRelayLeaf(
-        USSSlowFill calldata slowFillLeaf,
+    function executeV3SlowRelayLeaf(
+        V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
     ) public override nonReentrant {
-        USSRelayData memory relayData = slowFillLeaf.relayData;
+        V3RelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken);
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
-        USSRelayExecutionParams memory relayExecution = USSRelayExecutionParams({
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
-            relayHash: _getUSSRelayHash(relayData),
+            relayHash: _getV3RelayHash(relayData),
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
             repaymentChainId: 0 // Hardcoded to 0 for slow fills
         });
 
-        _verifyUSSSlowFill(relayExecution, rootBundleId, proof);
+        _verifyV3SlowFill(relayExecution, rootBundleId, proof);
 
         // - 0x0 hardcoded as relayer for slow fill execution.
-        _fillRelayUSS(relayExecution, address(0), true);
+        _fillRelayV3(relayExecution, address(0), true);
     }
 
     /**
      * @notice Executes a relayer refund leaf stored as part of a root bundle relayed by the HubPool. Sends
      * to relayers their amount refunded by the system for successfully filling relays.
      * @param relayerRefundLeaf Contains all data necessary to uniquely identify refunds for this chain. This struct is
-     * hashed and included in a merkle root that is relayed to all spoke pools. See USSRelayerRefundLeaf struct
+     * hashed and included in a merkle root that is relayed to all spoke pools. See V3RelayerRefundLeaf struct
      * for more detailed comments.
      * - amountToReturn: amount of tokens to return to HubPool out of this contract.
      * - refundAmounts: array of amounts to refund to relayers.
@@ -809,9 +809,9 @@ abstract contract SpokePool is
      * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
      * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
      */
-    function executeUSSRelayerRefundLeaf(
+    function executeV3RelayerRefundLeaf(
         uint32 rootBundleId,
-        USSSpokePoolInterface.USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        V3SpokePoolInterface.V3RelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
     ) public payable virtual override nonReentrant {
         _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
@@ -822,7 +822,7 @@ abstract contract SpokePool is
 
         // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
         // Note: This should revert if the relayerRefundRoot is uninitialized.
-        if (!MerkleLib.verifyUSSRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof))
+        if (!MerkleLib.verifyV3RelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof))
             revert InvalidMerkleProof();
         _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
 
@@ -835,7 +835,7 @@ abstract contract SpokePool is
             relayerRefundLeaf.refundAddresses
         );
 
-        emit ExecutedUSSRelayerRefundRoot(
+        emit ExecutedV3RelayerRefundRoot(
             relayerRefundLeaf.amountToReturn,
             relayerRefundLeaf.chainId,
             relayerRefundLeaf.refundAmounts,
@@ -911,7 +911,7 @@ abstract contract SpokePool is
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit USSFundsDeposited(
+        emit V3FundsDeposited(
             originToken, // inputToken
             address(0), // outputToken
             // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
@@ -992,7 +992,7 @@ abstract contract SpokePool is
         MerkleLib.setClaimed(rootBundle.claimedBitmap, leafId);
     }
 
-    function _verifyUpdateUSSDepositMessage(
+    function _verifyUpdateV3DepositMessage(
         address depositor,
         uint32 depositId,
         uint256 originChainId,
@@ -1011,7 +1011,7 @@ abstract contract SpokePool is
             // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
             keccak256(
                 abi.encode(
-                    UPDATE_USS_DEPOSIT_DETAILS_HASH,
+                    UPDATE_V3_DEPOSIT_DETAILS_HASH,
                     depositId,
                     originChainId,
                     updatedOutputAmount,
@@ -1045,18 +1045,18 @@ abstract contract SpokePool is
         if (!isValid) revert InvalidDepositorSignature();
     }
 
-    function _verifyUSSSlowFill(
-        USSRelayExecutionParams memory relayExecution,
+    function _verifyV3SlowFill(
+        V3RelayExecutionParams memory relayExecution,
         uint32 rootBundleId,
         bytes32[] memory proof
     ) internal view {
-        USSSlowFill memory slowFill = USSSlowFill({
+        V3SlowFill memory slowFill = V3SlowFill({
             relayData: relayExecution.relay,
             chainId: chainId(),
             updatedOutputAmount: relayExecution.updatedOutputAmount
         });
 
-        if (!MerkleLib.verifyUSSSlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
+        if (!MerkleLib.verifyV3SlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
             revert InvalidMerkleProof();
     }
 
@@ -1064,7 +1064,7 @@ abstract contract SpokePool is
         return (amount * uint256(int256(1e18) - feesPct)) / 1e18;
     }
 
-    function _getUSSRelayHash(USSRelayData memory relayData) private view returns (bytes32) {
+    function _getV3RelayHash(V3RelayData memory relayData) private view returns (bytes32) {
         return keccak256(abi.encode(relayData, chainId()));
     }
 
@@ -1084,12 +1084,12 @@ abstract contract SpokePool is
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayUSS(
-        USSRelayExecutionParams memory relayExecution,
+    function _fillRelayV3(
+        V3RelayExecutionParams memory relayExecution,
         address relayer,
         bool isSlowFill
     ) internal {
-        USSRelayData memory relayData = relayExecution.relay;
+        V3RelayData memory relayData = relayExecution.relay;
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
@@ -1121,7 +1121,7 @@ abstract contract SpokePool is
 
         // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
         // successful.
-        emit FilledUSSRelay(
+        emit FilledV3Relay(
             relayData.inputToken,
             relayData.outputToken,
             relayData.inputAmount,
@@ -1136,7 +1136,7 @@ abstract contract SpokePool is
             relayData.depositor,
             relayData.recipient,
             relayData.message,
-            USSRelayExecutionEventInfo({
+            V3RelayExecutionEventInfo({
                 updatedRecipient: relayExecution.updatedRecipient,
                 updatedMessage: relayExecution.updatedMessage,
                 updatedOutputAmount: relayExecution.updatedOutputAmount,
@@ -1175,7 +1175,7 @@ abstract contract SpokePool is
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
             _preHandleMessageHook();
-            AcrossMessageHandler(recipientToSend).handleUSSAcrossMessage(
+            AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,
                 msg.sender,

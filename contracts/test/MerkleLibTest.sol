@@ -21,20 +21,20 @@ contract MerkleLibTest {
         return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
     }
 
-    function verifyUSSRelayerRefund(
+    function verifyV3RelayerRefund(
         bytes32 root,
-        USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
+        V3SpokePoolInterface.V3RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyUSSRelayerRefund(root, refund, proof);
+        return MerkleLib.verifyV3RelayerRefund(root, refund, proof);
     }
 
-    function verifyUSSSlowRelayFulfillment(
+    function verifyV3SlowRelayFulfillment(
         bytes32 root,
-        USSSpokePoolInterface.USSSlowFill memory slowFill,
+        V3SpokePoolInterface.V3SlowFill memory slowFill,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyUSSSlowRelayFulfillment(root, slowFill, proof);
+        return MerkleLib.verifyV3SlowRelayFulfillment(root, slowFill, proof);
     }
 
     function isClaimed(uint256 index) public view returns (bool) {
