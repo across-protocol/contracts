@@ -1,7 +1,7 @@
 import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "../utils/utils";
 import { repaymentChainId, amountToReturn } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
-import { SlowFill, USSSlowFill } from "./fixtures/SpokePool.Fixture";
+import { SlowFill, V3SlowFill } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
   chainId: BigNumber;
   groupIndex: BigNumber;
@@ -21,7 +21,7 @@ export interface RelayerRefundLeaf {
   refundAddresses: string[];
 }
 
-export interface USSRelayerRefundLeaf extends RelayerRefundLeaf {
+export interface V3RelayerRefundLeaf extends RelayerRefundLeaf {
   fillsRefundedRoot: string;
   fillsRefundedHash: string;
 }
@@ -37,15 +37,15 @@ export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundL
   return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 }
 
-export async function buildUSSRelayerRefundTree(relayerRefundLeaves: USSRelayerRefundLeaf[]) {
+export async function buildV3RelayerRefundTree(relayerRefundLeaves: V3RelayerRefundLeaf[]) {
   for (let i = 0; i < relayerRefundLeaves.length; i++) {
     // The 2 provided parallel arrays must be of equal length.
     expect(relayerRefundLeaves[i].refundAddresses.length).to.equal(relayerRefundLeaves[i].refundAmounts.length);
   }
 
-  const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
-  const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  return new MerkleTree<USSRelayerRefundLeaf>(relayerRefundLeaves, hashFn);
+  const paramType = await getParamType("MerkleLibTest", "verifyV3RelayerRefund", "refund");
+  const hashFn = (input: V3RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  return new MerkleTree<V3RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 }
 
 export function buildRelayerRefundLeaves(
@@ -69,7 +69,7 @@ export function buildRelayerRefundLeaves(
     });
 }
 
-export function buildUSSRelayerRefundLeaves(
+export function buildV3RelayerRefundLeaves(
   destinationChainIds: number[],
   amountsToReturn: BigNumber[],
   l2Tokens: string[],
@@ -77,7 +77,7 @@ export function buildUSSRelayerRefundLeaves(
   refundAmounts: BigNumber[][],
   fillsRefundedRoot: string[],
   fillsRefundedHash: string[]
-): USSRelayerRefundLeaf[] {
+): V3RelayerRefundLeaf[] {
   return Array(destinationChainIds.length)
     .fill(0)
     .map((_, i) => {
@@ -101,7 +101,9 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeaves: PoolRebala
     // l1Tokens, bundleLpFees and netSendAmounts must always be of equal length.
     expect(l1Tokens.length).to.equal(bundleLpFees.length).to.equal(netSendAmounts.length);
 
-    // runningBalances must be 1x or 2x as long as the other arrays (pre/post UBA).
+    // runningBalances must be 1x or 2x as long as the other arrays. If its 2x as long, then the first half of the
+    // array will be viewed as one set of running balances, and the second half will be viewed as another set of
+    // of values.
     if (runningBalances.length !== l1Tokens.length) {
       expect(runningBalances.length).to.equal(2 * l1Tokens.length);
     }
@@ -172,10 +174,10 @@ export async function buildSlowRelayTree(slowFills: SlowFill[]) {
   };
   return new MerkleTree<SlowFill>(slowFills, hashFn);
 }
-export async function buildUSSSlowRelayTree(slowFills: USSSlowFill[]) {
-  const paramType = await getParamType("MerkleLibTest", "verifyUSSSlowRelayFulfillment", "slowFill");
-  const hashFn = (input: USSSlowFill) => {
+export async function buildV3SlowRelayTree(slowFills: V3SlowFill[]) {
+  const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
+  const hashFn = (input: V3SlowFill) => {
     return keccak256(defaultAbiCoder.encode([paramType!], [input]));
   };
-  return new MerkleTree<USSSlowFill>(slowFills, hashFn);
+  return new MerkleTree<V3SlowFill>(slowFills, hashFn);
 }

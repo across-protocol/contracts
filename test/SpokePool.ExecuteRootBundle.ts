@@ -17,9 +17,9 @@ import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import {
   buildRelayerRefundTree,
   buildRelayerRefundLeaves,
-  USSRelayerRefundLeaf,
-  buildUSSRelayerRefundLeaves,
-  buildUSSRelayerRefundTree,
+  V3RelayerRefundLeaf,
+  buildV3RelayerRefundLeaves,
+  buildV3RelayerRefundTree,
 } from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
@@ -136,10 +136,10 @@ describe("SpokePool Root Bundle Execution", function () {
       .be.reverted;
   });
 
-  describe("USS relayer refund leaves", function () {
-    let leaves: USSRelayerRefundLeaf[], tree: MerkleTree<USSRelayerRefundLeaf>;
+  describe("V3 relayer refund leaves", function () {
+    let leaves: V3RelayerRefundLeaf[], tree: MerkleTree<V3RelayerRefundLeaf>;
     beforeEach(async function () {
-      leaves = buildUSSRelayerRefundLeaves(
+      leaves = buildV3RelayerRefundLeaves(
         [destinationChainId, destinationChainId], // Destination chain ID.
         [consts.amountToReturn, toBN(0)], // amountToReturn.
         [destErc20.address, destErc20.address], // l2Token.
@@ -148,12 +148,12 @@ describe("SpokePool Root Bundle Execution", function () {
         [createRandomBytes32(), consts.mockTreeRoot], // fillsRefundedRoot.
         [createRandomBytes32(), consts.mockTreeRoot] // fillsRefundedHash.
       );
-      tree = await buildUSSRelayerRefundTree(leaves);
+      tree = await buildV3RelayerRefundTree(leaves);
     });
     it("Happy case: relayer can execute leaf to payout ERC20 tokens from spoke pool", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
       await expect(() =>
-        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+        spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
       ).to.changeTokenBalances(
         destErc20,
         [relayer, rando, spokePool],
@@ -162,12 +162,12 @@ describe("SpokePool Root Bundle Execution", function () {
     });
     it("calls _preExecuteLeafHook", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
-      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
+      await expect(spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
         .to.emit(spokePool, "PreLeafExecuteHook")
         .withArgs(leaves[0].l2TokenAddress);
     });
     it("cannot re-enter", async function () {
-      const functionCalldata = spokePool.interface.encodeFunctionData("executeUSSRelayerRefundLeaf", [
+      const functionCalldata = spokePool.interface.encodeFunctionData("executeV3RelayerRefundLeaf", [
         0,
         leaves[0],
         tree.getHexProof(leaves[0]),
@@ -179,24 +179,24 @@ describe("SpokePool Root Bundle Execution", function () {
     it("can execute even if fills are paused", async function () {
       await spokePool.pauseFills(true);
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
-      await expect(spokePool.connect(relayer).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
+      await expect(spokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
         .not.be.reverted;
     });
     it("cannot execute leaves with chain IDs not matching spoke pool's chain ID", async function () {
       // In this test, the merkle proof is valid for the tree relayed to the spoke pool, but the merkle leaf
       // destination chain ID does not match the spoke pool's chainId() and therefore cannot be executed.
-      const leafWithWrongDestinationChain: USSRelayerRefundLeaf = {
+      const leafWithWrongDestinationChain: V3RelayerRefundLeaf = {
         ...leaves[0],
         chainId: leaves[0].chainId.add(1),
       };
-      const treeWithWrongDestinationChain = await buildUSSRelayerRefundTree([leafWithWrongDestinationChain]);
+      const treeWithWrongDestinationChain = await buildV3RelayerRefundTree([leafWithWrongDestinationChain]);
       await spokePool
         .connect(dataWorker)
         .relayRootBundle(treeWithWrongDestinationChain.getHexRoot(), consts.mockSlowRelayRoot);
       await expect(
         spokePool
           .connect(dataWorker)
-          .executeUSSRelayerRefundLeaf(
+          .executeV3RelayerRefundLeaf(
             0,
             leafWithWrongDestinationChain,
             treeWithWrongDestinationChain.getHexProof(leafWithWrongDestinationChain)
@@ -208,12 +208,12 @@ describe("SpokePool Root Bundle Execution", function () {
         ...leaves[0],
         refundAddresses: [],
       };
-      const paramType = await getParamType("MerkleLibTest", "verifyUSSRelayerRefund", "refund");
-      const hashFn = (input: USSRelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-      const invalidTree = new MerkleTree<USSRelayerRefundLeaf>([invalidLeaf], hashFn);
+      const paramType = await getParamType("MerkleLibTest", "verifyV3RelayerRefund", "refund");
+      const hashFn = (input: V3RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+      const invalidTree = new MerkleTree<V3RelayerRefundLeaf>([invalidLeaf], hashFn);
       await spokePool.connect(dataWorker).relayRootBundle(invalidTree.getHexRoot(), consts.mockSlowRelayRoot);
       await expect(
-        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, invalidLeaf, invalidTree.getHexProof(invalidLeaf))
+        spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(0, invalidLeaf, invalidTree.getHexProof(invalidLeaf))
       ).to.be.revertedWith("InvalidMerkleLeaf");
     });
     it("invalid merkle proof", async function () {
@@ -223,7 +223,7 @@ describe("SpokePool Root Bundle Execution", function () {
 
       // Incorrect root bundle ID
       await expect(
-        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(
+        spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(
           1, // rootBundleId should be 0
           leaves[0],
           tree.getHexProof(leaves[0])
@@ -232,7 +232,7 @@ describe("SpokePool Root Bundle Execution", function () {
 
       // Incorrect relayer refund leaf for proof
       await expect(
-        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(
+        spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(
           0,
           leaves[1], // Should be leaves[0]
           tree.getHexProof(leaves[0])
@@ -241,7 +241,7 @@ describe("SpokePool Root Bundle Execution", function () {
 
       // Incorrect proof
       await expect(
-        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(
+        spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(
           0,
           leaves[0],
           tree.getHexProof(leaves[1]) // Should be leaves[0]
@@ -250,15 +250,15 @@ describe("SpokePool Root Bundle Execution", function () {
     });
     it("cannot double claim", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
-      await spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+      await spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
       await expect(
-        spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+        spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
       ).to.be.revertedWith("ClaimedMerkleLeaf");
     });
     it("emits expected events", async function () {
       await spokePool.connect(dataWorker).relayRootBundle(tree.getHexRoot(), consts.mockSlowRelayRoot);
-      await expect(spokePool.connect(dataWorker).executeUSSRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
-        .to.emit(spokePool, "ExecutedUSSRelayerRefundRoot")
+      await expect(spokePool.connect(dataWorker).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])))
+        .to.emit(spokePool, "ExecutedV3RelayerRefundRoot")
         .withArgs(
           leaves[0].amountToReturn,
           leaves[0].chainId,
