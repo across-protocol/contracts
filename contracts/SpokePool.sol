@@ -82,7 +82,9 @@ abstract contract SpokePool is
 
     // Note: We will likely un-deprecate the fill and deposit counters to implement a better
     // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
-    // in deposit/fill functions. This can be used to implement a UBA-esque fee mechanism.
+    // in deposit/fill functions. These counters are designed to implement a fee mechanism that is based on a
+    // canonical history of deposit and fill events and how they update a virtual running balance of liabilities and
+    // assets, which then determines the LP fee charged to relays.
 
     // This keeps track of the worst-case liabilities due to fills.
     // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between

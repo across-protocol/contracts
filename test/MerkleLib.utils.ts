@@ -80,7 +80,9 @@ export async function buildPoolRebalanceLeafTree(poolRebalanceLeaves: PoolRebala
     // l1Tokens, bundleLpFees and netSendAmounts must always be of equal length.
     expect(l1Tokens.length).to.equal(bundleLpFees.length).to.equal(netSendAmounts.length);
 
-    // runningBalances must be 1x or 2x as long as the other arrays (pre/post UBA).
+    // runningBalances must be 1x or 2x as long as the other arrays. If its 2x as long, then the first half of the
+    // array will be viewed as one set of running balances, and the second half will be viewed as another set of
+    // of values.
     if (runningBalances.length !== l1Tokens.length) {
       expect(runningBalances.length).to.equal(2 * l1Tokens.length);
     }
