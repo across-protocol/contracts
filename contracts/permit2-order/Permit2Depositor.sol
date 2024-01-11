@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Permit2OrderLib.sol";
 import "../external/interfaces/IPermit2.sol";
-import "../interfaces/USSSpokePoolInterface.sol";
+import "../interfaces/V3SpokePoolInterface.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -16,7 +16,7 @@ contract Permit2Depositor {
     using SafeERC20 for IERC20;
 
     // SpokePool that this contract can deposit to.
-    USSSpokePoolInterface public immutable spokePool;
+    V3SpokePoolInterface public immutable spokePool;
 
     // Permit2 contract
     IPermit2 public immutable permit2;
@@ -32,7 +32,7 @@ contract Permit2Depositor {
      * @param _quoteBeforeDeadline quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
      */
     constructor(
-        USSSpokePoolInterface _spokePool,
+        V3SpokePoolInterface _spokePool,
         IPermit2 _permit2,
         uint256 _quoteBeforeDeadline
     ) {
@@ -55,7 +55,7 @@ contract Permit2Depositor {
         uint256 amountToDeposit = order.input.amount + order.fillerCollateral.amount;
 
         IERC20(order.input.token).safeIncreaseAllowance(address(spokePool), amountToDeposit);
-        spokePool.depositUSS(
+        spokePool.depositV3(
             order.info.offerer,
             // Note: Permit2OrderLib checks that order only has a single output.
             order.outputs[0].recipient,

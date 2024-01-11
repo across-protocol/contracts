@@ -193,9 +193,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * This might make the L2 -> L1 message fail due to exceeding the L1 calldata limit.
      */
 
-    function executeUSSRelayerRefundLeaf(
+    function executeV3RelayerRefundLeaf(
         uint32 rootBundleId,
-        USSRelayerRefundLeaf calldata relayerRefundLeaf,
+        V3RelayerRefundLeaf calldata relayerRefundLeaf,
         bytes32[] calldata proof
     ) public payable override {
         // AddressLibUpgradeable.isContract isn't a sufficient check because it checks the contract code size of
@@ -206,7 +206,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
         _revertIfFunctionCalledAtomically(FILL_LOCK_IDENTIFIER);
         _setFunctionLock(EXECUTE_LOCK_IDENTIFIER);
-        super.executeUSSRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
+        super.executeV3RelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
