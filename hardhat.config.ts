@@ -78,6 +78,7 @@ const config: HardhatUserConfig = {
         version: "0.8.19",
       },
       "contracts/Scroll_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/PolygonZkEVM_SpokePool.sol": XTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -248,6 +249,20 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    "polygon-zk-evm": {
+      chainId: 1101,
+      url: "https://zkevm-rpc.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "polygon-zk-evm-testnet": {
+      chainId: 1442,
+      url: "https://rpc.public.zkevm-test.net",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "goerli" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -268,6 +283,8 @@ const config: HardhatUserConfig = {
       linea: process.env.LINEA_ETHERSCAN_API_KEY!,
       "linea-goerli": process.env.LINEA_ETHERSCAN_API_KEY!,
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
+      "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
+      "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -324,6 +341,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
           browserURL: "https://sepolia-optimism.etherscan.io",
+        },
+      },
+      {
+        network: "polygon-zk-evm",
+        chainId: 1101,
+        urls: {
+          apiURL: "https://api-zkevm.polygonscan.com/api",
+          browserURL: "https://zkevm.polygonscan.com",
+        },
+      },
+      {
+        network: "polygon-zk-evm-testnet",
+        chainId: 1442,
+        urls: {
+          apiURL: "https://api-testnet-zkevm.polygonscan.com/api",
+          browserURL: "https://testnet-zkevm.polygonscan.com/",
         },
       },
     ],
