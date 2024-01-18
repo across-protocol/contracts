@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "./interfaces/USSSpokePoolInterface.sol";
+import "./interfaces/V3SpokePoolInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
@@ -18,7 +18,7 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
     bytes4 public constant TRANSFER_FROM_SELECTOR = IERC20.transferFrom.selector;
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
-    USSSpokePoolInterface public immutable spokePool;
+    V3SpokePoolInterface public immutable spokePool;
 
     // Exchange address or router where the swapping will happen.
     address public immutable exchange;
@@ -64,7 +64,7 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _exchange Address of the exchange where tokens will be swapped.
      */
-    constructor(USSSpokePoolInterface _spokePool, address _exchange) {
+    constructor(V3SpokePoolInterface _spokePool, address _exchange) {
         spokePool = _spokePool;
         exchange = _exchange;
     }
@@ -132,7 +132,7 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         _acrossInputToken.safeIncreaseAllowance(address(spokePool), returnAmount);
-        spokePool.depositUSS(
+        spokePool.depositV3(
             depositData.depositor,
             depositData.recipient,
             address(_acrossInputToken), // input token
@@ -174,7 +174,7 @@ contract SwapAndBridge is SwapAndBridgeBase {
      * @param _acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      */
     constructor(
-        USSSpokePoolInterface _spokePool,
+        V3SpokePoolInterface _spokePool,
         address _exchange,
         IERC20 _swapToken,
         IERC20 _acrossInputToken
@@ -223,7 +223,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _exchange Address of the exchange where tokens will be swapped.
      */
-    constructor(USSSpokePoolInterface _spokePool, address _exchange) SwapAndBridgeBase(_spokePool, exchange) {}
+    constructor(V3SpokePoolInterface _spokePool, address _exchange) SwapAndBridgeBase(_spokePool, exchange) {}
 
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
