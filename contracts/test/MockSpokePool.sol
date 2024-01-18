@@ -43,7 +43,7 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
     }
 
-    function verifyUpdateUSSDepositMessage(
+    function verifyUpdateV3DepositMessage(
         address depositor,
         uint32 depositId,
         uint256 originChainId,
@@ -53,7 +53,7 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         bytes memory depositorSignature
     ) public view {
         return
-            _verifyUpdateUSSDepositMessage(
+            _verifyUpdateV3DepositMessage(
                 depositor,
                 depositId,
                 originChainId,
@@ -64,12 +64,12 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
             );
     }
 
-    function fillRelayUSSInternal(
-        USSRelayExecutionParams memory relayExecution,
+    function fillRelayV3Internal(
+        V3RelayExecutionParams memory relayExecution,
         address relayer,
         bool isSlowFill
     ) external {
-        _fillRelayUSS(relayExecution, relayer, isSlowFill);
+        _fillRelayV3(relayExecution, relayer, isSlowFill);
     }
 
     // This function is nonReentrant in order to allow caller to test whether a different function
