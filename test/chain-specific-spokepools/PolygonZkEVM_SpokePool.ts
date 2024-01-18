@@ -146,7 +146,7 @@ describe("Polygon zkEVM Spoke Pool", function () {
     await polygonZkEvmSpokePool
       .connect(polygonZkEvmBridgeSigner)
       .onMessageReceived(owner.address, polygonZkEvmL1NetworkId, fnData);
-    await polygonZkEvmSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await polygonZkEvmSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent ETH back to L1. Check the correct methods on the gateway are correctly called.
     expect(polygonZkEvmBridge.bridgeAsset).to.have.been.calledWith(
@@ -171,7 +171,7 @@ describe("Polygon zkEVM Spoke Pool", function () {
     await polygonZkEvmSpokePool
       .connect(polygonZkEvmBridgeSigner)
       .onMessageReceived(owner.address, polygonZkEvmL1NetworkId, fnData);
-    await polygonZkEvmSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await polygonZkEvmSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(polygonZkEvmBridge.bridgeAsset).to.have.been.calledWith(
