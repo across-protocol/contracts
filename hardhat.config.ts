@@ -5,7 +5,6 @@ import { getNodeUrl, getMnemonic } from "@uma/common";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
-import "@nomicfoundation/hardhat-foundry";
 import "@typechain/hardhat";
 import "@matterlabs/hardhat-zksync-solc";
 import "@matterlabs/hardhat-zksync-verify";
