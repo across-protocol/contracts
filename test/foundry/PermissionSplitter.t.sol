@@ -91,4 +91,28 @@ contract PermissionSplitterTest is Test {
         hubPoolProxy.relaySpokePoolAdminFunction(spokeChainId, spokeFunctionCallData);
         vm.stopPrank();
     }
+
+    function testFallback() public {
+        // Calling a function that doesn't exist on target or PermissionSplitter calls the HubPool's
+        // fallback function which wraps any msg.value into wrapped native token.
+        uint256 balBefore = address(hubPool).balance;
+
+        // Calling fake function as admin with no value succeeds and does nothing.
+        vm.prank(defaultAdmin);
+        (bool success1, ) = address(hubPoolProxy).call("doesNotExist()");
+        assertTrue(success1);
+
+        // Calling fake function as admin with value also succeeds and wraps the msg.value
+        // and then does nothing.
+        vm.deal(defaultAdmin, 1 ether);
+        vm.prank(defaultAdmin);
+        (bool success2, bytes memory reason) = address(hubPoolProxy).call{ value: 1 ether }("doesNotExist()");
+        assertTrue(success2);
+        assertEq(address(hubPool).balance, balBefore);
+    }
+
+    function testFunctionSelectorCollisions() public {
+        // TODO: Test that HubPool has no public function selector collisions with itself.
+        // TODO: Test that PermissionSplitter has no function selector collisions with HubPool.
+    }
 }
