@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import { Finder } from "@uma/core/contracts/data-verification-mechanism/implementation/Finder.sol";
 import { HubPool } from "../../contracts/HubPool.sol";
+import { SpokePool } from "../../contracts/SpokePool.sol";
 import { LpTokenFactory } from "../../contracts/LpTokenFactory.sol";
 import { PermissionSplitterProxy } from "../../contracts/PermissionSplitterProxy.sol";
 
@@ -14,6 +14,8 @@ import { PermissionSplitterProxy } from "../../contracts/PermissionSplitterProxy
 // - forge test --fork-url <MAINNET-RPC-URL>
 contract PermissionSplitterTest is Test {
     HubPool hubPool;
+    HubPool hubPoolProxy;
+    SpokePool ethereumSpokePool;
     PermissionSplitterProxy permissionSplitter;
 
     // defaultAdmin is the deployer of the PermissionSplitter and has authority
@@ -25,28 +27,68 @@ contract PermissionSplitterTest is Test {
 
     bytes32 constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes4 constant PAUSE_SELECTOR = bytes4(keccak256("setPaused(bool)"));
+    // Error emitted when non-owner calls onlyOwner HubPool function.
+    bytes constant OWNABLE_NOT_OWNER_ERROR = bytes("Ownable: caller is not the owner");
+    // Error emitted when calling PermissionSplitterProxy function with incorrect role.
+    bytes constant PROXY_NOT_ALLOWED_TO_CALL_ERROR = bytes("Not allowed to call");
 
     function setUp() public {
+        // Since this test file is designed to run against a mainnet fork, hardcode the following system
+        // contracts to skip the setup we'd usually need to run to use brand new contracts.
         hubPool = HubPool(payable(0xc186fA914353c44b2E33eBE05f21846F1048bEda));
+        ethereumSpokePool = SpokePool(payable(0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5));
 
         // For the purposes of this test, the default admin will be the current owner of the
         // HubPool, which we can assume is a highly secured account.
         defaultAdmin = hubPool.owner();
         pauseAdmin = vm.addr(1);
-        permissionSplitter.grantRole(PAUSE_ROLE, pauseAdmin);
 
-        // Deploy PermissionSplitter from default admin account.
-        vm.prank(defaultAdmin);
+        // Deploy PermissionSplitter from default admin account and then
+        // create and assign roles.
+        vm.startPrank(defaultAdmin);
+        // Default admin can call any ownable function, which no one else can call without
+        // the correct role.
         permissionSplitter = new PermissionSplitterProxy(address(hubPool));
+        permissionSplitter.grantRole(PAUSE_ROLE, pauseAdmin);
+        // Grant anyone with the pause role the ability to call setPaused
+        permissionSplitter.__setRoleForSelector(PAUSE_SELECTOR, PAUSE_ROLE);
+        vm.stopPrank();
 
+        vm.prank(defaultAdmin);
         hubPool.transferOwnership(address(permissionSplitter));
+        hubPoolProxy = HubPool(payable(permissionSplitter));
     }
 
-    function testMain() public {
-        // Grant anyone with the pause role the ability to call setPaused
-        vm.prank(defaultAdmin);
-        permissionSplitter.__setRoleForSelector(PAUSE_SELECTOR, PAUSE_ROLE);
-        vm.prank(pauseAdmin);
+    function testPause() public {
+        // Calling HubPool setPaused directly should fail, even if called by previous owner.
+        vm.startPrank(defaultAdmin);
+        vm.expectRevert(OWNABLE_NOT_OWNER_ERROR);
         hubPool.setPaused(true);
+        vm.stopPrank();
+
+        // Must call HubPool via PermissionSplitterProxy.
+        vm.prank(pauseAdmin);
+        hubPoolProxy.setPaused(true);
+        assertTrue(hubPool.paused());
+    }
+
+    function testCallSpokePoolFunction() public {
+        bytes32 fakeRoot = keccak256("new admin root");
+        bytes memory spokeFunctionCallData = abi.encodeWithSignature(
+            "relayRootBundle(bytes32,bytes32)",
+            fakeRoot,
+            fakeRoot
+        );
+        uint256 spokeChainId = 1;
+
+        vm.expectRevert(PROXY_NOT_ALLOWED_TO_CALL_ERROR);
+        hubPoolProxy.relaySpokePoolAdminFunction(spokeChainId, spokeFunctionCallData);
+        vm.expectRevert(OWNABLE_NOT_OWNER_ERROR);
+        hubPool.relaySpokePoolAdminFunction(spokeChainId, spokeFunctionCallData);
+
+        vm.startPrank(defaultAdmin);
+        vm.expectCall(address(ethereumSpokePool), spokeFunctionCallData);
+        hubPoolProxy.relaySpokePoolAdminFunction(spokeChainId, spokeFunctionCallData);
+        vm.stopPrank();
     }
 }
