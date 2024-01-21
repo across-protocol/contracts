@@ -59,7 +59,7 @@ contract PermissionSplitterTest is Test {
     bytes4 constant SET_ROLE_SELECTOR = bytes4(keccak256("__setRoleForSelector(bytes4,bytes32)"));
     bytes4 constant SET_TARGET_SELECTOR = bytes4(keccak256("__setTarget(address)"));
 
-    bytes4[] allSelectors = [
+    bytes4[] hubPoolSelectors = [
         PAUSE_SELECTOR,
         DELETE_PROPOSAL_SELECTOR,
         RELAY_SPOKEPOOL_SELECTOR,
@@ -83,10 +83,9 @@ contract PermissionSplitterTest is Test {
         EXECUTE_SELECTOR,
         DISPUTE_SELECTOR,
         CLAIM_FEES_SELECTOR,
-        LOAD_ETH_SELECTOR,
-        SET_ROLE_SELECTOR,
-        SET_TARGET_SELECTOR
+        LOAD_ETH_SELECTOR
     ];
+    bytes4[] proxySelectors = [SET_ROLE_SELECTOR, SET_TARGET_SELECTOR];
 
     bytes32 constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     // Error emitted when non-owner calls onlyOwner HubPool function.
@@ -136,6 +135,11 @@ contract PermissionSplitterTest is Test {
         vm.prank(pauseAdmin);
         hubPoolProxy.setPaused(true);
         assertTrue(hubPool.paused());
+
+        // Can also call Proxy function via default admin.
+        vm.prank(defaultAdmin);
+        hubPoolProxy.setPaused(false);
+        assertFalse(hubPool.paused());
     }
 
     function testCallSpokePoolFunction() public {
@@ -177,15 +181,16 @@ contract PermissionSplitterTest is Test {
         assertEq(address(hubPool).balance, balBefore);
     }
 
-    /// forge-config: default.fuzz.runs = 300
-    function testFunctionSelectorCollisions(uint256 funcSelectorIdx1, uint256 funcSelectorIdx2) public {
-        vm.assume(funcSelectorIdx1 < allSelectors.length);
-        vm.assume(funcSelectorIdx2 < allSelectors.length);
-        vm.assume(funcSelectorIdx1 != funcSelectorIdx2);
+    /// forge-config: default.fuzz.runs = 100
+    function testFunctionSelectorCollisions(uint256 hubPoolFuncSelectorIdx, uint256 proxyFuncSelectorIdx) public {
+        vm.assume(hubPoolFuncSelectorIdx < hubPoolSelectors.length);
+        vm.assume(proxyFuncSelectorIdx < proxySelectors.length);
 
-        // Assert that HubPool has no public function selector collisions with itself.
         // Assert that PermissionSplitter has no function selector collisions with HubPool.
-        if (allSelectors[funcSelectorIdx1] == allSelectors[funcSelectorIdx2]) revert FuncSelectorCollision();
+        // @dev Solidity compilation will fail if function selectors on the same contract collide.
+        // - https://ethereum.stackexchange.com/a/46188/47801
+        if (hubPoolSelectors[hubPoolFuncSelectorIdx] == proxySelectors[proxyFuncSelectorIdx])
+            revert FuncSelectorCollision();
     }
 
     function testCallPublicFunction() public {
