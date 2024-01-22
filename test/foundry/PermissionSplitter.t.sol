@@ -24,70 +24,74 @@ contract PermissionSplitterTest is Test {
     address defaultAdmin;
     // Pause admin should only be allowed to pause the HubPool.
     address pauseAdmin;
+    address rando1;
+    address rando2;
 
-    // HubPool function selectors:
+    // We test the pause() selector specifically in the tests so we define it as a variable.
     bytes4 constant PAUSE_SELECTOR = bytes4(keccak256("setPaused(bool)"));
-    bytes4 constant DELETE_PROPOSAL_SELECTOR = bytes4(keccak256("emergencyDeleteProposal()"));
-    bytes4 constant RELAY_SPOKEPOOL_SELECTOR = bytes4(keccak256("relaySpokePoolAdminFunction(uint256,bytes)"));
-    bytes4 constant SET_PROTOCOL_FEE_SELECTOR = bytes4(keccak256("setProtocolFeeCapture(address,uint256)"));
-    bytes4 constant SET_BOND_SELECTOR = bytes4(keccak256("setBond(address,uint256)"));
-    bytes4 constant SET_LIVENESS_SELECTOR = bytes4(keccak256("setLiveness(uint32)"));
-    bytes4 constant SET_IDENTIFIER_SELECTOR = bytes4(keccak256("setIdentifier(bytes32)"));
-    bytes4 constant SET_XCHAIN_CONTRACTS_SELECTOR =
-        bytes4(keccak256("setCrossChainContracts(uint256,address,address)"));
-    bytes4 constant SET_POOL_REBALANCE_ROUTES_SELECTOR =
-        bytes4(keccak256("setPoolRebalanceRoute(uint256,address,address)"));
-    bytes4 constant SET_DEPOSIT_ROUTES_SELECTOR = bytes4(keccak256("setDepositRoute(uint256,uint256,address,bool)"));
-    bytes4 constant ENABLE_L1_TOKEN_SELECTOR = bytes4(keccak256("enableL1TokenForLiquidityProvision(address)"));
-    bytes4 constant DISABLE_L1_TOKEN_SELECTOR = bytes4(keccak256("disableL1TokenForLiquidityProvision(address)"));
-    bytes4 constant HAIRCUT_RESERVES_SELECTOR = bytes4(keccak256("haircutReserves(address,int256)"));
-    bytes4 constant ADD_LIQUIDITY_SELECTOR = bytes4(keccak256("addLiquidity(address,int256)"));
-    bytes4 constant REMOVE_LIQUIDITY_SELECTOR = bytes4(keccak256("removeLiquidity(address,int256,bool)"));
-    bytes4 constant EXCHANGE_RATE_SELECTOR = bytes4(keccak256("exchangeRateCurrent(address)"));
-    bytes4 constant UTILIZATION_SELECTOR = bytes4(keccak256("liquidityUtilizationCurrent(address)"));
-    bytes4 constant UTILIZATION_POST_RELAY_SELECTOR =
-        bytes4(keccak256("liquidityUtilizationPostRelay(address,uint256)"));
-    bytes4 constant SYNC_SELECTOR = bytes4(keccak256("sync(address)"));
-    bytes4 constant PROPOSE_SELECTOR = bytes4(keccak256("proposeRootBundle(uint256[],uint8,bytes32,bytes32,bytes32)"));
-    bytes4 constant EXECUTE_SELECTOR =
-        bytes4(keccak256("executeRootBundle(uint256,uint256,uint256[],int256[],int256[],uint8,address[],bytes32[])"));
-    bytes4 constant DISPUTE_SELECTOR = bytes4(keccak256("disputeRootBundle()"));
-    bytes4 constant CLAIM_FEES_SELECTOR = bytes4(keccak256("claimProtocolFeesCaptured(address)"));
-    bytes4 constant LOAD_ETH_SELECTOR = bytes4(keccak256("loadEthForL2Calls()"));
+    bytes32 constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
 
-    // PermissionSplitterProxy function selectors:
-    bytes4 constant SET_ROLE_SELECTOR = bytes4(keccak256("__setRoleForSelector(bytes4,bytes32)"));
-    bytes4 constant SET_TARGET_SELECTOR = bytes4(keccak256("__setTarget(address)"));
-
+    // We hardcode all of the contract function selectors so we can stress test with possible function selectors and
+    // receive()/fallback() behavior when the proxy is called with random func selectors that it doesn't have.
     bytes4[] hubPoolSelectors = [
         PAUSE_SELECTOR,
-        DELETE_PROPOSAL_SELECTOR,
-        RELAY_SPOKEPOOL_SELECTOR,
-        SET_PROTOCOL_FEE_SELECTOR,
-        SET_BOND_SELECTOR,
-        SET_LIVENESS_SELECTOR,
-        SET_IDENTIFIER_SELECTOR,
-        SET_XCHAIN_CONTRACTS_SELECTOR,
-        SET_POOL_REBALANCE_ROUTES_SELECTOR,
-        SET_DEPOSIT_ROUTES_SELECTOR,
-        ENABLE_L1_TOKEN_SELECTOR,
-        DISABLE_L1_TOKEN_SELECTOR,
-        HAIRCUT_RESERVES_SELECTOR,
-        ADD_LIQUIDITY_SELECTOR,
-        REMOVE_LIQUIDITY_SELECTOR,
-        EXCHANGE_RATE_SELECTOR,
-        UTILIZATION_SELECTOR,
-        UTILIZATION_POST_RELAY_SELECTOR,
-        SYNC_SELECTOR,
-        PROPOSE_SELECTOR,
-        EXECUTE_SELECTOR,
-        DISPUTE_SELECTOR,
-        CLAIM_FEES_SELECTOR,
-        LOAD_ETH_SELECTOR
+        bytes4(keccak256("emergencyDeleteProposal()")),
+        bytes4(keccak256("relaySpokePoolAdminFunction(uint256,bytes)")),
+        bytes4(keccak256("setProtocolFeeCapture(address,uint256)")),
+        bytes4(keccak256("setBond(address,uint256)")),
+        bytes4(keccak256("setLiveness(uint32)")),
+        bytes4(keccak256("setIdentifier(bytes32)")),
+        bytes4(keccak256("setCrossChainContracts(uint256,address,address)")),
+        bytes4(keccak256("setPoolRebalanceRoute(uint256,address,address)")),
+        bytes4(keccak256("setDepositRoute(uint256,uint256,address,bool)")),
+        bytes4(keccak256("enableL1TokenForLiquidityProvision(address)")),
+        bytes4(keccak256("disableL1TokenForLiquidityProvision(address)")),
+        bytes4(keccak256("haircutReserves(address,int256)")),
+        bytes4(keccak256("addLiquidity(address,int256)")),
+        bytes4(keccak256("removeLiquidity(address,int256,bool)")),
+        bytes4(keccak256("exchangeRateCurrent(address)")),
+        bytes4(keccak256("liquidityUtilizationCurrent(address)")),
+        bytes4(keccak256("liquidityUtilizationPostRelay(address,uint256)")),
+        bytes4(keccak256("sync(address)")),
+        bytes4(keccak256("proposeRootBundle(uint256[],uint8,bytes32,bytes32,bytes32)")),
+        bytes4(keccak256("executeRootBundle(uint256,uint256,uint256[],int256[],int256[],uint8,address[],bytes32[])")),
+        bytes4(keccak256("disputeRootBundle()")),
+        bytes4(keccak256("claimProtocolFeesCaptured(address)")),
+        bytes4(keccak256("loadEthForL2Calls()")),
+        bytes4(keccak256("rootBundleProposal()")),
+        bytes4(keccak256("pooledTokens(address)")),
+        bytes4(keccak256("crossChainContracts(uint256)")),
+        bytes4(keccak256("unclaimedAccumulatedProtocolFees(address)")),
+        bytes4(keccak256("paused()")),
+        bytes4(keccak256("protocolFeeCaptureAddress()")),
+        bytes4(keccak256("bondToken()")),
+        bytes4(keccak256("liveness()")),
+        bytes4(keccak256("identifier()")),
+        bytes4(keccak256("lpFeeRatePerSecond()")),
+        bytes4(keccak256("protocolFeeCapturePct()")),
+        bytes4(keccak256("bondAmount()")),
+        bytes4(keccak256("poolRebalanceRoute(uint256,address)")),
+        bytes4(keccak256("setCurrentTime(uint256)")),
+        bytes4(keccak256("getCurrentTime()")),
+        bytes4(keccak256("timerAddress()")),
+        bytes4(keccak256("multicall(bytes4[])")),
+        bytes4(keccak256("owner()")),
+        bytes4(keccak256("renounceOwnership()")),
+        bytes4(keccak256("transferOwnership(address)"))
     ];
-    bytes4[] proxySelectors = [SET_ROLE_SELECTOR, SET_TARGET_SELECTOR];
+    bytes4[] proxySelectors = [
+        bytes4(keccak256("__setRoleForSelector(bytes4,bytes32)")),
+        bytes4(keccak256("__setTarget(address)")),
+        bytes4(keccak256("target()")),
+        bytes4(keccak256("roleForSelector(bytes4)")),
+        bytes4(keccak256("supportsInterface(bytes4)")),
+        bytes4(keccak256("hasRole(bytes32,address)")),
+        bytes4(keccak256("getRoleAdmin(bytes32)")),
+        bytes4(keccak256("grantRole(bytes32,address)")),
+        bytes4(keccak256("revokeRole(bytes32,address)")),
+        bytes4(keccak256("renounceRole(bytes32,address)"))
+    ];
 
-    bytes32 constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     // Error emitted when non-owner calls onlyOwner HubPool function.
     bytes constant OWNABLE_NOT_OWNER_ERROR = bytes("Ownable: caller is not the owner");
     // Error emitted when calling PermissionSplitterProxy function with incorrect role.
@@ -107,6 +111,8 @@ contract PermissionSplitterTest is Test {
         // HubPool, which we can assume is a highly secured account.
         defaultAdmin = hubPool.owner();
         pauseAdmin = vm.addr(1);
+        rando1 = vm.addr(2);
+        rando2 = vm.addr(3);
 
         // Deploy PermissionSplitter from default admin account and then
         // create and assign roles.
@@ -140,6 +146,18 @@ contract PermissionSplitterTest is Test {
         vm.prank(defaultAdmin);
         hubPoolProxy.setPaused(false);
         assertFalse(hubPool.paused());
+
+        // Multiple EOA's can be granted the pause role.
+        vm.startPrank(defaultAdmin);
+        permissionSplitter.grantRole(PAUSE_ROLE, rando1);
+        permissionSplitter.grantRole(PAUSE_ROLE, rando2);
+        vm.stopPrank();
+        vm.prank(rando1);
+        hubPoolProxy.setPaused(true);
+        assertTrue(hubPool.paused());
+        vm.prank(rando2);
+        hubPoolProxy.setPaused(false);
+        assertFalse(hubPool.paused());
     }
 
     function testCallSpokePoolFunction() public {
@@ -162,22 +180,59 @@ contract PermissionSplitterTest is Test {
         vm.stopPrank();
     }
 
-    function testFallback() public {
+    function testTransferOwnership() public {
+        vm.expectRevert(PROXY_NOT_ALLOWED_TO_CALL_ERROR);
+        hubPoolProxy.transferOwnership(defaultAdmin);
+
+        // Should be able to transfer ownership back to default admin in an emergency.
+        vm.startPrank(defaultAdmin);
+        hubPoolProxy.transferOwnership(defaultAdmin);
+        assertEq(hubPool.owner(), defaultAdmin);
+
+        hubPool.transferOwnership(address(permissionSplitter));
+        assertEq(hubPool.owner(), address(permissionSplitter));
+    }
+
+    /// forge-config: default.fuzz.runs = 300
+    function testFallback(bytes4 randomFuncSelector, bytes memory randomCalldata) public {
+        // random funcSelector doesn't collide with hub pool:
+        for (uint256 i = 0; i < hubPoolSelectors.length; i++) {
+            if (hubPoolSelectors[i] == randomFuncSelector) vm.assume(false);
+        }
+        // random funcSelector doesn't collide with proxy:
+        for (uint256 i = 0; i < proxySelectors.length; i++) {
+            if (proxySelectors[i] == randomFuncSelector) vm.assume(false);
+        }
+
         // Calling a function that doesn't exist on target or PermissionSplitter calls the HubPool's
         // fallback function which wraps any msg.value into wrapped native token.
         uint256 balBefore = address(hubPool).balance;
 
         // Calling fake function as admin with no value succeeds and does nothing.
         vm.prank(defaultAdmin);
-        (bool success1, ) = address(hubPoolProxy).call("doesNotExist()");
+        (bool success1, ) = address(hubPoolProxy).call(abi.encodeWithSelector(randomFuncSelector, randomCalldata));
         assertTrue(success1);
 
         // Calling fake function as admin with value also succeeds and wraps the msg.value
         // and then does nothing.
         vm.deal(defaultAdmin, 1 ether);
         vm.prank(defaultAdmin);
-        (bool success2, bytes memory reason) = address(hubPoolProxy).call{ value: 1 ether }("doesNotExist()");
+        (bool success2, ) = address(hubPoolProxy).call{ value: 1 ether }(
+            abi.encodeWithSelector(randomFuncSelector, randomCalldata)
+        );
         assertTrue(success2);
+        assertEq(address(hubPool).balance, balBefore);
+    }
+
+    function testReceive() public {
+        // Sending ETH to the proxy should trigger the target's receive() function, which on the HubPool wraps
+        // any msg.value into wrapped native token.
+        uint256 balBefore = address(hubPool).balance;
+
+        vm.deal(defaultAdmin, 1 ether);
+        vm.prank(defaultAdmin);
+        (bool success, ) = address(hubPoolProxy).call{ value: 1 ether }("");
+        assertTrue(success);
         assertEq(address(hubPool).balance, balBefore);
     }
 
