@@ -222,6 +222,8 @@ contract PermissionSplitterTest is Test {
         );
         assertTrue(success2);
         assertEq(address(hubPool).balance, balBefore);
+        // Proxy shouldn't hold any ETH
+        assertEq(address(hubPoolProxy).balance, 0);
     }
 
     function testReceive() public {
@@ -234,6 +236,8 @@ contract PermissionSplitterTest is Test {
         (bool success, ) = address(hubPoolProxy).call{ value: 1 ether }("");
         assertTrue(success);
         assertEq(address(hubPool).balance, balBefore);
+        // Proxy shouldn't hold any ETH
+        assertEq(address(hubPoolProxy).balance, 0);
     }
 
     /// forge-config: default.fuzz.runs = 100
