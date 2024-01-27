@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 import { PermissionSplitterProxy } from "../contracts/PermissionSplitterProxy.sol";
 
@@ -27,7 +26,6 @@ contract DeployPermissionSplitterProxy is Script, Test {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployerPublicKey = vm.addr(deployerPrivateKey);
-        console.log("deployer: %s", vm.toString(deployerPublicKey));
         vm.startBroadcast(deployerPrivateKey);
 
         permissionSplitter = new PermissionSplitterProxy(hubPool);
