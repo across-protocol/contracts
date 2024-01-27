@@ -89,7 +89,8 @@ contract PermissionSplitterTest is Test {
         bytes4(keccak256("getRoleAdmin(bytes32)")),
         bytes4(keccak256("grantRole(bytes32,address)")),
         bytes4(keccak256("revokeRole(bytes32,address)")),
-        bytes4(keccak256("renounceRole(bytes32,address)"))
+        bytes4(keccak256("renounceRole(bytes32,address)")),
+        bytes4(keccak256("DEFAULT_ADMIN_ROLE()"))
     ];
 
     // Error emitted when non-owner calls onlyOwner HubPool function.
