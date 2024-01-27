@@ -1,6 +1,7 @@
 [profile.default]
 src = "contracts"
 out = "artifacts"
+test = "test/foundry"
 libs = ["node_modules", "lib"]
 remappings = [
     "@across-protocol/=node_modules/@across-protocol/",

@@ -4,6 +4,11 @@ pragma solidity ^0.8.0;
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+/**
+ * @notice This contract is designed to own an Ownable "target" contract and gate access to specific
+ * function selectors based on specific roles. Practically, this contract should own the HubPool contract.
+ * All ownable function calls to target should be sent through this contract's fallback function.
+ */
 contract PermissionSplitterProxy is AccessControl, MultiCaller {
     // Inherited admin role from AccessControl. Should be assigned to Across DAO Safe.
     // bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
@@ -12,24 +17,39 @@ contract PermissionSplitterProxy is AccessControl, MultiCaller {
     // only role holders.
     mapping(bytes4 => bytes32) public roleForSelector;
 
+    // The contract that should be owned by this contract and whose function selectors will be gated
+    // by roleForSelector.
     address public target;
 
     event TargetUpdated(address indexed newTarget);
     event RoleForSelectorSet(bytes4 indexed selector, bytes32 indexed role);
 
+    /**
+     * @notice constructs PermissionSplitterProxy
+     */
     constructor(address _target) {
         _init(_target);
     }
 
-    // Public function!
-    // Note: these have two underscores in front to prevent any collisions with the target contract.
+    /**
+     * @notice Change target contract.
+     * @dev Public function! This has two underscores in front to prevent any collisions with the target contract.
+     * @dev Only callable by default admin role holder.
+     * @param _target New target contract.
+     */
     function __setTarget(address _target) public onlyRole(DEFAULT_ADMIN_ROLE) {
         target = _target;
         emit TargetUpdated(_target);
     }
 
-    // Public function!
-    // Note: these have two underscores in front to prevent any collisions with the target contract.
+    /**
+     * @notice Change role ID for function selector. Only role holder can call function selector
+     * on target.
+     * @dev Public function! This has two underscores in front to prevent any collisions with the target contract.
+     * @dev Only callable by default admin role holder.
+     * @param selector Function selector to map to role.
+     * @param role Only this role holder can call function selector on the target
+     */
     function __setRoleForSelector(bytes4 selector, bytes32 role) public onlyRole(DEFAULT_ADMIN_ROLE) {
         roleForSelector[selector] = role;
         emit RoleForSelectorSet(selector, role);
