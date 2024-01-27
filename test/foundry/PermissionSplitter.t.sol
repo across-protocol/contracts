@@ -11,7 +11,7 @@ import { PermissionSplitterProxy } from "../../contracts/PermissionSplitterProxy
 
 // Run this test to verify PermissionSplitter behavior when changing ownership of the HubPool
 // to it. Therefore this test should be run as a fork test via:
-// - forge test --fork-url <MAINNET-RPC-URL>
+// - source .env && forge test --fork-url $NODE_URL_1
 contract PermissionSplitterTest is Test {
     HubPool hubPool;
     HubPool hubPoolProxy;
