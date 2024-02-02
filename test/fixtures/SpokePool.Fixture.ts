@@ -10,7 +10,7 @@ import {
 } from "../../utils/utils";
 
 import * as consts from "../constants";
-import { RelayerRefundLeaf, USSRelayerRefundLeaf } from "../MerkleLib.utils";
+import { RelayerRefundLeaf, V3RelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
@@ -100,7 +100,7 @@ export async function deposit(
     })
   );
   const [events, originChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.USSFundsDeposited()),
+    spokePool.queryFilter(spokePool.filters.V3FundsDeposited()),
     spokePool.chainId(),
   ]);
 
@@ -191,7 +191,7 @@ export interface RelayData {
   message: string;
 }
 
-export interface USSRelayData {
+export interface V3RelayData {
   depositor: string;
   recipient: string;
   exclusiveRelayer: string;
@@ -206,8 +206,8 @@ export interface USSRelayData {
   message: string;
 }
 
-export interface USSRelayExecutionParams {
-  relay: USSRelayData;
+export interface V3RelayExecutionParams {
+  relay: V3RelayData;
   relayHash: string;
   updatedOutputAmount: BigNumber;
   updatedRecipient: string;
@@ -232,8 +232,8 @@ export interface SlowFill {
   payoutAdjustmentPct: BigNumber;
 }
 
-export interface USSSlowFill {
-  relayData: USSRelayData;
+export interface V3SlowFill {
+  relayData: V3RelayData;
   chainId: number;
   updatedOutputAmount: BigNumber;
 }
@@ -274,7 +274,7 @@ export function getRelayHash(
   return { relayHash, relayData };
 }
 
-export function getUSSRelayHash(relayData: USSRelayData, destinationChainId: number): string {
+export function getV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
@@ -432,7 +432,7 @@ export async function modifyRelayHelper(
   };
 }
 
-export async function getUpdatedUSSDepositSignature(
+export async function getUpdatedV3DepositSignature(
   depositor: SignerWithAddress,
   depositId: number,
   originChainId: number,
@@ -477,13 +477,13 @@ export async function deployMockSpokePoolCaller(
   ).deploy(spokePool.address, rootBundleId, leaf, proof);
 }
 
-export async function deployMockUSSSpokePoolCaller(
+export async function deployMockV3SpokePoolCaller(
   spokePool: Contract,
   rootBundleId: number,
-  leaf: USSRelayerRefundLeaf,
+  leaf: V3RelayerRefundLeaf,
   proof: string[]
 ): Promise<Contract> {
   return await (
-    await getContractFactory("MockUSSCaller", (await ethers.getSigners())[0])
+    await getContractFactory("MockV3Caller", (await ethers.getSigners())[0])
   ).deploy(spokePool.address, rootBundleId, leaf, proof);
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/SpokePoolInterface.sol";
-import "./interfaces/USSSpokePoolInterface.sol";
+import "./interfaces/V3SpokePoolInterface.sol";
 import "./interfaces/HubPoolInterface.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
@@ -42,9 +42,9 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
     }
 
-    function verifyUSSRelayerRefund(
+    function verifyV3RelayerRefund(
         bytes32 root,
-        USSSpokePoolInterface.USSRelayerRefundLeaf memory refund,
+        V3SpokePoolInterface.V3RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
@@ -66,9 +66,9 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
     }
 
-    function verifyUSSSlowRelayFulfillment(
+    function verifyV3SlowRelayFulfillment(
         bytes32 root,
-        USSSpokePoolInterface.USSSlowFill memory slowRelayFulfillment,
+        V3SpokePoolInterface.V3SlowFill memory slowRelayFulfillment,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
