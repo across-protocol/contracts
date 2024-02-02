@@ -60,6 +60,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     lineaMessageService: "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
     lineaTokenBridge: "0x5506A3805fB8A58Fa58248CC52d2b06D92cA94e6",
     lineaUsdcBridge: "0x32D123756d32d3eD6580935f8edF416e57b940f4",
+    polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
   42: {
     l1ArbitrumInbox: "0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e", // dummy: Arbitrum's testnet is rinkeby
@@ -169,6 +170,11 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
+  },
+  1442: {
+    // Custom WETH for testing because there is no "official" WETH
+    l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
+    polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
 };
 
