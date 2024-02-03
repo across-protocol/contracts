@@ -130,7 +130,7 @@ interface V3SpokePoolInterface {
         uint32 exclusivityDeadline,
         address indexed depositor,
         address recipient,
-        address relayer,
+        address exclusiveRelayer,
         bytes message
     );
 
