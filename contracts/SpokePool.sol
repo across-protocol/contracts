@@ -1336,7 +1336,6 @@ abstract contract SpokePool is
 
         emit ExecutedV3RelayerRefundRoot(
             relayerRefundLeaf.amountToReturn,
-            relayerRefundLeaf.chainId,
             relayerRefundLeaf.refundAmounts,
             rootBundleId,
             relayerRefundLeaf.leafId,

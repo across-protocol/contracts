@@ -178,13 +178,12 @@ interface V3SpokePoolInterface {
 
     event ExecutedV3RelayerRefundRoot(
         uint256 amountToReturn,
-        uint256 indexed chainId,
         uint256[] refundAmounts,
         uint32 indexed rootBundleId,
-        uint32 indexed leafId,
-        address l2TokenAddress,
+        uint32 leafId,
+        address indexed l2TokenAddress,
         address[] refundAddresses,
-        bytes32 fillsRefundedRoot,
+        bytes32 indexed fillsRefundedRoot,
         string fillsRefundedHash
     );
 

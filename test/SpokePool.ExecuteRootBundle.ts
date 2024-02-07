@@ -261,7 +261,6 @@ describe("SpokePool Root Bundle Execution", function () {
         .to.emit(spokePool, "ExecutedV3RelayerRefundRoot")
         .withArgs(
           leaves[0].amountToReturn,
-          leaves[0].chainId,
           leaves[0].refundAmounts,
           0, // rootBundleId
           leaves[0].leafId,
