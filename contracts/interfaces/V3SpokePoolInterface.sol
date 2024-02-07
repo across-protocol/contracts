@@ -250,6 +250,7 @@ interface V3SpokePoolInterface {
     error InvalidFillDeadline();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
+    error NoSlowFillsInExclusivityWindow();
     error RelayFilled();
     error InvalidSlowFillRequest();
     error ExpiredFillDeadline();

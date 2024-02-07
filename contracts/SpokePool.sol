@@ -1127,6 +1127,13 @@ abstract contract SpokePool is
      * then Across will not include a slow fill for the intended deposit.
      */
     function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+        // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
+        // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
+        // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
+        // this exclusivity period.
+        if (relayData.exclusivityDeadline >= getCurrentTime()) {
+            revert NoSlowFillsInExclusivityWindow();
+        }
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
