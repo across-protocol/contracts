@@ -105,7 +105,6 @@ contract Linea_SpokePool is SpokePool {
     /**************************************
      *               EVENTS               *
      **************************************/
-    event LineaTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
     event SetL2TokenBridge(address indexed newTokenBridge, address oldTokenBridge);
     event SetL2MessageService(address indexed newMessageService, address oldMessageService);
     event SetL2UsdcBridge(address indexed newUsdcBridge, address oldUsdcBridge);
@@ -231,8 +230,6 @@ contract Linea_SpokePool is SpokePool {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
             l2TokenBridge.bridgeToken{ value: msg.value }(l2TokenAddress, amountToReturn, hubPool);
         }
-
-        emit LineaTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 
     function _requireAdminSender() internal view override {

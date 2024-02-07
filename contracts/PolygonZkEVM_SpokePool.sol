@@ -54,7 +54,6 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
      *               EVENTS               *
      **************************************/
     event SetPolygonZkEVMBridge(address indexed newPolygonZkEVMBridge, address indexed oldPolygonZkEVMBridge);
-    event PolygonZkEVMTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
     event ReceivedMessageFromL1(address indexed caller, address indexed originAddress);
 
     // Note: validating calls this way ensures that strange calls coming from the onMessageReceived won't be

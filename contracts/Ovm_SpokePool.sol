@@ -48,7 +48,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
     mapping(address => address) public tokenBridges;
 
-    event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
 
@@ -166,8 +165,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.
                 );
-
-        emit OptimismTokensBridged(l2TokenAddress, hubPool, amountToReturn, l1Gas);
     }
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
