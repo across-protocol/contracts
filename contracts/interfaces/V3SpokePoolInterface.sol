@@ -185,7 +185,7 @@ interface V3SpokePoolInterface {
         address l2TokenAddress,
         address[] refundAddresses,
         bytes32 fillsRefundedRoot,
-        string fillsRefundedIpfsHash
+        string fillsRefundedHash
     );
 
     /**************************************
