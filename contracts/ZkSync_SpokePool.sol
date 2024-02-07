@@ -33,7 +33,6 @@ contract ZkSync_SpokePool is SpokePool {
     ZkBridgeLike public zkErc20Bridge;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
-    event ZkSyncTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -110,7 +109,6 @@ contract ZkSync_SpokePool is SpokePool {
         } else {
             zkErc20Bridge.withdraw(hubPool, l2TokenAddress, amountToReturn);
         }
-        emit ZkSyncTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 
     function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {

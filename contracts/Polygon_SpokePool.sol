@@ -56,7 +56,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     bytes32 private constant FILL_LOCK_IDENTIFIER = "Fill";
     bytes32 private constant EXECUTE_LOCK_IDENTIFIER = "Execute";
 
-    event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
     event SetPolygonTokenBridger(address indexed polygonTokenBridger);
     event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
@@ -247,7 +246,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
             // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
             polygonTokenBridger.send(PolygonIERC20Upgradeable(l2TokenAddress), amountToReturn);
         }
-        emit PolygonTokensBridged(l2TokenAddress, address(this), amountToReturn);
     }
 
     function _wrap() internal {
