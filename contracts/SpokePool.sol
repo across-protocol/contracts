@@ -167,6 +167,19 @@ abstract contract SpokePool is
     event SetHubPool(address indexed newHubPool);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
+    event FundsDeposited(
+        uint256 amount,
+        uint256 originChainId,
+        uint256 indexed destinationChainId,
+        int64 relayerFeePct,
+        uint32 indexed depositId,
+        uint32 quoteTimestamp,
+        address originToken,
+        address recipient,
+        address indexed depositor,
+        bytes message
+    );
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
     event RequestedSpeedUpDeposit(
         int64 newRelayerFeePct,
         uint32 indexed depositId,
