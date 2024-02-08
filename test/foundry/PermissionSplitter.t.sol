@@ -11,7 +11,7 @@ import { PermissionSplitterProxy } from "../../contracts/PermissionSplitterProxy
 
 // Run this test to verify PermissionSplitter behavior when changing ownership of the HubPool
 // to it. Therefore this test should be run as a fork test via:
-// - forge test --fork-url <MAINNET-RPC-URL>
+// - source .env && forge test --fork-url $NODE_URL_1
 contract PermissionSplitterTest is Test {
     HubPool hubPool;
     HubPool hubPoolProxy;
@@ -89,7 +89,8 @@ contract PermissionSplitterTest is Test {
         bytes4(keccak256("getRoleAdmin(bytes32)")),
         bytes4(keccak256("grantRole(bytes32,address)")),
         bytes4(keccak256("revokeRole(bytes32,address)")),
-        bytes4(keccak256("renounceRole(bytes32,address)"))
+        bytes4(keccak256("renounceRole(bytes32,address)")),
+        bytes4(keccak256("DEFAULT_ADMIN_ROLE()"))
     ];
 
     // Error emitted when non-owner calls onlyOwner HubPool function.
