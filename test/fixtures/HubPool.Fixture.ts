@@ -8,7 +8,7 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   return await deployHubPool(ethers);
 });
 
-export async function deployHubPool(ethers: any) {
+export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool") {
   const [signer, crossChainAdmin] = await ethers.getSigners();
 
   // This fixture is dependent on the UMA ecosystem fixture. Run it first and grab the output. This is used in the
@@ -44,7 +44,7 @@ export async function deployHubPool(ethers: any) {
   // Deploy a mock chain adapter and add it as the chainAdapter for the test chainId. Set the SpokePool to address 0.
   const mockAdapter = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpoke = await hre.upgrades.deployProxy(
-    await getContractFactory("MockSpokePool", signer),
+    await getContractFactory(spokePoolName, signer),
     [0, crossChainAdmin.address, hubPool.address],
     { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
   );
@@ -55,7 +55,7 @@ export async function deployHubPool(ethers: any) {
   const mainnetChainId = await hre.getChainId();
   const mockAdapterMainnet = await (await getContractFactory("Mock_Adapter", signer)).deploy();
   const mockSpokeMainnet = await hre.upgrades.deployProxy(
-    await getContractFactory("MockSpokePool", signer),
+    await getContractFactory(spokePoolName, signer),
     [0, crossChainAdmin.address, hubPool.address],
     { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
   );
