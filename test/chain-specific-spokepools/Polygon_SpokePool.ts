@@ -5,6 +5,7 @@ import {
   zeroAddress,
   TokenRolesEnum,
   originChainId,
+  destinationChainId,
 } from "../constants";
 import {
   ethers,
@@ -34,6 +35,7 @@ import {
   V3RelayData,
   deployMockSpokePoolCaller,
   deployMockV3SpokePoolCaller,
+  getDepositParams,
   getFillRelayParams,
   getRelayHash,
 } from "../fixtures/SpokePool.Fixture";
@@ -392,6 +394,7 @@ describe("Polygon Spoke Pool", function () {
         ),
       ]),
     ];
+    const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
 
     // Fills and execute leaf should succeed in isolation:
     // 1. Two fills
@@ -403,9 +406,16 @@ describe("Polygon Spoke Pool", function () {
     await expect(polygonSpokePool.connect(relayer).estimateGas.multicall(executeLeafData)).to.not.be.reverted;
     await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([executeLeafData[0]])).to.not.be.reverted;
 
+    // Can combine fill and other public function
+    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([...fillData, ...otherData])).to.not.be
+      .reverted;
+
     // When combining fills and executions in any order, reverts.
     // @dev: multicall() seems to suppress specific revert message so we can't use revertedWith()
     await expect(polygonSpokePool.connect(relayer).multicall([...fillData, ...executeLeafData])).to.be.reverted;
+    await expect(polygonSpokePool.connect(relayer).multicall([...fillData, ...otherData, ...executeLeafData])).to.be
+      .reverted;
+    await expect(polygonSpokePool.connect(relayer).multicall([...otherData, ...executeLeafData])).to.be.reverted;
     await expect(polygonSpokePool.connect(relayer).multicall([...executeLeafData, ...fillData])).to.be.reverted;
     await expect(
       polygonSpokePool.connect(relayer).multicall([fillData[0], executeLeafData[0], fillData[1], executeLeafData[1]])
@@ -471,6 +481,7 @@ describe("Polygon Spoke Pool", function () {
       polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, l2ChainId]),
       polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, l2ChainId]),
     ];
+    const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
 
     // Fills and execute leaf should succeed in isolation:
     // 1. Two fills
@@ -482,9 +493,16 @@ describe("Polygon Spoke Pool", function () {
     await expect(polygonSpokePool.connect(relayer).estimateGas.multicall(executeLeafData)).to.not.be.reverted;
     await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([executeLeafData[0]])).to.not.be.reverted;
 
+    // Can combine fill and other public function
+    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([...fillData, ...otherData])).to.not.be
+      .reverted;
+
     // When combining fills and executions in any order, reverts.
     // @dev: multicall() seems to suppress specific revert message so we can't use revertedWith()
     await expect(polygonSpokePool.connect(relayer).multicall([...fillData, ...executeLeafData])).to.be.reverted;
+    await expect(polygonSpokePool.connect(relayer).multicall([...fillData, ...otherData, ...executeLeafData])).to.be
+      .reverted;
+    await expect(polygonSpokePool.connect(relayer).multicall([...otherData, ...executeLeafData])).to.be.reverted;
     await expect(polygonSpokePool.connect(relayer).multicall([...executeLeafData, ...fillData])).to.be.reverted;
     await expect(
       polygonSpokePool.connect(relayer).multicall([fillData[0], executeLeafData[0], fillData[1], executeLeafData[1]])

@@ -1836,7 +1836,6 @@ abstract contract SpokePool is
         }
 
         if (relayExecution.updatedRecipient.isContract() && relayExecution.updatedMessage.length > 0) {
-            _preHandleMessageHook();
             AcrossMessageHandler(relayExecution.updatedRecipient).handleAcrossMessage(
                 relayData.destinationToken,
                 amountToSend,
@@ -1845,10 +1844,6 @@ abstract contract SpokePool is
                 relayExecution.updatedMessage
             );
         }
-    }
-
-    function _preHandleMessageHook() internal virtual {
-        // This method by default is a no-op.
     }
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
@@ -1943,7 +1938,6 @@ abstract contract SpokePool is
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (recipientToSend.isContract() && updatedMessage.length > 0) {
-            _preHandleMessageHook();
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,
