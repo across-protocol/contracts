@@ -80,7 +80,7 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   }
 }
 
-export async function deposit(
+export async function depositV2(
   spokePool: Contract,
   token: Contract,
   recipient: SignerWithAddress,
@@ -91,7 +91,7 @@ export async function deposit(
   quoteTimestamp?: number,
   message?: string
 ): Promise<Record<string, number | BigNumber | string> | null> {
-  await spokePool.connect(depositor).deposit(
+  await spokePool.connect(depositor).depositV2(
     ...getDepositParams({
       recipient: recipient.address,
       originToken: token.address,
@@ -103,7 +103,7 @@ export async function deposit(
     })
   );
   const [events, originChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.V3FundsDeposited()),
+    spokePool.queryFilter(spokePool.filters.FundsDeposited()),
     spokePool.chainId(),
   ]);
 
