@@ -223,7 +223,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _exchange Address of the exchange where tokens will be swapped.
      */
-    constructor(V3SpokePoolInterface _spokePool, address _exchange) SwapAndBridgeBase(_spokePool, exchange) {}
+    constructor(V3SpokePoolInterface _spokePool, address _exchange) SwapAndBridgeBase(_spokePool, _exchange) {}
 
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
