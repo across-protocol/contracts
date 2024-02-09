@@ -122,7 +122,7 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         uint32 quoteTimestamp,
         bytes memory message,
         uint256 // maxCount
-    ) public payable nonReentrant unpausedDeposits {
+    ) public payable virtual nonReentrant unpausedDeposits {
         // Check that deposit route is enabled.
         require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
 
