@@ -13,12 +13,12 @@ import * as consts from "../constants";
 import { RelayerRefundLeaf, V3RelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
-  return await deploySpokePool(ethers);
+  return await deployV3SpokePool(ethers);
 });
 
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
-export async function deploySpokePool(ethers: any): Promise<{
+export async function deployV3SpokePool(ethers: any): Promise<{
   weth: Contract;
   erc20: Contract;
   spokePool: Contract;
@@ -77,49 +77,6 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
   }
 }
 
-export async function deposit(
-  spokePool: Contract,
-  token: Contract,
-  recipient: SignerWithAddress,
-  depositor: SignerWithAddress,
-  destinationChainId: number = consts.destinationChainId,
-  amount = consts.amountToDeposit,
-  relayerFeePct = consts.depositRelayerFeePct,
-  quoteTimestamp?: number,
-  message?: string
-): Promise<Record<string, number | BigNumber | string> | null> {
-  await spokePool.connect(depositor).deposit(
-    ...getDepositParams({
-      recipient: recipient.address,
-      originToken: token.address,
-      amount,
-      destinationChainId,
-      relayerFeePct,
-      quoteTimestamp: quoteTimestamp ?? (await spokePool.getCurrentTime()).toNumber(),
-      message,
-    })
-  );
-  const [events, originChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.V3FundsDeposited()),
-    spokePool.chainId(),
-  ]);
-
-  const lastEvent = events[events.length - 1];
-  return lastEvent.args === undefined
-    ? null
-    : {
-        amount: lastEvent.args.amount,
-        originChainId: Number(originChainId),
-        destinationChainId: Number(lastEvent.args.destinationChainId),
-        relayerFeePct: lastEvent.args.relayerFeePct,
-        depositId: lastEvent.args.depositId,
-        quoteTimestamp: lastEvent.args.quoteTimestamp,
-        originToken: lastEvent.args.originToken,
-        recipient: lastEvent.args.recipient,
-        depositor: lastEvent.args.depositor,
-        message: lastEvent.args.message,
-      };
-}
 export async function fillRelay(
   spokePool: Contract,
   destErc20: Contract | string,
