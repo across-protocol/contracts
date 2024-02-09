@@ -4,11 +4,9 @@ import { originChainId, bondAmount, refundProposalLiveness, finalFee } from "../
 import { repaymentChainId, finalFeeUsdc, TokenRolesEnum } from "../constants";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
-export function hubPoolFixture(spokePoolName = "MockSpokePool") {
-  return hre.deployments.createFixture(async ({ ethers }) => {
-    return await deployHubPool(ethers, spokePoolName);
-  });
-}
+export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
+  return await deployHubPool(ethers);
+});
 
 export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool") {
   const [signer, crossChainAdmin] = await ethers.getSigners();
