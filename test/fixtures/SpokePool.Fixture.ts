@@ -17,7 +17,10 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
 
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
-export async function deploySpokePool(ethers: any): Promise<{
+export async function deploySpokePool(
+  ethers: any,
+  spokePoolName = "MockSpokePool"
+): Promise<{
   weth: Contract;
   erc20: Contract;
   spokePool: Contract;
@@ -42,7 +45,7 @@ export async function deploySpokePool(ethers: any): Promise<{
 
   // Deploy the pool
   const spokePool = await hre.upgrades.deployProxy(
-    await getContractFactory("MockSpokePool", deployerWallet),
+    await getContractFactory(spokePoolName, deployerWallet),
     [0, crossChainAdmin.address, hubPool.address, weth.address],
     { kind: "uups", unsafeAllow: ["delegatecall"] }
   );
