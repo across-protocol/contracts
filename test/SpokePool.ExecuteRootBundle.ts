@@ -304,7 +304,7 @@ describe("SpokePool Root Bundle Execution", function () {
             .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
         )
           .to.emit(spokePool, "TokensBridged")
-          .withArgs(toBN(1), destinationChainId, 0, destErc20.address);
+          .withArgs(toBN(1), destinationChainId, 0, destErc20.address, dataWorker.address);
       });
     });
     describe("amountToReturn = 0", function () {
