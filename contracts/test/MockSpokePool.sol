@@ -123,29 +123,13 @@ contract MockSpokePool is SpokePool, OwnableUpgradeable {
         bytes memory message,
         uint256 // maxCount
     ) public payable virtual nonReentrant unpausedDeposits {
-        // Check that deposit route is enabled.
-        require(enabledDepositRoutes[originToken][destinationChainId], "Disabled route");
-
-        // We limit the relay fees to prevent the user spending all their funds on fees.
-        require(SignedMath.abs(relayerFeePct) < 0.5e18, "Invalid relayer fee");
-        require(amount <= MAX_TRANSFER_SIZE, "Amount too large");
-
-        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
-        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
-        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
-        // within the configured buffer. The owner should pause deposits if this is undesirable. This will underflow if
-        // quoteTimestamp is more than depositQuoteTimeBuffer; this is safe but will throw an unintuitive error.
-
-        // slither-disable-next-line timestamp
-        require(getCurrentTime() - quoteTimestamp <= depositQuoteTimeBuffer, "invalid quoteTimestamp");
-
         // Increment count of deposits so that deposit ID for this spoke pool is unique.
         uint32 newDepositId = numberOfDeposits++;
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
-            require(msg.value == amount, "msg.value must match amount");
+            require(msg.value == amount);
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
