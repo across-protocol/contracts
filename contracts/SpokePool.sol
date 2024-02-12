@@ -702,7 +702,9 @@ abstract contract SpokePool is
      * @param destinationChainId The destination chain identifier. Must be enabled along with the input token
      * as a valid deposit route from this spoke pool or this transaction will revert.
      * @param exclusiveRelayer The relayer that will be exclusively allowed to fill this deposit before the
-     * exclusivity deadline timestamp.
+     * exclusivity deadline timestamp. This must be a valid, non-zero address if the exclusivity deadline is
+     * greater than the current block.timestamp. If the exclusivity deadline is < currentTime, then this must be
+     * address(0), and vice versa if this is address(0).
      * @param quoteTimestamp The HubPool timestamp that is used to determine the system fee paid by the depositor.
      *  This must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
@@ -710,7 +712,8 @@ abstract contract SpokePool is
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
      * @param exclusivityDeadline The deadline for the exclusive relayer to fill the deposit. After this
-     * destination chain timestamp, anyone can fill this deposit on the destination chain.
+     * destination chain timestamp, anyone can fill this deposit on the destination chain. If exclusiveRelayer is set
+     * to address(0), then this also must be set to 0, (and vice versa), otherwise this must be set >= current time.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
@@ -740,12 +743,30 @@ abstract contract SpokePool is
         // this is safe but will throw an unintuitive error.
 
         // slither-disable-next-line timestamp
-        if (getCurrentTime() - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
+        uint256 currentTime = getCurrentTime();
+        if (currentTime - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
         // This limits the maximum required lookback for dataworker and relayer instances.
-        if (fillDeadline > getCurrentTime() + fillDeadlineBuffer) revert InvalidFillDeadline();
+        // Also, don't allow fillDeadline to be in the past. This poses a potential UX issue if the destination
+        // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
+        // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
+        // situation won't be a problem for honest users.
+        if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
+
+        // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
+        //  by forcing them to specify an exclusive relayer if the exclusivity period
+        // is in the future. If this deadline is 0, then the exclusive relayer must also be address(0).
+        // @dev Checks if either are > 0 by bitwise or-ing.
+        if (uint256(uint160(exclusiveRelayer)) | exclusivityDeadline != 0) {
+            // Now that we know one is nonzero, we need to perform checks on each.
+            // Check that exclusive relayer is nonzero.
+            if (exclusiveRelayer == address(0)) revert InvalidExclusiveRelayer();
+
+            // Check that deadline is in the future.
+            if (exclusivityDeadline < currentTime) revert InvalidExclusivityDeadline();
+        }
 
         // No need to sanity check exclusivityDeadline because if its bigger than fillDeadline, then
         // there the full deadline is exclusive, and if its too small, then there is no exclusivity period.
@@ -759,7 +780,11 @@ abstract contract SpokePool is
             // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
             // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+        } else {
+            // msg.value should be 0 if input token isn't the wrapped native token.
+            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
+            IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+        }
 
         emit V3FundsDeposited(
             inputToken,
@@ -1042,7 +1067,7 @@ abstract contract SpokePool is
     {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= getCurrentTime()) {
+        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
             revert NotExclusiveRelayer();
         }
 
@@ -1085,7 +1110,7 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusiveRelayer != msg.sender && relayData.exclusivityDeadline >= getCurrentTime()) {
+        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
             revert NotExclusiveRelayer();
         }
 
