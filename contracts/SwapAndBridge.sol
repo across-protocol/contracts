@@ -85,7 +85,7 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
         if (bytes4(routerCalldata) == TRANSFER_FROM_SELECTOR) revert TransferFromCalldata();
 
         // Pull tokens from caller into this contract.
-        _swapToken.transferFrom(msg.sender, address(this), swapTokenAmount);
+        _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
