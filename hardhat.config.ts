@@ -149,7 +149,7 @@ const config: HardhatUserConfig = {
       companionNetworks: { l1: "goerli" },
     },
     "optimism-sepolia": {
-      url: getNodeUrl("optimism-goerli", true, 11155420),
+      url: getNodeUrl("optimism-sepolia", true, 11155420),
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: 11155420,
@@ -176,6 +176,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    "arbitrum-sepolia": {
+      chainId: 421614,
+      url: getNodeUrl("arbitrum-sepolia", true, 421614),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
     rinkeby: {
       chainId: 4,
       url: getNodeUrl("rinkeby", true, 4),
@@ -189,7 +196,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
     },
     sepolia: {
-      url: "https://rpc2.sepolia.org",
+      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: 11155111,
@@ -227,6 +234,13 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
+    },
+    "base-sepolia": {
+      chainId: 84532,
+      url: `https://base-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
     },
     linea: {
       chainId: 59144,
@@ -276,10 +290,12 @@ const config: HardhatUserConfig = {
       optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       optimisticSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
+      "arbitrum-sepolia": process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
       base: process.env.BASE_ETHERSCAN_API_KEY!,
-      "base-goerli": process.env.ETHERSCAN_API_KEY!,
+      "base-goerli": process.env.BASE_ETHERSCAN_API_KEY!,
+      "base-sepolia": process.env.BASE_ETHERSCAN_API_KEY!,
       linea: process.env.LINEA_ETHERSCAN_API_KEY!,
       "linea-goerli": process.env.LINEA_ETHERSCAN_API_KEY!,
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
@@ -301,6 +317,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-goerli.basescan.org/api",
           browserURL: "https://goerli.basescan.org",
+        },
+      },
+      {
+        network: "base-sepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org",
         },
       },
       {
@@ -357,6 +381,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-testnet-zkevm.polygonscan.com/api",
           browserURL: "https://testnet-zkevm.polygonscan.com/",
+        },
+      },
+      {
+        network: "arbitrum-sepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://api-sepolia.arbiscan.io/api",
+          browserURL: "https://sepolia.arbiscan.io",
         },
       },
     ],
