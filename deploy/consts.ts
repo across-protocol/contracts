@@ -25,6 +25,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
+    scrollGasPriceOracle: "0x987e300fDfb06093859358522a79098848C33852",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -84,11 +85,34 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
   },
   11155111: {
+    optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
+    optimismStandardBridge: "0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1",
+    bobaCrossDomainMessenger: "0x6D4528d192dB72E282265D6092F4B872f9Dff69e", // No sepolia deploy address
+    bobaStandardBridge: "0xdc1664458d2f0B6090bEa60A8793A4E66c2F1c00", // No sepolia deploy address
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
     weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    l1ArbitrumInbox: "0xaAe29B0366299461418F5324a79Afc425BE5ae21",
+    l1ERC20GatewayRouter: "0xcE18836b233C83325Cc8848CA4487e94C6288264",
+    baseCrossDomainMessenger: "0xC34855F4De64F1840e5686e64278da901e261f20",
+    baseStandardBridge: "0xfd0Bf71F60660E2f608ed56e1659C450eB113120",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+    usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F", // No sepolia deploy address
+    lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319", // No sepolia deploy address
+    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce", // No sepolia deploy address
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
+
+    // More information is needed to verify these addresses:
+    polygonRootChainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
+    polygonFxRoot: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2",
+    polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
+    polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
+    polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
+    matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
+    l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
   },
 };
 
@@ -103,6 +127,13 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0xfd064A18f3BF249cf1f87FC203E90D8f650f2d63",
     cctpTokenMessenger: "0x12dcfd3fe2e9eac2859fd1ed86d2ab8c5a2f9352",
     cctpMessageTransmitter: "0x109bc137cb64eab7c0b1dddd1edf341467dc2d35",
+  },
+  421614: {
+    l2GatewayRouter: "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
+    l2Weth: "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+    l2Usdc: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpMessageTransmitter: "0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872",
   },
   42161: {
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
@@ -143,6 +174,11 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x23a04d5935ed8bc8e3eb78db3541f0abfb001c6e",
     cctpMessageTransmitter: "0x9ff9a4da6f2157a9c82ce756f8fd7e0d75be8895",
   },
+  11155420: {
+    l2Usdc: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+  },
   8453: {
     l2Usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     cctpTokenMessenger: "0x1682Ae6375C4E4A97e4B583BC394c861A46D8962",
@@ -152,6 +188,11 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0xf175520c52418dfe19c8098071a252da48cd1c19",
     cctpTokenMessenger: "0x877b8e8c9e2383077809787ED6F279ce01CB4cc8",
     cctpMessageTransmitter: "0x9ff9a4da6f2157A9c82CE756f8fD7E0d75be8895",
+  },
+  84532: {
+    l2Usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
   },
   59144: {
     l2Weth: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
