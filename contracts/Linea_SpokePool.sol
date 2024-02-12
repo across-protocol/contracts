@@ -233,7 +233,10 @@ contract Linea_SpokePool is SpokePool {
     }
 
     function _requireAdminSender() internal view override {
-        require(IMessageService(l2MessageService).sender() == crossDomainAdmin, "ONLY_COUNTERPART_GATEWAY");
+        require(
+            IMessageService(l2MessageService).sender() == crossDomainAdmin && msg.sender == address(l2MessageService),
+            "ONLY_COUNTERPART_GATEWAY"
+        );
     }
 
     function _setL2TokenBridge(ITokenBridge _l2TokenBridge) internal {

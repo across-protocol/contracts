@@ -7,6 +7,7 @@ import {
   SignerWithAddress,
   getContractFactory,
   seedContract,
+  toWei,
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 
@@ -111,6 +112,8 @@ describe("Linea Spoke Pool", function () {
     });
     lineaUsdcBridge.usdc.returns(usdc.address);
 
+    await owner.sendTransaction({ to: lineaMessageService.address, value: toWei("1") });
+
     lineaSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Linea_SpokePool", owner),
       [
@@ -135,28 +138,32 @@ describe("Linea Spoke Pool", function () {
     });
 
     // upgradeTo fails unless called by cross domain admin
-    await expect(lineaSpokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith(
+    await expect(lineaSpokePool.connect(lineaMessageService.wallet).upgradeTo(implementation)).to.be.revertedWith(
       "ONLY_COUNTERPART_GATEWAY"
     );
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).upgradeTo(implementation);
+    // msg.sender must be lineaMessageService
+    await expect(lineaSpokePool.connect(owner).upgradeTo(implementation)).to.be.revertedWith(
+      "ONLY_COUNTERPART_GATEWAY"
+    );
+    await lineaSpokePool.connect(lineaMessageService.wallet).upgradeTo(implementation);
   });
   it("Only cross domain owner can set l2MessageService", async function () {
-    await expect(lineaSpokePool.setL2MessageService(rando.address)).to.be.reverted;
+    await expect(lineaSpokePool.setL2MessageService(lineaMessageService.wallet)).to.be.reverted;
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).setL2MessageService(rando.address);
+    await lineaSpokePool.connect(lineaMessageService.wallet).setL2MessageService(rando.address);
     expect(await lineaSpokePool.l2MessageService()).to.equal(rando.address);
   });
   it("Only cross domain owner can set l2TokenBridge", async function () {
-    await expect(lineaSpokePool.setL2TokenBridge(rando.address)).to.be.reverted;
+    await expect(lineaSpokePool.setL2TokenBridge(lineaMessageService.wallet)).to.be.reverted;
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).setL2TokenBridge(rando.address);
+    await lineaSpokePool.connect(lineaMessageService.wallet).setL2TokenBridge(rando.address);
     expect(await lineaSpokePool.l2TokenBridge()).to.equal(rando.address);
   });
   it("Only cross domain owner can set l2UsdcBridge", async function () {
-    await expect(lineaSpokePool.setL2UsdcBridge(rando.address)).to.be.reverted;
+    await expect(lineaSpokePool.setL2UsdcBridge(lineaMessageService.wallet)).to.be.reverted;
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).setL2UsdcBridge(rando.address);
+    await lineaSpokePool.connect(lineaMessageService.wallet).setL2UsdcBridge(rando.address);
     expect(await lineaSpokePool.l2UsdcBridge()).to.equal(rando.address);
   });
   it("Only cross domain owner can relay admin root bundles", async function () {
@@ -171,7 +178,7 @@ describe("Linea Spoke Pool", function () {
       await lineaSpokePool.callStatic.chainId()
     );
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     lineaMessageService.sender.reset();
     lineaMessageService.minimumFeeInWei.returns(1);
     await expect(
@@ -184,7 +191,7 @@ describe("Linea Spoke Pool", function () {
       await lineaSpokePool.callStatic.chainId()
     );
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     lineaMessageService.sender.reset();
     await lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
@@ -197,7 +204,7 @@ describe("Linea Spoke Pool", function () {
       await lineaSpokePool.callStatic.chainId()
     );
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
@@ -209,7 +216,7 @@ describe("Linea Spoke Pool", function () {
       await lineaSpokePool.callStatic.chainId()
     );
     lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
     // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
     // to the ERC20 bridge. This results in a net decrease in WETH balance.
