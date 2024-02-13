@@ -183,7 +183,7 @@ interface V3SpokePoolInterface {
         uint256 destinationChainId,
         address exclusiveRelayer,
         uint32 fillDeadlineOffset,
-        uint32 exclusivityDeadlineOffset,
+        uint32 exclusivityDeadline,
         bytes calldata message
     ) external payable;
 

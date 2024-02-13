@@ -483,21 +483,24 @@ describe("SpokePool Depositor Logic", async function () {
     it("depositNow uses current time as quote time", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
       const fillDeadlineOffset = 1000;
-      const exclusiviyDeadlineOffset = 200;
+      const exclusivityDeadline = 0; // Should be zero since
+      // exclusive relayer is zero address
       await expect(
-        spokePool.connect(depositor).depositV3Now(
-          relayData.depositor,
-          relayData.recipient,
-          relayData.inputToken,
-          relayData.outputToken,
-          relayData.inputAmount,
-          relayData.outputAmount,
-          destinationChainId,
-          relayData.depositor, // Can't be 0x0 since exclusive deadline is now non-0
-          fillDeadlineOffset,
-          exclusiviyDeadlineOffset,
-          relayData.message
-        )
+        spokePool
+          .connect(depositor)
+          .depositV3Now(
+            relayData.depositor,
+            relayData.recipient,
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            destinationChainId,
+            relayData.exclusiveRelayer,
+            fillDeadlineOffset,
+            exclusivityDeadline,
+            relayData.message
+          )
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
@@ -510,10 +513,10 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           currentTime, // quoteTimestamp should be current time
           currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
-          currentTime + exclusiviyDeadlineOffset, // exclusivityDeadline should be current time + offset
+          exclusivityDeadline,
           relayData.depositor,
           relayData.recipient,
-          relayData.depositor, // exclusive relayer
+          relayData.exclusiveRelayer,
           relayData.message
         );
     });
