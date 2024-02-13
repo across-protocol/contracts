@@ -10,7 +10,7 @@ import {
 } from "../../utils/utils";
 
 import * as consts from "../constants";
-import { RelayerRefundLeaf, V3RelayerRefundLeaf } from "../MerkleLib.utils";
+import { RelayerRefundLeaf } from "../MerkleLib.utils";
 
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
@@ -474,16 +474,5 @@ export async function deployMockSpokePoolCaller(
 ): Promise<Contract> {
   return await (
     await getContractFactory("MockCaller", (await ethers.getSigners())[0])
-  ).deploy(spokePool.address, rootBundleId, leaf, proof);
-}
-
-export async function deployMockV3SpokePoolCaller(
-  spokePool: Contract,
-  rootBundleId: number,
-  leaf: V3RelayerRefundLeaf,
-  proof: string[]
-): Promise<Contract> {
-  return await (
-    await getContractFactory("MockV3Caller", (await ethers.getSigners())[0])
   ).deploy(spokePool.address, rootBundleId, leaf, proof);
 }

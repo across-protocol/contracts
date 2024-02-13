@@ -223,7 +223,6 @@ abstract contract SpokePool is
         bytes32 indexed relayerRefundRoot,
         bytes32 indexed slowRelayRoot
     );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
     event ExecutedRelayerRefundRoot(
         uint256 amountToReturn,
         uint256 indexed chainId,
@@ -1326,64 +1325,6 @@ abstract contract SpokePool is
             relayerRefundLeaf.l2TokenAddress,
             relayerRefundLeaf.refundAddresses,
             msg.sender
-        );
-    }
-
-    /**
-     * @notice Executes a relayer refund leaf stored as part of a root bundle relayed by the HubPool. Sends
-     * to relayers their amount refunded by the system for successfully filling relays.
-     * @param relayerRefundLeaf Contains all data necessary to uniquely identify refunds for this chain. This struct is
-     * hashed and included in a merkle root that is relayed to all spoke pools. See V3RelayerRefundLeaf struct
-     * for more detailed comments.
-     * - amountToReturn: amount of tokens to return to HubPool out of this contract.
-     * - refundAmounts: array of amounts to refund to relayers.
-     * - refundAddresses: array of relayer addresses to refund
-     * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
-     * - chainId: chain identifier where relayer refund leaf should be executed. If this doesn't match this chain's
-     * chainId, then this function will revert.
-     * - leafId: index of this leaf within the merkle root, used to track whether this leaf has been executed.
-     * - fillsRefundedRoot: Merkle root of all successful fills refunded by this leaf. Can be used by third parties
-     * to track which fills were successful.
-     * - fillsRefundedHash: Unique identifier where anyone can find the full fills refunded tree.
-     * @param rootBundleId Unique ID of root bundle containing relayer refund root that this leaf is contained in.
-     * @param proof Inclusion proof for this leaf in relayer refund root in root bundle.
-     */
-
-    function executeV3RelayerRefundLeaf(
-        uint32 rootBundleId,
-        V3SpokePoolInterface.V3RelayerRefundLeaf calldata relayerRefundLeaf,
-        bytes32[] calldata proof
-    ) public payable virtual override nonReentrant {
-        _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
-
-        if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
-
-        RootBundle storage rootBundle = rootBundles[rootBundleId];
-
-        // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
-        // Note: This should revert if the relayerRefundRoot is uninitialized.
-        if (!MerkleLib.verifyV3RelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof))
-            revert InvalidMerkleProof();
-        _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
-
-        _distributeRelayerRefunds(
-            relayerRefundLeaf.chainId,
-            relayerRefundLeaf.amountToReturn,
-            relayerRefundLeaf.refundAmounts,
-            relayerRefundLeaf.leafId,
-            relayerRefundLeaf.l2TokenAddress,
-            relayerRefundLeaf.refundAddresses
-        );
-
-        emit ExecutedV3RelayerRefundRoot(
-            relayerRefundLeaf.amountToReturn,
-            relayerRefundLeaf.refundAmounts,
-            rootBundleId,
-            relayerRefundLeaf.leafId,
-            relayerRefundLeaf.l2TokenAddress,
-            relayerRefundLeaf.refundAddresses,
-            relayerRefundLeaf.fillsRefundedRoot,
-            relayerRefundLeaf.fillsRefundedHash
         );
     }
 

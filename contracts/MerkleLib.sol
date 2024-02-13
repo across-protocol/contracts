@@ -33,18 +33,9 @@ library MerkleLib {
      * @param proof the merkle proof.
      * @return bool to signal if the relayer refund proof correctly shows inclusion of the refund within the tree.
      */
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function verifyRelayerRefund(
         bytes32 root,
         SpokePoolInterface.RelayerRefundLeaf memory refund,
-        bytes32[] memory proof
-    ) internal pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
-    }
-
-    function verifyV3RelayerRefund(
-        bytes32 root,
-        V3SpokePoolInterface.V3RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
