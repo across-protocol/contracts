@@ -103,7 +103,7 @@ describe("ZkSync Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(l2Dai, await zkSyncSpokePool.callStatic.chainId());
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await zkSyncSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(zkErc20Bridge.withdraw).to.have.been.calledOnce;
@@ -119,7 +119,7 @@ describe("ZkSync Spoke Pool", function () {
     // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
     // to the ERC20 bridge. This results in a net decrease in WETH balance.
     await expect(() =>
-      zkSyncSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.changeTokenBalance(weth, zkSyncSpokePool, amountToReturn.mul(-1));
     expect(l2Eth.withdraw).to.have.been.calledWithValue(amountToReturn);
     expect(l2Eth.withdraw).to.have.been.calledWith(hubPool.address);

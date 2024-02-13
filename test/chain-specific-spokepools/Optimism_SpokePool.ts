@@ -130,7 +130,7 @@ describe("Optimism Spoke Pool", function () {
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
@@ -145,7 +145,7 @@ describe("Optimism Spoke Pool", function () {
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     const altL2Bridge = await createFake("L2StandardBridge");
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, altL2Bridge.address);
-    await optimismSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(altL2Bridge.withdrawTo).to.have.been.calledOnce;
@@ -167,7 +167,7 @@ describe("Optimism Spoke Pool", function () {
     // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
     // to the L2StandardBridge. This results in a net decrease in WETH balance.
     await expect(() =>
-      optimismSpokePool.connect(relayer).executeV3RelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.changeTokenBalance(weth, optimismSpokePool, amountToReturn.mul(-1));
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWithValue(amountToReturn);
 

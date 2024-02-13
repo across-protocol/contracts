@@ -485,21 +485,19 @@ describe("SpokePool Depositor Logic", async function () {
       const fillDeadlineOffset = 1000;
       const exclusiviyDeadlineOffset = 200;
       await expect(
-        spokePool
-          .connect(depositor)
-          .depositV3Now(
-            relayData.depositor,
-            relayData.recipient,
-            relayData.inputToken,
-            relayData.outputToken,
-            relayData.inputAmount,
-            relayData.outputAmount,
-            destinationChainId,
-            relayData.exclusiveRelayer,
-            fillDeadlineOffset,
-            exclusiviyDeadlineOffset,
-            relayData.message
-          )
+        spokePool.connect(depositor).depositV3Now(
+          relayData.depositor,
+          relayData.recipient,
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          relayData.depositor, // Can't be 0x0 since exclusive deadline is now non-0
+          fillDeadlineOffset,
+          exclusiviyDeadlineOffset,
+          relayData.message
+        )
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
@@ -515,7 +513,7 @@ describe("SpokePool Depositor Logic", async function () {
           currentTime + exclusiviyDeadlineOffset, // exclusivityDeadline should be current time + offset
           relayData.depositor,
           relayData.recipient,
-          relayData.exclusiveRelayer,
+          relayData.depositor, // exclusive relayer
           relayData.message
         );
     });
