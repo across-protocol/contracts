@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../interfaces/V3SpokePoolInterface.sol";
+import "../interfaces/SpokePoolInterface.sol";
 
 // Used for calling SpokePool.sol functions from a contract instead of an EOA. Can be used to simulate aggregator
 // or pooled relayer behavior. Makes all calls from constructor to make sure SpokePool is not relying on checking the

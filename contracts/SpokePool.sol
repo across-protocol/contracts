@@ -175,7 +175,8 @@ abstract contract SpokePool is
         uint256 amountToReturn,
         uint256 indexed chainId,
         uint32 indexed leafId,
-        address indexed l2TokenAddress
+        address indexed l2TokenAddress,
+        address caller
     );
     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
     event PausedDeposits(bool isPaused);
@@ -1011,7 +1012,7 @@ abstract contract SpokePool is
         if (amountToReturn > 0) {
             _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
 
-            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress);
+            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress, msg.sender);
         }
     }
 

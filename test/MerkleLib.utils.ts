@@ -8,7 +8,7 @@ import {
   createRandomBytes32,
   Contract,
 } from "../utils/utils";
-import { amountToReturn, repaymentChainId, zeroAddress } from "./constants";
+import { amountToReturn, repaymentChainId } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
 import { V3SlowFill } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
@@ -106,17 +106,15 @@ export function buildPoolRebalanceLeaves(
 }
 
 export async function constructSingleRelayerRefundTree(l2Token: Contract | String, destinationChainId: number) {
-  const leaves = buildV3RelayerRefundLeaves(
+  const leaves = buildRelayerRefundLeaves(
     [destinationChainId], // Destination chain ID.
     [amountToReturn], // amountToReturn.
     [l2Token as string], // l2Token.
     [[]], // refundAddresses.
-    [[]], // refundAmounts.
-    [createRandomBytes32()], // fillsRefundedRoot.
-    [createRandomBytes32()] // fillsRefundedHash.
+    [[]] // refundAmounts.
   );
 
-  const tree = await buildV3RelayerRefundTree(leaves);
+  const tree = await buildRelayerRefundTree(leaves);
 
   return { leaves, tree };
 }

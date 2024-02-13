@@ -1,11 +1,28 @@
 import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
+import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";
 
 let spokePool: Contract, destErc20: Contract, weth: Contract;
 let dataWorker: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 
 let destinationChainId: number;
+
+async function constructSimpleTree(l2Token: Contract, destinationChainId: number) {
+  const leaves = buildRelayerRefundLeaves(
+    [destinationChainId, destinationChainId], // Destination chain ID.
+    [consts.amountToReturn, toBN(0)], // amountToReturn.
+    [l2Token.address, l2Token.address], // l2Token.
+    [[relayer.address, rando.address], []], // refundAddresses.
+    [[consts.amountToRelay, consts.amountToRelay], []] // refundAmounts.
+  );
+  const leavesRefundAmount = leaves
+    .map((leaf) => leaf.refundAmounts.reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
+    .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
+  const tree = await buildRelayerRefundTree(leaves);
+
+  return { leaves, leavesRefundAmount, tree };
+}
 
 describe("SpokePool Root Bundle Execution", function () {
   beforeEach(async function () {

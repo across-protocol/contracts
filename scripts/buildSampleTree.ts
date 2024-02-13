@@ -13,7 +13,7 @@ import {
 import { MerkleTree } from "../utils/MerkleTree";
 import { V3SlowFill } from "../test/fixtures/SpokePool.Fixture";
 
-import { PoolRebalanceLeaf, V3RelayerRefundLeaf } from "../test/MerkleLib.utils";
+import { PoolRebalanceLeaf, RelayerRefundLeaf } from "../test/MerkleLib.utils";
 import { zeroAddress } from "../test-utils";
 
 // Any variables not configurable in this set of constants is not used in this script and not important for testing in
@@ -87,7 +87,7 @@ async function main() {
         RELAYER_REFUND_LEAF_COUNT > 1 ? "ves" : "f"
       }`
     );
-    const leaves: V3RelayerRefundLeaf[] = [];
+    const leaves: RelayerRefundLeaf[] = [];
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
       leaves.push({
         amountToReturn: toBNWeiWithDecimals(RELAYER_REFUND_AMOUNT_TO_RETURN, DECIMALS),
@@ -96,8 +96,6 @@ async function main() {
         leafId: toBN(i),
         l2TokenAddress: L2_TOKEN,
         refundAddresses: [RELAYER_REFUND_ADDRESS_TO_REFUND],
-        fillsRefundedHash: createRandomBytes32(),
-        fillsRefundedRoot: createRandomBytes32(),
       });
       console.group();
       console.log(`- relayerRefundLeaf ID#${i}: `, leaves[i]);
@@ -111,9 +109,9 @@ async function main() {
       } amount of ${L2_TOKEN} to bridge to the HubPool and send ${RELAYER_REFUND_LEAF_COUNT} refunds`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifyV3RelayerRefund", "refund");
-    const hashFn = (input: V3RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-    const tree = new MerkleTree<V3RelayerRefundLeaf>(leaves, hashFn);
+    const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
+    const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const tree = new MerkleTree<RelayerRefundLeaf>(leaves, hashFn);
     console.log("- Relayer refund root: ", tree.getHexRoot());
     console.group();
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {

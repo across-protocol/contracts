@@ -5,6 +5,7 @@ import {
   zeroAddress,
   TokenRolesEnum,
   originChainId,
+  repaymentChainId,
 } from "../constants";
 import {
   ethers,
@@ -24,7 +25,7 @@ import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { buildRelayerRefundLeaves, buildRelayerRefundTree, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
-import { deployMockSpokePoolCaller, getFillRelayParams, getRelayHash } from "../fixtures/SpokePool.Fixture";
+import { V3RelayData, deployMockSpokePoolCaller, getV3RelayHash } from "../fixtures/SpokePool.Fixture";
 import { CCTPTokenMessengerInterface } from "../../utils/abis";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
@@ -313,43 +314,24 @@ describe("Polygon Spoke Pool", function () {
         tree.getHexProof(leaves[1]),
       ]),
     ];
+    const currentTime = (await polygonSpokePool.getCurrentTime()).toNumber();
+    const relayData: V3RelayData = {
+      depositor: owner.address,
+      recipient: acrossMessageHandler.address,
+      exclusiveRelayer: zeroAddress,
+      inputToken: dai.address,
+      outputToken: dai.address,
+      inputAmount: toWei("1"),
+      outputAmount: toWei("1"),
+      originChainId: originChainId,
+      depositId: 0,
+      fillDeadline: currentTime + 7200,
+      exclusivityDeadline: 0,
+      message: "0x1234",
+    };
     const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillRelay", [
-        ...getFillRelayParams(
-          getRelayHash(
-            owner.address,
-            acrossMessageHandler.address,
-            0, // deposit Id
-            originChainId,
-            l2ChainId,
-            dai.address,
-            undefined,
-            undefined,
-            undefined,
-            "0x1234"
-          ).relayData,
-          toWei("1"),
-          l2ChainId
-        ),
-      ]),
-      polygonSpokePool.interface.encodeFunctionData("fillRelay", [
-        ...getFillRelayParams(
-          getRelayHash(
-            owner.address,
-            acrossMessageHandler.address,
-            1, // deposit Id
-            originChainId,
-            l2ChainId,
-            dai.address,
-            undefined,
-            undefined,
-            undefined,
-            "0x1234"
-          ).relayData,
-          toWei("1"),
-          l2ChainId
-        ),
-      ]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, repaymentChainId]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, repaymentChainId]),
     ];
     const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
 
