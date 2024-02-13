@@ -81,7 +81,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        sendCrossDomainMessage(target, uint32(L2_GAS_LIMIT), message);
+        sendCrossDomainMessage(target, L2_GAS_LIMIT, message);
         emit MessageRelayed(target, message);
     }
 
