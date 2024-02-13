@@ -5,7 +5,6 @@ import {
   zeroAddress,
   TokenRolesEnum,
   originChainId,
-  destinationChainId,
 } from "../constants";
 import {
   ethers,
@@ -23,22 +22,9 @@ import {
 } from "../../utils/utils";
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
-import {
-  buildRelayerRefundLeaves,
-  buildRelayerRefundTree,
-  buildV3RelayerRefundLeaves,
-  buildV3RelayerRefundTree,
-  constructSingleRelayerRefundTree,
-} from "../MerkleLib.utils";
+import { buildRelayerRefundLeaves, buildRelayerRefundTree, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
-import {
-  V3RelayData,
-  deployMockSpokePoolCaller,
-  deployMockV3SpokePoolCaller,
-  getDepositParams,
-  getFillRelayParams,
-  getRelayHash,
-} from "../fixtures/SpokePool.Fixture";
+import { deployMockSpokePoolCaller, getFillRelayParams, getRelayHash } from "../fixtures/SpokePool.Fixture";
 import { CCTPTokenMessengerInterface } from "../../utils/abis";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
@@ -262,37 +248,6 @@ describe("Polygon Spoke Pool", function () {
       .withArgs(bridger, zeroAddress, amountToReturn);
   });
 
-  it("Must be EOA to execute V3 relayer refund leaf with amountToReturn > 0", async function () {
-    const l2ChainId = await owner.getChainId();
-    const leaves = buildV3RelayerRefundLeaves(
-      [l2ChainId, l2ChainId], // Destination chain ID.
-      [amountToReturn, ethers.constants.Zero], // amountToReturn.
-      [dai.address, dai.address], // l2Token.
-      [[], []], // refundAddresses.
-      [[], []], // refundAmounts.
-      [mockTreeRoot, mockTreeRoot], // fillsRefundedRoot.
-      [mockTreeRoot, mockTreeRoot] // fillsRefundedHash.
-    );
-    const tree = await buildV3RelayerRefundTree(leaves);
-
-    // Relay leaves to Spoke
-    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
-      tree.getHexRoot(),
-      mockTreeRoot,
-    ]);
-
-    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
-
-    // Deploying  mock caller tries to execute leaf from within constructor:
-    await expect(
-      deployMockV3SpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.be.revertedWith("NotEOA");
-
-    // Executing leaf with amountToReturn == 0 is fine through contract caller.
-    await expect(deployMockV3SpokePoolCaller(polygonSpokePool, 0, leaves[1], tree.getHexProof(leaves[1]))).to.not.be
-      .reverted;
-  });
-
   it("Must be EOA to execute relayer refund leaf with amountToReturn > 0", async function () {
     const l2ChainId = await owner.getChainId();
     const leaves = buildRelayerRefundLeaves(
@@ -425,92 +380,6 @@ describe("Polygon Spoke Pool", function () {
     ).to.be.reverted;
   });
 
-  it("Cannot combine fill and execute V3 leaf functions in same tx", async function () {
-    const l2ChainId = await owner.getChainId();
-    const leaves = buildV3RelayerRefundLeaves(
-      [l2ChainId, l2ChainId], // Destination chain ID.
-      [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
-      [dai.address, dai.address], // l2Token.
-      [[], []], // refundAddresses.
-      [[], []], // refundAmounts.
-      [mockTreeRoot, mockTreeRoot], // fillsRefundedRoot.
-      [mockTreeRoot, mockTreeRoot] // fillsRefundedHash.
-    );
-    const tree = await buildV3RelayerRefundTree(leaves);
-
-    // Relay leaves to Spoke
-    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
-      tree.getHexRoot(),
-      mockTreeRoot,
-    ]);
-    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
-
-    // Deploy message handler and create fill with message that should succeed in isolation:
-    const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
-    await seedWallet(relayer, [dai], weth, toWei("2"));
-    await dai.connect(relayer).approve(polygonSpokePool.address, toWei("2"));
-
-    const executeLeafData = [
-      polygonSpokePool.interface.encodeFunctionData("executeV3RelayerRefundLeaf", [
-        0,
-        leaves[0],
-        tree.getHexProof(leaves[0]),
-      ]),
-      polygonSpokePool.interface.encodeFunctionData("executeV3RelayerRefundLeaf", [
-        0,
-        leaves[1],
-        tree.getHexProof(leaves[1]),
-      ]),
-    ];
-    const relayData: V3RelayData = {
-      depositor: owner.address,
-      recipient: acrossMessageHandler.address,
-      exclusiveRelayer: relayer.address,
-      inputToken: dai.address,
-      outputToken: dai.address,
-      inputAmount: toWei("1"),
-      outputAmount: toWei("1"),
-      originChainId,
-      depositId: 0,
-      fillDeadline: (await polygonSpokePool.getCurrentTime()).toNumber() + 1000,
-      exclusivityDeadline: 0,
-      message: "0x1234",
-    };
-
-    const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, l2ChainId]),
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, l2ChainId]),
-    ];
-    const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
-
-    // Fills and execute leaf should succeed in isolation:
-    // 1. Two fills
-    // 2. One fill
-    // 3. Two execution leaves
-    // 4. One execution leaf
-    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall(fillData)).to.not.be.reverted;
-    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([fillData[0]])).to.not.be.reverted;
-    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall(executeLeafData)).to.not.be.reverted;
-    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([executeLeafData[0]])).to.not.be.reverted;
-
-    // Can combine fill and other public function
-    await expect(polygonSpokePool.connect(relayer).estimateGas.multicall([...fillData, ...otherData])).to.not.be
-      .reverted;
-
-    // When combining fills and executions in any order, reverts.
-    // @dev: multicall() seems to suppress specific revert message so we can't use revertedWith()
-    await expect(polygonSpokePool.connect(relayer).multicall([...fillData, ...executeLeafData])).to.be.reverted;
-    await expect(polygonSpokePool.connect(relayer).multicall([...fillData, ...otherData, ...executeLeafData])).to.be
-      .reverted;
-    await expect(polygonSpokePool.connect(relayer).multicall([...otherData, ...executeLeafData])).to.be.reverted;
-    await expect(polygonSpokePool.connect(relayer).multicall([...executeLeafData, ...fillData])).to.be.reverted;
-    await expect(
-      polygonSpokePool.connect(relayer).multicall([fillData[0], executeLeafData[0], fillData[1], executeLeafData[1]])
-    ).to.be.reverted;
-    await expect(
-      polygonSpokePool.connect(relayer).multicall([executeLeafData[0], fillData[0], executeLeafData[1], fillData[1]])
-    ).to.be.reverted;
-  });
   it("PolygonTokenBridger retrieves and unwraps tokens correctly", async function () {
     const l1ChainId = await owner.getChainId();
 

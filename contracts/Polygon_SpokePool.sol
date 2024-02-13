@@ -172,7 +172,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     }
 
     /**
-     * @notice Override multicall so that it cannot include executeRelayerRefundLeaf or executeV3RelayerRefundLeaf
+     * @notice Override multicall so that it cannot include executeRelayerRefundLeaf
      * as one of the calls combined with other public function calls.
      * @dev Multicalling a single transaction will always succeed.
      * @dev Multicalling execute functions without combining other public function calls will succeed.
@@ -183,10 +183,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         bool hasExecutedLeafCall = false;
         for (uint256 i = 0; i < data.length; i++) {
             bytes4 selector = bytes4(data[i][:4]);
-            if (
-                selector == SpokePoolInterface.executeRelayerRefundLeaf.selector ||
-                selector == V3SpokePoolInterface.executeV3RelayerRefundLeaf.selector
-            ) {
+            if (selector == SpokePoolInterface.executeRelayerRefundLeaf.selector) {
                 if (hasOtherPublicFunctionCall) revert MulticallExecuteLeaf();
                 hasExecutedLeafCall = true;
             } else {
@@ -197,25 +194,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     }
 
     /**
-     * @notice These functions can send an L2 to L1 message so we are extra cautious about preventing a griefing vector
+     * @notice This function can send an L2 to L1 message so we are extra cautious about preventing a griefing vector
      * whereby someone batches this call with a bunch of other calls and produces a very large L2 burn transaction.
      * This might make the L2 -> L1 message fail due to exceeding the L1 calldata limit.
      */
 
-    function executeV3RelayerRefundLeaf(
-        uint32 rootBundleId,
-        V3RelayerRefundLeaf calldata relayerRefundLeaf,
-        bytes32[] calldata proof
-    ) public payable override {
-        // AddressLibUpgradeable.isContract isn't a sufficient check because it checks the contract code size of
-        // msg.sender which is 0 if called from a constructor function on msg.sender. This is why we check if
-        // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode.
-        // solhint-disable-next-line avoid-tx-origin
-        if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
-        super.executeV3RelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
-    }
-
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,

@@ -21,11 +21,6 @@ export interface RelayerRefundLeaf {
   refundAddresses: string[];
 }
 
-export interface V3RelayerRefundLeaf extends RelayerRefundLeaf {
-  fillsRefundedRoot: string;
-  fillsRefundedHash: string;
-}
-
 export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundLeaf[]) {
   for (let i = 0; i < relayerRefundLeaves.length; i++) {
     // The 2 provided parallel arrays must be of equal length.
@@ -35,17 +30,6 @@ export async function buildRelayerRefundTree(relayerRefundLeaves: RelayerRefundL
   const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
   const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
   return new MerkleTree<RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
-}
-
-export async function buildV3RelayerRefundTree(relayerRefundLeaves: V3RelayerRefundLeaf[]) {
-  for (let i = 0; i < relayerRefundLeaves.length; i++) {
-    // The 2 provided parallel arrays must be of equal length.
-    expect(relayerRefundLeaves[i].refundAddresses.length).to.equal(relayerRefundLeaves[i].refundAmounts.length);
-  }
-
-  const paramType = await getParamType("MerkleLibTest", "verifyV3RelayerRefund", "refund");
-  const hashFn = (input: V3RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  return new MerkleTree<V3RelayerRefundLeaf>(relayerRefundLeaves, hashFn);
 }
 
 export function buildRelayerRefundLeaves(
@@ -65,31 +49,6 @@ export function buildRelayerRefundLeaves(
         l2TokenAddress: l2Tokens[i],
         refundAddresses: refundAddresses[i],
         refundAmounts: refundAmounts[i],
-      };
-    });
-}
-
-export function buildV3RelayerRefundLeaves(
-  destinationChainIds: number[],
-  amountsToReturn: BigNumber[],
-  l2Tokens: string[],
-  refundAddresses: string[][],
-  refundAmounts: BigNumber[][],
-  fillsRefundedRoot: string[],
-  fillsRefundedHash: string[]
-): V3RelayerRefundLeaf[] {
-  return Array(destinationChainIds.length)
-    .fill(0)
-    .map((_, i) => {
-      return {
-        leafId: BigNumber.from(i),
-        chainId: BigNumber.from(destinationChainIds[i]),
-        amountToReturn: amountsToReturn[i],
-        l2TokenAddress: l2Tokens[i],
-        refundAddresses: refundAddresses[i],
-        refundAmounts: refundAmounts[i],
-        fillsRefundedRoot: fillsRefundedRoot[i],
-        fillsRefundedHash: fillsRefundedHash[i],
       };
     });
 }
