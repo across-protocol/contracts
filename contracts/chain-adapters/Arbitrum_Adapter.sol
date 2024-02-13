@@ -148,27 +148,24 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    uint256 public constant l2MaxSubmissionCost = 0.01e18;
+    uint256 public constant L2_MAX_SUBMISSION_COST = 0.01e18;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    uint256 public constant l2GasPrice = 5e9; // 5 gWei
+    uint256 public constant L2_GAS_PRICE = 5e9; // 5 gWei
+
+    uint256 public constant L2_CALL_VALUE = 0;
 
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
+    address public constant L1_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
-    address public immutable l2RefundL2Address;
+    address public immutable L2_REFUND_L2_ADDRESS;
 
-    ArbitrumL1InboxLike public immutable l1Inbox;
+    ArbitrumL1InboxLike public immutable L1_INBOX;
 
-    ArbitrumL1ERC20GatewayLike public immutable l1ERC20GatewayRouter;
-
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge on Arbitrum.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 private constant ARBITRUM_CIRCLE_CCTP_DOMAIN_ID = 3;
+    ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     /**
      * @notice Constructs new Adapter.
@@ -184,10 +181,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, ARBITRUM_CIRCLE_CCTP_DOMAIN_ID) {
-        l1Inbox = _l1ArbitrumInbox;
-        l1ERC20GatewayRouter = _l1ERC20GatewayRouter;
-        l2RefundL2Address = _l2RefundL2Address;
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
+        L1_INBOX = _l1ArbitrumInbox;
+        L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
+        L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
     }
 
     /**
@@ -200,14 +197,14 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 requiredL1CallValue = _contractHasSufficientEthBalance(RELAY_MESSAGE_L2_GAS_LIMIT);
 
-        l1Inbox.createRetryableTicket{ value: requiredL1CallValue }(
+        L1_INBOX.createRetryableTicket{ value: requiredL1CallValue }(
             target, // destAddr destination L2 contract address
-            0, // l2CallValue call value for retryable L2 message
-            l2MaxSubmissionCost, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
-            l2RefundL2Address, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
-            l2RefundL2Address, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
+            L2_CALL_VALUE, // l2CallValue call value for retryable L2 message
+            L2_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
+            L2_REFUND_L2_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
+            L2_REFUND_L2_ADDRESS, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
             RELAY_MESSAGE_L2_GAS_LIMIT, // maxGas Max gas deducted from user's L2 balance to cover L2 execution
-            l2GasPrice, // gasPriceBid price bid for L2 execution
+            L2_GAS_PRICE, // gasPriceBid price bid for L2 execution
             message // data ABI encoded data of L2 message
         );
 
@@ -239,12 +236,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
 
             // Approve the gateway, not the router, to spend the hub pool's balance. The gateway, which is different
             // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
-            address erc20Gateway = l1ERC20GatewayRouter.getGateway(l1Token);
+            address erc20Gateway = L1_ERC20_GATEWAY_ROUTER.getGateway(l1Token);
             IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
 
             // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
             // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
-            bytes memory data = abi.encode(l2MaxSubmissionCost, "");
+            bytes memory data = abi.encode(L2_MAX_SUBMISSION_COST, "");
 
             // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using
             // outboundTransfer(). Legacy routers are used for the following tokens that are currently enabled:
@@ -252,27 +249,27 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
             //        (https://etherscan.io/address/0xD3B5b60020504bc3489D6949d545893982BA3011#writeContract) sets the
             //        sender as the refund address so the aliased HubPool should receive excess funds. Implementation here:
             //        https://github.com/makerdao/arbitrum-dai-bridge/blob/11a80385e2622968069c34d401b3d54a59060e87/contracts/l1/L1DaiGateway.sol#L109
-            if (l1Token == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
+            if (l1Token == L1_DAI) {
                 // This means that the excess ETH to pay for the L2 transaction will be sent to the aliased
                 // contract address on L2, which we'd have to retrieve via a custom adapter, the Arbitrum_RescueAdapter.
                 // To do so, in a single transaction: 1) setCrossChainContracts to Arbitrum_RescueAdapter, 2) relayMessage
                 // with function data = abi.encode(amountToRescue), 3) setCrossChainContracts back to this adapter.
-                l1ERC20GatewayRouter.outboundTransfer{ value: requiredL1CallValue }(
+                L1_ERC20_GATEWAY_ROUTER.outboundTransfer{ value: requiredL1CallValue }(
                     l1Token,
                     to,
                     amount,
                     RELAY_TOKENS_L2_GAS_LIMIT,
-                    l2GasPrice,
+                    L2_GAS_PRICE,
                     data
                 );
             } else {
-                l1ERC20GatewayRouter.outboundTransferCustomRefund{ value: requiredL1CallValue }(
+                L1_ERC20_GATEWAY_ROUTER.outboundTransferCustomRefund{ value: requiredL1CallValue }(
                     l1Token,
-                    l2RefundL2Address,
+                    L2_REFUND_L2_ADDRESS,
                     to,
                     amount,
                     RELAY_TOKENS_L2_GAS_LIMIT,
-                    l2GasPrice,
+                    L2_GAS_PRICE,
                     data
                 );
             }
@@ -285,11 +282,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public pure returns (uint256) {
-        return l2MaxSubmissionCost + l2GasPrice * l2GasLimit;
+        return L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit;
     }
 
-    function _contractHasSufficientEthBalance(uint32 l2GasLimit) internal view returns (uint256 requiredL1CallValue) {
-        requiredL1CallValue = getL1CallValue(l2GasLimit);
+    function _contractHasSufficientEthBalance(uint32 l2GasLimit) internal view returns (uint256) {
+        uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
+        return requiredL1CallValue;
     }
 }

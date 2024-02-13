@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.0;
 
 // General Settlement Info.
 struct SettlementInfo {
@@ -56,7 +56,7 @@ struct CrossChainLimitOrder {
     OutputToken[] outputs;
 }
 
-// Encoded order + signature.
+// Encoded order + Permit2 signature.
 struct SignedOrder {
     bytes order;
     bytes sig;

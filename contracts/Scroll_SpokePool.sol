@@ -57,8 +57,8 @@ contract Scroll_SpokePool is SpokePool {
         address _hubPool
     ) public initializer {
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        l2GatewayRouter = _l2GatewayRouter;
-        l2ScrollMessenger = _l2ScrollMessenger;
+        _setL2GatewayRouter(_l2GatewayRouter);
+        _setL2MessageService(_l2ScrollMessenger);
     }
 
     /**

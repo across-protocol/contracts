@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract PolygonZkEVM_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
-    WETH9Interface public immutable l1Weth;
+    WETH9Interface public immutable L1_WETH;
     // Address of Polygon zkEVM's Canonical Bridge on L1.
-    IPolygonZkEVMBridge public immutable l1PolygonZkEVMBridge;
+    IPolygonZkEVMBridge public immutable L1_POLYGON_ZKEVM_BRIDGE;
 
     // Polygon's internal network id for zkEVM.
-    uint32 public constant l2NetworkId = 1;
+    uint32 public constant POLYGON_ZKEVM_L2_NETWORK_ID = 1;
 
     /**
      * @notice Constructs new Adapter.
@@ -25,8 +25,8 @@ contract PolygonZkEVM_Adapter is AdapterInterface {
      * @param _l1PolygonZkEVMBridge Canonical token bridge contract on L1.
      */
     constructor(WETH9Interface _l1Weth, IPolygonZkEVMBridge _l1PolygonZkEVMBridge) {
-        l1Weth = _l1Weth;
-        l1PolygonZkEVMBridge = _l1PolygonZkEVMBridge;
+        L1_WETH = _l1Weth;
+        L1_POLYGON_ZKEVM_BRIDGE = _l1PolygonZkEVMBridge;
     }
 
     /**
@@ -35,7 +35,7 @@ contract PolygonZkEVM_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        l1PolygonZkEVMBridge.bridgeMessage(l2NetworkId, target, true, message);
+        L1_POLYGON_ZKEVM_BRIDGE.bridgeMessage(POLYGON_ZKEVM_L2_NETWORK_ID, target, true, message);
         emit MessageRelayed(target, message);
     }
 
@@ -55,12 +55,19 @@ contract PolygonZkEVM_Adapter is AdapterInterface {
         // The mapped WETH address in the native Polygon zkEVM bridge contract does not match
         // the official WETH address. Therefore, if the l1Token is WETH then unwrap it to ETH
         // and send the ETH directly via as msg.value.
-        if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            l1PolygonZkEVMBridge.bridgeAsset{ value: amount }(l2NetworkId, to, amount, address(0), true, "");
+        if (l1Token == address(L1_WETH)) {
+            L1_WETH.withdraw(amount);
+            L1_POLYGON_ZKEVM_BRIDGE.bridgeAsset{ value: amount }(
+                POLYGON_ZKEVM_L2_NETWORK_ID,
+                to,
+                amount,
+                address(0),
+                true,
+                ""
+            );
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(l1PolygonZkEVMBridge), amount);
-            l1PolygonZkEVMBridge.bridgeAsset(l2NetworkId, to, amount, l1Token, true, "");
+            IERC20(l1Token).safeIncreaseAllowance(address(L1_POLYGON_ZKEVM_BRIDGE), amount);
+            L1_POLYGON_ZKEVM_BRIDGE.bridgeAsset(POLYGON_ZKEVM_L2_NETWORK_ID, to, amount, l1Token, true, "");
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);

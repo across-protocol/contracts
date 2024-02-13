@@ -45,6 +45,7 @@ interface AcrossMessageHandler {
  * on the destination chain. Locked source chain tokens are later sent over the canonical token bridge to L1 HubPool.
  * Relayers are refunded with destination tokens out of this contract after another off-chain actor, a "data worker",
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
+ * @custom:security-contact bugs@across.to
  */
 abstract contract SpokePool is
     V3SpokePoolInterface,
@@ -161,6 +162,11 @@ abstract contract SpokePool is
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
 
+    // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
+    uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
+    // Default address used to signify that no relayer should be credited with a refund, for example
+    // when executing a slow fill.
+    address public constant EMPTY_RELAYER = address(0);
     // This is the magic value that signals to the off-chain validator
     // that this deposit can never expire. A deposit with this fill deadline should always be eligible for a
     // slow fill, meaning that its output token and input token must be "equivalent". Therefore, this value is only
@@ -214,18 +220,6 @@ abstract contract SpokePool is
         address recipient,
         bytes message,
         RelayExecutionInfo updatableRelayData
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event RefundRequested(
-        address indexed relayer,
-        address refundToken,
-        uint256 amount,
-        uint256 indexed originChainId,
-        uint256 destinationChainId,
-        int64 realizedLpFeePct,
-        uint32 indexed depositId,
-        uint256 fillBlock,
-        uint256 previousIdenticalRequests
     );
     event RelayedRootBundle(
         uint32 indexed rootBundleId,
@@ -552,7 +546,7 @@ abstract contract SpokePool is
      * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
      * the quoteTimestamp buffer constraint.
      * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
-     * @dev The existing function modifiers are already enforced by _deposit(), so no additional modifiers are imposed.
+     * @dev The existing function modifiers are already enforced by deposit(), so no additional modifiers are imposed.
      * @param recipient Address to receive funds at on destination chain.
      * @param originToken Token to lock into this contract to initiate deposit.
      * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
@@ -589,7 +583,7 @@ abstract contract SpokePool is
      * @notice This function is intended for multisig depositors who can accept some LP fee uncertainty in order to lift
      * the quoteTimestamp buffer constraint.
      * @dev Re-orgs may produce invalid fills if the quoteTimestamp moves across a change in HubPool utilisation.
-     * @dev The existing function modifiers are already enforced by _deposit(), so no additional modifiers are imposed.
+     * @dev The existing function modifiers are already enforced by depositFor(), so no additional modifiers are imposed.
      * @param depositor Address who is credited for depositing funds on origin chain and can speed up the deposit.
      * @param recipient Address to receive funds at on destination chain.
      * @param originToken Token to lock into this contract to initiate deposit.
@@ -707,7 +701,7 @@ abstract contract SpokePool is
      * ERC20.
      * @param inputAmount The amount of input tokens to pull from the caller's account and lock into this contract.
      * This amount will be sent to the relayer on their repayment chain of choice as a refund following an optimistic
-     * challenge window in the HubPool, plus a system fee.
+     * challenge window in the HubPool, less a system fee.
      * @param outputAmount The amount of output tokens that the relayer will send to the recipient on the destination.
      * @param destinationChainId The destination chain identifier. Must be enabled along with the input token
      * as a valid deposit route from this spoke pool or this transaction will revert.
@@ -1283,13 +1277,13 @@ abstract contract SpokePool is
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
-            repaymentChainId: 0 // Hardcoded to 0 for slow fills
+            repaymentChainId: EMPTY_REPAYMENT_CHAIN_ID // Repayment not relevant for slow fills.
         });
 
         _verifyV3SlowFill(relayExecution, rootBundleId, proof);
 
-        // - 0x0 hardcoded as relayer for slow fill execution.
-        _fillRelayV3(relayExecution, address(0), true);
+        // - No relayer to refund for slow fill executions.
+        _fillRelayV3(relayExecution, EMPTY_RELAYER, true);
     }
 
     /**

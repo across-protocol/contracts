@@ -81,7 +81,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         ITokenMessenger _cctpTokenMessenger
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -102,9 +102,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     ) public initializer {
         callValidated = false;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        polygonTokenBridger = _polygonTokenBridger;
+        _setPolygonTokenBridger(payable(_polygonTokenBridger));
         //slither-disable-next-line missing-zero-check
-        fxChild = _fxChild;
+        _setFxChild(_fxChild);
     }
 
     /********************************************************
@@ -116,9 +116,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param newFxChild New FxChild.
      */
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
-        //slither-disable-next-line missing-zero-check
-        fxChild = newFxChild;
-        emit SetFxChild(newFxChild);
+        _setFxChild(newFxChild);
     }
 
     /**
@@ -126,8 +124,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param newPolygonTokenBridger New Polygon Token Bridger contract.
      */
     function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
-        polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
-        emit SetPolygonTokenBridger(address(newPolygonTokenBridger));
+        _setPolygonTokenBridger(newPolygonTokenBridger);
     }
 
     /**
@@ -215,6 +212,17 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
+
+    function _setFxChild(address _fxChild) internal {
+        //slither-disable-next-line missing-zero-check
+        fxChild = _fxChild;
+        emit SetFxChild(_fxChild);
+    }
+
+    function _setPolygonTokenBridger(address payable _polygonTokenBridger) internal {
+        polygonTokenBridger = PolygonTokenBridger(_polygonTokenBridger);
+        emit SetPolygonTokenBridger(address(_polygonTokenBridger));
+    }
 
     function _preExecuteLeafHook(address) internal override {
         // Wraps MATIC --> WMATIC before distributing tokens from this contract.
