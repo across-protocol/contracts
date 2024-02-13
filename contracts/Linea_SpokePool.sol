@@ -5,81 +5,9 @@
 pragma solidity 0.8.19;
 
 import "./SpokePool.sol";
+import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-/**
- * @notice Interface of Linea's Canonical Message Service
- * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/interfaces/IMessageService.sol
- */
-interface IMessageService {
-    /**
-     * @notice Sends a message for transporting from the given chain.
-     * @dev This function should be called with a msg.value = _value + _fee. The fee will be paid on the destination chain.
-     * @param _to The destination address on the destination chain.
-     * @param _fee The message service fee on the origin chain.
-     * @param _calldata The calldata used by the destination message service to call the destination contract.
-     */
-    function sendMessage(
-        address _to,
-        uint256 _fee,
-        bytes calldata _calldata
-    ) external payable;
-
-    /**
-     * @notice Returns the original sender of the message on the origin layer.
-     */
-    function sender() external view returns (address);
-
-    /**
-     * @notice Minimum fee to use when sending a message. Currently, only exists on L2MessageService.
-     * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/messageService/l2/L2MessageService.sol#L37
-     */
-    function minimumFeeInWei() external view returns (uint256);
-}
-
-/**
- * @notice Interface of Linea's Canonical Token Bridge
- * See https://github.com/Consensys/linea-contracts/blob/3cf85529fd4539eb06ba998030c37e47f98c528a/contracts/tokenBridge/interfaces/ITokenBridge.sol
- */
-interface ITokenBridge {
-    /**
-     * @notice This function is the single entry point to bridge tokens to the
-     *   other chain, both for native and already bridged tokens. You can use it
-     *   to bridge any ERC20. If the token is bridged for the first time an ERC20
-     *   (BridgedToken.sol) will be automatically deployed on the target chain.
-     * @dev User should first allow the bridge to transfer tokens on his behalf.
-     *   Alternatively, you can use `bridgeTokenWithPermit` to do so in a single
-     *   transaction. If you want the transfer to be automatically executed on the
-     *   destination chain. You should send enough ETH to pay the postman fees.
-     *   Note that Linea can reserve some tokens (which use a dedicated bridge).
-     *   In this case, the token cannot be bridged. Linea can only reserve tokens
-     *   that have not been bridged yet.
-     *   Linea can pause the bridge for security reason. In this case new bridge
-     *   transaction would revert.
-     * @param _token The address of the token to be bridged.
-     * @param _amount The amount of the token to be bridged.
-     * @param _recipient The address that will receive the tokens on the other chain.
-     */
-    function bridgeToken(
-        address _token,
-        uint256 _amount,
-        address _recipient
-    ) external payable;
-}
-
-interface IUSDCBridge {
-    function usdc() external view returns (address);
-
-    /**
-     * @dev Sends the sender's USDC from L1 to the recipient on L2, locks the USDC sent
-     * in this contract and sends a message to the message bridge
-     * contract to mint the equivalent USDC on L2
-     * @param amount The amount of USDC to send
-     * @param to The recipient's address to receive the funds
-     */
-    function depositTo(uint256 amount, address to) external payable;
-}
 
 /**
  * @notice Linea specific SpokePool.
@@ -153,7 +81,7 @@ contract Linea_SpokePool is SpokePool {
      * sending L2->L1 messages.
      */
     function minimumFeeInWei() public view returns (uint256) {
-        return IMessageService(l2MessageService).minimumFeeInWei();
+        return l2MessageService.minimumFeeInWei();
     }
 
     /****************************************
@@ -218,7 +146,7 @@ contract Linea_SpokePool is SpokePool {
         // send ETH directly via the Canonical Message Service.
         if (l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
-            IMessageService(l2MessageService).sendMessage{ value: amountToReturn + msg.value }(hubPool, msg.value, "");
+            l2MessageService.sendMessage{ value: amountToReturn + msg.value }(hubPool, msg.value, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
         else if (l2TokenAddress == l2UsdcBridge.usdc()) {
@@ -234,7 +162,7 @@ contract Linea_SpokePool is SpokePool {
 
     function _requireAdminSender() internal view override {
         require(
-            IMessageService(l2MessageService).sender() == crossDomainAdmin && msg.sender == address(l2MessageService),
+            l2MessageService.sender() == crossDomainAdmin && msg.sender == address(l2MessageService),
             "ONLY_COUNTERPART_GATEWAY"
         );
     }

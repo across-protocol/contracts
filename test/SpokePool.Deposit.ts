@@ -489,16 +489,16 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
         spokePool.connect(depositor).depositV3(
-          // fillDeadline right at the buffer is OK
-          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
-        )
-      ).to.not.be.reverted;
-      await expect(
-        spokePool.connect(depositor).depositV3(
           // fillDeadline in past
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.sub(1) })
         )
       ).to.be.revertedWith("InvalidFillDeadline");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          // fillDeadline right at the buffer is OK
+          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
+        )
+      ).to.not.be.reverted;
     });
     it("invalid exclusivity params", async function () {
       const currentTime = await spokePool.getCurrentTime();

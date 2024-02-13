@@ -73,19 +73,12 @@ interface DepositManager {
 // solhint-disable-next-line contract-name-camelcase
 contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
-    IRootChainManager public immutable rootChainManager;
-    IFxStateSender public immutable fxStateSender;
-    DepositManager public immutable depositManager;
-    address public immutable erc20Predicate;
-    address public immutable l1Matic;
-    WETH9Interface public immutable l1Weth;
-
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge on Base.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 private constant POLYGON_CIRCLE_CCTP_DOMAIN_ID = 7;
+    IRootChainManager public immutable ROOT_CHAIN_MANAGER;
+    IFxStateSender public immutable FX_STATE_SENDER;
+    DepositManager public immutable DEPOSIT_MANAGER;
+    address public immutable ERC20_PREDICATE;
+    address public immutable L1_MATIC;
+    WETH9Interface public immutable L1_WETH;
 
     /**
      * @notice Constructs new Adapter.
@@ -107,13 +100,13 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, POLYGON_CIRCLE_CCTP_DOMAIN_ID) {
-        rootChainManager = _rootChainManager;
-        fxStateSender = _fxStateSender;
-        depositManager = _depositManager;
-        erc20Predicate = _erc20Predicate;
-        l1Matic = _l1Matic;
-        l1Weth = _l1Weth;
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Polygon) {
+        ROOT_CHAIN_MANAGER = _rootChainManager;
+        FX_STATE_SENDER = _fxStateSender;
+        DEPOSIT_MANAGER = _depositManager;
+        ERC20_PREDICATE = _erc20Predicate;
+        L1_MATIC = _l1Matic;
+        L1_WETH = _l1Weth;
     }
 
     /**
@@ -123,7 +116,7 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
      */
 
     function relayMessage(address target, bytes calldata message) external payable override {
-        fxStateSender.sendMessageToChild(target, message);
+        FX_STATE_SENDER.sendMessageToChild(target, message);
         emit MessageRelayed(target, message);
     }
 
@@ -141,19 +134,19 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
         address to
     ) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
-        if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            rootChainManager.depositEtherFor{ value: amount }(to);
+        if (l1Token == address(L1_WETH)) {
+            L1_WETH.withdraw(amount);
+            ROOT_CHAIN_MANAGER.depositEtherFor{ value: amount }(to);
         }
         // If the l1Token is USDC, then we send it to the CCTP bridge
         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-        } else if (l1Token == l1Matic) {
-            IERC20(l1Token).safeIncreaseAllowance(address(depositManager), amount);
-            depositManager.depositERC20ForUser(l1Token, to, amount);
+        } else if (l1Token == L1_MATIC) {
+            IERC20(l1Token).safeIncreaseAllowance(address(DEPOSIT_MANAGER), amount);
+            DEPOSIT_MANAGER.depositERC20ForUser(l1Token, to, amount);
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(erc20Predicate, amount);
-            rootChainManager.depositFor(to, l1Token, abi.encode(amount));
+            IERC20(l1Token).safeIncreaseAllowance(ERC20_PREDICATE, amount);
+            ROOT_CHAIN_MANAGER.depositFor(to, l1Token, abi.encode(amount));
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
