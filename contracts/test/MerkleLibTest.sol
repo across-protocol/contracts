@@ -21,12 +21,12 @@ contract MerkleLibTest {
         return MerkleLib.verifyPoolRebalance(root, rebalance, proof);
     }
 
-    function verifyV3RelayerRefund(
+    function verifyRelayerRefund(
         bytes32 root,
-        V3SpokePoolInterface.V3RelayerRefundLeaf memory refund,
+        SpokePoolInterface.RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) public pure returns (bool) {
-        return MerkleLib.verifyV3RelayerRefund(root, refund, proof);
+        return MerkleLib.verifyRelayerRefund(root, refund, proof);
     }
 
     function verifyV3SlowRelayFulfillment(

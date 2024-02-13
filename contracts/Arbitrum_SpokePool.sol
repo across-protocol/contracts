@@ -27,7 +27,6 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
-    event ArbitrumTokensBridged(address indexed l1Token, address target, uint256 numberOfTokensBridged);
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
 
@@ -40,7 +39,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         ITokenMessenger _cctpTokenMessenger
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -107,7 +106,6 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
                 "" // _data. We don't need to send any data for the bridging action.
             );
         }
-        emit ArbitrumTokensBridged(address(0), hubPool, amountToReturn);
     }
 
     function _setL2GatewayRouter(address _l2GatewayRouter) internal {

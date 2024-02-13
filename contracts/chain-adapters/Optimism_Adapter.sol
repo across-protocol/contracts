@@ -37,28 +37,21 @@ interface SynthetixBridgeToOptimism is IL1StandardBridge {
 // solhint-disable-next-line contract-name-camelcase
 contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
-    uint32 public immutable l2GasLimit = 200_000;
+    uint32 public constant L2_GAS_LIMIT = 200_000;
 
-    WETH9Interface public immutable l1Weth;
+    WETH9Interface public immutable L1_WETH;
 
-    IL1StandardBridge public immutable l1StandardBridge;
+    IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
 
     // Optimism has the ability to support "custom" bridges. These bridges are not supported by the canonical bridge
     // and so we need to store the address of the custom token and the associated bridge. In the event we want to
     // support a new token that is not supported by Optimism, we can add a new custom bridge for it and re-deploy the
     // adapter. A full list of custom optimism tokens and their associated bridges can be found here:
     // https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/optimism.tokenlist.json
-    address public immutable dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public immutable daiOptimismBridge = 0x10E6593CDda8c58a1d0f14C5164B376352a55f2F;
-    address public immutable snx = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
-    address public immutable snxOptimismBridge = 0x39Ea01a0298C315d149a490E34B59Dbf2EC7e48F;
-
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge on Optimism.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 private constant OPTIMISM_CIRCLE_CCTP_DOMAIN_ID = 2;
+    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant DAI_OPTIMISM_BRIDGE = 0x10E6593CDda8c58a1d0f14C5164B376352a55f2F;
+    address public constant SNX = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
+    address public constant SNX_OPTIMISM_BRIDGE = 0x39Ea01a0298C315d149a490E34B59Dbf2EC7e48F;
 
     /**
      * @notice Constructs new Adapter.
@@ -76,10 +69,10 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
         ITokenMessenger _cctpTokenMessenger
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, OPTIMISM_CIRCLE_CCTP_DOMAIN_ID)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Optimism)
     {
-        l1Weth = _l1Weth;
-        l1StandardBridge = _l1StandardBridge;
+        L1_WETH = _l1Weth;
+        L1_STANDARD_BRIDGE = _l1StandardBridge;
     }
 
     /**
@@ -88,7 +81,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        sendCrossDomainMessage(target, uint32(l2GasLimit), message);
+        sendCrossDomainMessage(target, L2_GAS_LIMIT, message);
         emit MessageRelayed(target, message);
     }
 
@@ -106,23 +99,23 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
         address to
     ) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
-        if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
+        if (l1Token == address(L1_WETH)) {
+            L1_WETH.withdraw(amount);
+            L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
         }
         // If the l1Token is USDC, then we send it to the CCTP bridge
         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else {
-            address bridgeToUse = address(l1StandardBridge);
+            address bridgeToUse = address(L1_STANDARD_BRIDGE);
 
             // Check if the L1 token requires a custom bridge. If so, use that bridge over the standard bridge.
-            if (l1Token == dai) bridgeToUse = daiOptimismBridge; // 1. DAI
-            if (l1Token == snx) bridgeToUse = snxOptimismBridge; // 2. SNX
+            if (l1Token == DAI) bridgeToUse = DAI_OPTIMISM_BRIDGE; // 1. DAI
+            if (l1Token == SNX) bridgeToUse = SNX_OPTIMISM_BRIDGE; // 2. SNX
 
             IERC20(l1Token).safeIncreaseAllowance(bridgeToUse, amount);
-            if (l1Token == snx) SynthetixBridgeToOptimism(bridgeToUse).depositTo(to, amount);
-            else IL1StandardBridge(bridgeToUse).depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            if (l1Token == SNX) SynthetixBridgeToOptimism(bridgeToUse).depositTo(to, amount);
+            else IL1StandardBridge(bridgeToUse).depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }

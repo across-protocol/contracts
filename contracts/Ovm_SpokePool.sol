@@ -36,7 +36,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     address public l2Eth;
 
     // Address of the Optimism L2 messenger.
-    address public messenger;
+    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
 
     // Address of custom bridge used to bridge Synthetix-related assets like SNX.
     address private constant SYNTHETIX_BRIDGE = 0x136b1EC699c62b0606854056f02dC7Bb80482d63;
@@ -48,7 +48,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
     mapping(address => address) public tokenBridges;
 
-    event OptimismTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged, uint256 l1Gas);
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
 
@@ -63,7 +62,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         ITokenMessenger _cctpTokenMessenger
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -83,7 +82,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     ) public onlyInitializing {
         l1Gas = 5_000_000;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
     }
@@ -168,8 +166,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.
                 );
-
-        emit OptimismTokensBridged(l2TokenAddress, hubPool, amountToReturn, l1Gas);
     }
 
     // Apply OVM-specific transformation to cross domain admin address on L1.

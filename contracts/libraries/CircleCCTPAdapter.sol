@@ -5,6 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
+library CircleDomainIds {
+    uint32 public constant Ethereum = 0;
+    uint32 public constant Optimism = 2;
+    uint32 public constant Arbitrum = 3;
+    uint32 public constant Base = 6;
+    uint32 public constant Polygon = 7;
+}
+
 abstract contract CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 

@@ -24,11 +24,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 // solhint-disable-next-line contract-name-camelcase
 contract Boba_Adapter is CrossDomainEnabled, AdapterInterface {
     using SafeERC20 for IERC20;
-    uint32 public immutable l2GasLimit = 2_000_000;
+    uint32 public immutable L2_GAS_LIMIT = 2_000_000;
 
-    WETH9Interface public immutable l1Weth;
+    WETH9Interface public immutable L1_WETH;
 
-    IL1StandardBridge public immutable l1StandardBridge;
+    IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
 
     /**
      * @notice Constructs new Adapter.
@@ -41,8 +41,8 @@ contract Boba_Adapter is CrossDomainEnabled, AdapterInterface {
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge
     ) CrossDomainEnabled(_crossDomainMessenger) {
-        l1Weth = _l1Weth;
-        l1StandardBridge = _l1StandardBridge;
+        L1_WETH = _l1Weth;
+        L1_STANDARD_BRIDGE = _l1StandardBridge;
     }
 
     /**
@@ -51,7 +51,7 @@ contract Boba_Adapter is CrossDomainEnabled, AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        sendCrossDomainMessage(target, uint32(l2GasLimit), message);
+        sendCrossDomainMessage(target, uint32(L2_GAS_LIMIT), message);
         emit MessageRelayed(target, message);
     }
 
@@ -69,14 +69,14 @@ contract Boba_Adapter is CrossDomainEnabled, AdapterInterface {
         address to
     ) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
-        if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
+        if (l1Token == address(L1_WETH)) {
+            L1_WETH.withdraw(amount);
+            L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
         } else {
-            IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+            IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
             IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
-            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }

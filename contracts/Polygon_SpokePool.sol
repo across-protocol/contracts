@@ -45,18 +45,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     // the caller is the fxChild AND that the fxChild called processMessageFromRoot
     bool private callValidated;
 
-    // Dictionary of function lock UUID to unique hashes, which we use to mark the last block that a function was called
-    // by a certain caller (e.g. set value equal to keccak256(block.timestamp, tx.origin)). This can be
-    // used to prevent certain functions from being called atomically by the same caller.
-    // This assumes each block has a different block.timestamp on this network.
-    mapping(bytes32 => bytes32) private funcLocks;
-    error CrossFunctionLock();
+    error MulticallExecuteLeaf();
 
-    // Function lock identifiers used as keys in funcLocks mapping above.
-    bytes32 private constant FILL_LOCK_IDENTIFIER = "Fill";
-    bytes32 private constant EXECUTE_LOCK_IDENTIFIER = "Execute";
-
-    event PolygonTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetFxChild(address indexed newFxChild);
     event SetPolygonTokenBridger(address indexed polygonTokenBridger);
     event ReceivedMessageFromL1(address indexed caller, address indexed rootMessageSender);
@@ -97,7 +87,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         ITokenMessenger _cctpTokenMessenger
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, 0)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -118,9 +108,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     ) public initializer {
         callValidated = false;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        polygonTokenBridger = _polygonTokenBridger;
+        _setPolygonTokenBridger(payable(_polygonTokenBridger));
         //slither-disable-next-line missing-zero-check
-        fxChild = _fxChild;
+        _setFxChild(_fxChild);
     }
 
     /********************************************************
@@ -132,9 +122,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param newFxChild New FxChild.
      */
     function setFxChild(address newFxChild) public onlyAdmin nonReentrant {
-        //slither-disable-next-line missing-zero-check
-        fxChild = newFxChild;
-        emit SetFxChild(newFxChild);
+        _setFxChild(newFxChild);
     }
 
     /**
@@ -142,8 +130,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param newPolygonTokenBridger New Polygon Token Bridger contract.
      */
     function setPolygonTokenBridger(address payable newPolygonTokenBridger) public onlyAdmin nonReentrant {
-        polygonTokenBridger = PolygonTokenBridger(newPolygonTokenBridger);
-        emit SetPolygonTokenBridger(address(newPolygonTokenBridger));
+        _setPolygonTokenBridger(newPolygonTokenBridger);
     }
 
     /**
@@ -188,35 +175,59 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     }
 
     /**
-     * @notice These functions can send an L2 to L1 message so we are extra cautious about preventing a griefing vector
+     * @notice Override multicall so that it cannot include executeRelayerRefundLeaf
+     * as one of the calls combined with other public function calls.
+     * @dev Multicalling a single transaction will always succeed.
+     * @dev Multicalling execute functions without combining other public function calls will succeed.
+     * @dev Multicalling public function calls without combining execute functions will succeed.
+     */
+    function _validateMulticallData(bytes[] calldata data) internal pure override {
+        bool hasOtherPublicFunctionCall = false;
+        bool hasExecutedLeafCall = false;
+        for (uint256 i = 0; i < data.length; i++) {
+            bytes4 selector = bytes4(data[i][:4]);
+            if (selector == SpokePoolInterface.executeRelayerRefundLeaf.selector) {
+                if (hasOtherPublicFunctionCall) revert MulticallExecuteLeaf();
+                hasExecutedLeafCall = true;
+            } else {
+                if (hasExecutedLeafCall) revert MulticallExecuteLeaf();
+                hasOtherPublicFunctionCall = true;
+            }
+        }
+    }
+
+    /**
+     * @notice This function can send an L2 to L1 message so we are extra cautious about preventing a griefing vector
      * whereby someone batches this call with a bunch of other calls and produces a very large L2 burn transaction.
      * This might make the L2 -> L1 message fail due to exceeding the L1 calldata limit.
      */
 
-    function executeV3RelayerRefundLeaf(
+    function executeRelayerRefundLeaf(
         uint32 rootBundleId,
-        V3RelayerRefundLeaf calldata relayerRefundLeaf,
-        bytes32[] calldata proof
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
+        bytes32[] memory proof
     ) public payable override {
         // AddressLibUpgradeable.isContract isn't a sufficient check because it checks the contract code size of
         // msg.sender which is 0 if called from a constructor function on msg.sender. This is why we check if
         // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode.
         // solhint-disable-next-line avoid-tx-origin
         if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
-        // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
-        _revertIfFunctionCalledAtomically(FILL_LOCK_IDENTIFIER);
-        _setFunctionLock(EXECUTE_LOCK_IDENTIFIER);
-        super.executeV3RelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
+        super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
-    // Prevent calling recipient contract functions atomically with executing relayer refund leaves.
-    function _preHandleMessageHook() internal override {
-        _revertIfFunctionCalledAtomically(EXECUTE_LOCK_IDENTIFIER);
-        _setFunctionLock(FILL_LOCK_IDENTIFIER);
+    function _setFxChild(address _fxChild) internal {
+        //slither-disable-next-line missing-zero-check
+        fxChild = _fxChild;
+        emit SetFxChild(_fxChild);
+    }
+
+    function _setPolygonTokenBridger(address payable _polygonTokenBridger) internal {
+        polygonTokenBridger = PolygonTokenBridger(_polygonTokenBridger);
+        emit SetPolygonTokenBridger(address(_polygonTokenBridger));
     }
 
     function _preExecuteLeafHook(address) internal override {
@@ -236,26 +247,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
             // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
             polygonTokenBridger.send(PolygonIERC20Upgradeable(l2TokenAddress), amountToReturn);
         }
-        emit PolygonTokensBridged(l2TokenAddress, address(this), amountToReturn);
     }
 
     function _wrap() internal {
         uint256 balance = address(this).balance;
         //slither-disable-next-line arbitrary-send-eth
         if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
-    }
-
-    function _setFunctionLock(bytes32 funcIdentifier) internal {
-        // solhint-disable-next-line avoid-tx-origin
-        bytes32 lockValue = keccak256(abi.encodePacked(getCurrentTime(), tx.origin));
-        if (funcLocks[funcIdentifier] != lockValue) funcLocks[funcIdentifier] = lockValue;
-    }
-
-    // Revert if function was called during this block with the same tx.origin.
-    function _revertIfFunctionCalledAtomically(bytes32 funcIdentifier) internal view {
-        // solhint-disable-next-line avoid-tx-origin
-        if (funcLocks[funcIdentifier] == keccak256(abi.encodePacked(getCurrentTime(), tx.origin)))
-            revert CrossFunctionLock();
     }
 
     // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`, which is why

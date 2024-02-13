@@ -12,29 +12,13 @@ import { ICrossDomainMessenger } from "@eth-optimism/contracts/libraries/bridge/
  */
 contract CrossDomainEnabled {
     // Messenger contract used to send and recieve messages from the other domain.
-    address public immutable messenger;
+    address public immutable MESSENGER;
 
     /**
      * @param _messenger Address of the CrossDomainMessenger on the current layer.
      */
     constructor(address _messenger) {
-        messenger = _messenger;
-    }
-
-    /**
-     * Enforces that the modified function is only callable by a specific cross-domain account.
-     * @param _sourceDomainAccount The only account on the originating domain which is
-     *  authenticated to call this function.
-     */
-    modifier onlyFromCrossDomainAccount(address _sourceDomainAccount) {
-        require(msg.sender == address(getCrossDomainMessenger()), "invalid cross domain messenger");
-
-        require(
-            getCrossDomainMessenger().xDomainMessageSender() == _sourceDomainAccount,
-            "invalid cross domain sender"
-        );
-
-        _;
+        MESSENGER = _messenger;
     }
 
     /**
@@ -43,7 +27,7 @@ contract CrossDomainEnabled {
      * @return The address of the cross-domain messenger contract which should be used.
      */
     function getCrossDomainMessenger() internal virtual returns (ICrossDomainMessenger) {
-        return ICrossDomainMessenger(messenger);
+        return ICrossDomainMessenger(MESSENGER);
     }
 
     /**

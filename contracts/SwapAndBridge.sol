@@ -11,17 +11,18 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * @title SwapAndBridgeBase
  * @notice Base contract for both variants of SwapAndBridge.
  */
-contract SwapAndBridgeBase is Lockable, MultiCaller {
+abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
-    // The transferFrom selector to block any calldata attempting to call transferFrom.
-    bytes4 public constant TRANSFER_FROM_SELECTOR = IERC20.transferFrom.selector;
+    // This contract performs a low level call with arbirary data to an external contract. This is a large attack
+    // surface and we should whitelist which function selectors are allowed to be called on the exchange.
+    mapping(bytes4 => bool) public allowedSelectors;
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
-    V3SpokePoolInterface public immutable spokePool;
+    V3SpokePoolInterface public immutable SPOKE_POOL;
 
     // Exchange address or router where the swapping will happen.
-    address public immutable exchange;
+    address public immutable EXCHANGE;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -57,16 +58,24 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
      ****************************************/
     error MinimumExpectedInputAmount();
     error LeftoverSrcTokens();
-    error TransferFromCalldata();
+    error InvalidFunctionSelector();
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _exchange Address of the exchange where tokens will be swapped.
+     * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
      */
-    constructor(V3SpokePoolInterface _spokePool, address _exchange) {
-        spokePool = _spokePool;
-        exchange = _exchange;
+    constructor(
+        V3SpokePoolInterface _spokePool,
+        address _exchange,
+        bytes4[] memory _allowedSelectors
+    ) {
+        SPOKE_POOL = _spokePool;
+        EXCHANGE = _exchange;
+        for (uint256 i = 0; i < _allowedSelectors.length; i++) {
+            allowedSelectors[_allowedSelectors[i]] = true;
+        }
     }
 
     // This contract supports two variants of swap and bridge, one that allows one token and another that allows the caller to pass them in.
@@ -78,21 +87,20 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
         IERC20 _swapToken,
         IERC20 _acrossInputToken
     ) internal {
-        // Do not allow transferFrom calls to prevent abuse of approvals.
         // Note: this check should never be impactful, but is here out of an abundance of caution.
-        // If the exchange address in the contract is also an ERC20 token that is approved by some
+        // For example, if the exchange address in the contract is also an ERC20 token that is approved by some
         // user on this contract, a malicious actor could call transferFrom to steal the user's tokens.
-        if (bytes4(routerCalldata) == TRANSFER_FROM_SELECTOR) revert TransferFromCalldata();
+        if (!allowedSelectors[bytes4(routerCalldata)]) revert InvalidFunctionSelector();
 
         // Pull tokens from caller into this contract.
-        _swapToken.transferFrom(msg.sender, address(this), swapTokenAmount);
+        _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        _acrossInputToken.safeIncreaseAllowance(exchange, swapTokenAmount);
+        _acrossInputToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = exchange.call(routerCalldata);
+        (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
         require(success, string(result));
 
         _checkSwapOutputAndDeposit(
@@ -131,8 +139,8 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
         if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _acrossInputToken.safeIncreaseAllowance(address(spokePool), returnAmount);
-        spokePool.depositV3(
+        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
+        SPOKE_POOL.depositV3(
             depositData.depositor,
             depositData.recipient,
             address(_acrossInputToken), // input token
@@ -161,26 +169,28 @@ contract SwapAndBridge is SwapAndBridgeBase {
     // This contract simply enables the caller to swap a token on this chain for another specified one
     // and bridge it as the input token via Across. This simplification is made to make the code
     // easier to reason about and solve a specific use case for Across.
-    IERC20 public immutable swapToken;
+    IERC20 public immutable SWAP_TOKEN;
 
     // The token that will be bridged via Across as the inputToken.
-    IERC20 public immutable acrossInputToken;
+    IERC20 public immutable ACROSS_INPUT_TOKEN;
 
     /**
      * @notice Construct a new SwapAndBridge contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _exchange Address of the exchange where tokens will be swapped.
+     * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
      * @param _swapToken Address of the token that will be swapped for acrossInputToken. Cannot be 0x0
      * @param _acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      */
     constructor(
         V3SpokePoolInterface _spokePool,
         address _exchange,
+        bytes4[] memory _allowedSelectors,
         IERC20 _swapToken,
         IERC20 _acrossInputToken
-    ) SwapAndBridgeBase(_spokePool, _exchange) {
-        swapToken = _swapToken;
-        acrossInputToken = _acrossInputToken;
+    ) SwapAndBridgeBase(_spokePool, _exchange, _allowedSelectors) {
+        SWAP_TOKEN = _swapToken;
+        ACROSS_INPUT_TOKEN = _acrossInputToken;
     }
 
     /**
@@ -206,8 +216,8 @@ contract SwapAndBridge is SwapAndBridgeBase {
             swapTokenAmount,
             minExpectedInputTokenAmount,
             depositData,
-            swapToken,
-            acrossInputToken
+            SWAP_TOKEN,
+            ACROSS_INPUT_TOKEN
         );
     }
 }
@@ -222,8 +232,13 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _exchange Address of the exchange where tokens will be swapped.
+     * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
      */
-    constructor(V3SpokePoolInterface _spokePool, address _exchange) SwapAndBridgeBase(_spokePool, exchange) {}
+    constructor(
+        V3SpokePoolInterface _spokePool,
+        address _exchange,
+        bytes4[] memory _allowedSelectors
+    ) SwapAndBridgeBase(_spokePool, _exchange, _allowedSelectors) {}
 
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.

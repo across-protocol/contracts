@@ -27,7 +27,6 @@ contract Scroll_SpokePool is SpokePool {
      *               EVENTS               *
      **************************************/
 
-    event ScrollTokensBridged(address indexed token, address indexed receiver, uint256 amount);
     event SetL2GatewayRouter(address indexed newGatewayRouter, address oldGatewayRouter);
     event SetL2ScrollMessenger(address indexed newScrollMessenger, address oldScrollMessenger);
 
@@ -58,8 +57,8 @@ contract Scroll_SpokePool is SpokePool {
         address _hubPool
     ) public initializer {
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        l2GatewayRouter = _l2GatewayRouter;
-        l2ScrollMessenger = _l2ScrollMessenger;
+        _setL2GatewayRouter(_l2GatewayRouter);
+        _setL2MessageService(_l2ScrollMessenger);
     }
 
     /**
@@ -101,7 +100,6 @@ contract Scroll_SpokePool is SpokePool {
             // See: https://github.com/scroll-tech/scroll/blob/0a8164ee5b63ed5d3bd5e7b39d91445a3176e142/contracts/src/L2/gateways/IL2ERC20Gateway.sol#L69-L80
             0
         );
-        emit ScrollTokensBridged(l2TokenAddress, hubPool, amountToReturn);
     }
 
     /**

@@ -7,14 +7,14 @@ import "../interfaces/V3SpokePoolInterface.sol";
 // or pooled relayer behavior. Makes all calls from constructor to make sure SpokePool is not relying on checking the
 // caller's code size which is 0 at construction time.
 
-contract MockV3Caller {
+contract MockCaller {
     constructor(
         address _spokePool,
         uint32 rootBundleId,
-        V3SpokePoolInterface.V3RelayerRefundLeaf memory relayerRefundLeaf,
+        SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) {
         require(_spokePool != address(this), "spokePool not external");
-        V3SpokePoolInterface(_spokePool).executeV3RelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
+        SpokePoolInterface(_spokePool).executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 }

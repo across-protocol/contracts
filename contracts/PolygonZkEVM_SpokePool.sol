@@ -35,7 +35,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
     IPolygonZkEVMBridge public l2PolygonZkEVMBridge;
 
     // Polygon zkEVM's internal network id for L1.
-    uint32 public constant l1NetworkId = 0;
+    uint32 public constant POLYGON_ZKEVM_L1_NETWORK_ID = 0;
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
     // private. Leaving it set to true can permanently disable admin calls.
@@ -54,7 +54,6 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
      *               EVENTS               *
      **************************************/
     event SetPolygonZkEVMBridge(address indexed newPolygonZkEVMBridge, address indexed oldPolygonZkEVMBridge);
-    event PolygonZkEVMTokensBridged(address indexed l2Token, address target, uint256 numberOfTokensBridged);
     event ReceivedMessageFromL1(address indexed caller, address indexed originAddress);
 
     // Note: validating calls this way ensures that strange calls coming from the onMessageReceived won't be
@@ -137,7 +136,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
         if (_originAddress != crossDomainAdmin) {
             revert OriginSenderNotCrossDomain();
         }
-        if (_originNetwork != l1NetworkId) {
+        if (_originNetwork != POLYGON_ZKEVM_L1_NETWORK_ID) {
             revert SourceChainNotHubChain();
         }
 
@@ -176,7 +175,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
         if (l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             l2PolygonZkEVMBridge.bridgeAsset{ value: amountToReturn }(
-                l1NetworkId,
+                POLYGON_ZKEVM_L1_NETWORK_ID,
                 hubPool,
                 amountToReturn,
                 address(0),
@@ -186,7 +185,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
         } else {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2PolygonZkEVMBridge), amountToReturn);
             l2PolygonZkEVMBridge.bridgeAsset(
-                l1NetworkId,
+                POLYGON_ZKEVM_L1_NETWORK_ID,
                 hubPool,
                 amountToReturn,
                 l2TokenAddress,

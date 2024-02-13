@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.0;
 
 import "./Permit2Order.sol";
 import "../external/interfaces/IPermit2.sol";
@@ -29,16 +29,18 @@ library Permit2OrderLib {
             "address offerer,",
             "uint256 nonce,",
             "uint256 initiateDeadline,",
-            "uint256 fillPeriod",
+            "uint32 fillPeriod",
             "uint32 challengePeriod",
             "uint32 proofPeriod",
             "address settlementOracle",
-            "uint256 validationContract,",
-            "uint256 validationData,",
+            "address validationContract,",
+            "bytes validationData,",
             "address inputToken,",
             "uint256 inputAmount,",
             "address collateralToken,",
             "uint256 collateralAmount,",
+            "address challengerCollateralToken,",
+            "uint256 challengerCollateralAmount,",
             "OutputToken[] outputs)",
             OUTPUT_TOKEN_TYPE
         );
@@ -125,7 +127,7 @@ library Permit2OrderLib {
         );
 
         // Pull filler collateral.
-        IPermit2(address(permit2)).transferFrom(
+        permit2.transferFrom(
             msg.sender,
             address(this),
             uint160(limitOrder.fillerCollateral.amount),

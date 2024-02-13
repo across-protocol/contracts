@@ -15,6 +15,7 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
+  zeroAddress,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -380,9 +381,65 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
         spokePool.connect(depositor).depositV3(
+          // fillDeadline in past
+          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.sub(1) })
+        )
+      ).to.be.revertedWith("InvalidFillDeadline");
+      await expect(
+        spokePool.connect(depositor).depositV3(
           // fillDeadline right at the buffer is OK
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
         )
+      ).to.not.be.reverted;
+    });
+    it("invalid exclusivity params", async function () {
+      const currentTime = await spokePool.getCurrentTime();
+
+      // Both exclusive deadline and exclusive relayer must be 0 or non-zero (and the deadline is in the future).
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: depositor.address,
+            exclusivityDeadline: 0,
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusivityDeadline");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: depositor.address,
+            exclusivityDeadline: currentTime.sub(1),
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusivityDeadline");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: currentTime,
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusiveRelayer");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: depositor.address,
+            exclusivityDeadline: currentTime,
+          })
+        )
+      ).to.not.be.reverted;
+    });
+    it("exclusive deadline and relayer can both be 0", async function () {
+      await expect(
+        spokePool
+          .connect(depositor)
+          .depositV3(
+            ...getDepositArgsFromRelayData({ ...relayData, exclusiveRelayer: zeroAddress, exclusivityDeadline: 0 })
+          )
       ).to.not.be.reverted;
     });
     it("if input token is WETH and msg.value > 0, msg.value must match inputAmount", async function () {
@@ -403,6 +460,11 @@ describe("SpokePool Depositor Logic", async function () {
 
       // WETH balance for user should be same as start, but WETH balance in pool should increase.
       expect(await weth.balanceOf(spokePool.address)).to.equal(amountToDeposit);
+    });
+    it("if input token is not WETH then msg.value must be 0", async function () {
+      await expect(
+        spokePool.connect(depositor).depositV3(...getDepositArgsFromRelayData(relayData), { value: 1 })
+      ).to.be.revertedWith("MsgValueDoesNotMatchInputAmount");
     });
     it("if input token is WETH and msg.value = 0, pulls ERC20 from depositor", async function () {
       await expect(() =>

@@ -44,10 +44,18 @@ describe("SpokePool Slow Relay Logic", async function () {
         exclusivityDeadline: fillDeadline - 500,
         message: "0x",
       };
+      // By default, set current time to after exclusivity deadline
+      await spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
     });
     it("fill deadline is expired", async function () {
       relayData.fillDeadline = (await spokePool.getCurrentTime()).sub(1);
       await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
+    });
+    it("during exclusivity deadline", async function () {
+      await spokePool.setCurrentTime(relayData.exclusivityDeadline);
+      await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith(
+        "NoSlowFillsInExclusivityWindow"
+      );
     });
     it("can request before fast fill", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);

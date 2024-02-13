@@ -9,7 +9,13 @@ pragma solidity ^0.8.0;
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
  */
 contract MultiCallerUpgradeable {
+    function _validateMulticallData(bytes[] calldata data) internal virtual {
+        // no-op
+    }
+
     function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
+        _validateMulticallData(data);
+
         results = new bytes[](data.length);
 
         //slither-disable-start calls-loop

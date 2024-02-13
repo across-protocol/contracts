@@ -26,9 +26,16 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(rebalance)));
     }
 
-    function verifyV3RelayerRefund(
+    /**
+     * @notice Verifies that a relayer refund is contained within a merkle root.
+     * @param root the merkle root.
+     * @param refund the refund struct.
+     * @param proof the merkle proof.
+     * @return bool to signal if the relayer refund proof correctly shows inclusion of the refund within the tree.
+     */
+    function verifyRelayerRefund(
         bytes32 root,
-        V3SpokePoolInterface.V3RelayerRefundLeaf memory refund,
+        SpokePoolInterface.RelayerRefundLeaf memory refund,
         bytes32[] memory proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
