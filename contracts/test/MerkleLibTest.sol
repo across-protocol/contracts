@@ -29,14 +29,6 @@ contract MerkleLibTest {
         return MerkleLib.verifyRelayerRefund(root, refund, proof);
     }
 
-    function verifyV3RelayerRefund(
-        bytes32 root,
-        V3SpokePoolInterface.V3RelayerRefundLeaf memory refund,
-        bytes32[] memory proof
-    ) public pure returns (bool) {
-        return MerkleLib.verifyV3RelayerRefund(root, refund, proof);
-    }
-
     function verifySlowRelayFulfillment(
         bytes32 root,
         SpokePoolInterface.SlowFill memory slowFill,
