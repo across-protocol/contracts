@@ -160,6 +160,15 @@ abstract contract SpokePool is
         keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
+
+    // This is the magic value that signals to the off-chain validator
+    // that this deposit can never expire. A deposit with this fill deadline should always be eligible for a
+    // slow fill, meaning that its output token and input token must be "equivalent". Therefore, this value is only
+    // used as a fillDeadline in deposit(), a soon to be deprecated function that also hardcodes outputToken to
+    // the zero address, which forces the off-chain validator to replace the output token with the equivalent
+    // token for the input token. By using this magic value, off-chain validators do not have to keep
+    // this event in their lookback window when querying for expired deposts.
+    uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -469,6 +478,8 @@ abstract contract SpokePool is
      * @notice The originToken => destinationChainId must be enabled.
      * @notice This method is payable because the caller is able to deposit native token if the originToken is
      * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
+     * @dev Produces a V3FundsDeposited event with an infinite expiry, meaning that this deposit can never expire.
+     * Moreover, the event's outputToken is set to 0x0 meaning that this deposit can always be slow filled.
      * @param recipient Address to receive funds at on destination chain.
      * @param originToken Token to lock into this contract to initiate deposit.
      * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
@@ -1393,7 +1404,9 @@ abstract contract SpokePool is
 
         emit V3FundsDeposited(
             originToken, // inputToken
-            address(0), // outputToken
+            address(0), // outputToken. Setting this to 0x0 means that the outputToken should be assumed to be the
+            // canonical token for the destination chain matching the inputToken. Therefore, this deposit
+            // can always be slow filled.
             // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
             // token as the inputToken for the destination chain should be replaced here.
             amount, // inputAmount
@@ -1404,8 +1417,10 @@ abstract contract SpokePool is
             destinationChainId,
             newDepositId,
             quoteTimestamp,
-            type(uint32).max, // fillDeadline. Older deposits don't expire.
-            0, // exclusivityDeadline.
+            INFINITE_FILL_DEADLINE, // fillDeadline. Default to infinite expiry because
+            // expired deposits refunds could be a breaking change for existing users of this function.
+            0, // exclusivityDeadline. Setting this to 0 along with the exclusiveRelayer to 0x0 means that there
+            // is no exclusive deadline
             depositor,
             recipient,
             address(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
