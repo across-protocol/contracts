@@ -24,7 +24,7 @@ interface ExtendedHubPoolInterface is HubPoolInterface {
 contract BondToken is WETH9, Ownable {
     using Address for address;
 
-    ExtendedHubPoolInterface public immutable hubPool;
+    ExtendedHubPoolInterface public immutable HUB_POOL;
 
     /**
      * @notice Addresses that are permitted to make HubPool root bundle proposals.
@@ -43,7 +43,7 @@ contract BondToken is WETH9, Ownable {
     constructor(ExtendedHubPoolInterface _hubPool) {
         name = "Across Bond Token";
         symbol = "ABT";
-        hubPool = _hubPool;
+        HUB_POOL = _hubPool;
     }
 
     /**
@@ -75,8 +75,8 @@ contract BondToken is WETH9, Ownable {
         address dst,
         uint256 amt
     ) public override returns (bool) {
-        if (dst == address(hubPool)) {
-            require(proposers[src] || hubPool.rootBundleProposal().proposer != src, "Transfer not permitted");
+        if (dst == address(HUB_POOL)) {
+            require(proposers[src] || HUB_POOL.rootBundleProposal().proposer != src, "Transfer not permitted");
         }
         return super.transferFrom(src, dst, amt);
     }

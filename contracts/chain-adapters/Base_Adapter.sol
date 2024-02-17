@@ -27,18 +27,11 @@ import "../external/interfaces/CCTPInterfaces.sol";
 // solhint-disable-next-line contract-name-camelcase
 contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
-    uint32 public immutable l2GasLimit = 200_000;
+    uint32 public constant L2_GAS_LIMIT = 200_000;
 
-    WETH9Interface public immutable l1Weth;
+    WETH9Interface public immutable L1_WETH;
 
-    IL1StandardBridge public immutable l1StandardBridge;
-
-    /**
-     * @notice Domain identifier used for Circle's CCTP bridge on Base.
-     * @dev This identifier is assigned by Circle and is not related to a chain ID.
-     * @dev Official domain list can be found here: https://developers.circle.com/stablecoins/docs/supported-domains
-     */
-    uint32 private constant BASE_CIRCLE_CCTP_DOMAIN_ID = 6;
+    IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
 
     /**
      * @notice Constructs new Adapter.
@@ -54,12 +47,9 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger
-    )
-        CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, BASE_CIRCLE_CCTP_DOMAIN_ID)
-    {
-        l1Weth = _l1Weth;
-        l1StandardBridge = _l1StandardBridge;
+    ) CrossDomainEnabled(_crossDomainMessenger) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base) {
+        L1_WETH = _l1Weth;
+        L1_STANDARD_BRIDGE = _l1StandardBridge;
     }
 
     /**
@@ -68,7 +58,7 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        sendCrossDomainMessage(target, uint32(l2GasLimit), message);
+        sendCrossDomainMessage(target, L2_GAS_LIMIT, message);
         emit MessageRelayed(target, message);
     }
 
@@ -86,18 +76,18 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         address to
     ) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
-        if (l1Token == address(l1Weth)) {
-            l1Weth.withdraw(amount);
-            l1StandardBridge.depositETHTo{ value: amount }(to, l2GasLimit, "");
+        if (l1Token == address(L1_WETH)) {
+            L1_WETH.withdraw(amount);
+            L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
         }
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else {
-            IL1StandardBridge _l1StandardBridge = l1StandardBridge;
+            IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
             IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
-            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, l2GasLimit, "");
+            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }

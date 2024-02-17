@@ -43,7 +43,7 @@ contract PolygonTokenBridger is Lockable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Gas token for Polygon.
-    MaticToken public constant maticToken = MaticToken(0x0000000000000000000000000000000000001010);
+    MaticToken public constant MATIC = MaticToken(0x0000000000000000000000000000000000001010);
 
     // Should be set to HubPool on Ethereum, or unused on Polygon.
     address public immutable destination;
@@ -113,8 +113,7 @@ contract PolygonTokenBridger is Lockable {
         token.withdraw(token.balanceOf(address(this)));
 
         // This takes the token that was withdrawn and calls withdraw on the "native" ERC20.
-        if (address(token) == l2WrappedMatic)
-            maticToken.withdraw{ value: address(this).balance }(address(this).balance);
+        if (address(token) == l2WrappedMatic) MATIC.withdraw{ value: address(this).balance }(address(this).balance);
     }
 
     /**

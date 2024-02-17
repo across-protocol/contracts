@@ -11,7 +11,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  * @title SwapAndBridgeBase
  * @notice Base contract for both variants of SwapAndBridge.
  */
-contract SwapAndBridgeBase is Lockable, MultiCaller {
+abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
@@ -19,10 +19,10 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
     mapping(bytes4 => bool) public allowedSelectors;
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
-    V3SpokePoolInterface public immutable spokePool;
+    V3SpokePoolInterface public immutable SPOKE_POOL;
 
     // Exchange address or router where the swapping will happen.
-    address public immutable exchange;
+    address public immutable EXCHANGE;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -71,8 +71,8 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
         address _exchange,
         bytes4[] memory _allowedSelectors
     ) {
-        spokePool = _spokePool;
-        exchange = _exchange;
+        SPOKE_POOL = _spokePool;
+        EXCHANGE = _exchange;
         for (uint256 i = 0; i < _allowedSelectors.length; i++) {
             allowedSelectors[_allowedSelectors[i]] = true;
         }
@@ -98,9 +98,9 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        _acrossInputToken.safeIncreaseAllowance(exchange, swapTokenAmount);
+        _acrossInputToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = exchange.call(routerCalldata);
+        (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
         require(success, string(result));
 
         _checkSwapOutputAndDeposit(
@@ -139,8 +139,8 @@ contract SwapAndBridgeBase is Lockable, MultiCaller {
         if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _acrossInputToken.safeIncreaseAllowance(address(spokePool), returnAmount);
-        spokePool.depositV3(
+        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
+        SPOKE_POOL.depositV3(
             depositData.depositor,
             depositData.recipient,
             address(_acrossInputToken), // input token
@@ -169,10 +169,10 @@ contract SwapAndBridge is SwapAndBridgeBase {
     // This contract simply enables the caller to swap a token on this chain for another specified one
     // and bridge it as the input token via Across. This simplification is made to make the code
     // easier to reason about and solve a specific use case for Across.
-    IERC20 public immutable swapToken;
+    IERC20 public immutable SWAP_TOKEN;
 
     // The token that will be bridged via Across as the inputToken.
-    IERC20 public immutable acrossInputToken;
+    IERC20 public immutable ACROSS_INPUT_TOKEN;
 
     /**
      * @notice Construct a new SwapAndBridge contract.
@@ -189,8 +189,8 @@ contract SwapAndBridge is SwapAndBridgeBase {
         IERC20 _swapToken,
         IERC20 _acrossInputToken
     ) SwapAndBridgeBase(_spokePool, _exchange, _allowedSelectors) {
-        swapToken = _swapToken;
-        acrossInputToken = _acrossInputToken;
+        SWAP_TOKEN = _swapToken;
+        ACROSS_INPUT_TOKEN = _acrossInputToken;
     }
 
     /**
@@ -216,8 +216,8 @@ contract SwapAndBridge is SwapAndBridgeBase {
             swapTokenAmount,
             minExpectedInputTokenAmount,
             depositData,
-            swapToken,
-            acrossInputToken
+            SWAP_TOKEN,
+            ACROSS_INPUT_TOKEN
         );
     }
 }
