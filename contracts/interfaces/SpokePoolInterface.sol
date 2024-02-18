@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
  * @notice Contains common data structures and functions used by all SpokePool implementations.
  */
 interface SpokePoolInterface {
-    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
     // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
     struct RelayerRefundLeaf {
         // This is the amount to return to the HubPool. This occurs when there is a PoolRebalanceLeaf netSendAmount that
