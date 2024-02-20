@@ -17,7 +17,10 @@ import "@openzeppelin/hardhat-upgrades";
 // Custom tasks to add to HRE.
 // eslint-disable-next-line node/no-missing-require
 require("./tasks/enableL1TokenAcrossEcosystem");
+// eslint-disable-next-line node/no-missing-require
 require("./tasks/finalizeScrollClaims");
+// eslint-disable-next-line node/no-missing-require
+require("./tasks/rescueStuckScrollTxn");
 
 dotenv.config();
 
