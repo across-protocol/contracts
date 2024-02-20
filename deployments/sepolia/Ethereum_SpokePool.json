@@ -238,6 +238,49 @@
         {
           "indexed": false,
           "internalType": "uint256",
+          "name": "amountToReturn",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "chainId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256[]",
+          "name": "refundAmounts",
+          "type": "uint256[]"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint32",
+          "name": "rootBundleId",
+          "type": "uint32"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint32",
+          "name": "leafId",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "ExecutedRelayerRefundRoot",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
         },
@@ -666,6 +709,49 @@
         }
       ],
       "name": "RequestedSpeedUpDeposit",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "updatedOutputAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint32",
+          "name": "depositId",
+          "type": "uint32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "depositor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "updatedRecipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "updatedMessage",
+          "type": "bytes"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "depositorSignature",
+          "type": "bytes"
+        }
+      ],
+      "name": "RequestedSpeedUpV3Deposit",
       "type": "event"
     },
     {
