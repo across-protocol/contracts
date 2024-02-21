@@ -253,67 +253,6 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "amountToReturn",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "chainId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256[]",
-          "name": "refundAmounts",
-          "type": "uint256[]"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint32",
-          "name": "rootBundleId",
-          "type": "uint32"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint32",
-          "name": "leafId",
-          "type": "uint32"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "l2TokenAddress",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address[]",
-          "name": "refundAddresses",
-          "type": "address[]"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "fillsRefundedRoot",
-          "type": "bytes32"
-        },
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "fillsRefundedIpfsHash",
-          "type": "string"
-        }
-      ],
-      "name": "ExecutedV3RelayerRefundRoot",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
         },
@@ -686,67 +625,6 @@
         }
       ],
       "name": "PausedFills",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "relayer",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "refundToken",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "originChainId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "destinationChainId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "int64",
-          "name": "realizedLpFeePct",
-          "type": "int64"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint32",
-          "name": "depositId",
-          "type": "uint32"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "fillBlock",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "previousIdenticalRequests",
-          "type": "uint256"
-        }
-      ],
-      "name": "RefundRequested",
       "type": "event"
     },
     {
@@ -1805,71 +1683,6 @@
       "name": "executeSlowRelayLeaf",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint32",
-          "name": "rootBundleId",
-          "type": "uint32"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "amountToReturn",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "chainId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256[]",
-              "name": "refundAmounts",
-              "type": "uint256[]"
-            },
-            {
-              "internalType": "uint32",
-              "name": "leafId",
-              "type": "uint32"
-            },
-            {
-              "internalType": "address",
-              "name": "l2TokenAddress",
-              "type": "address"
-            },
-            {
-              "internalType": "address[]",
-              "name": "refundAddresses",
-              "type": "address[]"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "fillsRefundedRoot",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "string",
-              "name": "fillsRefundedHash",
-              "type": "string"
-            }
-          ],
-          "internalType": "struct V3SpokePoolInterface.V3RelayerRefundLeaf",
-          "name": "relayerRefundLeaf",
-          "type": "tuple"
-        },
-        {
-          "internalType": "bytes32[]",
-          "name": "proof",
-          "type": "bytes32[]"
-        }
-      ],
-      "name": "executeV3RelayerRefundLeaf",
-      "outputs": [],
-      "stateMutability": "payable",
       "type": "function"
     },
     {
