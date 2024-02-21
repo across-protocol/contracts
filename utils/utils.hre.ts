@@ -24,25 +24,40 @@ export async function getSpokePoolDeploymentInfo(
 }
 
 type FnArgs = number | string;
-export async function deployNewProxy(name: string, constructorArgs: FnArgs[], initArgs: FnArgs[]): Promise<void> {
+export async function deployNewProxy(
+  name: string,
+  constructorArgs: FnArgs[],
+  initArgs: FnArgs[],
+  implementationOnly = false
+): Promise<void> {
   const { deployments, run, upgrades } = hre;
 
-  const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), initArgs, {
-    kind: "uups",
-    unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
-    constructorArgs,
-    initializer: "initialize",
-  });
-  const instance = await proxy.deployed();
-  console.log(`New ${name} proxy deployed @ ${instance.address}`);
-  const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance.address);
-  console.log(`${name} implementation deployed @ ${implementationAddress}`);
+  let instance: string;
+  if (implementationOnly) {
+    instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
+      constructorArgs,
+      kind: "uups",
+      unsafeAllow: ["delegatecall"],
+    })) as string;
+    console.log(`New ${name} implementation deployed @ ${instance}`);
+  } else {
+    const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), initArgs, {
+      kind: "uups",
+      unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+      constructorArgs,
+      initializer: "initialize",
+    });
+    instance = (await proxy.deployed()).address;
+    console.log(`New ${name} proxy deployed @ ${instance}`);
+    const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance);
+    console.log(`${name} implementation deployed @ ${implementationAddress}`);
+  }
 
   // Save the deployment manually because OZ's hardhat-upgrades packages bypasses hardhat-deploy.
   // See also: https://stackoverflow.com/questions/74870472
   const artifact = await deployments.getExtendedArtifact(name);
   const deployment: DeploymentSubmission = {
-    address: instance.address,
+    address: instance,
     ...artifact,
   };
   await deployments.save(name, deployment);
@@ -51,7 +66,7 @@ export async function deployNewProxy(name: string, constructorArgs: FnArgs[], in
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
-  await run("verify:verify", { address: instance.address, constructorArguments: constructorArgs });
+  await run("verify:verify", { address: instance, constructorArguments: constructorArgs });
 }
 
 export { hre };
