@@ -1,6 +1,7 @@
 [profile.default]
 src = "contracts"
 out = "artifacts"
+test = "test/foundry"
 libs = ["node_modules", "lib"]
 remappings = [
     "@across-protocol/=node_modules/@across-protocol/",
@@ -22,5 +23,11 @@ remappings = [
     "hardhat/=node_modules/hardhat/",
 ]
 via_ir = true
+
+[rpc_endpoints]
+ethereum = "${NODE_URL_1}"
+
+[etherscan]
+ethereum = { key = "${ETHERSCAN_API_KEY}" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

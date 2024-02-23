@@ -18,7 +18,10 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
 
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
-export async function deploySpokePool(ethers: any): Promise<{
+export async function deploySpokePool(
+  ethers: any,
+  spokePoolName = "MockSpokePool"
+): Promise<{
   weth: Contract;
   erc20: Contract;
   spokePool: Contract;
@@ -43,7 +46,7 @@ export async function deploySpokePool(ethers: any): Promise<{
 
   // Deploy the pool
   const spokePool = await hre.upgrades.deployProxy(
-    await getContractFactory("MockSpokePool", deployerWallet),
+    await getContractFactory(spokePoolName, deployerWallet),
     [0, crossChainAdmin.address, hubPool.address],
     { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
   );
@@ -75,6 +78,120 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
       route.enabled ?? true
     );
   }
+}
+
+export async function depositV2(
+  spokePool: Contract,
+  token: Contract,
+  recipient: SignerWithAddress,
+  depositor: SignerWithAddress,
+  destinationChainId: number = consts.destinationChainId,
+  amount = consts.amountToDeposit,
+  relayerFeePct = consts.depositRelayerFeePct,
+  quoteTimestamp?: number,
+  message?: string
+): Promise<Record<string, number | BigNumber | string> | null> {
+  await spokePool.connect(depositor).depositV2(
+    ...getDepositParams({
+      recipient: recipient.address,
+      originToken: token.address,
+      amount,
+      destinationChainId,
+      relayerFeePct,
+      quoteTimestamp: quoteTimestamp ?? (await spokePool.getCurrentTime()).toNumber(),
+      message,
+    })
+  );
+  const [events, originChainId] = await Promise.all([
+    spokePool.queryFilter(spokePool.filters.FundsDeposited()),
+    spokePool.chainId(),
+  ]);
+
+  const lastEvent = events[events.length - 1];
+  return lastEvent.args === undefined
+    ? null
+    : {
+        amount: lastEvent.args.amount,
+        originChainId: Number(originChainId),
+        destinationChainId: Number(lastEvent.args.destinationChainId),
+        relayerFeePct: lastEvent.args.relayerFeePct,
+        depositId: lastEvent.args.depositId,
+        quoteTimestamp: lastEvent.args.quoteTimestamp,
+        originToken: lastEvent.args.originToken,
+        recipient: lastEvent.args.recipient,
+        depositor: lastEvent.args.depositor,
+        message: lastEvent.args.message,
+      };
+}
+export async function fillRelay(
+  spokePool: Contract,
+  destErc20: Contract | string,
+  recipient: SignerWithAddress,
+  depositor: SignerWithAddress,
+  relayer: SignerWithAddress,
+  depositId = consts.firstDepositId,
+  originChainId = consts.originChainId,
+  depositAmount = consts.amountToDeposit,
+  amountToRelay = consts.amountToRelay,
+  realizedLpFeePct = consts.realizedLpFeePct,
+  relayerFeePct = consts.depositRelayerFeePct
+) {
+  await spokePool
+    .connect(relayer)
+    .fillRelay(
+      ...getFillRelayParams(
+        getRelayHash(
+          depositor.address,
+          recipient.address,
+          depositId,
+          originChainId,
+          consts.destinationChainId,
+          (destErc20 as Contract).address ?? (destErc20 as string),
+          depositAmount,
+          realizedLpFeePct,
+          relayerFeePct
+        ).relayData,
+        amountToRelay,
+        consts.repaymentChainId
+      )
+    );
+  const [events, destinationChainId] = await Promise.all([
+    spokePool.queryFilter(spokePool.filters.FilledRelay()),
+    spokePool.chainId(),
+  ]);
+  const lastEvent = events[events.length - 1];
+  if (lastEvent.args)
+    return {
+      amount: lastEvent.args.amount,
+      totalFilledAmount: lastEvent.args.totalFilledAmount,
+      fillAmount: lastEvent.args.fillAmount,
+      repaymentChainId: Number(lastEvent.args.repaymentChainId),
+      originChainId: Number(lastEvent.args.originChainId),
+      relayerFeePct: lastEvent.args.relayerFeePct,
+      appliedRelayerFeePct: lastEvent.args.appliedRelayerFeePct,
+      realizedLpFeePct: lastEvent.args.realizedLpFeePct,
+      depositId: lastEvent.args.depositId,
+      destinationToken: lastEvent.args.destinationToken,
+      relayer: lastEvent.args.relayer,
+      depositor: lastEvent.args.depositor,
+      recipient: lastEvent.args.recipient,
+      isSlowRelay: lastEvent.args.isSlowRelay,
+      destinationChainId: Number(destinationChainId),
+    };
+  else return null;
+}
+
+export interface RelayData {
+  depositor: string;
+  recipient: string;
+  destinationToken: string;
+  amount: BigNumber;
+  realizedLpFeePct: BigNumber;
+  relayerFeePct: BigNumber;
+  depositId: string;
+  originChainId: string;
+  destinationChainId: string;
+  message: string;
 }
 
 export interface V3RelayData {

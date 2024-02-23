@@ -26,30 +26,40 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 9 hours
-  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 32400];
+  //    * A fillDeadlineBuffer of 8 hours
+  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 28800];
 
-  const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
-    initializer: "initialize",
-    kind: "uups",
-    constructorArgs,
-    unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
-  });
-  console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);
-  await proxy.deployed();
-  console.log(`${contractName} deployed to chain ID ${spokeChainId} @ ${proxy.address}.`);
+  let newAddress;
+  // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
+  // contract.
+  if (spokeChainId === 324) {
+    const _deployment = await deployer.deploy(artifact, constructorArgs);
+    newAddress = _deployment.address;
+    console.log(`New ${contractName} implementation deployed @ ${newAddress}`);
+  } else {
+    const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
+      initializer: "initialize",
+      kind: "uups",
+      constructorArgs,
+      unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+    });
+    console.log(`Deployment transaction hash: ${proxy.deployTransaction.hash}.`);
+    await proxy.deployed();
+    console.log(`${contractName} deployed to chain ID ${spokeChainId} @ ${proxy.address}.`);
+    newAddress = proxy.address;
+  }
 
   // Save the deployment manually because OZ's hardhat-upgrades packages bypasses hardhat-deploy.
   // See also: https://stackoverflow.com/questions/74870472
   const extendedArtifact = await deployments.getExtendedArtifact(contractName);
   const deployment: DeploymentSubmission = {
-    address: proxy.address,
+    address: newAddress,
     ...extendedArtifact,
   };
   await deployments.save(contractName, deployment);
 
   // Verify the proxy + implementation contract.
-  await hre.run("verify:verify", { address: proxy.address });
+  await hre.run("verify:verify", { address: newAddress, constructorArguments: constructorArgs });
 };
 
 module.exports = func;

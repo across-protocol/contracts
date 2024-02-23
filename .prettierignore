@@ -7,3 +7,4 @@ typechain
 dist
 artifacts-zk
 cache-zk
+lib

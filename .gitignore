@@ -6,6 +6,9 @@ typechain
 dist
 typechain-types
 
+# Vim files
+*.swp
+
 # Hardhat files
 cache
 artifacts
@@ -14,6 +17,9 @@ artifacts-zk
 
 # Upgradeability files
 .openzeppelin
+
+# Storage layouts. Only save latest deployed storage layouts.
+storage-layouts/proposed*
 
 # IDE
 .idea
