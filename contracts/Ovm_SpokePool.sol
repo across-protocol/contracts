@@ -170,7 +170,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
         require(
-            LibOptimismUpgradeable.crossChainSender(MESSENGER) == crossDomainAdmin,
+            LibOptimismUpgradeable.crossChainSender(messenger) == crossDomainAdmin,
             "OVM_XCHAIN: wrong sender of cross-domain message"
         );
     }
