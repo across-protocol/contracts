@@ -25,7 +25,7 @@ contract DeployPermissionSplitterProxy is Script, Test {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-        address deployer = vm.addr(deployerPrivateKey);
+        address deployerPublicKey = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
         permissionSplitter = new PermissionSplitterProxy(hubPool);

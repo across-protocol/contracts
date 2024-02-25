@@ -1,7 +1,7 @@
 {
   "storage": [
     {
-      "astId": 38637,
+      "astId": 42749,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "_initialized",
       "offset": 0,
@@ -9,7 +9,7 @@
       "type": "t_uint8"
     },
     {
-      "astId": 38640,
+      "astId": 42752,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "_initializing",
       "offset": 1,
@@ -17,7 +17,7 @@
       "type": "t_bool"
     },
     {
-      "astId": 38619,
+      "astId": 42731,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -25,7 +25,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 38934,
+      "astId": 43046,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -33,7 +33,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 38949,
+      "astId": 43061,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "_status",
       "offset": 0,
@@ -41,7 +41,7 @@
       "type": "t_uint256"
     },
     {
-      "astId": 39018,
+      "astId": 43130,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -49,7 +49,7 @@
       "type": "t_array(t_uint256)49_storage"
     },
     {
-      "astId": 11354,
+      "astId": 15466,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -57,7 +57,7 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 11170,
+      "astId": 15271,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "_HASHED_NAME",
       "offset": 0,
@@ -65,7 +65,7 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 11172,
+      "astId": 15273,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "_HASHED_VERSION",
       "offset": 0,
@@ -73,7 +73,7 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 11271,
+      "astId": 15372,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -81,7 +81,7 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 4212,
+      "astId": 5508,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "crossDomainAdmin",
       "offset": 0,
@@ -89,7 +89,7 @@
       "type": "t_address"
     },
     {
-      "astId": 4214,
+      "astId": 5510,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "hubPool",
       "offset": 0,
@@ -97,23 +97,23 @@
       "type": "t_address"
     },
     {
-      "astId": 4217,
+      "astId": 5513,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "wrappedNativeToken",
+      "label": "DEPRECATED_wrappedNativeToken",
       "offset": 0,
       "slot": "2155",
-      "type": "t_contract(WETH9Interface)9569"
+      "type": "t_contract(WETH9Interface)12711"
     },
     {
-      "astId": 4219,
+      "astId": 5515,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "depositQuoteTimeBuffer",
+      "label": "DEPRECATED_depositQuoteTimeBuffer",
       "offset": 20,
       "slot": "2155",
       "type": "t_uint32"
     },
     {
-      "astId": 4221,
+      "astId": 5517,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "numberOfDeposits",
       "offset": 24,
@@ -121,7 +121,7 @@
       "type": "t_uint32"
     },
     {
-      "astId": 4223,
+      "astId": 5519,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "pausedFills",
       "offset": 28,
@@ -129,7 +129,7 @@
       "type": "t_bool"
     },
     {
-      "astId": 4225,
+      "astId": 5521,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "pausedDeposits",
       "offset": 29,
@@ -137,15 +137,15 @@
       "type": "t_bool"
     },
     {
-      "astId": 4229,
+      "astId": 5525,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "rootBundles",
       "offset": 0,
       "slot": "2156",
-      "type": "t_array(t_struct(RootBundle)9873_storage)dyn_storage"
+      "type": "t_array(t_struct(RootBundle)13015_storage)dyn_storage"
     },
     {
-      "astId": 4235,
+      "astId": 5531,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "enabledDepositRoutes",
       "offset": 0,
@@ -153,47 +153,55 @@
       "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))"
     },
     {
-      "astId": 4239,
+      "astId": 5535,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "relayFills",
+      "label": "DEPRECATED_relayFills",
       "offset": 0,
       "slot": "2158",
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 4243,
+      "astId": 5539,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "fillCounter",
+      "label": "DEPRECATED_fillCounter",
       "offset": 0,
       "slot": "2159",
       "type": "t_mapping(t_address,t_uint256)"
     },
     {
-      "astId": 4247,
+      "astId": 5543,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "depositCounter",
+      "label": "DEPRECATED_depositCounter",
       "offset": 0,
       "slot": "2160",
       "type": "t_mapping(t_address,t_uint256)"
     },
     {
-      "astId": 4251,
+      "astId": 5547,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "refundsRequested",
+      "label": "DEPRECATED_refundsRequested",
       "offset": 0,
       "slot": "2161",
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 6271,
+      "astId": 5551,
+      "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
+      "label": "fillStatuses",
+      "offset": 0,
+      "slot": "2162",
+      "type": "t_mapping(t_bytes32,t_uint256)"
+    },
+    {
+      "astId": 8363,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2162",
-      "type": "t_array(t_uint256)1000_storage"
+      "slot": "2163",
+      "type": "t_array(t_uint256)999_storage"
     },
     {
-      "astId": 95,
+      "astId": 98,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "l2GatewayRouter",
       "offset": 0,
@@ -201,7 +209,7 @@
       "type": "t_address"
     },
     {
-      "astId": 99,
+      "astId": 102,
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "whitelistedTokens",
       "offset": 0,
@@ -215,11 +223,11 @@
       "label": "address",
       "numberOfBytes": "20"
     },
-    "t_array(t_struct(RootBundle)9873_storage)dyn_storage": {
+    "t_array(t_struct(RootBundle)13015_storage)dyn_storage": {
       "encoding": "dynamic_array",
       "label": "struct SpokePoolInterface.RootBundle[]",
       "numberOfBytes": "32",
-      "base": "t_struct(RootBundle)9873_storage"
+      "base": "t_struct(RootBundle)13015_storage"
     },
     "t_array(t_uint256)1000_storage": {
       "encoding": "inplace",
@@ -239,6 +247,12 @@
       "numberOfBytes": "1600",
       "base": "t_uint256"
     },
+    "t_array(t_uint256)999_storage": {
+      "encoding": "inplace",
+      "label": "uint256[999]",
+      "numberOfBytes": "31968",
+      "base": "t_uint256"
+    },
     "t_bool": {
       "encoding": "inplace",
       "label": "bool",
@@ -249,7 +263,7 @@
       "label": "bytes32",
       "numberOfBytes": "32"
     },
-    "t_contract(WETH9Interface)9569": {
+    "t_contract(WETH9Interface)12711": {
       "encoding": "inplace",
       "label": "contract WETH9Interface",
       "numberOfBytes": "20"
@@ -296,13 +310,13 @@
       "numberOfBytes": "32",
       "value": "t_uint256"
     },
-    "t_struct(RootBundle)9873_storage": {
+    "t_struct(RootBundle)13015_storage": {
       "encoding": "inplace",
       "label": "struct SpokePoolInterface.RootBundle",
       "numberOfBytes": "96",
       "members": [
         {
-          "astId": 9866,
+          "astId": 13008,
           "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
           "label": "slowRelayRoot",
           "offset": 0,
@@ -310,7 +324,7 @@
           "type": "t_bytes32"
         },
         {
-          "astId": 9868,
+          "astId": 13010,
           "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
           "label": "relayerRefundRoot",
           "offset": 0,
@@ -318,7 +332,7 @@
           "type": "t_bytes32"
         },
         {
-          "astId": 9872,
+          "astId": 13014,
           "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
           "label": "claimedBitmap",
           "offset": 0,
