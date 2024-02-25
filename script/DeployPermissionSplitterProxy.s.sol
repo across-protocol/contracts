@@ -35,12 +35,12 @@ contract DeployPermissionSplitterProxy is Script, Test {
         // Grant anyone with the pause role the ability to call setPaused.
         permissionSplitter.__setRoleForSelector(PAUSE_SELECTOR, PAUSE_ROLE);
         // Revoke the deployer's default admin role.
-        permissionSplitter.renounceRole(DEFAULT_ADMIN_ROLE, deployerPublicKey);
+        permissionSplitter.renounceRole(DEFAULT_ADMIN_ROLE, deployer);
 
         // Sanity check.
         assertTrue(permissionSplitter.hasRole(PAUSE_ROLE, defaultAdmin));
-        assertFalse(permissionSplitter.hasRole(PAUSE_ROLE, deployerPublicKey));
-        assertFalse(permissionSplitter.hasRole(DEFAULT_ADMIN_ROLE, deployerPublicKey));
+        assertFalse(permissionSplitter.hasRole(PAUSE_ROLE, deployer));
+        assertFalse(permissionSplitter.hasRole(DEFAULT_ADMIN_ROLE, deployer));
         assertTrue(permissionSplitter.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin));
     }
 }
