@@ -39,7 +39,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
     // @dev This storage slot is reserved to replace the old messenger public variable that has now been
     // replaced by the above constant.
-    address private __deprecated_messenger = address(0);
+    address private __deprecated_messenger;
 
     // Address of custom bridge used to bridge Synthetix-related assets like SNX.
     address private constant SYNTHETIX_BRIDGE = 0x136b1EC699c62b0606854056f02dC7Bb80482d63;
