@@ -85,7 +85,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     ) public onlyInitializing {
         l1Gas = 5_000_000;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
     }

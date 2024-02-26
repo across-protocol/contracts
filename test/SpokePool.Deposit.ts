@@ -1,4 +1,14 @@
-import { expect, ethers, Contract, SignerWithAddress, seedWallet, toBN, toWei, randomAddress } from "../utils/utils";
+import {
+  expect,
+  ethers,
+  Contract,
+  SignerWithAddress,
+  seedWallet,
+  toBN,
+  toWei,
+  randomAddress,
+  BigNumber,
+} from "../utils/utils";
 import {
   spokePoolFixture,
   enableRoutes,
@@ -100,6 +110,38 @@ describe("SpokePool Depositor Logic", async function () {
     expect(await spokePool.numberOfDeposits()).to.equal(1);
   });
 
+  it("DepositFor overrrides the depositor", async function () {
+    const newDepositor = randomAddress();
+    await expect(
+      spokePool.connect(depositor).depositFor(
+        newDepositor,
+        ...getDepositParams({
+          recipient: recipient.address,
+          originToken: erc20.address,
+          amount,
+          destinationChainId,
+          relayerFeePct,
+          quoteTimestamp,
+        })
+      )
+    )
+      .to.emit(spokePool, "V3FundsDeposited")
+      .withArgs(
+        erc20.address,
+        ZERO_ADDRESS,
+        amountToDeposit,
+        amountReceived,
+        destinationChainId,
+        0,
+        quoteTimestamp,
+        BigNumber.from("0xFFFFFFFF"),
+        0,
+        newDepositor, // Depositor is overridden.
+        recipient.address,
+        ZERO_ADDRESS,
+        "0x"
+      );
+  });
   it("Depositing ETH correctly wraps into WETH", async function () {
     const revertReason = "MsgValueDoesNotMatchInputAmount";
 

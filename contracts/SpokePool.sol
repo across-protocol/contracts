@@ -393,6 +393,40 @@ abstract contract SpokePool is
         );
     }
 
+    /**
+     * @notice The only difference between depositFor and deposit is that the depositor address stored
+     * in the relay hash can be overridden by the caller. This means that the passed in depositor
+     * can speed up the deposit, which is useful if the deposit is taken from the end user to a middle layer
+     * contract, like an aggregator or the SpokePoolVerifier, before calling deposit on this contract.
+     * @notice The caller must first approve this contract to spend amount of originToken.
+     * @notice The originToken => destinationChainId must be enabled.
+     * @notice This method is payable because the caller is able to deposit native token if the originToken is
+     * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
+     * @param depositor Address who is credited for depositing funds on origin chain and can speed up the deposit.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param originToken Token to lock into this contract to initiate deposit.
+     * @param amount Amount of tokens to deposit. Will be amount of tokens to receive less fees.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param relayerFeePct % of deposit amount taken out to incentivize a fast relayer.
+     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
+     * to LP pool on HubPool.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     */
+    function depositFor(
+        address depositor,
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 // maxCount. Deprecated.
+    ) public payable nonReentrant unpausedDeposits {
+        _deposit(depositor, recipient, originToken, amount, destinationChainId, relayerFeePct, quoteTimestamp, message);
+    }
+
     /********************************************
      *            DEPOSITOR FUNCTIONS           *
      ********************************************/
