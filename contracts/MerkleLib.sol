@@ -41,22 +41,6 @@ library MerkleLib {
         return MerkleProof.verify(proof, root, keccak256(abi.encode(refund)));
     }
 
-    /**
-     * @notice Verifies that a distribution is contained within a merkle root.
-     * @param root the merkle root.
-     * @param slowRelayFulfillment the relayData fulfillment struct.
-     * @param proof the merkle proof.
-     * @return bool to signal if the slow relay's proof correctly shows inclusion of the slow relay within the tree.
-     */
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-    function verifySlowRelayFulfillment(
-        bytes32 root,
-        SpokePoolInterface.SlowFill memory slowRelayFulfillment,
-        bytes32[] memory proof
-    ) internal pure returns (bool) {
-        return MerkleProof.verify(proof, root, keccak256(abi.encode(slowRelayFulfillment)));
-    }
-
     function verifyV3SlowRelayFulfillment(
         bytes32 root,
         V3SpokePoolInterface.V3SlowFill memory slowRelayFulfillment,

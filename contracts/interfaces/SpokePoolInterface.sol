@@ -22,41 +22,6 @@ interface SpokePoolInterface {
         address[] refundAddresses;
     }
 
-    // This struct represents the data to fully specify a relay. If any portion of this data differs, the relay is
-    // considered to be completely distinct. Only one relay for a particular depositId, chainId pair should be
-    // considered valid and repaid. This data is hashed and inserted into the slow relay merkle root so that an off
-    // chain validator can choose when to refund slow relayers.
-    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-    struct RelayData {
-        // The address that made the deposit on the origin chain.
-        address depositor;
-        // The recipient address on the destination chain.
-        address recipient;
-        // The corresponding token address on the destination chain.
-        address destinationToken;
-        // The total relay amount before fees are taken out.
-        uint256 amount;
-        // Origin chain id.
-        uint256 originChainId;
-        // Destination chain id.
-        uint256 destinationChainId;
-        // The LP Fee percentage computed by the relayer based on the deposit's quote timestamp
-        // and the HubPool's utilization.
-        int64 realizedLpFeePct;
-        // The relayer fee percentage specified in the deposit.
-        int64 relayerFeePct;
-        // The id uniquely identifying this deposit on the origin chain.
-        uint32 depositId;
-        // Data that is forwarded to the recipient.
-        bytes message;
-    }
-
-    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-    struct SlowFill {
-        RelayData relayData;
-        int256 payoutAdjustmentPct;
-    }
-
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced
     // by "data workers" via inclusion proofs to execute leaves in the roots.
     struct RootBundle {
@@ -98,7 +63,6 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function depositFor(
         address depositor,
         address recipient,
@@ -111,80 +75,6 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-    function depositNow(
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        bytes memory message,
-        uint256 maxCount
-    ) external payable;
-
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-    function speedUpDeposit(
-        address depositor,
-        int64 updatedRelayerFeePct,
-        uint32 depositId,
-        address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
-    ) external;
-
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-    function fillRelay(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 maxTokensToSend,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        bytes memory message,
-        uint256 maxCount
-    ) external;
-
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-    function fillRelayWithUpdatedDeposit(
-        address depositor,
-        address recipient,
-        address updatedRecipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 maxTokensToSend,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        int64 updatedRelayerFeePct,
-        uint32 depositId,
-        bytes memory message,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature,
-        uint256 maxCount
-    ) external;
-
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-    function executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 rootBundleId,
-        bytes memory message,
-        int256 payoutAdjustment,
-        bytes32[] memory proof
-    ) external;
-
-    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
@@ -194,4 +84,11 @@ interface SpokePoolInterface {
     function chainId() external view returns (uint256);
 
     error NotEOA();
+    error InvalidDepositorSignature();
+    error InvalidRelayerFeePct();
+    error MaxTransferSizeExceeded();
+    error InvalidCrossDomainAdmin();
+    error InvalidHubPool();
+    error DepositsArePaused();
+    error FillsArePaused();
 }

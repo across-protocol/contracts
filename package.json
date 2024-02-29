@@ -27,9 +27,7 @@
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
     "build": "hardhat compile && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "test": "IS_TEST=true hardhat test",
-    "test:report-gas": "REPORT_GAS=true hardhat test",
-    "test:gas-analytics": "IS_TEST=true GAS_TEST_ENABLED=true hardhat test ./test/gas-analytics/*",
-    "test:all": "IS_TEST=true GAS_TEST_ENABLED=true REPORT_GAS=true yarn hardhat test",
+    "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
   },
@@ -52,7 +50,7 @@
   "devDependencies": {
     "@consensys/linea-sdk": "^0.1.6",
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
-    "@matterlabs/hardhat-zksync-solc": "^0.4.1",
+    "@matterlabs/hardhat-zksync-solc": "^1.1.4",
     "@matterlabs/hardhat-zksync-upgradable": "^0.1.0",
     "@matterlabs/hardhat-zksync-verify": "^0.2.0",
     "@matterlabs/zksync-contracts": "^0.2.4",

@@ -36,7 +36,10 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     address public l2Eth;
 
     // Address of the Optimism L2 messenger.
-    address public messenger;
+    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
+    // @dev This storage slot is reserved to replace the old messenger public variable that has now been
+    // replaced by the above constant.
+    address private __deprecated_messenger;
 
     // Address of custom bridge used to bridge Synthetix-related assets like SNX.
     address private constant SYNTHETIX_BRIDGE = 0x136b1EC699c62b0606854056f02dC7Bb80482d63;
@@ -50,6 +53,8 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
 
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
+
+    error NotCrossDomainAdmin();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -80,7 +85,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     ) public onlyInitializing {
         l1Gas = 5_000_000;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
-        messenger = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
     }
@@ -169,10 +173,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
-        require(
-            LibOptimismUpgradeable.crossChainSender(messenger) == crossDomainAdmin,
-            "OVM_XCHAIN: wrong sender of cross-domain message"
-        );
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
