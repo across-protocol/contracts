@@ -522,7 +522,7 @@ describe("SpokePool Depositor Logic", async function () {
         [amountToDeposit.mul(toBN("-1")), amountToDeposit]
       );
     });
-    it("depositNow uses current time as quote time", async function () {
+    it("depositV3Now uses current time as quote time", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
       const fillDeadlineOffset = 1000;
       const exclusivityDeadline = 0; // Should be zero since
