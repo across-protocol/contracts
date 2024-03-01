@@ -1,7 +1,16 @@
-import { getParamType, expect, BigNumber, Contract, defaultAbiCoder, keccak256, toBNWei } from "../utils/utils";
-import { repaymentChainId, amountToReturn } from "./constants";
+import {
+  getParamType,
+  expect,
+  BigNumber,
+  defaultAbiCoder,
+  keccak256,
+  toBNWei,
+  createRandomBytes32,
+  Contract,
+} from "../utils/utils";
+import { amountToReturn, repaymentChainId } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
-import { SlowFill, V3SlowFill } from "./fixtures/SpokePool.Fixture";
+import { V3SlowFill } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
   chainId: BigNumber;
   groupIndex: BigNumber;
@@ -126,13 +135,6 @@ export async function constructSingleChainTree(token: string, scalingSize = 1, r
   return { tokensSendToL2, realizedLpFees, leaves, tree };
 }
 
-export async function buildSlowRelayTree(slowFills: SlowFill[]) {
-  const paramType = await getParamType("MerkleLibTest", "verifySlowRelayFulfillment", "slowFill");
-  const hashFn = (input: SlowFill) => {
-    return keccak256(defaultAbiCoder.encode([paramType!], [input]));
-  };
-  return new MerkleTree<SlowFill>(slowFills, hashFn);
-}
 export async function buildV3SlowRelayTree(slowFills: V3SlowFill[]) {
   const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
   const hashFn = (input: V3SlowFill) => {

@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-expressions */
-
 import { ethers, getContractFactory, SignerWithAddress, Contract, toWei, toBN, expect } from "../../utils/utils";
-import { deployErc20 } from "../gas-analytics/utils";
 import { MAX_UINT_VAL, MerkleTree } from "@uma/common";
+import { TokenRolesEnum } from "../constants";
 
 type Recipient = {
   account: string;
@@ -44,7 +42,8 @@ describe("AcrossMerkleDistributor", () => {
     accounts = await ethers.getSigners();
     [contractCreator, otherAddress] = accounts;
     merkleDistributor = await (await getContractFactory("AcrossMerkleDistributor", contractCreator)).deploy();
-    rewardToken = await deployErc20(contractCreator, `Test Token #1`, `T1`);
+    rewardToken = await (await getContractFactory("ExpandedERC20", contractCreator)).deploy(`Test Token #1`, `T1`, 18);
+    await rewardToken.addMember(TokenRolesEnum.MINTER, contractCreator.address);
     await rewardToken.connect(contractCreator).mint(contractCreator.address, MAX_UINT_VAL);
     await rewardToken.connect(contractCreator).approve(merkleDistributor.address, MAX_UINT_VAL);
   });
