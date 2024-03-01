@@ -45,14 +45,6 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
     debug: { revertStrings: isTest ? "default" : "strip" },
   },
 };
-const MEDIUM_CONTRACT_COMPILER_SETTINGS = {
-  version: solcVersion,
-  settings: {
-    optimizer: { enabled: true, runs: 10000 },
-    viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
-  },
-};
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
