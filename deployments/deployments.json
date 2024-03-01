@@ -83,8 +83,8 @@
     "PolygonTokenBridger": { "address": "0x97f102f2f73717e203f964Ad9940e4C2e79b8597", "blockNumber": 26276246 },
     "SpokePool": { "address": "0x4589fbf26c6a456f075b5628178af68abe03c5ff", "blockNumber": 40549484 }
   },
-  "10001": { "SpokePool": { "address": "0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968", "blockNumber": 170427 } },
-  "10002": { "SpokePool": { "address": "0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968", "blockNumber": 170354 } },
+  "10001": { "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 5483 } },
+  "10002": { "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 5483 } },
   "421611": { "SpokePool": { "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b", "blockNumber": 10523275 } },
   "421613": { "SpokePool": { "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5", "blockNumber": 30397192 } },
   "421614": { "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 12411026 } },
