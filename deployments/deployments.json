@@ -16,7 +16,7 @@
     "ZkSync_Adapter": { "address": "0xE233009838CB898b50e0012a6E783FC9FeE447FB", "blockNumber": 17842162 },
     "Base_Adapter": { "address": "0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E", "blockNumber": 17944163 },
     "BondToken": { "address": "0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea", "blockNumber": 17980554 },
-    "SpokePoolVerifier": { "address": "0x269727F088F16E1Aea52Cf5a97B1CD41DAA3f02D", "blockNumber": 18278587 }
+    "SpokePoolVerifier": { "address": "0xbcfEb7d29BB1b40c6eA3A9e3d0822a79819d63F3", "blockNumber": 19362839 }
   },
   "4": {
     "Arbitrum_Adapter": { "address": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49", "blockNumber": 10367195 },
