@@ -238,7 +238,7 @@ const config: HardhatUserConfig = {
     },
     linea: {
       chainId: 59144,
-      url: `https://linea.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: `https://linea-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
