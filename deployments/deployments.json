@@ -45,6 +45,7 @@
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
+    "AcrossMerkleDistributor": { "address": "0xc8b31410340d57417bE62672f6B53dfB9de30aC2", "blockNumber": 114652330 },
     "SpokePoolVerifier": { "address": "0xbcfEb7d29BB1b40c6eA3A9e3d0822a79819d63F3", "blockNumber": 116864189 }
   },
   "11155420": {
