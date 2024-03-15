@@ -10,7 +10,7 @@ import {
 } from "../utils/utils";
 import { amountToReturn, repaymentChainId } from "./constants";
 import { MerkleTree } from "../utils/MerkleTree";
-import { V3SlowFill } from "./fixtures/SpokePool.Fixture";
+import { SlowFill, V3SlowFill } from "./fixtures/SpokePool.Fixture";
 export interface PoolRebalanceLeaf {
   chainId: BigNumber;
   groupIndex: BigNumber;
@@ -133,6 +133,14 @@ export async function constructSingleChainTree(token: string, scalingSize = 1, r
   const tree = await buildPoolRebalanceLeafTree(leaves);
 
   return { tokensSendToL2, realizedLpFees, leaves, tree };
+}
+
+export async function buildSlowRelayTree(slowFills: SlowFill[]) {
+  const paramType = await getParamType("MerkleLibTest", "verifySlowRelayFulfillment", "slowFill");
+  const hashFn = (input: SlowFill) => {
+    return keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  };
+  return new MerkleTree<SlowFill>(slowFills, hashFn);
 }
 
 export async function buildV3SlowRelayTree(slowFills: V3SlowFill[]) {
