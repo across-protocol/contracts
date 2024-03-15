@@ -177,6 +177,38 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         );
     }
 
+    function speedUpDeposit(
+        address depositor,
+        int64 updatedRelayerFeePct,
+        uint32 depositId,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public nonReentrant {
+        require(SignedMath.abs(updatedRelayerFeePct) < 0.5e18, "Invalid relayer fee");
+
+        _verifyUpdateDepositMessage(
+            depositor,
+            depositId,
+            chainId(),
+            updatedRelayerFeePct,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+
+        // Assuming the above checks passed, a relayer can take the signature and the updated relayer fee information
+        // from the following event to submit a fill with an updated fee %.
+        emit RequestedSpeedUpDeposit(
+            updatedRelayerFeePct,
+            depositId,
+            depositor,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+    }
+
     function fillRelay(
         address depositor,
         address recipient,
