@@ -55,6 +55,8 @@ jobs:
           cache: "yarn"
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      - name: Install
+        run: forge install
       - name: Build
         run: forge build
       - name: Inspect storage layouts
