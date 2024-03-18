@@ -57,6 +57,8 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      - name: Install forge dependencies
+        run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
   solhint:
