@@ -57,6 +57,8 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
       - name: Install
         run: forge install
+      - name: "Show the Foundry config"
+        run: "forge config"
       - name: Build
         run: forge build
       - name: Inspect storage layouts
