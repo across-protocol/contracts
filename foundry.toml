@@ -23,6 +23,8 @@ remappings = [
     "hardhat/=node_modules/hardhat/",
 ]
 via_ir = true
+optimizer_runs = 1_000_000
+
 
 [rpc_endpoints]
 ethereum = "${NODE_URL_1}"
