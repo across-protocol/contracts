@@ -39,6 +39,10 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - name: Check Storage Layout
         run: ./scripts/checkStorageLayout.sh
   solhint:
