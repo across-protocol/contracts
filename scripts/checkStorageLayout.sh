@@ -10,7 +10,10 @@ for CONTRACT in "${CONTRACTS[@]}"; do
     ## TODO: add an automatic check here like, if there is diff, throw error. This forces
     ## the developer to include the updated JSON file in the storage-layouts/ directory
     ## in their commit, assuming this script is running in CI.
-    vim -d ./storage-layouts/proposed.$CONTRACT.json ./storage-layouts/$CONTRACT.json
+    if ! diff -q "./storage-layouts/proposed.$CONTRACT.json" "./storage-layouts/$CONTRACT.json" &>/dev/null; then
+        >&2 echo "diff detected in storage layout for $CONTRACT. Please update the storage layout file in the storage-layouts/ directory."
+        exit 1
+    fi
     echo "deleting ./storage-layouts/proposed.$CONTRACT.json"
     rm ./storage-layouts/proposed.$CONTRACT.json
 done

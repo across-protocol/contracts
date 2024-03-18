@@ -39,6 +39,8 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn test
+      - name: Check Storage Layout
+        run: ./scripts/checkStorageLayout.sh
   solhint:
     name: Solhint
     runs-on: ubuntu-latest
