@@ -78,7 +78,8 @@
     "SpokePoolVerifier": { "address": "0xbcfEb7d29BB1b40c6eA3A9e3d0822a79819d63F3", "blockNumber": 186134402 }
   },
   "59144": {
-    "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 2721169 }
+    "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 2721169 },
+    "SpokePoolVerifier": { "address": "0xbcfEb7d29BB1b40c6eA3A9e3d0822a79819d63F3", "blockNumber": 2978259 }
   },
   "84531": { "SpokePool": { "address": "0x1F5AA71C79ec6a11FC55789ed32dAE3B64d75791", "blockNumber": 7992905 } },
   "84532": { "SpokePool": { "address": "0x82B564983aE7274c86695917BBf8C99ECb6F0F8F", "blockNumber": 6082004 } },
