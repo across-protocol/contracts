@@ -73,6 +73,12 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/SpokePoolVerifier.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        // NOTE: Linea only supports 0.8.19.
+        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
+        version: "0.8.19",
+      },
     },
   },
   zksolc: {
