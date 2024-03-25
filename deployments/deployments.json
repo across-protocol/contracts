@@ -75,7 +75,7 @@
   },
   "42161": {
     "SpokePool": { "address": "0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A", "blockNumber": 83868041 },
-    "SpokePoolVerifier": { "address": "0xbcfEb7d29BB1b40c6eA3A9e3d0822a79819d63F3", "blockNumber": 194021369 }
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 194021369 }
   },
   "59144": {
     "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 2721169 },
