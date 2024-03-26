@@ -15,7 +15,7 @@ for CONTRACT in "${CONTRACTS[@]}"; do
     touch ./storage-layouts/proposed.$CONTRACT.json
     echo "Created temporary storage layout file at ./storage-layouts/proposed.$CONTRACT.json"
     forge inspect $CONTRACT storagelayout > ./storage-layouts/proposed.$CONTRACT.json
-    echo "'forge inspect' command created temp. storage lay out file!"
+    echo "'forge inspect' command created temp storage layout file!"
     ## TODO: add an automatic check here like, if there is diff, throw error. This forces
     ## the developer to include the updated JSON file in the storage-layouts/ directory
     ## in their commit, assuming this script is running in CI.
