@@ -145,7 +145,7 @@ contract Linea_SpokePool is SpokePool {
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
         // send ETH directly via the Canonical Message Service.
         if (l2TokenAddress == address(wrappedNativeToken)) {
-            WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
+            WETH9Interface(l2TokenAddress).withdraw(amountToReturn + msg.value); // Unwrap into ETH.
             l2MessageService.sendMessage{ value: amountToReturn + msg.value }(hubPool, msg.value, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
