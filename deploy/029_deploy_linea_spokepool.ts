@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   ];
   const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 28800];
 
-  await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs);
+  await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs, chainId === 59144);
 };
 module.exports = func;
 func.tags = ["LineaSpokePool", "linea"];
