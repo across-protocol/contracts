@@ -240,7 +240,7 @@ describe("Linea Spoke Pool", function () {
         .connect(relayer)
         .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee })
     ).to.changeTokenBalance(weth, lineaSpokePool, amountToReturn.mul(-1));
-    expect(lineaMessageService.sendMessage).to.have.been.calledWith(hubPool.address, 0, "0x");
+    expect(lineaMessageService.sendMessage).to.have.been.calledWith(hubPool.address, fee, "0x");
     expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(amountToReturn.add(fee));
   });
 });
