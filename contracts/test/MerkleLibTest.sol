@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "../MerkleLib.sol";
 import "../interfaces/HubPoolInterface.sol";
 import "../interfaces/SpokePoolInterface.sol";
+import "./interfaces/MockV2SpokePoolInterface.sol";
+import "./V2MerkleLib.sol";
 
 /**
  * @notice Contract to test the MerkleLib.
@@ -27,6 +29,14 @@ contract MerkleLibTest {
         bytes32[] memory proof
     ) public pure returns (bool) {
         return MerkleLib.verifyRelayerRefund(root, refund, proof);
+    }
+
+    function verifySlowRelayFulfillment(
+        bytes32 root,
+        MockV2SpokePoolInterface.SlowFill memory slowFill,
+        bytes32[] memory proof
+    ) public pure returns (bool) {
+        return V2MerkleLib.verifySlowRelayFulfillment(root, slowFill, proof);
     }
 
     function verifyV3SlowRelayFulfillment(
