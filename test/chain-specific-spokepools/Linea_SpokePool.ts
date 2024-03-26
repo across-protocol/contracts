@@ -222,7 +222,7 @@ describe("Linea Spoke Pool", function () {
     expect(lineaUsdcBridge.depositTo).to.have.been.calledWith(amountToReturn, hubPool.address);
     expect(lineaUsdcBridge.depositTo).to.have.been.calledWithValue(fee);
   });
-  it.only("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
+  it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       weth.address,
       await lineaSpokePool.callStatic.chainId()
