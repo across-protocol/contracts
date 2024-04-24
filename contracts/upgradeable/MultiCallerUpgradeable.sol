@@ -46,6 +46,29 @@ contract MultiCallerUpgradeable {
         //slither-disable-end calls-loop
     }
 
+    function multicallRevertable(bytes[] calldata data) external returns (bytes[] memory results) {
+        _validateMulticallData(data);
+
+        uint256 dataLength = data.length;
+        results = new bytes[](dataLength);
+
+        //slither-disable-start calls-loop
+        for (uint256 i = 0; i < dataLength; i++) {
+            // Typically, implementation contracts used in the upgradeable proxy pattern shouldn't call `delegatecall`
+            // because it could allow a malicious actor to call this implementation contract directly (rather than
+            // through a proxy contract) and then selfdestruct() the contract, thereby freezing the upgradeable
+            // proxy. However, since we're only delegatecall-ing into this contract, then we can consider this
+            // use of delegatecall() safe.
+
+            //slither-disable-start low-level-calls
+            /// @custom:oz-upgrades-unsafe-allow delegatecall
+            (, bytes memory result) = address(this).delegatecall(data[i]);
+            //slither-disable-end low-level-calls
+            results[i] = result;
+        }
+        //slither-disable-end calls-loop
+    }
+
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure its always at the end of storage.
