@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
   //    * A fillDeadlineBuffer of 8 hours
-  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 28800];
+  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 21600];
 
   let newAddress;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation

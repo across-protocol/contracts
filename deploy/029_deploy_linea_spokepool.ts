@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 28800];
+  const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 21600];
 
   await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs);
 };
