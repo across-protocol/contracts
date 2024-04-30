@@ -19,7 +19,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
 
-    address public constant cctpTokenMessenger = Address(0);
+    address public constant cctpTokenMessenger = address(0);
 
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
