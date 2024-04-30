@@ -61,7 +61,6 @@ contract MultiCallerUpgradeable {
         //slither-disable-start calls-loop
         for (uint256 i = 0; i < dataLength; i++) {
             // The delegatecall here is safe for the same reasons outlined in the first multicall function.
-
             Result memory result = results[i];
             //slither-disable-start low-level-calls
             /// @custom:oz-upgrades-unsafe-allow delegatecall
