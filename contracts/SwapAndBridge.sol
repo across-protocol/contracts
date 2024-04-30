@@ -98,7 +98,7 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        _acrossInputToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
+        _swapToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
         require(success, string(result));
