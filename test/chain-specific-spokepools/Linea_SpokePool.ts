@@ -192,8 +192,15 @@ describe("Linea Spoke Pool", function () {
     );
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    lineaMessageService.sender.reset();
-    await lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+
+    // Simulate if the fee is positive to ensure that the contract unwraps enough ETH to cover the fee.
+    const fee = toWei("0.01");
+    lineaMessageService.minimumFeeInWei.returns(fee);
+    await lineaSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee });
+    // Ensure that linea message service is paid the fee by the LineaSpokePool contract to send an L2 to L1 message.
+    expect(lineaTokenBridge.bridgeToken).to.have.been.calledWithValue(fee);
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(lineaTokenBridge.bridgeToken).to.have.been.calledWith(dai.address, amountToReturn, hubPool.address);
@@ -205,10 +212,15 @@ describe("Linea Spoke Pool", function () {
     );
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+    const fee = toWei("0.01");
+    lineaMessageService.minimumFeeInWei.returns(fee);
+    await lineaSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee });
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(lineaUsdcBridge.depositTo).to.have.been.calledWith(amountToReturn, hubPool.address);
+    expect(lineaUsdcBridge.depositTo).to.have.been.calledWithValue(fee);
   });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
@@ -218,12 +230,17 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
+    const fee = toWei("0.01");
+    lineaMessageService.minimumFeeInWei.returns(fee);
+
     // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
     // to the ERC20 bridge. This results in a net decrease in WETH balance.
     await expect(() =>
-      lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      lineaSpokePool
+        .connect(relayer)
+        .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee })
     ).to.changeTokenBalance(weth, lineaSpokePool, amountToReturn.mul(-1));
-    expect(lineaMessageService.sendMessage).to.have.been.calledWith(hubPool.address, 0, "0x");
-    expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(amountToReturn);
+    expect(lineaMessageService.sendMessage).to.have.been.calledWith(hubPool.address, fee, "0x");
+    expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(amountToReturn.add(fee));
   });
 });

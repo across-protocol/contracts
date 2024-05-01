@@ -53,6 +53,16 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         bytes message;
     }
 
+    event SwapBeforeBridge(
+        address exchange,
+        address indexed swapToken,
+        address indexed acrossInputToken,
+        uint256 swapTokenAmount,
+        uint256 acrossInputAmount,
+        address indexed acrossOutputToken,
+        uint256 acrossOutputAmount
+    );
+
     /****************************************
      *                ERRORS                *
      ****************************************/
@@ -98,7 +108,7 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        _acrossInputToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
+        _swapToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
         require(success, string(result));
@@ -138,6 +148,15 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         // that we weren't partial filled).
         if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
 
+        emit SwapBeforeBridge(
+            EXCHANGE,
+            address(_swapToken),
+            address(_acrossInputToken),
+            swapTokenAmount,
+            returnAmount,
+            depositData.outputToken,
+            depositData.outputAmount
+        );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
         SPOKE_POOL.depositV3(

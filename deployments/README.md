@@ -48,3 +48,9 @@
 | Contract Name  | Address                                                                                                               |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Base_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+
+## Linea mainnet (59144)
+
+| Contract Name   | Address                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Linea_SpokePool | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75) |
