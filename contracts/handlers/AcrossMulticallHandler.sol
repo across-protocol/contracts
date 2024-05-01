@@ -41,13 +41,11 @@ contract AcrossMulticall is AcrossMessageHandler, ReentrancyGuard {
     ) external nonReentrant {
         Call[] memory calls = abi.decode(message, (Call[]));
 
-        for (uint256 i = 0; i < calls.length; ) {
+        uint256 length = calls.length;
+        for (uint256 i = 0; i < length; i++) {
             Call memory call = calls[i];
             (bool success, ) = call.target.call{ value: call.value }(call.callData);
             if (!success) revert CallReverted(i);
-            unchecked {
-                ++i;
-            }
         }
     }
 
