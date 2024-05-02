@@ -79,28 +79,30 @@ contract MultiCallerUpgradeableTest is Test {
 
         bytes[] memory calls = new bytes[](numberOfFunctions);
 
-        // Set the first call to a success so we can simulate failing on relays which were already taken.
-        calls[0] = abi.encodeWithSelector(SpokePool.fillV3Relay.selector, mockRelayData, 1);
-
-        for (uint8 i = 1; i < numberOfFunctions; ++i) {
+        for (uint8 i = 0; i < numberOfFunctions; ++i) {
             uint256 mask = 1 << i;
             if (randomSeed & mask == mask) {
                 mockRelayData.depositId = i;
+                calls[i] = abi.encodeWithSelector(SpokePool.fillV3Relay.selector, mockRelayData, 1);
+            } else {
+                // Relayer is not an admin. Delegatecall will fail.
+                calls[i] = abi.encodeWithSelector(SpokePool.pauseDeposits.selector, true);
             }
-
-            calls[i] = abi.encodeWithSelector(SpokePool.fillV3Relay.selector, mockRelayData, 1);
         }
 
         vm.prank(relayer);
         SpokePool.Result[] memory results = ethereumSpokePool.tryMulticall(calls);
 
-        for (uint8 i = 1; i < numberOfFunctions; ++i) {
+        for (uint8 i = 0; i < numberOfFunctions; ++i) {
             uint256 mask = 1 << i;
             if (randomSeed & mask == mask) {
                 assert(results[i].success);
             } else {
                 assert(!results[i].success);
-                assertEq(bytes4(keccak256("RelayFilled()")), bytes4(results[i].returnData));
+                assertEq(
+                    abi.encodeWithSelector(bytes4(0x08c379a0), "Ownable: caller is not the owner"),
+                    results[i].returnData
+                );
             }
         }
     }
