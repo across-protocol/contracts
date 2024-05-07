@@ -12,21 +12,33 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const chainId = parseInt(await getChainId());
   const { deployer } = await getNamedAccounts();
 
-  await deploy("UniswapV3_SwapAndBridge", {
+  await deploy("1inch_SwapAndBridge", {
     contract: "SwapAndBridge",
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
       getDeployedAddress("SpokePool", chainId),
-      L2_ADDRESS_MAP[chainId].uniswapV3SwapRouter,
-      // Function selector for `exactInputSingle` method in Uniswap V3 SwapRouter
-      // https://etherscan.io/address/0xE592427A0AEce92De3Edee1F18E0157C05861564#writeProxyContract#F2
-      ["0x414bf389"],
+      L2_ADDRESS_MAP[chainId]["1inchV6Router"],
+      // Function selectors for all relevant swap-methods in 1inch V6 AggregationRouter
+      // See: https://etherscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65#writeContract
+      [
+        "0xd2d374e5",
+        "0xc4d652af",
+        "0xe413f48d",
+        "0x07ed2379",
+        "0xfa461e33",
+        "0x83800a8e",
+        "0x8770ba91",
+        "0x19367472",
+        "0xe2c95c82",
+        "0xea76dddf",
+        "0xf7a70056",
+      ],
       TOKEN_SYMBOLS_MAP["USDC.e"].addresses[chainId],
       TOKEN_SYMBOLS_MAP._USDC.addresses[chainId],
     ],
   });
 };
 module.exports = func;
-func.tags = ["UniswapV3_SwapAndBridge", "SwapAndBridge", "uniswapV3"];
+func.tags = ["1inch_SwapAndBridge", "SwapAndBridge", "1inch"];
