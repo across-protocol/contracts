@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./Permit2OrderLib.sol";
+
 /// @title CrossChainOrder type
 /// @notice Standard order struct to be signed by swappers, disseminated to fillers, and submitted to settlement contracts
 struct CrossChainOrder {
@@ -80,6 +82,12 @@ struct Output {
 
 // Data unique to every CrossChainOrder settled on Across
 struct AcrossOrderData {
+    address inputToken;
+    uint256 inputAmount;
+    address outputToken;
+    uint256 outputAmount;
+    uint32 destinationChainId;
+    address recipient;
     uint32 exclusivityDeadline;
     address exclusiveRelayer;
     bytes message;
@@ -88,7 +96,7 @@ struct AcrossOrderData {
 // Data unique to every attempted order fulfillment
 struct AcrossFillerData {
     // Filler can choose where they want to be repaid
-    uint256 repaymentChainId;
+    uint32 repaymentChainId;
 }
 
 /// @title ISettlementContract
@@ -100,17 +108,20 @@ interface ISettlementContract {
     /// @param signature The swapper's signature over the order
     /// @param fillerData Any filler-defined data required by the settler
     function initiate(
-        CrossChainOrder order,
-        bytes signature,
-        bytes fillerData
+        CrossChainOrder memory order,
+        bytes memory signature,
+        bytes memory fillerData
     ) external;
 
     /// @notice Resolves a specific CrossChainOrder into a generic ResolvedCrossChainOrder
     /// @dev Intended to improve standardized integration of various order types and settlement contracts
     /// @param order The CrossChainOrder definition
     /// @param fillerData Any filler-defined data required by the settler
-    /// @returns ResolvedCrossChainOrder hydrated order data including the inputs and outputs of the order
-    function resolve(CrossChainOrder order, bytes fillerData) external view returns (ResolvedCrossChainOrder);
+    /// @return ResolvedCrossChainOrder hydrated order data including the inputs and outputs of the order
+    function resolve(CrossChainOrder memory order, bytes memory fillerData)
+        external
+        view
+        returns (ResolvedCrossChainOrder memory);
 }
 
 /**
@@ -149,54 +160,92 @@ contract ERC7683OrderDepositor is ISettlementContract {
     }
 
     function initiate(
-        CrossChainOrder order,
-        bytes signature,
-        bytes fillerData
+        CrossChainOrder memory order,
+        bytes memory signature,
+        bytes memory fillerData
     ) external {
         // Ensure that order was intended to be settled by Across.
         require(order.settlementContract == address(this));
-        require(order.originChainId == block.chainId);
+        require(order.originChainId == block.chainid);
 
         // Extract Across-specific params.
-        (resolvedOrder, acrossOrderData) = _resolve(order, fillerData);
+        (AcrossOrderData memory acrossOrderData, ResolvedCrossChainOrder memory resolvedOrder, ) = _resolve(
+            order,
+            fillerData
+        );
+
+        // Require that the order has a single input and output.
+        require(
+            resolvedOrder.swapperInputs.length == 1 &&
+                resolvedOrder.swapperOutputs.length == 1 &&
+                resolvedOrder.fillerOutputs.length == 1
+        );
 
         // Verify Permit2 signature and pull user funds into this contract
         _processPermit2Order(PERMIT2, order, resolvedOrder, signature);
 
-        // Emit Across-specific event used for settlement.
-        emit FundsDepositedV3(
+        IERC20(resolvedOrder.swapperInputs[0].token).safeIncreaseAllowance(
+            address(SPOKE_POOL),
+            resolvedOrder.swapperInputs[0].amount
+        );
+        SPOKE_POOL.depositV3(
+            order.swapper,
+            resolvedOrder.swapperOutputs[0].recipient,
             resolvedOrder.swapperInputs[0].token,
             resolvedOrder.swapperOutputs[0].token,
             resolvedOrder.swapperInputs[0].amount,
             resolvedOrder.swapperOutputs[0].amount,
             resolvedOrder.swapperOutputs[0].chainId,
-            depositId++, // Unique Across nonce
-            order.initiateDeadline - QUOTE_BEFORE_DEADLINE,
-            order.fillDeadline,
-            acrossOrderData.exclusivityDeadline,
-            order.swapper,
-            resolvedOrder.swapperOutputs[0].recipient,
             acrossOrderData.exclusiveRelayer,
-            acrossOrderData.message
+            SafeCast.toUint32(order.initiateDeadline - QUOTE_BEFORE_DEADLINE),
+            order.fillDeadline,
+            // The entire fill period is exclusive.
+            order.fillDeadline,
+            ""
         );
     }
 
-    function _resolve(CrossChainOrder order, bytes fillerData)
+    function resolve(CrossChainOrder memory order, bytes memory fillerData)
+        external
+        view
+        returns (ResolvedCrossChainOrder memory resolvedOrder)
+    {
+        (, resolvedOrder, ) = _resolve(order, fillerData);
+    }
+
+    function _resolve(CrossChainOrder memory order, bytes memory fillerData)
         internal
+        view
         returns (
-            AcrossOrderData acrossOrderData,
-            ResolvedCrossChainOrder resolvedCrossChainOrder,
-            AcrossFillerData acrossFillerData
+            AcrossOrderData memory acrossOrderData,
+            ResolvedCrossChainOrder memory resolvedCrossChainOrder,
+            AcrossFillerData memory acrossFillerData
         )
     {
         // Extract Across-specific params.
         acrossOrderData = abi.decode(order.orderData, (AcrossOrderData));
         acrossFillerData = abi.decode(fillerData, (AcrossFillerData));
 
+        Input[] memory inputs = new Input[](1);
+        inputs[0] = Input({ token: acrossOrderData.inputToken, amount: acrossOrderData.inputAmount });
+        Output[] memory outputs = new Output[](1);
+        outputs[0] = Output({
+            token: acrossOrderData.outputToken,
+            amount: acrossOrderData.outputAmount,
+            recipient: acrossOrderData.recipient,
+            chainId: acrossOrderData.destinationChainId
+        });
         // We assume that filler takes repayment on the origin chain in which case the filler output
         // will always be equal to the input amount. If the filler requests repayment somewhere else then
         // the filler output will be equal to the input amount less a fee based on the chain they request
         // repayment on.
+        Output[] memory fillerOutputs = new Output[](1);
+        fillerOutputs[0] = Output({
+            token: acrossOrderData.inputToken,
+            amount: acrossOrderData.inputAmount,
+            recipient: acrossOrderData.exclusiveRelayer,
+            chainId: acrossFillerData.repaymentChainId
+        });
 
         resolvedCrossChainOrder = ResolvedCrossChainOrder({
             settlementContract: address(this),
@@ -205,42 +254,22 @@ contract ERC7683OrderDepositor is ISettlementContract {
             originChainId: order.originChainId,
             initiateDeadline: order.initiateDeadline,
             fillDeadline: order.fillDeadline,
-            swapperInputs: [
-                Input({
-                    token: acrossOrderData.inputToken,
-                    amount: acrossOrderData.inputAmount,
-                    maximumAmount: acrossOrderData.inputAmount
-                })
-            ],
-            swapperOutputs: [
-                Output({
-                    token: acrossOrderData.outputToken,
-                    amount: acrossOrderData.outputAmount,
-                    recipient: acrossOrderData.recipient,
-                    chainId: acrossOrderData.destinationChainId
-                })
-            ],
-            fillerOutputs: [
-                Output({
-                    token: acrossOrderData.inputToken,
-                    amount: acrossOrderData.inputAmount,
-                    recipient: acrossOrderData.exclusiveRelayer,
-                    chainId: acrossFillerData.repaymentChainId
-                })
-            ]
+            swapperInputs: inputs,
+            swapperOutputs: outputs,
+            fillerOutputs: fillerOutputs
         });
     }
 
     function _processPermit2Order(
         IPermit2 permit2,
-        CrossChainOrder order,
-        ResolvedCrossChain resolvedOrder,
-        bytes signature
+        CrossChainOrder memory order,
+        ResolvedCrossChainOrder memory resolvedOrder,
+        bytes memory signature
     ) internal {
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
             permitted: IPermit2.TokenPermissions({
                 token: resolvedOrder.swapperInputs[0].token,
-                amount: resolvedOrder.swapperInputs[0].maxAmount
+                amount: resolvedOrder.swapperInputs[0].amount
             }),
             nonce: order.nonce,
             deadline: order.initiateDeadline
@@ -248,7 +277,7 @@ contract ERC7683OrderDepositor is ISettlementContract {
 
         IPermit2.SignatureTransferDetails memory signatureTransferDetails = IPermit2.SignatureTransferDetails({
             to: address(this),
-            requestedAmount: resolvedOrder.inputs[0].amount
+            requestedAmount: resolvedOrder.swapperInputs[0].amount
         });
 
         // Pull user funds.
@@ -256,8 +285,8 @@ contract ERC7683OrderDepositor is ISettlementContract {
             permit,
             signatureTransferDetails,
             order.swapper,
-            _hash(order), // witness data hash
-            PERMIT2_ORDER_TYPE, // witness data type string
+            Permit2OrderLib.hashOrder(order), // witness data hash
+            Permit2OrderLib.PERMIT2_ORDER_TYPE, // witness data type string
             signature
         );
     }
