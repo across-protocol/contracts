@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 8 hours
+  //    * A fillDeadlineBuffer of 6 hours
   const constructorArgs = [L1_ADDRESS_MAP[chainId].weth, 3600, 21600];
   await deployNewProxy("Ethereum_SpokePool", constructorArgs, initArgs, chainId === "1");
 
