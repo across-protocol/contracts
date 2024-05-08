@@ -17,6 +17,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    blastCrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
+    blastStandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -178,6 +180,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+  },
+  81457: {
+    usdb: "0x4300000000000000000000000000000000000003",
   },
   8453: {
     l2Usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
