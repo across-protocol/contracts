@@ -15,7 +15,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
   const l2RefundAddress = "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010";
 
-  await deploy("Arbitrum_Adapter", {
+  const args = [
+    L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
+    L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
+    l2RefundAddress,
+    L1_ADDRESS_MAP[chainId].usdc,
+    L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+  ];
+  const instance = await deploy("Arbitrum_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
@@ -24,12 +31,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
       l2RefundAddress,
       L1_ADDRESS_MAP[chainId].usdc,
-      // L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      // For now, we are not using the CCTP bridge and can disable by setting
-      // the cctpTokenMessenger to the zero address.
-      ZERO_ADDRESS,
+      L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     ],
   });
+  await run("verify:verify", { address: instance.address, constructorArguments: args });
 };
 
 module.exports = func;
