@@ -17,7 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
   //    * A fillDeadlineBuffer of 8 hours
-  const constructorArgs = [L1_ADDRESS_MAP[chainId].weth, 3600, 28800];
+  const constructorArgs = [L1_ADDRESS_MAP[chainId].weth, 3600, 21600];
   await deployNewProxy("Ethereum_SpokePool", constructorArgs, initArgs, chainId === "1");
 
   // Transfer ownership to hub pool.

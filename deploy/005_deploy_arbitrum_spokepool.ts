@@ -26,7 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const constructorArgs = [
     L2_ADDRESS_MAP[spokeChainId].l2Weth,
     3600,
-    28800,
+    21600,
     L2_ADDRESS_MAP[spokeChainId].l2Usdc,
     // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     // For now, we are not using the CCTP bridge and can disable by setting

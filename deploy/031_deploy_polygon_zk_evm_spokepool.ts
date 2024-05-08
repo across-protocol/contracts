@@ -17,7 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 32400];
+  const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 21600];
 
   await deployNewProxy("PolygonZkEVM_SpokePool", constructorArgs, initArgs);
 };
