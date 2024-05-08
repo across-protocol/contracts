@@ -97,6 +97,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             IL2ERC20Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
+                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
                 amountToWithdraw,
                 l1Gas,
                 ""

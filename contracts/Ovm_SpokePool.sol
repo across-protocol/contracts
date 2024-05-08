@@ -29,7 +29,7 @@ interface IL2ERC20Bridge {
         address _to,
         uint256 _amount,
         uint256 _minGasLimit,
-        bytes _extraData
+        bytes calldata _extraData
     ) external;
 }
 
@@ -142,7 +142,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
-    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
         if (l2TokenAddress == address(wrappedNativeToken)) {
