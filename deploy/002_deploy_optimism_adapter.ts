@@ -1,4 +1,3 @@
-import { ZERO_ADDRESS } from "@uma/common";
 import { L1_ADDRESS_MAP } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";

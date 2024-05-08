@@ -1,10 +1,9 @@
-import { ZERO_ADDRESS } from "@uma/common";
 import { L1_ADDRESS_MAP } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId, network } = hre;
+  const { deployments, getNamedAccounts, getChainId } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -16,10 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].baseCrossDomainMessenger,
     L1_ADDRESS_MAP[chainId].baseStandardBridge,
     L1_ADDRESS_MAP[chainId].usdc,
-    // L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    // For now, we are not using the CCTP bridge and can disable by setting
-    // the cctpTokenMessenger to the zero address.
-    ZERO_ADDRESS,
+    L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
   const instance = await deploy("Base_Adapter", {
     from: deployer,
