@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 8 hours
+  //    * A fillDeadlineBuffer of 6 hours
   //    * Native USDC address on L2
   //    * CCTP token messenger address on L2
   const constructorArgs = [
