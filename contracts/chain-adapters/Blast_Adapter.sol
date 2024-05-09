@@ -83,8 +83,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the blast bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
-            // @dev: Apparently we can also use the standard bridge here:
-            IL1StandardBridge(L1_BLAST_BRIDGE).depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
+            // @dev: we can use the standard or the blast bridge to deposit ETH here:
+            L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
         }
         // Check if this token is DAI, then use the L1 Blast Bridge
         else if (l1Token == L1_DAI) {

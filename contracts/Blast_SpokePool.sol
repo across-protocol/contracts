@@ -110,7 +110,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             ).withdrawTo(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                     hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                    amountToReturn, // _amount.
+                    amountToWithdraw, // _amount.
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.
                 );
