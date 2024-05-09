@@ -37,5 +37,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.dependencies = ["HubPool"];
 func.tags = ["ArbitrumAdapter", "mainnet"];

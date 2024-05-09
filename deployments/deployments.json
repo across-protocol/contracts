@@ -14,7 +14,7 @@
     "PolygonTokenBridger": { "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57", "blockNumber": 14819539 },
     "Polygon_Adapter": { "address": "0xB130E3056D5C692300d66c12C10ffA2073d9424D", "blockNumber": 19827511 },
     "ZkSync_Adapter": { "address": "0xE233009838CB898b50e0012a6E783FC9FeE447FB", "blockNumber": 17842162 },
-    "Base_Adapter": { "address": "0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E", "blockNumber": 17944163 },
+    "Base_Adapter": { "address": "0xD9948AE3405FE03A52A18F119EF72221DCdCc4df", "blockNumber": 19833102 },
     "Linea_Adapter": { "address": "0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE", "blockNumber": 19402413 },
     "BondToken": { "address": "0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea", "blockNumber": 17980554 },
     "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 19510875 }

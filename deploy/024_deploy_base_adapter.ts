@@ -27,5 +27,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.dependencies = ["HubPool"];
 func.tags = ["BaseAdapter", "mainnet"];
