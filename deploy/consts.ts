@@ -26,6 +26,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
     scrollGasPriceOracle: "0x987e300fDfb06093859358522a79098848C33852",
+    modeCrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
+    modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -104,6 +106,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
+    modeCrossDomainMessenger: "0xc19a60d9E8C27B9A43527c3283B4dd8eDC8bE15C",
+    modeStandardBridge: "0xbC5C679879B2965296756CD959C3C739769995E2",
 
     // More information is needed to verify these addresses:
     polygonRootChainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
@@ -226,6 +230,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     // Custom WETH for testing because there is no "official" WETH
     l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
+  },
+  919: {
+    l2Weth: "0x4200000000000000000000000000000000000006",
+  },
+  34443: {
+    l2Weth: "0x4200000000000000000000000000000000000006",
   },
 };
 
