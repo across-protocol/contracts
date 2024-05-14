@@ -167,6 +167,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
   },
   10: {
     l2Usdc: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
