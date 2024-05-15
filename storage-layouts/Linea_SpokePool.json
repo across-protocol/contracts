@@ -1,7 +1,7 @@
 {
   "storage": [
     {
-      "astId": 43242,
+      "astId": 43472,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "_initialized",
       "offset": 0,
@@ -9,7 +9,7 @@
       "type": "t_uint8"
     },
     {
-      "astId": 43245,
+      "astId": 43475,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "_initializing",
       "offset": 1,
@@ -17,7 +17,7 @@
       "type": "t_bool"
     },
     {
-      "astId": 43224,
+      "astId": 43454,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -25,7 +25,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 43540,
+      "astId": 43770,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -33,7 +33,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 43556,
+      "astId": 43786,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "_status",
       "offset": 0,
@@ -41,7 +41,7 @@
       "type": "t_uint256"
     },
     {
-      "astId": 43625,
+      "astId": 43855,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -49,7 +49,7 @@
       "type": "t_array(t_uint256)49_storage"
     },
     {
-      "astId": 15957,
+      "astId": 16187,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -57,7 +57,7 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 15762,
+      "astId": 15992,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "_HASHED_NAME",
       "offset": 0,
@@ -65,7 +65,7 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 15764,
+      "astId": 15994,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "_HASHED_VERSION",
       "offset": 0,
@@ -73,7 +73,7 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 15863,
+      "astId": 16093,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -81,7 +81,7 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 5485,
+      "astId": 5538,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "crossDomainAdmin",
       "offset": 0,
@@ -89,7 +89,7 @@
       "type": "t_address"
     },
     {
-      "astId": 5487,
+      "astId": 5540,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "hubPool",
       "offset": 0,
@@ -97,15 +97,15 @@
       "type": "t_address"
     },
     {
-      "astId": 5490,
+      "astId": 5543,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "DEPRECATED_wrappedNativeToken",
       "offset": 0,
       "slot": "2155",
-      "type": "t_contract(WETH9Interface)11859"
+      "type": "t_contract(WETH9Interface)12089"
     },
     {
-      "astId": 5492,
+      "astId": 5545,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "DEPRECATED_depositQuoteTimeBuffer",
       "offset": 20,
@@ -113,7 +113,7 @@
       "type": "t_uint32"
     },
     {
-      "astId": 5494,
+      "astId": 5547,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "numberOfDeposits",
       "offset": 24,
@@ -121,7 +121,7 @@
       "type": "t_uint32"
     },
     {
-      "astId": 5496,
+      "astId": 5549,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "pausedFills",
       "offset": 28,
@@ -129,7 +129,7 @@
       "type": "t_bool"
     },
     {
-      "astId": 5498,
+      "astId": 5551,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "pausedDeposits",
       "offset": 29,
@@ -137,15 +137,15 @@
       "type": "t_bool"
     },
     {
-      "astId": 5502,
+      "astId": 5555,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "rootBundles",
       "offset": 0,
       "slot": "2156",
-      "type": "t_array(t_struct(RootBundle)12136_storage)dyn_storage"
+      "type": "t_array(t_struct(RootBundle)12366_storage)dyn_storage"
     },
     {
-      "astId": 5508,
+      "astId": 5561,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "enabledDepositRoutes",
       "offset": 0,
@@ -153,7 +153,7 @@
       "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))"
     },
     {
-      "astId": 5512,
+      "astId": 5565,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "DEPRECATED_relayFills",
       "offset": 0,
@@ -161,7 +161,7 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 5516,
+      "astId": 5569,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "DEPRECATED_fillCounter",
       "offset": 0,
@@ -169,7 +169,7 @@
       "type": "t_mapping(t_address,t_uint256)"
     },
     {
-      "astId": 5520,
+      "astId": 5573,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "DEPRECATED_depositCounter",
       "offset": 0,
@@ -177,7 +177,7 @@
       "type": "t_mapping(t_address,t_uint256)"
     },
     {
-      "astId": 5524,
+      "astId": 5577,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "DEPRECATED_refundsRequested",
       "offset": 0,
@@ -185,7 +185,7 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 5528,
+      "astId": 5581,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "fillStatuses",
       "offset": 0,
@@ -193,7 +193,7 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 7428,
+      "astId": 7481,
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -206,7 +206,7 @@
       "label": "l2MessageService",
       "offset": 0,
       "slot": "3162",
-      "type": "t_contract(IMessageService)11775"
+      "type": "t_contract(IMessageService)12005"
     },
     {
       "astId": 2844,
@@ -214,7 +214,7 @@
       "label": "l2TokenBridge",
       "offset": 0,
       "slot": "3163",
-      "type": "t_contract(ITokenBridge)11787"
+      "type": "t_contract(ITokenBridge)12017"
     },
     {
       "astId": 2848,
@@ -222,7 +222,7 @@
       "label": "l2UsdcBridge",
       "offset": 0,
       "slot": "3164",
-      "type": "t_contract(IUSDCBridge)11801"
+      "type": "t_contract(IUSDCBridge)12031"
     }
   ],
   "types": {
@@ -231,11 +231,11 @@
       "label": "address",
       "numberOfBytes": "20"
     },
-    "t_array(t_struct(RootBundle)12136_storage)dyn_storage": {
+    "t_array(t_struct(RootBundle)12366_storage)dyn_storage": {
       "encoding": "dynamic_array",
       "label": "struct SpokePoolInterface.RootBundle[]",
       "numberOfBytes": "32",
-      "base": "t_struct(RootBundle)12136_storage"
+      "base": "t_struct(RootBundle)12366_storage"
     },
     "t_array(t_uint256)1000_storage": {
       "encoding": "inplace",
@@ -271,22 +271,22 @@
       "label": "bytes32",
       "numberOfBytes": "32"
     },
-    "t_contract(IMessageService)11775": {
+    "t_contract(IMessageService)12005": {
       "encoding": "inplace",
       "label": "contract IMessageService",
       "numberOfBytes": "20"
     },
-    "t_contract(ITokenBridge)11787": {
+    "t_contract(ITokenBridge)12017": {
       "encoding": "inplace",
       "label": "contract ITokenBridge",
       "numberOfBytes": "20"
     },
-    "t_contract(IUSDCBridge)11801": {
+    "t_contract(IUSDCBridge)12031": {
       "encoding": "inplace",
       "label": "contract IUSDCBridge",
       "numberOfBytes": "20"
     },
-    "t_contract(WETH9Interface)11859": {
+    "t_contract(WETH9Interface)12089": {
       "encoding": "inplace",
       "label": "contract WETH9Interface",
       "numberOfBytes": "20"
@@ -326,13 +326,13 @@
       "numberOfBytes": "32",
       "value": "t_uint256"
     },
-    "t_struct(RootBundle)12136_storage": {
+    "t_struct(RootBundle)12366_storage": {
       "encoding": "inplace",
       "label": "struct SpokePoolInterface.RootBundle",
       "numberOfBytes": "96",
       "members": [
         {
-          "astId": 12129,
+          "astId": 12359,
           "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
           "label": "slowRelayRoot",
           "offset": 0,
@@ -340,7 +340,7 @@
           "type": "t_bytes32"
         },
         {
-          "astId": 12131,
+          "astId": 12361,
           "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
           "label": "relayerRefundRoot",
           "offset": 0,
@@ -348,7 +348,7 @@
           "type": "t_bytes32"
         },
         {
-          "astId": 12135,
+          "astId": 12365,
           "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
           "label": "claimedBitmap",
           "offset": 0,

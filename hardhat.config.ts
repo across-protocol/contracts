@@ -277,6 +277,20 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    mode: {
+      chainId: 34443,
+      url: "https://mainnet.mode.network",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "mode-sepolia": {
+      chainId: 919,
+      url: "https://sepolia.mode.network",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -389,6 +403,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io",
+        },
+      },
+      {
+        network: "mode-sepolia",
+        chainId: 919,
+        urls: {
+          apiURL: "https://sepolia.explorer.mode.network/api/v2",
+          browserURL: "https://sepolia.explorer.mode.network",
+        },
+      },
+      {
+        network: "mode",
+        chainId: 34443,
+        urls: {
+          apiURL: "https://explorer.mode.network/api/v2",
+          browserURL: "https://explorer.mode.network",
         },
       },
     ],
