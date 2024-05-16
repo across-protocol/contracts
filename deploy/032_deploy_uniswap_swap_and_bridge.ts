@@ -23,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       // Function selector for `exactInputSingle` method in Uniswap V3 SwapRouter
       // https://etherscan.io/address/0xE592427A0AEce92De3Edee1F18E0157C05861564#writeProxyContract#F2
       ["0x414bf389"],
-      TOKEN_SYMBOLS_MAP["USDC.e"].addresses[chainId],
+      TOKEN_SYMBOLS_MAP[chainId === 8453 ? "USDbC" : "USDC.e"].addresses[chainId],
       TOKEN_SYMBOLS_MAP._USDC.addresses[chainId],
     ],
   });
