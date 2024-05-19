@@ -1,11 +1,11 @@
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { L2_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "./consts";
 import { ZERO_ADDRESS } from "@uma/common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, spokeChainId, hubChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -30,6 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
+    L1_ADDRESS_MAP[hubChainId].l1Usdb,
   ];
   await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === 81457);
 };

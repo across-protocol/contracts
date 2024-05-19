@@ -21,7 +21,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
     // from L2 into DAI.
     address private constant USDB = 0x4300000000000000000000000000000000000003;
     // Token that is received when withdrawing USDB, aka DAI.
-    address private constant L1_USDB = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address private immutable L1_USDB; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
     address private constant L2_BLAST_BRIDGE = 0x4300000000000000000000000000000000000005;
 
     error InvalidClaimedAmount(address token);
@@ -32,7 +32,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        address l1Usdb
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
@@ -41,7 +42,9 @@ contract Blast_SpokePool is Ovm_SpokePool {
             _l2Usdc,
             _cctpTokenMessenger
         )
-    {} // solhint-disable-line no-empty-blocks
+    {
+        L1_USDB = l1Usdb;
+    } // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the OVM Blast SpokePool.
@@ -74,20 +77,19 @@ contract Blast_SpokePool is Ovm_SpokePool {
      * @notice Claims any yield for tokens that accrue yield and then also bridges those
      */
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        uint256 amountToWithdraw = amountToReturn;
         if (l2TokenAddress == USDB || l2TokenAddress == address(wrappedNativeToken)) {
             uint256 accruedYield = _claimYield(IERC20Rebasing(l2TokenAddress));
-            amountToWithdraw += accruedYield;
+            amountToReturn += accruedYield;
         }
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
         if (l2TokenAddress == address(wrappedNativeToken)) {
-            WETH9Interface(l2TokenAddress).withdraw(amountToWithdraw); // Unwrap into ETH.
+            WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
-            IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToWithdraw }(
+            IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToReturn }(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                amountToWithdraw, // _amount.
+                amountToReturn, // _amount.
                 l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                 "" // _data. We don't need to send any data for the bridging action.
             );
@@ -98,7 +100,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                amountToWithdraw,
+                amountToReturn,
                 l1Gas,
                 ""
             );
@@ -110,7 +112,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             ).withdrawTo(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                     hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                    amountToWithdraw, // _amount.
+                    amountToReturn, // _amount.
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.
                 );

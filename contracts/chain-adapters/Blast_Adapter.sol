@@ -25,15 +25,15 @@ import "../external/interfaces/CCTPInterfaces.sol";
 // solhint-disable-next-line contract-name-camelcase
 contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
-    uint32 public constant L2_GAS_LIMIT = 200_000;
+    uint32 public immutable L2_GAS_LIMIT; // 200,000 is a reasonable default.
 
     WETH9Interface public immutable L1_WETH;
 
     IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
 
     // Bridge used to get yielding version of ERC20's on L2.
-    address private L1_BLAST_BRIDGE = 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115;
-    address private L1_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    IL1ERC20Bridge public immutable L1_BLAST_BRIDGE; // 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115 on mainnet.
+    address public immutable L1_DAI; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
 
     /**
      * @notice Constructs new Adapter.
@@ -48,10 +48,16 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        IL1StandardBridge l1BlastBridge,
+        address l1Dai,
+        uint32 l2GasLimit
     ) CrossDomainEnabled(_crossDomainMessenger) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base) {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
+        L1_BLAST_BRIDGE = l1BlastBridge;
+        L1_DAI = l1Dai;
+        L2_GAS_LIMIT = l2GasLimit;
     }
 
     /**
