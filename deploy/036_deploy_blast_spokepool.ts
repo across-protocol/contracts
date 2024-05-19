@@ -25,11 +25,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0x4300000000000000000000000000000000000004",
     3600,
     21600,
-    L2_ADDRESS_MAP[spokeChainId].usdb,
+    ZERO_ADDRESS,
     // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
+    L2_ADDRESS_MAP[spokeChainId].usdb,
     L1_ADDRESS_MAP[hubChainId].l1Usdb,
   ];
   await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === 81457);
