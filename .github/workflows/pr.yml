@@ -59,6 +59,8 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
       - name: Install forge dependencies
         run: forge install
+      - name: Run forge tests
+        run: forge test --match-path test/foundry/unit/**/*.t.sol
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
   solhint:

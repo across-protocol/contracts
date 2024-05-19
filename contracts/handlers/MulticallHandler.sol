@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * via the message field in the deposit.
  * @dev This contract makes the calls blindly. The contract will send any remaining tokens The caller should ensure that the tokens recieved by the handler are completely consumed.
  */
-contract AcrossMulticall is AcrossMessageHandler, ReentrancyGuard {
+contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -37,7 +37,7 @@ contract AcrossMulticall is AcrossMessageHandler, ReentrancyGuard {
     event DrainedTokens(address recipient, address token, uint256 amount);
 
     // Errors
-    error CallReverted(uint256 index);
+    error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
 
     modifier onlySelf() {
@@ -61,10 +61,8 @@ contract AcrossMulticall is AcrossMessageHandler, ReentrancyGuard {
     ) external nonReentrant {
         Instructions memory instructions = abi.decode(message, (Instructions));
 
-        this.attemptCalls(instructions.calls);
-
         // If there is no fallback recipient, call and revert if the inner call fails.
-        if (instructions.fallbackRecipient != address(0)) {
+        if (instructions.fallbackRecipient == address(0)) {
             this.attemptCalls(instructions.calls);
             return;
         }
@@ -82,7 +80,7 @@ contract AcrossMulticall is AcrossMessageHandler, ReentrancyGuard {
         for (uint256 i = 0; i < length; i++) {
             Call memory call = calls[i];
             (bool success, ) = call.target.call{ value: call.value }(call.callData);
-            if (!success) revert CallReverted(i);
+            if (!success) revert CallReverted(i, calls);
         }
     }
 
