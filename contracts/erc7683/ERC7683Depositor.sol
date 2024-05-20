@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./Permit2OrderLib.sol";
 import "../external/interfaces/IPermit2.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 
@@ -9,34 +8,15 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./Permit2OrderLib.sol";
-
-import { CrossChainOrder, ResolvedCrossChainOrder, ISettlementContract } from "./ERC7683.sol";
-
-// Data unique to every CrossChainOrder settled on Across
-struct AcrossOrderData {
-    address inputToken;
-    uint256 inputAmount;
-    address outputToken;
-    uint256 outputAmount;
-    uint32 destinationChainId;
-    address recipient;
-    uint32 exclusivityDeadline;
-    address exclusiveRelayer;
-    bytes message;
-}
-
-// Data unique to every attempted order fulfillment
-struct AcrossFillerData {
-    // Filler can choose where they want to be repaid
-    uint32 repaymentChainId;
-}
+import { Input, Output, CrossChainOrder, ResolvedCrossChainOrder, ISettlementContract } from "./ERC7683.sol";
+import { AcrossOrderData, AcrossFillerData, ERC7683Permit2Lib } from "./ERC7683Across.sol";
 
 /**
  * @notice Permit2Depositor processes an external order type and translates it into an AcrossV3 deposit.
  */
 abstract contract ERC7683OrderDepositor is ISettlementContract {
-    using SafeERC20 for IERC20;
+    error WrongSettlementContract();
+    error WrongChainId();
 
     // Permit2 contract for this network
     IPermit2 public immutable PERMIT2;
@@ -47,16 +27,10 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
 
     /**
      * @notice Construct the Permit2Depositor.
-     * @param _spokePool SpokePool that this contract can deposit to.
      * @param _permit2 Permit2 contract
      * @param _quoteBeforeDeadline quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
      */
-    constructor(
-        V3SpokePoolInterface _spokePool,
-        IPermit2 _permit2,
-        uint256 _quoteBeforeDeadline
-    ) {
-        SPOKE_POOL = _spokePool;
+    constructor(IPermit2 _permit2, uint256 _quoteBeforeDeadline) {
         PERMIT2 = _permit2;
         QUOTE_BEFORE_DEADLINE = _quoteBeforeDeadline;
     }
@@ -67,44 +41,37 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         bytes memory fillerData
     ) external {
         // Ensure that order was intended to be settled by Across.
-        require(order.settlementContract == address(this));
-        require(order.originChainId == block.chainid);
+        if (order.settlementContract != address(this)) {
+            revert WrongSettlementContract();
+        }
+
+        if (order.originChainId != block.chainid) {
+            revert WrongChainId();
+        }
 
         // Extract Across-specific params.
-        (AcrossOrderData memory acrossOrderData, ResolvedCrossChainOrder memory resolvedOrder, ) = _resolve(
-            order,
+        (AcrossOrderData memory acrossOrderData, AcrossFillerData memory acrossFillerData) = decode(
+            order.orderData,
             fillerData
         );
 
-        // Require that the order has a single input and output.
-        require(
-            resolvedOrder.swapperInputs.length == 1 &&
-                resolvedOrder.swapperOutputs.length == 1 &&
-                resolvedOrder.fillerOutputs.length == 1
-        );
-
         // Verify Permit2 signature and pull user funds into this contract
-        _processPermit2Order(PERMIT2, order, resolvedOrder, signature);
-
-        IERC20(resolvedOrder.swapperInputs[0].token).safeIncreaseAllowance(
-            address(SPOKE_POOL),
-            resolvedOrder.swapperInputs[0].amount
-        );
+        _processPermit2Order(order, acrossOrderData, signature);
 
         _callDeposit(
             order.swapper,
-            resolvedOrder.swapperOutputs[0].recipient,
-            resolvedOrder.swapperInputs[0].token,
-            resolvedOrder.swapperOutputs[0].token,
-            resolvedOrder.swapperInputs[0].amount,
-            resolvedOrder.swapperOutputs[0].amount,
-            resolvedOrder.swapperOutputs[0].chainId,
-            acrossOrderData.exclusiveRelayer,
+            acrossOrderData.recipient,
+            acrossOrderData.inputToken,
+            acrossOrderData.outputToken,
+            acrossOrderData.inputAmount,
+            acrossOrderData.outputAmount,
+            acrossOrderData.destinationChainId,
+            acrossFillerData.exclusiveRelayer,
             SafeCast.toUint32(order.initiateDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
             // The entire fill period is exclusive.
             order.fillDeadline,
-            ""
+            acrossOrderData.message
         );
     }
 
@@ -113,22 +80,14 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         view
         returns (ResolvedCrossChainOrder memory resolvedOrder)
     {
-        (, resolvedOrder, ) = _resolve(order, fillerData);
-    }
+        if (order.settlementContract != address(this)) {
+            revert WrongSettlementContract();
+        }
 
-    function _resolve(CrossChainOrder memory order, bytes memory fillerData)
-        internal
-        view
-        returns (
-            AcrossOrderData memory acrossOrderData,
-            ResolvedCrossChainOrder memory resolvedCrossChainOrder,
-            AcrossFillerData memory acrossFillerData
-        )
-    {
-        // Extract Across-specific params.
-        acrossOrderData = abi.decode(order.orderData, (AcrossOrderData));
-        acrossFillerData = abi.decode(fillerData, (AcrossFillerData));
-
+        (AcrossOrderData memory acrossOrderData, AcrossFillerData memory acrossFillerData) = decode(
+            order.orderData,
+            fillerData
+        );
         Input[] memory inputs = new Input[](1);
         inputs[0] = Input({ token: acrossOrderData.inputToken, amount: acrossOrderData.inputAmount });
         Output[] memory outputs = new Output[](1);
@@ -146,11 +105,11 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         fillerOutputs[0] = Output({
             token: acrossOrderData.inputToken,
             amount: acrossOrderData.inputAmount,
-            recipient: acrossOrderData.exclusiveRelayer,
-            chainId: acrossFillerData.repaymentChainId
+            recipient: acrossFillerData.exclusiveRelayer,
+            chainId: SafeCast.toUint32(block.chainid)
         });
 
-        resolvedCrossChainOrder = ResolvedCrossChainOrder({
+        resolvedOrder = ResolvedCrossChainOrder({
             settlementContract: address(this),
             swapper: order.swapper,
             nonce: order.nonce,
@@ -163,16 +122,23 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         });
     }
 
+    function decode(bytes memory orderData, bytes memory fillerData)
+        public
+        pure
+        returns (AcrossOrderData memory, AcrossFillerData memory)
+    {
+        return (abi.decode(orderData, (AcrossOrderData)), abi.decode(fillerData, (AcrossFillerData)));
+    }
+
     function _processPermit2Order(
-        IPermit2 permit2,
         CrossChainOrder memory order,
-        ResolvedCrossChainOrder memory resolvedOrder,
+        AcrossOrderData memory acrossOrderData,
         bytes memory signature
     ) internal {
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
             permitted: IPermit2.TokenPermissions({
-                token: resolvedOrder.swapperInputs[0].token,
-                amount: resolvedOrder.swapperInputs[0].amount
+                token: acrossOrderData.inputToken,
+                amount: acrossOrderData.inputAmount
             }),
             nonce: order.nonce,
             deadline: order.initiateDeadline
@@ -180,16 +146,16 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
 
         IPermit2.SignatureTransferDetails memory signatureTransferDetails = IPermit2.SignatureTransferDetails({
             to: address(this),
-            requestedAmount: resolvedOrder.swapperInputs[0].amount
+            requestedAmount: acrossOrderData.inputAmount
         });
 
         // Pull user funds.
-        permit2.permitWitnessTransferFrom(
+        PERMIT2.permitWitnessTransferFrom(
             permit,
             signatureTransferDetails,
             order.swapper,
-            Permit2OrderLib.hashOrder(order), // witness data hash
-            Permit2OrderLib.PERMIT2_ORDER_TYPE, // witness data type string
+            ERC7683Permit2Lib.hashOrder(order, ERC7683Permit2Lib.hashOrderData(acrossOrderData)), // witness data hash
+            ERC7683Permit2Lib.PERMIT2_ORDER_TYPE, // witness data type string
             signature
         );
     }
@@ -207,5 +173,50 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes memory message
-    ) internal;
+    ) internal virtual;
+}
+
+contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
+    using SafeERC20 for IERC20;
+    V3SpokePoolInterface public immutable SPOKE_POOL;
+
+    constructor(
+        V3SpokePoolInterface _spokePool,
+        IPermit2 _permit2,
+        uint256 _quoteBeforeDeadline
+    ) ERC7683OrderDepositor(_permit2, _quoteBeforeDeadline) {
+        SPOKE_POOL = _spokePool;
+    }
+
+    function _callDeposit(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes memory message
+    ) internal override {
+        IERC20(inputToken).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
+
+        SPOKE_POOL.depositV3(
+            depositor,
+            recipient,
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer,
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityDeadline,
+            message
+        );
+    }
 }

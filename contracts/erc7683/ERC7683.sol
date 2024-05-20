@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.8.0;
+
 /// @notice Tokens sent by the swapper as inputs to the order
 struct Input {
     /// @dev The address of the ERC20 token on the origin chain
