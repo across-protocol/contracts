@@ -277,6 +277,20 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    mode: {
+      chainId: 34443,
+      url: "https://mainnet.mode.network",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "mode-sepolia": {
+      chainId: 919,
+      url: "https://sepolia.mode.network",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -301,6 +315,8 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
+      mode: process.env.MODE_ETHERSCAN_API_KEY!,
+      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -389,6 +405,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io",
+        },
+      },
+      {
+        network: "mode-sepolia",
+        chainId: 919,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
+          browserURL: "https://testnet.modescan.io",
+        },
+      },
+      {
+        network: "mode",
+        chainId: 34443,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
+          browserURL: "https://modescan.io",
         },
       },
     ],
