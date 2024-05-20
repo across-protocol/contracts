@@ -98,6 +98,10 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
             revert WrongSettlementContract();
         }
 
+        if (order.originChainId != block.chainid) {
+            revert WrongChainId();
+        }
+
         (AcrossOrderData memory acrossOrderData, AcrossFillerData memory acrossFillerData) = decode(
             order.orderData,
             fillerData
