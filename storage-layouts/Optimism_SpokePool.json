@@ -1,7 +1,7 @@
 {
   "storage": [
     {
-      "astId": 64771,
+      "astId": 64776,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_initialized",
       "offset": 0,
@@ -9,7 +9,7 @@
       "type": "t_uint8"
     },
     {
-      "astId": 64774,
+      "astId": 64779,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_initializing",
       "offset": 1,
@@ -17,7 +17,7 @@
       "type": "t_bool"
     },
     {
-      "astId": 64753,
+      "astId": 64758,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -25,7 +25,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 65069,
+      "astId": 65074,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -33,7 +33,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 65085,
+      "astId": 65090,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_status",
       "offset": 0,
@@ -41,7 +41,7 @@
       "type": "t_uint256"
     },
     {
-      "astId": 65154,
+      "astId": 65159,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
