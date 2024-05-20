@@ -21,6 +21,7 @@ interface IERC20Rebasing {
     function configure(YieldMode mode) external returns (uint256);
 }
 
+// Interface for blast yield contract on L2.
 interface IBlast {
     function configureClaimableYield() external;
 
@@ -40,10 +41,14 @@ contract Blast_SpokePool is Ovm_SpokePool {
     address public immutable USDB; // 0x4300000000000000000000000000000000000003 on blast mainnet.
     // Token that is received when withdrawing USDB, aka DAI.
     address public immutable L1_USDB; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
+
+    // Address that this contract's yield and gas fees accrue to.
+    address public immutable YIELD_RECIPIENT;
     address public constant L2_BLAST_BRIDGE = 0x4300000000000000000000000000000000000005;
     IBlast public constant BLAST_YIELD_CONTRACT = IBlast(0x4300000000000000000000000000000000000002);
 
     error InvalidClaimedAmount(address token);
+    event YieldClaimed(address indexed recipient, address indexed token, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -53,7 +58,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         address usdb,
-        address l1Usdb
+        address l1Usdb,
+        address yieldRecipient
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
@@ -65,6 +71,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
     {
         USDB = usdb;
         L1_USDB = l1Usdb;
+        YIELD_RECIPIENT = yieldRecipient;
     }
 
     /**
@@ -73,6 +80,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @dev this method also sets yield settings for the Blast SpokePool.
      */
     function initialize(
         uint32 _initialDepositId,
@@ -91,34 +99,34 @@ contract Blast_SpokePool is Ovm_SpokePool {
     }
 
     /**
-     * @notice Claim interest for token into this contract. This should be called before _bridgeTokensToHubPool
-     * and then the claimed amount should be added to the bridged amount.
+     * @notice Claim interest for token to a predefined recipient. This should be called before _bridgeTokensToHubPool
+     * as a way to regularly claim yield and distribute it to the recipient.
      */
-    function _claimYield(IERC20Rebasing token) internal returns (uint256 claimedAmount) {
+    function _claimYield(IERC20Rebasing token) internal {
         uint256 claimableAmount = token.getClaimableAmount(address(this));
-        claimedAmount = token.claim(address(this), claimableAmount);
+        uint256 claimedAmount = token.claim(YIELD_RECIPIENT, claimableAmount);
         if (claimableAmount != claimedAmount) {
             revert InvalidClaimedAmount(address(token));
         }
 
+        if (claimedAmount > 0) {
+            emit YieldClaimed(YIELD_RECIPIENT, address(token), claimedAmount);
+        }
+
         // If sending WETH back, also claim any native yield and convert it to WETH.
         if (address(token) == address(wrappedNativeToken)) {
-            uint256 nativeClaimAmount = BLAST_YIELD_CONTRACT.claimAllYield(address(this), address(this));
-            nativeClaimAmount += BLAST_YIELD_CONTRACT.claimMaxGas(address(this), address(this));
+            uint256 nativeClaimAmount = BLAST_YIELD_CONTRACT.claimAllYield(address(this), YIELD_RECIPIENT);
+            nativeClaimAmount += BLAST_YIELD_CONTRACT.claimMaxGas(address(this), YIELD_RECIPIENT);
             if (nativeClaimAmount > 0) {
-                wrappedNativeToken.deposit{ value: nativeClaimAmount }();
-                claimedAmount += nativeClaimAmount;
+                emit YieldClaimed(YIELD_RECIPIENT, address(0), nativeClaimAmount);
             }
         }
     }
 
-    /**
-     * @notice Claims any yield for tokens that accrue yield and then also bridges those
-     */
+    // Claims any yield for tokens that accrue yield before bridging.
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         if (l2TokenAddress == USDB || l2TokenAddress == address(wrappedNativeToken)) {
-            uint256 accruedYield = _claimYield(IERC20Rebasing(l2TokenAddress));
-            amountToReturn += accruedYield;
+            _claimYield(IERC20Rebasing(l2TokenAddress));
         }
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
