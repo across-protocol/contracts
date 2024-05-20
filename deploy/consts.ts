@@ -17,6 +17,11 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    l1BlastBridge: "0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115",
+    blastCrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
+    blastStandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
+    l1Usdb: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    dai: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -171,6 +176,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
   },
   10: {
     l2Usdc: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
@@ -189,6 +195,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0xd8866E76441df243fc98B892362Fc6264dC3ca80", // Mock_UniswapV3SwapRouter.sol
+  },
+  81457: {
+    usdb: "0x4300000000000000000000000000000000000003",
   },
   8453: {
     l2Usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
