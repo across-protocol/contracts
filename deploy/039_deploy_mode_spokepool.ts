@@ -29,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
   ];
-  await deployNewProxy("Mode_SpokePool", constructorArgs, initArgs, false);
+  await deployNewProxy("Mode_SpokePool", constructorArgs, initArgs, spokeChainId === 34443);
 };
 module.exports = func;
 func.tags = ["ModeSpokePool", "mode"];
