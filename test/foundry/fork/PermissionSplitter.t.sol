@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import { HubPool } from "../../contracts/HubPool.sol";
-import { SpokePool } from "../../contracts/SpokePool.sol";
-import { LpTokenFactory } from "../../contracts/LpTokenFactory.sol";
-import { PermissionSplitterProxy } from "../../contracts/PermissionSplitterProxy.sol";
+import { HubPool } from "../../../contracts/HubPool.sol";
+import { SpokePool } from "../../../contracts/SpokePool.sol";
+import { LpTokenFactory } from "../../../contracts/LpTokenFactory.sol";
+import { PermissionSplitterProxy } from "../../../contracts/PermissionSplitterProxy.sol";
 
 // Run this test to verify PermissionSplitter behavior when changing ownership of the HubPool
 // to it. Therefore this test should be run as a fork test via:
-// - source .env && forge test --fork-url $NODE_URL_1
+// - NODE_URL_1=https://mainnet.infura.io/v3/YOUR_INFURA_KEY forge test
 contract PermissionSplitterTest is Test {
     HubPool hubPool;
     HubPool hubPoolProxy;
@@ -26,6 +26,8 @@ contract PermissionSplitterTest is Test {
     address pauseAdmin;
     address rando1;
     address rando2;
+
+    uint256 forkId;
 
     // We test the pause() selector specifically in the tests so we define it as a variable.
     bytes4 constant PAUSE_SELECTOR = bytes4(keccak256("setPaused(bool)"));
@@ -103,6 +105,9 @@ contract PermissionSplitterTest is Test {
     error FuncSelectorCollision();
 
     function setUp() public {
+        forkId = vm.createFork(vm.envString("NODE_URL_1"));
+        vm.selectFork(forkId);
+
         // Since this test file is designed to run against a mainnet fork, hardcode the following system
         // contracts to skip the setup we'd usually need to run to use brand new contracts.
         hubPool = HubPool(payable(0xc186fA914353c44b2E33eBE05f21846F1048bEda));

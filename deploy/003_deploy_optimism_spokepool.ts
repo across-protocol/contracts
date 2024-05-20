@@ -2,7 +2,6 @@ import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { L2_ADDRESS_MAP } from "./consts";
-import { ZERO_ADDRESS } from "@uma/common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -19,18 +18,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 8 hours
+  //    * A fillDeadlineBuffer of 6 hours
   //    * Native USDC address on L2
   //    * CCTP token messenger address on L2
   const constructorArgs = [
     "0x4200000000000000000000000000000000000006",
     3600,
-    28800,
+    21600,
     L2_ADDRESS_MAP[spokeChainId].l2Usdc,
-    // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
-    // For now, we are not using the CCTP bridge and can disable by setting
-    // the cctpTokenMessenger to the zero address.
-    ZERO_ADDRESS,
+    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
   await deployNewProxy("Optimism_SpokePool", constructorArgs, initArgs, spokeChainId === 10);
 };
