@@ -12,13 +12,15 @@ import { Input, Output, CrossChainOrder, ResolvedCrossChainOrder, ISettlementCon
 import { AcrossOrderData, AcrossFillerData, ERC7683Permit2Lib } from "./ERC7683Across.sol";
 
 /**
- * @notice Permit2Depositor processes an external order type and translates it into an AcrossV3 deposit.
+ * @notice ERC7683OrderDepositor processes an external order type and translates it into an AcrossV3 deposit.
+ * @dev This contract is abstract because it is intended to be usable by a contract that can accept the deposit
+ * as well as one that sends the deposit to another contract.
  */
 abstract contract ERC7683OrderDepositor is ISettlementContract {
     error WrongSettlementContract();
     error WrongChainId();
 
-    // Permit2 contract for this network
+    // Permit2 contract for this network.
     IPermit2 public immutable PERMIT2;
 
     // quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
@@ -35,6 +37,13 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         QUOTE_BEFORE_DEADLINE = _quoteBeforeDeadline;
     }
 
+    /**
+     * @notice Initiate the order.
+     * @dev This will pull in the user's funds and make the order available to be filled.
+     * @param order the ERC7683 compliant order.
+     * @param signature signature for the EIP-712 compliant order type.
+     * @param fillerData Across-specific fillerData.
+     */
     function initiate(
         CrossChainOrder memory order,
         bytes memory signature,
@@ -67,14 +76,19 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
             acrossOrderData.outputAmount,
             acrossOrderData.destinationChainId,
             acrossFillerData.exclusiveRelayer,
+            // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.initiateDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
-            // The entire fill period is exclusive.
-            order.fillDeadline,
+            acrossOrderData.exclusivityDeadline,
             acrossOrderData.message
         );
     }
 
+    /**
+     * @notice Constructs a ResolvedOrder from a CrossChainOrder and fillerData.
+     * @param order the ERC7683 compliant order.
+     * @param fillerData Across-specific fillerData.
+     */
     function resolve(CrossChainOrder memory order, bytes memory fillerData)
         external
         view
@@ -97,6 +111,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
             recipient: acrossOrderData.recipient,
             chainId: acrossOrderData.destinationChainId
         });
+
         // We assume that filler takes repayment on the origin chain in which case the filler output
         // will always be equal to the input amount. If the filler requests repayment somewhere else then
         // the filler output will be equal to the input amount less a fee based on the chain they request
@@ -122,6 +137,13 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         });
     }
 
+    /**
+     * @notice Decodes the Across specific orderData and fillerData into descriptive types.
+     * @param orderData the orderData field of the ERC7683 compliant order.
+     * @param fillerData Across-specific fillerData.
+     * @return acrossOrderData decoded AcrossOrderData.
+     * @return acrossFillerData decoded AcrossFillerData.
+     */
     function decode(bytes memory orderData, bytes memory fillerData)
         public
         pure
@@ -176,6 +198,10 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
     ) internal virtual;
 }
 
+/**
+ * @notice ERC7683OrderDepositorExternal processes an external order type and translates it into an AcrossV3Deposit
+ * that it sends to the SpokePool contract.
+ */
 contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
     using SafeERC20 for IERC20;
     V3SpokePoolInterface public immutable SPOKE_POOL;
