@@ -11,74 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./Permit2OrderLib.sol";
 
-/// @title CrossChainOrder type
-/// @notice Standard order struct to be signed by swappers, disseminated to fillers, and submitted to settlement contracts
-struct CrossChainOrder {
-    /// @dev The contract address that the order is meant to be settled by.
-    /// Fillers send this order to this contract address on the origin chain
-    address settlementContract;
-    /// @dev The address of the user who is initiating the swap,
-    /// whose input tokens will be taken and escrowed
-    address swapper;
-    /// @dev Nonce to be used as replay protection for the order
-    uint256 nonce;
-    /// @dev The chainId of the origin chain
-    uint32 originChainId;
-    /// @dev The timestamp by which the order must be initiated
-    uint32 initiateDeadline;
-    /// @dev The timestamp by which the order must be filled on the destination chain
-    uint32 fillDeadline;
-    /// @dev Arbitrary implementation-specific data
-    /// Can be used to define tokens, amounts, destination chains, fees, settlement parameters,
-    /// or any other order-type specific information
-    bytes orderData;
-}
-
-/// @title ResolvedCrossChainOrder type
-/// @notice An implementation-generic representation of an order
-/// @dev Defines all requirements for filling an order by unbundling the implementation-specific orderData.
-/// @dev Intended to improve integration generalization by allowing fillers to compute the exact input and output information of any order
-struct ResolvedCrossChainOrder {
-    /// @dev The contract address that the order is meant to be settled by.
-    address settlementContract;
-    /// @dev The address of the user who is initiating the swap
-    address swapper;
-    /// @dev Nonce to be used as replay protection for the order
-    uint256 nonce;
-    /// @dev The chainId of the origin chain
-    uint32 originChainId;
-    /// @dev The timestamp by which the order must be initiated
-    uint32 initiateDeadline;
-    /// @dev The timestamp by which the order must be filled on the destination chain(s)
-    uint32 fillDeadline;
-    /// @dev The inputs to be taken from the swapper as part of order initiation
-    Input[] swapperInputs;
-    /// @dev The outputs to be given to the swapper as part of order fulfillment
-    Output[] swapperOutputs;
-    /// @dev The outputs to be given to the filler as part of order settlement
-    Output[] fillerOutputs;
-}
-
-/// @notice Tokens sent by the swapper as inputs to the order
-struct Input {
-    /// @dev The address of the ERC20 token on the origin chain
-    address token;
-    /// @dev The amount of the token to be sent
-    uint256 amount;
-}
-
-/// @notice Tokens that must be receive for a valid order fulfillment
-struct Output {
-    /// @dev The address of the ERC20 token on the destination chain
-    /// @dev address(0) used as a sentinel for the native token
-    address token;
-    /// @dev The amount of the token to be sent
-    uint256 amount;
-    /// @dev The address to receive the output tokens
-    address recipient;
-    /// @dev The destination chain for this output
-    uint32 chainId;
-}
+import { CrossChainOrder, ResolvedCrossChainOrder, ISettlementContract } from "./ERC7683.sol";
 
 // Data unique to every CrossChainOrder settled on Across
 struct AcrossOrderData {
@@ -99,42 +32,11 @@ struct AcrossFillerData {
     uint32 repaymentChainId;
 }
 
-/// @title ISettlementContract
-/// @notice Standard interface for settlement contracts
-interface ISettlementContract {
-    /// @notice Initiates the settlement of a cross-chain order
-    /// @dev To be called by the filler
-    /// @param order The CrossChainOrder definition
-    /// @param signature The swapper's signature over the order
-    /// @param fillerData Any filler-defined data required by the settler
-    function initiate(
-        CrossChainOrder memory order,
-        bytes memory signature,
-        bytes memory fillerData
-    ) external;
-
-    /// @notice Resolves a specific CrossChainOrder into a generic ResolvedCrossChainOrder
-    /// @dev Intended to improve standardized integration of various order types and settlement contracts
-    /// @param order The CrossChainOrder definition
-    /// @param fillerData Any filler-defined data required by the settler
-    /// @return ResolvedCrossChainOrder hydrated order data including the inputs and outputs of the order
-    function resolve(CrossChainOrder memory order, bytes memory fillerData)
-        external
-        view
-        returns (ResolvedCrossChainOrder memory);
-}
-
 /**
  * @notice Permit2Depositor processes an external order type and translates it into an AcrossV3 deposit.
  */
-contract ERC7683OrderDepositor is ISettlementContract {
+abstract contract ERC7683OrderDepositor is ISettlementContract {
     using SafeERC20 for IERC20;
-
-    // Unique Across nonce
-    uint256 depositId;
-
-    // SpokePool that this contract can deposit to.
-    V3SpokePoolInterface public immutable SPOKE_POOL;
 
     // Permit2 contract for this network
     IPermit2 public immutable PERMIT2;
@@ -188,7 +90,8 @@ contract ERC7683OrderDepositor is ISettlementContract {
             address(SPOKE_POOL),
             resolvedOrder.swapperInputs[0].amount
         );
-        SPOKE_POOL.depositV3(
+
+        _callDeposit(
             order.swapper,
             resolvedOrder.swapperOutputs[0].recipient,
             resolvedOrder.swapperInputs[0].token,
@@ -290,4 +193,19 @@ contract ERC7683OrderDepositor is ISettlementContract {
             signature
         );
     }
+
+    function _callDeposit(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes memory message
+    ) internal;
 }
