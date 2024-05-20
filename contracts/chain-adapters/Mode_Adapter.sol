@@ -48,7 +48,7 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         ITokenMessenger _cctpTokenMessenger
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.NotEnabled)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum) // CCTP is not enabled on this chain so Ethereum is a placeholder
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

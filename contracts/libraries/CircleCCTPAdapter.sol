@@ -11,7 +11,6 @@ library CircleDomainIds {
     uint32 public constant Arbitrum = 3;
     uint32 public constant Base = 6;
     uint32 public constant Polygon = 7;
-    uint32 public constant NotEnabled = type(uint32).max; // If selected, this will cause a revert on CCTP contracts.
 }
 
 abstract contract CircleCCTPAdapter {
