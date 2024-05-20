@@ -315,6 +315,8 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
+      mode: process.env.MODE_ETHERSCAN_API_KEY!,
+      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -409,16 +411,16 @@ const config: HardhatUserConfig = {
         network: "mode-sepolia",
         chainId: 919,
         urls: {
-          apiURL: "https://sepolia.explorer.mode.network/api/v2",
-          browserURL: "https://sepolia.explorer.mode.network",
+          apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
+          browserURL: "https://testnet.modescan.io",
         },
       },
       {
         network: "mode",
         chainId: 34443,
         urls: {
-          apiURL: "https://explorer.mode.network/api/v2",
-          browserURL: "https://explorer.mode.network",
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
+          browserURL: "https://modescan.io",
         },
       },
     ],
