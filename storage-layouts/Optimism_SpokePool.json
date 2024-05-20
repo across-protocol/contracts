@@ -1,7 +1,7 @@
 {
   "storage": [
     {
-      "astId": 64157,
+      "astId": 64472,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_initialized",
       "offset": 0,
@@ -9,7 +9,7 @@
       "type": "t_uint8"
     },
     {
-      "astId": 64160,
+      "astId": 64475,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_initializing",
       "offset": 1,
@@ -17,7 +17,7 @@
       "type": "t_bool"
     },
     {
-      "astId": 64139,
+      "astId": 64454,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -25,7 +25,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 64455,
+      "astId": 64770,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -33,7 +33,7 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 64471,
+      "astId": 64786,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_status",
       "offset": 0,
@@ -41,7 +41,7 @@
       "type": "t_uint256"
     },
     {
-      "astId": 64540,
+      "astId": 64855,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -49,7 +49,7 @@
       "type": "t_array(t_uint256)49_storage"
     },
     {
-      "astId": 16585,
+      "astId": 16886,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -57,7 +57,7 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 16390,
+      "astId": 16691,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_HASHED_NAME",
       "offset": 0,
@@ -65,7 +65,7 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 16392,
+      "astId": 16693,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "_HASHED_VERSION",
       "offset": 0,
@@ -73,7 +73,7 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 16491,
+      "astId": 16792,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -102,7 +102,7 @@
       "label": "DEPRECATED_wrappedNativeToken",
       "offset": 0,
       "slot": "2155",
-      "type": "t_contract(WETH9Interface)12471"
+      "type": "t_contract(WETH9Interface)12472"
     },
     {
       "astId": 5891,
@@ -142,7 +142,7 @@
       "label": "rootBundles",
       "offset": 0,
       "slot": "2156",
-      "type": "t_array(t_struct(RootBundle)12748_storage)dyn_storage"
+      "type": "t_array(t_struct(RootBundle)13049_storage)dyn_storage"
     },
     {
       "astId": 5907,
@@ -193,7 +193,7 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 7827,
+      "astId": 7828,
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -247,11 +247,11 @@
       "label": "address",
       "numberOfBytes": "20"
     },
-    "t_array(t_struct(RootBundle)12748_storage)dyn_storage": {
+    "t_array(t_struct(RootBundle)13049_storage)dyn_storage": {
       "encoding": "dynamic_array",
       "label": "struct SpokePoolInterface.RootBundle[]",
       "numberOfBytes": "32",
-      "base": "t_struct(RootBundle)12748_storage"
+      "base": "t_struct(RootBundle)13049_storage"
     },
     "t_array(t_uint256)1000_storage": {
       "encoding": "inplace",
@@ -287,7 +287,7 @@
       "label": "bytes32",
       "numberOfBytes": "32"
     },
-    "t_contract(WETH9Interface)12471": {
+    "t_contract(WETH9Interface)12472": {
       "encoding": "inplace",
       "label": "contract WETH9Interface",
       "numberOfBytes": "20"
@@ -334,13 +334,13 @@
       "numberOfBytes": "32",
       "value": "t_uint256"
     },
-    "t_struct(RootBundle)12748_storage": {
+    "t_struct(RootBundle)13049_storage": {
       "encoding": "inplace",
       "label": "struct SpokePoolInterface.RootBundle",
       "numberOfBytes": "96",
       "members": [
         {
-          "astId": 12741,
+          "astId": 13042,
           "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
           "label": "slowRelayRoot",
           "offset": 0,
@@ -348,7 +348,7 @@
           "type": "t_bytes32"
         },
         {
-          "astId": 12743,
+          "astId": 13044,
           "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
           "label": "relayerRefundRoot",
           "offset": 0,
@@ -356,7 +356,7 @@
           "type": "t_bytes32"
         },
         {
-          "astId": 12747,
+          "astId": 13048,
           "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
           "label": "claimedBitmap",
           "offset": 0,
