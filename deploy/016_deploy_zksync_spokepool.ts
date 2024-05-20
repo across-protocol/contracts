@@ -26,7 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Construct this spokepool with a:
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 8 hours
+  //    * A fillDeadlineBuffer of 6 hours
   const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 21600];
 
   let newAddress;
