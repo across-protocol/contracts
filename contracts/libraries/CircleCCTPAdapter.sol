@@ -86,14 +86,10 @@ abstract contract CircleCCTPAdapter {
         ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();
         uint256 burnLimit = cctpMinter.burnLimitsPerMessage(address(usdcToken));
         uint256 remainingAmount = amount;
+        bytes32 recipient = _addressToBytes32(to);
         do {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
-            cctpTokenMessenger.depositForBurn(
-                partAmount,
-                recipientCircleDomainId,
-                _addressToBytes32(to),
-                address(usdcToken)
-            );
+            cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, recipient, address(usdcToken));
             remainingAmount -= partAmount;
         } while (remainingAmount > 0);
     }
