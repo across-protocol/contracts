@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const instance = await deploy("Base_Adapter", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: true,
+    skipIfAlreadyDeployed: false,
     args,
   });
   await run("verify:verify", { address: instance.address, constructorArguments: args });
