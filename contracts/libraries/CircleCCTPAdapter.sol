@@ -81,10 +81,6 @@ abstract contract CircleCCTPAdapter {
         return address(cctpTokenMessenger) != address(0) && address(cctpTokenMinter) != address(0);
     }
 
-    function _getMessageBurnLimit() internal view returns (uint256) {
-        return cctpTokenMinter.burnLimitsPerMessage(address(usdcToken));
-    }
-
     /**
      * @notice Transfers USDC from the current domain to the given address on the new domain.
      * @dev This function will revert if the CCTP bridge is disabled. I.e. if the zero address is passed to the constructor for the cctpTokenMessenger.
@@ -96,7 +92,7 @@ abstract contract CircleCCTPAdapter {
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Resolve locally the call to `burnLimitsPerMessage` to see how much USDC
         // can be transferred per message
-        uint256 burnLimit = _getMessageBurnLimit();
+        uint256 burnLimit = cctpTokenMinter.burnLimitsPerMessage(address(usdcToken));
         // Create a local variable to keep track of the remaining amount to be transferred
         uint256 remainingAmount = amount;
         do {

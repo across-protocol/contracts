@@ -15,14 +15,16 @@ contract Optimism_SpokePool is Ovm_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        ITokenMinter _cctpTokenMinter
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            _cctpTokenMinter
         )
     {} // solhint-disable-line no-empty-blocks
 
