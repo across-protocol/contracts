@@ -48,3 +48,16 @@ interface ITokenMessenger {
         address burnToken
     ) external returns (uint64 _nonce);
 }
+
+/**
+ * Imported as-is from commit 139d8d0ce3b5531d3c7ec284f89d946dfb720016 of:
+ *   * https://github.com/walkerq/evm-cctp-contracts/blob/139d8d0ce3b5531d3c7ec284f89d946dfb720016/src/TokenMessenger.sol
+ * Changes applied post-import:
+ *   * Only the parent role is kept in this interface.
+ */
+contract ITokenMinter {
+    // ============ State Variables ============
+    // Supported burnable tokens on the local domain
+    // local token (address) => maximum burn amounts per message
+    mapping(address => uint256) public burnLimitsPerMessage;
+}

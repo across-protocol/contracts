@@ -33,25 +33,34 @@ abstract contract CircleCCTPAdapter {
 
     /**
      * @notice The official Circle CCTP token bridge contract endpoint.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
+     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts#tokenmessenger-mainnet
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     ITokenMessenger public immutable cctpTokenMessenger;
 
     /**
+        @notice The official Circle CCTP token minter contract endpoint.
+        @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts#tokenminter-mainnet
+     */
+    ITokenMinter public immutable cctpTokenMinter;
+
+    /**
      * @notice intiailizes the CircleCCTPAdapter contract.
      * @param _usdcToken USDC address on the current chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
+     * @param _cctpTokenMinter TokenMinter contract to resolve burn limits.
      * @param _recipientCircleDomainId The domain ID that CCTP will transfer funds to.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdcToken,
         ITokenMessenger _cctpTokenMessenger,
+        ITokenMinter _cctpTokenMinter,
         uint32 _recipientCircleDomainId
     ) {
         usdcToken = _usdcToken;
         cctpTokenMessenger = _cctpTokenMessenger;
+        cctpTokenMinter = _cctpTokenMinter;
         recipientCircleDomainId = _recipientCircleDomainId;
     }
 
@@ -66,10 +75,14 @@ abstract contract CircleCCTPAdapter {
 
     /**
      * @notice Returns whether or not the CCTP bridge is enabled.
-     * @dev If the CCTPTokenMessenger is the zero address, CCTP bridging is disabled.
+     * @dev If the CCTPTokenMessenger OR the CCTPTokenMinter is the zero address, CCTP bridging is disabled.
      */
     function _isCCTPEnabled() internal view returns (bool) {
-        return address(cctpTokenMessenger) != address(0);
+        return address(cctpTokenMessenger) != address(0) && address(cctpTokenMinter) != address(0);
+    }
+
+    function _getMessageBurnLimit() internal view returns (uint256) {
+        return cctpTokenMinter.burnLimitsPerMessage(address(usdcToken));
     }
 
     /**
@@ -81,7 +94,23 @@ abstract contract CircleCCTPAdapter {
     function _transferUsdc(address to, uint256 amount) internal {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
-        // Submit the amount to be transferred to bridged via the TokenMessenger
-        cctpTokenMessenger.depositForBurn(amount, recipientCircleDomainId, _addressToBytes32(to), address(usdcToken));
+        // Resolve locally the call to `burnLimitsPerMessage` to see how much USDC
+        // can be transferred per message
+        uint256 burnLimit = _getMessageBurnLimit();
+        // Create a local variable to keep track of the remaining amount to be transferred
+        uint256 remainingAmount = amount;
+        do {
+            // Send the minimum between the remaining amount and the burn limit
+            uint256 transferAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
+            // Submit the amount to be transferred to bridged via the TokenMessenger
+            cctpTokenMessenger.depositForBurn(
+                transferAmount,
+                recipientCircleDomainId,
+                _addressToBytes32(to),
+                address(usdcToken)
+            );
+            // Update the remaining amount to be transferred
+            remainingAmount = remainingAmount - transferAmount;
+        } while (remainingAmount > 0);
     }
 }

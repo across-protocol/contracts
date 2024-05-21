@@ -84,10 +84,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        ITokenMinter _cctpTokenMinter
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _cctpTokenMinter, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**

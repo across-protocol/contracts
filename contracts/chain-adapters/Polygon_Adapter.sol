@@ -90,6 +90,7 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _l1Weth WETH address on L1.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _cctpTokenMinter TokenMinter contract to resolve burn limits via CCTP.
      */
     constructor(
         IRootChainManager _rootChainManager,
@@ -99,8 +100,9 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
         address _l1Matic,
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Polygon) {
+        ITokenMessenger _cctpTokenMessenger,
+        ITokenMinter _cctpTokenMinter
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpTokenMinter, CircleDomainIds.Polygon) {
         ROOT_CHAIN_MANAGER = _rootChainManager;
         FX_STATE_SENDER = _fxStateSender;
         DEPOSIT_MANAGER = _depositManager;

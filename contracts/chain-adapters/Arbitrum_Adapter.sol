@@ -174,14 +174,16 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _cctpTokenMinter TokenMinter contract to resolve burn limits on CCTP.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
+        ITokenMessenger _cctpTokenMessenger,
+        ITokenMinter _cctpTokenMinter
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpTokenMinter, CircleDomainIds.Arbitrum) {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
