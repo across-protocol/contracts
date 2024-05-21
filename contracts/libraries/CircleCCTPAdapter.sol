@@ -85,25 +85,16 @@ abstract contract CircleCCTPAdapter {
         // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
         ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();
         uint256 burnLimit = cctpMinter.burnLimitsPerMessage(address(usdcToken));
-        if (amount <= burnLimit) {
+        uint256 remainingAmount = amount;
+        do {
+            uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
             cctpTokenMessenger.depositForBurn(
-                amount,
+                partAmount,
                 recipientCircleDomainId,
                 _addressToBytes32(to),
                 address(usdcToken)
             );
-        } else {
-            uint256 remainingAmount = amount;
-            while (remainingAmount > 0) {
-                uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
-                cctpTokenMessenger.depositForBurn(
-                    partAmount,
-                    recipientCircleDomainId,
-                    _addressToBytes32(to),
-                    address(usdcToken)
-                );
-                remainingAmount -= partAmount;
-            }
-        }
+            remainingAmount -= partAmount;
+        } while (remainingAmount > 0);
     }
 }
