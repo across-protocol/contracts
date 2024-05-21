@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const instance = await deploy("Arbitrum_Adapter", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: true,
+    skipIfAlreadyDeployed: false,
     args: [
       L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
       L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
