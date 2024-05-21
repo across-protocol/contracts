@@ -18,11 +18,12 @@ import {
   seedWallet,
   randomAddress,
   createFakeFromABI,
+  toWei,
 } from "../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { TokenRolesEnum } from "@uma/common";
-import { CCTPTokenMessengerInterface } from "../../utils/abis";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../utils/abis";
 import { CIRCLE_DOMAIN_IDs } from "../../deploy/consts";
 
 let hubPool: Contract,
@@ -39,6 +40,7 @@ let rootChainManager: FakeContract,
   fxStateSender: FakeContract,
   depositManager: FakeContract,
   cctpMessenger: FakeContract,
+  cctpTokenMinter: FakeContract,
   erc20Predicate: string;
 
 const polygonChainId = 137;
@@ -67,6 +69,9 @@ describe("Polygon Chain Adapter", function () {
     depositManager = await createFake("DepositManagerMock");
     erc20Predicate = randomAddress();
     cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    cctpMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     polygonAdapter = await (
       await getContractFactory("Polygon_Adapter", owner)

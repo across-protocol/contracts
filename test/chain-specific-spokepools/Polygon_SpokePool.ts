@@ -25,11 +25,14 @@ import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { buildRelayerRefundLeaves, buildRelayerRefundTree, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { randomBytes } from "crypto";
-import { V3RelayData, deployMockSpokePoolCaller, getV3RelayHash } from "../fixtures/SpokePool.Fixture";
-import { CCTPTokenMessengerInterface } from "../../utils/abis";
+import { V3RelayData, deployMockSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../utils/abis";
 
 let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
-let polygonRegistry: FakeContract, erc20Predicate: FakeContract, l2CctpTokenMessenger: FakeContract;
+let polygonRegistry: FakeContract,
+  erc20Predicate: FakeContract,
+  l2CctpTokenMessenger: FakeContract,
+  cctpTokenMinter: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
@@ -45,6 +48,9 @@ describe("Polygon Spoke Pool", function () {
     polygonRegistry = await createFake("PolygonRegistryMock");
     erc20Predicate = await createFake("PolygonERC20PredicateMock");
     l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 

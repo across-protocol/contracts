@@ -33,4 +33,21 @@ export const CCTPTokenMessengerInterface = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "localMinter",
+    outputs: [{ internalType: "contract ITokenMinter", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+];
+
+export const CCTPTokenMinterInterface = [
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
+    name: "burnLimitsPerMessage",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ];

@@ -100,7 +100,7 @@ contract MultiCallerUpgradeableTest is Test {
             } else {
                 assert(!results[i].success);
                 assertEq(
-                    abi.encodeWithSelector(bytes4(0x08c379a0), "Ownable: caller is not the owner"),
+                    "", // Error messages are stripped.
                     results[i].returnData
                 );
             }
