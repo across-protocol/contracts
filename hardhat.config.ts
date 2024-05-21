@@ -61,7 +61,7 @@ const config: HardhatUserConfig = {
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        ...LARGE_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Arbitrum, only supports 0.8.19.
         // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
         version: "0.8.19",
@@ -79,6 +79,13 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/Polygon_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Mode_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Boba_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Ovm_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
