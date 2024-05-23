@@ -15,6 +15,8 @@
 | Polygon_Adapter     | [0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A](https://etherscan.io/address/0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A) |
 | ZkSync_Adapter      | [0xE233009838CB898b50e0012a6E783FC9FeE447FB](https://etherscan.io/address/0xE233009838CB898b50e0012a6E783FC9FeE447FB) |
 | Base_Adapter        | [0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E](https://etherscan.io/address/0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E) |
+| Linea Adapter       | [0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE](https://etherscan.io/address/0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE) |
+| Mode Adapter        | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 
@@ -54,3 +56,9 @@
 | Contract Name   | Address                                                                                                                  |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Linea_SpokePool | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75) |
+
+## Linea mainnet (34443)
+
+| Contract Name  | Address                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Mode_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://modescan.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
