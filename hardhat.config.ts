@@ -222,6 +222,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    "polygon-amoy": {
+      chainId: 80002,
+      url: "https://rpc-amoy.polygon.technology",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
     base: {
       chainId: 8453,
       url: "https://mainnet.base.org",
@@ -308,6 +315,7 @@ const config: HardhatUserConfig = {
       "arbitrum-sepolia": process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
       polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
+      "polygon-amoy": process.env.POLYGON_ETHERSCAN_API_KEY!,
       base: process.env.BASE_ETHERSCAN_API_KEY!,
       "base-goerli": process.env.BASE_ETHERSCAN_API_KEY!,
       "base-sepolia": process.env.BASE_ETHERSCAN_API_KEY!,
@@ -398,6 +406,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-testnet-zkevm.polygonscan.com/api",
           browserURL: "https://testnet-zkevm.polygonscan.com/",
+        },
+      },
+      {
+        network: "polygon-amoy",
+        chainId: 80002,
+        urls: {
+          apiURL: "https://api-amoy.polygonscan.com/api",
+          browserURL: "https://amoy.polygonscan.com",
         },
       },
       {

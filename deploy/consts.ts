@@ -114,14 +114,15 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     modeCrossDomainMessenger: "0xc19a60d9E8C27B9A43527c3283B4dd8eDC8bE15C",
     modeStandardBridge: "0xbC5C679879B2965296756CD959C3C739769995E2",
 
-    // More information is needed to verify these addresses:
-    polygonRootChainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
-    polygonFxRoot: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2",
-    polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
-    polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
-    polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
+    // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
+    polygonFxRoot: "0x0E13EBEdDb8cf9f5987512d5E081FdC2F5b0991e",
+    polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
+    l2WrappedMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
+
+    polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
     matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
-    l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
+    polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
   },
 };
 
@@ -168,6 +169,13 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0x9999f7Fea5938fD3b1E26A12c3f2fb024e194f97",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0xe09A679F56207EF33F5b9d8fb4499Ec00792eA73",
+  },
+  80002: {
+    wMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
+    fxChild: "0xE5930336866d0388f0f745A2d9207C7781047C0f",
+    l2Usdc: "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
   },
   280: {
     l2Weth: "0x20b28B1e4665FFf290650586ad76E977EAb90c5D",
@@ -251,6 +259,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
 export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
   1: 137,
   5: 80001,
+  11155111: 80002,
 };
 
 /**
@@ -270,5 +279,5 @@ export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   420: 2, // Optimism Goerli
   421613: 3, // Arbitrum Goerli
   84531: 6, // Base Goerli
-  80001: 7, // Polygon Mumbai
+  80001: 7, // Polygon Amoy
 };
