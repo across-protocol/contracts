@@ -124,6 +124,6 @@
     "HubPool": { "address": "0x14224e63716aface30c9a417e0542281869f7d9e", "blockNumber": 4911835 },
     "SpokePool": { "address": "0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662", "blockNumber": 5288470 },
     "PolygonTokenBridger": { "address": "0x4e3737679081c4D3029D88cA560918094f2e0284", "blockNumber": 5984560 },
-    "PolygonAdapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 }
+    "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 }
   }
 }
