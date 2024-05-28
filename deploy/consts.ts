@@ -115,13 +115,13 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     modeStandardBridge: "0xbC5C679879B2965296756CD959C3C739769995E2",
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
+    polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
     polygonFxRoot: "0x0E13EBEdDb8cf9f5987512d5E081FdC2F5b0991e",
     polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
-    l2WrappedMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
-    polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
-    matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
     polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
+    matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
+    l2WrappedMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
   },
 };
 
@@ -278,5 +278,6 @@ export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   420: 2, // Optimism Goerli
   421613: 3, // Arbitrum Goerli
   84531: 6, // Base Goerli
+  80001: 7, // Polygon Goerli
   80002: 7, // Polygon Amoy
 };
