@@ -52,16 +52,29 @@ library ERC7683Permit2Lib {
             "AcrossOrderData orderData)",
             ACROSS_ORDER_DATA_TYPE
         );
+    bytes internal constant PERMIT2_CROSS_CHAIN_ORDER_TYPE =
+        abi.encodePacked(
+            ACROSS_ORDER_DATA_TYPE,
+            "CrossChainOrder(",
+            "address settlerContract,",
+            "address swapper,",
+            "uint256 nonce,",
+            "uint32 originChainId,",
+            "uint32 initiateDeadline,",
+            "uint32 fillDeadline,",
+            "AcrossOrderData orderData)",
+            TOKEN_PERMISSIONS_TYPE
+        );
     bytes32 internal constant CROSS_CHAIN_ORDER_TYPE_HASH = keccak256(CROSS_CHAIN_ORDER_TYPE);
     string private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
     string internal constant PERMIT2_ORDER_TYPE =
-        string(abi.encodePacked("CrossChainOrder witness)", CROSS_CHAIN_ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
+        string(abi.encodePacked("CrossChainOrder witness)", PERMIT2_CROSS_CHAIN_ORDER_TYPE));
 
     // Hashes an order to get an order hash. Needed for permit2.
     function hashOrder(CrossChainOrder memory order, bytes32 orderDataHash) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     CROSS_CHAIN_ORDER_TYPE_HASH,
                     order.settlementContract,
                     order.swapper,
@@ -77,7 +90,7 @@ library ERC7683Permit2Lib {
     function hashOrderData(AcrossOrderData memory orderData) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     ACROSS_ORDER_DATA_TYPE_HASH,
                     orderData.inputToken,
                     orderData.inputAmount,
@@ -86,7 +99,7 @@ library ERC7683Permit2Lib {
                     orderData.destinationChainId,
                     orderData.recipient,
                     orderData.exclusivityDeadline,
-                    orderData.message
+                    keccak256(orderData.message)
                 )
             );
     }
