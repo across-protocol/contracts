@@ -36,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         "0xf7a70056",
       ],
       TOKEN_SYMBOLS_MAP[chainId === 8453 ? "USDbC" : "USDC.e"].addresses[chainId],
-      TOKEN_SYMBOLS_MAP._USDC.addresses[chainId],
+      TOKEN_SYMBOLS_MAP.USDC.addresses[chainId],
     ],
   });
 };
