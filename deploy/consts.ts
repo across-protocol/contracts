@@ -267,6 +267,7 @@ export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   137: 7, // Polygon
   // testnets
   5: 0, // Goerli
+  11155111: 0, // Eth Sepolia
   420: 2, // Optimism Goerli
   421613: 3, // Arbitrum Goerli
   84531: 6, // Base Goerli
