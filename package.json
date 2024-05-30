@@ -1,6 +1,6 @@
 {
-  "name": "@across-protocol/contracts-v2",
-  "version": "2.5.8",
+  "name": "@across-protocol/contracts",
+  "version": "3.0.0",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {

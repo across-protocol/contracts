@@ -24,7 +24,7 @@ let zkSync: FakeContract, zkSyncErc20Bridge: FakeContract;
 
 const zkSyncChainId = 324;
 
-// TODO: Grab the following from relayer-v2/CONTRACT_ADDRESSES dictionary?
+// TODO: Grab the following from relayer/CONTRACT_ADDRESSES dictionary?
 const zkSyncAbi = [
   {
     inputs: [
