@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants-v2";
+import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { L2_ADDRESS_MAP } from "./consts";
