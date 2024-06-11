@@ -14,6 +14,11 @@ contract MultiCallerUpgradeable {
         bytes returnData;
     }
 
+    /**
+     * @dev A call to an address target failed. The target may have reverted.
+     */
+    error FailedInnerCall();
+
     function _validateMulticallData(bytes[] calldata data) internal virtual {
         // no-op
     }
@@ -38,13 +43,7 @@ contract MultiCallerUpgradeable {
             //slither-disable-end low-level-calls
 
             if (!success) {
-                // Next 5 lines from https://ethereum.stackexchange.com/a/83577
-                if (result.length < 68) revert();
-                //slither-disable-next-line assembly
-                assembly {
-                    result := add(result, 0x04)
-                }
-                revert(abi.decode(result, (string)));
+                _revert(result);
             }
 
             results[i] = result;
@@ -68,6 +67,24 @@ contract MultiCallerUpgradeable {
             //slither-disable-end low-level-calls
         }
         //slither-disable-end calls-loop
+    }
+
+    /**
+     * @dev Reverts with returndata if present. Otherwise reverts with {Errors.FailedCall}.
+     * @notice Copied from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/dbb6104ce834628e473d2173bbc9d47f81a9eec3/contracts/utils/Address.sol#L146
+     */
+    function _revert(bytes memory returndata) private pure {
+        // Look for revert reason and bubble it up if present
+        if (returndata.length > 0) {
+            // The easiest way to bubble the revert reason is using memory via assembly
+            /// @solidity memory-safe-assembly
+            assembly {
+                let returndata_size := mload(returndata)
+                revert(add(32, returndata), returndata_size)
+            }
+        } else {
+            revert FailedInnerCall();
+        }
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
