@@ -27,24 +27,14 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
     // This is a somewhat arbitrary conversion, but order creators need some way to precompute the quote timestamp.
     uint256 public immutable QUOTE_BEFORE_DEADLINE;
 
-    // The maximum offset that can be added to the timestamp that a deposit is mined to get the exclusivityDeadline.
-    // Set this lower to protect depositors from fillers setting this too high.
-    uint256 public immutable MAX_EXCLUSIVITY_DEADLINE_OFFSET;
-
     /**
      * @notice Construct the Permit2Depositor.
      * @param _permit2 Permit2 contract
      * @param _quoteBeforeDeadline quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
-     * @param _maxExclusivityDeadlineOffset The maximum offset that can be added to the timestamp that a deposit is mined to get the exclusivityDeadline.
      */
-    constructor(
-        IPermit2 _permit2,
-        uint256 _quoteBeforeDeadline,
-        uint256 _maxExclusivityDeadlineOffset
-    ) {
+    constructor(IPermit2 _permit2, uint256 _quoteBeforeDeadline) {
         PERMIT2 = _permit2;
         QUOTE_BEFORE_DEADLINE = _quoteBeforeDeadline;
-        MAX_EXCLUSIVITY_DEADLINE_OFFSET = _maxExclusivityDeadlineOffset;
     }
 
     /**
@@ -231,9 +221,8 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
     constructor(
         V3SpokePoolInterface _spokePool,
         IPermit2 _permit2,
-        uint256 _quoteBeforeDeadline,
-        uint256 _maxExclusivityDeadlineOffset
-    ) ERC7683OrderDepositor(_permit2, _quoteBeforeDeadline, _maxExclusivityDeadlineOffset) {
+        uint256 _quoteBeforeDeadline
+    ) ERC7683OrderDepositor(_permit2, _quoteBeforeDeadline) {
         SPOKE_POOL = _spokePool;
     }
 
