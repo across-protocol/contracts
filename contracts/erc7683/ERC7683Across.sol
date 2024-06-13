@@ -77,7 +77,7 @@ library ERC7683Permit2Lib {
     function hashOrderData(AcrossOrderData memory orderData) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     ACROSS_ORDER_DATA_TYPE_HASH,
                     orderData.inputToken,
                     orderData.inputAmount,
