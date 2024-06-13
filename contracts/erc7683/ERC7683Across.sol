@@ -61,7 +61,7 @@ library ERC7683Permit2Lib {
     function hashOrder(CrossChainOrder memory order, bytes32 orderDataHash) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     CROSS_CHAIN_ORDER_TYPE_HASH,
                     order.settlementContract,
                     order.swapper,
@@ -86,7 +86,7 @@ library ERC7683Permit2Lib {
                     orderData.destinationChainId,
                     orderData.recipient,
                     orderData.exclusivityDeadline,
-                    orderData.message
+                    keccak256(orderData.message)
                 )
             );
     }
