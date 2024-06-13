@@ -36,6 +36,7 @@ interface IBlast {
  * @notice Blast Spoke pool.
  */
 contract Blast_SpokePool is Ovm_SpokePool {
+    using SafeERC20 for IERC20;
     // This is the yield-accruing stablecoin on Blast that USDC/DAI/USDT all bridge into. It can be withdrawn
     // from L2 into DAI.
     address public immutable USDB; // 0x4300000000000000000000000000000000000003 on blast mainnet.
@@ -130,6 +131,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
         }
         // If the token is USDB then use the L2BlastBridge
         if (l2TokenAddress == USDB) {
+            IERC20(l2TokenAddress).safeIncreaseAllowance(L2_BLAST_BRIDGE, amountToReturn);
             IL2ERC20Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
