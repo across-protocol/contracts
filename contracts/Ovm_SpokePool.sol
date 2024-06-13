@@ -50,12 +50,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // replaced by the above constant.
     address private __deprecated_messenger;
 
-    // Address of custom bridge used to bridge Synthetix-related assets like SNX.
-    address private constant SYNTHETIX_BRIDGE = 0x136b1EC699c62b0606854056f02dC7Bb80482d63;
-
-    // Address of SNX ERC20
-    address private constant SNX = 0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4;
-
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
     // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
     mapping(address => address) public tokenBridges;
@@ -159,14 +153,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
-        }
-        // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
-        else if (l2TokenAddress == SNX)
-            SynthetixBridgeToBase(SYNTHETIX_BRIDGE).withdrawTo(
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                amountToReturn // _amount.
-            );
-        else
+        } else
             IL2ERC20Bridge(
                 tokenBridges[l2TokenAddress] == address(0)
                     ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
