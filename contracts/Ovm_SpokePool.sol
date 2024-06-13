@@ -153,7 +153,12 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
-        } else
+        }
+        // Note we'll always use withdrawTo instead of bridgeERC20To here because we can assume
+        // we'll only bridge back L2 tokens that are "non-native", i.e. they have a canonical L1 token
+        // that maps to this L2. If we wanted to bridge "native L2" tokens we'd need to call
+        // bridgeERC20To and give allowance to the tokenBridge to spend l2Token from this contract.
+        else
             IL2ERC20Bridge(
                 tokenBridges[l2TokenAddress] == address(0)
                     ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
