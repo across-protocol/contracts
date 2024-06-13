@@ -81,7 +81,16 @@ abstract contract CircleCCTPAdapter {
     function _transferUsdc(address to, uint256 amount) internal {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
-        // Submit the amount to be transferred to bridged via the TokenMessenger
-        cctpTokenMessenger.depositForBurn(amount, recipientCircleDomainId, _addressToBytes32(to), address(usdcToken));
+        // Submit the amount to be transferred to bridged via the TokenMessenger.
+        // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
+        ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();
+        uint256 burnLimit = cctpMinter.burnLimitsPerMessage(address(usdcToken));
+        uint256 remainingAmount = amount;
+        bytes32 recipient = _addressToBytes32(to);
+        while (remainingAmount > 0) {
+            uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
+            cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, recipient, address(usdcToken));
+            remainingAmount -= partAmount;
+        }
     }
 }

@@ -17,6 +17,11 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
     baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    l1BlastBridge: "0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115",
+    blastCrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
+    blastStandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
+    l1Usdb: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    dai: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -26,6 +31,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
     scrollGasPriceOracle: "0x987e300fDfb06093859358522a79098848C33852",
+    modeCrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
+    modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -104,15 +111,17 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
+    modeCrossDomainMessenger: "0xc19a60d9E8C27B9A43527c3283B4dd8eDC8bE15C",
+    modeStandardBridge: "0xbC5C679879B2965296756CD959C3C739769995E2",
 
-    // More information is needed to verify these addresses:
-    polygonRootChainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
-    polygonFxRoot: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2",
-    polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
-    polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
-    polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
+    // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
+    polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
+    polygonFxRoot: "0x0E13EBEdDb8cf9f5987512d5E081FdC2F5b0991e",
+    polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
+    polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
+    polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
     matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
-    l2WrappedMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    l2WrappedMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
   },
 };
 
@@ -141,6 +150,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
     cctpTokenMessenger: "0x19330d10D9Cc8751218eaf51E8885D058642E08A",
     cctpMessageTransmitter: "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
+    uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   137: {
     wMatic: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
@@ -148,6 +159,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
     cctpTokenMessenger: "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",
     cctpMessageTransmitter: "0xF3be9355363857F3e001be68856A2f96b4C39Ba9",
+    uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   80001: {
     wMatic: "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
@@ -156,6 +169,13 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0xe09A679F56207EF33F5b9d8fb4499Ec00792eA73",
   },
+  80002: {
+    wMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
+    fxChild: "0xE5930336866d0388f0f745A2d9207C7781047C0f",
+    l2Usdc: "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582",
+    cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+  },
   280: {
     l2Weth: "0x20b28B1e4665FFf290650586ad76E977EAb90c5D",
     zkErc20Bridge: "0x00ff932A6d70E2B8f1Eb4919e1e09C1923E7e57b",
@@ -163,11 +183,14 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   324: {
     l2Weth: "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
   },
   10: {
     l2Usdc: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
     cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",
     cctpMessageTransmitter: "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
+    uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   420: {
     l2Usdc: "0xe05606174bac4A6364B31bd0eCA4bf4dD368f8C6",
@@ -178,11 +201,17 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+    uniswapV3SwapRouter: "0xd8866E76441df243fc98B892362Fc6264dC3ca80", // Mock_UniswapV3SwapRouter.sol
+  },
+  81457: {
+    usdb: "0x4300000000000000000000000000000000000003",
   },
   8453: {
     l2Usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     cctpTokenMessenger: "0x1682Ae6375C4E4A97e4B583BC394c861A46D8962",
     cctpMessageTransmitter: "0xAD09780d193884d503182aD4588450C416D6F9D4",
+    uniswapV3SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
+    "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   84531: {
     l2Usdc: "0xf175520c52418dfe19c8098071a252da48cd1c19",
@@ -193,6 +222,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+    uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
   },
   59144: {
     l2Weth: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
@@ -217,11 +247,18 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
+  919: {
+    l2Weth: "0x4200000000000000000000000000000000000006",
+  },
+  34443: {
+    l2Weth: "0x4200000000000000000000000000000000000006",
+  },
 };
 
 export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
   1: 137,
   5: 80001,
+  11155111: 80002,
 };
 
 /**
@@ -238,8 +275,10 @@ export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   137: 7, // Polygon
   // testnets
   5: 0, // Goerli
+  11155111: 0, // Eth Sepolia
   420: 2, // Optimism Goerli
   421613: 3, // Arbitrum Goerli
   84531: 6, // Base Goerli
-  80001: 7, // Polygon Mumbai
+  80001: 7, // Polygon Goerli
+  80002: 7, // Polygon Amoy
 };

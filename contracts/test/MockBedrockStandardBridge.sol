@@ -14,4 +14,15 @@ contract MockBedrockL2StandardBridge is IL2ERC20Bridge {
     ) external payable {
         // do nothing
     }
+
+    function bridgeERC20To(
+        address _localToken,
+        address _remoteToken,
+        address _to,
+        uint256 _amount,
+        uint256 _minGasLimit,
+        bytes calldata _extraData
+    ) external {
+        // do nothing
+    }
 }

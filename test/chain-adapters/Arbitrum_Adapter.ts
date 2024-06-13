@@ -15,7 +15,7 @@ import {
   randomAddress,
   createFakeFromABI,
 } from "../../utils/utils";
-import { CCTPTokenMessengerInterface } from "../../utils/abis";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../utils/abis";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../deploy/consts";
@@ -30,7 +30,10 @@ let hubPool: Contract,
 let l2Weth: string, l2Dai: string, gatewayAddress: string, l2Usdc: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress;
 let liquidityProvider: SignerWithAddress, refundAddress: SignerWithAddress;
-let l1ERC20GatewayRouter: FakeContract, l1Inbox: FakeContract, cctpMessenger: FakeContract;
+let l1ERC20GatewayRouter: FakeContract,
+  l1Inbox: FakeContract,
+  cctpMessenger: FakeContract,
+  cctpTokenMinter: FakeContract;
 
 const arbitrumChainId = 42161;
 
@@ -49,6 +52,9 @@ describe("Arbitrum Chain Adapter", function () {
     }
 
     cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    cctpMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
     l1Inbox = await createFake("Inbox");
     l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
     gatewayAddress = randomAddress();
@@ -153,6 +159,67 @@ describe("Arbitrum Chain Adapter", function () {
     expect(cctpMessenger.depositForBurn).to.have.been.calledOnce;
     expect(cctpMessenger.depositForBurn).to.have.been.calledWith(
       ethers.BigNumber.from(tokensSendToL2),
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+  });
+  it("Splits USDC into parts to stay under per-message limit when attempting to bridge USDC", async function () {
+    const internalChainId = arbitrumChainId;
+    // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
+    // and check that at it's finalization the L2 bridge contracts are called as expected.
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdc.address, 1, internalChainId);
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+    // 1) Set limit below amount to send and where amount does not divide evenly into limit.
+    let newLimit = tokensSendToL2.div(2).sub(1);
+    cctpTokenMinter.burnLimitsPerMessage.returns(newLimit);
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // The correct functions should have been called on the bridge contracts
+    expect(cctpMessenger.depositForBurn).to.have.been.calledThrice;
+    expect(cctpMessenger.depositForBurn.atCall(0)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+    expect(cctpMessenger.depositForBurn.atCall(1)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+    expect(cctpMessenger.depositForBurn.atCall(2)).to.have.been.calledWith(
+      2, // each of the above calls left a remainder of 1
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+
+    // 2) Set limit below amount to send and where amount divides evenly into limit.
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+    newLimit = tokensSendToL2.div(2);
+    cctpTokenMinter.burnLimitsPerMessage.returns(newLimit);
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // 2 more calls added to prior 3.
+    expect(cctpMessenger.depositForBurn).to.have.callCount(5);
+    expect(cctpMessenger.depositForBurn.atCall(3)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+    expect(cctpMessenger.depositForBurn.atCall(4)).to.have.been.calledWith(
+      newLimit,
       CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address

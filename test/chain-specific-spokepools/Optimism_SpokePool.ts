@@ -11,7 +11,7 @@ import {
   seedContract,
   createFakeFromABI,
 } from "../../utils/utils";
-import { CCTPTokenMessengerInterface } from "../../utils/abis";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../utils/abis";
 import { hre } from "../../utils/utils.hre";
 
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -20,7 +20,10 @@ import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 let hubPool: Contract, optimismSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-let crossDomainMessenger: FakeContract, l2StandardBridge: FakeContract, l2CctpTokenMessenger: FakeContract;
+let crossDomainMessenger: FakeContract,
+  l2StandardBridge: FakeContract,
+  l2CctpTokenMessenger: FakeContract,
+  cctpTokenMinter: FakeContract;
 
 const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
 
@@ -33,6 +36,9 @@ describe("Optimism Spoke Pool", function () {
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
     l2StandardBridge = await createFake("MockBedrockL2StandardBridge", "0x4200000000000000000000000000000000000010");
     l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",

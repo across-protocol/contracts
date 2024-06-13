@@ -15,13 +15,13 @@ import {
 import { hre } from "../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
-import { CCTPTokenMessengerInterface } from "../../utils/abis";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../utils/abis";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string, crossDomainAliasAddress;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
-let l2GatewayRouter: FakeContract, l2CctpTokenMessenger: FakeContract;
+let l2GatewayRouter: FakeContract, l2CctpTokenMessenger: FakeContract, cctpTokenMinter: FakeContract;
 
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
@@ -36,6 +36,9 @@ describe("Arbitrum Spoke Pool", function () {
 
     l2GatewayRouter = await createFake("L2GatewayRouter");
     l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),

@@ -47,4 +47,30 @@ interface ITokenMessenger {
         bytes32 mintRecipient,
         address burnToken
     ) external returns (uint64 _nonce);
+
+    /**
+     * @notice Minter responsible for minting and burning tokens on the local domain
+     * @dev A TokenMessenger stores a TokenMinter contract which extends the TokenController contract.
+     * https://github.com/circlefin/evm-cctp-contracts/blob/817397db0a12963accc08ff86065491577bbc0e5/src/TokenMessenger.sol#L110
+     * @return minter Token Minter contract.
+     */
+    function localMinter() external view returns (ITokenMinter minter);
+}
+
+/**
+ * A TokenMessenger stores a TokenMinter contract which extends the TokenController contract. The TokenController
+ * contract has a burnLimitsPerMessage public mapping which can be queried to find the per-message burn limit
+ * for a given token:
+ * https://github.com/circlefin/evm-cctp-contracts/blob/817397db0a12963accc08ff86065491577bbc0e5/src/TokenMinter.sol#L33
+ * https://github.com/circlefin/evm-cctp-contracts/blob/817397db0a12963accc08ff86065491577bbc0e5/src/roles/TokenController.sol#L69C40-L69C60
+ *
+ */
+interface ITokenMinter {
+    /**
+     * @notice Supported burnable tokens on the local domain
+     * local token (address) => maximum burn amounts per message
+     * @param token address of token contract
+     * @return burnLimit maximum burn amount per message for token
+     */
+    function burnLimitsPerMessage(address token) external view returns (uint256);
 }
