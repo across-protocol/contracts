@@ -8,11 +8,6 @@ import "./libraries/CircleCCTPAdapter.sol";
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
-// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
-interface SynthetixBridgeToBase {
-    function withdrawTo(address to, uint256 amount) external;
-}
-
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
 interface IL2ERC20Bridge {
     function withdrawTo(
