@@ -46,7 +46,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     address private __deprecated_messenger;
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
-    // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
+    // to support non-standard ERC20 tokens on Optimism, such as DAI, which uses a custom bridge.
     mapping(address => address) public tokenBridges;
 
     event SetL1Gas(uint32 indexed newL1Gas);
