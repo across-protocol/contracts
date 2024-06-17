@@ -176,9 +176,15 @@
     },
     {
       "contract": "contracts/Mode_SpokePool.sol:Mode_SpokePool",
-      "label": "__gap",
+      "label": "remoteL1Tokens",
       "offset": 0,
       "slot": "3165"
+    },
+    {
+      "contract": "contracts/Mode_SpokePool.sol:Mode_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "3166"
     }
   ]
 }
