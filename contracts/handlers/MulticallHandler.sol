@@ -77,7 +77,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
 
     function attemptCalls(Call[] memory calls) external onlySelf {
         uint256 length = calls.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; ++i) {
             Call memory call = calls[i];
             (bool success, ) = call.target.call{ value: call.value }(call.callData);
             if (!success) revert CallReverted(i, calls);
