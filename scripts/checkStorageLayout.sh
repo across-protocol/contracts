@@ -4,7 +4,12 @@ CONTRACTS=("Arbitrum_SpokePool" "Optimism_SpokePool" "Polygon_SpokePool" "Linea_
 if [[ "$1" == "--overwrite" ]]; then
     for CONTRACT in "${CONTRACTS[@]}"; do
         echo "Overwrite flag detected. Creating new storage layout snapshot of the $CONTRACT contract"
-        forge inspect $CONTRACT storagelayout > ./storage-layouts/$CONTRACT.json
+        forge inspect $CONTRACT storagelayout > ./storage-layouts/temp.$CONTRACT.json
+        # Delete any astId keys from the file, which seem to change every time the bytecode changes
+        # and the types object which also contains astId changes. We only care about the size and relative
+        # location of state variable slots.
+        jq 'del(.storage[] | .astId)' ./storage-layouts/temp.$CONTRACT.json | jq 'del(.types)' > ./storage-layouts/$CONTRACT.json
+        rm ./storage-layouts/temp.$CONTRACT.json
         echo "✅ 'forge inspect' saved new $CONTRACT storage layout at './storage-layouts/$CONTRACT.json'."
     done
     exit 0

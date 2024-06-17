@@ -1,7 +1,6 @@
 {
   "storage": [
     {
-      "astId": 65627,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "_initialized",
       "offset": 0,
@@ -9,7 +8,6 @@
       "type": "t_uint8"
     },
     {
-      "astId": 65630,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "_initializing",
       "offset": 1,
@@ -17,7 +15,6 @@
       "type": "t_bool"
     },
     {
-      "astId": 65609,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -25,7 +22,6 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 65925,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -33,7 +29,6 @@
       "type": "t_array(t_uint256)50_storage"
     },
     {
-      "astId": 65941,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "_status",
       "offset": 0,
@@ -41,7 +36,6 @@
       "type": "t_uint256"
     },
     {
-      "astId": 66010,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -49,7 +43,6 @@
       "type": "t_array(t_uint256)49_storage"
     },
     {
-      "astId": 18041,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -57,7 +50,6 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 17773,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "_HASHED_NAME",
       "offset": 0,
@@ -65,7 +57,6 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 17775,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "_HASHED_VERSION",
       "offset": 0,
@@ -73,7 +64,6 @@
       "type": "t_bytes32"
     },
     {
-      "astId": 17874,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -81,7 +71,6 @@
       "type": "t_array(t_uint256)1000_storage"
     },
     {
-      "astId": 5938,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "crossDomainAdmin",
       "offset": 0,
@@ -89,7 +78,6 @@
       "type": "t_address"
     },
     {
-      "astId": 5940,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "hubPool",
       "offset": 0,
@@ -97,15 +85,13 @@
       "type": "t_address"
     },
     {
-      "astId": 5943,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "DEPRECATED_wrappedNativeToken",
       "offset": 0,
       "slot": "2155",
-      "type": "t_contract(WETH9Interface)13511"
+      "type": "t_contract(WETH9Interface)8655"
     },
     {
-      "astId": 5945,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "DEPRECATED_depositQuoteTimeBuffer",
       "offset": 20,
@@ -113,7 +99,6 @@
       "type": "t_uint32"
     },
     {
-      "astId": 5947,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "numberOfDeposits",
       "offset": 24,
@@ -121,7 +106,6 @@
       "type": "t_uint32"
     },
     {
-      "astId": 5949,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "pausedFills",
       "offset": 28,
@@ -129,7 +113,6 @@
       "type": "t_bool"
     },
     {
-      "astId": 5951,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "pausedDeposits",
       "offset": 29,
@@ -137,15 +120,13 @@
       "type": "t_bool"
     },
     {
-      "astId": 5955,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "rootBundles",
       "offset": 0,
       "slot": "2156",
-      "type": "t_array(t_struct(RootBundle)14088_storage)dyn_storage"
+      "type": "t_array(t_struct(RootBundle)9232_storage)dyn_storage"
     },
     {
-      "astId": 5961,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "enabledDepositRoutes",
       "offset": 0,
@@ -153,7 +134,6 @@
       "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))"
     },
     {
-      "astId": 5965,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "DEPRECATED_relayFills",
       "offset": 0,
@@ -161,7 +141,6 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 5969,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "DEPRECATED_fillCounter",
       "offset": 0,
@@ -169,7 +148,6 @@
       "type": "t_mapping(t_address,t_uint256)"
     },
     {
-      "astId": 5973,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "DEPRECATED_depositCounter",
       "offset": 0,
@@ -177,7 +155,6 @@
       "type": "t_mapping(t_address,t_uint256)"
     },
     {
-      "astId": 5977,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "DEPRECATED_refundsRequested",
       "offset": 0,
@@ -185,7 +162,6 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 5981,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "fillStatuses",
       "offset": 0,
@@ -193,7 +169,6 @@
       "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
-      "astId": 7932,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "__gap",
       "offset": 0,
@@ -201,7 +176,6 @@
       "type": "t_array(t_uint256)999_storage"
     },
     {
-      "astId": 8661,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "l2Eth",
       "offset": 0,
@@ -209,150 +183,11 @@
       "type": "t_address"
     },
     {
-      "astId": 8664,
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
       "label": "zkErc20Bridge",
       "offset": 0,
       "slot": "3163",
-      "type": "t_contract(ZkBridgeLike)8650"
+      "type": "t_contract(ZkBridgeLike)7938"
     }
-  ],
-  "types": {
-    "t_address": {
-      "encoding": "inplace",
-      "label": "address",
-      "numberOfBytes": "20"
-    },
-    "t_array(t_struct(RootBundle)14088_storage)dyn_storage": {
-      "encoding": "dynamic_array",
-      "label": "struct SpokePoolInterface.RootBundle[]",
-      "numberOfBytes": "32",
-      "base": "t_struct(RootBundle)14088_storage"
-    },
-    "t_array(t_uint256)1000_storage": {
-      "encoding": "inplace",
-      "label": "uint256[1000]",
-      "numberOfBytes": "32000",
-      "base": "t_uint256"
-    },
-    "t_array(t_uint256)49_storage": {
-      "encoding": "inplace",
-      "label": "uint256[49]",
-      "numberOfBytes": "1568",
-      "base": "t_uint256"
-    },
-    "t_array(t_uint256)50_storage": {
-      "encoding": "inplace",
-      "label": "uint256[50]",
-      "numberOfBytes": "1600",
-      "base": "t_uint256"
-    },
-    "t_array(t_uint256)999_storage": {
-      "encoding": "inplace",
-      "label": "uint256[999]",
-      "numberOfBytes": "31968",
-      "base": "t_uint256"
-    },
-    "t_bool": {
-      "encoding": "inplace",
-      "label": "bool",
-      "numberOfBytes": "1"
-    },
-    "t_bytes32": {
-      "encoding": "inplace",
-      "label": "bytes32",
-      "numberOfBytes": "32"
-    },
-    "t_contract(WETH9Interface)13511": {
-      "encoding": "inplace",
-      "label": "contract WETH9Interface",
-      "numberOfBytes": "20"
-    },
-    "t_contract(ZkBridgeLike)8650": {
-      "encoding": "inplace",
-      "label": "contract ZkBridgeLike",
-      "numberOfBytes": "20"
-    },
-    "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
-      "encoding": "mapping",
-      "key": "t_address",
-      "label": "mapping(address => mapping(uint256 => bool))",
-      "numberOfBytes": "32",
-      "value": "t_mapping(t_uint256,t_bool)"
-    },
-    "t_mapping(t_address,t_uint256)": {
-      "encoding": "mapping",
-      "key": "t_address",
-      "label": "mapping(address => uint256)",
-      "numberOfBytes": "32",
-      "value": "t_uint256"
-    },
-    "t_mapping(t_bytes32,t_uint256)": {
-      "encoding": "mapping",
-      "key": "t_bytes32",
-      "label": "mapping(bytes32 => uint256)",
-      "numberOfBytes": "32",
-      "value": "t_uint256"
-    },
-    "t_mapping(t_uint256,t_bool)": {
-      "encoding": "mapping",
-      "key": "t_uint256",
-      "label": "mapping(uint256 => bool)",
-      "numberOfBytes": "32",
-      "value": "t_bool"
-    },
-    "t_mapping(t_uint256,t_uint256)": {
-      "encoding": "mapping",
-      "key": "t_uint256",
-      "label": "mapping(uint256 => uint256)",
-      "numberOfBytes": "32",
-      "value": "t_uint256"
-    },
-    "t_struct(RootBundle)14088_storage": {
-      "encoding": "inplace",
-      "label": "struct SpokePoolInterface.RootBundle",
-      "numberOfBytes": "96",
-      "members": [
-        {
-          "astId": 14081,
-          "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
-          "label": "slowRelayRoot",
-          "offset": 0,
-          "slot": "0",
-          "type": "t_bytes32"
-        },
-        {
-          "astId": 14083,
-          "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
-          "label": "relayerRefundRoot",
-          "offset": 0,
-          "slot": "1",
-          "type": "t_bytes32"
-        },
-        {
-          "astId": 14087,
-          "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
-          "label": "claimedBitmap",
-          "offset": 0,
-          "slot": "2",
-          "type": "t_mapping(t_uint256,t_uint256)"
-        }
-      ]
-    },
-    "t_uint256": {
-      "encoding": "inplace",
-      "label": "uint256",
-      "numberOfBytes": "32"
-    },
-    "t_uint32": {
-      "encoding": "inplace",
-      "label": "uint32",
-      "numberOfBytes": "4"
-    },
-    "t_uint8": {
-      "encoding": "inplace",
-      "label": "uint8",
-      "numberOfBytes": "1"
-    }
-  }
+  ]
 }
