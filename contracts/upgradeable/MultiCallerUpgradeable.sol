@@ -14,11 +14,6 @@ contract MultiCallerUpgradeable {
         bytes returnData;
     }
 
-    /**
-     * @dev A call to an address target failed. The target may have reverted.
-     */
-    error FailedInnerCall();
-
     function _validateMulticallData(bytes[] calldata data) internal virtual {
         // no-op
     }
@@ -52,6 +47,7 @@ contract MultiCallerUpgradeable {
                 }
                 // Next 5 lines from https://ethereum.stackexchange.com/a/83577
                 if (result.length < 68) revert();
+                //slither-disable-next-line assembly
                 assembly {
                     result := add(result, 0x04)
                 }
