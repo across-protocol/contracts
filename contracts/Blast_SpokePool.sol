@@ -6,7 +6,7 @@ import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
 
 // USDB and WETH on Blast accrue yield that can be claimed by any account holding the token. So for the length of
-// time that the SpokePool holds on to these assets, it can can claim interest.
+// time that the SpokePool holds on to these assets, it can claim interest.
 interface IERC20Rebasing {
     enum YieldMode {
         AUTOMATIC,
