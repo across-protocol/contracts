@@ -79,7 +79,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
             // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.initiateDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
-            SafeCast.toUint32(getCurrentTime()) + acrossOrderData.exclusivityDeadlineOffset,
+            getCurrentTime() + acrossOrderData.exclusivityDeadlineOffset,
             acrossOrderData.message
         );
     }
@@ -160,8 +160,8 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
      * @notice Gets the current time.
      * @return uint for the current timestamp.
      */
-    function getCurrentTime() public view virtual returns (uint256) {
-        return block.timestamp; // solhint-disable-line not-rely-on-time
+    function getCurrentTime() public view virtual returns (uint32) {
+        return SafeCast.Uint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
 
     function _processPermit2Order(
