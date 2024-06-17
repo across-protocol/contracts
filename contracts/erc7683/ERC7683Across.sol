@@ -12,7 +12,7 @@ struct AcrossOrderData {
     uint256 outputAmount;
     uint32 destinationChainId;
     address recipient;
-    uint32 exclusivityDeadlineOffset;
+    uint32 exclusivityDeadline;
     bytes message;
 }
 
@@ -34,7 +34,7 @@ library ERC7683Permit2Lib {
             "uint256 outputAmount,",
             "uint32 destinationChainId,",
             "address recipient,",
-            "uint32 exclusivityDeadlineOffset,",
+            "uint32 exclusivityDeadline,",
             "bytes message)"
         );
 
@@ -61,7 +61,7 @@ library ERC7683Permit2Lib {
     function hashOrder(CrossChainOrder memory order, bytes32 orderDataHash) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     CROSS_CHAIN_ORDER_TYPE_HASH,
                     order.settlementContract,
                     order.swapper,
@@ -77,7 +77,7 @@ library ERC7683Permit2Lib {
     function hashOrderData(AcrossOrderData memory orderData) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     ACROSS_ORDER_DATA_TYPE_HASH,
                     orderData.inputToken,
                     orderData.inputAmount,
@@ -85,8 +85,8 @@ library ERC7683Permit2Lib {
                     orderData.outputAmount,
                     orderData.destinationChainId,
                     orderData.recipient,
-                    orderData.exclusivityDeadlineOffset,
-                    orderData.message
+                    orderData.exclusivityDeadline,
+                    keccak256(orderData.message)
                 )
             );
     }
