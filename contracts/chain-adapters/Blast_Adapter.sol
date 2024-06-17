@@ -74,7 +74,10 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
         uint32 l2GasLimit
-    ) CrossDomainEnabled(_crossDomainMessenger) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base) {
+    )
+        CrossDomainEnabled(_crossDomainMessenger)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.UNINTIALIZED)
+    {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
         L1_BLAST_BRIDGE = l1BlastBridge;
