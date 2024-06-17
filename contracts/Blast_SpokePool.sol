@@ -18,7 +18,7 @@ interface IERC20Rebasing {
 
     function getClaimableAmount(address account) external view returns (uint256);
 
-    function configure(YieldMode mode) external returns (uint256);
+    function configure(YieldMode yieldMode) external returns (uint256);
 }
 
 // Interface for blast yield contract on L2.
@@ -29,7 +29,7 @@ interface IBlast {
 
     function configureClaimableGas() external;
 
-    function claimMaxGas(address contractAddress, address recipient) external returns (uint256);
+    function claimMaxGas(address contractAddress, address recipientOfGas) external returns (uint256);
 }
 
 /**
