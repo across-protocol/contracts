@@ -161,7 +161,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
      * @return uint for the current timestamp.
      */
     function getCurrentTime() public view virtual returns (uint32) {
-        return SafeCast.Uint32(block.timestamp); // solhint-disable-line not-rely-on-time
+        return SafeCast.toUint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
 
     function _processPermit2Order(
