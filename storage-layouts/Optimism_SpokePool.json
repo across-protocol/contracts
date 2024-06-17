@@ -176,9 +176,15 @@
     },
     {
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
-      "label": "__gap",
+      "label": "remoteL1Tokens",
       "offset": 0,
       "slot": "3165"
+    },
+    {
+      "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "3166"
     }
   ]
 }
