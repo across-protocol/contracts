@@ -83,8 +83,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     }
 
     /**
-     * @notice Send cross-chain message to target on Base.
-     * @param target Contract on Base that will receive message.
+     * @notice Send cross-chain message to target on Blast.
+     * @param target Contract on Blast that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -108,7 +108,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         // If token can be bridged into yield-ing version of ERC20 on L2 side, then use Blast Bridge, otherwise
         // use standard bridge.
 
-        // If the l1Token is weth then unwrap it to ETH then send the ETH to the blast bridge.
+        // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             // @dev: we can use the standard or the blast bridge to deposit ETH here:

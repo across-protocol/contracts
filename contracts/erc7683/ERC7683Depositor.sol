@@ -23,7 +23,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
     // Permit2 contract for this network.
     IPermit2 public immutable PERMIT2;
 
-    // quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
+    // QUOTE_BEFORE_DEADLINE is subtracted from the deadline to get the quote timestamp.
     // This is a somewhat arbitrary conversion, but order creators need some way to precompute the quote timestamp.
     uint256 public immutable QUOTE_BEFORE_DEADLINE;
 
