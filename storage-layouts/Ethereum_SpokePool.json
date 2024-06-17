@@ -1,172 +1,361 @@
 {
   "storage": [
     {
+      "astId": 59618,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "_initialized",
       "offset": 0,
-      "slot": "0"
+      "slot": "0",
+      "type": "t_uint8"
     },
     {
+      "astId": 59621,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "_initializing",
       "offset": 1,
-      "slot": "0"
+      "slot": "0",
+      "type": "t_bool"
     },
     {
+      "astId": 59600,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "1"
+      "slot": "1",
+      "type": "t_array(t_uint256)50_storage"
     },
     {
+      "astId": 59916,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "51"
+      "slot": "51",
+      "type": "t_array(t_uint256)50_storage"
     },
     {
+      "astId": 59932,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "_status",
       "offset": 0,
-      "slot": "101"
+      "slot": "101",
+      "type": "t_uint256"
     },
     {
+      "astId": 60001,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "102"
+      "slot": "102",
+      "type": "t_array(t_uint256)49_storage"
     },
     {
+      "astId": 12251,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "151"
+      "slot": "151",
+      "type": "t_array(t_uint256)1000_storage"
     },
     {
+      "astId": 11983,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "_HASHED_NAME",
       "offset": 0,
-      "slot": "1151"
+      "slot": "1151",
+      "type": "t_bytes32"
     },
     {
+      "astId": 11985,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "_HASHED_VERSION",
       "offset": 0,
-      "slot": "1152"
+      "slot": "1152",
+      "type": "t_bytes32"
     },
     {
+      "astId": 12084,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "1153"
+      "slot": "1153",
+      "type": "t_array(t_uint256)1000_storage"
     },
     {
+      "astId": 5706,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "crossDomainAdmin",
       "offset": 0,
-      "slot": "2153"
+      "slot": "2153",
+      "type": "t_address"
     },
     {
+      "astId": 5708,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "hubPool",
       "offset": 0,
-      "slot": "2154"
+      "slot": "2154",
+      "type": "t_address"
     },
     {
+      "astId": 5711,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "DEPRECATED_wrappedNativeToken",
       "offset": 0,
-      "slot": "2155"
+      "slot": "2155",
+      "type": "t_contract(WETH9Interface)9058"
     },
     {
+      "astId": 5713,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "DEPRECATED_depositQuoteTimeBuffer",
       "offset": 20,
-      "slot": "2155"
+      "slot": "2155",
+      "type": "t_uint32"
     },
     {
+      "astId": 5715,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "numberOfDeposits",
       "offset": 24,
-      "slot": "2155"
+      "slot": "2155",
+      "type": "t_uint32"
     },
     {
+      "astId": 5717,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "pausedFills",
       "offset": 28,
-      "slot": "2155"
+      "slot": "2155",
+      "type": "t_bool"
     },
     {
+      "astId": 5719,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "pausedDeposits",
       "offset": 29,
-      "slot": "2155"
+      "slot": "2155",
+      "type": "t_bool"
     },
     {
+      "astId": 5723,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "rootBundles",
       "offset": 0,
-      "slot": "2156"
+      "slot": "2156",
+      "type": "t_array(t_struct(RootBundle)9635_storage)dyn_storage"
     },
     {
+      "astId": 5729,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "enabledDepositRoutes",
       "offset": 0,
-      "slot": "2157"
+      "slot": "2157",
+      "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))"
     },
     {
+      "astId": 5733,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "DEPRECATED_relayFills",
       "offset": 0,
-      "slot": "2158"
+      "slot": "2158",
+      "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
+      "astId": 5737,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "DEPRECATED_fillCounter",
       "offset": 0,
-      "slot": "2159"
+      "slot": "2159",
+      "type": "t_mapping(t_address,t_uint256)"
     },
     {
+      "astId": 5741,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "DEPRECATED_depositCounter",
       "offset": 0,
-      "slot": "2160"
+      "slot": "2160",
+      "type": "t_mapping(t_address,t_uint256)"
     },
     {
+      "astId": 5745,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "DEPRECATED_refundsRequested",
       "offset": 0,
-      "slot": "2161"
+      "slot": "2161",
+      "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
+      "astId": 5749,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "fillStatuses",
       "offset": 0,
-      "slot": "2162"
+      "slot": "2162",
+      "type": "t_mapping(t_bytes32,t_uint256)"
     },
     {
+      "astId": 7650,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2163"
+      "slot": "2163",
+      "type": "t_array(t_uint256)999_storage"
     },
     {
+      "astId": 60872,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "3162"
+      "slot": "3162",
+      "type": "t_array(t_uint256)50_storage"
     },
     {
+      "astId": 59070,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "_owner",
       "offset": 0,
-      "slot": "3212"
+      "slot": "3212",
+      "type": "t_address"
     },
     {
+      "astId": 59190,
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "3213"
+      "slot": "3213",
+      "type": "t_array(t_uint256)49_storage"
     }
-  ]
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_array(t_struct(RootBundle)9635_storage)dyn_storage": {
+      "encoding": "dynamic_array",
+      "label": "struct SpokePoolInterface.RootBundle[]",
+      "numberOfBytes": "32",
+      "base": "t_struct(RootBundle)9635_storage"
+    },
+    "t_array(t_uint256)1000_storage": {
+      "encoding": "inplace",
+      "label": "uint256[1000]",
+      "numberOfBytes": "32000",
+      "base": "t_uint256"
+    },
+    "t_array(t_uint256)49_storage": {
+      "encoding": "inplace",
+      "label": "uint256[49]",
+      "numberOfBytes": "1568",
+      "base": "t_uint256"
+    },
+    "t_array(t_uint256)50_storage": {
+      "encoding": "inplace",
+      "label": "uint256[50]",
+      "numberOfBytes": "1600",
+      "base": "t_uint256"
+    },
+    "t_array(t_uint256)999_storage": {
+      "encoding": "inplace",
+      "label": "uint256[999]",
+      "numberOfBytes": "31968",
+      "base": "t_uint256"
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_contract(WETH9Interface)9058": {
+      "encoding": "inplace",
+      "label": "contract WETH9Interface",
+      "numberOfBytes": "20"
+    },
+    "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => mapping(uint256 => bool))",
+      "numberOfBytes": "32",
+      "value": "t_mapping(t_uint256,t_bool)"
+    },
+    "t_mapping(t_address,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_mapping(t_bytes32,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_mapping(t_uint256,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => bool)",
+      "numberOfBytes": "32",
+      "value": "t_bool"
+    },
+    "t_mapping(t_uint256,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_struct(RootBundle)9635_storage": {
+      "encoding": "inplace",
+      "label": "struct SpokePoolInterface.RootBundle",
+      "numberOfBytes": "96",
+      "members": [
+        {
+          "astId": 9628,
+          "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
+          "label": "slowRelayRoot",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_bytes32"
+        },
+        {
+          "astId": 9630,
+          "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
+          "label": "relayerRefundRoot",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_bytes32"
+        },
+        {
+          "astId": 9634,
+          "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
+          "label": "claimedBitmap",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        }
+      ]
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "t_uint32": {
+      "encoding": "inplace",
+      "label": "uint32",
+      "numberOfBytes": "4"
+    },
+    "t_uint8": {
+      "encoding": "inplace",
+      "label": "uint8",
+      "numberOfBytes": "1"
+    }
+  }
 }

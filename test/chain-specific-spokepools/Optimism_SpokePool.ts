@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
 import {
   ethers,
   expect,
@@ -129,15 +129,6 @@ describe("Optimism Spoke Pool", function () {
     expect((await optimismSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
   });
 
-  it("Only owner can set a remote L1 token", async function () {
-    expect(await optimismSpokePool.remoteL1Tokens(l2Dai)).to.equal(zeroAddress);
-    await expect(optimismSpokePool.setRemoteL1Token(l2Dai, rando.address)).to.be.reverted;
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).setRemoteL1Token(l2Dai, rando.address)).to.not
-      .be.reverted;
-    expect(await optimismSpokePool.remoteL1Tokens(l2Dai)).to.equal(rando.address);
-  });
-
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Dai,
@@ -150,29 +141,6 @@ describe("Optimism Spoke Pool", function () {
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Dai, hubPool.address, amountToReturn, 5000000, "0x");
-  });
-  it("If remote L1 token is set for native L2 token, then bridge calls bridgeERC20To instead of withdrawTo", async function () {
-    const { leaves, tree } = await constructSingleRelayerRefundTree(
-      dai.address,
-      await optimismSpokePool.callStatic.chainId()
-    );
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-
-    // If we set a remote L1 token for the native L2 token, then the bridge should call bridgeERC20To instead of withdrawTo
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setRemoteL1Token(dai.address, rando.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    await optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
-
-    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
-    expect(l2StandardBridge.bridgeERC20To).to.have.been.calledOnce;
-    expect(l2StandardBridge.bridgeERC20To).to.have.been.calledWith(
-      dai.address,
-      rando.address,
-      hubPool.address,
-      amountToReturn,
-      5000000,
-      "0x"
-    );
   });
   it("Bridge tokens to hub pool correctly calls an alternative L2 Gateway router", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
