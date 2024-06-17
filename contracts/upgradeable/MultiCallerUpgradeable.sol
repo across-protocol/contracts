@@ -30,7 +30,7 @@ contract MultiCallerUpgradeable {
         results = new bytes[](dataLength);
 
         //slither-disable-start calls-loop
-        for (uint256 i = 0; i < dataLength; i++) {
+        for (uint256 i = 0; i < dataLength; ++i) {
             // Typically, implementation contracts used in the upgradeable proxy pattern shouldn't call `delegatecall`
             // because it could allow a malicious actor to call this implementation contract directly (rather than
             // through a proxy contract) and then selfdestruct() the contract, thereby freezing the upgradeable
@@ -42,8 +42,20 @@ contract MultiCallerUpgradeable {
             (bool success, bytes memory result) = address(this).delegatecall(data[i]);
             //slither-disable-end low-level-calls
 
+            // Following if {..} block is from https://github.com/Uniswap/v4-periphery/blob/508277999222ee20207cd63efe50397760c2abe1/contracts/base/Multicall.sol
             if (!success) {
-                _revert(result);
+                // handle custom errors
+                if (result.length == 4) {
+                    assembly {
+                        revert(add(result, 0x20), mload(result))
+                    }
+                }
+                // Next 5 lines from https://ethereum.stackexchange.com/a/83577
+                if (result.length < 68) revert();
+                assembly {
+                    result := add(result, 0x04)
+                }
+                revert(abi.decode(result, (string)));
             }
 
             results[i] = result;
@@ -67,24 +79,6 @@ contract MultiCallerUpgradeable {
             //slither-disable-end low-level-calls
         }
         //slither-disable-end calls-loop
-    }
-
-    /**
-     * @dev Reverts with returndata if present. Otherwise reverts with {Errors.FailedCall}.
-     * @notice Copied from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/dbb6104ce834628e473d2173bbc9d47f81a9eec3/contracts/utils/Address.sol#L146
-     */
-    function _revert(bytes memory returndata) private pure {
-        // Look for revert reason and bubble it up if present
-        if (returndata.length > 0) {
-            // The easiest way to bubble the revert reason is using memory via assembly
-            /// @solidity memory-safe-assembly
-            assembly {
-                let returndata_size := mload(returndata)
-                revert(add(32, returndata), returndata_size)
-            }
-        } else {
-            revert FailedInnerCall();
-        }
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
