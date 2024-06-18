@@ -39,6 +39,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     // Errors
     error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
+    error InvalidCall(uint256 index, Call[] calls);
 
     modifier onlySelf() {
         _requireSelf();
@@ -79,6 +80,12 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         uint256 length = calls.length;
         for (uint256 i = 0; i < length; ++i) {
             Call memory call = calls[i];
+
+            // If we are calling an EOA with calldata, assume target was incorrectly specified and revert.
+            if (call.callData.length > 0 && call.target.code.length == 0) {
+                revert InvalidCall(i, calls);
+            }
+
             (bool success, ) = call.target.call{ value: call.value }(call.callData);
             if (!success) revert CallReverted(i, calls);
         }
