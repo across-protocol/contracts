@@ -6,7 +6,7 @@ import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
 
 // USDB and WETH on Blast accrue yield that can be claimed by any account holding the token. So for the length of
-// time that the SpokePool holds on to these assets, it can can claim interest.
+// time that the SpokePool holds on to these assets, it can claim interest.
 interface IERC20Rebasing {
     enum YieldMode {
         AUTOMATIC,
@@ -113,7 +113,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             emit YieldClaimed(YIELD_RECIPIENT, address(token), claimedAmount);
         }
 
-        // If sending WETH back, also claim any native yield and convert it to WETH.
+        // If sending WETH back, also claim any native yield and send it directly to the yield recipient.
         if (address(token) == address(wrappedNativeToken)) {
             uint256 nativeClaimAmount = BLAST_YIELD_CONTRACT.claimAllYield(address(this), YIELD_RECIPIENT);
             nativeClaimAmount += BLAST_YIELD_CONTRACT.claimMaxGas(address(this), YIELD_RECIPIENT);
