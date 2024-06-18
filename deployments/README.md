@@ -19,12 +19,14 @@
 | Mode Adapter        | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
+| MulticallHandler    | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://etherscan.io/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
 
 ## Optimism mainnet (10)
 
 | Contract Name      | Address                                                                                                                          |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | Optimism_SpokePool | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
+| MulticallHandler   | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://optimistic.etherscan.io/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
 
 ## Polygon mainnet(137)
 
@@ -32,33 +34,39 @@
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://polygonscan.com/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
 | Polygon_SpokePool   | [0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096](https://polygonscan.com/address/0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096) |
+| MulticallHandler    | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://polygonscan.com/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
 
 ## zkSync mainnet (324)
 
 | Contract Name    | Address                                                                                                                     |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | zkSync_SpokePool | [0xE0B015E54d54fc84a6cB9B666099c46adE9335FF](https://explorer.zksync.io/address/0xE0B015E54d54fc84a6cB9B666099c46adE9335FF) |
+| MulticallHandler | [0x863859ef502F0Ee9676626ED5B418037252eFeb2](https://explorer.zksync.io/address/0x863859ef502F0Ee9676626ED5B418037252eFeb2) |
 
 ## Arbitrum mainnet (42161)
 
 | Contract Name      | Address                                                                                                              |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | Arbitrum_SpokePool | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
+| MulticallHandler   | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://arbiscan.io/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
 
 ## Base mainnet (8453)
 
-| Contract Name  | Address                                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Base_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| Contract Name    | Address                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Base_SpokePool   | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://basescan.org/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
 
 ## Linea mainnet (59144)
 
-| Contract Name   | Address                                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Linea_SpokePool | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75) |
+| Contract Name    | Address                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Linea_SpokePool  | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75) |
+| MulticallHandler | [0x1015c58894961F4F7Dd7D68ba033e28Ed3ee1cDB](https://lineascan.build/address/0x1015c58894961F4F7Dd7D68ba033e28Ed3ee1cDB) |
 
 ## Mode mainnet (34443)
 
-| Contract Name  | Address                                                                                                              |
-| -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Mode_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://modescan.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| Contract Name    | Address                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Mode_SpokePool   | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://modescan.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://modescan.io/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |

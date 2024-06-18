@@ -324,8 +324,8 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      mode: process.env.MODE_ETHERSCAN_API_KEY!,
-      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
+      mode: process.env.ETHERSCAN_API_KEY!,
+      "mode-sepolia": process.env.ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
