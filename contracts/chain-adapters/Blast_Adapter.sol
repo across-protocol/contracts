@@ -63,20 +63,19 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param _crossDomainMessenger XDomainMessenger Blast system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger,
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
         uint32 l2GasLimit
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.UNINTIALIZED)
+        // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
+        CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINTIALIZED)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
