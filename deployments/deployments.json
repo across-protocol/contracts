@@ -119,6 +119,7 @@
   "421613": { "SpokePool": { "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5", "blockNumber": 30397192 } },
   "421614": { "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 12411026 } },
   "11155111": {
+    "MulticallHandler": { "address": "0xBB7adf2cd0A6EF8a1262c5bd22E24BBa5353dfa5", "blockNumber": 6135496 },
     "AcrossConfigStore": { "address": "0xB3De1e212B49e68f4a68b5993f31f63946FCA2a6", "blockNumber": 4968255 },
     "LPTokenFactory": { "address": "0xFB87Ac52Bac7ccF497b6053610A9c59B87a0cE7D", "blockNumber": 4911834 },
     "HubPool": { "address": "0x14224e63716aface30c9a417e0542281869f7d9e", "blockNumber": 4911835 },
