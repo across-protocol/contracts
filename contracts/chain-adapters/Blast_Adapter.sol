@@ -63,18 +63,20 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param _crossDomainMessenger XDomainMessenger Blast system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger,
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
         uint32 l2GasLimit
-    ) CrossDomainEnabled(_crossDomainMessenger) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base) {
+    )
+        CrossDomainEnabled(_crossDomainMessenger)
+        // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
+        CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINTIALIZED)
+    {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
         L1_BLAST_BRIDGE = l1BlastBridge;
@@ -83,8 +85,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     }
 
     /**
-     * @notice Send cross-chain message to target on Base.
-     * @param target Contract on Base that will receive message.
+     * @notice Send cross-chain message to target on Blast.
+     * @param target Contract on Blast that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -108,7 +110,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         // If token can be bridged into yield-ing version of ERC20 on L2 side, then use Blast Bridge, otherwise
         // use standard bridge.
 
-        // If the l1Token is weth then unwrap it to ETH then send the ETH to the blast bridge.
+        // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             // @dev: we can use the standard or the blast bridge to deposit ETH here:
@@ -117,7 +119,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         // Check if this token is DAI, then use the L1 Blast Bridge
         else if (l1Token == L1_DAI) {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_BLAST_BRIDGE), amount);
-            IL1ERC20Bridge(L1_BLAST_BRIDGE).bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
+            L1_BLAST_BRIDGE.bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
