@@ -1,4 +1,10 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
+import "../interfaces/V3SpokePoolInterface.sol";
+import "../external/interfaces/IPermit2.sol";
 
 /**
  * @notice ERC7683OrderDepositorExternal processes an external order type and translates it into an AcrossV3Deposit
