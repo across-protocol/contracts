@@ -8,11 +8,6 @@ import "./libraries/CircleCCTPAdapter.sol";
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
-// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
-interface SynthetixBridgeToBase {
-    function withdrawTo(address to, uint256 amount) external;
-}
-
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
 interface IL2ERC20Bridge {
     function withdrawTo(
@@ -52,7 +47,8 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     address private __deprecated_messenger;
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
-    // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
+    // to support non-standard ERC20 tokens on Optimism, such as DAI which uses a custom bridge with the same
+    // interface as the standard bridge.
     mapping(address => address) public tokenBridges;
 
     // Stores mapping of L2 tokens to L1 equivalent tokens. If a mapping is defined for a given L2 token, then
