@@ -43,7 +43,7 @@ library ERC7683Permit2Lib {
     bytes internal constant CROSS_CHAIN_ORDER_TYPE =
         abi.encodePacked(
             "CrossChainOrder(",
-            "address settlerContract,",
+            "address settlementContract,",
             "address swapper,",
             "uint256 nonce,",
             "uint32 originChainId,",
