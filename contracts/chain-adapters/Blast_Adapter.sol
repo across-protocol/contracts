@@ -119,7 +119,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         // Check if this token is DAI, then use the L1 Blast Bridge
         else if (l1Token == L1_DAI) {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_BLAST_BRIDGE), amount);
-            IL1ERC20Bridge(L1_BLAST_BRIDGE).bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
+            L1_BLAST_BRIDGE.bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
