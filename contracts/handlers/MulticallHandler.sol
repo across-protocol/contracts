@@ -31,10 +31,10 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     }
 
     // Emitted when one of the calls fails. Note: all calls are reverted in this case.
-    event CallsFailed(Call[] calls, address fallbackRecipient);
+    event CallsFailed(Call[] calls, address indexed fallbackRecipient);
 
     // Emitted when there are leftover tokens that are sent to the fallbackRecipient.
-    event DrainedTokens(address recipient, address token, uint256 amount);
+    event DrainedTokens(address indexed recipient, address indexed token, uint256 indexed amount);
 
     // Errors
     error CallReverted(uint256 index, Call[] calls);
