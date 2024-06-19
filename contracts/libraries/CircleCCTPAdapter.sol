@@ -16,6 +16,11 @@ library CircleDomainIds {
     uint32 public constant UNINTIALIZED = type(uint32).max;
 }
 
+/**
+ * @notice Facilitate bridging USDC via Circle's CCTP.
+ * @dev This contract is intended to be inherited by other chain-specific adapters and spoke pools.
+ * @custom:security-contact bugs@umaproject.org
+ */
 abstract contract CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 

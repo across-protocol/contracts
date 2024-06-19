@@ -9,6 +9,10 @@ import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfac
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Supports sending messages and tokens from L1 to Linea.
+ * @custom:security-contact bugs@umaproject.org
+ */
 // solhint-disable-next-line contract-name-camelcase
 contract Linea_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;

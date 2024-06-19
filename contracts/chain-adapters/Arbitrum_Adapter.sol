@@ -10,6 +10,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 
 /**
  * @notice Interface for Arbitrum's L1 Inbox contract used to send messages to Arbitrum.
+ * @custom:security-contact bugs@umaproject.org
  */
 interface ArbitrumL1InboxLike {
     /**

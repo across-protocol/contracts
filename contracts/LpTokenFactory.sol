@@ -8,6 +8,7 @@ import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
 /**
  * @notice Factory to create new LP ERC20 tokens that represent a liquidity provider's position. HubPool is the
  * intended client of this contract.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract LpTokenFactory is LpTokenFactoryInterface {
     /**

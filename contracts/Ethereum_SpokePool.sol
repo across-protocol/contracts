@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @notice Ethereum L1 specific SpokePool. Used on Ethereum L1 to facilitate L2->L1 transfers.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;

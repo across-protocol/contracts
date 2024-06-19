@@ -32,6 +32,7 @@ interface SynthetixBridgeToOptimism is IL1StandardBridge {
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore it's only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
+ * @custom:security-contact bugs@umaproject.org
  */
 
 // solhint-disable-next-line contract-name-camelcase

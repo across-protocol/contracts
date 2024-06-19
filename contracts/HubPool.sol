@@ -36,6 +36,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * an issue for this contract because fee calculations will become bizarre when multiplying by negative time deltas.
  * Before this date, this contract should be paused from accepting new root bundles and all LP tokens should be
  * disabled by the admin.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     using SafeERC20 for IERC20;

@@ -12,6 +12,7 @@ interface SynthetixBridgeToBase {
 
 /**
  * @notice Optimism Spoke pool.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract Optimism_SpokePool is Ovm_SpokePool {
     // Address of custom bridge used to bridge Synthetix-related assets like SNX.

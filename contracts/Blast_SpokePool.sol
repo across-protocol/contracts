@@ -34,6 +34,7 @@ interface IBlast {
 
 /**
  * @notice Blast Spoke pool.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract Blast_SpokePool is Ovm_SpokePool {
     // This is the yield-accruing stablecoin on Blast that USDC/DAI/USDT all bridge into. It can be withdrawn

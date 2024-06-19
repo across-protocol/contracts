@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @notice Library to help with merkle roots, proofs, and claims.
+ * @custom:security-contact bugs@umaproject.org
  */
 library MerkleLib {
     /**

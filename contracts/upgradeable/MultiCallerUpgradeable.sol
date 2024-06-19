@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
  * comment is added to clarify why we allow delegatecall() in this contract, which is typically unsafe for use in
  * upgradeable implementation contracts.
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract MultiCallerUpgradeable {
     struct Result {

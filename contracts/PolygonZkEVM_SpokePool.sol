@@ -27,6 +27,7 @@ interface IBridgeMessageReceiver {
 
 /**
  * @notice Polygon zkEVM Spoke pool.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
     using SafeERC20 for IERC20;

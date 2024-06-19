@@ -10,6 +10,7 @@ import "./interfaces/SpokePoolInterface.sol";
  * to the wrong chain will be blocked by this contract rather than hitting a dead address. This means that this contract
  * will not work to protect chains, like zkSync, where Create2 address derivations don't match other chains.
  * Source: https://era.zksync.io/docs/reference/architecture/differences-with-ethereum.html#create-create2
+ * @custom:security-contact bugs@umaproject.org
  */
 contract SpokePoolVerifier {
     using Address for address;

@@ -42,6 +42,7 @@ interface IL1ERC20Bridge {
  * @notice Contract containing logic to send messages from L1 to Blast. This is a modified version of the Optimism adapter
  * that excludes the custom bridging logic. It differs from the Base Adapter in that it uses a special
  * Blast contract to bridge WETH and DAI, which are yielding rebasing tokens on L2, WETH and USDB.
+ * @custom:security-contact bugs@umaproject.org
  */
 
 // solhint-disable-next-line contract-name-camelcase

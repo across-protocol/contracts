@@ -7,6 +7,7 @@ import "./external/interfaces/CCTPInterfaces.sol";
 
 /**
  * @notice Base Spoke pool.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract Base_SpokePool is Ovm_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor

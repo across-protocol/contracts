@@ -23,6 +23,7 @@ struct AcrossFillerData {
 /**
  * @notice ERC7683Permit2Lib knows how to process a particular type of external Permit2Order so that it can be used in Across.
  * @dev This library is responsible for definining the ERC712 type strings/hashes and performing hashes on the types.
+ * @custom:security-contact bugs@umaproject.org
  */
 library ERC7683Permit2Lib {
     bytes private constant ACROSS_ORDER_DATA_TYPE =

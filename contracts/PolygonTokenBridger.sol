@@ -37,6 +37,7 @@ interface MaticToken {
  * create2:       address = hash(0xFF, sender, salt, bytecode)
  *  This ultimately allows create2 to generate deterministic addresses that don't depend on the transaction count of the
  * sender.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract PolygonTokenBridger is Lockable {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;

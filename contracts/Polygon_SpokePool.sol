@@ -30,6 +30,7 @@ interface IFxMessageProcessor {
 
 /**
  * @notice Polygon specific SpokePool.
+ * @custom:security-contact bugs@umaproject.org
  */
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
