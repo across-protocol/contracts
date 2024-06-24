@@ -17,7 +17,7 @@ describe("SpokePool Admin Functions", async function () {
       [1, owner.address, owner.address],
       { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [owner.address] }
     );
-    expect(await spokePool.numberOfDeposits()).to.equal(1);
+    expect(await spokePool.depositCount(owner.address)).to.equal(1);
   });
   it("Enable token path", async function () {
     await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))

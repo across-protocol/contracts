@@ -155,8 +155,8 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         bytes memory message,
         uint256 // maxCount
     ) public payable virtual nonReentrant unpausedDeposits {
-        // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        uint32 newDepositId = numberOfDeposits++;
+        uint32 newDepositId = depositCount(msg.sender);
+        depositorDepositCount[msg.sender]++;
 
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
             require(msg.value == amount);

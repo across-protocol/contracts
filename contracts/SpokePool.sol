@@ -63,8 +63,10 @@ abstract contract SpokePool is
     WETH9Interface private DEPRECATED_wrappedNativeToken;
     uint32 private DEPRECATED_depositQuoteTimeBuffer;
 
-    // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
-    uint32 public numberOfDeposits;
+    // This used to be `numberOfDeposits`: The deposit count for this contract and used to construct a
+    // unique deposit identifier for this spoke pool. This was replaced by `depositorDepositCount` which starts
+    // all depositor-specific deposit counters at this value to guarantee unique deposit hashes across all deposits.
+    uint32 private DEPOSIT_COUNTER_START;
 
     // Whether deposits and fills are disabled.
     bool public pausedFills;
@@ -150,6 +152,11 @@ abstract contract SpokePool is
     // token for the input token. By using this magic value, off-chain validators do not have to keep
     // this event in their lookback window when querying for expired deposts.
     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
+
+    // Storing of deposit count per depositor address. Used to compute the `depositId` for a new deposit and replaces
+    // the `numberOfDeposits` usage in order to allow depositors to precompute their relay data hashes.
+    mapping(address => uint32) public depositorDepositCount;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -283,7 +290,7 @@ abstract contract SpokePool is
         address _crossDomainAdmin,
         address _hubPool
     ) public onlyInitializing {
-        numberOfDeposits = _initialDepositId;
+        DEPOSIT_COUNTER_START = _initialDepositId;
         __EIP712_init("ACROSS-V2", "1.0.0");
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -607,14 +614,18 @@ abstract contract SpokePool is
             IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
         }
 
+        // Add the last known deposit count to the depositor's ID to ensure that all deposit IDs are unique including
+        // all past deposits which used numberOfDeposits as a counter.
+        uint32 accountDepositCount = depositCount(depositor);
+        depositorDepositCount[depositor]++;
+
         emit V3FundsDeposited(
             inputToken,
             outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,
-            // Increment count of deposits so that deposit ID for this spoke pool is unique.
-            numberOfDeposits++,
+            accountDepositCount,
             quoteTimestamp,
             fillDeadline,
             exclusivityDeadline,
@@ -1082,6 +1093,15 @@ abstract contract SpokePool is
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
+    /**
+     * @notice Returns the number of deposits made by a depositor.
+     * @param depositor The address of the depositor.
+     * @return uint32 for the number of deposits made by the depositor.
+     */
+    function depositCount(address depositor) public view returns (uint32) {
+        return DEPOSIT_COUNTER_START + depositorDepositCount[depositor];
+    }
+
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
@@ -1112,8 +1132,10 @@ abstract contract SpokePool is
         // slither-disable-next-line timestamp
         if (getCurrentTime() - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
 
-        // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        uint32 newDepositId = numberOfDeposits++;
+        // Add the last known deposit count to the depositor's ID to ensure that all deposit IDs are unique including
+        // all past deposits which used numberOfDeposits as a counter.
+        uint32 newDepositId = depositCount(depositor);
+        depositorDepositCount[depositor]++;
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
@@ -1408,5 +1430,5 @@ abstract contract SpokePool is
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    uint256[999] private __gap;
+    uint256[998] private __gap;
 }

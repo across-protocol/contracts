@@ -107,7 +107,7 @@ describe("SpokePool Depositor Logic", async function () {
     expect(await erc20.balanceOf(spokePool.address)).to.equal(amountToDeposit);
 
     // Deposit nonce should increment.
-    expect(await spokePool.numberOfDeposits()).to.equal(1);
+    expect(await spokePool.depositCount(depositor.address)).to.equal(1);
   });
 
   it("DepositFor overrrides the depositor", async function () {
@@ -621,7 +621,7 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("deposit ID state variable incremented", async function () {
       await spokePool.connect(depositor).depositV3(...depositArgs);
-      expect(await spokePool.numberOfDeposits()).to.equal(1);
+      expect(await spokePool.depositCount(depositor.address)).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
       const balanceBefore = await erc20.balanceOf(depositor.address);
