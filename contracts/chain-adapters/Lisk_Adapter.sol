@@ -16,7 +16,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Base adapter
+ * @notice Contract containing logic to send messages from L1 to Lisk. This is a clone of the Base/Mode adapter
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
@@ -24,7 +24,7 @@ import "../external/interfaces/CCTPInterfaces.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
+contract Lisk_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
@@ -35,7 +35,7 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
-     * @param _crossDomainMessenger XDomainMessenger Mode system contract.
+     * @param _crossDomainMessenger XDomainMessenger Lisk system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      */
@@ -58,8 +58,8 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
     }
 
     /**
-     * @notice Send cross-chain message to target on Mode.
-     * @param target Contract on Mode that will receive message.
+     * @notice Send cross-chain message to target on Lisk.
+     * @param target Contract on Lisk that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -68,7 +68,7 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
     }
 
     /**
-     * @notice Bridge tokens to Mode.
+     * @notice Bridge tokens to Lisk.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
