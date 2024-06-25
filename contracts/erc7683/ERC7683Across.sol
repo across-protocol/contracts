@@ -56,7 +56,7 @@ library ERC7683Permit2Lib {
         abi.encodePacked(
             ACROSS_ORDER_DATA_TYPE,
             "CrossChainOrder(",
-            "address settlerContract,",
+            "address settlementContract,",
             "address swapper,",
             "uint256 nonce,",
             "uint32 originChainId,",
