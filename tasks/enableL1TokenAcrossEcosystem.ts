@@ -67,7 +67,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       chainIds.map((chainId) => {
         // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
         if (matchedSymbol === "USDC") {
-          const nativeUsdcAddress = TOKEN_SYMBOLS_MAP._USDC.addresses[chainId];
+          const nativeUsdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[chainId];
           const bridgedUsdcAddress = TOKEN_SYMBOLS_MAP["USDC.e"].addresses[chainId];
           if (nativeUsdcAddress) {
             return nativeUsdcAddress;

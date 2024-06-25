@@ -9,7 +9,7 @@ struct Input {
     uint256 amount;
 }
 
-/// @notice Tokens that must be receive for a valid order fulfillment
+/// @notice Tokens that must be received for a valid order fulfillment
 struct Output {
     /// @dev The address of the ERC20 token on the destination chain
     /// @dev address(0) used as a sentinel for the native token
