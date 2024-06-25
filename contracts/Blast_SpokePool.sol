@@ -6,7 +6,7 @@ import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
 
 // USDB and WETH on Blast accrue yield that can be claimed by any account holding the token. So for the length of
-// time that the SpokePool holds on to these assets, it can can claim interest.
+// time that the SpokePool holds on to these assets, it can claim interest.
 interface IERC20Rebasing {
     enum YieldMode {
         AUTOMATIC,
@@ -18,7 +18,7 @@ interface IERC20Rebasing {
 
     function getClaimableAmount(address account) external view returns (uint256);
 
-    function configure(YieldMode mode) external returns (uint256);
+    function configure(YieldMode yieldMode) external returns (uint256);
 }
 
 // Interface for blast yield contract on L2.
@@ -29,7 +29,7 @@ interface IBlast {
 
     function configureClaimableGas() external;
 
-    function claimMaxGas(address contractAddress, address recipient) external returns (uint256);
+    function claimMaxGas(address contractAddress, address recipientOfGas) external returns (uint256);
 }
 
 /**
@@ -113,7 +113,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             emit YieldClaimed(YIELD_RECIPIENT, address(token), claimedAmount);
         }
 
-        // If sending WETH back, also claim any native yield and convert it to WETH.
+        // If sending WETH back, also claim any native yield and send it directly to the yield recipient.
         if (address(token) == address(wrappedNativeToken)) {
             uint256 nativeClaimAmount = BLAST_YIELD_CONTRACT.claimAllYield(address(this), YIELD_RECIPIENT);
             nativeClaimAmount += BLAST_YIELD_CONTRACT.claimMaxGas(address(this), YIELD_RECIPIENT);
@@ -128,21 +128,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
         if (l2TokenAddress == USDB || l2TokenAddress == address(wrappedNativeToken)) {
             _claimYield(IERC20Rebasing(l2TokenAddress));
         }
-        // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
-        // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
-        if (l2TokenAddress == address(wrappedNativeToken)) {
-            WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
-            l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
-            IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToReturn }(
-                l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                amountToReturn, // _amount.
-                l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-                "" // _data. We don't need to send any data for the bridging action.
-            );
-        }
         // If the token is USDB then use the L2BlastBridge
-        else if (l2TokenAddress == USDB) {
+        if (l2TokenAddress == USDB) {
             IL2ERC20Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
@@ -151,17 +138,6 @@ contract Blast_SpokePool is Ovm_SpokePool {
                 l1Gas,
                 ""
             );
-        } else
-            IL2ERC20Bridge(
-                tokenBridges[l2TokenAddress] == address(0)
-                    ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
-                    : tokenBridges[l2TokenAddress]
-            ).withdrawTo(
-                    l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                    hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                    amountToReturn, // _amount.
-                    l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-                    "" // _data. We don't need to send any data for the bridging action.
-                );
+        } else super._bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
     }
 }

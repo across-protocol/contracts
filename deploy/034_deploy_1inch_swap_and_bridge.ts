@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants-v2";
+import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { L2_ADDRESS_MAP } from "./consts";
@@ -36,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         "0xf7a70056",
       ],
       TOKEN_SYMBOLS_MAP[chainId === 8453 ? "USDbC" : "USDC.e"].addresses[chainId],
-      TOKEN_SYMBOLS_MAP._USDC.addresses[chainId],
+      TOKEN_SYMBOLS_MAP.USDC.addresses[chainId],
     ],
   });
 };

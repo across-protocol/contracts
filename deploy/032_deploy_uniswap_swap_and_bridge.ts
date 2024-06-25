@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants-v2";
+import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { L2_ADDRESS_MAP } from "./consts";
@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       // https://etherscan.io/address/0xE592427A0AEce92De3Edee1F18E0157C05861564#writeProxyContract#F2
       ["0x414bf389"],
       TOKEN_SYMBOLS_MAP[chainId === 8453 ? "USDbC" : "USDC.e"].addresses[chainId],
-      TOKEN_SYMBOLS_MAP._USDC.addresses[chainId],
+      TOKEN_SYMBOLS_MAP.USDC.addresses[chainId],
     ],
   });
 };

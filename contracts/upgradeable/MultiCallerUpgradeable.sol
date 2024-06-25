@@ -25,7 +25,7 @@ contract MultiCallerUpgradeable {
         results = new bytes[](dataLength);
 
         //slither-disable-start calls-loop
-        for (uint256 i = 0; i < dataLength; i++) {
+        for (uint256 i = 0; i < dataLength; ++i) {
             // Typically, implementation contracts used in the upgradeable proxy pattern shouldn't call `delegatecall`
             // because it could allow a malicious actor to call this implementation contract directly (rather than
             // through a proxy contract) and then selfdestruct() the contract, thereby freezing the upgradeable
@@ -59,7 +59,7 @@ contract MultiCallerUpgradeable {
         results = new Result[](dataLength);
 
         //slither-disable-start calls-loop
-        for (uint256 i = 0; i < dataLength; i++) {
+        for (uint256 i = 0; i < dataLength; ++i) {
             // The delegatecall here is safe for the same reasons outlined in the first multicall function.
             Result memory result = results[i];
             //slither-disable-start low-level-calls

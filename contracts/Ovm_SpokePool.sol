@@ -8,11 +8,6 @@ import "./libraries/CircleCCTPAdapter.sol";
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
-// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
-interface SynthetixBridgeToBase {
-    function withdrawTo(address to, uint256 amount) external;
-}
-
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
 interface IL2ERC20Bridge {
     function withdrawTo(
@@ -37,6 +32,7 @@ interface IL2ERC20Bridge {
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  */
 contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
+    using SafeERC20 for IERC20;
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
     uint32 public l1Gas;
@@ -50,18 +46,19 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // replaced by the above constant.
     address private __deprecated_messenger;
 
-    // Address of custom bridge used to bridge Synthetix-related assets like SNX.
-    address private constant SYNTHETIX_BRIDGE = 0x136b1EC699c62b0606854056f02dC7Bb80482d63;
-
-    // Address of SNX ERC20
-    address private constant SNX = 0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4;
-
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
-    // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
+    // to support non-standard ERC20 tokens on Optimism, such as DAI which uses a custom bridge with the same
+    // interface as the standard bridge.
     mapping(address => address) public tokenBridges;
+
+    // Stores mapping of L2 tokens to L1 equivalent tokens. If a mapping is defined for a given L2 token, then
+    // the mapped L1 token can be used in _bridgeTokensToHubPool which can then call bridgeERC20To, which
+    // requires specfiying an L1 token.
+    mapping(address => address) public remoteL1Tokens;
 
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
+    event SetRemoteL1Token(address indexed l2Token, address indexed l1Token);
 
     error NotCrossDomainAdmin();
 
@@ -109,6 +106,11 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     function setL1GasLimit(uint32 newl1Gas) public onlyAdmin nonReentrant {
         l1Gas = newl1Gas;
         emit SetL1Gas(newl1Gas);
+    }
+
+    function setRemoteL1Token(address l2Token, address l1Token) public onlyAdmin nonReentrant {
+        remoteL1Tokens[l2Token] = l1Token;
+        emit SetRemoteL1Token(l2Token, l1Token);
     }
 
     /**
@@ -160,24 +162,43 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
         }
-        // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
-        else if (l2TokenAddress == SNX)
-            SynthetixBridgeToBase(SYNTHETIX_BRIDGE).withdrawTo(
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
-                amountToReturn // _amount.
-            );
-        else
-            IL2ERC20Bridge(
+        // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
+        // the l2TokenAddress. withdrawTo should be used to bridge back non-native L2 tokens
+        // (i.e. non-native L2 tokens have a canonical L1 token). If we should bridge "native L2" tokens then
+        // we'd need to call bridgeERC20To and give allowance to the tokenBridge to spend l2Token from this contract.
+        // Therefore for native tokens we should set ensure that remoteL1Tokens is set for the l2TokenAddress.
+        else {
+            IL2ERC20Bridge tokenBridge = IL2ERC20Bridge(
                 tokenBridges[l2TokenAddress] == address(0)
                     ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
                     : tokenBridges[l2TokenAddress]
-            ).withdrawTo(
+            );
+            if (remoteL1Tokens[l2TokenAddress] != address(0)) {
+                // If there is a mapping for this L2 token to an L1 token, then use the L1 token address and
+                // call bridgeERC20To.
+                IERC20(l2TokenAddress).safeIncreaseAllowance(address(tokenBridge), amountToReturn);
+                address remoteL1Token = remoteL1Tokens[l2TokenAddress];
+                tokenBridge.bridgeERC20To(
+                    l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
+                    remoteL1Token, // Remote token to be received on L1 side. If the
+                    // remoteL1Token on the other chain does not recognize the local token as the correct
+                    // pair token, the ERC20 bridge will fail and the tokens will be returned to sender on
+                    // this chain.
+                    hubPool, // _to
+                    amountToReturn, // _amount
+                    l1Gas, // _l1Gas
+                    "" // _data
+                );
+            } else {
+                tokenBridge.withdrawTo(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                     hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
                     amountToReturn, // _amount.
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.
                 );
+            }
+        }
     }
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
@@ -188,5 +209,5 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure its always at the end of storage.
-    uint256[1000] private __gap;
+    uint256[999] private __gap;
 }
