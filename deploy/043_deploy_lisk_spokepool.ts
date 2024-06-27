@@ -31,4 +31,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deployNewProxy("Lisk_SpokePool", constructorArgs, initArgs, spokeChainId === 1135);
 };
 module.exports = func;
-func.tags = ["LiskSpokePool", "mode"];
+func.tags = ["LiskSpokePool", "lisk"];
