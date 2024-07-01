@@ -124,6 +124,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
     matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
     l2WrappedMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
+
+    // https://docs.lisk.com/contracts
+    liskCrossDomainMessenger: "0x857824E6234f7733ecA4e9A76804fd1afa1A3A2C",
+    liskStandardBridge: "0x1Fb30e446eA791cd1f011675E5F3f5311b70faF5",
   },
 };
 
