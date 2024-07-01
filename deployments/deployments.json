@@ -134,6 +134,7 @@
   "421611": { "SpokePool": { "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b", "blockNumber": 10523275 } },
   "421613": { "SpokePool": { "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5", "blockNumber": 30397192 } },
   "421614": { "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 12411026 } },
+  "4202": { "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 7267988 } },
   "11155111": {
     "MulticallHandler": { "address": "0xBB7adf2cd0A6EF8a1262c5bd22E24BBa5353dfa5", "blockNumber": 6135496 },
     "AcrossConfigStore": { "address": "0xB3De1e212B49e68f4a68b5993f31f63946FCA2a6", "blockNumber": 4968255 },
@@ -141,6 +142,7 @@
     "HubPool": { "address": "0x14224e63716aface30c9a417e0542281869f7d9e", "blockNumber": 4911835 },
     "SpokePool": { "address": "0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662", "blockNumber": 5288470 },
     "PolygonTokenBridger": { "address": "0x4e3737679081c4D3029D88cA560918094f2e0284", "blockNumber": 5984560 },
-    "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 }
+    "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 },
+    "Lisk_Adapter": { "address": "0x13a8B1D6443016424e2b8Bac40dD884Ee679AFc4", "blockNumber": 6226289 }
   }
 }
