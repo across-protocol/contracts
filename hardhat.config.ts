@@ -80,6 +80,7 @@ const config: HardhatUserConfig = {
         version: "0.8.19",
       },
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -299,6 +300,20 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    lisk: {
+      chainId: 1135,
+      url: "https://rpc.api.lisk.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "lisk-sepolia": {
+      chainId: 4202,
+      url: "https://rpc.sepolia-api.lisk.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -324,8 +339,10 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      mode: process.env.ETHERSCAN_API_KEY!,
-      "mode-sepolia": process.env.ETHERSCAN_API_KEY!,
+      mode: process.env.MODE_ETHERSCAN_API_KEY!,
+      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
+      lisk: process.env.LISK_ETHERSCAN_API_KEY!,
+      "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -438,6 +455,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
           browserURL: "https://modescan.io",
+        },
+      },
+      {
+        network: "lisk",
+        chainId: 1135,
+        urls: {
+          apiURL: "https://blockscout.lisk.com/api",
+          browserURL: "https://blockscout.lisk.com",
+        },
+      },
+      {
+        network: "lisk-sepolia",
+        chainId: 4202,
+        urls: {
+          apiURL: "https://sepolia-blockscout.lisk.com/api",
+          browserURL: "https://sepolia-blockscout.lisk.com",
         },
       },
     ],
