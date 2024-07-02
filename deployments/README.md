@@ -76,5 +76,5 @@
 
 | Contract Name    | Address                                                                                                                      |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Lisk_SpokePool   | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://blockscout.lisk.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+| Lisk_SpokePool   | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
 | MulticallHandler | [0xF2720cc7391D237876A17E10914e9b7188009957](https://blockscout.lisk.com/address/0xF2720cc7391D237876A17E10914e9b7188009957) |
