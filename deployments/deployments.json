@@ -19,7 +19,8 @@
     "BondToken": { "address": "0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea", "blockNumber": 17980554 },
     "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 19510875 },
     "Mode_Adapter": { "address": "0xf1B59868697f3925b72889ede818B9E7ba0316d0", "blockNumber": 19914094 },
-    "MulticallHandler": { "address": "0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F", "blockNumber": 20120771 }
+    "MulticallHandler": { "address": "0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F", "blockNumber": 20120771 },
+    "Lisk_Adapter": { "address": "0x8229E812f20537caA1e8Fb41749b4887B8a75C3B", "blockNumber": 20184545 }
   },
   "4": {
     "Arbitrum_Adapter": { "address": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49", "blockNumber": 10367195 },
@@ -91,6 +92,12 @@
   },
   "420": { "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 17025501 } },
   "919": { "SpokePool": { "address": "0xbd886FC0725Cc459b55BbFEb3E4278610331f83b", "blockNumber": 13999465 } },
+  "1135": {
+    "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 2391355 },
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 2391565 },
+    "MulticallHandler": { "address": "0xF2720cc7391D237876A17E10914e9b7188009957", "blockNumber": 2391722 }
+  },
+  "4202": { "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 7267988 } },
   "8453": {
     "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 2164878 },
     "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 12285703 },
@@ -143,6 +150,7 @@
     "HubPool": { "address": "0x14224e63716aface30c9a417e0542281869f7d9e", "blockNumber": 4911835 },
     "SpokePool": { "address": "0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662", "blockNumber": 5288470 },
     "PolygonTokenBridger": { "address": "0x4e3737679081c4D3029D88cA560918094f2e0284", "blockNumber": 5984560 },
-    "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 }
+    "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 },
+    "Lisk_Adapter": { "address": "0x13a8B1D6443016424e2b8Bac40dD884Ee679AFc4", "blockNumber": 6226289 }
   }
 }

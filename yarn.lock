@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@across-protocol/constants@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.0.1.tgz#8fb2760a3c64801c9324bcbf76084fae9dfabb52"
-  integrity sha512-cCrhLEpYfiFeDrXscUgdRTnOW5Sn2W9mmdrxxl1dXLC+tYMb1c2rgQVBQNxrdW7LGiDqCR4a5m5jYgWPXonzQg==
+"@across-protocol/constants@^3.1.3":
+  version "3.1.3"
+  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.3.tgz#534764a4137bd5181ab4214543d0cbbf44a90c63"
+  integrity sha512-4pUjJrRor9gFPAsskbva6bDK780tzXYMWtqCtBa1jOUc+X3PxC6U6lF7ZoyX+lqU/KcfAWDLg8YEsz+KLm3NrQ==
 
 "@across-protocol/contracts@^0.1.4":
   version "0.1.4"
@@ -8103,12 +8103,7 @@ fn.name@1.x.x:
   resolved "https://registry.yarnpkg.com/fn.name/-/fn.name-1.1.0.tgz#26cad8017967aea8731bc42961d04a3d5988accc"
   integrity sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==
 
-follow-redirects@^1.12.1, follow-redirects@^1.14.0, follow-redirects@^1.15.0:
-  version "1.15.6"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.6.tgz#7f815c0cda4249c74ff09e95ef97c23b5fd0399b"
-  integrity sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==
-
-follow-redirects@^1.15.6:
+follow-redirects@^1.12.1, follow-redirects@^1.14.0, follow-redirects@^1.15.6:
   version "1.15.6"
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.6.tgz#7f815c0cda4249c74ff09e95ef97c23b5fd0399b"
   integrity sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==

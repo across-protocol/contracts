@@ -17,6 +17,7 @@
 | Base_Adapter        | [0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E](https://etherscan.io/address/0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E) |
 | Linea Adapter       | [0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE](https://etherscan.io/address/0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE) |
 | Mode Adapter        | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
+| Lisk Adapter        | [0x8229E812f20537caA1e8Fb41749b4887B8a75C3B](https://etherscan.io/address/0x8229E812f20537caA1e8Fb41749b4887B8a75C3B) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://etherscan.io/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
@@ -70,3 +71,10 @@
 | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Mode_SpokePool   | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://modescan.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | MulticallHandler | [0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F](https://modescan.io/address/0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F) |
+
+## Lisk mainnet (1135)
+
+| Contract Name    | Address                                                                                                                      |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Lisk_SpokePool   | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://blockscout.lisk.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+| MulticallHandler | [0xF2720cc7391D237876A17E10914e9b7188009957](https://blockscout.lisk.com/address/0xF2720cc7391D237876A17E10914e9b7188009957) |
