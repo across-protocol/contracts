@@ -314,6 +314,20 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    blast: {
+      chainId: 81457,
+      url: "https://rpc.blast.io",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "blast-sepolia": {
+      chainId: 168587773,
+      url: "https://sepolia.blast.io",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -343,6 +357,8 @@ const config: HardhatUserConfig = {
       "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
       lisk: process.env.LISK_ETHERSCAN_API_KEY!,
       "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
+      blast: process.env.BLAST_ETHERSCAN_API_KEY!,
+      "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -471,6 +487,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://sepolia-blockscout.lisk.com/api",
           browserURL: "https://sepolia-blockscout.lisk.com",
+        },
+      },
+      {
+        network: "blast",
+        chainId: 81457,
+        urls: {
+          apiURL: "https://api.blastscan.io/api",
+          browserURL: "https://blastscan.io",
+        },
+      },
+      {
+        network: "blast-sepolia",
+        chainId: 168587773,
+        urls: {
+          apiURL: "https://api-sepolia.blastscan.io/api",
+          browserURL: "https://sepolia.blastscan.io",
         },
       },
     ],

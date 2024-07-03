@@ -128,6 +128,12 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     // https://docs.lisk.com/contracts
     liskCrossDomainMessenger: "0x857824E6234f7733ecA4e9A76804fd1afa1A3A2C",
     liskStandardBridge: "0x1Fb30e446eA791cd1f011675E5F3f5311b70faF5",
+
+    // https://docs.blast.io/building/contracts
+    l1BlastBridge: "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
+    blastCrossDomainMessenger: "0x9338F298F29D3918D5D1Feb209aeB9915CC96333",
+    blastStandardBridge: "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f",
+    l1Usdb: "0x7f11f79DEA8CE904ed0249a23930f2e59b43a385",
   },
 };
 
@@ -258,6 +264,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   34443: {
     l2Weth: "0x4200000000000000000000000000000000000006",
+  },
+  168587773: {
+    usdb: "0x4200000000000000000000000000000000000022",
   },
 };
 
