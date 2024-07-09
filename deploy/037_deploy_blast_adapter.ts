@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].blastStandardBridge,
       L1_ADDRESS_MAP[chainId].usdc,
       L1_ADDRESS_MAP[chainId].l1BlastBridge,
-      L1_ADDRESS_MAP[chainId].dai,
+      L1_ADDRESS_MAP[chainId].l1Usdb,
       "200000", // 200k
     ],
   });

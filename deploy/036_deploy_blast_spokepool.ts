@@ -32,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ZERO_ADDRESS,
     L2_ADDRESS_MAP[spokeChainId].usdb,
     L1_ADDRESS_MAP[hubChainId].l1Usdb,
-    "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D", // TODO: replace with Across treasury address on Blast.
+    "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
   ];
   await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === 81457);
 };

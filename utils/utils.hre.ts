@@ -37,13 +37,13 @@ export async function deployNewProxy(
     instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
       constructorArgs,
       kind: "uups",
-      unsafeAllow: ["delegatecall"],
+      unsafeAllow: ["delegatecall", "state-variable-immutable"],
     })) as string;
     console.log(`New ${name} implementation deployed @ ${instance}`);
   } else {
     const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), initArgs, {
       kind: "uups",
-      unsafeAllow: ["delegatecall"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+      unsafeAllow: ["delegatecall", "state-variable-immutable"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
       constructorArgs,
       initializer: "initialize",
     });
