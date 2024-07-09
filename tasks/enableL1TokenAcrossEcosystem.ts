@@ -1,9 +1,9 @@
 import { task } from "hardhat/config";
 import assert from "assert";
 import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
-import { TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { TOKEN_SYMBOLS_MAP, CHAIN_IDs } from "../utils/constants";
 
-const enabledChainIds = [1, 10, 137, 42161, 324, 8453, 59144, 34443, 1135]; // Supported mainnet chain IDs.
+const enabledChainIds = [1, 10, 137, 42161, 324, 1135, 8453, 34443, 59144, 81457]; // Supported mainnet chain IDs.
 
 const getChainsFromList = (taskArgInput: string): number[] =>
   taskArgInput
@@ -78,7 +78,10 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
               `Could not find token address on chain ${chainId} in TOKEN_SYMBOLS_MAP for USDC.e or Native USDC`
             );
           }
+        } else if (matchedSymbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
+          return TOKEN_SYMBOLS_MAP.USDB.addresses[chainId]; // DAI maps to USDB  on Blast.
         }
+
         const l2Address = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[chainId];
         if (l2Address === undefined) {
           throw new Error(`Could not find token address on chain ${chainId} in TOKEN_SYMBOLS_MAP`);
