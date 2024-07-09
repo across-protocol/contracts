@@ -141,7 +141,8 @@
   "168587773": { "SpokePool": { "address": "0x5545092553Cf5Bf786e87a87192E902D50D8f022", "blockNumber": 7634204 } },
   "81457": {
     "SpokePool": { "address": "0x2D509190Ed0172ba588407D4c2df918F955Cc6E1", "blockNumber": 5574280 },
-    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 5574513 }
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 5574513 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 5876291 }
   },
   "421611": { "SpokePool": { "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b", "blockNumber": 10523275 } },
   "421613": { "SpokePool": { "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5", "blockNumber": 30397192 } },
