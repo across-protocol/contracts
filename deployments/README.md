@@ -82,6 +82,7 @@
 
 ## Blast mainnet (81457)
 
-| Contract Name   | Address                                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Blast_SpokePool | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
+| Contract Name    | Address                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Blast_SpokePool  | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://blastscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
