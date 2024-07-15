@@ -32,17 +32,6 @@ interface IBlast {
     function claimMaxGas(address contractAddress, address recipientOfGas) external returns (uint256);
 }
 
-interface IUSDBL2Bridge {
-    function bridgeERC20To(
-        address _localToken,
-        address _remoteToken,
-        address _to,
-        uint256 _amount,
-        uint32 _minGasLimit,
-        bytes calldata _extraData
-    ) external;
-}
-
 /**
  * @notice Blast Spoke pool.
  */
@@ -141,7 +130,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
         }
         // If the token is USDB then use the L2BlastBridge
         if (l2TokenAddress == USDB) {
-            IUSDBL2Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
+            IL2ERC20Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.

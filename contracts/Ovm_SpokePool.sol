@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgra
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
+// https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/universal/StandardBridge.sol
 interface IL2ERC20Bridge {
     function withdrawTo(
         address _l2Token,
@@ -23,7 +24,7 @@ interface IL2ERC20Bridge {
         address _remoteToken,
         address _to,
         uint256 _amount,
-        uint256 _minGasLimit,
+        uint32 _minGasLimit,
         bytes calldata _extraData
     ) external;
 }
