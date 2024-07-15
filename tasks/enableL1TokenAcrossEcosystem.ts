@@ -3,8 +3,7 @@ import assert from "assert";
 import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
-// Supported mainnet chain IDs.
-const enabledChainIds = Object.values(MAINNET_CHAIN_IDs);
+const enabledChainIds = Object.values(MAINNET_CHAIN_IDs); // Supported mainnet chain IDs.
 
 const getChainsFromList = (taskArgInput: string): number[] =>
   taskArgInput
