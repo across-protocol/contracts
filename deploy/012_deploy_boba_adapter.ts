@@ -14,11 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [
-      WETH[chainId],
-      L1_ADDRESS_MAP[chainId].bobaCrossDomainMessenger,
-      L1_ADDRESS_MAP[chainId].bobaStandardBridge,
-    ],
+    args: [WETH[chainId], L1_ADDRESS_MAP[chainId].bobaCrossDomainMessenger, L1_ADDRESS_MAP[chainId].bobaStandardBridge],
   });
 };
 

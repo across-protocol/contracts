@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       WETH[hubChainId],
       WMATIC[spokeChainId],
       hubChainId,
-      spokeChainId
+      spokeChainId,
     ],
     deterministicDeployment: "0x1234", // Salt for the create2 call.
   });
