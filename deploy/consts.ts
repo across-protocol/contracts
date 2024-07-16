@@ -159,7 +159,7 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
  * and is an internal mappinng maintained by Circle.
  * @link https://developers.circle.com/stablecoins/docs/supported-domains
  */
-export const chainIdsToCctpDomains: { [chainId: number]: number } = {
+export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   [CHAIN_IDs.MAINNET]: 0,
   [CHAIN_IDs.OPTIMISM]: 2,
   [CHAIN_IDs.ARBITRUM]: 3,
