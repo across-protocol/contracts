@@ -334,14 +334,6 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "scroll",
-        chainId: 534352,
-        urls: {
-          apiURL: "https://api.scrollscan.com/api",
-          browserURL: "https://api.scrollscan.com",
-        },
-      },
-      {
         network: "scroll-sepolia",
         chainId: CHAIN_IDs.SCROLL_SEPOLIA,
         urls: {
