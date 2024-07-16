@@ -21,7 +21,8 @@
     "Mode_Adapter": { "address": "0xf1B59868697f3925b72889ede818B9E7ba0316d0", "blockNumber": 19914094 },
     "MulticallHandler": { "address": "0xA18cD406a857e174397814F32c0Ef7cC68Ddc20F", "blockNumber": 20120771 },
     "Lisk_Adapter": { "address": "0x8229E812f20537caA1e8Fb41749b4887B8a75C3B", "blockNumber": 20184545 },
-    "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 }
+    "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 },
+    "Scroll_Adapter": { "address": "0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F", "blockNumber": 20318360 }
   },
   "4": {
     "Arbitrum_Adapter": { "address": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49", "blockNumber": 10367195 },
@@ -148,6 +149,11 @@
   "421614": {
     "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 12411026 },
     "MulticallHandler": { "address": "0xF2720cc7391D237876A17E10914e9b7188009957", "blockNumber": 58825469 }
+  },
+  "534352": {
+    "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 7489705 },
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 7490003 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 7489978 }
   },
   "11155111": {
     "MulticallHandler": { "address": "0xF2720cc7391D237876A17E10914e9b7188009957", "blockNumber": 6196598 },
