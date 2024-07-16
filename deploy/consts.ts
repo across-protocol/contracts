@@ -30,7 +30,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
-    scrollGasPriceOracle: "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
+    scrollGasPriceOracle: "0x987e300fDfb06093859358522a79098848C33852",
     modeCrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
     modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
     liskCrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
@@ -253,12 +253,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
-  },
-  534352: {
-    l2Weth: "0x5300000000000000000000000000000000000004",
-    scrollERC20GatewayRouter: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
-    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
-    scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
   },
   1442: {
     // Custom WETH for testing because there is no "official" WETH
