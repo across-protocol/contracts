@@ -19,6 +19,7 @@
 | Mode Adapter        | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | Lisk Adapter        | [0x8229E812f20537caA1e8Fb41749b4887B8a75C3B](https://etherscan.io/address/0x8229E812f20537caA1e8Fb41749b4887B8a75C3B) |
 | Blast Adapter       | [0xF2bEf5E905AAE0295003ab14872F811E914EdD81](https://etherscan.io/address/0xF2bEf5E905AAE0295003ab14872F811E914EdD81) |
+| Scroll Adapter      | [0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F](https://etherscan.io/address/0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
@@ -86,3 +87,10 @@
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Blast_SpokePool  | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://blastscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Scroll mainnet (534352)
+
+| Contract Name    | Address                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Scroll_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://scrollscan.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://scrollscan.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

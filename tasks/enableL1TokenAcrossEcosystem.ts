@@ -1,9 +1,10 @@
 import { task } from "hardhat/config";
 import assert from "assert";
 import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
-import { TOKEN_SYMBOLS_MAP, CHAIN_IDs } from "../utils/constants";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
-const enabledChainIds = [1, 10, 137, 42161, 324, 1135, 8453, 34443, 59144, 81457]; // Supported mainnet chain IDs.
+// Supported mainnet chain IDs.
+const enabledChainIds = Object.values(MAINNET_CHAIN_IDs);
 
 const getChainsFromList = (taskArgInput: string): number[] =>
   taskArgInput
