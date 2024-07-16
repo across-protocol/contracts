@@ -2,6 +2,7 @@ import * as dotenv from "dotenv";
 
 import { HardhatUserConfig } from "hardhat/config";
 import { getNodeUrl, getMnemonic } from "@uma/common";
+import { CHAIN_IDs } from "./utils/constants";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -101,20 +102,10 @@ const config: HardhatUserConfig = {
       url: getNodeUrl("mainnet", true, 1),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: 1,
-    },
-    "zksync-goerli": {
-      chainId: 280,
-      url: "https://testnet.era.zksync.dev",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      ethNetwork: "goerli",
-      companionNetworks: { l1: "goerli" },
-      zksync: true,
-      verifyURL: "https://zksync2-testnet-explorer.zksync.dev/contract_verification",
+      chainId: CHAIN_IDs.MAINNET,
     },
     zksync: {
-      chainId: 324,
+      chainId: CHAIN_IDs.ZK_SYNC,
       url: "https://mainnet.era.zksync.io",
       saveDeployments: true,
       accounts: { mnemonic },
@@ -124,149 +115,89 @@ const config: HardhatUserConfig = {
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     optimism: {
-      url: getNodeUrl("optimism", true, 10),
+      url: getNodeUrl("optimism", true, CHAIN_IDs.OPTIMISM),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: 10,
+      chainId: CHAIN_IDs.OPTIMISM,
       companionNetworks: { l1: "mainnet" },
     },
-    kovan: {
-      url: getNodeUrl("kovan", true, 42),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: 42,
-    },
-    "optimism-kovan": {
-      url: getNodeUrl("optimism-kovan", true, 69),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: 69,
-      companionNetworks: { l1: "kovan" },
-    },
-    "optimism-goerli": {
-      url: getNodeUrl("optimism-goerli", true, 420),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: 420,
-      companionNetworks: { l1: "goerli" },
-    },
     "optimism-sepolia": {
-      url: getNodeUrl("optimism-sepolia", true, 11155420),
+      url: getNodeUrl("optimism-sepolia", true, CHAIN_IDs.OPTIMISM_SEPOLIA),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: 11155420,
+      chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
       companionNetworks: { l1: "sepolia" },
     },
     arbitrum: {
-      chainId: 42161,
-      url: getNodeUrl("arbitrum", true, 42161),
+      chainId: CHAIN_IDs.ARBITRUM,
+      url: getNodeUrl("arbitrum", true, CHAIN_IDs.ARBITRUM),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    "arbitrum-rinkeby": {
-      chainId: 421611,
-      url: getNodeUrl("arbitrum-rinkeby", true, 421611),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "rinkeby" },
-    },
-    "arbitrum-goerli": {
-      chainId: 421613,
-      url: "https://goerli-rollup.arbitrum.io/rpc",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
-    },
     "arbitrum-sepolia": {
-      chainId: 421614,
-      url: getNodeUrl("arbitrum-sepolia", true, 421614),
+      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
+      url: getNodeUrl("arbitrum-sepolia", true, CHAIN_IDs.ARBITRUM_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
-    },
-    rinkeby: {
-      chainId: 4,
-      url: getNodeUrl("rinkeby", true, 4),
-      saveDeployments: true,
-      accounts: { mnemonic },
-    },
-    goerli: {
-      chainId: 5,
-      url: getNodeUrl("goerli", true, 5),
-      saveDeployments: true,
-      accounts: { mnemonic },
     },
     sepolia: {
       url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: 11155111,
+      chainId: CHAIN_IDs.SEPOLIA,
     },
     polygon: {
-      chainId: 137,
-      url: getNodeUrl("polygon-matic", true, 137),
+      chainId: CHAIN_IDs.POLYGON,
+      url: getNodeUrl("polygon-matic", true, CHAIN_IDs.POLYGON),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     boba: {
-      chainId: 288,
-      url: getNodeUrl("boba", true, 288),
+      chainId: CHAIN_IDs.BOBA,
+      url: getNodeUrl("boba", true, CHAIN_IDs.BOBA),
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    "polygon-mumbai": {
-      chainId: 80001,
-      url: getNodeUrl("polygon-mumbai", true, 80001),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
-    },
     "polygon-amoy": {
-      chainId: 80002,
+      chainId: CHAIN_IDs.POLYGON_AMOY,
       url: "https://rpc-amoy.polygon.technology",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     base: {
-      chainId: 8453,
+      chainId: CHAIN_IDs.BASE,
       url: "https://mainnet.base.org",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    "base-goerli": {
-      chainId: 84531,
-      url: "https://goerli.base.org",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
-    },
     "base-sepolia": {
-      chainId: 84532,
+      chainId: CHAIN_IDs.BASE_SEPOLIA,
       url: `https://base-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     linea: {
-      chainId: 59144,
+      chainId: CHAIN_IDs.LINEA,
       url: `https://linea-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    "linea-goerli": {
-      chainId: 59140,
-      url: `https://linea-goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+    scroll: {
+      chainId: CHAIN_IDs.SCROLL,
+      url: "https://rpc.scroll.io",
       saveDeployments: true,
       accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
+      companionNetworks: { l1: "mainnet" },
     },
     "scroll-sepolia": {
-      chainId: 534351,
+      chainId: CHAIN_IDs.SCROLL_SEPOLIA,
       url: "https://sepolia-rpc.scroll.io",
       saveDeployments: true,
       accounts: { mnemonic },
@@ -287,42 +218,42 @@ const config: HardhatUserConfig = {
       companionNetworks: { l1: "goerli" },
     },
     mode: {
-      chainId: 34443,
+      chainId: CHAIN_IDs.MODE,
       url: "https://mainnet.mode.network",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "mode-sepolia": {
-      chainId: 919,
+      chainId: CHAIN_IDs.MODE_SEPOLIA,
       url: "https://sepolia.mode.network",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     lisk: {
-      chainId: 1135,
+      chainId: CHAIN_IDs.LISK,
       url: "https://rpc.api.lisk.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "lisk-sepolia": {
-      chainId: 4202,
+      chainId: CHAIN_IDs.LISK_SEPOLIA,
       url: "https://rpc.sepolia-api.lisk.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     blast: {
-      chainId: 81457,
+      chainId: CHAIN_IDs.BLAST,
       url: "https://rpc.blast.io",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "blast-sepolia": {
-      chainId: 168587773,
+      chainId: CHAIN_IDs.BLAST_SEPOLIA,
       url: "https://sepolia.blast.io",
       saveDeployments: true,
       accounts: { mnemonic },
@@ -333,23 +264,17 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: process.env.ETHERSCAN_API_KEY!,
-      kovan: process.env.ETHERSCAN_API_KEY!,
-      rinkeby: process.env.ETHERSCAN_API_KEY!,
-      goerli: process.env.ETHERSCAN_API_KEY!,
       sepolia: process.env.ETHERSCAN_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      optimisticGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       optimisticSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       "arbitrum-sepolia": process.env.ARBITRUM_ETHERSCAN_API_KEY!,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
-      polygonMumbai: process.env.POLYGON_ETHERSCAN_API_KEY!,
       "polygon-amoy": process.env.POLYGON_ETHERSCAN_API_KEY!,
       base: process.env.BASE_ETHERSCAN_API_KEY!,
-      "base-goerli": process.env.BASE_ETHERSCAN_API_KEY!,
       "base-sepolia": process.env.BASE_ETHERSCAN_API_KEY!,
       linea: process.env.LINEA_ETHERSCAN_API_KEY!,
-      "linea-goerli": process.env.LINEA_ETHERSCAN_API_KEY!,
+      scroll: process.env.SCROLL_ETHERSCAN_API_KEY!,
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
@@ -363,23 +288,15 @@ const config: HardhatUserConfig = {
     customChains: [
       {
         network: "base",
-        chainId: 8453,
+        chainId: CHAIN_IDs.BASE,
         urls: {
           apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org",
         },
       },
       {
-        network: "base-goerli",
-        chainId: 84531,
-        urls: {
-          apiURL: "https://api-goerli.basescan.org/api",
-          browserURL: "https://goerli.basescan.org",
-        },
-      },
-      {
         network: "base-sepolia",
-        chainId: 84532,
+        chainId: CHAIN_IDs.BASE_SEPOLIA,
         urls: {
           apiURL: "https://api-sepolia.basescan.org/api",
           browserURL: "https://sepolia.basescan.org",
@@ -387,31 +304,31 @@ const config: HardhatUserConfig = {
       },
       {
         network: "linea",
-        chainId: 59144,
+        chainId: CHAIN_IDs.LINEA,
         urls: {
           apiURL: "https://api.lineascan.build/api",
           browserURL: "https://lineascan.org",
         },
       },
       {
-        network: "linea-goerli",
-        chainId: 59140,
-        urls: {
-          apiURL: "https://api-testnet.lineascan.build/api",
-          browserURL: "https://goerli.lineascan.build",
-        },
-      },
-      {
         network: "sepolia",
-        chainId: 11155111,
+        chainId: CHAIN_IDs.SEPOLIA,
         urls: {
           apiURL: "https://api-sepolia.etherscan.io/api",
           browserURL: "https://sepolia.etherscan.io",
         },
       },
       {
+        network: "scroll",
+        chainId: CHAIN_IDs.SCROLL,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://api.scrollscan.com",
+        },
+      },
+      {
         network: "scroll-sepolia",
-        chainId: 534351,
+        chainId: CHAIN_IDs.SCROLL_SEPOLIA,
         urls: {
           apiURL: "https://api-sepolia.scrollscan.com/api",
           browserURL: "https://api-sepolia.scrollscan.com",
@@ -419,7 +336,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "optimisticSepolia",
-        chainId: 11155420,
+        chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
         urls: {
           apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
           browserURL: "https://sepolia-optimism.etherscan.io",
@@ -443,7 +360,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "polygon-amoy",
-        chainId: 80002,
+        chainId: CHAIN_IDs.POLYGON_AMOY,
         urls: {
           apiURL: "https://api-amoy.polygonscan.com/api",
           browserURL: "https://amoy.polygonscan.com",
@@ -451,7 +368,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "arbitrum-sepolia",
-        chainId: 421614,
+        chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io",
@@ -459,7 +376,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "mode-sepolia",
-        chainId: 919,
+        chainId: CHAIN_IDs.MODE_SEPOLIA,
         urls: {
           apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
           browserURL: "https://testnet.modescan.io",
@@ -467,7 +384,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "mode",
-        chainId: 34443,
+        chainId: CHAIN_IDs.MODE,
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
           browserURL: "https://modescan.io",
@@ -475,7 +392,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "lisk",
-        chainId: 1135,
+        chainId: CHAIN_IDs.LISK,
         urls: {
           apiURL: "https://blockscout.lisk.com/api",
           browserURL: "https://blockscout.lisk.com",
@@ -483,7 +400,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "lisk-sepolia",
-        chainId: 4202,
+        chainId: CHAIN_IDs.LISK_SEPOLIA,
         urls: {
           apiURL: "https://sepolia-blockscout.lisk.com/api",
           browserURL: "https://sepolia-blockscout.lisk.com",
@@ -491,7 +408,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "blast",
-        chainId: 81457,
+        chainId: CHAIN_IDs.BLAST,
         urls: {
           apiURL: "https://api.blastscan.io/api",
           browserURL: "https://blastscan.io",
@@ -499,7 +416,7 @@ const config: HardhatUserConfig = {
       },
       {
         network: "blast-sepolia",
-        chainId: 168587773,
+        chainId: CHAIN_IDs.BLAST_SEPOLIA,
         urls: {
           apiURL: "https://api-sepolia.blastscan.io/api",
           browserURL: "https://sepolia.blastscan.io",
