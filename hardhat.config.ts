@@ -196,13 +196,6 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    scroll: {
-      chainId: 534352,
-      url: "https://rpc.scroll.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
     "scroll-sepolia": {
       chainId: CHAIN_IDs.SCROLL_SEPOLIA,
       url: "https://sepolia-rpc.scroll.io",
