@@ -265,6 +265,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
+    scroll: {
+      chainId: 534352,
+      url: "https://rpc.scroll.io",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     "scroll-sepolia": {
       chainId: 534351,
       url: "https://sepolia-rpc.scroll.io",
@@ -350,6 +357,7 @@ const config: HardhatUserConfig = {
       "base-sepolia": process.env.BASE_ETHERSCAN_API_KEY!,
       linea: process.env.LINEA_ETHERSCAN_API_KEY!,
       "linea-goerli": process.env.LINEA_ETHERSCAN_API_KEY!,
+      scroll: process.env.SCROLL_ETHERSCAN_API_KEY!,
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
@@ -407,6 +415,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.etherscan.io/api",
           browserURL: "https://sepolia.etherscan.io",
+        },
+      },
+      {
+        network: "scroll",
+        chainId: 534352,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://api.scrollscan.com",
         },
       },
       {
