@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { L1_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { L1_ADDRESS_MAP, WETH, WMATIC } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -8,8 +8,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const chainId = parseInt(await getChainId());
-  const l1ChainId = parseInt(await hre.companionNetworks.l1.getChainId());
+  const spokeChainId = parseInt(await getChainId());
+  const hubChainId = parseInt(await hre.companionNetworks.l1.getChainId());
   const l1HubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
 
   await deploy("PolygonTokenBridger", {
@@ -18,11 +18,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     skipIfAlreadyDeployed: true,
     args: [
       l1HubPool.address,
-      L1_ADDRESS_MAP[l1ChainId].polygonRegistry,
-      L1_ADDRESS_MAP[l1ChainId].weth,
-      L1_ADDRESS_MAP[l1ChainId].l2WrappedMatic,
-      l1ChainId,
-      chainId,
+      L1_ADDRESS_MAP[hubChainId].polygonRegistry,
+      WETH[hubChainId],
+      WMATIC[spokeChainId],
+      hubChainId,
+      spokeChainId,
     ],
     deterministicDeployment: "0x1234", // Salt for the create2 call.
   });

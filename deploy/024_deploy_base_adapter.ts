@@ -1,4 +1,4 @@
-import { L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -11,10 +11,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const chainId = parseInt(await getChainId());
 
   const args = [
-    L1_ADDRESS_MAP[chainId].weth,
+    WETH[chainId],
     L1_ADDRESS_MAP[chainId].baseCrossDomainMessenger,
     L1_ADDRESS_MAP[chainId].baseStandardBridge,
-    L1_ADDRESS_MAP[chainId].usdc,
+    USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
   const instance = await deploy("Base_Adapter", {

@@ -1,6 +1,9 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { L1_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { TOKEN_SYMBOLS_MAP } from "../utils";
+import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
+
+const MATIC = TOKEN_SYMBOLS_MAP.MATIC.addresses;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -15,9 +18,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].polygonFxRoot,
     L1_ADDRESS_MAP[chainId].polygonDepositManager,
     L1_ADDRESS_MAP[chainId].polygonERC20Predicate,
-    L1_ADDRESS_MAP[chainId].matic,
-    L1_ADDRESS_MAP[chainId].weth,
-    L1_ADDRESS_MAP[chainId].usdc,
+    MATIC[chainId],
+    WETH[chainId],
+    USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
   const instance = await deploy("Polygon_Adapter", {

@@ -1,8 +1,11 @@
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { ZERO_ADDRESS } from "@uma/common";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "./consts";
-import { ZERO_ADDRESS } from "@uma/common";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+import { WETH } from "./consts";
+
+const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId, hubChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -22,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * Native USDC address on L2
   //    * CCTP token messenger address on L2
   const constructorArgs = [
-    "0x4300000000000000000000000000000000000004",
+    WETH[spokeChainId],
     3600,
     21600,
     ZERO_ADDRESS,
@@ -30,11 +33,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
-    L2_ADDRESS_MAP[spokeChainId].usdb,
-    L1_ADDRESS_MAP[hubChainId].l1Usdb,
+    USDB[spokeChainId],
+    USDB[hubChainId],
     "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
   ];
-  await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === 81457);
+  await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.BLAST);
 };
 module.exports = func;
 func.tags = ["BlastSpokePool", "blast"];

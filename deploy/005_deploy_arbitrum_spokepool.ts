@@ -1,7 +1,8 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { CHAIN_IDs } from "../utils";
+import { L2_ADDRESS_MAP, USDC, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -23,13 +24,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * Native USDC address on L2
   //    * CCTP token messenger address on L2
   const constructorArgs = [
-    L2_ADDRESS_MAP[spokeChainId].l2Weth,
+    WETH[spokeChainId],
     3600,
     21600,
-    L2_ADDRESS_MAP[spokeChainId].l2Usdc,
+    USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
-  await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs, spokeChainId === 42161);
+  await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.ARBITRUM);
 };
 module.exports = func;
 func.tags = ["ArbitrumSpokePool", "arbitrum"];

@@ -2,7 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getContractFactory } from "../utils";
 import * as deployments from "../deployments/deployments.json";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { L1_ADDRESS_MAP } from "./consts";
+import { WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { upgrades, run, getChainId, getNamedAccounts } = hre;
@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const newImplementation = await upgrades.prepareUpgrade(
     spokePool.address,
     await getContractFactory("Ethereum_SpokePool", deployer),
-    { constructorArgs: [L1_ADDRESS_MAP[chainId].weth, 3600, 32400] }
+    { constructorArgs: [WETH[chainId], 3600, 32400] }
   );
   console.log(`Can upgrade to new implementation @ ${newImplementation}`);
 

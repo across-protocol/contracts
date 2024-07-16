@@ -1,7 +1,8 @@
-import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { CHAIN_IDs } from "../utils";
+import { L2_ADDRESS_MAP, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { getChainId } = hre;
@@ -19,9 +20,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 21600];
+  const constructorArgs = [WETH[chainId], 3600, 21600];
 
-  await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs, chainId === 59144);
+  await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs, chainId === CHAIN_IDs.LINEA);
 };
 module.exports = func;
 func.tags = ["LineaSpokePool", "linea"];

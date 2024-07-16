@@ -1,7 +1,9 @@
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { ZERO_ADDRESS } from "@uma/common";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ZERO_ADDRESS } from "@uma/common";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { CHAIN_IDs } from "../utils";
+import { WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -19,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * Native USDC address on L2
   //    * CCTP token messenger address on L2
   const constructorArgs = [
-    "0x4200000000000000000000000000000000000006",
+    WETH[spokeChainId],
     3600,
     21600,
     ZERO_ADDRESS,
@@ -28,7 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
   ];
-  await deployNewProxy("Lisk_SpokePool", constructorArgs, initArgs, spokeChainId === 1135);
+  await deployNewProxy("Lisk_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.LISK);
 };
 module.exports = func;
 func.tags = ["LiskSpokePool", "lisk"];
