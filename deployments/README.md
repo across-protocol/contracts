@@ -81,15 +81,15 @@
 | Lisk_SpokePool   | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
 | MulticallHandler | [0xF2720cc7391D237876A17E10914e9b7188009957](https://blockscout.lisk.com/address/0xF2720cc7391D237876A17E10914e9b7188009957) |
 
-## Scroll mainnet (53432)
-
-| Contract Name    | Address                                                                                                                 |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Scroll_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://scrollscan.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://scrollscan.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
-
 ## Blast mainnet (81457)
 
 | Contract Name   | Address                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Blast_SpokePool | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
+
+## Scroll mainnet (534352)
+
+| Contract Name    | Address                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Scroll_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://scrollscan.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://scrollscan.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
