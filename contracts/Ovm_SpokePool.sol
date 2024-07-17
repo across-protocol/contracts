@@ -23,7 +23,7 @@ interface IL2ERC20Bridge {
         address _remoteToken,
         address _to,
         uint256 _amount,
-        uint256 _minGasLimit,
+        uint32 _minGasLimit,
         bytes calldata _extraData
     ) external;
 }
