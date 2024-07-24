@@ -57,7 +57,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
     // Address that this contract's yield and gas fees accrue to.
     address public immutable YIELD_RECIPIENT;
 
-    // Address which receives DAI from USDB withdrawals on mainnet. Used for spoke pool rebalancing.
+    // Address which receives DAI from USDB withdrawals on mainnet. USDB withdrawals are a two step finalization process where the recipient of the withdrawals must claim, so we set this address to a contract that claims on behalf of the HubPool
     address public immutable BLAST_RETRIEVER;
     address public constant L2_BLAST_BRIDGE = 0x4300000000000000000000000000000000000005;
     IBlast public constant BLAST_YIELD_CONTRACT = IBlast(0x4300000000000000000000000000000000000002);
