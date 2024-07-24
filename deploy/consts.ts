@@ -35,6 +35,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
     liskCrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
     liskStandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
+    blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
