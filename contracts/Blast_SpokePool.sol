@@ -56,6 +56,9 @@ contract Blast_SpokePool is Ovm_SpokePool {
 
     // Address that this contract's yield and gas fees accrue to.
     address public immutable YIELD_RECIPIENT;
+
+    // Address which receives DAI from USDB withdrawals on mainnet. USDB withdrawals are a two step finalization process where the recipient of the withdrawals must claim, so we set this address to a contract that claims on behalf of the HubPool
+    address public immutable BLAST_RETRIEVER;
     address public constant L2_BLAST_BRIDGE = 0x4300000000000000000000000000000000000005;
     IBlast public constant BLAST_YIELD_CONTRACT = IBlast(0x4300000000000000000000000000000000000002);
 
@@ -71,7 +74,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
         ITokenMessenger _cctpTokenMessenger,
         address usdb,
         address l1Usdb,
-        address yieldRecipient
+        address yieldRecipient,
+        address blastRetriever
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
@@ -84,6 +88,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
         USDB = usdb;
         L1_USDB = l1Usdb;
         YIELD_RECIPIENT = yieldRecipient;
+        BLAST_RETRIEVER = blastRetriever;
     }
 
     /**
@@ -140,12 +145,12 @@ contract Blast_SpokePool is Ovm_SpokePool {
         if (l2TokenAddress == USDB || l2TokenAddress == address(wrappedNativeToken)) {
             _claimYield(IERC20Rebasing(l2TokenAddress));
         }
-        // If the token is USDB then use the L2BlastBridge
+        // If the token is USDB then send to the blast retriever
         if (l2TokenAddress == USDB) {
             IUSDBL2Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                BLAST_RETRIEVER, // _to. Withdraw, over the bridge, to the l1 receiver contract.
                 amountToReturn,
                 l1Gas,
                 ""
