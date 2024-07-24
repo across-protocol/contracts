@@ -8,11 +8,6 @@ import "./libraries/CircleCCTPAdapter.sol";
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
-// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
-interface SynthetixBridgeToBase {
-    function withdrawTo(address to, uint256 amount) external;
-}
-
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
 interface IL2ERC20Bridge {
     function withdrawTo(
@@ -52,7 +47,8 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     address private __deprecated_messenger;
 
     // Stores alternative token bridges to use for L2 tokens that don't go over the standard bridge. This is needed
-    // to support non-standard ERC20 tokens on Optimism, such as DIA and SNX which both use custom bridges.
+    // to support non-standard ERC20 tokens on Optimism, such as DAI which uses a custom bridge with the same
+    // interface as the standard bridge.
     mapping(address => address) public tokenBridges;
 
     // Stores mapping of L2 tokens to L1 equivalent tokens. If a mapping is defined for a given L2 token, then
@@ -166,11 +162,11 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
         }
-        // Note we'll default to withdrawTo instead of bridgeERC20To here because we can assume
-        // we'll only bridge back L2 tokens that are "non-native", i.e. they have a canonical L1 token
-        // that maps to this L2. If we wanted to bridge "native L2" tokens we'd need to call
-        // bridgeERC20To and give allowance to the tokenBridge to spend l2Token from this contract. We'd
-        // also need to know the L1 equivalent token address.
+        // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
+        // the l2TokenAddress. withdrawTo should be used to bridge back non-native L2 tokens
+        // (i.e. non-native L2 tokens have a canonical L1 token). If we should bridge "native L2" tokens then
+        // we'd need to call bridgeERC20To and give allowance to the tokenBridge to spend l2Token from this contract.
+        // Therefore for native tokens we should set ensure that remoteL1Tokens is set for the l2TokenAddress.
         else {
             IL2ERC20Bridge tokenBridge = IL2ERC20Bridge(
                 tokenBridges[l2TokenAddress] == address(0)
@@ -184,7 +180,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
                 address remoteL1Token = remoteL1Tokens[l2TokenAddress];
                 tokenBridge.bridgeERC20To(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                    remoteL1Token, // Remote token to be received on l1 side. If the
+                    remoteL1Token, // Remote token to be received on L1 side. If the
                     // remoteL1Token on the other chain does not recognize the local token as the correct
                     // pair token, the ERC20 bridge will fail and the tokens will be returned to sender on
                     // this chain.

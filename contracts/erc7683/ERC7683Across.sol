@@ -12,7 +12,7 @@ struct AcrossOrderData {
     uint256 outputAmount;
     uint32 destinationChainId;
     address recipient;
-    uint32 exclusivityDeadline;
+    uint32 exclusivityDeadlineOffset;
     bytes message;
 }
 
@@ -34,7 +34,7 @@ library ERC7683Permit2Lib {
             "uint256 outputAmount,",
             "uint32 destinationChainId,",
             "address recipient,",
-            "uint32 exclusivityDeadline,",
+            "uint32 exclusivityDeadlineOffset,",
             "bytes message)"
         );
 
@@ -43,19 +43,29 @@ library ERC7683Permit2Lib {
     bytes internal constant CROSS_CHAIN_ORDER_TYPE =
         abi.encodePacked(
             "CrossChainOrder(",
-            "address settlerContract,",
+            "address settlementContract,",
             "address swapper,",
             "uint256 nonce,",
             "uint32 originChainId,",
             "uint32 initiateDeadline,",
             "uint32 fillDeadline,",
-            "AcrossOrderData orderData)",
-            ACROSS_ORDER_DATA_TYPE
+            "AcrossOrderData orderData)"
         );
-    bytes32 internal constant CROSS_CHAIN_ORDER_TYPE_HASH = keccak256(CROSS_CHAIN_ORDER_TYPE);
+
+    bytes internal constant CROSS_CHAIN_ORDER_EIP712_TYPE =
+        abi.encodePacked(CROSS_CHAIN_ORDER_TYPE, ACROSS_ORDER_DATA_TYPE);
+    bytes32 internal constant CROSS_CHAIN_ORDER_TYPE_HASH = keccak256(CROSS_CHAIN_ORDER_EIP712_TYPE);
+
     string private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
     string internal constant PERMIT2_ORDER_TYPE =
-        string(abi.encodePacked("CrossChainOrder witness)", CROSS_CHAIN_ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
+        string(
+            abi.encodePacked(
+                "CrossChainOrder witness)",
+                ACROSS_ORDER_DATA_TYPE,
+                CROSS_CHAIN_ORDER_TYPE,
+                TOKEN_PERMISSIONS_TYPE
+            )
+        );
 
     // Hashes an order to get an order hash. Needed for permit2.
     function hashOrder(CrossChainOrder memory order, bytes32 orderDataHash) internal pure returns (bytes32) {
@@ -85,7 +95,7 @@ library ERC7683Permit2Lib {
                     orderData.outputAmount,
                     orderData.destinationChainId,
                     orderData.recipient,
-                    orderData.exclusivityDeadline,
+                    orderData.exclusivityDeadlineOffset,
                     keccak256(orderData.message)
                 )
             );

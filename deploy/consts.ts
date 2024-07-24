@@ -30,9 +30,11 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
-    scrollGasPriceOracle: "0x987e300fDfb06093859358522a79098848C33852",
+    scrollGasPriceOracle: "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
     modeCrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
     modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
+    liskCrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
+    liskStandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
@@ -122,6 +124,16 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
     matic: "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53",
     l2WrappedMatic: "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
+
+    // https://docs.lisk.com/contracts
+    liskCrossDomainMessenger: "0x857824E6234f7733ecA4e9A76804fd1afa1A3A2C",
+    liskStandardBridge: "0x1Fb30e446eA791cd1f011675E5F3f5311b70faF5",
+
+    // https://docs.blast.io/building/contracts
+    l1BlastBridge: "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
+    blastCrossDomainMessenger: "0x9338F298F29D3918D5D1Feb209aeB9915CC96333",
+    blastStandardBridge: "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f",
+    l1Usdb: "0x7f11f79DEA8CE904ed0249a23930f2e59b43a385",
   },
 };
 
@@ -242,6 +254,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
   },
+  534352: {
+    l2Weth: "0x5300000000000000000000000000000000000004",
+    scrollERC20GatewayRouter: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
+    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
+    scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
+  },
   1442: {
     // Custom WETH for testing because there is no "official" WETH
     l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
@@ -252,6 +270,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   34443: {
     l2Weth: "0x4200000000000000000000000000000000000006",
+  },
+  168587773: {
+    usdb: "0x4200000000000000000000000000000000000022",
   },
 };
 

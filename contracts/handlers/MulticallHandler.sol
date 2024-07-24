@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../SpokePool.sol";
+import "../interfaces/SpokePoolMessageHandler.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -31,14 +31,15 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     }
 
     // Emitted when one of the calls fails. Note: all calls are reverted in this case.
-    event CallsFailed(Call[] calls, address fallbackRecipient);
+    event CallsFailed(Call[] calls, address indexed fallbackRecipient);
 
     // Emitted when there are leftover tokens that are sent to the fallbackRecipient.
-    event DrainedTokens(address recipient, address token, uint256 amount);
+    event DrainedTokens(address indexed recipient, address indexed token, uint256 indexed amount);
 
     // Errors
     error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
+    error InvalidCall(uint256 index, Call[] calls);
 
     modifier onlySelf() {
         _requireSelf();
@@ -49,7 +50,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
      * @notice Main entrypoint for the handler called by the SpokePool contract.
      * @dev This will execute all calls encoded in the msg. The caller is responsible for making sure all tokens are
      * drained from this contract by the end of the series of calls. If not, they can be stolen.
-     * A drainRemainingTokens call can be included as a way to drain any remaining tokens from this contract.
+     * A drainLeftoverTokens call can be included as a way to drain any remaining tokens from this contract.
      * @param message abi encoded array of Call structs, containing a target, callData, and value for each call that
      * the contract should make.
      */
@@ -79,6 +80,12 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         uint256 length = calls.length;
         for (uint256 i = 0; i < length; ++i) {
             Call memory call = calls[i];
+
+            // If we are calling an EOA with calldata, assume target was incorrectly specified and revert.
+            if (call.callData.length > 0 && call.target.code.length == 0) {
+                revert InvalidCall(i, calls);
+            }
+
             (bool success, ) = call.target.call{ value: call.value }(call.callData);
             if (!success) revert CallReverted(i, calls);
         }

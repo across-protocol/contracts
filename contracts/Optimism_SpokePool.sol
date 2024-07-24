@@ -5,6 +5,11 @@ import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
 
+// https://github.com/Synthetixio/synthetix/blob/5ca27785fad8237fb0710eac01421cafbbd69647/contracts/SynthetixBridgeToBase.sol#L50
+interface SynthetixBridgeToBase {
+    function withdrawTo(address to, uint256 amount) external;
+}
+
 /**
  * @notice Optimism Spoke pool.
  */

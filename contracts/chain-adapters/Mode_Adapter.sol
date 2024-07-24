@@ -16,7 +16,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Mode adapter
+ * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Base adapter
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
@@ -38,17 +38,20 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
      * @param _crossDomainMessenger XDomainMessenger Mode system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
-        IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        IERC20 _l1Usdc
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum) // CCTP is not enabled on this chain so Ethereum is a placeholder
+        CircleCCTPAdapter(
+            _l1Usdc,
+            // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
+            ITokenMessenger(address(0)),
+            CircleDomainIds.UNINTIALIZED
+        )
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

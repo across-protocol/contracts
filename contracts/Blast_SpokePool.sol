@@ -6,7 +6,7 @@ import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
 
 // USDB and WETH on Blast accrue yield that can be claimed by any account holding the token. So for the length of
-// time that the SpokePool holds on to these assets, it can can claim interest.
+// time that the SpokePool holds on to these assets, it can claim interest.
 interface IERC20Rebasing {
     enum YieldMode {
         AUTOMATIC,
@@ -18,7 +18,7 @@ interface IERC20Rebasing {
 
     function getClaimableAmount(address account) external view returns (uint256);
 
-    function configure(YieldMode mode) external returns (uint256);
+    function configure(YieldMode yieldMode) external returns (uint256);
 }
 
 // Interface for blast yield contract on L2.
@@ -29,7 +29,18 @@ interface IBlast {
 
     function configureClaimableGas() external;
 
-    function claimMaxGas(address contractAddress, address recipient) external returns (uint256);
+    function claimMaxGas(address contractAddress, address recipientOfGas) external returns (uint256);
+}
+
+interface IUSDBL2Bridge {
+    function bridgeERC20To(
+        address _localToken,
+        address _remoteToken,
+        address _to,
+        uint256 _amount,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) external;
 }
 
 /**
@@ -113,7 +124,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             emit YieldClaimed(YIELD_RECIPIENT, address(token), claimedAmount);
         }
 
-        // If sending WETH back, also claim any native yield and convert it to WETH.
+        // If sending WETH back, also claim any native yield and send it directly to the yield recipient.
         if (address(token) == address(wrappedNativeToken)) {
             uint256 nativeClaimAmount = BLAST_YIELD_CONTRACT.claimAllYield(address(this), YIELD_RECIPIENT);
             nativeClaimAmount += BLAST_YIELD_CONTRACT.claimMaxGas(address(this), YIELD_RECIPIENT);
@@ -130,7 +141,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
         }
         // If the token is USDB then use the L2BlastBridge
         if (l2TokenAddress == USDB) {
-            IL2ERC20Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
+            IUSDBL2Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
                 hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
