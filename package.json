@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "3.0.1",
+  "version": "3.0.6",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -32,7 +32,7 @@
     "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.0.1",
+    "@across-protocol/constants": "^3.1.9",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/abstract-provider": "5.7.0",

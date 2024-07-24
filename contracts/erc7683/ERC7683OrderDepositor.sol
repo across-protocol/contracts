@@ -77,7 +77,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
             // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.initiateDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
-            acrossOrderData.exclusivityDeadline,
+            getCurrentTime() + acrossOrderData.exclusivityDeadlineOffset,
             acrossOrderData.message
         );
     }
@@ -152,6 +152,14 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         returns (AcrossOrderData memory, AcrossFillerData memory)
     {
         return (abi.decode(orderData, (AcrossOrderData)), abi.decode(fillerData, (AcrossFillerData)));
+    }
+
+    /**
+     * @notice Gets the current time.
+     * @return uint for the current timestamp.
+     */
+    function getCurrentTime() public view virtual returns (uint32) {
+        return SafeCast.toUint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
 
     function _processPermit2Order(

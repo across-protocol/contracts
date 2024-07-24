@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";
+import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
 import "./interfaces/V3SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
@@ -15,16 +16,6 @@ import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
-
-// This interface is expected to be implemented by any contract that expects to receive messages from the SpokePool.
-interface AcrossMessageHandler {
-    function handleV3AcrossMessage(
-        address tokenSent,
-        uint256 amount,
-        address relayer,
-        bytes memory message
-    ) external;
-}
 
 /**
  * @title SpokePool

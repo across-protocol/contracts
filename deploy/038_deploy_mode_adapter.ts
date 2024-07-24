@@ -20,10 +20,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].modeCrossDomainMessenger,
       L1_ADDRESS_MAP[chainId].modeStandardBridge,
       L1_ADDRESS_MAP[chainId].usdc,
-      // L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      // For now, we are not using the CCTP bridge and can disable by setting
-      // the cctpTokenMessenger to the zero address.
-      ZERO_ADDRESS,
     ],
   });
 };

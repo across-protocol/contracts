@@ -16,7 +16,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Mode adapter
+ * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Base adapter
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
