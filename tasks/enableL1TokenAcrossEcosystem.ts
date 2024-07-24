@@ -171,7 +171,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
         // Address doesn't matter, we only want the interface.
         const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
-        // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
+        // Find the address of the Arbitrum representation of this token. Construct whitelistToken call to send to the
         // Arbitrum spoke pool via the relaySpokeAdminFunction call.
         const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [
           arbitrumToken,

@@ -424,7 +424,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     /**
      * @notice Enables the owner of the protocol to haircut reserves in the event of an irrecoverable loss of funds on
      * one of the L2s. Consider funds are lent out onto a L2 that dies irrecoverably. This value will offset the
-     * exchangeRateCurrent such that all LPs receive a pro rata loss of the the reserves. Should be used in conjunction
+     * exchangeRateCurrent such that all LPs receive a pro rata loss of the reserves. Should be used in conjunction
      * with pause logic to prevent LPs from adding/withdrawing liquidity during the haircut process.
      * Callable only by owner.
      * @param l1Token Token to execute the haircut on.
