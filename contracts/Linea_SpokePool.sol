@@ -2,7 +2,7 @@
 
 // Linea only support v0.8.19
 // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";

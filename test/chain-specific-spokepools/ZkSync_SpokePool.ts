@@ -21,7 +21,7 @@ let l2Dai: string, crossDomainAliasAddress, crossDomainAlias: SignerWithAddress;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 let zkErc20Bridge: FakeContract, l2Eth: FakeContract;
 
-// TODO: Grab the following from relayer-v2/CONTRACT_ADDRESSES dictionary?
+// TODO: Grab the following from relayer/CONTRACT_ADDRESSES dictionary?
 const abiData = {
   erc20DefaultBridge: {
     address: "0x11f943b2c77b743ab90f4a0ae7d5a4e7fca3e102",

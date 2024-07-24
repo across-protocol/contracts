@@ -1,5 +1,5 @@
 name: Checks
-on: [push]
+on: [push, pull_request]
 jobs:
   lint:
     name: Lint
@@ -61,6 +61,8 @@ jobs:
         run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
+      - name: Run forge test
+        run: forge test --match-path test/foundry/local/**/*.t.sol
   solhint:
     name: Solhint
     runs-on: ubuntu-latest

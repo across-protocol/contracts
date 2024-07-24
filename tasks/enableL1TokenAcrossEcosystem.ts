@@ -1,9 +1,10 @@
 import { task } from "hardhat/config";
 import assert from "assert";
 import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
-import { TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
-const enabledChainIds = [1, 10, 137, 42161, 324, 8453]; // Supported mainnet chain IDs.
+// Supported mainnet chain IDs.
+const enabledChainIds = Object.values(MAINNET_CHAIN_IDs);
 
 const getChainsFromList = (taskArgInput: string): number[] =>
   taskArgInput
@@ -65,6 +66,23 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     console.log("\n1. Loading L2 companion token address for provided L1 token.");
     const tokens = await Promise.all(
       chainIds.map((chainId) => {
+        // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
+        if (matchedSymbol === "USDC") {
+          const nativeUsdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[chainId];
+          const bridgedUsdcAddress = TOKEN_SYMBOLS_MAP["USDC.e"].addresses[chainId];
+          if (nativeUsdcAddress) {
+            return nativeUsdcAddress;
+          } else if (bridgedUsdcAddress) {
+            return bridgedUsdcAddress;
+          } else {
+            throw new Error(
+              `Could not find token address on chain ${chainId} in TOKEN_SYMBOLS_MAP for USDC.e or Native USDC`
+            );
+          }
+        } else if (matchedSymbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
+          return TOKEN_SYMBOLS_MAP.USDB.addresses[chainId]; // DAI maps to USDB  on Blast.
+        }
+
         const l2Address = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[chainId];
         if (l2Address === undefined) {
           throw new Error(`Could not find token address on chain ${chainId} in TOKEN_SYMBOLS_MAP`);

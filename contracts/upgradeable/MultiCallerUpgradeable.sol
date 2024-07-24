@@ -9,6 +9,11 @@ pragma solidity ^0.8.0;
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
  */
 contract MultiCallerUpgradeable {
+    struct Result {
+        bool success;
+        bytes returnData;
+    }
+
     function _validateMulticallData(bytes[] calldata data) internal virtual {
         // no-op
     }
@@ -16,10 +21,11 @@ contract MultiCallerUpgradeable {
     function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
         _validateMulticallData(data);
 
-        results = new bytes[](data.length);
+        uint256 dataLength = data.length;
+        results = new bytes[](dataLength);
 
         //slither-disable-start calls-loop
-        for (uint256 i = 0; i < data.length; i++) {
+        for (uint256 i = 0; i < dataLength; ++i) {
             // Typically, implementation contracts used in the upgradeable proxy pattern shouldn't call `delegatecall`
             // because it could allow a malicious actor to call this implementation contract directly (rather than
             // through a proxy contract) and then selfdestruct() the contract, thereby freezing the upgradeable
@@ -42,6 +48,24 @@ contract MultiCallerUpgradeable {
             }
 
             results[i] = result;
+        }
+        //slither-disable-end calls-loop
+    }
+
+    function tryMulticall(bytes[] calldata data) external returns (Result[] memory results) {
+        _validateMulticallData(data);
+
+        uint256 dataLength = data.length;
+        results = new Result[](dataLength);
+
+        //slither-disable-start calls-loop
+        for (uint256 i = 0; i < dataLength; ++i) {
+            // The delegatecall here is safe for the same reasons outlined in the first multicall function.
+            Result memory result = results[i];
+            //slither-disable-start low-level-calls
+            /// @custom:oz-upgrades-unsafe-allow delegatecall
+            (result.success, result.returnData) = address(this).delegatecall(data[i]);
+            //slither-disable-end low-level-calls
         }
         //slither-disable-end calls-loop
     }

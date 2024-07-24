@@ -18,10 +18,11 @@ import {
   seedWallet,
   randomAddress,
   createFakeFromABI,
+  toWei,
 } from "../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
-import { CCTPTokenMessengerInterface } from "../../utils/abis";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../utils/abis";
 import { CIRCLE_DOMAIN_IDs } from "../../deploy/consts";
 
 let hubPool: Contract,
@@ -33,7 +34,10 @@ let hubPool: Contract,
   mockSpoke: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
-let l1CrossDomainMessenger: FakeContract, l1StandardBridge: FakeContract, cctpMessenger: FakeContract;
+let l1CrossDomainMessenger: FakeContract,
+  l1StandardBridge: FakeContract,
+  cctpMessenger: FakeContract,
+  cctpTokenMinter: FakeContract;
 
 const optimismChainId = 10;
 const l2Gas = 200000;
@@ -55,6 +59,9 @@ describe("Optimism Chain Adapter", function () {
     l1StandardBridge = await createFake("L1StandardBridge");
     l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
     cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    cctpMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     optimismAdapter = await (
       await getContractFactory("Optimism_Adapter", owner)
