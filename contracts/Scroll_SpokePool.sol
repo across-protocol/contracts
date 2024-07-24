@@ -9,6 +9,7 @@ import "@scroll-tech/contracts/libraries/IScrollMessenger.sol";
  * @title Scroll_SpokePool
  * @notice Modified SpokePool contract deployed on Scroll to facilitate token transfers
  * from Scroll to the HubPool
+ * @custom:security-contact bugs@across.to
  */
 contract Scroll_SpokePool is SpokePool {
     /**

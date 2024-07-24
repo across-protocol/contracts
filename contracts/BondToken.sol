@@ -20,6 +20,7 @@ interface ExtendedHubPoolInterface is HubPoolInterface {
  * the attack surface of the HubPool by requiring that addresses are explicitly approved before they can successfully
  * submit a root bundle proposal. The address-based permissioning does not constrain transfers that are needed to dispute
  * a root bundle proposal, so the ability of decentralised/unknown actors to dispute is unaffected.
+ * @custom:security-contact bugs@across.to
  */
 contract BondToken is WETH9, Ownable {
     using Address for address;

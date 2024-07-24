@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
  * @dev The reason why we use this local contract instead of importing from uma/contracts is because of the addition
  * of the internal method `functionCallStackOriginatesFromOutsideThisContract` which doesn't exist in the one exported
  * by uma/contracts.
+ * @custom:security-contact bugs@across.to
  */
 contract Lockable {
     bool internal _notEntered;

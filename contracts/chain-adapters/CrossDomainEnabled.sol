@@ -6,6 +6,7 @@ import { ICrossDomainMessenger } from "@eth-optimism/contracts/libraries/bridge/
 
 /**
  * @title CrossDomainEnabled
+ * @custom:security-contact bugs@across.to
  * @dev Helper contract for contracts performing cross-domain communications between L1 and Optimism.
  * @dev This modifies the eth-optimism/CrossDomainEnabled contract only by changing state variables to be
  * immutable for use in contracts like the Optimism_Adapter which use delegateCall().
