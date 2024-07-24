@@ -57,7 +57,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
     // Address that this contract's yield and gas fees accrue to.
     address public immutable YIELD_RECIPIENT;
 
-    // Address which receives USDB on mainnet.
+    // Address which receives DAI from USDB withdrawals on mainnet. Used for spoke pool rebalancing.
     address public immutable BLAST_RETRIEVER;
     address public constant L2_BLAST_BRIDGE = 0x4300000000000000000000000000000000000005;
     IBlast public constant BLAST_YIELD_CONTRACT = IBlast(0x4300000000000000000000000000000000000002);
@@ -150,7 +150,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
             IUSDBL2Bridge(L2_BLAST_BRIDGE).bridgeERC20To(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
                 L1_USDB,
-                BLAST_RETRIEVER, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                BLAST_RETRIEVER, // _to. Withdraw, over the bridge, to the l1 receiver contract.
                 amountToReturn,
                 l1Gas,
                 ""
