@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * contract is deployed to. An example use case we want to support is:
  * - User A signs a message on chain with id = 1
  * - User B executes a method by verifying user A's EIP-712 compliant signature on a chain with id != 1
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 abstract contract EIP712CrossChainUpgradeable is Initializable {
     /* solhint-disable var-name-mixedcase */

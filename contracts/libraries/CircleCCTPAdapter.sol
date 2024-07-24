@@ -19,7 +19,7 @@ library CircleDomainIds {
 /**
  * @notice Facilitate bridging USDC via Circle's CCTP.
  * @dev This contract is intended to be inherited by other chain-specific adapters and spoke pools.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 abstract contract CircleCCTPAdapter {
     using SafeERC20 for IERC20;

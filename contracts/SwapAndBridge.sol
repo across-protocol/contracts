@@ -10,7 +10,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 /**
  * @title SwapAndBridgeBase
  * @notice Base contract for both variants of SwapAndBridge.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;

@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Linea specific SpokePool.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract Linea_SpokePool is SpokePool {
     using SafeERC20 for IERC20;

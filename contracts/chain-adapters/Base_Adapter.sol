@@ -18,7 +18,7 @@ import "../external/interfaces/CCTPInterfaces.sol";
 /**
  * @notice Contract containing logic to send messages from L1 to Base. This is a modified version of the Optimism adapter
  * that excludes the custom bridging logic.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods

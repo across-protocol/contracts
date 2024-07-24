@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * to be consumed by off-chain bots, rather than by other contracts.
  * @dev This contract should not perform any validation on the setting values and should be owned by the governance
  * system of the full contract suite.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract AcrossConfigStore is Ownable, MultiCaller {
     // General dictionary where admin can associate variables with specific L1 tokens, like the Rate Model and Token

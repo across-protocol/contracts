@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @title  Extended MerkleDistributor contract.
  * @notice Adds additional constraints governing who can claim leaves from merkle windows.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract AcrossMerkleDistributor is MerkleDistributor {
     using SafeERC20 for IERC20;

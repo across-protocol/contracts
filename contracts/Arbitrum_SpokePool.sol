@@ -18,7 +18,7 @@ interface StandardBridgeLike {
 
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     // Address of the Arbitrum L2 token gateway to send funds to L1.

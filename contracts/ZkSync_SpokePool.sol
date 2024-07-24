@@ -19,7 +19,7 @@ interface IL2ETH {
 /**
  * @notice ZkSync specific SpokePool, intended to be compiled with `@matterlabs/hardhat-zksync-solc`.
  * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract ZkSync_SpokePool is SpokePool {
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost

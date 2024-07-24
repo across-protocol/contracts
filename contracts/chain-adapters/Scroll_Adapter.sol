@@ -12,7 +12,7 @@ import "./interfaces/AdapterInterface.sol";
  * @title Scroll_Adapter
  * @notice Adapter contract deployed on L1 alongside the HubPool to facilitate token transfers
  * and arbitrary message relaying from L1 to L2.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;

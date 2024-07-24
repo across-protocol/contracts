@@ -30,7 +30,7 @@ interface IL2ERC20Bridge {
 
 /**
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
- * @custom:security-contact bugs@umaproject.org
+ * @custom:security-contact bugs@across.to
  */
 contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
