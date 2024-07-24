@@ -10,7 +10,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const initArgs = [
     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
     // with deprecated spoke pool.
-    1_000_000,
+    2_000_000,
     // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
     hubPool.address,
     hubPool.address,
@@ -33,6 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].usdb,
     L1_ADDRESS_MAP[hubChainId].l1Usdb,
     "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
+    "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
   ];
   await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === 81457);
 };
