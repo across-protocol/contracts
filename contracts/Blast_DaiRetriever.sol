@@ -5,6 +5,7 @@ import "./Lockable.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface USDYieldManager {
     function claimWithdrawal(uint256 _requestId, uint256 _hintId) external returns (bool success);
@@ -17,7 +18,7 @@ interface USDYieldManager {
  * USDBYieldManager contract. This means that the Blast_SpokePool must set its recipient to this contract's address
  * and then an EOA can call this contract to retrieve the DAI.
  */
-contract Blast_DaiRetriever is Lockable {
+contract Blast_DaiRetriever is Lockable, MultiCaller {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Should be set to HubPool on Ethereum
