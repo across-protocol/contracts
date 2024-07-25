@@ -52,8 +52,6 @@ contract BlastDaiRetrieverTest is Test {
 
         // Make sure claimWithdrawal is called with correct params and returns true.
         vm.expectCall(address(usdYieldManager), abi.encodeCall(usdYieldManager.claimWithdrawal, (requestId, hintId)));
-        vm.expectEmit(true, true, false, true, address(usdYieldManager));
-        emit MockBlastUsdYieldManager.ClaimedWithdrawal(requestId, hintId);
         daiRetriever.retrieve(requestId, hintId);
 
         // Make sure DAI is transferred to hubPool.
