@@ -45,8 +45,9 @@ contract BlastDaiRetrieverTest is Test {
     function testRetrieveSuccess() public {
         assertEq(dai.balanceOf(hubPool), 0);
         assertEq(dai.balanceOf(rando), 0);
+        assertEq(dai.balanceOf(address(daiRetriever)), 0);
         uint256 daiTransferAmount = 10**22;
-        dai.mint(address(hubPool), daiTransferAmount);
+        dai.mint(address(daiRetriever), daiTransferAmount);
         vm.startPrank(rando);
 
         // Make sure claimWithdrawal is called with correct params and returns true.
@@ -58,6 +59,7 @@ contract BlastDaiRetrieverTest is Test {
         // Make sure DAI is transferred to hubPool.
         assertEq(dai.balanceOf(hubPool), daiTransferAmount);
         assertEq(dai.balanceOf(rando), 0);
+        assertEq(dai.balanceOf(address(daiRetriever)), 0);
         vm.stopPrank();
     }
 
