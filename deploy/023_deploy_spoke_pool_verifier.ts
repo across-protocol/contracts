@@ -16,4 +16,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["SpokePoolVerifier", "polygon", "mainnet", "optimism", "arbitrum", "zksync"];
+func.tags = ["SpokePoolVerifier"];
