@@ -44,11 +44,11 @@ contract SpokePoolVerifier {
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        uint32 quoteTimestamp,
-        bytes memory message,
         address exclusiveRelayer,
+        uint32 quoteTimestamp,
         uint32 exclusivityDeadline,
-        uint32 fillDeadline
+        uint32 fillDeadline,
+        bytes memory message
     ) external payable {
         require(msg.value == inputAmount, "msg.value != amount");
         require(address(spokePool).isContract(), "spokePool is not a contract");
