@@ -46,8 +46,8 @@ contract SpokePoolVerifier {
         uint256 destinationChainId,
         address exclusiveRelayer,
         uint32 quoteTimestamp,
-        uint32 exclusivityDeadline,
         uint32 fillDeadline,
+        uint32 exclusivityDeadline,
         bytes memory message
     ) external payable {
         require(msg.value == inputAmount, "msg.value != amount");
