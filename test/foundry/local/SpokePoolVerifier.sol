@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { SpokePoolVerifier } from "../../../contracts/SpokePoolVerifier.sol";
 import { Ethereum_SpokePool } from "../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../contracts/interfaces/V3SpokePoolInterface.sol";
+import { WETH9 } from "../../../contracts/external/WETH9.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -25,7 +26,7 @@ contract SpokePoolVerifierTest is Test {
     uint32 fillDeadlineBuffer = 7200;
 
     function setUp() public {
-        mockWETH = new ERC20("Wrapped Ether", "WETH");
+        mockWETH = ERC20(address(new WETH9()));
         mockERC20 = new ERC20("ERC20", "ERC20");
 
         depositor = vm.addr(1);
@@ -77,6 +78,70 @@ contract SpokePoolVerifierTest is Test {
             ethereumSpokePool, // spokePool
             depositor, // recipient
             address(mockERC20), // inputToken
+            depositAmount, // inputAmount
+            depositAmount, // outputAmount
+            destinationChainId, // destinationChainId
+            address(0), // exclusiveRelayer
+            uint32(block.timestamp), // quoteTimestamp
+            uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
+            0, // exclusivityDeadline
+            bytes("") // message
+        );
+
+        vm.stopPrank();
+    }
+
+    function testInvalidSpokePool() public {
+        vm.startPrank(depositor);
+
+        // Reverts if spokePool is not a contract
+        vm.expectRevert(SpokePoolVerifier.InvalidSpokePool.selector);
+        spokePoolVerifier.deposit{ value: depositAmount }(
+            V3SpokePoolInterface(address(0)), // spokePool
+            depositor, // recipient
+            address(mockWETH), // inputToken
+            depositAmount, // inputAmount
+            depositAmount, // outputAmount
+            destinationChainId, // destinationChainId
+            address(0), // exclusiveRelayer
+            uint32(block.timestamp), // quoteTimestamp
+            uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
+            0, // exclusivityDeadline
+            bytes("") // message
+        );
+
+        vm.stopPrank();
+    }
+
+    function testSuccess() public {
+        vm.startPrank(depositor);
+
+        // Deposits WETH
+        vm.expectCall(
+            address(ethereumSpokePool), // callee
+            depositAmount, // value
+            abi.encodeCall( // data
+                ethereumSpokePool.depositV3,
+                (
+                    depositor,
+                    depositor,
+                    address(mockWETH),
+                    address(0),
+                    depositAmount,
+                    depositAmount,
+                    destinationChainId,
+                    address(0),
+                    uint32(block.timestamp),
+                    uint32(block.timestamp) + fillDeadlineBuffer,
+                    0,
+                    bytes("")
+                )
+            )
+        );
+        spokePoolVerifier.deposit{ value: depositAmount }(
+            ethereumSpokePool, // spokePool
+            depositor, // recipient
+            address(mockWETH), // inputToken
             depositAmount, // inputAmount
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
