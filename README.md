@@ -6,7 +6,7 @@ system. `SpokePool` contracts are deployed to any network that wants to originat
 destination for token transfers, and they are all governed by the `HubPool` on Ethereum.
 
 This contract set is the second iteration of the [Across smart contracts](https://github.com/across-protocol/across-smart-contracts)
-which facilitate token transfers from any L2 to L1.
+which facilitates token transfers from any L2 to L1.
 
 These contracts were [audited by OpenZeppelin](https://blog.openzeppelin.com/uma-across-v2-audit/) which is a great resource for understanding the contracts.
 
@@ -60,7 +60,7 @@ suite of vulnerability detectors, prints visual information about contract detai
 custom analyses. Slither enables developers to find vulnerabilities, enhance their code comprehension, and quickly
 prototype custom analyses.
 
-Spire-Contracts has been analyzed using `Slither@0.9.2` and no major bugs was found. To rerun the analytics, run:
+Spire-Contracts have been analyzed using `Slither@0.9.2` and no major bugs were found. To rerun the analytics, run:
 
 ```sh
 slither contracts/SpokePool.sol
