@@ -12,7 +12,7 @@ import { ICrossDomainMessenger } from "@eth-optimism/contracts/libraries/bridge/
  * immutable for use in contracts like the Optimism_Adapter which use delegateCall().
  */
 contract CrossDomainEnabled {
-    // Messenger contract used to send and recieve messages from the other domain.
+    // Messenger contract used to send and receive messages from the other domain.
     address public immutable MESSENGER;
 
     /**
