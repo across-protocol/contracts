@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @notice This adapter is built to to retrieve Blast USDB from the USDBYieldManager contract on Ethereum that was
+ * @notice This adapter is built to retrieve Blast USDB from the USDBYieldManager contract on Ethereum that was
  * sent to the HubPool as the `recipient`. These funds should ideally be sent to the BlastRetriever address on
  * Ethereum. This contract can be used to retrieve these funds.
  */
