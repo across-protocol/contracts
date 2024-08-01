@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * @title Across Multicall contract that allows a user to specify a series of calls that should be made by the handler
  * via the message field in the deposit.
  * @dev This contract makes the calls blindly. The contract will send any remaining tokens The caller should ensure that the tokens recieved by the handler are completely consumed.
- * @custom:security-contact bugs@across.to
  */
 contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     using SafeERC20 for IERC20;

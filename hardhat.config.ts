@@ -82,6 +82,7 @@ const config: HardhatUserConfig = {
       },
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -245,6 +246,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    redstone: {
+      chainId: CHAIN_IDs.REDSTONE,
+      url: "https://rpc.redstonechain.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     blast: {
       chainId: CHAIN_IDs.BLAST,
       url: "https://rpc.blast.io",
@@ -282,6 +290,7 @@ const config: HardhatUserConfig = {
       "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
       lisk: process.env.LISK_ETHERSCAN_API_KEY!,
       "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
+      redstone: process.env.REDSTONE_ETHERSCAN_API_KEY!,
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
     },
@@ -404,6 +413,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://sepolia-blockscout.lisk.com/api",
           browserURL: "https://sepolia-blockscout.lisk.com",
+        },
+      },
+      {
+        network: "redstone",
+        chainId: CHAIN_IDs.REDSTONE,
+        urls: {
+          apiURL: "https://explorer.redstone.xyz/api",
+          browserURL: "https://explorer.redstone.xyz",
         },
       },
       {
