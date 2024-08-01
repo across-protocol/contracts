@@ -1,3 +1,7 @@
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+
+export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
+
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   1: {
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments
@@ -37,6 +41,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     liskStandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
     blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
     blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
+    redstoneCrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
+    redstoneStandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",

@@ -88,6 +88,13 @@
 | Blast_SpokePool  | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://blastscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
+## Redstone mainnet (690)
+
+| Contract Name      | Address                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Redstone_SpokePool | [0x28077B47Cd03326De7838926A63699849DD4fa87](https://explorer.redstone.xyz/address/0x28077B47Cd03326De7838926A63699849DD4fa87) |
+| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
 ## Scroll mainnet (534352)
 
 | Contract Name    | Address                                                                                                                 |
