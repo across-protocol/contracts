@@ -15,9 +15,6 @@ import "./interfaces/V3SpokePoolInterface.sol";
 contract SpokePoolVerifier {
     using Address for address;
 
-    error InvalidMsgValue();
-    error InvalidSpokePool();
-
     /**
      * @notice Passthrough function to `depositV3()` on the SpokePool contract.
      * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
@@ -53,8 +50,8 @@ contract SpokePoolVerifier {
         uint32 exclusivityDeadline,
         bytes memory message
     ) external payable {
-        if (msg.value != inputAmount) revert InvalidMsgValue();
-        if (!address(spokePool).isContract()) revert InvalidSpokePool();
+        require(msg.value == inputAmount, "msg.value != amount");
+        require(address(spokePool).isContract(), "spokePool is not a contract");
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         spokePool.depositV3{ value: msg.value }(
             msg.sender,
