@@ -25,7 +25,8 @@
     "Scroll_Adapter": { "address": "0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F", "blockNumber": 20318360 },
     "Blast_DaiRetriever": { "address": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB", "blockNumber": 20378862 },
     "Blast_RescueAdapter": { "address": "0xE5Dea263511F5caC27b15cBd58Ff103F4Ce90957", "blockNumber": 20378872 },
-    "Redstone_Adapter": { "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA", "blockNumber": 20432774 }
+    "Redstone_Adapter": { "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA", "blockNumber": 20432774 },
+    "Zora_Adapter": { "address": "0xa27fb9f2A22F8dA4cBF155e9795A43488004AAc3", "blockNumber": 20468487 }
   },
   "4": {
     "Arbitrum_Adapter": { "address": "0x18F4D98C7CeA6Ab934F2976c2a98009A529d8F49", "blockNumber": 10367195 },
@@ -172,6 +173,11 @@
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 7489705 },
     "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 7490003 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 7489978 }
+  },
+  "7777777": {
+    "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 18119425 },
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 18120222 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 18119854 }
   },
   "11155111": {
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 6284508 },
