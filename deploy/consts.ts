@@ -1,6 +1,7 @@
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
+export const MOCK_ADMIN = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   1: {
