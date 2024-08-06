@@ -68,7 +68,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       chainIds.map((chainId) => {
         // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
         if (matchedSymbol === "USDC") {
-          const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"]
+          const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as (keyof typeof TOKEN_SYMBOLS_MAP)[];
           const symbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol].addresses[chainId]);
           if (!symbol) {
             throw new Error(
@@ -76,7 +76,6 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
             );
           }
           return TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
-
         } else if (matchedSymbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
           return TOKEN_SYMBOLS_MAP.USDB.addresses[chainId]; // DAI maps to USDB on Blast.
         }
