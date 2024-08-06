@@ -1,6 +1,6 @@
-import { getContractFactory, ethers, SignerWithAddress, TOKEN_SYMBOLS_MAP, CHAIN_IDs } from "../utils/utils";
+import { getContractFactory, ethers, SignerWithAddress } from "../utils/utils";
+import { TOKEN_SYMBOLS_MAP, CHAIN_IDs } from "@across-protocol/constants";
 import { hre } from "../utils/utils.hre";
-import { getDeployedAddress } from "../src";
 import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "../deploy/consts";
 import { getNodeUrl, EMPTY_MERKLE_ROOT } from "@uma/common";
 import { Event, Wallet, providers, Contract } from "ethers";
@@ -137,131 +137,124 @@ function delay(ms: number) {
 /////////////////////
 // We only need to call two functions in this script: one to set a root bundle, and one to execute that set root bundle.
 // This ABI should be consistent for all spoke pool implementations.
-const spokePoolAbi = `[
-    {
-        "inputs": [
-            {
-                "internalType": "uint32",
-                "name": "rootBundleId",
-                "type": "uint32"
-            },
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "amountToReturn",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "chainId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256[]",
-                        "name": "refundAmounts",
-                        "type": "uint256[]"
-                    },
-                    {
-                        "internalType": "uint32",
-                        "name": "leafId",
-                        "type": "uint32"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "l2TokenAddress",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address[]",
-                        "name": "refundAddresses",
-                        "type": "address[]"
-                    }
-                ],
-                "internalType": "struct SpokePoolInterface.RelayerRefundLeaf",
-                "name": "relayerRefundLeaf",
-                "type": "tuple"
-            },
-            {
-                "internalType": "bytes32[]",
-                "name": "proof",
-                "type": "bytes32[]"
-            }
+const spokePoolAbi = [
+  {
+    inputs: [
+      {
+        internalType: "uint32",
+        name: "rootBundleId",
+        type: "uint32",
+      },
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "amountToReturn",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "chainId",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256[]",
+            name: "refundAmounts",
+            type: "uint256[]",
+          },
+          {
+            internalType: "uint32",
+            name: "leafId",
+            type: "uint32",
+          },
+          {
+            internalType: "address",
+            name: "l2TokenAddress",
+            type: "address",
+          },
+          {
+            internalType: "address[]",
+            name: "refundAddresses",
+            type: "address[]",
+          },
         ],
-        "name": "executeRelayerRefundLeaf",
-        "outputs": [],
-        "stateMutability": "payable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "relayerRefundRoot",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "bytes32",
-                "name": "slowRelayRoot",
-                "type": "bytes32"
-            }
-        ],
-        "name": "relayRootBundle",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "renounceOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "rootBundles",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "slowRelayRoot",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "bytes32",
-                "name": "relayerRefundRoot",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
-]`;
+        internalType: "struct SpokePoolInterface.RelayerRefundLeaf",
+        name: "relayerRefundLeaf",
+        type: "tuple",
+      },
+      {
+        internalType: "bytes32[]",
+        name: "proof",
+        type: "bytes32[]",
+      },
+    ],
+    name: "executeRelayerRefundLeaf",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "relayerRefundRoot",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes32",
+        name: "slowRelayRoot",
+        type: "bytes32",
+      },
+    ],
+    name: "relayRootBundle",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "rootBundles",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "slowRelayRoot",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes32",
+        name: "relayerRefundRoot",
+        type: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
 
 // Only one function needs to be called in the adapter.
-const adapterAbi = `[
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "target",
-                "type": "address"
-            },
-            {
-                "internalType": "bytes",
-                "name": "message",
-                "type": "bytes"
-            }
-        ],
-        "name": "relayMessage",
-        "outputs": [],
-        "stateMutability": "payable",
-        "type": "function"
-    }
-]`;
+const adapterAbi = [
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "target",
+        type: "address",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "relayMessage",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+];
