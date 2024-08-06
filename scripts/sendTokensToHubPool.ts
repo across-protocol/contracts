@@ -39,7 +39,6 @@ async function main() {
   const providerUrl =
     process.env[`NODE_URL_${l2ChainId}`] ?? `https://base-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`;
   const l2Provider = new ethers.providers.JsonRpcProvider(providerUrl);
-  console.log(l2Provider);
   const l2Signer = ethers.Wallet.fromMnemonic((hre.network.config.accounts as any).mnemonic).connect(l2Provider);
   const spokePool = new Contract(spokeAddress, ABI, l2Signer);
 
@@ -69,7 +68,7 @@ main().catch((error) => {
 
 // We only need to call two functions in this script: one to set a root bundle, and one to execute that set root bundle.
 // This ABI should be consistent for all spoke pool implementations.
-const ABI: unknown[] = `[
+const ABI = `[
     {
         "inputs": [
             {
