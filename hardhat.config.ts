@@ -83,6 +83,7 @@ const config: HardhatUserConfig = {
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -267,6 +268,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    zora: {
+      chainId: CHAIN_IDs.ZORA,
+      url: "https://rpc.zora.energy",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -293,6 +301,7 @@ const config: HardhatUserConfig = {
       redstone: process.env.REDSTONE_ETHERSCAN_API_KEY!,
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
+      zora: "routescan",
     },
     customChains: [
       {
@@ -437,6 +446,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.blastscan.io/api",
           browserURL: "https://sepolia.blastscan.io",
+        },
+      },
+      {
+        network: "zora",
+        chainId: CHAIN_IDs.ZORA,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
+          browserURL: "https://zorascan.xyz",
         },
       },
     ],
