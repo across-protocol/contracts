@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "@scroll-tech/contracts/L2/gateways/IL2GatewayRouter.sol";
 import "@scroll-tech/contracts/libraries/IScrollMessenger.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+interface IL2GatewayRouterExtended is IL2GatewayRouter {
+    function defaultERC20Gateway() external view returns (address);
+
+    function getERC20Gateway(address) external view returns (address);
+}
 
 /**
  * @title Scroll_SpokePool
@@ -12,11 +19,13 @@ import "@scroll-tech/contracts/libraries/IScrollMessenger.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Scroll_SpokePool is SpokePool {
+    using SafeERC20 for IERC20;
+
     /**
      * @notice The address of the official l2GatewayRouter contract for Scroll for bridging tokens from L2 -> L1
      * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
      */
-    IL2GatewayRouter public l2GatewayRouter;
+    IL2GatewayRouterExtended public l2GatewayRouter;
 
     /**
      * @notice The address of the official messenger contract for Scroll from L2 -> L1
@@ -51,7 +60,7 @@ contract Scroll_SpokePool is SpokePool {
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      */
     function initialize(
-        IL2GatewayRouter _l2GatewayRouter,
+        IL2GatewayRouterExtended _l2GatewayRouter,
         IScrollMessenger _l2ScrollMessenger,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
@@ -66,7 +75,7 @@ contract Scroll_SpokePool is SpokePool {
      * @notice Change the L2 Gateway Router. Changed only by admin.
      * @param _l2GatewayRouter New address of L2 gateway router.
      */
-    function setL2GatewayRouter(IL2GatewayRouter _l2GatewayRouter) public onlyAdmin nonReentrant {
+    function setL2GatewayRouter(IL2GatewayRouterExtended _l2GatewayRouter) public onlyAdmin nonReentrant {
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
@@ -88,9 +97,14 @@ contract Scroll_SpokePool is SpokePool {
      * @param l2TokenAddress Address of the token to bridge.
      */
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
-        // The scroll bridge handles arbitrary ERC20 tokens and is mindful of
-        // the official WETH address on-chain. We don't need to do anything specific
-        // to differentiate between WETH and a separate ERC20.
+        // Tokens with a custom ERC20 gateway require an approval in order to withdraw.
+        address erc20Gateway = l2GatewayRouter.getERC20Gateway(l2TokenAddress);
+        if (erc20Gateway != l2GatewayRouter.defaultERC20Gateway()) {
+            IERC20(l2TokenAddress).safeIncreaseAllowance(erc20Gateway, amountToReturn);
+        }
+
+        // The scroll bridge handles arbitrary ERC20 tokens and is mindful of the official WETH address on-chain.
+        // We don't need to do anything specific to differentiate between WETH and a separate ERC20.
         // Note: This happens due to the L2GatewayRouter.getERC20Gateway() call
         l2GatewayRouter.withdrawERC20(
             l2TokenAddress,
@@ -116,7 +130,7 @@ contract Scroll_SpokePool is SpokePool {
         require(_xDomainSender == crossDomainAdmin, "Sender must be admin");
     }
 
-    function _setL2GatewayRouter(IL2GatewayRouter _l2GatewayRouter) internal {
+    function _setL2GatewayRouter(IL2GatewayRouterExtended _l2GatewayRouter) internal {
         address oldL2GatewayRouter = address(l2GatewayRouter);
         l2GatewayRouter = _l2GatewayRouter;
         emit SetL2GatewayRouter(address(_l2GatewayRouter), oldL2GatewayRouter);
