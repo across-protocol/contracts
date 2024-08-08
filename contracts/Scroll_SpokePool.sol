@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IL2GatewayRouterExtended is IL2GatewayRouter {
     function defaultERC20Gateway() external view returns (address);
-
     function getERC20Gateway(address) external view returns (address);
 }
 
