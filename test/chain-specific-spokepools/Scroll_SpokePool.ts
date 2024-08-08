@@ -24,31 +24,31 @@ const gatewayRouterABI = [
     outputs: [
       {
         internalType: "address",
-        name:"",
-        type: "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
     stateMutability: "view",
-    type: "function"
+    type: "function",
   },
   {
     inputs: [
       {
         internalType: "address",
         name: "_token",
-        type: "address"
-      }
+        type: "address",
+      },
     ],
     name: "getERC20Gateway",
     outputs: [
       {
         internalType: "address",
-        name:"",
-        type: "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
     stateMutability: "view",
-    type: "function"
+    type: "function",
   },
   {
     inputs: [
