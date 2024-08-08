@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "@scroll-tech/contracts/L2/gateways/IL2GatewayRouter.sol";
 import "@scroll-tech/contracts/libraries/IScrollMessenger.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IL2GatewayRouterExtended is IL2GatewayRouter {
     function defaultERC20Gateway() external view returns (address);
@@ -18,7 +17,7 @@ interface IL2GatewayRouterExtended is IL2GatewayRouter {
  * @custom:security-contact bugs@across.to
  */
 contract Scroll_SpokePool is SpokePool {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**
      * @notice The address of the official l2GatewayRouter contract for Scroll for bridging tokens from L2 -> L1
@@ -99,7 +98,7 @@ contract Scroll_SpokePool is SpokePool {
         // Tokens with a custom ERC20 gateway require an approval in order to withdraw.
         address erc20Gateway = l2GatewayRouter.getERC20Gateway(l2TokenAddress);
         if (erc20Gateway != l2GatewayRouter.defaultERC20Gateway()) {
-            IERC20(l2TokenAddress).safeIncreaseAllowance(erc20Gateway, amountToReturn);
+            IERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(erc20Gateway, amountToReturn);
         }
 
         // The scroll bridge handles arbitrary ERC20 tokens and is mindful of the official WETH address on-chain.
