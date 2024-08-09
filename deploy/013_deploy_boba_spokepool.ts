@@ -1,6 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { FILL_DEADLINE_BUFFER, QUOTE_TIME_BUFFER } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool } = await getSpokePoolDeploymentInfo(hre);
@@ -14,7 +15,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
   //    * A fillDeadlineBuffer of 6 hours
-  const constructorArgs = ["0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", 3600, 21600];
+  const constructorArgs = [
+    "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+    QUOTE_TIME_BUFFER,
+    FILL_DEADLINE_BUFFER
+  ];
   await deployNewProxy("Boba_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;

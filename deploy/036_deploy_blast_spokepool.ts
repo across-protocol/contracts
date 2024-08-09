@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { WETH, ZERO_ADDRESS } from "./consts";
+import { FILL_DEADLINE_BUFFER, L1_ADDRESS_MAP, WETH, QUOTE_TIME_BUFFER, ZERO_ADDRESS } from "./consts";
 
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
@@ -16,16 +16,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  // Construct this spokepool with a:
-  //    * A WETH address of the WETH address
-  //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 6 hours
-  //    * Native USDC address on L2
-  //    * CCTP token messenger address on L2
+
   const constructorArgs = [
     WETH[spokeChainId],
-    3600,
-    21600,
+    QUOTE_TIME_BUFFER,
+    FILL_DEADLINE_BUFFER,
     ZERO_ADDRESS,
     // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     // For now, we are not using the CCTP bridge and can disable by setting

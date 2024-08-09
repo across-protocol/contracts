@@ -6,6 +6,9 @@ export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 
+export const QUOTE_TIME_BUFFER = 3600;
+export const FILL_DEADLINE_BUFFER = 6 * 3600;
+
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
     optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments

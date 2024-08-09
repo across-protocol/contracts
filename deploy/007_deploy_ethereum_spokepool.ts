@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { WETH } from "./consts";
+import { FILL_DEADLINE_BUFFER, QUOTE_TIME_BUFFER, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -11,11 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // with deprecated spoke pool.
   const initArgs = [1_000_000, hubPool.address];
 
-  // Construct this spokepool with a:
-  //    * A WETH address of the WETH address
-  //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 6 hours
-  const constructorArgs = [WETH[spokeChainId], 3600, 21600];
+  const constructorArgs = [WETH[spokeChainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
   await deployNewProxy("Ethereum_SpokePool", constructorArgs, initArgs);
 
   // Transfer ownership to hub pool.
