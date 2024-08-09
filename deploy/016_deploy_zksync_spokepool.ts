@@ -29,10 +29,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * A fillDeadlineBuffer of 6 hours
   const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 21600];
 
-  let newAddress;
+  let newAddress: string;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
   // contract.
-  if (spokeChainId === 324) {
+  // If SKIP_PROXY is defined, only deploy an implementation contract.
+  const implementationOnly = process.env.SKIP_PROXY !== undefined;
+  if (implementationOnly) {
     const _deployment = await deployer.deploy(artifact, constructorArgs);
     newAddress = _deployment.address;
     console.log(`New ${contractName} implementation deployed @ ${newAddress}`);

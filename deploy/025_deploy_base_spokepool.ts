@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].l2Usdc,
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
-  await deployNewProxy("Base_SpokePool", constructorArgs, initArgs, spokeChainId === 8453);
+  await deployNewProxy("Base_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["BaseSpokePool", "base"];
