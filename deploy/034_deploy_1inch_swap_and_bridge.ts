@@ -1,8 +1,7 @@
-import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { CHAIN_IDs } from "../utils";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
