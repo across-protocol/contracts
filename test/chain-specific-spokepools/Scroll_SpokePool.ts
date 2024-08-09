@@ -19,6 +19,38 @@ const NO_ADMIN_REVERT = "Sender must be admin";
 
 const gatewayRouterABI = [
   {
+    inputs: [],
+    name: "defaultERC20Gateway",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "_token",
+        type: "address",
+      },
+    ],
+    name: "getERC20Gateway",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "address",
