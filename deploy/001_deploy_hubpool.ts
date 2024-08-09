@@ -1,6 +1,6 @@
-import { L1_ADDRESS_MAP, WETH } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { L1_ADDRESS_MAP, WETH, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       lpTokenFactory.address,
       L1_ADDRESS_MAP[chainId].finder,
       WETH[chainId],
-      "0x0000000000000000000000000000000000000000",
+      ZERO_ADDRESS,
     ],
     libraries: { MerkleLib: lpTokenFactory.address },
   });

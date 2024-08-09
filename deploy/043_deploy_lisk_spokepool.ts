@@ -2,7 +2,6 @@ import { ZERO_ADDRESS } from "@uma/common";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { CHAIN_IDs } from "../utils";
 import { WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -30,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
   ];
-  await deployNewProxy("Lisk_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.LISK);
+  await deployNewProxy("Lisk_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["LiskSpokePool", "lisk"];

@@ -1,3 +1,5 @@
+export { ZERO_ADDRESS } from "@uma/common";
+
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;

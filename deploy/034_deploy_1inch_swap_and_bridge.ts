@@ -11,7 +11,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const chainId = parseInt(await getChainId());
   const { deployer } = await getNamedAccounts();
-
   const { BASE } = CHAIN_IDs;
 
   await deploy("1inch_SwapAndBridge", {

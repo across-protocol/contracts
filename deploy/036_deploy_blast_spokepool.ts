@@ -1,9 +1,7 @@
-import { ZERO_ADDRESS } from "@uma/common";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
-import { WETH } from "./consts";
+import { WETH, ZERO_ADDRESS } from "./consts";
 
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
@@ -38,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
     L1_ADDRESS_MAP[hubChainId].blastDaiRetriever, // Address of mainnet retriever contract to facilitate USDB finalizations.
   ];
-  await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.BLAST);
+  await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["BlastSpokePool", "blast"];

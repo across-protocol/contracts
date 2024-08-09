@@ -1,7 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { CHAIN_IDs } from "../utils";
 import { L2_ADDRESS_MAP, USDC, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -30,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
-  await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.ARBITRUM);
+  await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["ArbitrumSpokePool", "arbitrum"];
