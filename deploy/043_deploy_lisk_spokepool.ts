@@ -5,7 +5,7 @@ import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
     1,

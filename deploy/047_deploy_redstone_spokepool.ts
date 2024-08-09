@@ -32,4 +32,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deployNewProxy("Redstone_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
-func.tags = ["spokepool", "redstone"];
+func.tags = ["RedstoneSpokePool", "redstone"];

@@ -31,4 +31,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deployNewProxy("Zora_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
-func.tags = ["spokepool", "zora"];
+func.tags = ["ZoraSpokePool", "zora"];
