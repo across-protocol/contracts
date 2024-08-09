@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, WETH } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -14,11 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [
-      L1_ADDRESS_MAP[chainId].weth,
-      L1_ADDRESS_MAP[chainId].bobaCrossDomainMessenger,
-      L1_ADDRESS_MAP[chainId].bobaStandardBridge,
-    ],
+    args: [WETH[chainId], L1_ADDRESS_MAP[chainId].bobaCrossDomainMessenger, L1_ADDRESS_MAP[chainId].bobaStandardBridge],
   });
 };
 

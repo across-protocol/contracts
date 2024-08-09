@@ -1,5 +1,4 @@
-import { ZERO_ADDRESS } from "@uma/common";
-import { L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -16,10 +15,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     skipIfAlreadyDeployed: true,
     args: [
-      L1_ADDRESS_MAP[chainId].weth,
+      WETH[chainId],
       L1_ADDRESS_MAP[chainId].liskCrossDomainMessenger,
       L1_ADDRESS_MAP[chainId].liskStandardBridge,
-      L1_ADDRESS_MAP[chainId].usdc,
+      USDC[chainId],
     ],
   });
 };
