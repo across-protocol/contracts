@@ -32,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].l2Usdc,
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
-  await deployNewProxy("Polygon_SpokePool", constructorArgs, initArgs, spokeChainId === 137);
+  await deployNewProxy("Polygon_SpokePool", constructorArgs, initArgs);
 };
 
 module.exports = func;
