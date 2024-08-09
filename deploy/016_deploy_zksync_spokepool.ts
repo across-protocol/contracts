@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   let newAddress: string;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
   // contract.
-// If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
+  // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
   const proxy = getDeployedAddress("SpokePool", spokeChainId, false);
   const implementationOnly = proxy !== undefined;
   if (implementationOnly) {
