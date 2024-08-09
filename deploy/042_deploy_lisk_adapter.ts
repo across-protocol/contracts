@@ -3,11 +3,8 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId, network } = hre;
-  const { deploy } = deployments;
-
+  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
   const { deployer } = await getNamedAccounts();
-
   const chainId = parseInt(await getChainId());
 
   await deploy("Lisk_Adapter", {

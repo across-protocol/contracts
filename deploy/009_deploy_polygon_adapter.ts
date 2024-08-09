@@ -6,11 +6,8 @@ import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 const MATIC = TOKEN_SYMBOLS_MAP.MATIC.addresses;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy } = deployments;
-
+  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
   const { deployer } = await getNamedAccounts();
-
   const chainId = parseInt(await getChainId());
 
   const args = [

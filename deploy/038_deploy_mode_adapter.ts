@@ -1,13 +1,10 @@
-import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
+import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId, network } = hre;
-  const { deploy } = deployments;
-
+  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
   const { deployer } = await getNamedAccounts();
-
   const chainId = parseInt(await getChainId());
 
   await deploy("Mode_Adapter", {

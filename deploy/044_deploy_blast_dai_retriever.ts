@@ -4,11 +4,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
-  const hubPool = await deployments.get("HubPool");
-  const { deploy } = deployments;
-
   const { deployer } = await getNamedAccounts();
-
+  const { deploy } = deployments;
+  const hubPool = await deployments.get("HubPool");
   const chainId = parseInt(await getChainId());
 
   const constructorArguments = [

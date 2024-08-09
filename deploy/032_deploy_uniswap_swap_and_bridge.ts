@@ -5,13 +5,10 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { getChainId, deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
-
-  const chainId = parseInt(await getChainId());
-  const { deployer } = await getNamedAccounts();
-
+  const { deployments: { deploy }, getChainId, getNamedAccounts } = hre;
   const { BASE } = CHAIN_IDs;
+  const { deployer } = await getNamedAccounts();
+  const chainId = parseInt(await getChainId());
 
   await deploy("UniswapV3_SwapAndBridge", {
     contract: "SwapAndBridge",

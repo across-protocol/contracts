@@ -3,11 +3,8 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy } = deployments;
-
+  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
   const { deployer } = await getNamedAccounts();
-
   const chainId = parseInt(await getChainId());
 
   // This address receives gas refunds on the L2 after messages are relayed. Currently

@@ -1,8 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ZERO_ADDRESS } from "@uma/common";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { WETH } from "./consts";
+import { WETH, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
