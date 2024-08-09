@@ -35,6 +35,12 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
     liskCrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
     liskStandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
+    blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
+    blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
+    redstoneCrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
+    redstoneStandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
+    zoraCrossDomainMessenger: "0x363B4B1ADa52E50353f746999bd9E94395190d2C",
+    zoraStandardBridge: "0xbF6acaF315477b15D638bf4d91eA48FA79b58335",
   },
   [CHAIN_IDs.SEPOLIA]: {
     optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",

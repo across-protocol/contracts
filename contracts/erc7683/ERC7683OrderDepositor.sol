@@ -12,6 +12,7 @@ import { AcrossOrderData, AcrossFillerData, ERC7683Permit2Lib } from "./ERC7683A
  * @notice ERC7683OrderDepositor processes an external order type and translates it into an AcrossV3 deposit.
  * @dev This contract is abstract because it is intended to be usable by a contract that can accept the deposit
  * as well as one that sends the deposit to another contract.
+ * @custom:security-contact bugs@across.to
  */
 abstract contract ERC7683OrderDepositor is ISettlementContract {
     error WrongSettlementContract();

@@ -36,6 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDB[spokeChainId],
     USDB[hubChainId],
     "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
+    L1_ADDRESS_MAP[hubChainId].blastDaiRetriever, // Address of mainnet retriever contract to facilitate USDB finalizations.
   ];
   await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === CHAIN_IDs.BLAST);
 };

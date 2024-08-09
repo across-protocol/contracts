@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
  * @dev The reason why we use this local contract instead of importing from uma/contracts is because of the addition
  * of the internal method `functionCallStackOriginatesFromOutsideThisContract` which doesn't exist in the one exported
  * by uma/contracts.
+ * @custom:security-contact bugs@across.to
  */
 contract Lockable {
     bool internal _notEntered;
@@ -44,7 +45,7 @@ contract Lockable {
     /**
      * @dev Returns true if the contract is currently in a non-entered state, meaning that the origination of the call
      * came from outside the contract. This is relevant with fallback/receive methods to see if the call came from ETH
-     * being dropped onto the contract externally or due to ETH dropped on the the contract from within a method in this
+     * being dropped onto the contract externally or due to ETH dropped on the contract from within a method in this
      * contract, such as unwrapping WETH to ETH within the contract.
      */
     function functionCallStackOriginatesFromOutsideThisContract() internal view returns (bool) {

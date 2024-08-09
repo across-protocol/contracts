@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  * @notice This contract is designed to own an Ownable "target" contract and gate access to specific
  * function selectors based on specific roles. Practically, this contract should own the HubPool contract.
  * All ownable function calls to target should be sent through this contract's fallback function.
+ * @custom:security-contact bugs@across.to
  */
 contract PermissionSplitterProxy is AccessControl, MultiCaller {
     // Inherited admin role from AccessControl. Should be assigned to Across DAO Safe.

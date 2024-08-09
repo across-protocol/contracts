@@ -30,6 +30,7 @@ interface IFxMessageProcessor {
 
 /**
  * @notice Polygon specific SpokePool.
+ * @custom:security-contact bugs@across.to
  */
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
@@ -37,7 +38,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
 
-    // Contract deployed on L1 and L2 processes all cross-chain transfers between this contract and the the HubPool.
+    // Contract deployed on L1 and L2 processes all cross-chain transfers between this contract and the HubPool.
     // Required because bridging tokens from Polygon to Ethereum has special constraints.
     PolygonTokenBridger public polygonTokenBridger;
 

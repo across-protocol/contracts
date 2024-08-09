@@ -22,7 +22,11 @@
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 20277013 },
     "Lisk_Adapter": { "address": "0x8229E812f20537caA1e8Fb41749b4887B8a75C3B", "blockNumber": 20184545 },
     "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 },
-    "Scroll_Adapter": { "address": "0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F", "blockNumber": 20318360 }
+    "Scroll_Adapter": { "address": "0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F", "blockNumber": 20318360 },
+    "Blast_DaiRetriever": { "address": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB", "blockNumber": 20378862 },
+    "Blast_RescueAdapter": { "address": "0xE5Dea263511F5caC27b15cBd58Ff103F4Ce90957", "blockNumber": 20378872 },
+    "Redstone_Adapter": { "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA", "blockNumber": 20432774 },
+    "Zora_Adapter": { "address": "0xa27fb9f2A22F8dA4cBF155e9795A43488004AAc3", "blockNumber": 20468487 }
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
@@ -57,6 +61,12 @@
   "324": {
     "SpokePool": { "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF", "blockNumber": 10352565 },
     "MulticallHandler": { "address": "0x863859ef502F0Ee9676626ED5B418037252eFeb2", "blockNumber": 36906393 }
+  },
+  "420": { "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 17025501 } },
+  "690": {
+    "SpokePool": { "address": "0x28077B47Cd03326De7838926A63699849DD4fa87", "blockNumber": 5158526 },
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 5161326 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 5159031 }
   },
   "919": {
     "SpokePool": { "address": "0xbd886FC0725Cc459b55BbFEb3E4278610331f83b", "blockNumber": 13999465 },
@@ -121,6 +131,11 @@
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 7489705 },
     "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 7490003 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 7489978 }
+  },
+  "7777777": {
+    "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 18119425 },
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 18120222 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 18119854 }
   },
   "11155111": {
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 6284508 },

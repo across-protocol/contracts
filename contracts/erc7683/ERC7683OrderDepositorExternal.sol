@@ -9,6 +9,7 @@ import "../external/interfaces/IPermit2.sol";
 /**
  * @notice ERC7683OrderDepositorExternal processes an external order type and translates it into an AcrossV3Deposit
  * that it sends to the SpokePool contract.
+ * @custom:security-contact bugs@across.to
  */
 contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
     using SafeERC20 for IERC20;

@@ -8,6 +8,11 @@ import "../external/interfaces/IPolygonZkEVMBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Supports sending messages and tokens from L1 to PolygonZkEVM.
+ * @custom:security-contact bugs@across.to
+ */
+
 // solhint-disable-next-line contract-name-camelcase
 contract PolygonZkEVM_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;

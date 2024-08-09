@@ -68,19 +68,16 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       chainIds.map((chainId) => {
         // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
         if (matchedSymbol === "USDC") {
-          const nativeUsdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[chainId];
-          const bridgedUsdcAddress = TOKEN_SYMBOLS_MAP["USDC.e"].addresses[chainId];
-          if (nativeUsdcAddress) {
-            return nativeUsdcAddress;
-          } else if (bridgedUsdcAddress) {
-            return bridgedUsdcAddress;
-          } else {
+          const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as (keyof typeof TOKEN_SYMBOLS_MAP)[];
+          const symbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol].addresses[chainId]);
+          if (!symbol) {
             throw new Error(
-              `Could not find token address on chain ${chainId} in TOKEN_SYMBOLS_MAP for USDC.e or Native USDC`
+              `Could not find TOKEN_SYMBOLS_MAP mapping on chain ${chainId} for any of ${symbols.join(", ")}`
             );
           }
+          return TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
         } else if (matchedSymbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
-          return TOKEN_SYMBOLS_MAP.USDB.addresses[chainId]; // DAI maps to USDB  on Blast.
+          return TOKEN_SYMBOLS_MAP.USDB.addresses[chainId]; // DAI maps to USDB on Blast.
         }
 
         const l2Address = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[chainId];
@@ -171,7 +168,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
         // Address doesn't matter, we only want the interface.
         const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
-        // Find the address of the the Arbitrum representation of this token. Construct whitelistToken call to send to the
+        // Find the address of the Arbitrum representation of this token. Construct whitelistToken call to send to the
         // Arbitrum spoke pool via the relaySpokeAdminFunction call.
         const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [
           arbitrumToken,

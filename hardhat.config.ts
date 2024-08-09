@@ -82,6 +82,8 @@ const config: HardhatUserConfig = {
       },
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -245,6 +247,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    redstone: {
+      chainId: CHAIN_IDs.REDSTONE,
+      url: "https://rpc.redstonechain.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     blast: {
       chainId: CHAIN_IDs.BLAST,
       url: "https://rpc.blast.io",
@@ -258,6 +267,13 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
+    },
+    zora: {
+      chainId: CHAIN_IDs.ZORA,
+      url: "https://rpc.zora.energy",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
     },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
@@ -282,8 +298,10 @@ const config: HardhatUserConfig = {
       "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
       lisk: process.env.LISK_ETHERSCAN_API_KEY!,
       "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
+      redstone: process.env.REDSTONE_ETHERSCAN_API_KEY!,
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
+      zora: "routescan",
     },
     customChains: [
       {
@@ -407,6 +425,14 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "redstone",
+        chainId: CHAIN_IDs.REDSTONE,
+        urls: {
+          apiURL: "https://explorer.redstone.xyz/api",
+          browserURL: "https://explorer.redstone.xyz",
+        },
+      },
+      {
         network: "blast",
         chainId: CHAIN_IDs.BLAST,
         urls: {
@@ -420,6 +446,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.blastscan.io/api",
           browserURL: "https://sepolia.blastscan.io",
+        },
+      },
+      {
+        network: "zora",
+        chainId: CHAIN_IDs.ZORA,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
+          browserURL: "https://zorascan.xyz",
         },
       },
     ],

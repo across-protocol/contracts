@@ -7,13 +7,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("SpokePoolVerifier", {
+  const deployment = await deploy("SpokePoolVerifier", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
     deterministicDeployment: "0x1234", // Salt for the create2 call.
   });
+  console.log(`Deployed at block ${deployment.receipt.blockNumber} (tx: ${deployment.transactionHash})`);
+  await run("verify:verify", { address: deployment.address, constructorArguments: [] });
 };
 
 module.exports = func;
-func.tags = ["SpokePoolVerifier", "polygon", "mainnet", "optimism", "arbitrum", "zksync"];
+func.tags = ["SpokePoolVerifier"];

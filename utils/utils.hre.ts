@@ -2,7 +2,19 @@ import hre from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
 import { getContractFactory } from "./utils";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
+type unsafeAllowTypes = (
+  | "delegatecall"
+  | "state-variable-immutable"
+  | "constructor"
+  | "selfdestruct"
+  | "state-variable-assignment"
+  | "external-library-linking"
+  | "struct-definition"
+  | "enum-definition"
+  | "missing-public-upgradeto"
+)[];
 /**
  * @description Resolve the HubPool deployment, as well as the HubPool and SpokePool chain IDs for a new deployment.
  * @dev This function relies on having companionNetworks defined in the HardhatUserConfig.
@@ -30,20 +42,25 @@ export async function deployNewProxy(
   initArgs: FnArgs[],
   implementationOnly = false
 ): Promise<void> {
-  const { deployments, run, upgrades } = hre;
+  const { deployments, run, upgrades, getChainId } = hre;
+  let chainId = Number(await getChainId());
 
   let instance: string;
+  let unsafeAllowArgs = ["delegatecall"]; // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+  if ([CHAIN_IDs.BLAST, CHAIN_IDs.BLAST_SEPOLIA].includes(chainId)) {
+    unsafeAllowArgs.push("state-variable-immutable");
+  }
   if (implementationOnly) {
     instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
       constructorArgs,
       kind: "uups",
-      unsafeAllow: ["delegatecall", "state-variable-immutable"],
+      unsafeAllow: unsafeAllowArgs as unsafeAllowTypes,
     })) as string;
     console.log(`New ${name} implementation deployed @ ${instance}`);
   } else {
     const proxy = await upgrades.deployProxy(await getContractFactory(name, {}), initArgs, {
       kind: "uups",
-      unsafeAllow: ["delegatecall", "state-variable-immutable"], // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
+      unsafeAllow: unsafeAllowArgs as unsafeAllowTypes,
       constructorArgs,
       initializer: "initialize",
     });
