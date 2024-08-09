@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * A fillDeadlineBuffer of 6 hours
   const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 21600];
 
-  await deployNewProxy("Scroll_SpokePool", constructorArgs, initArgs, spokeChainId === SCROLL);
+  await deployNewProxy("Scroll_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["ScrollSpokePool", "scroll"];
