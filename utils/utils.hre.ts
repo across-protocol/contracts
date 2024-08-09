@@ -1,8 +1,9 @@
 import hre from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
-import { getContractFactory } from "./utils";
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { getDeployedAddress } from "../src/DeploymentUtils";
+import { getContractFactory, toBN } from "./utils";
 
 type unsafeAllowTypes = (
   | "delegatecall"
@@ -15,6 +16,7 @@ type unsafeAllowTypes = (
   | "enum-definition"
   | "missing-public-upgradeto"
 )[];
+
 /**
  * @description Resolve the HubPool deployment, as well as the HubPool and SpokePool chain IDs for a new deployment.
  * @dev This function relies on having companionNetworks defined in the HardhatUserConfig.
@@ -40,7 +42,7 @@ export async function deployNewProxy(
   name: string,
   constructorArgs: FnArgs[],
   initArgs: FnArgs[],
-  implementationOnly = false
+  implementationOnly?: boolean
 ): Promise<void> {
   const { deployments, run, upgrades, getChainId } = hre;
   let chainId = Number(await getChainId());
@@ -50,7 +52,12 @@ export async function deployNewProxy(
   if ([CHAIN_IDs.BLAST, CHAIN_IDs.BLAST_SEPOLIA].includes(chainId)) {
     unsafeAllowArgs.push("state-variable-immutable");
   }
+
+  // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
+  const proxy = getDeployedAddress("SpokePool", chainId, false);
+  implementationOnly ??= proxy !== undefined;
   if (implementationOnly) {
+    console.log(`${name} deployment already detected @ ${proxy}, deploying new implementation.`);
     instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
       constructorArgs,
       kind: "uups",

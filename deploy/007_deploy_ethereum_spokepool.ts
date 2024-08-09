@@ -1,13 +1,11 @@
-import { DeployFunction } from "hardhat-deploy/types";
-import { deployNewProxy } from "../utils/utils.hre";
-import { L1_ADDRESS_MAP } from "./consts";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { L1_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getChainId } = hre;
-  const chainId = await getChainId();
-  const hubPool = await deployments.get("HubPool");
-  console.log(`Using chain ${chainId} HubPool @ ${hubPool.address}`);
+  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  console.log(`Using HubPool @ ${hubPool.address}`);
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.
@@ -17,8 +15,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //    * A WETH address of the WETH address
   //    * A depositQuoteTimeBuffer of 1 hour
   //    * A fillDeadlineBuffer of 6 hours
-  const constructorArgs = [L1_ADDRESS_MAP[chainId].weth, 3600, 21600];
-  await deployNewProxy("Ethereum_SpokePool", constructorArgs, initArgs, chainId === "1");
+  const constructorArgs = [L1_ADDRESS_MAP[spokeChainId].weth, 3600, 21600];
+  await deployNewProxy("Ethereum_SpokePool", constructorArgs, initArgs);
 
   // Transfer ownership to hub pool.
 };

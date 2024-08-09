@@ -35,7 +35,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
     L1_ADDRESS_MAP[hubChainId].blastDaiRetriever, // Address of mainnet retriever contract to facilitate USDB finalizations.
   ];
-  await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs, spokeChainId === 81457);
+  await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["BlastSpokePool", "blast"];

@@ -1,16 +1,18 @@
 import * as deployments_ from "../deployments/deployments.json";
+
 interface DeploymentExport {
   [chainId: string]: { [contractName: string]: { address: string; blockNumber: number } };
 }
 const deployments: DeploymentExport = deployments_ as any;
 
 // Returns the deployed address of any contract on any network.
-export function getDeployedAddress(contractName: string, networkId: number): string {
-  try {
-    return deployments[networkId.toString()][contractName].address;
-  } catch (_) {
+export function getDeployedAddress(contractName: string, networkId: number, throwOnError = true): string | undefined {
+  const address = deployments[networkId.toString()]?.[contractName]?.address;
+  if (!address && throwOnError) {
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
+
+  return address;
 }
 
 // Returns the deployment block number of any contract on any network.
