@@ -86,7 +86,7 @@
     },
     {
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
-      "label": "numberOfDeposits",
+      "label": "DEPOSIT_COUNTER_START",
       "offset": 24,
       "slot": "2155"
     },
@@ -146,9 +146,15 @@
     },
     {
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
-      "label": "__gap",
+      "label": "depositorDepositCount",
       "offset": 0,
       "slot": "2163"
+    },
+    {
+      "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2164"
     },
     {
       "contract": "contracts/ZkSync_SpokePool.sol:ZkSync_SpokePool",
