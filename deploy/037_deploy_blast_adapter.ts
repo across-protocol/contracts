@@ -6,7 +6,11 @@ import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
+  const {
+    deployments: { deploy },
+    getNamedAccounts,
+    getChainId,
+  } = hre;
   const { deployer } = await getNamedAccounts();
   const chainId = parseInt(await getChainId());
 

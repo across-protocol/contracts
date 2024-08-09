@@ -3,7 +3,11 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { L1_ADDRESS_MAP, WETH, WMATIC } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
+  const {
+    deployments: { deploy },
+    getNamedAccounts,
+    getChainId,
+  } = hre;
   const { deployer } = await getNamedAccounts();
   const spokeChainId = parseInt(await getChainId());
   const hubChainId = parseInt(await hre.companionNetworks.l1.getChainId());

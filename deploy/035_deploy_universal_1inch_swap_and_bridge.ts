@@ -5,7 +5,11 @@ import { getDeployedAddress } from "../src/DeploymentUtils";
 import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments: { deploy }, getChainId, getNamedAccounts } = hre;
+  const {
+    deployments: { deploy },
+    getChainId,
+    getNamedAccounts,
+  } = hre;
   const { deployer } = await getNamedAccounts();
   const chainId = parseInt(await getChainId());
 

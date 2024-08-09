@@ -5,7 +5,11 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
+  const {
+    deployments: { deploy },
+    getNamedAccounts,
+    getChainId,
+  } = hre;
   const { BASE } = CHAIN_IDs;
   const { deployer } = await getNamedAccounts();
   const chainId = parseInt(await getChainId());

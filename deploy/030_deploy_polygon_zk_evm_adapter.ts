@@ -3,7 +3,11 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments: { deploy }, getNamedAccounts, getChainId } = hre;
+  const {
+    deployments: { deploy },
+    getNamedAccounts,
+    getChainId,
+  } = hre;
   const { deployer } = await getNamedAccounts();
   const chainId = parseInt(await getChainId());
 
