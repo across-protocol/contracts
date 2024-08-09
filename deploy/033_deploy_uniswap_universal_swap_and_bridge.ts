@@ -5,15 +5,10 @@ import { getDeployedAddress } from "../src/DeploymentUtils";
 import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getChainId,
-    getNamedAccounts,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  await deploy("UniswapV3_UniversalSwapAndBridge", {
+  await hre.deployments.deploy("UniswapV3_UniversalSwapAndBridge", {
     contract: "UniversalSwapAndBridge",
     from: deployer,
     log: true,

@@ -4,9 +4,8 @@ import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { getChainId } = hre;
   const { hubPool } = await getSpokePoolDeploymentInfo(hre);
-  const chainId = parseInt(await getChainId());
+  const chainId = parseInt(await hre.getChainId());
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
   // with deprecated spoke pool.

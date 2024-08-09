@@ -6,13 +6,8 @@ import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 const MATIC = TOKEN_SYMBOLS_MAP.MATIC.addresses;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-    getChainId,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
   const args = [
     L1_ADDRESS_MAP[chainId].polygonRootChainManager,
@@ -24,13 +19,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
-  const instance = await deploy("Polygon_Adapter", {
+  const instance = await hre.deployments.deploy("Polygon_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
     args,
   });
-  await run("verify:verify", { address: instance.address, constructorArguments: args });
+  await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
 };
 
 module.exports = func;

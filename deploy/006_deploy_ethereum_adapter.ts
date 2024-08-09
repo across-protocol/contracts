@@ -2,13 +2,9 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
+  const { deployer } = await hre.getNamedAccounts();
 
-  await deploy("Ethereum_Adapter", {
+  await hre.deployments.deploy("Ethereum_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,

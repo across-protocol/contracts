@@ -3,13 +3,8 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { depoy },
-    getNamedAccounts,
-    getChainId,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
   const args = [
     WETH[chainId],
@@ -18,13 +13,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
-  const instance = await deploy("Base_Adapter", {
+  const instance = await hre.deployments.deploy("Base_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
     args,
   });
-  await run("verify:verify", { address: instance.address, constructorArguments: args });
+  await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
 };
 
 module.exports = func;

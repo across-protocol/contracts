@@ -3,15 +3,10 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-    getChainId,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  await deploy("ZkSync_Adapter", {
+  await hre.deployments.deploy("ZkSync_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,

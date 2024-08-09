@@ -3,15 +3,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { L1_ADDRESS_MAP, WETH, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-    getChainId,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  await deploy("Zora_Adapter", {
+  await hre.deployments.deploy("Zora_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,

@@ -6,15 +6,10 @@ import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-    getChainId,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  await deploy("Blast_Adapter", {
+  await hre.deployments.deploy("Blast_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,

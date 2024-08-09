@@ -2,13 +2,9 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
+  const { deployer } = await hre.getNamedAccounts();
 
-  await deploy("MintableERC1155", {
+  await hre.deployments.deploy("MintableERC1155", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,

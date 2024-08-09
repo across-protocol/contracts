@@ -3,17 +3,12 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { L1_ADDRESS_MAP, WETH, WMATIC } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {
-    deployments: { deploy },
-    getNamedAccounts,
-    getChainId,
-  } = hre;
-  const { deployer } = await getNamedAccounts();
-  const spokeChainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const spokeChainId = parseInt(await hre.getChainId());
   const hubChainId = parseInt(await hre.companionNetworks.l1.getChainId());
   const l1HubPool = await hre.companionNetworks.l1.deployments.get("HubPool");
 
-  await deploy("PolygonTokenBridger", {
+  await hre.deployments.deploy("PolygonTokenBridger", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
