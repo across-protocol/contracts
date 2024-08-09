@@ -19,12 +19,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].fxChild,
   ];
 
-  // Construct this spokepool with a:
-  //    * A WETH address of the WETH address
-  //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 6 hours
-  //    * Native USDC address on L2
-  //    * CCTP token messenger address on L2
   const constructorArgs = [
     WMATIC[spokeChainId],
     QUOTE_TIME_BUFFER,
