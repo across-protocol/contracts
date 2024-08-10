@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const lpTokenFactory = await hre.deployments.deploy("LpTokenFactory", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: true
+    skipIfAlreadyDeployed: true,
   });
 
   await hre.deployments.deploy("HubPool", {
