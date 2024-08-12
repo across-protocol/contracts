@@ -92,7 +92,7 @@
 
 | Contract Name      | Address                                                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Redstone_SpokePool | [0x28077B47Cd03326De7838926A63699849DD4fa87](https://explorer.redstone.xyz/address/0x28077B47Cd03326De7838926A63699849DD4fa87) |
+| Redstone_SpokePool | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://explorer.redstone.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
 | MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
 ## Scroll mainnet (534352)
@@ -101,3 +101,10 @@
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Scroll_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://scrollscan.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://scrollscan.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Zora mainnet (7777777)
+
+| Contract Name    | Address                                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
