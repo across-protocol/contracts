@@ -105,6 +105,6 @@
 ## Zora mainnet (7777777)
 
 | Contract Name    | Address                                                                                                                        |
-| -----------------| ------------------------------------------------------------------------------------------------------------------------------ |
-| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
