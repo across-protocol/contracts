@@ -74,8 +74,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const hre = hre_ as any;
     const { chains, token: symbol } = taskArguments;
 
-    const hubPoolChainId = parseInt(await hre.getChainId());
-    if (hubPoolChainId === 31337) {
+    const hubChainId = parseInt(await hre.getChainId());
+    if (hubChainId === 31337) {
       throw new Error(`Defaulted to network \`hardhat\`; specify \`--network mainnet\` or \`--network sepolia\``);
     }
 
@@ -83,7 +83,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     assert(isTokenSymbol(_matchedSymbol));
     const matchedSymbol = _matchedSymbol as TokenSymbol;
 
-    const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubPoolChainId];
+    const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubChainId];
     assert(l1Token !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
 
     // If deposit routes chains are provided then we'll only add routes involving these chains. This is used to add new
@@ -192,60 +192,64 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     });
 
     // If deposit route chains are defined then we don't want to add a new PoolRebalanceRoute
-    if (depositRouteChains.length === 0) {
-      console.log("\nAdding calldata to set the pool rebalance route for the respective destination tokens:");
-      let j = 0; // counter for logging.
-      chainIds.forEach((toId, toIndex) => {
-        // If deposit route chains are defined, only add route if it involves a chain on that list
-        if (depositRouteChains.length === 0 || depositRouteChains.includes(toId)) {
-          console.log(`\t${++j}\t Adding calldata for rebalance route for L2Token ${tokens[toIndex]} on ${toId}`);
-          callData.push(
-            hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, tokens[toIndex]])
-          );
-        } else {
-          console.log(
-            `\t\tSkipping pool rebalance route -> ${toId} because it doesn't involve a chain on the exclusive list`
-          );
-        }
-      });
+    console.log("\nAdding calldata to set the pool rebalance route for the respective destination tokens:");
+    i = 0; // counter for logging.
+    const rebalanceRoutesSkipped: number[] = [];
+    chainIds.forEach((toId) => {
+      const destinationToken = tokens[toId].address;
+      if (destinationToken === NO_ADDRESS) {
+        return;
+      }
 
-      // We only need to whitelist an Arbitrum token on the SpokePool if we're setting up a pool rebalance route between
-      // mainnet and Arbitrum, so if deposit route chains are set then no need to do this.
-      if (chainIds.includes(ARBITRUM)) {
-        const arbitrumToken = tokens[chainIds.indexOf(ARBITRUM)];
+      // If deposit route chains are defined, only add route if it involves a chain on that list
+      if (depositRouteChains.length === 0 || depositRouteChains.includes(toId)) {
+        const n = (++i).toString().padStart(2, " ");
         console.log(
-          `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1Token} on Arbitrum.` +
-            " This is only needed on this chain."
+          `\t${n} Setting rebalance route for chain ${symbol} ${hubChainId} -> ${destinationToken} on ${toId}.`
         );
-
-        // Address doesn't matter, we only want the interface.
-        const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
-        // Find the address of the Arbitrum representation of this token. Construct whitelistToken call to send to the
-        // Arbitrum spoke pool via the relaySpokeAdminFunction call.
-        const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [
-          arbitrumToken,
-          l1Token,
-        ]);
-        callData.push(
-          hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [ARBITRUM, whitelistTokenCallData])
-        );
+        callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, destinationToken]));
+      } else {
+        rebalanceRoutesSkipped.push(toId);
       }
+    });
 
-      // Add optimism setTokenBridge call if the token has a custom bridge needed to get to mainnet.
-      if (chainIds.includes(OPTIMISM) && taskArguments.customoptimismbridge) {
-        console.log("\nAdding call data to set custom Optimism bridge.");
+    if (rebalanceRoutesSkipped.length > 0) {
+      console.log(`\n\tSkipped pool rebalance routes ${hubChainId} -> ${rebalanceRoutesSkipped.join(", ")}.`);
+    }
 
-        // Address doesn't matter, we only want the interface:
-        const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
-        const optimismToken = tokens[chainIds.indexOf(OPTIMISM)];
-        const setTokenBridgeCallData = spokePool.interface.encodeFunctionData("setTokenBridge", [
-          optimismToken,
-          taskArguments.customoptimismbridge,
-        ]);
-        callData.push(
-          hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [OPTIMISM, setTokenBridgeCallData])
-        );
-      }
+    // We only need to whitelist an Arbitrum token on the SpokePool if we're setting up a pool rebalance route between
+    // mainnet and Arbitrum, so if deposit route chains are set then no need to do this.
+    if (chainIds.includes(ARBITRUM)) {
+      const arbitrumToken = tokens[ARBITRUM].address;
+      console.log(
+        `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1Token} on Arbitrum.` +
+          " This is only needed on this chain."
+      );
+
+      // Address doesn't matter, we only want the interface.
+      const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
+      // Find the address of the Arbitrum representation of this token. Construct whitelistToken call to send to the
+      // Arbitrum spoke pool via the relaySpokeAdminFunction call.
+      const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
+      callData.push(
+        hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [ARBITRUM, whitelistTokenCallData])
+      );
+    }
+
+    // Add optimism setTokenBridge call if the token has a custom bridge needed to get to mainnet.
+    if (chainIds.includes(OPTIMISM) && taskArguments.customoptimismbridge) {
+      console.log("\nAdding call data to set custom Optimism bridge.");
+
+      // Address doesn't matter, we only want the interface:
+      const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
+      const optimismToken = tokens[OPTIMISM].address;
+      const setTokenBridgeCallData = spokePool.interface.encodeFunctionData("setTokenBridge", [
+        optimismToken,
+        taskArguments.customoptimismbridge,
+      ]);
+      callData.push(
+        hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [OPTIMISM, setTokenBridgeCallData])
+      );
     }
 
     console.log(`\n***DONE.***\nCalldata to enable desired token has been constructed!`);
