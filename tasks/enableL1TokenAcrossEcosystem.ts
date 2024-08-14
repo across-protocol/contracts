@@ -3,7 +3,44 @@ import assert from "assert";
 import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
-const { ARBITRUM } = CHAIN_IDs;
+type TokenSymbol = keyof typeof TOKEN_SYMBOLS_MAP;
+
+/**
+ * Given a token symbol, determine whether it is a valid key for the TOKEN_SYMBOLS_MAP object.
+ */
+function isTokenSymbol(symbol: unknown): symbol is TokenSymbol {
+  return TOKEN_SYMBOLS_MAP[symbol as TokenSymbol] !== undefined;
+}
+
+/**
+ * Given a token symbol from the HubPool chain and a remote chain ID, resolve the relevant token symbol and address.
+ */
+function resolveTokenOnChain(
+  mainnetSymbol: string,
+  chainId: number
+): { symbol: TokenSymbol; address: string } | undefined {
+  assert(isTokenSymbol(mainnetSymbol), `Unrecognised token symbol (${mainnetSymbol})`);
+  let symbol = mainnetSymbol;
+
+  // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
+  if (mainnetSymbol === "USDC") {
+    const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as TokenSymbol[];
+    const tokenSymbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol]?.addresses[chainId]);
+    if (!isTokenSymbol(tokenSymbol)) {
+      return;
+    }
+    symbol = tokenSymbol;
+  } else if (symbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
+    symbol = "USDB";
+  }
+
+  const address = TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
+  return address ? { symbol, address } : undefined;
+}
+
+const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
+const NO_SYMBOL = "----";
+const NO_ADDRESS = "------------------------------------------";
 
 // Supported mainnet chain IDs.
 const enabledChainIds = Object.values(MAINNET_CHAIN_IDs)
@@ -11,7 +48,7 @@ const enabledChainIds = Object.values(MAINNET_CHAIN_IDs)
   .filter((chainId) => chainId !== CHAIN_IDs.BOBA)
   .sort((x, y) => x - y);
 
-const chainPadding = enabledChainIds.at(-1).toString().length;
+const chainPadding = enabledChainIds[enabledChainIds.length - 1].toString().length;
 const formatChainId = (chainId: number): string => chainId.toString().padStart(chainPadding, " ");
 
 const getChainsFromList = (taskArgInput: string): number[] =>
@@ -38,10 +75,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       throw new Error(`Defaulted to network \`hardhat\`; specify \`--network mainnet\` or \`--network sepolia\``);
     }
 
-    const matchedSymbol = Object.keys(TOKEN_SYMBOLS_MAP).find(
-      (_symbol) => _symbol === symbol
-    ) as keyof typeof TOKEN_SYMBOLS_MAP;
-    assert(matchedSymbol !== undefined, `Could not find token with symbol ${symbol} in TOKEN_SYMBOLS_MAP`);
+    const matchedSymbol = Object.keys(TOKEN_SYMBOLS_MAP).find((_symbol) => _symbol === symbol);
+    assert(isTokenSymbol(matchedSymbol));
 
     const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubPoolChainId];
     assert(l1Token !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
@@ -78,30 +113,15 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     console.log("\nLoading L2 companion token address for provided L1 token.");
     const tokens = Object.fromEntries(
-      chainIds
-        .map((chainId) => {
-          let symbol = matchedSymbol;
+      chainIds.map((chainId) => {
+        const token = resolveTokenOnChain(matchedSymbol, chainId);
+        if (token === undefined) {
+          return [chainId, { symbol: NO_SYMBOL, address: NO_ADDRESS }];
+        }
 
-          // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
-          if (matchedSymbol === "USDC") {
-            const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as (keyof typeof TOKEN_SYMBOLS_MAP)[];
-            symbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol].addresses[chainId]);
-            if (!symbol) {
-              console.log(`No known mapping for ${matchedSymbol} on ${chainId}, skipping...`);
-              return;
-            }
-          } else if (matchedSymbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
-            symbol = "USDB";
-          }
-
-          const address = TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
-          if (!address) {
-            throw new Error(`Could not find token address on chain ${chainId} in TOKEN_SYMBOLS_MAP`);
-          }
-
-          return [chainId, { symbol, address }];
-        })
-        .filter((x) => x)
+        const { symbol, address } = token;
+        return [chainId, { symbol: symbol as string, address }];
+      })
     );
 
     console.table(
@@ -124,18 +144,22 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     if (depositRouteChains.length === 0) {
       console.log(`\nAdding calldata to enable liquidity provision on ${l1Token}`);
       callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
+    } else {
+      depositRouteChains.forEach((chainId) =>
+        assert(tokens[chainId].symbol !== NO_SYMBOL, `Token ${symbol} is not defined for chain ${chainId}`)
+      );
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
     let i = 0; // counter for logging.
-    const skipped: { [originChainId: number]: number } = {};
+    const skipped: { [originChainId: number]: number[] } = {};
     const routeChainIds = Object.keys(tokens).map(Number);
     routeChainIds.forEach((fromId) => {
       const formattedFromId = formatChainId(fromId);
       const { symbol, address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
-      routeChainIds.forEach((toId, _) => {
-        if (fromId === toId) {
+      routeChainIds.forEach((toId) => {
+        if (fromId === toId || symbol === NO_SYMBOL) {
           return;
         }
 
