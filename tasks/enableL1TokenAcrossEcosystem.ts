@@ -164,7 +164,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       const { symbol, address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
       routeChainIds.forEach((toId) => {
-        if (fromId === toId || symbol === NO_SYMBOL) {
+        if (fromId === toId || [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)) {
           return;
         }
 
@@ -174,7 +174,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
           depositRouteChains.includes(toId) ||
           depositRouteChains.includes(fromId)
         ) {
-          const n = (++i).toString().padStart(2, ' ');
+          const n = (++i).toString().padStart(2, " ");
           console.log(`\t${n} Added route for ${inputToken} from ${formattedFromId} -> ${formatChainId(toId)}.`);
           callData.push(hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, true]));
         } else {
