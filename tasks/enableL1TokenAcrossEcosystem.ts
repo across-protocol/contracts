@@ -20,7 +20,7 @@ function resolveTokenOnChain(
   chainId: number
 ): { symbol: TokenSymbol; address: string } | undefined {
   assert(isTokenSymbol(mainnetSymbol), `Unrecognised token symbol (${mainnetSymbol})`);
-  let symbol = mainnetSymbol;
+  let symbol = mainnetSymbol as TokenSymbol;
 
   // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
   if (mainnetSymbol === "USDC") {
@@ -35,7 +35,11 @@ function resolveTokenOnChain(
   }
 
   const address = TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
-  return address ? { symbol, address } : undefined;
+  if (!address) {
+    return;
+  }
+
+  return { symbol, address };
 }
 
 const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
@@ -75,8 +79,9 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       throw new Error(`Defaulted to network \`hardhat\`; specify \`--network mainnet\` or \`--network sepolia\``);
     }
 
-    const matchedSymbol = Object.keys(TOKEN_SYMBOLS_MAP).find((_symbol) => _symbol === symbol);
-    assert(isTokenSymbol(matchedSymbol));
+    const _matchedSymbol = Object.keys(TOKEN_SYMBOLS_MAP).find((_symbol) => _symbol === symbol);
+    assert(isTokenSymbol(_matchedSymbol));
+    const matchedSymbol = _matchedSymbol as TokenSymbol;
 
     const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubPoolChainId];
     assert(l1Token !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
@@ -169,7 +174,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
           depositRouteChains.includes(toId) ||
           depositRouteChains.includes(fromId)
         ) {
-          console.log(`\t${++i}\tAdded route for ${inputToken} from ${formattedFromId} -> ${formatChainId(toId)}.`);
+          const n = (++i).toString().padStart(2, ' ');
+          console.log(`\t${n} Added route for ${inputToken} from ${formattedFromId} -> ${formatChainId(toId)}.`);
           callData.push(hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, true]));
         } else {
           skipped[fromId].push(toId);
