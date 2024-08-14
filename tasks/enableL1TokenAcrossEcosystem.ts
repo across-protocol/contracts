@@ -219,7 +219,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     // We only need to whitelist an Arbitrum token on the SpokePool if we're setting up a pool rebalance route between
     // mainnet and Arbitrum, so if deposit route chains are set then no need to do this.
-    if (chainIds.includes(ARBITRUM)) {
+    if (depositRouteChains.includes(ARBITRUM)) {
       const arbitrumToken = tokens[ARBITRUM].address;
       console.log(
         `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1Token} on Arbitrum.` +
@@ -237,7 +237,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     }
 
     // Add optimism setTokenBridge call if the token has a custom bridge needed to get to mainnet.
-    if (chainIds.includes(OPTIMISM) && taskArguments.customoptimismbridge) {
+    if (depositRouteChains.includes(OPTIMISM) && taskArguments.customoptimismbridge) {
       console.log("\nAdding call data to set custom Optimism bridge.");
 
       // Address doesn't matter, we only want the interface:
