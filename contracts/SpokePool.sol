@@ -125,7 +125,7 @@ abstract contract SpokePool is
 
     bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
         keccak256(
-            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
+            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
 
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
@@ -563,11 +563,6 @@ abstract contract SpokePool is
         );
     }
 
-    // @dev Hashes the passed in depositId with the msg.sender address to ensure that msg.sender cannot use this
-    // function to front-run another depositor's unsafe deposit. Also sets the most significant byte to 1
-    // to ensure that the resultant deposit nonce doesn't collide with a safe deposit nonce whose most
-    // significant byte is always 0.
-
     /**
      * @notice See depositV3 for details. This function is identical to depositV3 except that it does not use the
      * global deposit ID counter as a deposit nonce, instead allowing the caller to pass in a deposit nonce. This
@@ -796,7 +791,7 @@ abstract contract SpokePool is
      */
     function speedUpV3Deposit(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
         bytes calldata updatedMessage,
@@ -1322,7 +1317,7 @@ abstract contract SpokePool is
 
     function _verifyUpdateV3DepositMessage(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
