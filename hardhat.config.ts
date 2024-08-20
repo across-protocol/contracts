@@ -22,6 +22,8 @@ require("./tasks/enableL1TokenAcrossEcosystem");
 require("./tasks/finalizeScrollClaims");
 // eslint-disable-next-line node/no-missing-require
 require("./tasks/rescueStuckScrollTxn");
+// eslint-disable-next-line node/no-missing-require
+require("./tasks/tokenTraversal");
 
 dotenv.config();
 
