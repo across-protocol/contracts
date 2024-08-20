@@ -44,8 +44,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
     redstoneCrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
     redstoneStandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
-    zoraCrossDomainMessenger: "0x363B4B1ADa52E50353f746999bd9E94395190d2C",
-    zoraStandardBridge: "0xbF6acaF315477b15D638bf4d91eA48FA79b58335",
+    zoraCrossDomainMessenger: "0xdC40a14d9abd6F410226f1E6de71aE03441ca506",
+    zoraStandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
   },
   4: {
     weth: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
