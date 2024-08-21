@@ -8,6 +8,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 
+interface FunderInterface {
+    function withdraw(IERC20 token, uint256 amount) external;
+}
+
 /**
  * @title Staging ground for incoming and outgoing messages
  * @notice Unlike the standard Eth bridge, native token bridge escrows the custom ERC20 token which is
@@ -152,7 +156,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // This token is used to pay for l1 to l2 messages if its configured by an Arbitrum orbit chain.
     IERC20 public immutable CUSTOM_GAS_TOKEN;
 
-    address public immutable CUSTOM_GAS_TOKEN_FUNDER;
+    FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
     /**
      * @notice Constructs new Adapter.
@@ -162,7 +166,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _customGasToken Custom gas token to pay for L1 to L2 messages.
-     * @param _customGasTokenFunder Address that funds the custom gas token.
+     * @param _customGasTokenFunder Contract that funds the custom gas token.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -171,7 +175,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
         IERC20 _customGasToken,
-        address _customGasTokenFunder,
+        FunderInterface _customGasTokenFunder,
         uint256 _l2MaxSubmissionCost
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
         L1_INBOX = _l1ArbitrumInbox;
@@ -180,9 +184,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         CUSTOM_GAS_TOKEN = _customGasToken;
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
-        require(address(_customGasToken) != address(0), "Custom gas token cannot be 0");
         require(L1_INBOX.bridge().nativeToken() == address(_customGasToken), "Incorrect custom gas token");
-        require(CUSTOM_GAS_TOKEN_FUNDER != address(0), "token funder address cannot be 0");
     }
 
     /**
@@ -282,7 +284,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
         uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
-        CUSTOM_GAS_TOKEN.transferFrom(CUSTOM_GAS_TOKEN_FUNDER, address(this), requiredL1CallValue);
+        CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
         require(CUSTOM_GAS_TOKEN.balanceOf(address(this)) >= requiredL1CallValue, "Insufficient gas balance");
         return requiredL1CallValue;
     }
