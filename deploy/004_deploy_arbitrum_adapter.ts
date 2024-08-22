@@ -1,14 +1,10 @@
-import { L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy } = deployments;
-
-  const { deployer } = await getNamedAccounts();
-
-  const chainId = parseInt(await getChainId());
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
   // This address receives gas refunds on the L2 after messages are relayed. Currently
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
@@ -18,10 +14,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
     L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
     l2RefundAddress,
-    L1_ADDRESS_MAP[chainId].usdc,
+    USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
-  const instance = await deploy("Arbitrum_Adapter", {
+  const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
@@ -29,11 +25,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
       L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
       l2RefundAddress,
-      L1_ADDRESS_MAP[chainId].usdc,
+      USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     ],
   });
-  await run("verify:verify", { address: instance.address, constructorArguments: args });
+  await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
 };
 
 module.exports = func;
