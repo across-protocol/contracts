@@ -9,15 +9,6 @@ contract Arbitrum_CustomGasToken_Funder is Ownable {
     using SafeERC20 for IERC20;
 
     /**
-     * @notice Deposit tokens into the contract.
-     * @param token Token to deposit.
-     * @param amount Amount of tokens to deposit.
-     */
-    function deposit(IERC20 token, uint256 amount) external {
-        token.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
-    /**
      * @notice Withdraw tokens from the contract.
      * @param token Token to withdraw.
      * @param amount Amount of tokens to withdraw.
