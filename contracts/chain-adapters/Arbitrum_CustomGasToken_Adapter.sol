@@ -165,7 +165,6 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _customGasToken Custom gas token to pay for L1 to L2 messages.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
      */
     constructor(
@@ -174,17 +173,16 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        IERC20 _customGasToken,
         FunderInterface _customGasTokenFunder,
         uint256 _l2MaxSubmissionCost
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
-        CUSTOM_GAS_TOKEN = _customGasToken;
+        CUSTOM_GAS_TOKEN = IERC20(L1_INBOX.bridge().nativeToken());
+        require(address(CUSTOM_GAS_TOKEN) != address(0), "Invalid custom gas token");
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
-        require(L1_INBOX.bridge().nativeToken() == address(_customGasToken), "Incorrect custom gas token");
     }
 
     /**
@@ -254,7 +252,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                     "0x" // data ABI encoded data of L2 message
                 );
             } else {
-                CUSTOM_GAS_TOKEN.safeIncreaseAllowance(erc20Gateway, amount);
+                IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
+                CUSTOM_GAS_TOKEN.safeIncreaseAllowance(erc20Gateway, requiredL1TokenTotalFeeAmount);
 
                 // To pay for gateway outbound transfer with custom gas token, encode the tokenTotalFeeAmount in the data field:
                 // The data format should be (uint256 maxSubmissionCost, bytes extraData, uint256 tokenTotalFeeAmount).
