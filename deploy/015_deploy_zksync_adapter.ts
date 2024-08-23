@@ -11,7 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     skipIfAlreadyDeployed: true,
     // Most common across dataworker set as the refund address, but changeable by whoever runs the script.
-    args: [WETH[chainId], "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010"],
+    args: [WETH[chainId], "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67"],
   });
 };
 

@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // This address receives gas refunds on the L2 after messages are relayed. Currently
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
-  const l2RefundAddress = "0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010";
+  const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
