@@ -90,7 +90,8 @@ export async function deployNewProxy(
   // is a proxy, hardhat will first verify the implementation and then the proxy and also link the proxy
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
-  await run("verify:verify", { address: instance, constructorArguments: constructorArgs });
+  const contract = `contracts/${name}.sol:${name}`;
+  await run("verify:verify", { address: instance, constructorArguments: constructorArgs, contract });
 }
 
 export { hre };
