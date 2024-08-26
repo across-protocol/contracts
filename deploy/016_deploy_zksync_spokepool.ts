@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const proxy = getDeployedAddress("SpokePool", spokeChainId, false);
   const implementationOnly = proxy !== undefined;
   if (implementationOnly) {
-    console.log(`${name} deployment already detected @ ${proxy}, deploying new implementation.`);
+    console.log(`${contractName} deployment already detected @ ${proxy}, deploying new implementation.`);
     const _deployment = await deployer.deploy(artifact, constructorArgs);
     newAddress = _deployment.address;
     console.log(`New ${contractName} implementation deployed @ ${newAddress}`);

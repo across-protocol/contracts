@@ -32,7 +32,7 @@
     "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.13",
+    "@across-protocol/constants": "^3.1.15",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/abstract-provider": "5.7.0",

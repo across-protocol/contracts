@@ -2,6 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L1_ADDRESS_MAP, WETH, QUOTE_TIME_BUFFER, ZERO_ADDRESS } from "./consts";
+import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
