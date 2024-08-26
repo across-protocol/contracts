@@ -569,16 +569,10 @@ abstract contract SpokePool is
         if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
 
         // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
-        //  by forcing them to specify an exclusive relayer if the exclusivity period
-        // is in the future. If this offset is 0, then the exclusive relayer must also be address(0).
-        // @dev Checks if either are > 0 by bitwise or-ing.
-        if (uint256(uint160(exclusiveRelayer)) | exclusivityDeadlineOffset != 0) {
-            // Now that we know one is nonzero, we need to perform checks on each.
-            // Check that exclusive relayer is nonzero.
-            if (exclusiveRelayer == address(0)) revert InvalidExclusiveRelayer();
-
-            // Check that deadline is in the future.
-            if (exclusivityDeadlineOffset == 0) revert InvalidExclusivityDeadline();
+        //  by forcing them to specify an exclusive relayer if the exclusivity deadline timestamp
+        // is in the future.
+        if (exclusivityDeadlineOffset != 0 && exclusiveRelayer == address(0)) {
+            revert InvalidExclusiveRelayer();
         }
 
         // No need to sanity check exclusivityDeadline because if its bigger than fillDeadline, then
