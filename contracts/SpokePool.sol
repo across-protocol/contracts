@@ -673,6 +673,7 @@ abstract contract SpokePool is
     }
 
     /**
+     * @notice DEPRECATED. Use depositV3() instead.
      * @notice Submits deposit and sets exclusivityDeadline to current time plus some offset. This function is
      * designed to be called by users who want to set an exclusive relayer for some amount of time after their deposit
      * transaction is mined.

@@ -435,33 +435,13 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.not.be.reverted;
     });
     it("invalid exclusivity params", async function () {
-      const currentTime = await spokePool.getCurrentTime();
-
-      // Both exclusive deadline and exclusive relayer must be 0 or non-zero (and the deadline is in the future).
-      await expect(
-        spokePool.connect(depositor).depositV3(
-          ...getDepositArgsFromRelayData({
-            ...relayData,
-            exclusiveRelayer: depositor.address,
-            exclusivityDeadline: 0,
-          })
-        )
-      ).to.be.revertedWith("InvalidExclusivityDeadline");
-      await expect(
-        spokePool.connect(depositor).depositV3(
-          ...getDepositArgsFromRelayData({
-            ...relayData,
-            exclusiveRelayer: depositor.address,
-            exclusivityDeadline: currentTime.sub(1),
-          })
-        )
-      ).to.be.revertedWith("InvalidExclusivityDeadline");
+      // If exclusivity period is > 0, then exclusive relayer must be non-0.
       await expect(
         spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
-            exclusivityDeadline: currentTime,
+            exclusivityDeadline: 1,
           })
         )
       ).to.be.revertedWith("InvalidExclusiveRelayer");
@@ -470,7 +450,26 @@ describe("SpokePool Depositor Logic", async function () {
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: depositor.address,
-            exclusivityDeadline: currentTime,
+            exclusivityDeadline: 1,
+          })
+        )
+      ).to.not.be.reverted;
+      // If exclusivity deadline is 0, then exclusive relayer can be 0.
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: 0,
+          })
+        )
+      ).to.not.be.reverted;
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: depositor.address,
+            exclusivityDeadline: 0,
           })
         )
       ).to.not.be.reverted;
@@ -559,43 +558,6 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.depositor,
           relayData.recipient,
           relayData.exclusiveRelayer,
-          relayData.message
-        );
-    });
-    it("depositExclusive sets exclusive deadline correctly", async function () {
-      const currentTime = (await spokePool.getCurrentTime()).toNumber();
-      const exclusivityDeadlineOffset = 1000;
-      await expect(
-        spokePool.connect(depositor).depositExclusive(
-          relayData.depositor,
-          relayData.recipient,
-          relayData.inputToken,
-          relayData.outputToken,
-          relayData.inputAmount,
-          relayData.outputAmount,
-          destinationChainId,
-          relayData.depositor, // non-zero exclusive relayer
-          currentTime,
-          relayData.fillDeadline,
-          exclusivityDeadlineOffset,
-          relayData.message
-        )
-      )
-        .to.emit(spokePool, "V3FundsDeposited")
-        .withArgs(
-          relayData.inputToken,
-          relayData.outputToken,
-          relayData.inputAmount,
-          relayData.outputAmount,
-          destinationChainId,
-          // deposit ID is 0 for first deposit
-          0,
-          currentTime, // quoteTimestamp should be current time
-          relayData.fillDeadline,
-          currentTime + exclusivityDeadlineOffset, // should be current time + offset
-          relayData.depositor,
-          relayData.recipient,
-          relayData.depositor, // non-zero exclusive relayer
           relayData.message
         );
     });
