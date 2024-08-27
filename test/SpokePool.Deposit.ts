@@ -505,8 +505,7 @@ describe("SpokePool Depositor Logic", async function () {
     it("depositV3Now uses current time as quote time", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
       const fillDeadlineOffset = 1000;
-      const exclusivityDeadline = 0; // Should be zero since
-      // exclusive relayer is zero address
+      const exclusivityDeadline = 0;
       await expect(
         spokePool
           .connect(depositor)
@@ -535,7 +534,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           currentTime, // quoteTimestamp should be current time
           currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
-          exclusivityDeadline,
+          currentTime,
           relayData.depositor,
           relayData.recipient,
           relayData.exclusiveRelayer,
@@ -543,6 +542,7 @@ describe("SpokePool Depositor Logic", async function () {
         );
     });
     it("emits V3FundsDeposited event with correct deposit ID", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
       await expect(spokePool.connect(depositor).depositV3(...depositArgs))
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
@@ -555,7 +555,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          relayData.exclusivityDeadline,
+          currentTime,
           relayData.depositor,
           relayData.recipient,
           relayData.exclusiveRelayer,
@@ -567,6 +567,7 @@ describe("SpokePool Depositor Logic", async function () {
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
       const balanceBefore = await erc20.balanceOf(depositor.address);
       const newDepositor = randomAddress();
       await expect(
@@ -584,7 +585,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          relayData.exclusivityDeadline,
+          currentTime,
           // New depositor
           newDepositor,
           relayData.recipient,

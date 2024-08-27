@@ -667,7 +667,7 @@ abstract contract SpokePool is
             exclusiveRelayer,
             uint32(getCurrentTime()),
             uint32(getCurrentTime()) + fillDeadlineOffset,
-            uint32(getCurrentTime()) + exclusivityPeriod,
+            exclusivityPeriod,
             message
         );
     }
@@ -735,7 +735,7 @@ abstract contract SpokePool is
             exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
-            uint32(getCurrentTime()) + exclusivityPeriod,
+            exclusivityPeriod,
             message
         );
     }
