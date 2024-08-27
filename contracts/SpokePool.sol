@@ -639,7 +639,7 @@ abstract contract SpokePool is
      * destination chain.
      * @param exclusivityDeadlineOffset Added to the current time to set the exclusive relayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
-     * anyone can fill the deposit.
+     * anyone can fill the deposit up to the fillDeadline timestamp.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
