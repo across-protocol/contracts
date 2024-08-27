@@ -523,7 +523,7 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
-     * @param exclusivityDeadlineOffset Added to the current time to set the exclusive reayer deadline,
+     * @param exclusivityPeriod Added to the current time to set the exclusive reayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
      * anyone can fill the deposit. If exclusiveRelayer is set to address(0), then this also must be set to 0,
      * (and vice versa), otherwise this must be set > 0.
@@ -541,7 +541,7 @@ abstract contract SpokePool is
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadlineOffset,
+        uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
@@ -571,7 +571,7 @@ abstract contract SpokePool is
         // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
         //  by forcing them to specify an exclusive relayer if the exclusivity deadline timestamp
         // is in the future.
-        if (exclusivityDeadlineOffset != 0 && exclusiveRelayer == address(0)) {
+        if (exclusivityPeriod != 0 && exclusiveRelayer == address(0)) {
             revert InvalidExclusiveRelayer();
         }
 
@@ -603,7 +603,7 @@ abstract contract SpokePool is
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
-            uint32(getCurrentTime()) + exclusivityDeadlineOffset,
+            uint32(getCurrentTime()) + exclusivityPeriod,
             depositor,
             recipient,
             exclusiveRelayer,
@@ -637,7 +637,7 @@ abstract contract SpokePool is
      * @param fillDeadlineOffset Added to the current time to set the fill deadline, which is the deadline for the
      * relayer to fill the deposit. After this destination chain timestamp, the fill will revert on the
      * destination chain.
-     * @param exclusivityDeadlineOffset Added to the current time to set the exclusive relayer deadline,
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
      * anyone can fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
@@ -653,7 +653,7 @@ abstract contract SpokePool is
         uint256 destinationChainId,
         address exclusiveRelayer,
         uint32 fillDeadlineOffset,
-        uint32 exclusivityDeadlineOffset,
+        uint32 exclusivityPeriod,
         bytes calldata message
     ) external payable {
         depositV3(
@@ -667,7 +667,7 @@ abstract contract SpokePool is
             exclusiveRelayer,
             uint32(getCurrentTime()),
             uint32(getCurrentTime()) + fillDeadlineOffset,
-            uint32(getCurrentTime()) + exclusivityDeadlineOffset,
+            uint32(getCurrentTime()) + exclusivityPeriod,
             message
         );
     }
@@ -703,7 +703,7 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
-     * @param exclusivityDeadlineOffset Added to the current time to set the exclusive reayer deadline,
+     * @param exclusivityPeriod Added to the current time to set the exclusive reayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
      * anyone can fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
@@ -720,7 +720,7 @@ abstract contract SpokePool is
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadlineOffset,
+        uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable {
         depositV3(
@@ -734,7 +734,7 @@ abstract contract SpokePool is
             exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
-            uint32(getCurrentTime()) + exclusivityDeadlineOffset,
+            uint32(getCurrentTime()) + exclusivityPeriod,
             message
         );
     }
