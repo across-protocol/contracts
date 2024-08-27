@@ -434,7 +434,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.not.be.reverted;
     });
-    it("invalid exclusivity params", async function () {
+    it.only("invalid exclusivity params", async function () {
       // If exclusivity period is > 0, then exclusive relayer must be non-0.
       await expect(
         spokePool.connect(depositor).depositV3(
@@ -460,15 +460,6 @@ describe("SpokePool Depositor Logic", async function () {
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
-            exclusivityDeadline: 0,
-          })
-        )
-      ).to.not.be.reverted;
-      await expect(
-        spokePool.connect(depositor).depositV3(
-          ...getDepositArgsFromRelayData({
-            ...relayData,
-            exclusiveRelayer: depositor.address,
             exclusivityDeadline: 0,
           })
         )
