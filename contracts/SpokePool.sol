@@ -569,7 +569,7 @@ abstract contract SpokePool is
         if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
 
         // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
-        //  by forcing them to specify an exclusive relayer if the exclusivity deadline timestamp
+        // by forcing them to specify an exclusive relayer if the exclusivity deadline timestamp
         // is in the future.
         if (exclusivityPeriod != 0 && exclusiveRelayer == address(0)) {
             revert InvalidExclusiveRelayer();
