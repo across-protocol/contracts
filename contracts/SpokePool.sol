@@ -525,8 +525,7 @@ abstract contract SpokePool is
      * where currentTime is block.timestamp on this chain or this transaction will revert.
      * @param exclusivityPeriod Added to the current time to set the exclusive reayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
-     * anyone can fill the deposit. If exclusiveRelayer is set to address(0), then this also must be set to 0,
-     * (and vice versa), otherwise this must be set > 0.
+     * anyone can fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
@@ -567,16 +566,6 @@ abstract contract SpokePool is
         // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
         // situation won't be a problem for honest users.
         if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
-
-        // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
-        //  by forcing them to specify an exclusive relayer if the exclusivity deadline timestamp
-        // is in the future.
-        if (exclusivityPeriod != 0 && exclusiveRelayer == address(0)) {
-            revert InvalidExclusiveRelayer();
-        }
-
-        // No need to sanity check exclusivityDeadline because if its bigger than fillDeadline, then
-        // there the full deadline is exclusive, and if its too small, then there is no exclusivity period.
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be

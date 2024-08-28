@@ -349,6 +349,16 @@ describe("SpokePool Relayer Logic", async function () {
           )
         ).to.not.be.reverted;
       });
+      it("if no exclusive relayer is set, exclusivity deadline can be in future", async function () {
+        const _relayData = {
+          ...relayData,
+          // Overwrite exclusivity deadline
+          exclusivityDeadline: relayData.fillDeadline,
+        };
+
+        // Can send it after exclusivity deadline
+        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+      });
       it("can have empty exclusive relayer before exclusivity deadline", async function () {
         const _relayData = {
           ...relayData,
