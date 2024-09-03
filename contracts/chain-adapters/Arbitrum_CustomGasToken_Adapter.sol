@@ -142,6 +142,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
+    // The Arbitrum Inbox requires that this uses 18 decimal precision.
     uint256 public immutable L2_MAX_SUBMISSION_COST;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
