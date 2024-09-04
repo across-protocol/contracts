@@ -18,7 +18,7 @@ interface IL2GatewayRouterExtended is IL2GatewayRouter {
  * @custom:security-contact bugs@across.to
  */
 contract Scroll_SpokePool is SpokePool {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /**
      * @notice The address of the official l2GatewayRouter contract for Scroll for bridging tokens from L2 -> L1

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
@@ -76,7 +76,7 @@ abstract contract EIP712CrossChainUpgradeable is Initializable {
      * @return bytes32 Hash digest that is recoverable via `EDCSA.recover`.
      */
     function _hashTypedDataV4(bytes32 structHash, uint256 originChainId) internal view virtual returns (bytes32) {
-        return ECDSAUpgradeable.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
+        return MessageHashUtils.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without

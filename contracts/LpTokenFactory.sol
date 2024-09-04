@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/LpTokenFactoryInterface.sol";
 
-import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "./external/ExpandedERC20.sol";
 
 /**
  * @notice Factory to create new LP ERC20 tokens that represent a liquidity provider's position. HubPool is the

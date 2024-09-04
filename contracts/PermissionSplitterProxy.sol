@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "./utils/MultiCaller.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**

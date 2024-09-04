@@ -7,18 +7,18 @@ import "./Lockable.sol";
 
 import "./interfaces/LpTokenFactoryInterface.sol";
 import "./external/interfaces/WETH9Interface.sol";
+import "./external/interfaces/AddressWhitelistInterface.sol";
 
-import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@uma/core/contracts/common/interfaces/AddressWhitelistInterface.sol";
+import "./utils/Testable.sol";
+import "./utils/MultiCaller.sol";
 
-import "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
-import "@uma/core/contracts/data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
-import "@uma/core/contracts/data-verification-mechanism/interfaces/StoreInterface.sol";
-import "@uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
+import "./external/interfaces/FinderInterface.sol";
+import "./external/interfaces/IdentifierWhitelistInterface.sol";
+import "./external/interfaces/StoreInterface.sol";
+import { OracleInterfaces } from "./external/UMAConstants.sol";
 
-import "@uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
-import "@uma/core/contracts/common/interfaces/ExpandedIERC20.sol";
+import "./external/interfaces/SkinnyOptimisticOracleInterface.sol";
+import "./external/interfaces/ExpandedIERC20.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Blast_DaiRetriever } from "../../../contracts/Blast_DaiRetriever.sol";
 import { MockBlastUsdYieldManager } from "../../../contracts/test/MockBlastUsdYieldManager.sol";
@@ -37,7 +37,7 @@ contract BlastDaiRetrieverTest is Test {
         hubPool = vm.addr(2);
 
         usdYieldManager = new MockBlastUsdYieldManager();
-        daiRetriever = new Blast_DaiRetriever(hubPool, usdYieldManager, IERC20Upgradeable(address(dai)));
+        daiRetriever = new Blast_DaiRetriever(hubPool, usdYieldManager, IERC20(address(dai)));
     }
 
     function testRetrieveSuccess() public {

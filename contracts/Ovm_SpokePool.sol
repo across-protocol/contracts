@@ -5,7 +5,6 @@ import "./SpokePool.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 
-import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol
@@ -26,6 +25,11 @@ interface IL2ERC20Bridge {
         uint256 _minGasLimit,
         bytes calldata _extraData
     ) external;
+}
+
+// https://github.com/ethereum-optimism/optimism/blob/5a1a18d0ceedc40aad99baf4359e06f09fc7b718/packages/contracts-bedrock/src/universal/CrossDomainMessenger.sol#L315
+interface ICrossDomainMessenger {
+    function xDomainMessageSender() external view returns (address);
 }
 
 /**
@@ -205,6 +209,18 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
         if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
+    }
+
+    /**
+     * @dev Returns the address of the sender that triggered the current
+     * cross-chain message through `messenger`.
+     * @dev Reverts if the msg.sender is not the OVM system L2 messenger contract.
+     * @dev Code copied from https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/2d081f24cac1a867f6f73d512f2022e1fa987854/contracts/crosschain/optimism/LibOptimismUpgradeable.sol#L31
+     */
+    function _optimismCrossChainSender(address messenger) internal view returns (address) {
+        if (!msg.sender == messenger) revert NotCrossChainCall();
+
+        return ICrossDomainMessenger(messenger).xDomainMessageSender();
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
