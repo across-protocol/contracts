@@ -8,7 +8,18 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 
+/**
+ * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()
+ * fees using a custom gas token.
+ */
 interface FunderInterface {
+    /**
+     * @notice Withdraws amount of token from funder contract to the caller.
+     * @dev Can only be called by owner of Funder contract, which therefore must be
+     * this contract.
+     * @param token Token to withdraw.
+     * @param amount Amount to withdraw.
+     */
     function withdraw(IERC20 token, uint256 amount) external;
 }
 
@@ -124,6 +135,7 @@ interface ArbitrumL1ERC20GatewayLike {
  * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for submission
  * fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
  * @dev This contract
+ * @dev https://docs.arbitrum.io/launch-orbit-chain/how-tos/use-a-custom-gas-token
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -141,21 +153,34 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public constant L2_GAS_PRICE = 5e9; // 5 gWei
 
+    // Native token expected to  be sent in L2 message. Should be 0 for all use cases of this constant, which
+    // includes sending messages from L1 to L2 and sending Custom gas token ERC20's, which won't be the native token
+    // on the L2 by definition.
     uint256 public constant L2_CALL_VALUE = 0;
 
+    // Gas limit for L2 execution of a cross chain token transfer sent via the inbox.
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
+    // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
     // This address on L2 receives extra gas token that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
 
+    // Inbox system contract to send messages to Arbitrum. Token bridges use this to send tokens to L2.
+    // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
     ArbitrumL1InboxLike public immutable L1_INBOX;
 
+    // Router contract to send tokens to Arbitrum. Routes to correct gateway to bridge tokens. Internally this
+    // contract calls the Inbox.
+    // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
+    // Gateway used for communicating with chains that use custom gas tokens:
+    // https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ERC20Gateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     // This token is used to pay for l1 to l2 messages if its configured by an Arbitrum orbit chain.
     IERC20 public immutable CUSTOM_GAS_TOKEN;
 
+    // Contract that funds Inbox cross chain messages with the custom gas token.
     FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
     /**

@@ -5,6 +5,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @notice Contract to fund custom gas token fees when using the Arbitrum_CustomGasToken_Adapter
+ * to send messages and tokens from Ethereum to an Arbitrum L2 that uses custom gas tokens
+ * @dev https://docs.arbitrum.io/launch-orbit-chain/how-tos/use-a-custom-gas-token
+ */
 contract Arbitrum_CustomGasToken_Funder is Ownable {
     using SafeERC20 for IERC20;
 
