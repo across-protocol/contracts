@@ -290,15 +290,15 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     /**
      * @notice Returns required amount of gas token to send a message via the Inbox.
+     * @dev Should return a value in the same precision as the gas token's precision.
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public view returns (uint256) {
-        return L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit;
+        return _from18ToNativeDecimals(L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit);
     }
 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
-        // Scale down the required amount of gas token to the native token's decimals.
-        uint256 requiredL1CallValue = _from18ToNativeDecimals(getL1CallValue(l2GasLimit));
+        uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
         require(CUSTOM_GAS_TOKEN.balanceOf(address(this)) >= requiredL1CallValue, "Insufficient gas balance");
         return requiredL1CallValue;
