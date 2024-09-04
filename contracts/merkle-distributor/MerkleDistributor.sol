@@ -51,6 +51,8 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
     event WithdrawRewards(address indexed owner, uint256 amount, address indexed currency);
     event DeleteWindow(uint256 indexed windowIndex, address owner);
 
+    constructor() Ownable(msg.sender) {}
+
     /****************************
      *      ADMIN FUNCTIONS
      ****************************/

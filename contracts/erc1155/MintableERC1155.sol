@@ -17,7 +17,7 @@ contract MintableERC1155 is ERC1155, Ownable {
     // We are passing an empty string as the `baseURI` because we use `_tokenURIs` instead
     // to allow for IPFS URIs.
     // solhint-disable-next-line
-    constructor() ERC1155("") {}
+    constructor() ERC1155("") Ownable(msg.sender) {}
 
     /**
      * @notice Creates `amount` new tokens for `recipients` of token type `tokenId`.

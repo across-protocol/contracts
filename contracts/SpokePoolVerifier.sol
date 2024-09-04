@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/V3SpokePoolInterface.sol";
@@ -13,8 +13,6 @@ import "./interfaces/V3SpokePoolInterface.sol";
  * @custom:security-contact bugs@across.to
  */
 contract SpokePoolVerifier {
-    using Address for address;
-
     error InvalidMsgValue();
     error InvalidSpokePool();
 
@@ -54,7 +52,7 @@ contract SpokePoolVerifier {
         bytes memory message
     ) external payable {
         if (msg.value != inputAmount) revert InvalidMsgValue();
-        if (!address(spokePool).isContract()) revert InvalidSpokePool();
+        if (address(spokePool).code.length == 0) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         spokePool.depositV3{ value: msg.value }(
             msg.sender,

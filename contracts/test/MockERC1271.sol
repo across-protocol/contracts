@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @notice Implements mocked ERC1271 contract for testing.
  */
 contract MockERC1271 is IERC1271, Ownable {
-    constructor(address originalOwner) {
+    constructor(address originalOwner) Ownable(msg.sender) {
         transferOwnership(originalOwner);
     }
 

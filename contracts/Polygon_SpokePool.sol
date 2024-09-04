@@ -33,7 +33,7 @@ interface IFxMessageProcessor {
  * @custom:security-contact bugs@across.to
  */
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
-    using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
+    using SafeERC20 for PolygonIERC20Upgradeable;
 
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;

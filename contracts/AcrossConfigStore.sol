@@ -23,6 +23,8 @@ contract AcrossConfigStore is Ownable, MultiCaller {
     event UpdatedTokenConfig(address indexed key, string value);
     event UpdatedGlobalConfig(bytes32 indexed key, string value);
 
+    constructor() Ownable(msg.sender) {}
+
     /**
      * @notice Updates token config.
      * @param l1Token the l1 token address to update value for.

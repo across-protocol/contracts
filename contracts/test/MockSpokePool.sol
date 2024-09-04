@@ -35,7 +35,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         address _crossDomainAdmin,
         address _hubPool
     ) public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
         currentTime = block.timestamp; // solhint-disable-line not-rely-on-time
     }

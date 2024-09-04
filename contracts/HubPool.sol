@@ -184,7 +184,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     modifier zeroOptimisticOracleApproval() {
         _;
-        bondToken.safeApprove(address(_getOptimisticOracle()), 0);
+        bondToken.forceApprove(address(_getOptimisticOracle()), 0);
     }
 
     /**
@@ -199,7 +199,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         FinderInterface _finder,
         WETH9Interface _weth,
         address _timer
-    ) Testable(_timer) {
+    ) Ownable(msg.sender) Testable(_timer) {
         lpTokenFactory = _lpTokenFactory;
         finder = _finder;
         weth = _weth;
@@ -771,7 +771,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         returns (uint256) {
             // Ensure that approval == 0 after the call so the increaseAllowance call below doesn't allow more tokens
             // to transfer than intended.
-            bondToken.safeApprove(address(optimisticOracle), 0);
+            bondToken.forceApprove(address(optimisticOracle), 0);
         } catch {
             // Cancel the bundle since the proposal failed.
             _cancelBundle();
@@ -1051,7 +1051,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         adapter = crossChainContracts[chainId].adapter;
         spokePool = crossChainContracts[chainId].spokePool;
         require(spokePool != address(0), "SpokePool not initialized");
-        require(adapter.isContract(), "Adapter not initialized");
+        require(adapter.code.length > 0, "Adapter not initialized");
     }
 
     function _activeRequest() internal view returns (bool) {

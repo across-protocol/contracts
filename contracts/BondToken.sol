@@ -41,7 +41,7 @@ contract BondToken is WETH9, Ownable {
      * @notice BondToken constructor.
      * @param _hubPool Address of the target HubPool contract.
      */
-    constructor(ExtendedHubPoolInterface _hubPool) {
+    constructor(ExtendedHubPoolInterface _hubPool) Ownable(msg.sender) {
         name = "Across Bond Token";
         symbol = "ABT";
         HUB_POOL = _hubPool;

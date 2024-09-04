@@ -26,7 +26,7 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      * @param _hubPool Hub pool address to set. Can be changed by admin.
      */
     function initialize(uint32 _initialDepositId, address _hubPool) public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __SpokePool_init(_initialDepositId, _hubPool, _hubPool);
     }
 

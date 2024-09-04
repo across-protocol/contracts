@@ -66,6 +66,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     event SetRemoteL1Token(address indexed l2Token, address indexed l1Token);
 
     error NotCrossDomainAdmin();
+    error NotCrossChainCall();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -208,7 +209,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
 
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
-        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
+        if (_optimismCrossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
     }
 
     /**
@@ -218,7 +219,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
      * @dev Code copied from https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/2d081f24cac1a867f6f73d512f2022e1fa987854/contracts/crosschain/optimism/LibOptimismUpgradeable.sol#L31
      */
     function _optimismCrossChainSender(address messenger) internal view returns (address) {
-        if (!msg.sender == messenger) revert NotCrossChainCall();
+        if (msg.sender != messenger) revert NotCrossChainCall();
 
         return ICrossDomainMessenger(messenger).xDomainMessageSender();
     }
