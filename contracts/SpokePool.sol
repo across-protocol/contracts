@@ -485,6 +485,11 @@ abstract contract SpokePool is
      ********************************************/
 
     /**
+     * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
+     * as exact timestamp on the destination chain before which only the exclusiveRelayer could fill the deposit. Now,
+     * the caller is expected to pass in an exclusivityPeriod which is the number of seconds to be added to the
+     * block.timestamp to produce the exclusivityDeadline. This allows the caller to ignore any latency associated
+     * with this transaction being mined and propagating this transaction to the miner.
      * @notice Request to bridge input token cross chain to a destination chain and receive a specified amount
      * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
      * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
