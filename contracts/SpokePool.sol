@@ -592,7 +592,7 @@ abstract contract SpokePool is
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
-            uint32(getCurrentTime()) + exclusivityPeriod,
+            uint32(currentTime) + exclusivityPeriod,
             depositor,
             recipient,
             exclusiveRelayer,
