@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -35,7 +35,7 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        IERC20Upgradeable(l2TokenAddress).safeTransfer(hubPool, amountToReturn);
+        IERC20(l2TokenAddress).safeTransfer(hubPool, amountToReturn);
     }
 
     // The SpokePool deployed to the same network as the HubPool must be owned by the HubPool.

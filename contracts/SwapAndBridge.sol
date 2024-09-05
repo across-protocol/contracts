@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/V3SpokePoolInterface.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
@@ -109,7 +109,7 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        _swapToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
+        _swapToken.forceApprove(EXCHANGE, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
         require(success, string(result));
@@ -159,7 +159,7 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
             depositData.outputAmount
         );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
+        _acrossInputToken.forceApprove(address(SPOKE_POOL), returnAmount);
         SPOKE_POOL.depositV3(
             depositData.depositor,
             depositData.recipient,

@@ -6,8 +6,8 @@ pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Linea specific SpokePool.
@@ -154,12 +154,12 @@ contract Linea_SpokePool is SpokePool {
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
         else if (l2TokenAddress == l2UsdcBridge.usdc()) {
-            IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2UsdcBridge), amountToReturn);
+            IERC20(l2TokenAddress).forceApprove(address(l2UsdcBridge), amountToReturn);
             l2UsdcBridge.depositTo{ value: msg.value }(amountToReturn, hubPool);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
-            IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
+            IERC20(l2TokenAddress).forceApprove(address(l2TokenBridge), amountToReturn);
             l2TokenBridge.bridgeToken{ value: msg.value }(l2TokenAddress, amountToReturn, hubPool);
         }
     }

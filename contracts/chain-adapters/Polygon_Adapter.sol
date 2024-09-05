@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
@@ -143,10 +143,10 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else if (l1Token == L1_MATIC) {
-            IERC20(l1Token).safeIncreaseAllowance(address(DEPOSIT_MANAGER), amount);
+            IERC20(l1Token).forceApprove(address(DEPOSIT_MANAGER), amount);
             DEPOSIT_MANAGER.depositERC20ForUser(l1Token, to, amount);
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(ERC20_PREDICATE, amount);
+            IERC20(l1Token).forceApprove(ERC20_PREDICATE, amount);
             ROOT_CHAIN_MANAGER.depositFor(to, l1Token, abi.encode(amount));
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);

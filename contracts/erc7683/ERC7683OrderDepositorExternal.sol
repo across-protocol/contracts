@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 import "../external/interfaces/IPermit2.sol";
@@ -37,7 +37,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
         uint32 exclusivityDeadline,
         bytes memory message
     ) internal override {
-        IERC20(inputToken).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
+        IERC20(inputToken).forceApprove(address(SPOKE_POOL), inputAmount);
 
         SPOKE_POOL.depositV3(
             depositor,

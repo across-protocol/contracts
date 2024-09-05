@@ -18,7 +18,7 @@ interface IL2GatewayRouterExtended is IL2GatewayRouter {
  * @custom:security-contact bugs@across.to
  */
 contract Scroll_SpokePool is SpokePool {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /**
      * @notice The address of the official l2GatewayRouter contract for Scroll for bridging tokens from L2 -> L1
@@ -99,7 +99,7 @@ contract Scroll_SpokePool is SpokePool {
         // Tokens with a custom ERC20 gateway require an approval in order to withdraw.
         address erc20Gateway = l2GatewayRouter.getERC20Gateway(l2TokenAddress);
         if (erc20Gateway != l2GatewayRouter.defaultERC20Gateway()) {
-            IERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(erc20Gateway, amountToReturn);
+            IERC20(l2TokenAddress).forceApprove(erc20Gateway, amountToReturn);
         }
 
         // The scroll bridge handles arbitrary ERC20 tokens and is mindful of the official WETH address on-chain.

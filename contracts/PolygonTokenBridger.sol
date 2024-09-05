@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./Lockable.sol";
 import "./external/interfaces/WETH9Interface.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 // Polygon Registry contract that stores their addresses.
 interface PolygonRegistry {
@@ -18,7 +18,7 @@ interface PolygonERC20Predicate {
 }
 
 // ERC20s (on polygon) compatible with polygon's bridge have a withdraw method.
-interface PolygonIERC20Upgradeable is IERC20Upgradeable {
+interface PolygonIERC20Upgradeable is IERC20 {
     function withdraw(uint256 amount) external;
 }
 
@@ -40,8 +40,8 @@ interface MaticToken {
  * @custom:security-contact bugs@across.to
  */
 contract PolygonTokenBridger is Lockable {
-    using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for PolygonIERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // Gas token for Polygon.
     MaticToken public constant MATIC = MaticToken(0x0000000000000000000000000000000000001010);
@@ -121,7 +121,7 @@ contract PolygonTokenBridger is Lockable {
      * @notice Called by someone to send tokens to the destination, which should be set to the HubPool.
      * @param token Token to send to destination.
      */
-    function retrieve(IERC20Upgradeable token) public nonReentrant onlyChainId(l1ChainId) {
+    function retrieve(IERC20 token) public nonReentrant onlyChainId(l1ChainId) {
         if (address(token) == address(l1Weth)) {
             // For WETH, there is a pre-deposit step to ensure any ETH that has been sent to the contract is captured.
             //slither-disable-next-line arbitrary-send-eth

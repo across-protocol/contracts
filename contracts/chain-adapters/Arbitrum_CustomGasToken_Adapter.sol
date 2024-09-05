@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 
@@ -194,7 +194,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 requiredL1TokenTotalFeeAmount = _pullCustomGas(RELAY_MESSAGE_L2_GAS_LIMIT);
-        CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), requiredL1TokenTotalFeeAmount);
+        CUSTOM_GAS_TOKEN.forceApprove(address(L1_INBOX), requiredL1TokenTotalFeeAmount);
         L1_INBOX.createRetryableTicket(
             target, // destAddr destination L2 contract address
             L2_CALL_VALUE, // l2CallValue call value for retryable L2 message
@@ -239,7 +239,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
             // Source: https://github.com/OffchainLabs/token-bridge-contracts/blob/5bdf33259d2d9ae52ddc69bc5a9cbc558c4c40c7/contracts/tokenbridge/ethereum/gateway/L1OrbitERC20Gateway.sol#L33
             if (l1Token == address(CUSTOM_GAS_TOKEN)) {
                 uint256 amountToBridge = amount + requiredL1TokenTotalFeeAmount;
-                CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), amountToBridge);
+                CUSTOM_GAS_TOKEN.forceApprove(address(L1_INBOX), amountToBridge);
                 L1_INBOX.createRetryableTicket(
                     to, // destAddr destination L2 contract address
                     L2_CALL_VALUE, // l2CallValue call value for retryable L2 message
@@ -252,8 +252,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                     "0x" // data ABI encoded data of L2 message
                 );
             } else {
-                IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
-                CUSTOM_GAS_TOKEN.safeIncreaseAllowance(erc20Gateway, requiredL1TokenTotalFeeAmount);
+                IERC20(l1Token).forceApprove(erc20Gateway, amount);
+                CUSTOM_GAS_TOKEN.forceApprove(erc20Gateway, requiredL1TokenTotalFeeAmount);
 
                 // To pay for gateway outbound transfer with custom gas token, encode the tokenTotalFeeAmount in the data field:
                 // The data format should be (uint256 maxSubmissionCost, bytes extraData, uint256 tokenTotalFeeAmount).

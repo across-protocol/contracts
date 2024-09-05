@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./external/interfaces/IPolygonZkEVMBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Define interface for PolygonZkEVM Bridge message receiver
@@ -184,7 +184,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
                 ""
             );
         } else {
-            IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2PolygonZkEVMBridge), amountToReturn);
+            IERC20(l2TokenAddress).forceApprove(address(l2PolygonZkEVMBridge), amountToReturn);
             l2PolygonZkEVMBridge.bridgeAsset(
                 POLYGON_ZKEVM_L1_NETWORK_ID,
                 hubPool,

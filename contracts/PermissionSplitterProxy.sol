@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts5/access/AccessControl.sol";
 
 /**
  * @notice This contract is designed to own an Ownable "target" contract and gate access to specific

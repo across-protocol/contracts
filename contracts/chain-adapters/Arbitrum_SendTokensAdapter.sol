@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import { ArbitrumL1ERC20GatewayLike } from "./Arbitrum_Adapter.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice This adapter is built for emergencies to send funds from the Hub to a Spoke in the event that a spoke pool
@@ -47,7 +47,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
         // Approve the gateway, not the router, to spend the hub pool's balance. The gateway, which is different
         // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
         address erc20Gateway = l1ERC20GatewayRouter.getGateway(l1Token);
-        IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
+        IERC20(l1Token).forceApprove(erc20Gateway, amount);
 
         // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
         // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232

@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 interface ZkSyncInterface {
     // _contractL2: L2 address of the contract to be called.
@@ -97,7 +97,7 @@ contract LimitBypassProxy is ZkSyncInterface, ZkBridgeLike {
         uint256 _l2TxGasPerPubdataByte,
         address _refundRecipient
     ) external payable returns (bytes32 txHash) {
-        IERC20(_l1Token).safeIncreaseAllowance(address(zkErc20Bridge), _amount);
+        IERC20(_l1Token).forceApprove(address(zkErc20Bridge), _amount);
         return
             zkErc20Bridge.deposit{ value: msg.value }(
                 _l2Receiver,
@@ -238,7 +238,7 @@ contract ZkSync_Adapter is AdapterInterface {
                 l2RefundAddress
             );
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(zkErc20Bridge), amount);
+            IERC20(l1Token).forceApprove(address(zkErc20Bridge), amount);
             txHash = zkErc20Bridge.deposit{ value: txBaseCost }(
                 to,
                 l1Token,

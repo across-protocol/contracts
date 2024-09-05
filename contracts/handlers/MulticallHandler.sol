@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/SpokePoolMessageHandler.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/utils/Address.sol";
+import "@openzeppelin/contracts5/utils/ReentrancyGuard.sol";
 
 /**
  * @title Across Multicall contract that allows a user to specify a series of calls that should be made by the handler

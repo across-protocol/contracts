@@ -6,8 +6,8 @@ import "../external/interfaces/WETH9Interface.sol";
 
 import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfaces/LineaInterfaces.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
@@ -75,12 +75,12 @@ contract Linea_Adapter is AdapterInterface {
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
         else if (l1Token == L1_USDC_BRIDGE.usdc()) {
-            IERC20(l1Token).safeIncreaseAllowance(address(L1_USDC_BRIDGE), amount);
+            IERC20(l1Token).forceApprove(address(L1_USDC_BRIDGE), amount);
             L1_USDC_BRIDGE.depositTo(amount, to);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
-            IERC20(l1Token).safeIncreaseAllowance(address(L1_TOKEN_BRIDGE), amount);
+            IERC20(l1Token).forceApprove(address(L1_TOKEN_BRIDGE), amount);
             L1_TOKEN_BRIDGE.bridgeToken(l1Token, amount, to);
         }
 

@@ -177,7 +177,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
             if (remoteL1Tokens[l2TokenAddress] != address(0)) {
                 // If there is a mapping for this L2 token to an L1 token, then use the L1 token address and
                 // call bridgeERC20To.
-                IERC20(l2TokenAddress).safeIncreaseAllowance(address(tokenBridge), amountToReturn);
+                IERC20(l2TokenAddress).forceApprove(address(tokenBridge), amountToReturn);
                 address remoteL1Token = remoteL1Tokens[l2TokenAddress];
                 tokenBridge.bridgeERC20To(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.

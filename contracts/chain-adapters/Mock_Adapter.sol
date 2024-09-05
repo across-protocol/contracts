@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
 
 /**
  * @notice Contract used for testing communication between HubPool and Adapter.

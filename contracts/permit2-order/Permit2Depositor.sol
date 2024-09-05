@@ -5,9 +5,9 @@ import "./Permit2OrderLib.sol";
 import "../external/interfaces/IPermit2.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
 
 /**
  * @notice Permit2Depositor processes an external order type and translates it into an AcrossV3 deposit.
@@ -56,7 +56,7 @@ contract Permit2Depositor {
         // If the user is not filled or filled by someone else, the filler loses their collateral.
         uint256 amountToDeposit = order.input.amount + order.fillerCollateral.amount;
 
-        IERC20(order.input.token).safeIncreaseAllowance(address(SPOKE_POOL), amountToDeposit);
+        IERC20(order.input.token).forceApprove(address(SPOKE_POOL), amountToDeposit);
         SPOKE_POOL.depositV3(
             order.info.offerer,
             // Note: Permit2OrderLib checks that order only has a single output.

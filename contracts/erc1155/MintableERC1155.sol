@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts5/access/Ownable.sol";
+import "@openzeppelin/contracts5/token/ERC1155/ERC1155.sol";
 
 /**
  * @title MintableERC1155
@@ -17,7 +17,7 @@ contract MintableERC1155 is ERC1155, Ownable {
     // We are passing an empty string as the `baseURI` because we use `_tokenURIs` instead
     // to allow for IPFS URIs.
     // solhint-disable-next-line
-    constructor() ERC1155("") {}
+    constructor() ERC1155("") Ownable(msg.sender) {}
 
     /**
      * @notice Creates `amount` new tokens for `recipients` of token type `tokenId`.

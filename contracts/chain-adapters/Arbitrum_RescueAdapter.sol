@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import "./Arbitrum_Adapter.sol"; // Used to import `ArbitrumL1ERC20GatewayLike` and `ArbitrumL1InboxLike`
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Meant to copy the Arbitrum_Adapter exactly in how it sends L1 --> L2 messages but is designed only to be

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./MerkleLib.sol";
+import { MerkleLib } from "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
@@ -10,12 +10,17 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts5/utils/math/SignedMath.sol";
+
+// Use 4.x version of OpenZeppelin proxy contract which match those deployed in production and we don't plan
+// to upgrade.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+// We can't use the 4.x version of ReentrancyGuardUpgradeable because it imports Initializable
+// which UUPSUpgradeable also imports so these two versions need to match.
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool
@@ -35,7 +40,7 @@ abstract contract SpokePool is
     MultiCallerUpgradeable,
     EIP712CrossChainUpgradeable
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
     using AddressLibUpgradeable for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
@@ -579,7 +584,7 @@ abstract contract SpokePool is
         } else {
             // msg.value should be 0 if input token isn't the wrapped native token.
             if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
-            IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+            IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
         }
 
         emit V3FundsDeposited(
@@ -1103,7 +1108,7 @@ abstract contract SpokePool is
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit V3FundsDeposited(
             originToken, // inputToken
@@ -1147,7 +1152,7 @@ abstract contract SpokePool is
         uint256 length = refundAmounts.length;
         for (uint256 i = 0; i < length; ++i) {
             uint256 amount = refundAmounts[i];
-            if (amount > 0) IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddresses[i], amount);
+            if (amount > 0) IERC20(l2TokenAddress).safeTransfer(refundAddresses[i], amount);
         }
 
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
@@ -1269,7 +1274,7 @@ abstract contract SpokePool is
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
         if (address(to).isContract()) {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
+            IERC20(address(wrappedNativeToken)).safeTransfer(to, amount);
         } else {
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
@@ -1357,13 +1362,13 @@ abstract contract SpokePool is
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
-            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            if (!isSlowFill) IERC20(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
-            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
-            else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
+            if (!isSlowFill) IERC20(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
+            else IERC20(outputToken).safeTransfer(recipientToSend, amountToSend);
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;

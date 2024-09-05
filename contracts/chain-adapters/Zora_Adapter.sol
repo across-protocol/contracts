@@ -9,8 +9,8 @@ import "../external/interfaces/WETH9Interface.sol";
 import "./CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
@@ -92,7 +92,7 @@ contract Zora_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
-            IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
+            IERC20(l1Token).forceApprove(address(_l1StandardBridge), amount);
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);

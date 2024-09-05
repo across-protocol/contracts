@@ -11,7 +11,7 @@ import "./V2MerkleLib.sol";
  * @notice Implements abstract contract for testing.
  */
 contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     uint256 private chainId_;
     uint256 private currentTime;
@@ -161,7 +161,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
             require(msg.value == amount);
             wrappedNativeToken.deposit{ value: msg.value }();
-        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else IERC20(originToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit FundsDeposited(
             amount,
@@ -439,20 +439,16 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
         if (relayData.destinationToken == address(wrappedNativeToken)) {
             if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                IERC20(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
         } else {
             if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+                IERC20(relayData.destinationToken).safeTransferFrom(
                     msg.sender,
                     relayExecution.updatedRecipient,
                     amountToSend
                 );
-            else
-                IERC20Upgradeable(relayData.destinationToken).safeTransfer(
-                    relayExecution.updatedRecipient,
-                    amountToSend
-                );
+            else IERC20(relayData.destinationToken).safeTransfer(relayExecution.updatedRecipient, amountToSend);
         }
     }
 

@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./Lockable.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface USDYieldManager {
@@ -19,7 +19,7 @@ interface USDYieldManager {
  * and then an EOA can call this contract to retrieve the DAI.
  */
 contract Blast_DaiRetriever is Lockable, MultiCaller {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // Should be set to HubPool on Ethereum
     address public immutable hubPool;
@@ -28,7 +28,7 @@ contract Blast_DaiRetriever is Lockable, MultiCaller {
     USDYieldManager public immutable usdYieldManager;
 
     // Token to be retrieved.
-    IERC20Upgradeable public immutable dai;
+    IERC20 public immutable dai;
 
     /**
      * @notice Constructs USDB Retriever
@@ -39,7 +39,7 @@ contract Blast_DaiRetriever is Lockable, MultiCaller {
     constructor(
         address _hubPool,
         USDYieldManager _usdYieldManager,
-        IERC20Upgradeable _dai
+        IERC20 _dai
     ) {
         //slither-disable-next-line missing-zero-check
         hubPool = _hubPool;

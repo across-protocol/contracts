@@ -33,7 +33,7 @@ interface IFxMessageProcessor {
  * @custom:security-contact bugs@across.to
  */
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
-    using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
+    using SafeERC20 for PolygonIERC20Upgradeable;
 
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
@@ -241,10 +241,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(hubPool, amountToReturn);
         } else {
-            PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
-                address(polygonTokenBridger),
-                amountToReturn
-            );
+            PolygonIERC20Upgradeable(l2TokenAddress).forceApprove(address(polygonTokenBridger), amountToReturn);
             // Note: WrappedNativeToken is WMATIC on matic, so this tells the tokenbridger that this is an unwrappable native token.
             polygonTokenBridger.send(PolygonIERC20Upgradeable(l2TokenAddress), amountToReturn);
         }

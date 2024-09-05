@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 library CircleDomainIds {
@@ -88,7 +88,7 @@ abstract contract CircleCCTPAdapter {
      */
     function _transferUsdc(address to, uint256 amount) internal {
         // Only approve the exact amount to be transferred
-        usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
+        usdcToken.forceApprove(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger.
         // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
         ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();

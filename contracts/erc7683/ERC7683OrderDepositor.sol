@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "../external/interfaces/IPermit2.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
 
 import { Input, Output, CrossChainOrder, ResolvedCrossChainOrder, ISettlementContract } from "./ERC7683.sol";
 import { AcrossOrderData, AcrossFillerData, ERC7683Permit2Lib } from "./ERC7683Across.sol";

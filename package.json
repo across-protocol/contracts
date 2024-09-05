@@ -40,6 +40,7 @@
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
+    "@openzeppelin/contracts5": "npm:@openzeppelin/contracts@5.0.2",
     "@scroll-tech/contracts": "^0.1.0",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",

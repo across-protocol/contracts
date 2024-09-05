@@ -11,8 +11,8 @@ import "../external/interfaces/CCTPInterfaces.sol";
 import "./CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Interface for Synthetix custom bridge to Optimism.
@@ -114,7 +114,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
             if (l1Token == DAI) bridgeToUse = DAI_OPTIMISM_BRIDGE; // 1. DAI
             if (l1Token == SNX) bridgeToUse = SNX_OPTIMISM_BRIDGE; // 2. SNX
 
-            IERC20(l1Token).safeIncreaseAllowance(bridgeToUse, amount);
+            IERC20(l1Token).forceApprove(bridgeToUse, amount);
             if (l1Token == SNX) SynthetixBridgeToOptimism(bridgeToUse).depositTo(to, amount);
             else IL1StandardBridge(bridgeToUse).depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }

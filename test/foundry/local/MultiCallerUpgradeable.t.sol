@@ -6,8 +6,8 @@ import "forge-std/console.sol";
 
 import { SpokePool } from "../../../contracts/SpokePool.sol";
 import { Ethereum_SpokePool } from "../../../contracts/Ethereum_SpokePool.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts5/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
 
 // This test does not require a mainnet fork (since it is testing contracts before deployment).
 contract MultiCallerUpgradeableTest is Test {

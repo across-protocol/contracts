@@ -5,8 +5,8 @@ import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
 import "../external/interfaces/IPolygonZkEVMBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to PolygonZkEVM.
@@ -71,7 +71,7 @@ contract PolygonZkEVM_Adapter is AdapterInterface {
                 ""
             );
         } else {
-            IERC20(l1Token).safeIncreaseAllowance(address(L1_POLYGON_ZKEVM_BRIDGE), amount);
+            IERC20(l1Token).forceApprove(address(L1_POLYGON_ZKEVM_BRIDGE), amount);
             L1_POLYGON_ZKEVM_BRIDGE.bridgeAsset(POLYGON_ZKEVM_L2_NETWORK_ID, to, amount, l1Token, true, "");
         }
 

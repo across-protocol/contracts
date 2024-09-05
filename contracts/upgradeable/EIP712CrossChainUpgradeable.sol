@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts5/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of typed structured data.
@@ -76,7 +76,7 @@ abstract contract EIP712CrossChainUpgradeable is Initializable {
      * @return bytes32 Hash digest that is recoverable via `EDCSA.recover`.
      */
     function _hashTypedDataV4(bytes32 structHash, uint256 originChainId) internal view virtual returns (bytes32) {
-        return ECDSAUpgradeable.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
+        return MessageHashUtils.toTypedDataHash(_domainSeparatorV4(originChainId), structHash);
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
