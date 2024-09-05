@@ -2,7 +2,7 @@
 
 All of the SpokePool addresses listed here are [upgradeable proxy](https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/2d081f24cac1a867f6f73d512f2022e1fa987854/contracts/proxy/utils/UUPSUpgradeable.sol) contract addresses. If you want to get implementation contract information (ABI, bytecode, addresses) then go to the relevant folder in this directory for the contract and chain you are looking for. You can read more about the proxy upgradeability pattern we use [here](https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/2d081f24cac1a867f6f73d512f2022e1fa987854/contracts/proxy/README.adoc)
 
-The [`deployments.json`](./deployments.json) file also maintains the most up to date **proxy (i.e.not implementation)** addresses and you should view it as the source of truth in case it differs from this `README`. 
+The [`deployments.json`](./deployments.json) file also maintains the most up to date **proxy (i.e.not implementation)** addresses and you should view it as the source of truth in case it differs from this `README`.
 This is because this `deployments.json` file is used by bots in [`@across-protocol/relayer`](https://github.com/across-protocol/relayer) and [`@across-protocol/sdk`](https://github.com/across-protocol/sdk) to programmatically load the latest contract addresses. This `README` is not a dependency in those repositories so it is more likely to be out of sync with the latest addresses.
 
 ## Mainnet (1)
