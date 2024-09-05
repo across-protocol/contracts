@@ -1,5 +1,10 @@
 # Across Mainnet Deployment Addresses
 
+All of the SpokePool addresses listed here are upgradeable proxy contract addresses.
+If you want to get inplementation contract information (ABI, bytecode, addresses) then go to the relevant /deployments folder. 
+Finally, the deployments.json file also maintains the most up to date proxy l, not implementation, addresses and you should treat it as the source of truth in case it differs from this README. 
+The deployments.json file is used by bots
+
 ## Mainnet (1)
 
 | Contract Name       | Address                                                                                                               |
