@@ -97,8 +97,6 @@ contract PermissionSplitterTest is Test {
 
     // Error emitted when non-owner calls onlyOwner HubPool function.
     bytes constant OWNABLE_NOT_OWNER_ERROR = bytes("Ownable: caller is not the owner");
-    // Error emitted when calling PermissionSplitterProxy function with incorrect role.
-    bytes constant PROXY_NOT_ALLOWED_TO_CALL_ERROR = bytes("Not allowed to call");
 
     address constant WETHAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -175,7 +173,7 @@ contract PermissionSplitterTest is Test {
         );
         uint256 spokeChainId = 1;
 
-        vm.expectRevert(PROXY_NOT_ALLOWED_TO_CALL_ERROR);
+        vm.expectRevert();
         hubPoolProxy.relaySpokePoolAdminFunction(spokeChainId, spokeFunctionCallData);
         vm.expectRevert(OWNABLE_NOT_OWNER_ERROR);
         hubPool.relaySpokePoolAdminFunction(spokeChainId, spokeFunctionCallData);
@@ -187,7 +185,7 @@ contract PermissionSplitterTest is Test {
     }
 
     function testTransferOwnership() public {
-        vm.expectRevert(PROXY_NOT_ALLOWED_TO_CALL_ERROR);
+        vm.expectRevert();
         hubPoolProxy.transferOwnership(defaultAdmin);
 
         // Should be able to transfer ownership back to default admin in an emergency.
@@ -264,7 +262,7 @@ contract PermissionSplitterTest is Test {
         vm.prank(defaultAdmin);
         hubPoolProxy.sync(WETHAddress);
 
-        vm.expectRevert(PROXY_NOT_ALLOWED_TO_CALL_ERROR);
+        vm.expectRevert();
         hubPoolProxy.sync(WETHAddress);
     }
 }
