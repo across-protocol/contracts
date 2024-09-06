@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @dev This contract is designed to be used as a convience for the owner to store funds to pay for
  * future transactions, such as donating custom gas tokens to pay for future retryable ticket messages
  * to be sent via the Arbitrum_Adapter.
+ * @custom:security-contact bugs@across.to
  */
 contract DonationBox is Ownable {
     using SafeERC20 for IERC20;
