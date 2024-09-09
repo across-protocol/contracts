@@ -5,8 +5,8 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { CCTPInterfaces } from "../external/interfaces/CCTPInterfaces.sol";
-import { CircleCCTPAdapter } from "../libraries/CircleCCTPAdapter.sol";
+import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
+import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 
 interface FunderInterface {
     function withdraw(IERC20 token, uint256 amount) external;
@@ -172,7 +172,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger,
+        ICCTPTokenMessenger _cctpTokenMessenger,
         FunderInterface _customGasTokenFunder,
         uint256 _l2MaxSubmissionCost
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
