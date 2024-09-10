@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { Ownable } from "@openzeppelin5/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin5/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin5/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts5/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Users can donate tokens to this contract that only the owner can withdraw.
