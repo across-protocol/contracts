@@ -25,7 +25,7 @@
     "prettier": "prettier .",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
-    "build": "hardhat compile && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
+    "build": "hardhat compile && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/ && anchor build",
     "test-evm": "IS_TEST=true hardhat test",
     "test-svm": "anchor test",
     "test": "yarn test-evm && yarn test-svm",
