@@ -20,7 +20,8 @@
   "scripts": {
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
     "lint-contracts": "yarn solhint ./contracts/**/*.sol",
-    "lint": "yarn prettier --list-different",
+    "lint": "yarn prettier --list-different && yarn lint rust",
+    "lint-rust": "cargo fmt --all -- --check && cargo clippy",
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",

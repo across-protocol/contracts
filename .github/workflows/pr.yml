@@ -55,6 +55,7 @@ jobs:
       - name: Build
         run: yarn build
       - name: Test
+        shell: bash
         run: yarn test
   forge:
     name: Forge
