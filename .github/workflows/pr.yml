@@ -22,7 +22,7 @@ jobs:
           solana-cli-version: "1.18.21"
           node-version: "20.17.0"
       - name: Build Anchor
-        run: anchor build
+        run: solana-keygen new && anchor build
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Lint
@@ -49,7 +49,7 @@ jobs:
           solana-cli-version: "1.18.21"
           node-version: "20.17.0"
       - name: Build Anchor
-        run: anchor build
+        run: solana-keygen new && anchor build
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Build
@@ -78,7 +78,7 @@ jobs:
           solana-cli-version: "1.18.21"
           node-version: "20.17.0"
       - name: Build Anchor
-        run: anchor build
+        run: solana-keygen new && anchor build
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Install Foundry
@@ -110,7 +110,7 @@ jobs:
           solana-cli-version: "1.18.21"
           node-version: "20.17.0"
       - name: Build Anchor
-        run: anchor build
+        run: solana-keygen new && anchor build
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Solhint
