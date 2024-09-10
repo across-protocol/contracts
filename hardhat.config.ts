@@ -469,7 +469,7 @@ const config: HardhatUserConfig = {
     target: "ethers-v5",
   },
   paths: {
-    tests: "./test/evm",
+    tests: "./test/evm/hardhat",
   },
 };
 

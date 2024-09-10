@@ -11,9 +11,9 @@ import {
   createRandomBytes32,
 } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
-import { V3SlowFill } from "../test/evm/fixtures/SpokePool.Fixture";
+import { V3SlowFill } from "../test/evm/hardhat/fixtures/SpokePool.Fixture";
 
-import { PoolRebalanceLeaf, RelayerRefundLeaf } from "../test/evm/MerkleLib.utils";
+import { PoolRebalanceLeaf, RelayerRefundLeaf } from "../test/evm/hardhat/MerkleLib.utils";
 import { zeroAddress } from "../test-utils";
 
 // Any variables not configurable in this set of constants is not used in this script and not important for testing in
