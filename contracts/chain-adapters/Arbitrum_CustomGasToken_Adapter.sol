@@ -123,7 +123,7 @@ interface ArbitrumL1ERC20GatewayLike {
  * that call this contract's logic guard against reentrancy.
  * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for submission
  * fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
- * @dev This contract
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
