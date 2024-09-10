@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { SpokePoolVerifier } from "../../../contracts/SpokePoolVerifier.sol";
-import { Ethereum_SpokePool } from "../../../contracts/Ethereum_SpokePool.sol";
-import { V3SpokePoolInterface } from "../../../contracts/interfaces/V3SpokePoolInterface.sol";
-import { WETH9 } from "../../../contracts/external/WETH9.sol";
+import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
+import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
+import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
+import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 

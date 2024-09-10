@@ -20,7 +20,7 @@
   "scripts": {
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
     "lint-contracts": "yarn solhint ./contracts/**/*.sol",
-    "lint": "yarn prettier --list-different && yarn lint rust",
+    "lint": "yarn prettier --list-different && yarn lint-rust",
     "lint-rust": "cargo fmt --all -- --check && cargo clippy",
     "lint-fix": "yarn prettier --write",
     "prettier": "prettier .",

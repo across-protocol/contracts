@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { MulticallHandler } from "../../../contracts/handlers/MulticallHandler.sol";
+import { MulticallHandler } from "../../../../contracts/handlers/MulticallHandler.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Run this test to verify PermissionSplitter behavior when changing ownership of the HubPool

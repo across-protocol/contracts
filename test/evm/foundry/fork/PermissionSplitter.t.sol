@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import { HubPool } from "../../../contracts/HubPool.sol";
-import { SpokePool } from "../../../contracts/SpokePool.sol";
-import { LpTokenFactory } from "../../../contracts/LpTokenFactory.sol";
-import { PermissionSplitterProxy } from "../../../contracts/PermissionSplitterProxy.sol";
+import { HubPool } from "../../../../contracts/HubPool.sol";
+import { SpokePool } from "../../../../contracts/SpokePool.sol";
+import { LpTokenFactory } from "../../../../contracts/LpTokenFactory.sol";
+import { PermissionSplitterProxy } from "../../../../contracts/PermissionSplitterProxy.sol";
 
 // Run this test to verify PermissionSplitter behavior when changing ownership of the HubPool
 // to it. Therefore this test should be run as a fork test via:
