@@ -22,13 +22,6 @@ jobs:
           solana-cli-version: "1.18.21"
           node-version: "20.17.0"
       - run: anchor build
-      - name: Setup Anchor & Build
-      - uses: metadaoproject/setup-anchor@v2
-        with:
-          anchor-version: "0.30.1"
-          solana-cli-version: "1.18.21"
-          node-version: "20.17.0"
-      - run: anchor build
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Lint
