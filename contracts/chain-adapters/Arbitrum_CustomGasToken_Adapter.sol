@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./interfaces/AdapterInterface.sol";
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
-import "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
-import "../external/interfaces/CCTPInterfaces.sol";
-import "../libraries/CircleCCTPAdapter.sol";
+import { IERC20 } from "@openzeppelin/contracts5/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts5/token/ERC20/utils/SafeERC20.sol";
+import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
+import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 
 interface FunderInterface {
     function withdraw(IERC20 token, uint256 amount) external;
@@ -123,7 +123,7 @@ interface ArbitrumL1ERC20GatewayLike {
  * that call this contract's logic guard against reentrancy.
  * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for submission
  * fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
- * @dev This contract
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -158,6 +158,9 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
+    error InvalidCustomGasToken();
+    error InsufficientCustomGasToken();
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
@@ -172,7 +175,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger,
+        ICCTPTokenMessenger _cctpTokenMessenger,
         FunderInterface _customGasTokenFunder,
         uint256 _l2MaxSubmissionCost
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
@@ -180,7 +183,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
         CUSTOM_GAS_TOKEN = IERC20(L1_INBOX.bridge().nativeToken());
-        require(address(CUSTOM_GAS_TOKEN) != address(0), "Invalid custom gas token");
+        if (address(CUSTOM_GAS_TOKEN) == address(0)) revert InvalidCustomGasToken();
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
     }
@@ -284,7 +287,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
         uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
-        require(CUSTOM_GAS_TOKEN.balanceOf(address(this)) >= requiredL1CallValue, "Insufficient gas balance");
+        if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL1CallValue) revert InsufficientCustomGasToken();
         return requiredL1CallValue;
     }
 }
