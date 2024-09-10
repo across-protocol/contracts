@@ -28,6 +28,7 @@ interface ArbitrumL1ERC20Bridge {
     /**
      * @notice Returns token that is escrowed in bridge on L1 side and minted on L2 as native currency.
      * @dev This function doesn't exist on the generic Bridge interface.
+     * @return address of the native token.
      */
     function nativeToken() external view returns (address);
 }
@@ -41,6 +42,7 @@ interface ArbitrumL1InboxLike {
     /**
      * @dev we only use this function to check the native token used by the bridge, so we hardcode the interface
      * to return an ArbitrumL1ERC20Bridge instead of a more generic Bridge interface.
+     * @return address of the bridge.
      */
     function bridge() external view returns (ArbitrumL1ERC20Bridge);
 
@@ -121,8 +123,8 @@ interface ArbitrumL1ERC20GatewayLike {
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
- * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for submission
- * fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
+ * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for retryable ticket
+ * submission fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
  * @custom:security-contact bugs@across.to
  */
 
@@ -169,6 +171,9 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
+     * @param _l2MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
+     * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
+     * and used for all messages sent by this adapter.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -278,6 +283,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     /**
      * @notice Returns required amount of gas token to send a message via the Inbox.
+     * @param l2GasLimit L2 gas limit for the message.
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public view returns (uint256) {
