@@ -152,7 +152,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public constant L2_GAS_PRICE = 5e9; // 5 gWei
 
-    // Native token expected to  be sent in L2 message. Should be 0 for all use cases of this constant, which
+    // Native token expected to be sent in L2 message. Should be 0 for all use cases of this constant, which
     // includes sending messages from L1 to L2 and sending Custom gas token ERC20's, which won't be the native token
     // on the L2 by definition.
     uint256 public constant L2_CALL_VALUE = 0;
