@@ -158,6 +158,9 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
+    error InvalidCustomGasToken();
+    error InsufficientCustomGasToken();
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
@@ -180,7 +183,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
         CUSTOM_GAS_TOKEN = IERC20(L1_INBOX.bridge().nativeToken());
-        require(address(CUSTOM_GAS_TOKEN) != address(0), "Invalid custom gas token");
+        if (address(CUSTOM_GAS_TOKEN) == address(0)) revert InvalidCustomGasToken();
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
     }
@@ -284,7 +287,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
         uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
-        require(CUSTOM_GAS_TOKEN.balanceOf(address(this)) >= requiredL1CallValue, "Insufficient gas balance");
+        if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL1CallValue) revert InsufficientCustomGasToken();
         return requiredL1CallValue;
     }
 }
