@@ -24,6 +24,13 @@ jobs:
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
 
       # Setup .npmrc file to publish to npm
+      - name: Setup Anchor & Build
+      - uses: metadaoproject/setup-anchor@v2
+        with:
+          anchor-version: "0.30.1"
+          solana-cli-version: "1.18.21"
+          node-version: "20.17.0"
+      - run: anchor build
       - uses: actions/setup-node@v3
         with:
           node-version: "16.x"
