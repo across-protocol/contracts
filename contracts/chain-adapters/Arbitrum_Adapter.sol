@@ -289,6 +289,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Returns required amount of ETH to send a message via the Inbox.
+     * @param l2GasLimit L2 gas limit for the message.
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public pure returns (uint256) {
