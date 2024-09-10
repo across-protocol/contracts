@@ -23,3 +23,11 @@ storage-layouts/proposed*
 
 # IDE
 .idea
+
+
+.anchor
+.DS_Store
+target
+**/*.rs.bk
+test-ledger
+.yarn
