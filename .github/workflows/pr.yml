@@ -62,7 +62,7 @@ jobs:
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
       - name: Run forge test
-        run: forge test --match-path test/foundry/local/**/*.t.sol
+        run: forge test --match-path test/evm/foundry/local/**/*.t.sol
   solhint:
     name: Solhint
     runs-on: ubuntu-latest
