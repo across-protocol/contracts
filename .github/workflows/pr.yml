@@ -76,7 +76,6 @@ jobs:
           components: rustc
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
-        shell: bash
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Build
