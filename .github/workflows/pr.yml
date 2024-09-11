@@ -4,7 +4,7 @@ name: Checks
     branches:
       - main
       - release-*
-  - pull_request:
+  - pull_request
 jobs:
   lint:
     name: Lint
