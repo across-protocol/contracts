@@ -1,7 +1,5 @@
 name: Checks
-"on":
-  - push
-  - pull_request
+on: [push, pull_request]
 jobs:
   lint:
     name: Lint
@@ -41,9 +39,9 @@ jobs:
       - name: Lint js
         shell: bash
         run: yarn lint-js
-      - name: Lint contracts
+      - name: Lint solidity
         shell: bash
-        run: yarn lint-contracts
+        run: yarn lint-solidity
       - name: Lint rust
         shell: bash
         run: yarn lint-rust
@@ -86,10 +84,10 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Build
         run: yarn build
-      - name: Test EVM-hardhat
+      - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
-      - name: Test SVM
+      - name: Test svm
         shell: bash
         run: yarn test-svm
   forge:
@@ -121,5 +119,5 @@ jobs:
         run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
-      - name: Test EVM-foundry
+      - name: Test evm-foundry
         run: forge test --match-path test/evm/foundry/local/**/*.t.sol
