@@ -1372,7 +1372,7 @@ abstract contract SpokePool is
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (recipientToSend.isContract() && updatedMessage.length > 0) {
+        if (updatedMessage.length > 0 && recipientToSend.isContract()) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,
