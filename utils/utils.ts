@@ -57,9 +57,7 @@ function findPathToRootOfPackage(packageName: string) {
 }
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {
-  console.log("findArtifactFromPath", contractName, artifactsPath);
   const allArtifactsPaths = getAllFilesInPath(artifactsPath);
-  console.log("allArtifactsPaths", allArtifactsPaths);
   const desiredArtifactPaths = allArtifactsPaths.filter((a) => a.endsWith(`/${contractName}.json`));
 
   if (desiredArtifactPaths.length !== 1)
@@ -68,9 +66,7 @@ export function findArtifactFromPath(contractName: string, artifactsPath: string
 }
 
 export function getAllFilesInPath(dirPath: string, arrayOfFiles: string[] = []): string[] {
-  console.log("getAllFilesInPath", dirPath);
   const files = fs.readdirSync(dirPath);
-  console.log("getAllFilesInPath", dirPath, files);
 
   files.forEach((file) => {
     if (fs.statSync(dirPath + "/" + file).isDirectory())
