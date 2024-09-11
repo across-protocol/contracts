@@ -154,9 +154,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public constant L2_GAS_PRICE = 5e9; // 5 gWei
 
+    // Native token expected to be sent in L2 message. Should be 0 for only use case of this constant, which
+    // includes is sending messages from L1 to L2.
     uint256 public constant L2_CALL_VALUE = 0;
 
+    // Gas limit for L2 execution of a cross chain token transfer sent via the inbox.
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
+    // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
     address public constant L1_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -164,8 +168,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
 
+    // Inbox system contract to send messages to Arbitrum. Token bridges use this to send tokens to L2.
+    // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
     ArbitrumL1InboxLike public immutable L1_INBOX;
 
+    // Router contract to send tokens to Arbitrum. Routes to correct gateway to bridge tokens. Internally this
+    // contract calls the Inbox.
+    // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     /**
@@ -280,6 +289,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Returns required amount of ETH to send a message via the Inbox.
+     * @param l2GasLimit L2 gas limit for the message.
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public pure returns (uint256) {

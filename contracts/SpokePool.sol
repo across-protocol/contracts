@@ -485,6 +485,11 @@ abstract contract SpokePool is
      ********************************************/
 
     /**
+     * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
+     * as exact timestamp on the destination chain before which only the exclusiveRelayer could fill the deposit. Now,
+     * the caller is expected to pass in an exclusivityPeriod which is the number of seconds to be added to the
+     * block.timestamp to produce the exclusivityDeadline. This allows the caller to ignore any latency associated
+     * with this transaction being mined and propagating this transaction to the miner.
      * @notice Request to bridge input token cross chain to a destination chain and receive a specified amount
      * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
      * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
@@ -523,7 +528,7 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
-     * @param exclusivityPeriod Added to the current time to set the exclusive reayer deadline,
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
      * anyone can fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
@@ -592,7 +597,7 @@ abstract contract SpokePool is
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
-            uint32(getCurrentTime()) + exclusivityPeriod,
+            uint32(currentTime) + exclusivityPeriod,
             depositor,
             recipient,
             exclusiveRelayer,
