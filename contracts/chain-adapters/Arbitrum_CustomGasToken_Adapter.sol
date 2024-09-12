@@ -314,9 +314,12 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     function _from18ToNativeDecimals(uint256 amount) internal view returns (uint256) {
         uint8 nativeTokenDecimals = L1_INBOX.bridge().nativeTokenDecimals();
-        if (nativeTokenDecimals < 18) {
+        if (nativeTokenDecimals == 18) {
+            return amount;
+        } else if (nativeTokenDecimals < 18) {
             return amount / 10**(18 - nativeTokenDecimals);
+        } else {
+            return amount * 10**(nativeTokenDecimals - 18);
         }
-        return amount;
     }
 }
