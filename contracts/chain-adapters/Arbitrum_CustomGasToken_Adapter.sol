@@ -317,7 +317,15 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         if (nativeTokenDecimals == 18) {
             return amount;
         } else if (nativeTokenDecimals < 18) {
-            return amount / 10**(18 - nativeTokenDecimals);
+            // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
+            uint256 reductionFactor = 10**(18 - nativeTokenDecimals);
+            uint256 divFloor = amount / reductionFactor;
+            uint256 mod = amount % reductionFactor;
+            if (mod != 0) {
+                return divFloor + 1;
+            } else {
+                return divFloor;
+            }
         } else {
             return amount * 10**(nativeTokenDecimals - 18);
         }
