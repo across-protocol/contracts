@@ -6,6 +6,7 @@ import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Arbitrum_SpokePool, ITokenMessenger } from "../../../contracts/Arbitrum_SpokePool.sol";
 import { Arbitrum_WithdrawalAdapter, IArbitrum_SpokePool } from "../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalAdapter.sol";
+import { Intermediate_TokenRetriever } from "../../../contracts/Intermediate_TokenRetriever.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
@@ -38,6 +39,7 @@ contract ArbitrumGatewayRouter {
 
 contract Arbitrum_WithdrawalAdapterTest is Test {
     Arbitrum_WithdrawalAdapter arbitrumWithdrawalAdapter;
+    Intermediate_TokenRetriever tokenRetriever;
     Arbitrum_SpokePool arbitrumSpokePool;
     Token_ERC20 whitelistedToken;
     Token_ERC20 usdc;
@@ -45,7 +47,6 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
 
     // HubPool should receive funds.
     address hubPool;
-
     address owner;
     address aliasedOwner;
     address wrappedNativeToken;
@@ -53,8 +54,10 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
     // Token messenger is set so CCTP is activated.
     ITokenMessenger tokenMessenger;
 
+    error WithdrawalFailed(address l2Token);
+
     function setUp() public {
-        whitelistedToken = new Token_ERC20("DAI", "DAI");
+        whitelistedToken = new Token_ERC20("TOKEN", "TOKEN");
         usdc = new Token_ERC20("USDC", "USDC");
         gatewayRouter = new ArbitrumGatewayRouter();
 
@@ -82,42 +85,40 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
             hubPool,
             address(gatewayRouter)
         );
+        tokenRetriever = new Intermediate_TokenRetriever(address(arbitrumWithdrawalAdapter));
     }
 
     function testWithdrawWhitelistedTokenNonCCTP() public {
         assertEq(whitelistedToken.balanceOf(hubPool), 0);
         assertEq(whitelistedToken.balanceOf(owner), 0);
-        assertEq(whitelistedToken.balanceOf(address(arbitrumWithdrawalAdapter)), 0);
+        assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
         uint256 amountToBridge = uint256(block.timestamp + 100);
 
         // Whitelist tokens in the spoke pool and mint tokens to the withdrawal adapter.
         vm.startPrank(aliasedOwner);
         arbitrumSpokePool.whitelistToken(address(whitelistedToken), address(whitelistedToken));
-        whitelistedToken.mint(address(arbitrumWithdrawalAdapter), amountToBridge);
+        whitelistedToken.mint(address(tokenRetriever), amountToBridge);
         vm.stopPrank();
 
         // Attempt to withdraw token.
-        arbitrumWithdrawalAdapter.withdrawToken(amountToBridge, address(whitelistedToken));
+        tokenRetriever.retrieve(address(whitelistedToken));
         assertEq(whitelistedToken.balanceOf(hubPool), amountToBridge);
         assertEq(whitelistedToken.balanceOf(owner), 0);
-        assertEq(whitelistedToken.balanceOf(address(arbitrumWithdrawalAdapter)), 0);
+        assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
     }
 
     function testWithdrawOtherTokenNonCCTP() public {
         assertEq(whitelistedToken.balanceOf(hubPool), 0);
         assertEq(whitelistedToken.balanceOf(owner), 0);
-        assertEq(whitelistedToken.balanceOf(address(arbitrumWithdrawalAdapter)), 0);
+        assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
         uint256 amountToBridge = uint256(block.timestamp + 100);
 
         // Mint tokens to the withdrawal adapter but do not whitelist it in the spoke pool.
-        whitelistedToken.mint(address(arbitrumWithdrawalAdapter), amountToBridge);
+        whitelistedToken.mint(address(tokenRetriever), amountToBridge);
 
         // Attempt to withdraw token.
-        vm.expectRevert();
-        arbitrumWithdrawalAdapter.withdrawToken(amountToBridge, address(whitelistedToken));
-        assertEq(whitelistedToken.balanceOf(hubPool), 0);
-        assertEq(whitelistedToken.balanceOf(owner), 0);
-        assertEq(whitelistedToken.balanceOf(address(arbitrumWithdrawalAdapter)), amountToBridge);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalFailed.selector, address(whitelistedToken)));
+        tokenRetriever.retrieve(address(whitelistedToken));
     }
 
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
