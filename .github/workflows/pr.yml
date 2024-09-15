@@ -21,7 +21,7 @@ jobs:
         with:
           anchor-version: 0.30.1
           solana-cli-version: 1.18.21
-          node-version: 20.17.0
+          node-version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
         shell: bash
@@ -65,7 +65,7 @@ jobs:
         with:
           anchor-version: 0.30.1
           solana-cli-version: 1.18.21
-          node-version: 20.17.0
+          node-version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
         shell: bash
@@ -110,7 +110,7 @@ jobs:
         with:
           anchor-version: 0.30.1
           solana-cli-version: 1.18.21
-          node-version: 20.17.0
+          node-version: 20
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Install Foundry
