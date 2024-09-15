@@ -25,9 +25,6 @@ jobs:
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
         shell: bash
-      - name: Make Anchor.toml compatible with runner
-        run: "sed -i 's:/user/:/runner/:' Anchor.toml"
-        shell: bash
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -68,9 +65,6 @@ jobs:
           node-version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
-        shell: bash
-      - name: Make Anchor.toml compatible with runner
-        run: "sed -i 's:/user/:/runner/:' Anchor.toml"
         shell: bash
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
