@@ -6,7 +6,7 @@ import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Arbitrum_SpokePool, ITokenMessenger } from "../../../contracts/Arbitrum_SpokePool.sol";
 import { Arbitrum_WithdrawalAdapter, IArbitrum_SpokePool } from "../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalAdapter.sol";
-import { Intermediate_TokenRetriever } from "../../../contracts/Intermediate_TokenRetriever.sol";
+import { L2_TokenRetriever } from "../../../contracts/L2_TokenRetriever.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
@@ -39,7 +39,7 @@ contract ArbitrumGatewayRouter {
 
 contract Arbitrum_WithdrawalAdapterTest is Test {
     Arbitrum_WithdrawalAdapter arbitrumWithdrawalAdapter;
-    Intermediate_TokenRetriever tokenRetriever;
+    L2_TokenRetriever tokenRetriever;
     Arbitrum_SpokePool arbitrumSpokePool;
     Token_ERC20 whitelistedToken;
     Token_ERC20 usdc;
@@ -54,7 +54,8 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
     // Token messenger is set so CCTP is activated.
     ITokenMessenger tokenMessenger;
 
-    error WithdrawalFailed(address l2Token);
+    error RetrieveFailed(address l2Token);
+    error RetrieveManyFailed(address[] l2Tokens);
 
     function setUp() public {
         // Initialize mintable/burnable tokens.
@@ -89,7 +90,7 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
         );
 
         // Create the token retriever contract.
-        tokenRetriever = new Intermediate_TokenRetriever(address(arbitrumWithdrawalAdapter), hubPool);
+        tokenRetriever = new L2_TokenRetriever(address(arbitrumWithdrawalAdapter), hubPool);
     }
 
     function testWithdrawWhitelistedTokenNonCCTP(uint256 amountToReturn) public {
@@ -123,7 +124,7 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
         whitelistedToken.mint(address(tokenRetriever), amountToReturn);
 
         // Attempt to withdraw the token.
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalFailed.selector, address(whitelistedToken)));
+        vm.expectRevert(abi.encodeWithSelector(RetrieveFailed.selector, address(whitelistedToken)));
         tokenRetriever.retrieve(address(whitelistedToken));
     }
 

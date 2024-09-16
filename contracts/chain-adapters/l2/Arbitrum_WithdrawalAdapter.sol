@@ -4,8 +4,8 @@
 // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
 pragma solidity ^0.8.19;
 
-import "../../libraries/CircleCCTPAdapter.sol";
 import { StandardBridgeLike } from "../../Arbitrum_SpokePool.sol";
+import "./WithdrawalAdapter.sol";
 
 /**
  * @notice AVM specific bridge adapter. Implements logic to bridge tokens back to mainnet.
@@ -24,18 +24,8 @@ interface IArbitrum_SpokePool {
  * @title Adapter for interacting with bridges from the Arbitrum One L2 to Ethereum mainnet.
  * @notice This contract is used to share L2-L1 bridging logic with other L2 Across contracts.
  */
-contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
-    struct WithdrawalInformation {
-        // L1 address of the recipient.
-        address recipient;
-        // Address of l2 token to withdraw.
-        address l2TokenAddress;
-        // Amount of l2 Token to return.
-        uint256 amountToReturn;
-    }
-
+contract Arbitrum_WithdrawalAdapter is WithdrawalAdapter {
     IArbitrum_SpokePool public immutable spokePool;
-    address public immutable l2GatewayRouter;
 
     /*
      * @notice constructs the withdrawal adapter.
@@ -49,23 +39,8 @@ contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
         ITokenMessenger _cctpTokenMessenger,
         IArbitrum_SpokePool _spokePool,
         address _l2GatewayRouter
-    ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum) {
+    ) WithdrawalAdapter(_l2Usdc, _cctpTokenMessenger, _l2GatewayRouter) {
         spokePool = _spokePool;
-        l2GatewayRouter = _l2GatewayRouter;
-    }
-
-    /*
-     * @notice withdraws tokens to Ethereum given the input parameters.
-     * @param withdrawalInformation array containing information to withdraw a token. Includes the L1 recipient
-     * address, the amount to withdraw, and the token address of the L2 token to withdraw.
-     */
-    function withdrawTokens(WithdrawalInformation[] calldata withdrawalInformation) external {
-        uint256 informationLength = withdrawalInformation.length;
-        WithdrawalInformation calldata withdrawal;
-        for (uint256 i = 0; i < informationLength; ++i) {
-            withdrawal = withdrawalInformation[i];
-            withdrawToken(withdrawal.recipient, withdrawal.amountToReturn, withdrawal.l2TokenAddress);
-        }
     }
 
     /*
@@ -79,7 +54,7 @@ contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
         address recipient,
         uint256 amountToReturn,
         address l2TokenAddress
-    ) public {
+    ) public override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(recipient, amountToReturn);
@@ -89,7 +64,7 @@ contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
             address ethereumTokenToBridge = spokePool.whitelistedTokens(l2TokenAddress);
             require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
             //slither-disable-next-line unused-return
-            StandardBridgeLike(l2GatewayRouter).outboundTransfer(
+            StandardBridgeLike(l2Gateway).outboundTransfer(
                 ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
                 recipient, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
                 amountToReturn, // _amount.
