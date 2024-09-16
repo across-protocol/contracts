@@ -25,8 +25,16 @@ interface IArbitrum_SpokePool {
  * @notice This contract is used to share L2-L1 bridging logic with other L2 Across contracts.
  */
 contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
+    struct WithdrawalInformation {
+        // L1 address of the recipient.
+        address recipient;
+        // Address of l2 token to withdraw.
+        address l2TokenAddress;
+        // Amount of l2 Token to return.
+        uint256 amountToReturn;
+    }
+
     IArbitrum_SpokePool public immutable spokePool;
-    address public immutable tokenRetriever;
     address public immutable l2GatewayRouter;
 
     /*
@@ -34,31 +42,47 @@ contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
      * @param _l2Usdc address of native USDC on the L2.
      * @param _cctpTokenMessenger address of the CCTP token messenger contract on L2.
      * @param _spokePool address of the spoke pool on L2.
-     * @param _tokenRetriever L1 address of the recipient of withdrawals.
      * @param _l2GatewayRouter address of the Arbitrum l2 gateway router contract.
      */
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         IArbitrum_SpokePool _spokePool,
-        address _tokenRetriever,
         address _l2GatewayRouter
     ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum) {
         spokePool = _spokePool;
-        tokenRetriever = _tokenRetriever;
         l2GatewayRouter = _l2GatewayRouter;
+    }
+
+    /*
+     * @notice withdraws tokens to Ethereum given the input parameters.
+     * @param withdrawalInformation array containing information to withdraw a token. Includes the L1 recipient
+     * address, the amount to withdraw, and the token address of the L2 token to withdraw.
+     */
+    function withdrawTokens(WithdrawalInformation[] calldata withdrawalInformation) external {
+        uint256 informationLength = withdrawalInformation.length;
+        WithdrawalInformation calldata withdrawal;
+        for (uint256 i = 0; i < informationLength; ++i) {
+            withdrawal = withdrawalInformation[i];
+            withdrawToken(withdrawal.recipient, withdrawal.amountToReturn, withdrawal.l2TokenAddress);
+        }
     }
 
     /*
      * @notice Calls CCTP or the Arbitrum gateway router to withdraw tokens back to the `tokenRetriever`. The
      * bridge will not be called if the token is not in the Arbitrum_SpokePool's `whitelistedTokens` mapping.
-     * @param amountToReturn amount of l2Token to send back to the token retriever.
-     * @param l2TokenAddress address of the l2Token to send back to the token retriever.
+     * @param recipient L1 address of the recipient.
+     * @param amountToReturn amount of l2Token to send back.
+     * @param l2TokenAddress address of the l2Token to send back.
      */
-    function withdrawToken(uint256 amountToReturn, address l2TokenAddress) external {
+    function withdrawToken(
+        address recipient,
+        uint256 amountToReturn,
+        address l2TokenAddress
+    ) public {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
-            _transferUsdc(tokenRetriever, amountToReturn);
+            _transferUsdc(recipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             // Tokens will only be bridged if they are whitelisted by the spoke pool.
@@ -67,7 +91,7 @@ contract Arbitrum_WithdrawalAdapter is CircleCCTPAdapter {
             //slither-disable-next-line unused-return
             StandardBridgeLike(l2GatewayRouter).outboundTransfer(
                 ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
-                tokenRetriever, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
+                recipient, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
                 amountToReturn, // _amount.
                 "" // _data. We don't need to send any data for the bridging action.
             );

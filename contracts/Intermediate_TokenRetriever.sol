@@ -7,7 +7,11 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface IBridgeAdapter {
-    function withdrawToken(uint256 amountToReturn, address l2Token) external;
+    function withdrawToken(
+        address recipient,
+        uint256 amountToReturn,
+        address l2Token
+    ) external;
 }
 
 /**
@@ -21,16 +25,20 @@ contract Intermediate_TokenRetriever is Lockable, MultiCaller {
     // Should be set to the bridge adapter which contains the proper logic to withdraw tokens on
     // the deployed L2
     address public immutable bridgeAdapter;
+    // Should be set to the L1 address which will receive withdrawn tokens.
+    address public immutable tokenRetriever;
 
     error WithdrawalFailed(address l2Token);
 
     /**
      * @notice Constructs the Intermediate_TokenRetriever
      * @param _bridgeAdapter contract which contains network's bridging logic.
+     * @param _tokenRetriever L1 address of the recipient of withdrawn tokens.
      */
-    constructor(address _bridgeAdapter) {
+    constructor(address _bridgeAdapter, address _tokenRetriever) {
         //slither-disable-next-line missing-zero-check
         bridgeAdapter = _bridgeAdapter;
+        tokenRetriever = _tokenRetriever;
     }
 
     /**
@@ -40,7 +48,10 @@ contract Intermediate_TokenRetriever is Lockable, MultiCaller {
      */
     function retrieve(address l2Token) public nonReentrant {
         (bool success, ) = bridgeAdapter.delegatecall(
-            abi.encodeCall(IBridgeAdapter.withdrawToken, (IERC20Upgradeable(l2Token).balanceOf(address(this)), l2Token))
+            abi.encodeCall(
+                IBridgeAdapter.withdrawToken,
+                (tokenRetriever, IERC20Upgradeable(l2Token).balanceOf(address(this)), l2Token)
+            )
         );
         if (!success) revert WithdrawalFailed(l2Token);
     }

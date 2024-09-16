@@ -57,16 +57,20 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
     error WithdrawalFailed(address l2Token);
 
     function setUp() public {
+        // Initialize mintable/burnable tokens.
         whitelistedToken = new Token_ERC20("TOKEN", "TOKEN");
         usdc = new Token_ERC20("USDC", "USDC");
+        // Initialize mock bridge.
         gatewayRouter = new ArbitrumGatewayRouter();
 
+        // Instantiate all other addresses used in the system.
         tokenMessenger = ITokenMessenger(vm.addr(1));
         owner = vm.addr(2);
         wrappedNativeToken = vm.addr(3);
         hubPool = vm.addr(4);
         aliasedOwner = _applyL1ToL2Alias(owner);
 
+        // Create the spoke pool.
         vm.startPrank(owner);
         Arbitrum_SpokePool implementation = new Arbitrum_SpokePool(wrappedNativeToken, 0, 0, usdc, tokenMessenger);
         address proxy = address(
@@ -76,47 +80,49 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
             )
         );
         vm.stopPrank();
-
         arbitrumSpokePool = Arbitrum_SpokePool(payable(proxy));
         arbitrumWithdrawalAdapter = new Arbitrum_WithdrawalAdapter(
             usdc,
             tokenMessenger,
             IArbitrum_SpokePool(proxy),
-            hubPool,
             address(gatewayRouter)
         );
-        tokenRetriever = new Intermediate_TokenRetriever(address(arbitrumWithdrawalAdapter));
+
+        // Create the token retriever contract.
+        tokenRetriever = new Intermediate_TokenRetriever(address(arbitrumWithdrawalAdapter), hubPool);
     }
 
-    function testWithdrawWhitelistedTokenNonCCTP() public {
+    function testWithdrawWhitelistedTokenNonCCTP(uint256 amountToReturn) public {
+        // There should be no balance in any contract/EOA.
         assertEq(whitelistedToken.balanceOf(hubPool), 0);
         assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
-        uint256 amountToBridge = uint256(block.timestamp + 100);
 
-        // Whitelist tokens in the spoke pool and mint tokens to the withdrawal adapter.
+        // Whitelist tokens in the spoke pool and simulate a L3 -> L2 withdrawal into the token retriever.
         vm.startPrank(aliasedOwner);
         arbitrumSpokePool.whitelistToken(address(whitelistedToken), address(whitelistedToken));
-        whitelistedToken.mint(address(tokenRetriever), amountToBridge);
         vm.stopPrank();
+        whitelistedToken.mint(address(tokenRetriever), amountToReturn);
 
-        // Attempt to withdraw token.
+        // Attempt to withdraw the token.
         tokenRetriever.retrieve(address(whitelistedToken));
-        assertEq(whitelistedToken.balanceOf(hubPool), amountToBridge);
+
+        // Ensure that the balances are updated (i.e. the token bridge contract was called).
+        assertEq(whitelistedToken.balanceOf(hubPool), amountToReturn);
         assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
     }
 
-    function testWithdrawOtherTokenNonCCTP() public {
+    function testWithdrawOtherTokenNonCCTP(uint256 amountToReturn) public {
+        // There should be no balance in any contract/EOA.
         assertEq(whitelistedToken.balanceOf(hubPool), 0);
         assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
-        uint256 amountToBridge = uint256(block.timestamp + 100);
 
-        // Mint tokens to the withdrawal adapter but do not whitelist it in the spoke pool.
-        whitelistedToken.mint(address(tokenRetriever), amountToBridge);
+        // Simulate a L3 -> L2 withdrawal of an non-whitelisted token to the tokenRetriever contract.
+        whitelistedToken.mint(address(tokenRetriever), amountToReturn);
 
-        // Attempt to withdraw token.
+        // Attempt to withdraw the token.
         vm.expectRevert(abi.encodeWithSelector(WithdrawalFailed.selector, address(whitelistedToken)));
         tokenRetriever.retrieve(address(whitelistedToken));
     }
