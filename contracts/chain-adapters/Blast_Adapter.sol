@@ -76,7 +76,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     )
         CrossDomainEnabled(_crossDomainMessenger)
         // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
-        CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINTIALIZED)
+        CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINITIALIZED)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
