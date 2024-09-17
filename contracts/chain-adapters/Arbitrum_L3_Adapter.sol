@@ -14,7 +14,7 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 contract Arbitrum_L3_Adapter is AdapterInterface {
-    address public immutable l2Adapter;
+    address public immutable adapter;
     address public immutable l2Forwarder;
 
     error RelayMessageFailed();
@@ -22,11 +22,12 @@ contract Arbitrum_L3_Adapter is AdapterInterface {
 
     /**
      * @notice Constructs new Adapter for sending tokens/messages to Arbitrum-like L3s.
-     * @param _l2Adapter Address of the adapter contract on mainnet which implements message transfers
+     * @param _adapter Address of the adapter contract on mainnet which implements message transfers
      * and token relays.
+     * @param _l2Forwarder Address of the l2 forwarder contract which relays messages up to the L3 spoke pool.
      */
-    constructor(address _l2Adapter, address _l2Forwarder) {
-        l2Adapter = _l2Adapter;
+    constructor(address _adapter, address _l2Forwarder) {
+        adapter = _adapter;
         l2Forwarder = _l2Forwarder;
     }
 
@@ -37,9 +38,7 @@ contract Arbitrum_L3_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address, bytes memory message) external payable override {
-        (bool success, ) = l2Adapter.delegatecall(
-            abi.encodeCall(AdapterInterface.relayMessage, (l2Forwarder, message))
-        );
+        (bool success, ) = adapter.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (l2Forwarder, message)));
         if (!success) revert RelayMessageFailed();
     }
 
@@ -52,11 +51,11 @@ contract Arbitrum_L3_Adapter is AdapterInterface {
      */
     function relayTokens(
         address l1Token,
-        address l2Token, // l2Token is unused for Arbitrum.
+        address l2Token,
         uint256 amount,
         address
     ) external payable override {
-        (bool success, ) = l2Adapter.delegatecall(
+        (bool success, ) = adapter.delegatecall(
             abi.encodeCall(AdapterInterface.relayTokens, (l1Token, l2Token, amount, l2Forwarder))
         );
         if (!success) revert RelayTokensFailed(l1Token);
