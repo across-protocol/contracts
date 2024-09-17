@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-import "./Lockable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { Lockable } from "./Lockable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { WithdrawalAdapter } from "./chain-adapters/l2/WithdrawalAdapter.sol";
 
 interface IBridgeAdapter {
@@ -29,7 +28,7 @@ contract L2_TokenRetriever is Lockable {
     // the deployed L2
     address public immutable bridgeAdapter;
     // Should be set to the L1 address which will receive withdrawn tokens.
-    address public immutable tokenRetriever;
+    address public immutable tokenRecipient;
 
     error RetrieveFailed(address l2Token);
     error RetrieveManyFailed(address[] l2Tokens);
@@ -37,11 +36,11 @@ contract L2_TokenRetriever is Lockable {
     /**
      * @notice Constructs the Intermediate_TokenRetriever
      * @param _bridgeAdapter contract which contains network's bridging logic.
-     * @param _tokenRetriever L1 address of the recipient of withdrawn tokens.
+     * @param _tokenRecipient L1 address of the recipient of withdrawn tokens.
      */
-    constructor(address _bridgeAdapter, address _tokenRetriever) {
+    constructor(address _bridgeAdapter, address _tokenRecipient) {
         bridgeAdapter = _bridgeAdapter;
-        tokenRetriever = _tokenRetriever;
+        tokenRecipient = _tokenRecipient;
     }
 
     /**
@@ -53,7 +52,7 @@ contract L2_TokenRetriever is Lockable {
         (bool success, ) = bridgeAdapter.delegatecall(
             abi.encodeCall(
                 IBridgeAdapter.withdrawToken,
-                (tokenRetriever, IERC20Upgradeable(l2Token).balanceOf(address(this)), l2Token)
+                (tokenRecipient, IERC20Upgradeable(l2Token).balanceOf(address(this)), l2Token)
             )
         );
         if (!success) revert RetrieveFailed(l2Token);
@@ -73,7 +72,7 @@ contract L2_TokenRetriever is Lockable {
         for (uint256 i = 0; i < nWithdrawals; ++i) {
             address l2Token = l2Tokens[i];
             withdrawals[i] = WithdrawalAdapter.WithdrawalInformation(
-                tokenRetriever,
+                tokenRecipient,
                 l2Token,
                 IERC20Upgradeable(l2Token).balanceOf(address(this))
             );
