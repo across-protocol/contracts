@@ -28,7 +28,7 @@
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
     "build-evm": "hardhat compile",
-    "build-svm": "anchor run generateExternalTypes && anchor build",
+    "build-svm": "anchor build || true && yarn generateExternalTypes && anchor build",
     "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "build": "yarn build-evm && yarn build-svm && yarn build-ts",
     "test-evm": "IS_TEST=true hardhat test",
