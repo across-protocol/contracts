@@ -37,6 +37,33 @@ interface ArbitrumInboxLike {
 
     /**
      * @notice Put a message in the L2 inbox that can be reexecuted for some fixed amount of time if it reverts
+     * @dev Gas limit and maxFeePerGas should not be set to 1 as that is used to trigger the RetryableData error
+     * @dev Caller must set msg.value equal to at least `maxSubmissionCost + maxGas * gasPriceBid`.
+     *      all msg.value will deposited to callValueRefundAddress on L3
+     * @dev More details can be found here: https://developer.arbitrum.io/arbos/l1-to-l2-messaging
+     * @param to destination L3 contract address
+     * @param l3CallValue call value for retryable L3 message
+     * @param maxSubmissionCost Max gas deducted from user's L3 balance to cover base submission fee
+     * @param excessFeeRefundAddress gasLimit x maxFeePerGas - execution cost gets credited here on L3 balance
+     * @param callValueRefundAddress l3Callvalue gets credited here on L3 if retryable txn times out or gets cancelled
+     * @param gasLimit Max gas deducted from user's L3 balance to cover L3 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
+     * @param maxFeePerGas price bid for L3 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
+     * @param data ABI encoded data of L3 message
+     * @return unique message number of the retryable transaction
+     */
+    function createRetryableTicket(
+        address to,
+        uint256 l3CallValue,
+        uint256 maxSubmissionCost,
+        address excessFeeRefundAddress,
+        address callValueRefundAddress,
+        uint256 gasLimit,
+        uint256 maxFeePerGas,
+        bytes calldata data
+    ) external payable returns (uint256);
+
+    /**
+     * @notice Put a message in the L2 inbox that can be reexecuted for some fixed amount of time if it reverts
      * @notice Overloads the `createRetryableTicket` function but is not payable, and should only be called when paying
      * for L2 to L3 message using a custom gas token.
      * @dev all tokenTotalFeeAmount will be deposited to callValueRefundAddress on L3
@@ -156,6 +183,9 @@ abstract contract ArbitrumForwarderInterface {
     // https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ERC20Gateway.sol
     ArbitrumERC20GatewayLike public immutable L2_ERC20_GATEWAY_ROUTER;
 
+    event TokensForwarded(address indexed l2Token, uint256 amount);
+    event MessageForwarded(address indexed target, bytes message);
+
     error RescueFailed();
 
     /*
@@ -196,12 +226,15 @@ abstract contract ArbitrumForwarderInterface {
         CROSS_DOMAIN_ADMIN = _crossDomainAdmin;
     }
 
+    // Added so that this function may receive ETH in the event of stuck transactions.
+    receive() external payable {}
+
     /**
      * @notice When called by the cross domain admin (i.e. the hub pool), the msg.data should be some function
      * recognizable by the L3 spoke pool, such as "relayRootBundle" or "upgradeTo". Therefore, we simply forward
      * this message to the L3 spoke pool using the implemented messaging logic of the L2 forwarder
      */
-    fallback() external onlyAdmin {
+    fallback() external payable onlyAdmin {
         _relayMessage(L3_SPOKE_POOL, msg.data);
     }
 
@@ -226,7 +259,7 @@ abstract contract ArbitrumForwarderInterface {
      * @param l2Token L2 token to deposit.
      * @param amount Amount of L2 tokens to deposit and L3 tokens to receive.
      */
-    function relayTokens(address l2Token, uint256 amount) external virtual;
+    function relayTokens(address l2Token, uint256 amount) external payable virtual;
 
     /**
      * @notice Relay a message to a contract on L2. Implementation changes on whether the
@@ -249,6 +282,4 @@ abstract contract ArbitrumForwarderInterface {
     function getL2CallValue(uint32 l3GasLimit) public view returns (uint256) {
         return L3_MAX_SUBMISSION_COST + L3_GAS_PRICE * l3GasLimit;
     }
-
-    function _contractHasSufficientGasToken(uint32 l3GasLimit) internal view virtual returns (uint256);
 }
