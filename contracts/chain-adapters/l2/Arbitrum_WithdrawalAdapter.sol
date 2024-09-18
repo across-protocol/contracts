@@ -5,7 +5,9 @@
 pragma solidity ^0.8.19;
 
 import { StandardBridgeLike } from "../../Arbitrum_SpokePool.sol";
-import "./WithdrawalAdapter.sol";
+import { WithdrawalAdapter, ITokenMessenger } from "./WithdrawalAdapter.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice AVM specific bridge adapter. Implements logic to bridge tokens back to mainnet.
@@ -25,6 +27,8 @@ interface IArbitrum_SpokePool {
  * @notice This contract is used to share L2-L1 bridging logic with other L2 Across contracts.
  */
 contract Arbitrum_WithdrawalAdapter is WithdrawalAdapter {
+    using SafeERC20 for IERC20;
+
     IArbitrum_SpokePool public immutable spokePool;
 
     /*

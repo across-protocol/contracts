@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-import "../../libraries/CircleCCTPAdapter.sol";
+import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title Adapter for interacting with bridges from a generic L2 to Ethereum mainnet.
  * @notice This contract is used to share L2-L1 bridging logic with other Across contracts.
  */
 abstract contract WithdrawalAdapter is CircleCCTPAdapter {
+    using SafeERC20 for IERC20;
+
     struct WithdrawalInformation {
         // L1 address of the recipient.
         address recipient;
