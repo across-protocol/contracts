@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2021",
     "module": "commonjs",
-    "strict": false,
+    "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
     "declaration": true,
@@ -17,6 +17,10 @@
     "./test-utils.ts",
     "tasks/enableL1TokenAcrossEcosystem.ts",
     "utils/utils.ts"
+  ],
+  "exclude": [
+    "./test/svm", // Added exclusion for /test/svm &/scripts/svm files until we fix build issues on types.
+    "./scripts/svm"
   ],
   "files": ["./hardhat.config.ts"]
 }
