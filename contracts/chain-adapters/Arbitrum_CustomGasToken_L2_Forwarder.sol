@@ -23,10 +23,10 @@ interface FunderInterface {
 }
 
 /**
- * @notice Contract containing logic to send messages from L1 to Arbitrum.
+ * @notice Contract containing logic to send messages from Arbitrum to an Arbitrum-like L3.
  * @dev This contract is very similar to Arbitrum_CustomGasToken_Adapter. It is meant to bridge
- * tokens and send messages over a bridge which uses a custom gas token, except this contract makes
- * no assumptions about the L2 on which it is deployed.
+ * tokens and send messages over a bridge which uses a custom gas token, except this contract assumes
+ * it is deployed on Arbitrum.
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -43,12 +43,12 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderInterface, Cir
     error InsufficientCustomGasToken();
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
     /**
-     * @notice Constructs new Adapter.
+     * @notice Constructs new L2 Forwarder.
      * @param _l2ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l2ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l3RefundL3Address L3 address to receive gas refunds on after a message is relayed.
@@ -166,7 +166,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderInterface, Cir
         emit MessageForwarded(target, message);
     }
 
-    function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
+    function _requireAdminSender() internal virtual override onlyFromCrossDomainAdmin {}
 
     function _pullCustomGas(uint32 l3GasLimit) internal returns (uint256) {
         uint256 requiredL2CallValue = getL2CallValue(l3GasLimit);

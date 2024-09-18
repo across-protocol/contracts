@@ -18,12 +18,12 @@ contract Arbitrum_L2_Forwarder is ArbitrumForwarderInterface, CircleCCTPAdapter 
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
     /**
-     * @notice Constructs new Adapter.
+     * @notice Constructs new L2 forwarder.
      * @param _l2ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l2ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l3RefundL3Address L3 address to receive gas refunds on after a message is relayed.
@@ -113,7 +113,7 @@ contract Arbitrum_L2_Forwarder is ArbitrumForwarderInterface, CircleCCTPAdapter 
         emit MessageForwarded(target, message);
     }
 
-    function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
+    function _requireAdminSender() internal virtual override onlyFromCrossDomainAdmin {}
 
     function _contractHasSufficientEthBalance(uint32 l3GasLimit) internal view returns (uint256) {
         uint256 requiredL2CallValue = getL2CallValue(l3GasLimit);

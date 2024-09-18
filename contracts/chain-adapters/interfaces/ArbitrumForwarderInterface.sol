@@ -170,7 +170,7 @@ abstract contract ArbitrumForwarderInterface {
     address public immutable L3_SPOKE_POOL;
 
     // This is the address which has permission to relay root bundles/messages to the L3 spoke pool.
-    address public immutable CROSS_DOMAIN_ADMIN;
+    address public immutable crossDomainAdmin;
 
     // Inbox system contract to send messages to Arbitrum-like L3s. Token bridges use this to send tokens to L3.
     // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
@@ -223,7 +223,7 @@ abstract contract ArbitrumForwarderInterface {
         L3_REFUND_L3_ADDRESS = _l3RefundL3Address;
         L3_MAX_SUBMISSION_COST = _l3MaxSubmissionCost;
         L3_SPOKE_POOL = _l3SpokePool;
-        CROSS_DOMAIN_ADMIN = _crossDomainAdmin;
+        crossDomainAdmin = _crossDomainAdmin;
     }
 
     // Added so that this function may receive ETH in the event of stuck transactions.
