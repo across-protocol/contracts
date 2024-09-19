@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
-import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumERC20GatewayLike as ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -47,12 +47,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     // Inbox system contract to send messages to Arbitrum. Token bridges use this to send tokens to L2.
     // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
-    ArbitrumL1InboxLike public immutable L1_INBOX;
+    ArbitrumInboxLike public immutable L1_INBOX;
 
     // Router contract to send tokens to Arbitrum. Routes to correct gateway to bridge tokens. Internally this
     // contract calls the Inbox.
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
-    ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
+    ArbitrumERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     /**
      * @notice Constructs new Adapter.
@@ -63,8 +63,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      */
     constructor(
-        ArbitrumL1InboxLike _l1ArbitrumInbox,
-        ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
+        ArbitrumInboxLike _l1ArbitrumInbox,
+        ArbitrumERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger

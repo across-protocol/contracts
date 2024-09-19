@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
-import { ArbitrumERC20Bridge as ArbitrumL1ERC20Bridge, ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumERC20GatewayLike as ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 /**
  * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()
@@ -65,14 +65,14 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     // Inbox system contract to send messages to Arbitrum. Token bridges use this to send tokens to L2.
     // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
-    ArbitrumL1InboxLike public immutable L1_INBOX;
+    ArbitrumInboxLike public immutable L1_INBOX;
 
     // Router contract to send tokens to Arbitrum. Routes to correct gateway to bridge tokens. Internally this
     // contract calls the Inbox.
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     // Gateway used for communicating with chains that use custom gas tokens:
     // https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ERC20Gateway.sol
-    ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
+    ArbitrumERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     // This token is used to pay for l1 to l2 messages if its configured by an Arbitrum orbit chain.
     IERC20 public immutable CUSTOM_GAS_TOKEN;
@@ -96,8 +96,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * and used for all messages sent by this adapter.
      */
     constructor(
-        ArbitrumL1InboxLike _l1ArbitrumInbox,
-        ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
+        ArbitrumInboxLike _l1ArbitrumInbox,
+        ArbitrumERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ICCTPTokenMessenger _cctpTokenMessenger,

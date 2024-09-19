@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
-import { ArbitrumL1ERC20GatewayLike } from "./Arbitrum_Adapter.sol";
+import { ArbitrumERC20GatewayLike as ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
