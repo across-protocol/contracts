@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { ArbitrumForwarderInterface, ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "./interfaces/ArbitrumForwarderInterface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
+import { ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ArbitrumForwarderBase } from "./ArbitrumForwarderBase.sol";
 
 /**
  * @notice Contract containing logic to send messages from L2 to Arbitrum-like L3s.
@@ -14,11 +15,11 @@ import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapt
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_L2_Forwarder is ArbitrumForwarderInterface, CircleCCTPAdapter {
+contract Arbitrum_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == _applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
@@ -37,14 +38,16 @@ contract Arbitrum_L2_Forwarder is ArbitrumForwarderInterface, CircleCCTPAdapter 
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint256 _l3MaxSubmissionCost,
+        uint256 _l3GasPrice,
         address _l3SpokePool,
         address _crossDomainAdmin
     )
-        ArbitrumForwarderInterface(
+        ArbitrumForwarderBase(
             _l2ArbitrumInbox,
             _l2ERC20GatewayRouter,
             _l3RefundL3Address,
             _l3MaxSubmissionCost,
+            _l3GasPrice,
             _l3SpokePool,
             _crossDomainAdmin
         )

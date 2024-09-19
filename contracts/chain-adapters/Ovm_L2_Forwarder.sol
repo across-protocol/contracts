@@ -18,6 +18,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
     using SafeERC20 for IERC20;
 
+    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
+
+    error NotCrossDomainAdmin();
+
     /**
      * @notice Constructs new L2 Forwarder.
      * @param _l2ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
@@ -36,6 +40,7 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint256 _l3MaxSubmissionCost,
+        uint256 _l3GasPrice,
         address _l3SpokePool,
         address _crossDomainAdmin
     )
@@ -46,16 +51,13 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
             _l2Usdc,
             _cctpTokenMessenger,
             _l3MaxSubmissionCost,
+            _l3GasPrice,
             _l3SpokePool,
             _crossDomainAdmin
         )
     {}
 
-    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
-
-    error NotCrossDomainAdmin();
-
     function _requireAdminSender() internal override {
-        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != CROSS_DOMAIN_ADMIN) revert NotCrossDomainAdmin();
     }
 }

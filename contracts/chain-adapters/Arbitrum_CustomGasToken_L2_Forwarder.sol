@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { ArbitrumForwarderInterface, ArbitrumERC20Bridge, ArbitrumInboxLike, ArbitrumERC20GatewayLike, ArbitrumERC20Bridge } from "./interfaces/ArbitrumForwarderInterface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
+import { ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ArbitrumForwarderBase } from "./ArbitrumForwarderBase.sol";
 
 /**
  * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()
@@ -30,7 +31,7 @@ interface FunderInterface {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderInterface, CircleCCTPAdapter {
+contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     // This token is used to pay for l2 to l3 messages if its configured by an Arbitrum orbit chain.
@@ -43,7 +44,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderInterface, Cir
     error InsufficientCustomGasToken();
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == _applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
@@ -67,15 +68,17 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderInterface, Cir
         ICCTPTokenMessenger _cctpTokenMessenger,
         FunderInterface _customGasTokenFunder,
         uint256 _l3MaxSubmissionCost,
+        uint256 _l3GasPrice,
         address _l3SpokePool,
         address _crossDomainAdmin
     )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.UNINITIALIZED)
-        ArbitrumForwarderInterface(
+        ArbitrumForwarderBase(
             _l2ArbitrumInbox,
             _l2ERC20GatewayRouter,
             _l3RefundL3Address,
             _l3MaxSubmissionCost,
+            _l3GasPrice,
             _l3SpokePool,
             _crossDomainAdmin
         )

@@ -18,6 +18,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 contract Ovm_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_L2_Forwarder {
     using SafeERC20 for IERC20;
 
+    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
+
+    error NotCrossDomainAdmin();
+
     constructor(
         ArbitrumInboxLike _l2ArbitrumInbox,
         ArbitrumERC20GatewayLike _l2ERC20GatewayRouter,
@@ -26,6 +30,7 @@ contract Ovm_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_L2_Forwarder
         ICCTPTokenMessenger _cctpTokenMessenger,
         FunderInterface _customGasTokenFunder,
         uint256 _l3MaxSubmissionCost,
+        uint256 _l3GasPrice,
         address _l3SpokePool,
         address _crossDomainAdmin
     )
@@ -37,16 +42,13 @@ contract Ovm_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_L2_Forwarder
             _cctpTokenMessenger,
             _customGasTokenFunder,
             _l3MaxSubmissionCost,
+            _l3GasPrice,
             _l3SpokePool,
             _crossDomainAdmin
         )
     {}
 
-    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
-
-    error NotCrossDomainAdmin();
-
     function _requireAdminSender() internal override {
-        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != CROSS_DOMAIN_ADMIN) revert NotCrossDomainAdmin();
     }
 }
