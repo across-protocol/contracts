@@ -50,21 +50,13 @@ const remoteDomain = 0; // Ethereum
 const localDomain = 5; // Solana
 
 // Get Solana programs and accounts.
-<<<<<<< HEAD
-const svmSpokeIdl = require("../target/idl/svm_spoke.json");
-=======
 const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
->>>>>>> master
 const svmSpokeProgram = new anchor.Program<SvmSpoke>(svmSpokeIdl, provider);
 const [statePda, _] = PublicKey.findProgramAddressSync(
   [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
   svmSpokeProgram.programId
 );
-<<<<<<< HEAD
-const messageTransmitterIdl = require("../target/idl/message_transmitter.json");
-=======
 const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
->>>>>>> master
 const messageTransmitterProgram = new anchor.Program<MessageTransmitter>(messageTransmitterIdl, provider);
 const [messageTransmitterState] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter")],
