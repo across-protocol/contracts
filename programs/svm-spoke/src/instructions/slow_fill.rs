@@ -170,6 +170,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = recipient,
+        associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -177,6 +178,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = state,
+        associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
