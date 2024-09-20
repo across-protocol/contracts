@@ -51,7 +51,7 @@ describe("svm_spoke.slow_fill", () => {
     requestAccounts = {
       state,
       signer: relayer.publicKey,
-      recipient: relayData.recipient, // This could be different from default recipient.
+      recipient: relayData.recipient, // This could be different from global recipient.
       fillStatus,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
@@ -59,7 +59,7 @@ describe("svm_spoke.slow_fill", () => {
       state,
       signer: relayer.publicKey,
       relayer: relayer.publicKey,
-      recipient: relayData.recipient, // This could be different from default recipient.
+      recipient: relayData.recipient, // This could be different from global recipient.
       mintAccount: mint,
       relayerTA: relayerTA,
       recipientTA: recipientTA,
