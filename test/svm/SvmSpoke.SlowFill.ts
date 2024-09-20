@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import * as crypto from "crypto";
 import { BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -28,54 +29,55 @@ describe("svm_spoke.slow_fill", () => {
     relayerTA: PublicKey,
     recipientTA: PublicKey,
     otherRelayerTA: PublicKey,
-    vault: PublicKey;
+    vault: PublicKey,
+    fillStatus: PublicKey;
 
   const relayAmount = 500_000;
-  let relayData: any; // reused relay data for all tests.
+  let relayData: SlowFillLeaf["relayData"]; // reused relay data for all tests.
   let requestAccounts: any; // Store accounts to simplify program interactions.
   let fillAccounts: any;
 
   const initialMintAmount = 10_000_000_000;
 
-  function updateRelayData(newRelayData: any) {
+  async function updateRelayData(newRelayData: SlowFillLeaf["relayData"]) {
     relayData = newRelayData;
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
-    const [fillStatusPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("fills"), relayHashUint8Array],
-      program.programId
-    );
+    [fillStatus] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHashUint8Array], program.programId);
+
+    // recipientTA could be different for each relayData if custom recipient was passed.
+    recipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayData.recipient)).address;
 
     // Accounts for requestingSlowFill.
     requestAccounts = {
       state,
       signer: relayer.publicKey,
-      recipient: recipient,
-      fillStatus: fillStatusPDA,
+      recipient: relayData.recipient, // This could be different from global recipient.
+      fillStatus,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
     fillAccounts = {
       state,
       signer: relayer.publicKey,
       relayer: relayer.publicKey,
-      recipient: recipient,
+      recipient: relayData.recipient, // This could be different from global recipient.
       mintAccount: mint,
       relayerTA: relayerTA,
       recipientTA: recipientTA,
-      fillStatus: fillStatusPDA,
+      fillStatus,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
   }
 
-  const relaySlowFillRootBundle = async () => {
+  const relaySlowFillRootBundle = async (slowRelayLeafRecipient = recipient) => {
     //TODO: verify that the leaf structure created here is equivalent to the one created by the EVM logic. I think
     // I've gotten the concatenation, endianness, etc correct but want to be sure.
     const slowRelayLeafs: SlowFillLeaf[] = [];
     const slowRelayLeaf: SlowFillLeaf = {
       relayData: {
-        depositor: recipient,
-        recipient: recipient,
+        depositor: slowRelayLeafRecipient,
+        recipient: slowRelayLeafRecipient,
         exclusiveRelayer: relayer.publicKey,
         inputToken: mint,
         outputToken: mint,
@@ -90,13 +92,13 @@ describe("svm_spoke.slow_fill", () => {
       chainId,
       updatedOutputAmount: new BN(relayAmount),
     };
-    updateRelayData(slowRelayLeaf.relayData);
+    await updateRelayData(slowRelayLeaf.relayData);
 
     slowRelayLeafs.push(slowRelayLeaf);
 
     const merkleTree = new MerkleTree<SlowFillLeaf>(slowRelayLeafs, slowFillHashFn);
 
-    const root = merkleTree.getRoot();
+    const slowRelayRoot = merkleTree.getRoot();
     const proof = merkleTree.getProof(slowRelayLeafs[0]);
     const leaf = slowRelayLeafs[0];
 
@@ -108,9 +110,11 @@ describe("svm_spoke.slow_fill", () => {
     const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
+    const relayerRefundRoot = crypto.randomBytes(32);
+
     // Relay root bundle
     await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
+      .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
       .accounts({ state, rootBundle, signer: owner })
       .rpc();
 
@@ -122,7 +126,6 @@ describe("svm_spoke.slow_fill", () => {
 
   before("Creates token mint and associated token accounts", async () => {
     mint = await createMint(connection, payer, owner, owner, 6);
-    recipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
     relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     otherRelayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, otherRelayer.publicKey)).address;
 
@@ -156,13 +159,13 @@ describe("svm_spoke.slow_fill", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: 1,
+      depositId: new BN(1),
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
       message: Buffer.from("Test message"),
     };
 
-    updateRelayData(initialRelayData);
+    await updateRelayData(initialRelayData);
   });
 
   it("Requests a V3 slow fill, verify the event & state change", async () => {
@@ -379,6 +382,121 @@ describe("svm_spoke.slow_fill", () => {
     } catch (err) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+    }
+  });
+
+  it("Cannot replay execute V3 slow relay leaf against wrong fill status account", async () => {
+    // Request V3 slow fill for the first recipient.
+    const firstRecipient = Keypair.generate().publicKey;
+    const {
+      relayHash: firstRelayHash,
+      leaf: firstLeaf,
+      rootBundleId: firstRootBundleId,
+      proofAsNumbers: firstProofAsNumbers,
+      rootBundle: firstRootBundle,
+    } = await relaySlowFillRootBundle(firstRecipient);
+    await program.methods
+      .requestV3SlowFill(firstRelayHash, firstLeaf.relayData)
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
+    const firstRecipientTA = recipientTA; // Global recipientTA will get updated when passing the second relayData.
+    const firstFillStatus = fillStatus; // Global fillStatus will get updated when passing the second relayData.
+
+    // Request V3 slow fill for the second recipient.
+    // Note: we could also had generated single slow relay root for both recipients, but having them relayed in separate
+    // root bundles makes it easier to reuse existing test code.
+    const secondRecipient = Keypair.generate().publicKey;
+    const { relayHash: secondRelayHash, leaf: secondLeaf } = await relaySlowFillRootBundle(secondRecipient);
+    await program.methods
+      .requestV3SlowFill(secondRelayHash, secondLeaf.relayData)
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
+    const secondFillStatus = fillStatus; // Global fillStatus got updated with the second relayData.
+
+    const iFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
+    // Execute V3 slow relay leaf for the first recipient.
+    await program.methods
+      .executeV3SlowRelayLeaf(firstRelayHash, firstLeaf, firstRootBundleId, firstProofAsNumbers)
+      .accounts({
+        state,
+        firstRootBundle,
+        signer: owner,
+        fillStatus: firstFillStatus,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
+        recipient: firstRecipient,
+        recipientTokenAccount: firstRecipientTA,
+      })
+      .rpc();
+    const fFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
+    assert.strictEqual(
+      BigInt(fFirstRecipientBal) - BigInt(iFirstRecipientBal),
+      BigInt(firstLeaf.updatedOutputAmount.toString()),
+      "First recipient balance should be increased by its relay amount"
+    );
+
+    // Try to replay execute V3 slow relay leaf for the first recipient using the fill status account that is derived
+    // from the second relay hash. This should fail due to mismatching relay hash.
+    try {
+      await program.methods
+        .executeV3SlowRelayLeaf(secondRelayHash, firstLeaf, firstRootBundleId, firstProofAsNumbers)
+        .accounts({
+          state,
+          firstRootBundle,
+          signer: owner,
+          fillStatus: secondFillStatus,
+          vault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          mint,
+          recipient: firstRecipient,
+          recipientTokenAccount: firstRecipientTA,
+        })
+        .rpc();
+      assert.fail("Execution should have failed due to wrong fill status account");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidRelayHash", "Expected error code InvalidRelayHash");
+    }
+  });
+
+  it("Fails to execute V3 slow relay leaf for mint inconsistent output_token", async () => {
+    // Request V3 slow fill.
+    const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
+    await program.methods
+      .requestV3SlowFill(relayHash, leaf.relayData)
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
+
+    // Create and fund new accounts as derived from wrong mint account.
+    const wrongMint = await createMint(connection, payer, owner, owner, 6);
+    const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, recipient)).address;
+    const wrongVault = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, state, true)).address;
+    await mintTo(connection, payer, wrongMint, wrongVault, provider.publicKey, initialMintAmount);
+
+    // Try to execute V3 slow relay leaf with inconsistent mint should fail.
+    try {
+      await program.methods
+        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
+        .accounts({
+          state,
+          rootBundle,
+          signer: owner,
+          fillStatus: requestAccounts.fillStatus,
+          vault: wrongVault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          mint: wrongMint,
+          recipient,
+          recipientTokenAccount: wrongRecipientTA,
+        })
+        .rpc();
+      assert.fail("Execution should have failed for inconsistent mint");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
   });
 });

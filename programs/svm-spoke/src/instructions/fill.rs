@@ -30,16 +30,24 @@ pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub relayer: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        address = relay_data.recipient @ CustomError::InvalidFillRecipient
+    )]
     pub recipient: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        token::token_program = token_program,
+        address = relay_data.output_token @ CustomError::InvalidMint
+    )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = mint_account,
         associated_token::authority = relayer,
+        associated_token::token_program = token_program
     )]
     pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -47,6 +55,7 @@ pub struct FillV3Relay<'info> {
         mut,
         associated_token::mint = mint_account,
         associated_token::authority = recipient,
+        associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
