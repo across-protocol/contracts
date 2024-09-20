@@ -16,8 +16,6 @@ describe("svm_spoke.routes", () => {
   let routeChainId: BN;
   let setEnableRouteAccounts: any;
 
-  before("Creates token mint and associated token accounts", async () => {});
-
   beforeEach(async () => {
     state = await initializeState();
     tokenMint = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
