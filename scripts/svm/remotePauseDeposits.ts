@@ -11,7 +11,6 @@ import { hideBin } from "yargs/helpers";
 import { ethers } from "ethers";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
-import { AnyCnameRecord } from "dns";
 
 // Set up Solana provider.
 const provider = anchor.AnchorProvider.env();
