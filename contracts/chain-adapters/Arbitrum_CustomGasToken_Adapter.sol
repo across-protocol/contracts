@@ -44,11 +44,12 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    // @dev Unlike in Arbitrum_Adapter, this is immutable because we don't know what precision the custom gas token has.
+    // The Arbitrum Inbox requires that this uses 18 decimal precision.
     uint256 public immutable L2_MAX_SUBMISSION_COST;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    uint256 public constant L2_GAS_PRICE = 5e9; // 5 gWei
+    // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei)
+    uint256 public immutable L2_GAS_PRICE;
 
     // Native token expected to be sent in L2 message. Should be 0 for all use cases of this constant, which
     // includes sending messages from L1 to L2 and sending Custom gas token ERC20's, which won't be the native token
@@ -89,6 +90,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
+     * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
+     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
      * @param _l2MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
@@ -102,7 +105,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         IERC20 _l1Usdc,
         ICCTPTokenMessenger _cctpTokenMessenger,
         FunderInterface _customGasTokenFunder,
-        uint256 _l2MaxSubmissionCost
+        uint256 _l2MaxSubmissionCost,
+        uint256 _l2GasPrice
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
@@ -110,6 +114,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         CUSTOM_GAS_TOKEN = IERC20(L1_INBOX.bridge().nativeToken());
         if (address(CUSTOM_GAS_TOKEN) == address(0)) revert InvalidCustomGasToken();
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
+        L2_GAS_PRICE = _l2GasPrice;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
     }
 
@@ -132,6 +137,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
             RELAY_MESSAGE_L2_GAS_LIMIT, // maxGas Max gas deducted from user's L2 balance to cover L2 execution
             L2_GAS_PRICE, // gasPriceBid price bid for L2 execution
             requiredL1TokenTotalFeeAmount, // tokenTotalFeeAmount amount of fees to be deposited in native token.
+            // This should be in the precision of the custom gas token.
             message // data ABI encoded data of L2 message
         );
         emit MessageRelayed(target, message);
@@ -166,6 +172,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
             // Must use Inbox to bridge custom gas token.
             // Source: https://github.com/OffchainLabs/token-bridge-contracts/blob/5bdf33259d2d9ae52ddc69bc5a9cbc558c4c40c7/contracts/tokenbridge/ethereum/gateway/L1OrbitERC20Gateway.sol#L33
             if (l1Token == address(CUSTOM_GAS_TOKEN)) {
+                // amount and requiredL1TokenTotalFeeAmount are in the precision of the custom gas token.
                 uint256 amountToBridge = amount + requiredL1TokenTotalFeeAmount;
                 CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), amountToBridge);
                 L1_INBOX.createRetryableTicket(
@@ -203,11 +210,12 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     /**
      * @notice Returns required amount of gas token to send a message via the Inbox.
+     * @dev Should return a value in the same precision as the gas token's precision.
      * @param l2GasLimit L2 gas limit for the message.
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public view returns (uint256) {
-        return L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit;
+        return _from18ToNativeDecimals(L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit);
     }
 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
@@ -215,5 +223,24 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
         if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL1CallValue) revert InsufficientCustomGasToken();
         return requiredL1CallValue;
+    }
+
+    function _from18ToNativeDecimals(uint256 amount) internal view returns (uint256) {
+        uint8 nativeTokenDecimals = L1_INBOX.bridge().nativeTokenDecimals();
+        if (nativeTokenDecimals == 18) {
+            return amount;
+        } else if (nativeTokenDecimals < 18) {
+            // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
+            uint256 reductionFactor = 10**(18 - nativeTokenDecimals);
+            uint256 divFloor = amount / reductionFactor;
+            uint256 mod = amount % reductionFactor;
+            if (mod != 0) {
+                return divFloor + 1;
+            } else {
+                return divFloor;
+            }
+        } else {
+            return amount * 10**(nativeTokenDecimals - 18);
+        }
     }
 }
