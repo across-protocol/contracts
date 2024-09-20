@@ -36,7 +36,10 @@ pub struct FillV3Relay<'info> {
     )]
     pub recipient: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        address = relay_data.output_token @ CustomError::InvalidMint
+    )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
     #[account(
