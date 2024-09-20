@@ -38,6 +38,7 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mut,
+        token::token_program = token_program,
         address = relay_data.output_token @ CustomError::InvalidMint
     )]
     pub mint_account: InterfaceAccount<'info, Mint>,
