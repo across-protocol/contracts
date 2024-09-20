@@ -9,10 +9,10 @@ declare_program!(token_messenger_minter);
 pub mod constants;
 mod constraints;
 pub mod error;
+pub mod event;
 mod instructions;
 mod state;
 pub mod utils;
-pub mod event;
 
 use instructions::*;
 use state::*;
