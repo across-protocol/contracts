@@ -151,7 +151,10 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
-        bump)]
+        bump,
+        // Make sure caller provided relay_hash used in PDA seeds is valid.
+        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ CustomError::InvalidRelayHash
+    )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
