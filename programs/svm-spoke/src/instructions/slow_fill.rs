@@ -15,7 +15,8 @@ use crate::{
 };
 
 // TODO: We can likely move some of the common exports to better locations. we are pulling a lot of these from fill.rs
-use crate::{FillType, FilledV3Relay, V3RelayData, V3RelayExecutionEventInfo};
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
+use crate::V3RelayData; // Pulled type definition from fill.rs.
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -254,21 +255,4 @@ pub fn execute_v3_slow_relay_leaf(
     });
 
     Ok(())
-}
-
-// Events.
-#[event]
-pub struct RequestedV3SlowFill {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub exclusive_relayer: Pubkey,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub message: Vec<u8>,
 }

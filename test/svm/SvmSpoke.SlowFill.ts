@@ -9,10 +9,9 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { slowFillHashFn, SlowFillLeaf } from "./utils";
+import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array } from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;

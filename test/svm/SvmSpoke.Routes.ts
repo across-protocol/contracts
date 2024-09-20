@@ -4,7 +4,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint, getAccount }
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
-import { readProgramEvents } from "../../src/SvmUtils";
+import { readProgramEvents } from "./utils";
 
 const { provider, program, owner, initializeState, createRoutePda, getVaultAta } = common;
 

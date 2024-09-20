@@ -12,6 +12,7 @@ pub mod error;
 mod instructions;
 mod state;
 pub mod utils;
+pub mod event;
 
 use instructions::*;
 use state::*;
