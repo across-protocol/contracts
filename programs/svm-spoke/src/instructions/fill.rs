@@ -40,6 +40,7 @@ pub struct FillV3Relay<'info> {
         mut,
         associated_token::mint = mint_account,
         associated_token::authority = relayer,
+        associated_token::token_program = token_program
     )]
     pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -47,6 +48,7 @@ pub struct FillV3Relay<'info> {
         mut,
         associated_token::mint = mint_account,
         associated_token::authority = recipient,
+        associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
