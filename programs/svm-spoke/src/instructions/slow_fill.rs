@@ -163,7 +163,10 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     )]
     pub recipient: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        address = slow_fill_leaf.relay_data.output_token @ CustomError::InvalidMint
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(

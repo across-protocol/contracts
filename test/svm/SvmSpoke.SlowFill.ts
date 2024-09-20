@@ -461,4 +461,42 @@ describe("svm_spoke.slow_fill", () => {
       assert.strictEqual(err.error.errorCode.code, "InvalidRelayHash", "Expected error code InvalidRelayHash");
     }
   });
+
+  it("Fails to execute V3 slow relay leaf for mint inconsistent output_token", async () => {
+    // Request V3 slow fill.
+    const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
+    await program.methods
+      .requestV3SlowFill(relayHash, leaf.relayData)
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
+
+    // Create and fund new accounts as derived from wrong mint account.
+    const wrongMint = await createMint(connection, payer, owner, owner, 6);
+    const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, recipient)).address;
+    const wrongVault = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, state, true)).address;
+    await mintTo(connection, payer, wrongMint, wrongVault, provider.publicKey, initialMintAmount);
+
+    // Try to execute V3 slow relay leaf with inconsistent mint should fail.
+    try {
+      await program.methods
+        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
+        .accounts({
+          state,
+          rootBundle,
+          signer: owner,
+          fillStatus: requestAccounts.fillStatus,
+          vault: wrongVault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          mint: wrongMint,
+          recipient,
+          recipientTokenAccount: wrongRecipientTA,
+        })
+        .rpc();
+      assert.fail("Execution should have failed for inconsistent mint");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
+    }
+  });
 });
