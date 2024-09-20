@@ -9,7 +9,7 @@ import { evmAddressToPublicKey } from "../../src/SvmUtils";
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../target/idl/svm_spoke.json");
+const idl = require("../../target/idl/svm_spoke.json");
 const program = new Program<SvmSpoke>(idl, provider);
 const programId = program.programId;
 
