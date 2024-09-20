@@ -68,7 +68,7 @@ describe("svm_spoke.slow_fill", () => {
     };
   }
 
-  const relaySlowFillRootBundle = async () => {
+  const relaySlowFillRootBundle = async (slowRelayLeafRecipient = recipient, slowRelayLeafChainId = chainId) => {
     //TODO: verify that the leaf structure created here is equivalent to the one created by the EVM logic. I think
     // I've gotten the concatenation, endianness, etc correct but want to be sure.
     const slowRelayLeafs: SlowFillLeaf[] = [];
@@ -87,7 +87,7 @@ describe("svm_spoke.slow_fill", () => {
         exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 60),
         message: Buffer.from("Test message"),
       },
-      chainId,
+      chainId: slowRelayLeafChainId,
       updatedOutputAmount: new BN(relayAmount),
     };
     updateRelayData(slowRelayLeaf.relayData);
@@ -379,6 +379,43 @@ describe("svm_spoke.slow_fill", () => {
     } catch (err) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+    }
+  });
+
+  it("Cannot execute V3 slow relay leaf targeted at another chain", async () => {
+    // Request V3 slow fill for another chain.
+    const anotherChainId = new BN(Math.floor(Math.random() * 1000000));
+    const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
+      undefined,
+      anotherChainId
+    );
+    await program.methods
+      .requestV3SlowFill(relayHash, leaf.relayData)
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
+
+    // Trying to execute V3 slow relay leaf for another chain should fail as the program overrides chain_id that should
+    // invalidate the proofs.
+    try {
+      await program.methods
+        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
+        .accounts({
+          state,
+          rootBundle,
+          signer: owner,
+          fillStatus: requestAccounts.fillStatus,
+          vault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          mint,
+          recipient,
+          recipientTokenAccount: recipientTA,
+        })
+        .rpc();
+      assert.fail("Execution should have failed for another chain");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidProof", "Expected error code InvalidProof");
     }
   });
 });
