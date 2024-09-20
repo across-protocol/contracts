@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import * as crypto from "crypto";
 import { BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -97,7 +98,7 @@ describe("svm_spoke.slow_fill", () => {
 
     const merkleTree = new MerkleTree<SlowFillLeaf>(slowRelayLeafs, slowFillHashFn);
 
-    const root = merkleTree.getRoot();
+    const slowRelayRoot = merkleTree.getRoot();
     const proof = merkleTree.getProof(slowRelayLeafs[0]);
     const leaf = slowRelayLeafs[0];
 
@@ -109,9 +110,11 @@ describe("svm_spoke.slow_fill", () => {
     const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
+    const relayerRefundRoot = crypto.randomBytes(32);
+
     // Relay root bundle
     await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
+      .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
       .accounts({ state, rootBundle, signer: owner })
       .rpc();
 
@@ -401,14 +404,10 @@ describe("svm_spoke.slow_fill", () => {
     const firstFillStatus = fillStatus; // Global fillStatus will get updated when passing the second relayData.
 
     // Request V3 slow fill for the second recipient.
+    // Note: we could also had generated single slow relay root for both recipients, but having them relayed in separate
+    // root bundles makes it easier to reuse existing test code.
     const secondRecipient = Keypair.generate().publicKey;
-    const {
-      relayHash: secondRelayHash,
-      leaf: secondLeaf,
-      rootBundleId: secondRootBundleId,
-      proofAsNumbers: secondProofAsNumbers,
-      rootBundle: secondRootBundle,
-    } = await relaySlowFillRootBundle(secondRecipient);
+    const { relayHash: secondRelayHash, leaf: secondLeaf } = await relaySlowFillRootBundle(secondRecipient);
     await program.methods
       .requestV3SlowFill(secondRelayHash, secondLeaf.relayData)
       .accounts(requestAccounts)
