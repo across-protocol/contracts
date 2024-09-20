@@ -56,7 +56,7 @@ const [statePda, _] = PublicKey.findProgramAddressSync(
   [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
   svmSpokeProgram.programId
 );
-const messageTransmitterIdl = require("../target/idl/message_transmitter.json");
+const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
 const messageTransmitterProgram = new anchor.Program<MessageTransmitter>(messageTransmitterIdl, provider);
 const [messageTransmitterState] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter")],
