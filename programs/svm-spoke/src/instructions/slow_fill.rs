@@ -151,7 +151,10 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
-        bump)]
+        bump,
+        // Make sure caller provided relay_hash used in PDA seeds is valid.
+        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ CustomError::InvalidRelayHash
+    )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
@@ -160,13 +163,18 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     )]
     pub recipient: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        token::token_program = token_program,
+        address = slow_fill_leaf.relay_data.output_token @ CustomError::InvalidMint
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = mint,
         associated_token::authority = recipient,
+        associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -174,6 +182,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = state,
+        associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
