@@ -268,4 +268,30 @@ describe("svm_spoke.fill", () => {
       assert.include(err.toString(), "Fills are currently paused!", "Expected fills paused error");
     }
   });
+
+  it("Fails to fill a relay to wrong recipient", async () => {
+    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+
+    // Create new accounts as derived from wrong recipient.
+    const wrongRecipient = Keypair.generate().publicKey;
+    const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
+    const [wrongFillStatus] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash], program.programId);
+
+    try {
+      await program.methods
+        .fillV3Relay(relayHash, relayData, new BN(1))
+        .accounts({
+          ...accounts,
+          recipient: wrongRecipient,
+          recipientTA: wrongRecipientTA,
+          fillStatus: wrongFillStatus,
+        })
+        .signers([relayer])
+        .rpc();
+      assert.fail("Should not be able to fill relay to wrong recipient");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+    }
+  });
 });

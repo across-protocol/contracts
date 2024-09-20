@@ -30,7 +30,10 @@ pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub relayer: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        address = relay_data.recipient @ CustomError::InvalidFillRecipient
+    )]
     pub recipient: SystemAccount<'info>,
 
     #[account(mut)]
