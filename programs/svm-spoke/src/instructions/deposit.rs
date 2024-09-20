@@ -46,7 +46,12 @@ pub struct DepositV3<'info> {
     #[account(mut)]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        mint::token_program = token_program,
+        // IDL build fails when requiring `mint address = input_token`, thus using a custom constraint.
+        constraint = mint.key() == input_token @ CustomError::InvalidMint
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     pub token_program: Interface<'info, TokenInterface>,
