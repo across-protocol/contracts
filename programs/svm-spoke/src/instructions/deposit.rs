@@ -90,22 +90,19 @@ pub fn deposit_v3(
     // verify that this check is sufficient or update accordingly.
     require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
 
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
     };
-    // TODO: in solidity these are if then revert. here they are requires. i.e the assertion goes in the opposite direction to get the same effect. verify we want <= vs < for these assertions as this can change things for inclusive/exclusive checks.
-    require!(
-        current_timestamp - quote_timestamp <= state.deposit_quote_time_buffer,
-        CustomError::InvalidQuoteTimestamp
-    );
 
-    require!(
-        fill_deadline >= current_timestamp
-            && fill_deadline <= current_timestamp + state.fill_deadline_buffer,
-        CustomError::InvalidFillDeadline,
-    );
+    if current_time - quote_timestamp > state.deposit_quote_time_buffer {
+        return Err(CustomError::InvalidQuoteTimestamp.into());
+    }
+
+    if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
+        return Err(CustomError::InvalidFillDeadline.into());
+    }
 
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.user_token_account.to_account_info(),
