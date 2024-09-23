@@ -24,6 +24,8 @@ pub struct HandleReceiveMessage<'info> {
     )]
     pub authority_pda: Signer<'info>,
     #[account(
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
+        bump,
         constraint = params.remote_domain == state.remote_domain @ CustomError::InvalidRemoteDomain,
         constraint = params.sender == state.cross_domain_admin @ CustomError::InvalidRemoteSender,
     )]

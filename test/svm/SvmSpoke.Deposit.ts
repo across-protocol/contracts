@@ -24,16 +24,14 @@ describe("svm_spoke.deposit", () => {
   let depositAccounts: any; // Re-used between tests to simplify props.
   let setEnableRouteAccounts: any; // Common variable for setEnableRoute accounts
 
-  before("Creates token mint and associated token accounts", async () => {
+  const setupInputToken = async () => {
     inputToken = await createMint(connection, payer, owner, owner, 6);
 
     depositorTA = (await getOrCreateAssociatedTokenAccount(connection, payer, inputToken, depositor.publicKey)).address;
     await mintTo(connection, payer, inputToken, depositorTA, owner, seedBalance);
-  });
+  };
 
-  beforeEach(async () => {
-    state = await initializeState();
-
+  const enableRoute = async () => {
     const routeChainId = new BN(1);
     const route = createRoutePda(inputToken, routeChainId);
     vault = getVaultAta(inputToken, state);
@@ -68,6 +66,16 @@ describe("svm_spoke.deposit", () => {
       mint: inputToken,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
+  };
+
+  before("Creates token mint and associated token accounts", async () => {
+    await setupInputToken();
+  });
+
+  beforeEach(async () => {
+    state = await initializeState();
+
+    await enableRoute();
   });
 
   it("Deposits tokens via deposit_v3 function and checks balances", async () => {
@@ -286,6 +294,31 @@ describe("svm_spoke.deposit", () => {
       assert.fail("Deposit should have failed due to InvalidFillDeadline (future deadline)");
     } catch (err) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for future deadline");
+    }
+  });
+  it("Fails to process deposit for mint inconsistent input_token", async () => {
+    // Save the correct data and accounts from global scope before changing it when creating a new input token.
+    const firstInputToken = inputToken;
+    const firstDepositAccounts = depositAccounts;
+
+    // Create a new input token and enable the route (this updates global scope variables).
+    await setupInputToken();
+    await enableRoute();
+
+    // Try to execute the deposit_v3 call with malformed inputs where the first input token and its derived route is
+    // passed combined with mint, vault and user token account from the second input token.
+    const malformedDepositData = { ...depositData, inputToken: firstInputToken };
+    const malformedDepositAccounts = { ...depositAccounts, route: firstDepositAccounts.route };
+    try {
+      await program.methods
+        .depositV3(...Object.values(malformedDepositData))
+        .accounts(malformedDepositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Should not be able to process deposit for inconsistent mint");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
   });
 });

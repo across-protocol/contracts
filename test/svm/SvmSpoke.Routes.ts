@@ -12,28 +12,23 @@ describe("svm_spoke.routes", () => {
   anchor.setProvider(provider);
 
   const nonOwner = Keypair.generate();
-  let state: PublicKey, tokenMint: PublicKey;
-
-  before("Creates token mint and associated token accounts", async () => {
-    tokenMint = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
-  });
+  let state: PublicKey, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
+  let routeChainId: BN;
+  let setEnableRouteAccounts: any;
 
   beforeEach(async () => {
     state = await initializeState();
-  });
-
-  it("Sets, retrieves, and controls access to route enablement", async () => {
-    const originToken = Keypair.generate().publicKey;
-    const routeChainId = new BN(1);
+    tokenMint = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
 
     // Create a PDA for the route
-    const routePda = createRoutePda(originToken, routeChainId);
+    routeChainId = new BN(1);
+    routePda = createRoutePda(tokenMint, routeChainId);
 
     // Create ATA for the origin token to be stored by state (vault).
-    const vault = getVaultAta(tokenMint, state);
+    vault = getVaultAta(tokenMint, state);
 
     // Common accounts object
-    const accounts = {
+    setEnableRouteAccounts = {
       signer: owner,
       payer: owner,
       state,
@@ -44,9 +39,14 @@ describe("svm_spoke.routes", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
+  });
 
+  it("Sets, retrieves, and controls access to route enablement", async () => {
     // Enable the route as owner
-    await program.methods.setEnableRoute(originToken.toBytes(), routeChainId, true).accounts(accounts).rpc();
+    await program.methods
+      .setEnableRoute(tokenMint.toBytes(), routeChainId, true)
+      .accounts(setEnableRouteAccounts)
+      .rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Retrieve and verify the route is enabled
@@ -58,12 +58,15 @@ describe("svm_spoke.routes", () => {
       (event) => event.name === "enabledDepositRoute"
     );
     let event = events[0].data;
-    assert.strictEqual(event.originToken.toString(), originToken.toString(), "originToken event match");
+    assert.strictEqual(event.originToken.toString(), tokenMint.toString(), "originToken event match");
     assert.strictEqual(event.destinationChainId.toString(), routeChainId.toString(), "destinationChainId should match");
     assert.isTrue(event.enabled, "enabledDepositRoute enabled");
 
     // Disable the route as owner
-    await program.methods.setEnableRoute(originToken.toBytes(), routeChainId, false).accounts(accounts).rpc();
+    await program.methods
+      .setEnableRoute(tokenMint.toBytes(), routeChainId, false)
+      .accounts(setEnableRouteAccounts)
+      .rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Retrieve and verify the route is disabled
@@ -75,15 +78,15 @@ describe("svm_spoke.routes", () => {
       (event) => event.name === "enabledDepositRoute"
     );
     event = events[0].data; // take most recent event, index 0.
-    assert.strictEqual(event.originToken.toString(), originToken.toString(), "originToken event match");
+    assert.strictEqual(event.originToken.toString(), tokenMint.toString(), "originToken event match");
     assert.strictEqual(event.destinationChainId.toString(), routeChainId.toString(), "destinationChainId should match");
     assert.isFalse(event.enabled, "enabledDepositRoute disabled");
 
     // Try to enable the route as non-owner
     try {
       await program.methods
-        .setEnableRoute(originToken.toBytes(), routeChainId, true)
-        .accounts({ ...accounts, signer: nonOwner.publicKey })
+        .setEnableRoute(tokenMint.toBytes(), routeChainId, true)
+        .accounts({ ...setEnableRouteAccounts, signer: nonOwner.publicKey })
         .signers([nonOwner])
         .rpc();
       assert.fail("Non-owner should not be able to set route enablement");
@@ -102,5 +105,21 @@ describe("svm_spoke.routes", () => {
     // Verify the owner of the state is the expected owner
     const stateAccount = await program.account.state.fetch(state);
     assert.strictEqual(stateAccount.owner.toBase58(), owner.toBase58(), "State owner should be the expected owner");
+  });
+
+  it("Cannot misconfigure route with wrong origin token", async () => {
+    const wrongOriginToken = Keypair.generate().publicKey;
+    const wrongRoutePda = createRoutePda(wrongOriginToken, routeChainId);
+
+    try {
+      await program.methods
+        .setEnableRoute(wrongOriginToken.toBytes(), routeChainId, true)
+        .accounts({ ...setEnableRouteAccounts, route: wrongRoutePda })
+        .rpc();
+      assert.fail("Setting route with wrong origin token should fail");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
+    }
   });
 });

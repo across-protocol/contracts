@@ -154,7 +154,10 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
-        bump)]
+        bump,
+        // Make sure caller provided relay_hash used in PDA seeds is valid.
+        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ CustomError::InvalidRelayHash
+    )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
@@ -163,13 +166,18 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     )]
     pub recipient: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        token::token_program = token_program,
+        address = slow_fill_leaf.relay_data.output_token @ CustomError::InvalidMint
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = mint,
         associated_token::authority = recipient,
+        associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -177,6 +185,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = state,
+        associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
@@ -191,10 +200,16 @@ pub fn execute_v3_slow_relay_leaf(
     root_bundle_id: u32,
     proof: Vec<[u8; 32]>,
 ) -> Result<()> {
-    let relay_data = slow_fill_leaf.relay_data.clone(); // Clone relay_data to avoid move
+    let relay_data = slow_fill_leaf.relay_data;
+
+    let slow_fill = V3SlowFill {
+        relay_data: relay_data.clone(), // Clone relay_data to avoid move
+        chain_id: ctx.accounts.state.chain_id, // This overrides caller provided chain_id, same as in EVM SpokePool.
+        updated_output_amount: slow_fill_leaf.updated_output_amount,
+    };
 
     let root = ctx.accounts.root_bundle.slow_relay_root;
-    let leaf = slow_fill_leaf.to_keccak_hash();
+    let leaf = slow_fill.to_keccak_hash();
     verify_merkle_proof(root, leaf, proof)?;
 
     // Check if the fill status is unfilled

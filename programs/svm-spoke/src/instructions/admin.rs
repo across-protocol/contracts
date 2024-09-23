@@ -180,7 +180,11 @@ pub struct SetEnableRoute<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mint::token_program = token_program)]
+    #[account(
+        mint::token_program = token_program,
+        // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
+        constraint = origin_token_mint.key() == origin_token.into() @ CustomError::InvalidMint
+    )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
 
     pub token_program: Interface<'info, TokenInterface>,

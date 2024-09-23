@@ -297,7 +297,7 @@ describe("svm_spoke.handle_receive_message", () => {
 
   it("Enables and disables route remotely", async () => {
     // Enable the route.
-    const originToken = Keypair.generate().publicKey;
+    const originToken = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
     const routeChainId = 1;
     let calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, true]);
     let messageBody = Buffer.from(calldata.slice(2), "hex");
@@ -314,8 +314,7 @@ describe("svm_spoke.handle_receive_message", () => {
 
     // Remaining accounts specific to SetEnableRoute.
     const routePda = createRoutePda(originToken, new anchor.BN(routeChainId));
-    const tokenMint = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
-    const vault = getVaultAta(tokenMint, state);
+    const vault = getVaultAta(originToken, state);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const enableRouteRemainingAccounts = remainingAccounts.slice(0, 3);
     // payer in self-invoked SetEnableRoute.
@@ -346,7 +345,7 @@ describe("svm_spoke.handle_receive_message", () => {
     enableRouteRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
-      pubkey: tokenMint,
+      pubkey: originToken,
     });
     // token_program in self-invoked SetEnableRoute.
     enableRouteRemainingAccounts.push({

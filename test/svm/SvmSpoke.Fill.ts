@@ -268,4 +268,58 @@ describe("svm_spoke.fill", () => {
       assert.include(err.toString(), "Fills are currently paused!", "Expected fills paused error");
     }
   });
+
+  it("Fails to fill a relay to wrong recipient", async () => {
+    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+
+    // Create new accounts as derived from wrong recipient.
+    const wrongRecipient = Keypair.generate().publicKey;
+    const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
+    const [wrongFillStatus] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash], program.programId);
+
+    try {
+      await program.methods
+        .fillV3Relay(relayHash, relayData, new BN(1))
+        .accounts({
+          ...accounts,
+          recipient: wrongRecipient,
+          recipientTA: wrongRecipientTA,
+          fillStatus: wrongFillStatus,
+        })
+        .signers([relayer])
+        .rpc();
+      assert.fail("Should not be able to fill relay to wrong recipient");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+    }
+  });
+
+  it("Fails to fill a relay for mint inconsistent output_token", async () => {
+    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+
+    // Create and fund new accounts as derived from wrong mint account.
+    const wrongMint = await createMint(connection, payer, owner, owner, 6);
+    const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, recipient)).address;
+    const wrongRelayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, relayer.publicKey))
+      .address;
+    await mintTo(connection, payer, wrongMint, wrongRelayerTA, owner, seedBalance);
+
+    try {
+      await program.methods
+        .fillV3Relay(relayHash, relayData, new BN(1))
+        .accounts({
+          ...accounts,
+          mintAccount: wrongMint,
+          relayerTokenAccount: wrongRelayerTA,
+          recipientTokenAccount: wrongRecipientTA,
+        })
+        .signers([relayer])
+        .rpc();
+      assert.fail("Should not be able to process fill for inconsistent mint");
+    } catch (err) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
+    }
+  });
 });
