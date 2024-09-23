@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
-import { ArbitrumERC20Bridge as ArbitrumL1ERC20Bridge, ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumERC20GatewayLike as ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ArbitrumERC20Bridge as ArbitrumL1ERC20Bridge, ArbitrumCustomGasTokenInbox as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 /**
  * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()

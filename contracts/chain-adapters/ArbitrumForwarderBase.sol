@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { ArbitrumERC20Bridge, ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ArbitrumERC20Bridge, ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 abstract contract ArbitrumForwarderBase {
@@ -44,7 +44,7 @@ abstract contract ArbitrumForwarderBase {
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     // Gateway used for communicating with chains that use custom gas tokens:
     // https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ERC20Gateway.sol
-    ArbitrumERC20GatewayLike public immutable L2_ERC20_GATEWAY_ROUTER;
+    ArbitrumL1ERC20GatewayLike public immutable L2_ERC20_GATEWAY_ROUTER;
 
     event TokensForwarded(address indexed l2Token, uint256 amount);
     event MessageForwarded(address indexed target, bytes message);
@@ -75,7 +75,7 @@ abstract contract ArbitrumForwarderBase {
      */
     constructor(
         ArbitrumInboxLike _l2ArbitrumInbox,
-        ArbitrumERC20GatewayLike _l2ERC20GatewayRouter,
+        ArbitrumL1ERC20GatewayLike _l2ERC20GatewayRouter,
         address _l3RefundL3Address,
         uint256 _l3MaxSubmissionCost,
         uint256 _l3GasPrice,
