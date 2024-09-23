@@ -14,7 +14,7 @@ use crate::{
 //TODO: there is too much in this file now and it should be split up somewhat.
 
 #[derive(Accounts)]
-#[instruction(seed: u64, initial_number_of_deposits: u64, chain_id: u64, deposit_quote_time_buffer: u32, fill_deadline_buffer: u32)] // Add new fields
+#[instruction(seed: u64)]
 pub struct Initialize<'info> {
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
