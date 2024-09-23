@@ -14,7 +14,7 @@ use crate::{
 //TODO: there is too much in this file now and it should be split up somewhat.
 
 #[derive(Accounts)]
-#[instruction(seed: u64, initial_number_of_deposits: u64, chain_id: u64)] // Add chain_id to instruction
+#[instruction(seed: u64, initial_number_of_deposits: u64, chain_id: u64, deposit_quote_time_buffer: u32, fill_deadline_buffer: u32)] // Add new fields
 pub struct Initialize<'info> {
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
@@ -33,10 +33,12 @@ pub fn initialize(
     ctx: Context<Initialize>,
     seed: u64,
     initial_number_of_deposits: u64,
-    chain_id: u64,              // Across definition of chainId for Solana.
-    remote_domain: u32,         // CCTP domain for Mainnet Ethereum.
-    cross_domain_admin: Pubkey, // HubPool on Mainnet Ethereum.
-    testable_mode: bool,        // If the contract is in testable mode, enabling time manipulation.
+    chain_id: u64,                  // Across definition of chainId for Solana.
+    remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
+    cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
+    testable_mode: bool, // If the contract is in testable mode, enabling time manipulation.
+    deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
+    fill_deadline_buffer: u32, // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
@@ -50,6 +52,8 @@ pub fn initialize(
     } else {
         0
     }; // Set current_time to system time if testable_mode is true, else 0
+    state.deposit_quote_time_buffer = deposit_quote_time_buffer;
+    state.fill_deadline_buffer = fill_deadline_buffer;
     Ok(())
 }
 

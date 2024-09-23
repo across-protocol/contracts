@@ -11,7 +11,7 @@ const provider = anchor.AnchorProvider.env();
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
 const owner = provider.wallet.publicKey;
 const chainId = new BN(420);
-const remoteDomain = 0;
+const remoteDomain = new BN(0);
 const crossDomainAdmin = evmAddressToPublicKey(ethers.Wallet.createRandom().address);
 
 const seedBalance = 20000000;
@@ -25,20 +25,40 @@ const quoteTimestamp = new BN(Math.floor(Date.now() / 1000));
 const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600);
 const exclusivityDeadline = new BN(Math.floor(Date.now() / 1000) + 300);
 const message = Buffer.from("Test message");
+const depositQuoteTimeBuffer = new BN(3600);
+const fillDeadlineBuffer = new BN(3600 * 4);
 
-const initializeState = async (seed?: BN) => {
+const initializeState = async (
+  seed?: BN,
+  initialState?: {
+    initialNumberOfDeposits: BN;
+    chainId: BN;
+    remoteDomain: BN;
+    crossDomainAdmin: PublicKey;
+    testableMode: boolean;
+    depositQuoteTimeBuffer: BN;
+    fillDeadlineBuffer: BN;
+  }
+) => {
   const actualSeed = seed || new BN(Math.floor(Math.random() * 1000000));
   const seeds = [Buffer.from("state"), actualSeed.toArrayLike(Buffer, "le", 8)];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
-  await program.methods
-    .initialize(actualSeed, new BN(0), chainId, remoteDomain, crossDomainAdmin, true)
-    .accounts({
-      state: state as any,
-      signer: owner,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    })
-    .rpc();
-  return state;
+  if (!initialState) {
+    initialState = {
+      initialNumberOfDeposits: new BN(0),
+      chainId,
+      remoteDomain,
+      crossDomainAdmin,
+      testableMode: true,
+      depositQuoteTimeBuffer,
+      fillDeadlineBuffer,
+    };
+    await program.methods
+      .initialize(...Object.values(initialState))
+      .accounts({ state, signer: owner, systemProgram: anchor.web3.SystemProgram.programId })
+      .rpc();
+    return state;
+  }
 };
 
 const createRoutePda = (originToken: PublicKey, routeChainId: BN) => {

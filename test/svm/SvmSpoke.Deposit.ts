@@ -189,7 +189,7 @@ describe("svm_spoke.deposit", () => {
         .rpc();
       assert.fail("Deposit should have failed for a route that is explicitly disabled");
     } catch (err) {
-      assert.include(err.toString(), "RouteNotEnabled", "Expected RouteNotEnabled error");
+      assert.include(err.toString(), "DisabledRoute", "Expected DisabledRoute error");
     }
   });
 
@@ -212,4 +212,6 @@ describe("svm_spoke.deposit", () => {
       assert.strictEqual(err.error.errorCode.code, "DepositsArePaused", "Expected error code DepositsArePaused");
     }
   });
+  // TODO: test invalid Deposit deadline for InvalidQuoteTimestamp
+  // TODO: test invalid InvalidFillDeadline
 });

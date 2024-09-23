@@ -1,12 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { readProgramEvents } from "../../src/SvmUtils";
 
-const { provider, program, owner, initializeState } = common;
+const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
-describe("svm_spoke.ownership", () => {
+describe.only("svm_spoke.ownership", () => {
   anchor.setProvider(provider);
 
   const nonOwner = Keypair.generate();
@@ -16,6 +17,29 @@ describe("svm_spoke.ownership", () => {
 
   beforeEach(async () => {
     state = await initializeState();
+  });
+
+  it("Initializes state with provided initial state", async () => {
+    const initialState = {
+      initialNumberOfDeposits: new BN(5),
+      chainId: new BN(420), // Set the chainId
+      remoteDomain: new BN(11), // Set the remoteDomain
+      crossDomainAdmin, // Use the existing crossDomainAdmin
+      testableMode: true,
+      depositQuoteTimeBuffer: new BN(3600), // Set the depositQuoteTimeBuffer
+      fillDeadlineBuffer: new BN(14400), // Set the fillDeadlineBuffer (4 hours)
+    };
+
+    // Initialize state with the provided initial state
+    state = await initializeState(undefined, initialState);
+
+    // Fetch the updated state
+    const stateData = await program.account.state.fetch(state);
+
+    // Assert other properties as needed
+    Object.keys(initialState).forEach((key) => {
+      assertSE(stateData[key], initialState[key], `${key} should match`);
+    });
   });
 
   it("Pauses and unpauses deposits", async () => {

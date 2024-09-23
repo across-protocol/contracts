@@ -62,9 +62,12 @@ pub fn request_v3_slow_fill(
     // Check if the fill is within the exclusivity window & fill deadline.
     //TODO: ensure the require blocks here are equivilelent to evm.
     require!(
-        relay_data.exclusivity_deadline < current_timestamp
-            && relay_data.fill_deadline < current_timestamp,
-        CustomError::WithinFillWindow
+        relay_data.exclusivity_deadline < current_timestamp,
+        CustomError::NoSlowFillsInExclusivityWindow
+    );
+    require!(
+        relay_data.fill_deadline < current_timestamp,
+        CustomError::ExpiredFillDeadline
     );
 
     // Check the fill status

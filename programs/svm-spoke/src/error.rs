@@ -24,17 +24,17 @@ pub enum CustomError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
     #[msg("The route is not enabled!")]
-    RouteNotEnabled,
+    DisabledRoute,
     #[msg("The fill deadline has passed!")]
-    FillDeadlinePassed,
+    ExpiredFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
     #[msg("The Deposit is still within the exclusivity or deadline window!")]
-    WithinFillWindow,
+    NoSlowFillsInExclusivityWindow,
     #[msg("Invalid route PDA!")]
     InvalidRoutePDA,
     #[msg("The relay has already been filled!")]
-    AlreadyFilled,
+    RelayFilled,
     #[msg("Invalid relay hash!")]
     InvalidRelayHash,
     #[msg("The fill deadline has not passed!")]
@@ -69,4 +69,8 @@ pub enum CustomError {
     DepositsArePaused,
     #[msg("Invalid fill recipient!")]
     InvalidFillRecipient,
+    #[msg("Invalid quote timestamp!")]
+    InvalidQuoteTimestamp,
+    #[msg("Ivalid fill deadline!")]
+    InvalidFillDeadline,
 }

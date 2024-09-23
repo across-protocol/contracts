@@ -107,13 +107,13 @@ pub fn fill_v3_relay(
     let fill_status_account = &mut ctx.accounts.fill_status;
     require!(
         fill_status_account.status != FillStatus::Filled,
-        CustomError::AlreadyFilled
+        CustomError::RelayFilled
     );
 
     // Check if the fill deadline has passed
     require!(
         current_timestamp <= relay_data.fill_deadline,
-        CustomError::FillDeadlinePassed
+        CustomError::ExpiredFillDeadline
     );
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer

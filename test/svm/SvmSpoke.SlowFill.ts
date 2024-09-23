@@ -172,7 +172,7 @@ describe("svm_spoke.slow_fill", () => {
       await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to fill deadline not passed");
     } catch (err) {
-      assert.include(err.toString(), "WithinFillWindow", "Expected WithinFillWindow error");
+      assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the fillDeadline
@@ -202,7 +202,7 @@ describe("svm_spoke.slow_fill", () => {
       await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to being within exclusivity window");
     } catch (err) {
-      assert.include(err.toString(), "WithinFillWindow", "Expected WithinFillWindow error");
+      assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the fillDeadline.

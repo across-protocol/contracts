@@ -73,7 +73,24 @@ pub fn deposit_v3(
     // spoke pool, create a route PDA, toggle it to enabled and then call deposit, passing in that PDA and
     // enable a deposit to occur against a route that was not canonically enabled? write some tests for this and
     // verify that this check is sufficient or update accordingly.
-    require!(ctx.accounts.route.enabled, CustomError::RouteNotEnabled);
+    require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
+
+    let current_timestamp = if state.current_time != 0 {
+        state.current_time
+    } else {
+        Clock::get()?.unix_timestamp as u32
+    };
+    // TODO: in solidity these are if then revert. here they are requires. i.e the assertion goes in the oposite direction to get the same effect. verify we want <= vs < for these assertions as this can change things for inclusive/exclusive checks.
+    require!(
+        current_timestamp - quote_timestamp <= state.deposit_quote_time_buffer,
+        CustomError::InvalidQuoteTimestamp
+    );
+
+    require!(
+        fill_deadline >= current_timestamp
+            || fill_deadline <= current_timestamp + state.fill_deadline_buffer,
+        CustomError::InvalidFillDeadline,
+    );
 
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.user_token_account.to_account_info(),

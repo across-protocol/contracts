@@ -29,6 +29,8 @@ pub mod svm_spoke {
         remote_domain: u32,
         cross_domain_admin: Pubkey,
         testable_mode: bool,
+        deposit_quote_time_buffer: u32,
+        fill_deadline_buffer: u32,
     ) -> Result<()> {
         instructions::initialize(
             ctx,
@@ -38,6 +40,8 @@ pub mod svm_spoke {
             remote_domain,
             cross_domain_admin,
             testable_mode,
+            deposit_quote_time_buffer,
+            fill_deadline_buffer,
         )
     }
 
