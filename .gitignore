@@ -31,3 +31,4 @@ storage-layouts/proposed*
 target
 **/*.rs.bk
 test-ledger
+idls
