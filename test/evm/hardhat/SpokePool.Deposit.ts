@@ -298,7 +298,7 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.revertedWith(revertReason);
   });
 
-  it.only("quoteTimestamp is out of range", async function () {
+  it("quoteTimestamp is out of range", async function () {
     const revertReason = "InvalidQuoteTimestamp";
     const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
     console.log("quoteTimeBuffer", quoteTimeBuffer);
@@ -412,7 +412,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.not.be.reverted;
     });
-    it.only("invalid fillDeadline", async function () {
+    it("invalid fillDeadline", async function () {
       const fillDeadlineBuffer = await spokePool.fillDeadlineBuffer();
       console.log("fillDeadlineBuffer", fillDeadlineBuffer);
       const currentTime = await spokePool.getCurrentTime();
