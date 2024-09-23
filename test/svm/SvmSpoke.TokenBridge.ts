@@ -5,8 +5,7 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { common } from "./SvmSpoke.common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { findProgramAddress } from "../../src/SvmUtils";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType, relayerRefundHashFn } from "./utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType, relayerRefundHashFn, findProgramAddress } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
 

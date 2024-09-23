@@ -4,6 +4,7 @@ use anchor_lang::solana_program::keccak;
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
+    event::ExecutedRelayerRefundRoot,
     state::{RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
@@ -12,6 +13,7 @@ use anchor_spl::token_interface::{
     transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(root_bundle_id: u32, relayer_refund_leaf: RelayerRefundLeaf)]
 pub struct ExecuteRelayerRefundLeaf<'info> {
@@ -161,6 +163,18 @@ pub fn execute_relayer_refund_leaf<'info>(
     if relayer_refund_leaf.amount_to_return > 0 {
         ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
     }
+
+    // Emit the ExecutedRelayerRefundRoot event
+    emit_cpi!(ExecutedRelayerRefundRoot {
+        amount_to_return: relayer_refund_leaf.amount_to_return,
+        chain_id: relayer_refund_leaf.chain_id,
+        refund_amounts: relayer_refund_leaf.refund_amounts,
+        root_bundle_id,
+        leaf_id: relayer_refund_leaf.leaf_id,
+        l2_token_address: ctx.accounts.mint.key(),
+        refund_addresses: relayer_refund_leaf.refund_accounts,
+        caller: ctx.accounts.signer.key(),
+    });
 
     Ok(())
 }

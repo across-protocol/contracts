@@ -8,6 +8,7 @@ use crate::constraints::is_local_or_remote_owner;
 
 use crate::{
     error::CustomError,
+    event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
     state::{RootBundle, Route, State},
 };
 
@@ -32,7 +33,7 @@ pub struct Initialize<'info> {
 pub fn initialize(
     ctx: Context<Initialize>,
     seed: u64,
-    initial_number_of_deposits: u64,
+    initial_number_of_deposits: u32,
     chain_id: u64,              // Across definition of chainId for Solana.
     remote_domain: u32,         // CCTP domain for Mainnet Ethereum.
     cross_domain_admin: Pubkey, // HubPool on Mainnet Ethereum.
@@ -238,25 +239,4 @@ pub fn relay_root_bundle(
     root_bundle.slow_relay_root = slow_relay_root;
     state.root_bundle_id += 1;
     Ok(())
-}
-#[event]
-pub struct SetXDomainAdmin {
-    pub new_admin: Pubkey,
-}
-
-#[event]
-pub struct PausedDeposits {
-    pub is_paused: bool,
-}
-
-#[event]
-pub struct PausedFills {
-    pub is_paused: bool,
-}
-
-#[event]
-pub struct EnabledDepositRoute {
-    pub origin_token: Pubkey,
-    pub destination_chain_id: u64,
-    pub enabled: bool,
 }
