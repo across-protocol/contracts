@@ -23,86 +23,77 @@ contract Token_ERC20 is ERC20 {
 }
 
 contract ArbitrumGatewayRouter {
+    mapping(address => address) l2TokenAddress;
+
     function outboundTransfer(
         address tokenToBridge,
         address recipient,
         uint256 amountToReturn,
         bytes memory
     ) external returns (bytes memory) {
-        Token_ERC20(tokenToBridge).burn(msg.sender, amountToReturn);
+        address l2Token = l2TokenAddress[tokenToBridge];
+        Token_ERC20(l2Token).burn(msg.sender, amountToReturn);
         Token_ERC20(tokenToBridge).mint(recipient, amountToReturn);
         return "";
+    }
+
+    function calculateL2TokenAddress(address l1Token) external view returns (address) {
+        return l2TokenAddress[l1Token];
+    }
+
+    function setTokenPair(address l1Token, address l2Token) external {
+        l2TokenAddress[l1Token] = l2Token;
     }
 }
 
 contract Arbitrum_WithdrawalAdapterTest is Test {
     Arbitrum_WithdrawalAdapter arbitrumWithdrawalAdapter;
     L2_TokenRetriever tokenRetriever;
-    Token_ERC20 whitelistedToken;
-    Token_ERC20 usdc;
     ArbitrumGatewayRouter gatewayRouter;
+    Token_ERC20 l1Token;
+    Token_ERC20 l2Token;
+    Token_ERC20 l2Usdc;
 
     // HubPool should receive funds.
     address hubPool;
-    address aliasedOwner;
-    address wrappedNativeToken;
 
     // Token messenger is set so CCTP is activated.
     ITokenMessenger tokenMessenger;
 
-    error RetrieveFailed(address[] l2Tokens);
+    error RetrieveFailed();
 
     function setUp() public {
-        // Initialize mintable/burnable tokens.
-        whitelistedToken = new Token_ERC20("TOKEN", "TOKEN");
-        usdc = new Token_ERC20("USDC", "USDC");
-        // Initialize mock bridge.
+        l1Token = new Token_ERC20("TOKEN", "TOKEN");
+        l2Token = new Token_ERC20("TOKEN", "TOKEN");
+        l2Usdc = new Token_ERC20("USDC", "USDC");
         gatewayRouter = new ArbitrumGatewayRouter();
 
         // Instantiate all other addresses used in the system.
         tokenMessenger = ITokenMessenger(vm.addr(1));
-        wrappedNativeToken = vm.addr(2);
-        hubPool = vm.addr(3);
+        hubPool = vm.addr(2);
 
-        arbitrumWithdrawalAdapter = new Arbitrum_WithdrawalAdapter(usdc, tokenMessenger, address(gatewayRouter));
-
-        // Create the token retriever contract.
+        gatewayRouter.setTokenPair(address(l1Token), address(l2Token));
+        arbitrumWithdrawalAdapter = new Arbitrum_WithdrawalAdapter(l2Usdc, tokenMessenger, address(gatewayRouter));
         tokenRetriever = new L2_TokenRetriever(address(arbitrumWithdrawalAdapter), hubPool);
     }
 
-    function testWithdrawWhitelistedTokenNonCCTP(uint256 amountToReturn) public {
-        // There should be no balance in any contract/EOA.
-        assertEq(whitelistedToken.balanceOf(hubPool), 0);
-        assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
-
-        // Simulate a L3 -> L2 withdrawal into the token retriever.
-        whitelistedToken.mint(address(tokenRetriever), amountToReturn);
-
-        // Attempt to withdraw the token.
-        tokenRetriever.retrieve(address(whitelistedToken));
-
-        // Ensure that the balances are updated (i.e. the token bridge contract was called).
-        assertEq(whitelistedToken.balanceOf(hubPool), amountToReturn);
-        assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
+    function testWithdrawToken(uint256 amountToReturn) public {
+        l2Token.mint(address(tokenRetriever), amountToReturn);
+        assertEq(amountToReturn, l2Token.totalSupply());
+        L2_TokenRetriever.TokenPair[] memory tokenPairs = new L2_TokenRetriever.TokenPair[](1);
+        tokenPairs[0] = L2_TokenRetriever.TokenPair({ l1Token: address(l1Token), l2Token: address(l2Token) });
+        tokenRetriever.retrieve(tokenPairs);
+        assertEq(0, l2Token.totalSupply());
+        assertEq(amountToReturn, l1Token.totalSupply());
+        assertEq(l1Token.balanceOf(hubPool), amountToReturn);
     }
 
-    function testWithdrawOtherTokenNonCCTP(uint256 amountToReturn) public {
-        // There should be no balance in any contract/EOA.
-        assertEq(whitelistedToken.balanceOf(hubPool), 0);
-        assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
-
-        // Simulate a L3 -> L2 withdrawal of an non-whitelisted token to the tokenRetriever contract.
-        whitelistedToken.mint(address(tokenRetriever), amountToReturn);
-
-        // Attempt to withdraw the token.
-        vm.expectRevert(abi.encodeWithSelector(RetrieveFailed.selector, address(whitelistedToken)));
-        tokenRetriever.retrieve(address(whitelistedToken));
-    }
-
-    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        // Allows overflows as explained above.
-        unchecked {
-            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
-        }
+    function testWithdrawTokenFailure(uint256 amountToReturn, address invalidToken) public {
+        l2Token.mint(address(tokenRetriever), amountToReturn);
+        assertEq(amountToReturn, l2Token.totalSupply());
+        L2_TokenRetriever.TokenPair[] memory tokenPairs = new L2_TokenRetriever.TokenPair[](1);
+        tokenPairs[0] = L2_TokenRetriever.TokenPair({ l1Token: invalidToken, l2Token: address(l2Token) });
+        vm.expectRevert(L2_TokenRetriever.RetrieveFailed.selector);
+        tokenRetriever.retrieve(tokenPairs);
     }
 }
