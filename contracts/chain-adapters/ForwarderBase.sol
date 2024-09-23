@@ -29,6 +29,15 @@ abstract contract ForwarderBase is UUPSUpgradeable, EIP712CrossChainUpgradeable 
     }
 
     /**
+     @notice Constructs the Forwarder contract.
+     @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done, 
+     * may disrupt the proxy if another EOA were to initialize it.
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
      * @notice Initializes the forwarder contract.
      * @param _l3SpokePool L3 address of the contract which will receive messages and tokens which are temporarily
      * stored in this contract on L2.
