@@ -80,7 +80,7 @@ pub fn deposit_v3(
     } else {
         Clock::get()?.unix_timestamp as u32
     };
-    // TODO: in solidity these are if then revert. here they are requires. i.e the assertion goes in the oposite direction to get the same effect. verify we want <= vs < for these assertions as this can change things for inclusive/exclusive checks.
+    // TODO: in solidity these are if then revert. here they are requires. i.e the assertion goes in the opposite direction to get the same effect. verify we want <= vs < for these assertions as this can change things for inclusive/exclusive checks.
     require!(
         current_timestamp - quote_timestamp <= state.deposit_quote_time_buffer,
         CustomError::InvalidQuoteTimestamp
@@ -88,7 +88,7 @@ pub fn deposit_v3(
 
     require!(
         fill_deadline >= current_timestamp
-            || fill_deadline <= current_timestamp + state.fill_deadline_buffer,
+            && fill_deadline <= current_timestamp + state.fill_deadline_buffer,
         CustomError::InvalidFillDeadline,
     );
 

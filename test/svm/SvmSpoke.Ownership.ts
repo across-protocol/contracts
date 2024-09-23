@@ -7,7 +7,7 @@ import { readProgramEvents } from "../../src/SvmUtils";
 
 const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
-describe.only("svm_spoke.ownership", () => {
+describe("svm_spoke.ownership", () => {
   anchor.setProvider(provider);
 
   const nonOwner = Keypair.generate();
@@ -38,7 +38,11 @@ describe.only("svm_spoke.ownership", () => {
 
     // Assert other properties as needed
     Object.keys(initialState).forEach((key) => {
-      assertSE(stateData[key], initialState[key], `${key} should match`);
+      if (key !== "testableMode") {
+        // We dont store testableMode in state.
+        const adjustedKey = key === "initialNumberOfDeposits" ? "numberOfDeposits" : key; // stored with diff key in state.
+        assertSE(stateData[adjustedKey], initialState[key], `${key} should match`);
+      }
     });
   });
 
