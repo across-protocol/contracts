@@ -4,8 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Arbitrum_SpokePool, ITokenMessenger } from "../../../../contracts/Arbitrum_SpokePool.sol";
-import { Arbitrum_WithdrawalAdapter, IArbitrum_SpokePool } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalAdapter.sol";
+import { Arbitrum_WithdrawalAdapter } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalAdapter.sol";
 import { L2_TokenRetriever } from "../../../../contracts/L2_TokenRetriever.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -47,7 +46,6 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
 
     // HubPool should receive funds.
     address hubPool;
-    address owner;
     address aliasedOwner;
     address wrappedNativeToken;
 
@@ -66,28 +64,10 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
 
         // Instantiate all other addresses used in the system.
         tokenMessenger = ITokenMessenger(vm.addr(1));
-        owner = vm.addr(2);
-        wrappedNativeToken = vm.addr(3);
-        hubPool = vm.addr(4);
-        aliasedOwner = _applyL1ToL2Alias(owner);
+        wrappedNativeToken = vm.addr(2);
+        hubPool = vm.addr(3);
 
-        // Create the spoke pool.
-        vm.startPrank(owner);
-        Arbitrum_SpokePool implementation = new Arbitrum_SpokePool(wrappedNativeToken, 0, 0, usdc, tokenMessenger);
-        address proxy = address(
-            new ERC1967Proxy(
-                address(implementation),
-                abi.encodeCall(Arbitrum_SpokePool.initialize, (0, address(gatewayRouter), owner, owner))
-            )
-        );
-        vm.stopPrank();
-        arbitrumSpokePool = Arbitrum_SpokePool(payable(proxy));
-        arbitrumWithdrawalAdapter = new Arbitrum_WithdrawalAdapter(
-            usdc,
-            tokenMessenger,
-            IArbitrum_SpokePool(proxy),
-            address(gatewayRouter)
-        );
+        arbitrumWithdrawalAdapter = new Arbitrum_WithdrawalAdapter(usdc, tokenMessenger, address(gatewayRouter));
 
         // Create the token retriever contract.
         tokenRetriever = new L2_TokenRetriever(address(arbitrumWithdrawalAdapter), hubPool);
@@ -99,10 +79,7 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
         assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
 
-        // Whitelist tokens in the spoke pool and simulate a L3 -> L2 withdrawal into the token retriever.
-        vm.startPrank(aliasedOwner);
-        arbitrumSpokePool.whitelistToken(address(whitelistedToken), address(whitelistedToken));
-        vm.stopPrank();
+        // Simulate a L3 -> L2 withdrawal into the token retriever.
         whitelistedToken.mint(address(tokenRetriever), amountToReturn);
 
         // Attempt to withdraw the token.

@@ -15,6 +15,8 @@ abstract contract WithdrawalAdapter is CircleCCTPAdapter {
     struct WithdrawalInformation {
         // L1 address of the recipient.
         address recipient;
+        // Address of the l1 token to receive.
+        address l1TokenAddress;
         // Address of l2 token to withdraw.
         address l2TokenAddress;
         // Amount of l2 Token to return.
@@ -47,7 +49,12 @@ abstract contract WithdrawalAdapter is CircleCCTPAdapter {
         WithdrawalInformation memory withdrawal;
         for (uint256 i = 0; i < informationLength; ++i) {
             withdrawal = withdrawalInformation[i];
-            withdrawToken(withdrawal.recipient, withdrawal.amountToReturn, withdrawal.l2TokenAddress);
+            withdrawToken(
+                withdrawal.recipient,
+                withdrawal.l1TokenAddress,
+                withdrawal.l2TokenAddress,
+                withdrawal.amountToReturn
+            );
         }
     }
 
@@ -60,7 +67,8 @@ abstract contract WithdrawalAdapter is CircleCCTPAdapter {
      */
     function withdrawToken(
         address recipient,
-        uint256 amountToReturn,
-        address l2TokenAddress
+        address l1TokenAddress,
+        address l2TokenAddress,
+        uint256 amountToReturn
     ) public virtual;
 }

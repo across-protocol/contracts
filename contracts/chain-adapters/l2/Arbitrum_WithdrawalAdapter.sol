@@ -14,22 +14,12 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @custom:security-contact bugs@across.to
  */
 
-/*
- * @notice Interface for the Across Arbitrum_SpokePool contract. Used to access state which
- * can only be modified by admin functions.
- */
-interface IArbitrum_SpokePool {
-    function whitelistedTokens(address) external view returns (address);
-}
-
 /**
  * @title Adapter for interacting with bridges from the Arbitrum One L2 to Ethereum mainnet.
  * @notice This contract is used to share L2-L1 bridging logic with other L2 Across contracts.
  */
 contract Arbitrum_WithdrawalAdapter is WithdrawalAdapter {
     using SafeERC20 for IERC20;
-
-    IArbitrum_SpokePool public immutable spokePool;
 
     /*
      * @notice constructs the withdrawal adapter.
@@ -41,11 +31,8 @@ contract Arbitrum_WithdrawalAdapter is WithdrawalAdapter {
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        IArbitrum_SpokePool _spokePool,
         address _l2GatewayRouter
-    ) WithdrawalAdapter(_l2Usdc, _cctpTokenMessenger, _l2GatewayRouter) {
-        spokePool = _spokePool;
-    }
+    ) WithdrawalAdapter(_l2Usdc, _cctpTokenMessenger, _l2GatewayRouter) {}
 
     /*
      * @notice Calls CCTP or the Arbitrum gateway router to withdraw tokens back to the `tokenRetriever`. The
@@ -56,20 +43,18 @@ contract Arbitrum_WithdrawalAdapter is WithdrawalAdapter {
      */
     function withdrawToken(
         address recipient,
-        uint256 amountToReturn,
-        address l2TokenAddress
+        address l1TokenAddress,
+        address l2TokenAddress,
+        uint256 amountToReturn
     ) public override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(recipient, amountToReturn);
         } else {
-            // Check that the Ethereum counterpart of the L2 token is stored on this contract.
-            // Tokens will only be bridged if they are whitelisted by the spoke pool.
-            address ethereumTokenToBridge = spokePool.whitelistedTokens(l2TokenAddress);
-            require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
+            require(l1TokenAddress != address(0), "Uninitialized mainnet token");
             //slither-disable-next-line unused-return
             StandardBridgeLike(l2Gateway).outboundTransfer(
-                ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
+                l1TokenAddress, // _l1Token. Address of the L1 token to bridge over.
                 recipient, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
                 amountToReturn, // _amount.
                 "" // _data. We don't need to send any data for the bridging action.

@@ -7,12 +7,6 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 import { WithdrawalAdapter } from "./chain-adapters/l2/WithdrawalAdapter.sol";
 
 interface IBridgeAdapter {
-    function withdrawToken(
-        address recipient,
-        uint256 amountToReturn,
-        address l2Token
-    ) external;
-
     function withdrawTokens(WithdrawalAdapter.WithdrawalInformation[] memory) external;
 }
 
@@ -30,11 +24,10 @@ contract L2_TokenRetriever is Lockable {
     // Should be set to the L1 address which will receive withdrawn tokens.
     address public immutable tokenRecipient;
 
-    error RetrieveFailed(address l2Token);
-    error RetrieveManyFailed(address[] l2Tokens);
+    error RetrieveFailed(address[] l2Tokens);
 
     /**
-     * @notice Constructs the Intermediate_TokenRetriever
+     * @notice Constructs the L2_TokenRetriever
      * @param _bridgeAdapter contract which contains network's bridging logic.
      * @param _tokenRecipient L1 address of the recipient of withdrawn tokens.
      */
@@ -44,27 +37,12 @@ contract L2_TokenRetriever is Lockable {
     }
 
     /**
-     * @notice delegatecalls the contract's stored bridge adapter to bridge tokens back to the defined token retriever
-     * @notice This follows the bridging logic of the corresponding bridge adapter.
-     * @param l2Token (current network's) contract address of the token to be withdrawn.
-     */
-    function retrieve(address l2Token) external nonReentrant {
-        (bool success, ) = bridgeAdapter.delegatecall(
-            abi.encodeCall(
-                IBridgeAdapter.withdrawToken,
-                (tokenRecipient, IERC20Upgradeable(l2Token).balanceOf(address(this)), l2Token)
-            )
-        );
-        if (!success) revert RetrieveFailed(l2Token);
-    }
-
-    /**
      * @notice delegatecalls the bridge adapter to withdraw multiple different L2 tokens.
      * @dev this is preferrable to multicalling `retrieve` since instead of `n` delegatecalls for `n`
      * withdrawal txns, we can have 1 delegatecall for `n` withdrawal transactions.
      * @param l2Tokens (current network's) contracts addresses of the l2 tokens to be withdrawn.
      */
-    function retrieveMany(address[] memory l2Tokens) external nonReentrant {
+    function retrieve(address[] memory l2Tokens) external nonReentrant {
         uint256 nWithdrawals = l2Tokens.length;
         WithdrawalAdapter.WithdrawalInformation[] memory withdrawals = new WithdrawalAdapter.WithdrawalInformation[](
             nWithdrawals
@@ -78,6 +56,6 @@ contract L2_TokenRetriever is Lockable {
             );
         }
         (bool success, ) = bridgeAdapter.delegatecall(abi.encodeCall(IBridgeAdapter.withdrawTokens, (withdrawals)));
-        if (!success) revert RetrieveManyFailed(l2Tokens);
+        if (!success) revert RetrieveFailed(l2Tokens);
     }
 }
