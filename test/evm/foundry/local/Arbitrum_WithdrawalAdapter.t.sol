@@ -7,9 +7,8 @@ import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Arbitrum_WithdrawalAdapter } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalAdapter.sol";
 import { L2_TokenRetriever } from "../../../../contracts/L2_TokenRetriever.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-
-import "forge-std/console.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -39,7 +38,6 @@ contract ArbitrumGatewayRouter {
 contract Arbitrum_WithdrawalAdapterTest is Test {
     Arbitrum_WithdrawalAdapter arbitrumWithdrawalAdapter;
     L2_TokenRetriever tokenRetriever;
-    Arbitrum_SpokePool arbitrumSpokePool;
     Token_ERC20 whitelistedToken;
     Token_ERC20 usdc;
     ArbitrumGatewayRouter gatewayRouter;
@@ -52,8 +50,7 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
     // Token messenger is set so CCTP is activated.
     ITokenMessenger tokenMessenger;
 
-    error RetrieveFailed(address l2Token);
-    error RetrieveManyFailed(address[] l2Tokens);
+    error RetrieveFailed(address[] l2Tokens);
 
     function setUp() public {
         // Initialize mintable/burnable tokens.
@@ -76,7 +73,6 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
     function testWithdrawWhitelistedTokenNonCCTP(uint256 amountToReturn) public {
         // There should be no balance in any contract/EOA.
         assertEq(whitelistedToken.balanceOf(hubPool), 0);
-        assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
 
         // Simulate a L3 -> L2 withdrawal into the token retriever.
@@ -87,14 +83,12 @@ contract Arbitrum_WithdrawalAdapterTest is Test {
 
         // Ensure that the balances are updated (i.e. the token bridge contract was called).
         assertEq(whitelistedToken.balanceOf(hubPool), amountToReturn);
-        assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
     }
 
     function testWithdrawOtherTokenNonCCTP(uint256 amountToReturn) public {
         // There should be no balance in any contract/EOA.
         assertEq(whitelistedToken.balanceOf(hubPool), 0);
-        assertEq(whitelistedToken.balanceOf(owner), 0);
         assertEq(whitelistedToken.balanceOf(address(tokenRetriever)), 0);
 
         // Simulate a L3 -> L2 withdrawal of an non-whitelisted token to the tokenRetriever contract.

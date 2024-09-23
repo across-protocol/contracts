@@ -18,13 +18,18 @@ interface IBridgeAdapter {
 contract L2_TokenRetriever is Lockable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    struct TokenPair {
+        address l1Token;
+        address l2Token;
+    }
+
     // Should be set to the bridge adapter which contains the proper logic to withdraw tokens on
     // the deployed L2
     address public immutable bridgeAdapter;
     // Should be set to the L1 address which will receive withdrawn tokens.
     address public immutable tokenRecipient;
 
-    error RetrieveFailed(address[] l2Tokens);
+    error RetrieveFailed();
 
     /**
      * @notice Constructs the L2_TokenRetriever
@@ -38,24 +43,24 @@ contract L2_TokenRetriever is Lockable {
 
     /**
      * @notice delegatecalls the bridge adapter to withdraw multiple different L2 tokens.
-     * @dev this is preferrable to multicalling `retrieve` since instead of `n` delegatecalls for `n`
-     * withdrawal txns, we can have 1 delegatecall for `n` withdrawal transactions.
-     * @param l2Tokens (current network's) contracts addresses of the l2 tokens to be withdrawn.
+     * @param tokenPairs l1 and l2 addresses of the token to withdraw.
      */
-    function retrieve(address[] memory l2Tokens) external nonReentrant {
-        uint256 nWithdrawals = l2Tokens.length;
+    function retrieve(TokenPair[] memory tokenPairs) external nonReentrant {
+        uint256 nWithdrawals = tokenPairs.length;
         WithdrawalAdapter.WithdrawalInformation[] memory withdrawals = new WithdrawalAdapter.WithdrawalInformation[](
             nWithdrawals
         );
+        TokenPair memory tokenPair;
         for (uint256 i = 0; i < nWithdrawals; ++i) {
-            address l2Token = l2Tokens[i];
+            tokenPair = tokenPairs[i];
             withdrawals[i] = WithdrawalAdapter.WithdrawalInformation(
                 tokenRecipient,
-                l2Token,
-                IERC20Upgradeable(l2Token).balanceOf(address(this))
+                tokenPair.l1Token,
+                tokenPair.l2Token,
+                IERC20Upgradeable(tokenPair.l2Token).balanceOf(address(this))
             );
         }
         (bool success, ) = bridgeAdapter.delegatecall(abi.encodeCall(IBridgeAdapter.withdrawTokens, (withdrawals)));
-        if (!success) revert RetrieveFailed(l2Tokens);
+        if (!success) revert RetrieveFailed();
     }
 }

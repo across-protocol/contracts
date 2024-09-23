@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
-import { IL2StandardERC20 } from "@eth-optimism/contracts/standards/IL2StandardERC20.sol";
 import { IL2ERC20Bridge } from "../../Ovm_SpokePool.sol";
 
 /**
@@ -61,24 +60,23 @@ contract Ovm_WithdrawalAdapter is WithdrawalAdapter {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         address _l2Gateway,
-        address _l2Eth,
-        address _wrappedNativeToken,
-        uint256 _l1Gas
+        IOvm_SpokePool _spokePool
     ) WithdrawalAdapter(_l2Usdc, _cctpTokenMessenger, _l2Gateway) {
-        wrappedNativeToken = _wrappedNativeToken;
-        l2Eth = _l2Eth;
-        l1Gas = _l1Gas;
+        spokePool = _spokePool;
+        wrappedNativeToken = spokePool.wrappedNativeToken();
+        l2Eth = spokePool.l2Eth();
+        l1Gas = spokePool.l1Gas();
     }
 
     /*
      * @notice Calls CCTP or the Optimism token gateway to withdraw tokens back to the recipient.
      * @param recipient L1 address of the recipient.
-     * @param amountToReturn amount of l2Token to send back.
      * @param l2TokenAddress address of the l2Token to send back.
+     * @param amountToReturn amount of l2Token to send back.
      */
     function withdrawToken(
         address recipient,
-        address l1TokenAddress,
+        address,
         address l2TokenAddress,
         uint256 amountToReturn
     ) public override {
@@ -105,21 +103,19 @@ contract Ovm_WithdrawalAdapter is WithdrawalAdapter {
         // we'd need to call bridgeERC20To and give allowance to the tokenBridge to spend l2Token from this contract.
         // Therefore for native tokens we should set ensure that remoteL1Tokens is set for the l2TokenAddress.
         else {
-            // TODO: This assumes that the token implements IOptimismMintableERC20. Many do not implement this, so you'll need
-            // to find a different solution.
             IL2ERC20Bridge tokenBridge = IL2ERC20Bridge(
-                l2TokenAddress.bridge() == address(0)
+                spokePool.tokenBridges(l2TokenAddress) == address(0)
                     ? Lib_PredeployAddresses.L2_STANDARD_BRIDGE
-                    : l2TokenAddress.bridge()
+                    : spokePool.tokenBridges(l2TokenAddress)
             );
-            if (l1TokenAddress != address(0)) {
+            if (spokePool.remoteL1Tokens(l2TokenAddress) != address(0)) {
                 // If there is a mapping for this L2 token to an L1 token, then use the L1 token address and
                 // call bridgeERC20To.
                 IERC20(l2TokenAddress).safeIncreaseAllowance(address(tokenBridge), amountToReturn);
-                require(IL2StandardERC20(l2TokenAddress).l1Token() == l2TokenAddress, "INVALID_TOKEN_MAPPING");
+                address remoteL1Token = spokePool.remoteL1Tokens(l2TokenAddress);
                 tokenBridge.bridgeERC20To(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                    l1TokenAddress, // Remote token to be received on L1 side. If the
+                    remoteL1Token, // Remote token to be received on L1 side. If the
                     // remoteL1Token on the other chain does not recognize the local token as the correct
                     // pair token, the ERC20 bridge will fail and the tokens will be returned to sender on
                     // this chain.

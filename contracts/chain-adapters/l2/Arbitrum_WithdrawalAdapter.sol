@@ -4,7 +4,7 @@
 // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
 pragma solidity ^0.8.19;
 
-import { StandardBridgeLike } from "../../Arbitrum_SpokePool.sol";
+import { ArbitrumL2ERC20GatewayLike } from "../../interfaces/ArbitrumBridgeInterfaces.sol";
 import { WithdrawalAdapter, ITokenMessenger } from "./WithdrawalAdapter.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -52,10 +52,12 @@ contract Arbitrum_WithdrawalAdapter is WithdrawalAdapter {
             _transferUsdc(recipient, amountToReturn);
         } else {
             require(l1TokenAddress != address(0), "Uninitialized mainnet token");
+            ArbitrumL2ERC20GatewayLike tokenBridge = ArbitrumL2ERC20GatewayLike(l2Gateway);
+            require(tokenBridge.calculateL2TokenAddress(l1TokenAddress) == l2TokenAddress, "Invalid token mapping");
             //slither-disable-next-line unused-return
-            StandardBridgeLike(l2Gateway).outboundTransfer(
+            tokenBridge.outboundTransfer(
                 l1TokenAddress, // _l1Token. Address of the L1 token to bridge over.
-                recipient, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
+                recipient, // _to. Withdraw, over the bridge, to the recipient.
                 amountToReturn, // _amount.
                 "" // _data. We don't need to send any data for the bridging action.
             );
