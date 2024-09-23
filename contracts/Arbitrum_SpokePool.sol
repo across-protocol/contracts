@@ -6,15 +6,7 @@ pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
-
-interface StandardBridgeLike {
-    function outboundTransfer(
-        address _l1Token,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-}
+import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridgeInterfaces.sol";
 
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
@@ -100,7 +92,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
             require(ethereumTokenToBridge != address(0), "Uninitialized mainnet token");
             //slither-disable-next-line unused-return
-            StandardBridgeLike(l2GatewayRouter).outboundTransfer(
+            ArbitrumL2ERC20GatewayLike(l2GatewayRouter).outboundTransfer(
                 ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
                 hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
                 amountToReturn, // _amount.
