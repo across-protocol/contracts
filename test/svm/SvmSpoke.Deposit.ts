@@ -32,7 +32,7 @@ describe("svm_spoke.deposit", () => {
 
   const enableRoute = async () => {
     const routeChainId = new BN(1);
-    const route = createRoutePda(inputToken, routeChainId);
+    const route = createRoutePda(inputToken, state, routeChainId);
     vault = getVaultAta(inputToken, state);
 
     setEnableRouteAccounts = {
@@ -167,7 +167,7 @@ describe("svm_spoke.deposit", () => {
 
   it("Fails to deposit tokens to a route that is uninitalized", async () => {
     const differentChainId = new BN(2); // Different chain ID
-    const differentRoutePda = createRoutePda(depositData.inputToken, differentChainId);
+    const differentRoutePda = createRoutePda(depositData.inputToken, state, differentChainId);
     depositAccounts.route = differentRoutePda;
 
     try {
@@ -248,15 +248,14 @@ describe("svm_spoke.deposit", () => {
   });
 
   it("Tests deposit with a fake route PDA", async () => {
-    // Create a fake spoke pool and route PDA
-    const fakeRouteChainId = new BN(3);
-    const fakeRoutePda = createRoutePda(inputToken, fakeRouteChainId);
-
     // Create fake program state
     const fakeState = await initializeState();
     const fakeVault = getVaultAta(inputToken, fakeState);
 
-    // Attempt to enable the fake route
+    const fakeRouteChainId = new BN(3);
+    const fakeRoutePda = createRoutePda(inputToken, fakeState, fakeRouteChainId);
+
+    // A seeds constraint was violated.
     const fakeSetEnableRouteAccounts = {
       signer: owner,
       payer: owner,
@@ -317,19 +316,22 @@ describe("svm_spoke.deposit", () => {
     );
 
     // Deposit with the fake route in the original program state should fail.
-    await program.methods
-      .depositV3(
-        ...Object.values({
-          ...{ ...depositData, destinationChainId: fakeRouteChainId },
-        })
-      )
-      .accounts({ ...depositAccounts, route: fakeRoutePda })
-      .signers([depositor])
-      .rpc();
+    try {
+      await program.methods
+        .depositV3(
+          ...Object.values({
+            ...{ ...depositData, destinationChainId: fakeRouteChainId },
+          })
+        )
+        .accounts({ ...depositAccounts, route: fakeRoutePda })
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed for a fake route PDA");
+    } catch (err) {
+      assert.include(err.toString(), "A seeds constraint was violated");
+    }
 
     const vaultAccount = await getAccount(connection, vault);
     assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
-
-    assert.fail("Deposit should have failed for a fake route PDA");
   });
 });

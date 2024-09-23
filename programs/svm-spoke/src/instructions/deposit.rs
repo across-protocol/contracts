@@ -34,7 +34,7 @@ pub struct DepositV3<'info> {
     )]
     pub state: Account<'info, State>,
 
-    #[account(mut, seeds = [b"route", input_token.as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
+    #[account(mut, seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
     pub route: Account<'info, Route>,
 
     #[account(mut)]
