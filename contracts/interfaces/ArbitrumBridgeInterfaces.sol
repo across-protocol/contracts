@@ -70,36 +70,6 @@ interface ArbitrumInboxLike {
     ) external payable returns (uint256);
 
     /**
-     * @notice Put a message in the inbox that can be reexecuted for some fixed amount of time if it reverts
-     * @notice Overloads the `createRetryableTicket` function but is not payable, and should only be called when paying
-     * for message using a custom gas token.
-     * @dev all tokenTotalFeeAmount will be deposited to callValueRefundAddress on upper layer
-     * @dev Gas limit and maxFeePerGas should not be set to 1 as that is used to trigger the RetryableData error
-     * @dev In case of native token having non-18 decimals: tokenTotalFeeAmount is denominated in native token's decimals. All other value params - callValue, maxSubmissionCost and maxFeePerGas are denominated in child chain's native 18 decimals.
-     * @param to destination contract address
-     * @param callValue call value for retryable message
-     * @param maxSubmissionCost Max gas deducted from user's upper layer balance to cover base submission fee
-     * @param excessFeeRefundAddress the address which receives the difference between execution fee paid and the actual execution cost. In case this address is a contract, funds will be received in its alias on upper layer.
-     * @param callValueRefundAddress callvalue gets credited here on upper layer if retryable txn times out or gets cancelled. In case this address is a contract, funds will be received in its alias on upper layer.
-     * @param gasLimit Max gas deducted from user's balance to cover execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param maxFeePerGas price bid for execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param tokenTotalFeeAmount amount of fees to be deposited in native token to cover for retryable ticket cost
-     * @param data ABI encoded data of message
-     * @return unique message number of the retryable transaction
-     */
-    function createRetryableTicket(
-        address to,
-        uint256 callValue,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 gasLimit,
-        uint256 maxFeePerGas,
-        uint256 tokenTotalFeeAmount,
-        bytes calldata data
-    ) external returns (uint256);
-
-    /**
      * @notice Put a message in the source chain inbox that can be reexecuted for some fixed amount of time if it reverts
      * @dev Same as createRetryableTicket, but does not guarantee that submission will succeed by requiring the needed
      * funds come from the deposit alone, rather than falling back on the user's balance
@@ -129,37 +99,45 @@ interface ArbitrumInboxLike {
 }
 
 /**
- * @notice Generic gateway contract for bridging standard ERC20s to Arbitrum-like networks.
+ * @notice Interface which extends ArbitrumInboxLike with functions used to interact with bridges that use a custom gas token.
  */
-interface ArbitrumERC20GatewayLike {
+interface ArbitrumCustomGasTokenInbox is ArbitrumInboxLike {
     /**
-     * @notice Deposit ERC20 token from Ethereum into Arbitrum-like networks.
-     * @dev Upper layer address alias will not be applied to the following types of addresses on lower layer:
-     *      - an externally-owned account
-     *      - a contract in construction
-     *      - an address where a contract will be created
-     *      - an address where a contract lived, but was destroyed
-     * @param _sourceToken address of ERC20 on source chain.
-     * @param _refundTo Account, or its alias if it has code on the source chain, to be credited with excess gas refund at destination
-     * @param _to Account to be credited with the tokens in the L3 (can be the user's L3 account or a contract),
-     * not subject to aliasing. This account, or its alias if it has code on the source chain, will also be able to
-     * cancel the retryable ticket and receive callvalue refund
-     * @param _amount Token Amount
-     * @param _maxGas Max gas deducted from user's balance to cover execution
-     * @param _gasPriceBid Gas price for execution
-     * @param _data encoded data from router and user
-     * @return res abi encoded inbox sequence number
+     * @notice Put a message in the inbox that can be reexecuted for some fixed amount of time if it reverts
+     * @notice Overloads the `createRetryableTicket` function but is not payable, and should only be called when paying
+     * for message using a custom gas token.
+     * @dev all tokenTotalFeeAmount will be deposited to callValueRefundAddress on upper layer
+     * @dev Gas limit and maxFeePerGas should not be set to 1 as that is used to trigger the RetryableData error
+     * @dev In case of native token having non-18 decimals: tokenTotalFeeAmount is denominated in native token's decimals. All other value params - callValue, maxSubmissionCost and maxFeePerGas are denominated in child chain's native 18 decimals.
+     * @param to destination contract address
+     * @param callValue call value for retryable message
+     * @param maxSubmissionCost Max gas deducted from user's upper layer balance to cover base submission fee
+     * @param excessFeeRefundAddress the address which receives the difference between execution fee paid and the actual execution cost. In case this address is a contract, funds will be received in its alias on upper layer.
+     * @param callValueRefundAddress callvalue gets credited here on upper layer if retryable txn times out or gets cancelled. In case this address is a contract, funds will be received in its alias on upper layer.
+     * @param gasLimit Max gas deducted from user's balance to cover execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
+     * @param maxFeePerGas price bid for execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
+     * @param tokenTotalFeeAmount amount of fees to be deposited in native token to cover for retryable ticket cost
+     * @param data ABI encoded data of message
+     * @return unique message number of the retryable transaction
      */
-    function outboundTransferCustomRefund(
-        address _sourceToken,
-        address _refundTo,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
+    function createRetryableTicket(
+        address to,
+        uint256 callValue,
+        uint256 maxSubmissionCost,
+        address excessFeeRefundAddress,
+        address callValueRefundAddress,
+        uint256 gasLimit,
+        uint256 maxFeePerGas,
+        uint256 tokenTotalFeeAmount,
+        bytes calldata data
+    ) external returns (uint256);
+}
 
+/**
+ * @notice Generic gateway contract for bridging standard ERC20s to/from Arbitrum-like networks.
+ * @notice These function signatures are shared between the L1 and L2 gateway router contracts.
+ */
+interface ArbitrumL1ERC20GatewayLike {
     /**
      * @notice Deprecated in favor of outboundTransferCustomRefund but still used in custom bridges
      * like the DAI bridge.
@@ -189,4 +167,54 @@ interface ArbitrumERC20GatewayLike {
      * @return address of ERC20 gateway.
      */
     function getGateway(address _token) external view returns (address);
+
+    /**
+     * @notice Deposit ERC20 token from Ethereum into Arbitrum-like networks.
+     * @dev Upper layer address alias will not be applied to the following types of addresses on lower layer:
+     *      - an externally-owned account
+     *      - a contract in construction
+     *      - an address where a contract will be created
+     *      - an address where a contract lived, but was destroyed
+     * @param _sourceToken address of ERC20 on source chain.
+     * @param _refundTo Account, or its alias if it has code on the source chain, to be credited with excess gas refund at destination
+     * @param _to Account to be credited with the tokens in the L3 (can be the user's L3 account or a contract),
+     * not subject to aliasing. This account, or its alias if it has code on the source chain, will also be able to
+     * cancel the retryable ticket and receive callvalue refund
+     * @param _amount Token Amount
+     * @param _maxGas Max gas deducted from user's balance to cover execution
+     * @param _gasPriceBid Gas price for execution
+     * @param _data encoded data from router and user
+     * @return res abi encoded inbox sequence number
+     */
+    function outboundTransferCustomRefund(
+        address _sourceToken,
+        address _refundTo,
+        address _to,
+        uint256 _amount,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
+}
+
+interface ArbitrumL2ERC20GatewayLike {
+    /**
+     * @notice Fetches the l2 token address from the gateway router for the input l1 token address
+     * @param _l1Erc20 address of the l1 token.
+     */
+    function calculateL2TokenAddress(address _l1Erc20) external view returns (address);
+
+    /**
+     * @notice Withdraws a specified amount of an l2 token to an l1 token.
+     * @param _l1Token address of the token to withdraw on L1.
+     * @param _to address on L1 which will receive the tokens upon withdrawal.
+     * @param _amount amount of the token to withdraw.
+     * @param _data encoded data to send to the gateway router.
+     */
+    function outboundTransfer(
+        address _l1Token,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
 }

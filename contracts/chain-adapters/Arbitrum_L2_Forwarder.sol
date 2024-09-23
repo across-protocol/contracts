@@ -5,8 +5,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
-import { ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
-import { ArbitrumForwarderBase } from "./ArbitrumForwarderBase.sol";
+import { ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ForwarderBase } from "./ForwarderBase.sol";
+import { Arbitrum_AdapterBase } from "./Arbitrum_AdapterBase.sol";
 
 /**
  * @notice Contract containing logic to send messages from L2 to Arbitrum-like L3s.
@@ -15,7 +16,7 @@ import { ArbitrumForwarderBase } from "./ArbitrumForwarderBase.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
+contract Arbitrum_L2_Forwarder is ForwarderBase, Arbitrum_AdapterBase {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
@@ -33,25 +34,27 @@ contract Arbitrum_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
      */
     constructor(
         ArbitrumInboxLike _l2ArbitrumInbox,
-        ArbitrumERC20GatewayLike _l2ERC20GatewayRouter,
+        ArbitrumL1ERC20GatewayLike _l2ERC20GatewayRouter,
         address _l3RefundL3Address,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
+        uint32 _circleDomainId,
         uint256 _l3MaxSubmissionCost,
         uint256 _l3GasPrice,
         address _l3SpokePool,
         address _crossDomainAdmin
     )
-        ArbitrumForwarderBase(
+        Arbitrum_AdapterBase(
             _l2ArbitrumInbox,
             _l2ERC20GatewayRouter,
             _l3RefundL3Address,
+            _l2Usdc,
+            _cctpTokenMessenger,
+            _circleDomainId,
             _l3MaxSubmissionCost,
-            _l3GasPrice,
-            _l3SpokePool,
-            _crossDomainAdmin
+            _l3GasPrice
         )
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.UNINITIALIZED)
+        ForwarderBase(_l3SpokePool, _crossDomainAdmin)
     {}
 
     /**
@@ -62,33 +65,12 @@ contract Arbitrum_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
      * @param l2Token L2 token to send.
      * @param amount Amount of L2 tokens to deposit and L3 tokens to receive.
      */
-    function relayTokens(address l2Token, uint256 amount) external payable override {
-        // Check if this token is USDC, which requires a custom bridge via CCTP.
-        if (_isCCTPEnabled() && l2Token == address(usdcToken)) {
-            _transferUsdc(L3_SPOKE_POOL, amount);
-        }
-        // If not, we can use the Arbitrum gateway
-        else {
-            uint256 requiredL2CallValue = _contractHasSufficientEthBalance(RELAY_TOKENS_L3_GAS_LIMIT);
-
-            // Approve the gateway, not the router, to spend the contract's balance. The gateway, which is different
-            // per L1 token, will temporarily escrow the tokens to be bridged and pull them from this contract.
-            address erc20Gateway = L2_ERC20_GATEWAY_ROUTER.getGateway(l2Token);
-            IERC20(l2Token).safeIncreaseAllowance(erc20Gateway, amount);
-            // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
-            // maxSubmissionCost to use when creating an L3 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
-            bytes memory data = abi.encode(L3_MAX_SUBMISSION_COST, "");
-
-            L2_ERC20_GATEWAY_ROUTER.outboundTransferCustomRefund{ value: requiredL2CallValue }(
-                l2Token,
-                L3_REFUND_L3_ADDRESS,
-                L3_SPOKE_POOL,
-                amount,
-                RELAY_TOKENS_L3_GAS_LIMIT,
-                L3_GAS_PRICE,
-                data
-            );
-        }
+    function relayTokens(
+        address l2Token,
+        address,
+        uint256 amount
+    ) external payable override {
+        _relayTokens(l2Token, address(0), amount, L3_SPOKE_POOL);
         emit TokensForwarded(l2Token, amount);
     }
 
@@ -99,30 +81,12 @@ contract Arbitrum_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
      * @param target Contract on Arbitrum that will receive message.
      * @param message Data to send to target.
      */
-    function _relayMessage(address target, bytes memory message) internal override {
-        uint256 requiredL2CallValue = _contractHasSufficientEthBalance(RELAY_MESSAGE_L3_GAS_LIMIT);
-
-        L2_INBOX.createRetryableTicket{ value: requiredL2CallValue }(
-            L3_SPOKE_POOL, // destAddr destination L3 contract address
-            L3_CALL_VALUE, // l3CallValue call value for retryable L3 message
-            L3_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L3 balance to cover base fee
-            L3_REFUND_L3_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L3
-            L3_REFUND_L3_ADDRESS, // callValueRefundAddress l3Callvalue gets credited here on L3 if retryable txn times out or gets cancelled
-            RELAY_MESSAGE_L3_GAS_LIMIT, // maxGas Max gas deducted from user's L3 balance to cover L3 execution
-            L3_GAS_PRICE, // gasPriceBid price bid for L3 execution
-            message // data ABI encoded data of L3 message
-        );
-
+    function _relayL3Message(address target, bytes memory message) internal override {
+        _relayMessage(target, message);
         emit MessageForwarded(target, message);
     }
 
     function _requireAdminSender() internal virtual override onlyFromCrossDomainAdmin {}
-
-    function _contractHasSufficientEthBalance(uint32 l3GasLimit) internal view returns (uint256) {
-        uint256 requiredL2CallValue = getL2CallValue(l3GasLimit);
-        require(address(this).balance >= requiredL2CallValue, "Insufficient ETH balance");
-        return requiredL2CallValue;
-    }
 
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
         // Allows overflows as explained above.

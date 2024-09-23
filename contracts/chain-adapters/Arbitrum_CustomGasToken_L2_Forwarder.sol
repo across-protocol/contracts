@@ -5,23 +5,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
-import { ArbitrumInboxLike, ArbitrumERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
-import { ArbitrumForwarderBase } from "./ArbitrumForwarderBase.sol";
-
-/**
- * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()
- * fees using a custom gas token.
- */
-interface FunderInterface {
-    /**
-     * @notice Withdraws amount of token from funder contract to the caller.
-     * @dev Can only be called by owner of Funder contract, which therefore must be
-     * this contract.
-     * @param token Token to withdraw.
-     * @param amount Amount to withdraw.
-     */
-    function withdraw(IERC20 token, uint256 amount) external;
-}
+import { ArbitrumCustomGasTokenInbox, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
+import { ForwarderBase } from "./ForwarderBase.sol";
+import { Arbitrum_CustomGasToken_AdapterBase, FunderInterface } from "./Arbitrum_CustomGasToken_AdapterBase.sol";
 
 /**
  * @notice Contract containing logic to send messages from Arbitrum to an Arbitrum-like L3.
@@ -31,17 +17,8 @@ interface FunderInterface {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderBase, CircleCCTPAdapter {
+contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase {
     using SafeERC20 for IERC20;
-
-    // This token is used to pay for l2 to l3 messages if its configured by an Arbitrum orbit chain.
-    IERC20 public immutable CUSTOM_GAS_TOKEN;
-
-    // Contract that funds Inbox cross chain messages with the custom gas token.
-    FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
-
-    error InvalidCustomGasToken();
-    error InsufficientCustomGasToken();
 
     modifier onlyFromCrossDomainAdmin() {
         require(msg.sender == _applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
@@ -61,32 +38,31 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderBase, CircleCC
      * and used for all messages sent by this adapter.
      */
     constructor(
-        ArbitrumInboxLike _l2ArbitrumInbox,
-        ArbitrumERC20GatewayLike _l2ERC20GatewayRouter,
+        ArbitrumCustomGasTokenInbox _l2ArbitrumInbox,
+        ArbitrumL1ERC20GatewayLike _l2ERC20GatewayRouter,
         address _l3RefundL3Address,
         IERC20 _l2Usdc,
         ICCTPTokenMessenger _cctpTokenMessenger,
+        uint32 _circleDomainId,
         FunderInterface _customGasTokenFunder,
         uint256 _l3MaxSubmissionCost,
         uint256 _l3GasPrice,
         address _l3SpokePool,
         address _crossDomainAdmin
     )
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.UNINITIALIZED)
-        ArbitrumForwarderBase(
+        Arbitrum_CustomGasToken_AdapterBase(
             _l2ArbitrumInbox,
             _l2ERC20GatewayRouter,
             _l3RefundL3Address,
+            _l2Usdc,
+            _cctpTokenMessenger,
+            _circleDomainId,
+            _customGasTokenFunder,
             _l3MaxSubmissionCost,
-            _l3GasPrice,
-            _l3SpokePool,
-            _crossDomainAdmin
+            _l3GasPrice
         )
-    {
-        CUSTOM_GAS_TOKEN = IERC20(L2_INBOX.bridge().nativeToken());
-        if (address(CUSTOM_GAS_TOKEN) == address(0)) revert InvalidCustomGasToken();
-        CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
-    }
+        ForwarderBase(_l3SpokePool, _crossDomainAdmin)
+    {}
 
     /**
      * @notice Bridge tokens to Arbitrum-like L3.
@@ -95,53 +71,12 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderBase, CircleCC
      * @param l2Token L2 token to send.
      * @param amount Amount of L2 tokens to deposit and L3 tokens to receive.
      */
-    function relayTokens(address l2Token, uint256 amount) external payable override {
-        // Check if this token is USDC, which requires a custom bridge via CCTP.
-        if (_isCCTPEnabled() && l2Token == address(usdcToken)) {
-            _transferUsdc(L3_SPOKE_POOL, amount);
-        }
-        // If not, we can use the Arbitrum gateway
-        else {
-            address erc20Gateway = L2_ERC20_GATEWAY_ROUTER.getGateway(l2Token);
-
-            // If custom gas token, call special functions that handle paying with custom gas tokens.
-            uint256 requiredL2TokenTotalFeeAmount = _pullCustomGas(RELAY_MESSAGE_L3_GAS_LIMIT);
-
-            // Must use Inbox to bridge custom gas token.
-            // Source: https://github.com/OffchainLabs/token-bridge-contracts/blob/5bdf33259d2d9ae52ddc69bc5a9cbc558c4c40c7/contracts/tokenbridge/ethereum/gateway/L1OrbitERC20Gateway.sol#L33
-            if (l2Token == address(CUSTOM_GAS_TOKEN)) {
-                uint256 amountToBridge = amount + requiredL2TokenTotalFeeAmount;
-                CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L2_INBOX), amountToBridge);
-                L2_INBOX.createRetryableTicket(
-                    L3_SPOKE_POOL, // destAddr destination L3 contract address (the spoke pool)
-                    L3_CALL_VALUE, // l3CallValue call value for retryable L3 message
-                    L3_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L3 balance to cover base fee
-                    L3_REFUND_L3_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L3
-                    L3_REFUND_L3_ADDRESS, // callValueRefundAddress l2Callvalue gets credited here on L3 if retryable txn times out or gets cancelled
-                    RELAY_MESSAGE_L3_GAS_LIMIT, // maxGas Max gas deducted from user's L3 balance to cover L3 execution
-                    L3_GAS_PRICE, // gasPriceBid price bid for L3 execution
-                    amountToBridge, // tokenTotalFeeAmount amount of fees to be deposited in native token.
-                    "0x" // data ABI encoded data of L3 message
-                );
-            } else {
-                IERC20(l2Token).safeIncreaseAllowance(erc20Gateway, amount);
-                CUSTOM_GAS_TOKEN.safeIncreaseAllowance(erc20Gateway, requiredL2TokenTotalFeeAmount);
-
-                // To pay for gateway outbound transfer with custom gas token, encode the tokenTotalFeeAmount in the data field:
-                // The data format should be (uint256 maxSubmissionCost, bytes extraData, uint256 tokenTotalFeeAmount).
-                // Source: https://github.com/OffchainLabs/token-bridge-contracts/blob/5bdf33259d2d9ae52ddc69bc5a9cbc558c4c40c7/contracts/tokenbridge/ethereum/gateway/L1OrbitERC20Gateway.sol#L57
-                bytes memory data = abi.encode(L3_MAX_SUBMISSION_COST, "", requiredL2TokenTotalFeeAmount);
-                L2_ERC20_GATEWAY_ROUTER.outboundTransferCustomRefund(
-                    l2Token,
-                    L3_REFUND_L3_ADDRESS,
-                    L3_SPOKE_POOL,
-                    amount,
-                    RELAY_TOKENS_L3_GAS_LIMIT,
-                    L3_GAS_PRICE,
-                    data
-                );
-            }
-        }
+    function relayTokens(
+        address l2Token,
+        address,
+        uint256 amount
+    ) external payable override {
+        _relayTokens(l2Token, address(0), amount, L3_SPOKE_POOL);
         emit TokensForwarded(l2Token, amount);
     }
 
@@ -152,31 +87,12 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is ArbitrumForwarderBase, CircleCC
      * @param target Contract on Arbitrum-like L3 that will receive message.
      * @param message Data to send to target.
      */
-    function _relayMessage(address target, bytes memory message) internal override {
-        uint256 requiredL2TokenTotalFeeAmount = _pullCustomGas(RELAY_MESSAGE_L3_GAS_LIMIT);
-        CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L2_INBOX), requiredL2TokenTotalFeeAmount);
-        L2_INBOX.createRetryableTicket(
-            target, // destAddr destination L3 contract address
-            L3_CALL_VALUE, // l3CallValue call value for retryable L3 message
-            L3_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L3 balance to cover base fee
-            L3_REFUND_L3_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L3
-            L3_REFUND_L3_ADDRESS, // callValueRefundAddress l3Callvalue gets credited here on L3 if retryable txn times out or gets cancelled
-            RELAY_MESSAGE_L3_GAS_LIMIT, // maxGas Max gas deducted from user's L3 balance to cover L3 execution
-            L3_GAS_PRICE, // gasPriceBid price bid for L3 execution
-            requiredL2TokenTotalFeeAmount, // tokenTotalFeeAmount amount of fees to be deposited in native token.
-            message // data ABI encoded data of L3 message
-        );
+    function _relayL3Message(address target, bytes memory message) internal override {
+        _relayMessage(target, message);
         emit MessageForwarded(target, message);
     }
 
     function _requireAdminSender() internal virtual override onlyFromCrossDomainAdmin {}
-
-    function _pullCustomGas(uint32 l3GasLimit) internal returns (uint256) {
-        uint256 requiredL2CallValue = getL2CallValue(l3GasLimit);
-        CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL2CallValue);
-        if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL2CallValue) revert InsufficientCustomGasToken();
-        return requiredL2CallValue;
-    }
 
     function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
         // Allows overflows as explained above.

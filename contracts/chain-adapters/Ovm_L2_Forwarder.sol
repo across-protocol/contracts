@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Arbitrum_L2_Forwarder, ArbitrumInboxLike, ArbitrumERC20GatewayLike, ITokenMessenger } from "./Arbitrum_L2_Forwarder.sol";
+import { Arbitrum_L2_Forwarder, ITokenMessenger } from "./Arbitrum_L2_Forwarder.sol";
+import { ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -35,10 +36,11 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
      */
     constructor(
         ArbitrumInboxLike _l2ArbitrumInbox,
-        ArbitrumERC20GatewayLike _l2ERC20GatewayRouter,
+        ArbitrumL1ERC20GatewayLike _l2ERC20GatewayRouter,
         address _l3RefundL3Address,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
+        uint32 _circleDomainId,
         uint256 _l3MaxSubmissionCost,
         uint256 _l3GasPrice,
         address _l3SpokePool,
@@ -50,6 +52,7 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
             _l3RefundL3Address,
             _l2Usdc,
             _cctpTokenMessenger,
+            _circleDomainId,
             _l3MaxSubmissionCost,
             _l3GasPrice,
             _l3SpokePool,
@@ -57,7 +60,7 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
         )
     {}
 
-    function _requireAdminSender() internal override {
+    function _requireAdminSender() internal view override {
         if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != CROSS_DOMAIN_ADMIN) revert NotCrossDomainAdmin();
     }
 }
