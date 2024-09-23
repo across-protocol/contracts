@@ -155,7 +155,7 @@ describe("svm_spoke.fill", () => {
   });
 
   it("Allows fill by non-exclusive relayer after exclusivity deadline", async () => {
-    updateRelayData({ ...relayData, exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30) });
+    updateRelayData({ ...relayData, exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 100) });
 
     accounts.signer = otherRelayer.publicKey;
     accounts.relayer = otherRelayer.publicKey;
