@@ -246,4 +246,90 @@ describe("svm_spoke.deposit", () => {
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
   });
+
+  it("Tests deposit with a fake route PDA", async () => {
+    // Create a fake spoke pool and route PDA
+    const fakeRouteChainId = new BN(3);
+    const fakeRoutePda = createRoutePda(inputToken, fakeRouteChainId);
+
+    // Create fake program state
+    const fakeState = await initializeState();
+    const fakeVault = getVaultAta(inputToken, fakeState);
+
+    // Attempt to enable the fake route
+    const fakeSetEnableRouteAccounts = {
+      signer: owner,
+      payer: owner,
+      state: fakeState,
+      route: fakeRoutePda,
+      vault: fakeVault,
+      originTokenMint: inputToken,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    };
+
+    await program.methods
+      .setEnableRoute(inputToken.toBytes(), fakeRouteChainId, true)
+      .accounts(fakeSetEnableRouteAccounts)
+      .rpc();
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const fakeDepositAccounts = {
+      state: fakeState,
+      route: fakeRoutePda,
+      signer: depositor.publicKey,
+      userTokenAccount: depositorTA,
+      vault: fakeVault,
+      mint: inputToken,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+
+    // Deposit with the fake state and route PDA should succeed.
+    await program.methods
+      .depositV3(
+        ...Object.values({
+          ...depositData,
+          destinationChainId: fakeRouteChainId,
+        })
+      )
+      .accounts(fakeDepositAccounts)
+      .signers([depositor])
+      .rpc();
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Fetch and verify the depositEvent
+    let events = await readProgramEvents(connection, program);
+    let event = events.find((event) => event.name === "v3FundsDeposited").data;
+    const expectedValues1 = { ...{ ...depositData, destinationChainId: fakeRouteChainId }, depositId: "1" }; // Verify the event props emitted match the depositData.
+    for (const [key, value] of Object.entries(expectedValues1)) {
+      assertSE(event[key], value, `${key} should match`);
+    }
+
+    // Check fake vault acount balance
+    const fakeVaultAccount = await getAccount(connection, fakeVault);
+    assertSE(
+      fakeVaultAccount.amount,
+      depositData.inputAmount.toNumber(),
+      "Fake vault balance should be increased by the deposited amount"
+    );
+
+    // Deposit with the fake route in the original program state should fail.
+    await program.methods
+      .depositV3(
+        ...Object.values({
+          ...{ ...depositData, destinationChainId: fakeRouteChainId },
+        })
+      )
+      .accounts({ ...depositAccounts, route: fakeRoutePda })
+      .signers([depositor])
+      .rpc();
+
+    const vaultAccount = await getAccount(connection, vault);
+    assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
+
+    assert.fail("Deposit should have failed for a fake route PDA");
+  });
 });
