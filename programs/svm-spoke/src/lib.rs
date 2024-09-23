@@ -25,7 +25,7 @@ pub mod svm_spoke {
     pub fn initialize(
         ctx: Context<Initialize>,
         seed: u64,
-        initial_number_of_deposits: u64,
+        initial_number_of_deposits: u32,
         chain_id: u64,
         remote_domain: u32,
         cross_domain_admin: Pubkey,
