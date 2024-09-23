@@ -84,10 +84,6 @@ pub fn deposit_v3(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // TODO: I'm not totally sure how the check here is sufficient. For example can an account make their own fake
-    // spoke pool, create a route PDA, toggle it to enabled and then call deposit, passing in that PDA and
-    // enable a deposit to occur against a route that was not canonically enabled? write some tests for this and
-    // verify that this check is sufficient or update accordingly.
     require!(ctx.accounts.route.enabled, CustomError::RouteNotEnabled);
 
     let transfer_accounts = TransferChecked {
