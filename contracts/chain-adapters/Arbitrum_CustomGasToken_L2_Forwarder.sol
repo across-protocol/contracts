@@ -21,12 +21,14 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
     /**
      * @notice Constructs new L2 Forwarder.
+     * @dev We normally cannot define a constructor for proxies, but this is an exception since all
+     * arguments are stored as immutable variables (and thus kept in contract bytecode).
      * @param _l2ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l2ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l3RefundL3Address L3 address to receive gas refunds on after a message is relayed.
@@ -61,7 +63,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
             _l3MaxSubmissionCost,
             _l3GasPrice
         )
-        ForwarderBase(_l3SpokePool, _crossDomainAdmin)
+        ForwarderBase()
     {}
 
     /**
@@ -76,7 +78,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
         address,
         uint256 amount
     ) external payable override {
-        _relayTokens(l2Token, address(0), amount, L3_SPOKE_POOL);
+        _relayTokens(l2Token, address(0), amount, l3SpokePool);
         emit TokensForwarded(l2Token, amount);
     }
 

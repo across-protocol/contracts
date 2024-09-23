@@ -52,6 +52,6 @@ contract Ovm_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_L2_Forwarder
     {}
 
     function _requireAdminSender() internal view override {
-        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != CROSS_DOMAIN_ADMIN) revert NotCrossDomainAdmin();
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
     }
 }
