@@ -9,6 +9,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
+    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     state::{FillStatus, FillStatusAccount, State},
 };
 
@@ -89,13 +90,6 @@ pub struct V3RelayData {
     pub fill_deadline: u32,
     pub exclusivity_deadline: u32,
     pub message: Vec<u8>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum FillType {
-    FastFill,
-    ReplacedSlowFill,
-    SlowFill,
 }
 
 pub fn fill_v3_relay(
@@ -238,29 +232,3 @@ pub fn close_fill_pda(
 }
 
 // Events.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3RelayExecutionEventInfo {
-    pub updated_recipient: Pubkey,
-    pub updated_message: Vec<u8>,
-    pub updated_output_amount: u64,
-    pub fill_type: FillType,
-}
-
-#[event]
-pub struct FilledV3Relay {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub repayment_chain_id: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub exclusive_relayer: Pubkey,
-    pub relayer: Pubkey,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub message: Vec<u8>,
-    pub relay_execution_info: V3RelayExecutionEventInfo,
-}

@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     error::CustomError,
+    event::V3FundsDeposited,
     state::{Route, State},
 };
 
@@ -135,21 +136,4 @@ pub fn deposit_v3(
     });
 
     Ok(())
-}
-
-#[event]
-pub struct V3FundsDeposited {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub destination_chain_id: u64,
-    pub deposit_id: u64,
-    pub quote_timestamp: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub exclusive_relayer: Pubkey,
-    pub message: Vec<u8>,
 }

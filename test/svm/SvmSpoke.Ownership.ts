@@ -3,7 +3,7 @@ import { BN } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
-import { readProgramEvents } from "../../src/SvmUtils";
+import { readProgramEvents } from "./utils";
 
 const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
