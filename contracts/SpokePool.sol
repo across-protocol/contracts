@@ -616,9 +616,8 @@ abstract contract SpokePool is
         uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable nonReentrant unpausedDeposits {
-        // @dev Create the uint256 deposit ID by first left shifting the address (which is 20 bytes) by 12 bytes.
-        // This creates room in the right-most 12 bytes for the passed in uint96 deposit nonce, which we set by
-        // bitwise OR-ing the left-shifted address with the nonce. We're then left with a 32 byte number.
+        // @dev Create the uint256 deposit ID by concatenating the address (which is 20 bytes) with the 12 byte
+        // depositNonce parameter. We're then left with a 32 byte number if we keccak256 the resultant packed bytes.
         // This guarantees the resultant ID won't collide with a safe deposit ID which is set by
         // implicitly casting a uint32 to a uint256, whose left-most 24 bytes are 0, while we're guaranteed that
         // some of this deposit hash's first 24 bytes are not 0 due to the left shift of the msg.sender address, which
@@ -630,7 +629,7 @@ abstract contract SpokePool is
         // this is unlikely and we also should consider not checking it and incurring the extra gas cost:
         // if (msg.sender == address(0)) revert InvalidUnsafeDepositor();
 
-        uint256 depositId = uint256((uint160(msg.sender) << 12) | depositNonce);
+        uint256 depositId = uint256(keccak256(abi.encodePacked(msg.sender, depositNonce)));
         _depositV3(
             depositor,
             recipient,

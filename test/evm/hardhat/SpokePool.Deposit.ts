@@ -366,6 +366,28 @@ describe("SpokePool Depositor Logic", async function () {
         _relayData.message,
       ];
     }
+    function getUnsafeDepositArgsFromRelayData(
+      _relayData: V3RelayData,
+      _depositId: string,
+      _destinationChainId = destinationChainId,
+      _quoteTimestamp = quoteTimestamp
+    ) {
+      return [
+        _relayData.depositor,
+        _relayData.recipient,
+        _relayData.inputToken,
+        _relayData.outputToken,
+        _relayData.inputAmount,
+        _relayData.outputAmount,
+        _destinationChainId,
+        _relayData.exclusiveRelayer,
+        _depositId,
+        _quoteTimestamp,
+        _relayData.fillDeadline,
+        _relayData.exclusivityDeadline,
+        _relayData.message,
+      ];
+    }
     beforeEach(async function () {
       relayData = {
         depositor: depositor.address,
@@ -575,6 +597,37 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
       );
+    });
+    it("unsafe deposit ID", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {address, forcedDepositId}.
+      const forcedDepositId = "99";
+      const expectedDepositId = ethers.utils.solidityKeccak256(
+        ["address", "uint96"],
+        [depositor.address, forcedDepositId]
+      );
+      // console.log(result.toString(), BigNumber.from(result))
+      await expect(
+        spokePool
+          .connect(depositor)
+          .unsafeDepositV3(...getUnsafeDepositArgsFromRelayData({ ...relayData }, forcedDepositId))
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          BigNumber.from(expectedDepositId),
+          quoteTimestamp,
+          relayData.fillDeadline,
+          currentTime,
+          depositor.address,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
+          relayData.message
+        );
     });
   });
   describe("speed up V3 deposit", function () {
