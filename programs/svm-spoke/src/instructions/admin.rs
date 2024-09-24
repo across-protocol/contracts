@@ -167,7 +167,7 @@ pub struct SetEnableRoute<'info> {
         init_if_needed,
         payer = payer,
         space = DISCRIMINATOR_SIZE + Route::INIT_SPACE,
-        seeds = [b"route", origin_token.as_ref(), destination_chain_id.to_le_bytes().as_ref()],
+        seeds = [b"route", origin_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
         bump
     )]
     pub route: Account<'info, Route>,

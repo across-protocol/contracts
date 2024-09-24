@@ -22,7 +22,7 @@ describe("svm_spoke.routes", () => {
 
     // Create a PDA for the route
     routeChainId = new BN(1);
-    routePda = createRoutePda(tokenMint, routeChainId);
+    routePda = createRoutePda(tokenMint, state, routeChainId);
 
     // Create ATA for the origin token to be stored by state (vault).
     vault = getVaultAta(tokenMint, state);
@@ -109,7 +109,7 @@ describe("svm_spoke.routes", () => {
 
   it("Cannot misconfigure route with wrong origin token", async () => {
     const wrongOriginToken = Keypair.generate().publicKey;
-    const wrongRoutePda = createRoutePda(wrongOriginToken, routeChainId);
+    const wrongRoutePda = createRoutePda(wrongOriginToken, state, routeChainId);
 
     try {
       await program.methods

@@ -62,9 +62,9 @@ const initializeState = async (
   return state;
 };
 
-const createRoutePda = (originToken: PublicKey, routeChainId: BN) => {
+const createRoutePda = (originToken: PublicKey, state: PublicKey, routeChainId: BN) => {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), originToken.toBytes(), routeChainId.toArrayLike(Buffer, "le", 8)],
+    [Buffer.from("route"), originToken.toBytes(), state.toBytes(), routeChainId.toArrayLike(Buffer, "le", 8)],
     program.programId
   )[0];
 };

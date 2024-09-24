@@ -35,7 +35,7 @@ pub struct DepositV3<'info> {
     )]
     pub state: Account<'info, State>,
 
-    #[account(mut, seeds = [b"route", input_token.as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
+    #[account(mut, seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
     pub route: Account<'info, Route>,
 
     #[account(mut)]
@@ -85,10 +85,6 @@ pub fn deposit_v3(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // TODO: I'm not totally sure how the check here is sufficient. For example can an account make their own fake
-    // spoke pool, create a route PDA, toggle it to enabled and then call deposit, passing in that PDA and
-    // enable a deposit to occur against a route that was not canonically enabled? write some tests for this and
-    // verify that this check is sufficient or update accordingly.
     require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
 
     let current_time = if state.current_time != 0 {
