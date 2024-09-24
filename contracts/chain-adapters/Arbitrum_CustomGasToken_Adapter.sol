@@ -17,6 +17,7 @@ import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/C
  * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for submission
  * fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
  * @dev https://docs.arbitrum.io/launch-orbit-chain/how-tos/use-a-custom-gas-token
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -29,13 +30,11 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, Arbitrum_CustomGas
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
-     * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
-     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
+     * @param _circleDomainId CCTP domain ID for the target network.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
-     * @param _l2MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
-     * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
-     * and used for all messages sent by this adapter.
+     * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
+     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
      */
     constructor(
         ArbitrumCustomGasTokenInbox _l1ArbitrumInbox,

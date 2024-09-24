@@ -23,14 +23,15 @@ interface FunderInterface {
 }
 
 /**
- * @notice Contract containing logic to send messages from L1 to Arbitrum.
+ * @notice Contract containing logic to send messages from L1 to an AVM network.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
- * @dev This contract is very similar to Arbitrum_Adapter but it allows the caller to pay for submission
+ * @dev This contract is very similar to Arbitrum_AdapterBase but it allows the caller to pay for submission
  * fees using a custom gas token. This is required to support certain Arbitrum orbit L2s and L3s.
  * @dev https://docs.arbitrum.io/launch-orbit-chain/how-tos/use-a-custom-gas-token
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -62,11 +63,11 @@ contract Arbitrum_CustomGasToken_AdapterBase is CircleCCTPAdapter {
     // This address on L2 receives extra gas token that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
 
-    // Inbox system contract to send messages to Arbitrum. Token bridges use this to send tokens to L2.
+    // Inbox system contract to send messages to an AVM network. Token bridges use this to send tokens to L2.
     // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
     ArbitrumCustomGasTokenInbox public immutable L1_INBOX;
 
-    // Router contract to send tokens to Arbitrum. Routes to correct gateway to bridge tokens. Internally this
+    // Router contract to send tokens to an AVM network. Routes to correct gateway to bridge tokens. Internally this
     // contract calls the Inbox.
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     // Gateway used for communicating with chains that use custom gas tokens:
@@ -84,17 +85,15 @@ contract Arbitrum_CustomGasToken_AdapterBase is CircleCCTPAdapter {
 
     /**
      * @notice Constructs new Adapter.
-     * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
-     * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
+     * @param _l1ArbitrumInbox Inbox helper contract to send messages to the AVM network.
+     * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to the AVM network.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
-     * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
-     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _circleDomainId CCTP domain ID for the target AVM network.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
-     * @param _l2MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
-     * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
-     * and used for all messages sent by this adapter.
+     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
+     * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
      */
     constructor(
         ArbitrumCustomGasTokenInbox _l1ArbitrumInbox,
@@ -118,10 +117,10 @@ contract Arbitrum_CustomGasToken_AdapterBase is CircleCCTPAdapter {
     }
 
     /**
-     * @notice Send cross-chain message to target on Arbitrum.
+     * @notice Send cross-chain message to target on AVM network.
      * @notice This contract must hold at least getL1CallValue() amount of the custom gas token
      * to send a message via the Inbox successfully, or the message will get stuck.
-     * @param target Contract on Arbitrum that will receive message.
+     * @param target Contract on AVM network that will receive message.
      * @param message Data to send to target.
      */
     function _relayMessage(address target, bytes memory message) internal {
@@ -142,7 +141,7 @@ contract Arbitrum_CustomGasToken_AdapterBase is CircleCCTPAdapter {
     }
 
     /**
-     * @notice Bridge tokens to Arbitrum.
+     * @notice Bridge tokens to AVM network.
      * @notice This contract must hold at least getL1CallValue() amount of ETH or custom gas token
      * to send a message via the Inbox successfully, or the message will get stuck.
      * @param l1Token L1 token to deposit.

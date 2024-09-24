@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./interfaces/AdapterInterface.sol";
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../external/interfaces/CCTPInterfaces.sol";
-import "../libraries/CircleCCTPAdapter.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Arbitrum_AdapterBase } from "./Arbitrum_AdapterBase.sol";
+import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 /**
@@ -16,6 +15,7 @@ import { ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/Arb
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
  * that call this contract's logic guard against reentrancy.
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -29,6 +29,9 @@ contract Arbitrum_Adapter is AdapterInterface, Arbitrum_AdapterBase {
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _circleDomainId Circle CCTP domain ID for the target network (3 for Arbitrum).
+     * @param _l2MaxSubmissionCost maximum amount of ETH to send with a transaction for it to execute on L2.
+     * @param _l2GasPrice gas price bid for a message to be executed on L2.
      */
     constructor(
         ArbitrumInboxLike _l1ArbitrumInbox,
@@ -37,8 +40,8 @@ contract Arbitrum_Adapter is AdapterInterface, Arbitrum_AdapterBase {
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _circleDomainId,
-        uint256 _l3MaxSubmissionCost,
-        uint256 _l3GasPrice
+        uint256 _l2MaxSubmissionCost,
+        uint256 _l2GasPrice
     )
         Arbitrum_AdapterBase(
             _l1ArbitrumInbox,
@@ -47,8 +50,8 @@ contract Arbitrum_Adapter is AdapterInterface, Arbitrum_AdapterBase {
             _l1Usdc,
             _cctpTokenMessenger,
             _circleDomainId,
-            _l3MaxSubmissionCost,
-            _l3GasPrice
+            _l2MaxSubmissionCost,
+            _l2GasPrice
         )
     {}
 

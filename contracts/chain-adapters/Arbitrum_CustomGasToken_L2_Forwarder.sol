@@ -10,10 +10,11 @@ import { ForwarderBase } from "./ForwarderBase.sol";
 import { Arbitrum_CustomGasToken_AdapterBase, FunderInterface } from "./Arbitrum_CustomGasToken_AdapterBase.sol";
 
 /**
- * @notice Contract containing logic to send messages from Arbitrum to an Arbitrum-like L3.
+ * @notice Contract containing logic to send messages from Arbitrum to an AVM L3.
  * @dev This contract is very similar to Arbitrum_CustomGasToken_Adapter. It is meant to bridge
  * tokens and send messages over a bridge which uses a custom gas token, except this contract assumes
  * it is deployed on Arbitrum.
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -34,10 +35,12 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
      * @param _l3RefundL3Address L3 address to receive gas refunds on after a message is relayed.
      * @param _l2Usdc Native USDC address on L2.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _circleDomainId CCTP domain ID of the target network.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
      * @param _l3MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
      * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
      * and used for all messages sent by this adapter.
+     * @param _l3GasPrice Gas price bid for L3 execution. Should be set conservatively high to avoid stuck messages.
      */
     constructor(
         ArbitrumCustomGasTokenInbox _l2ArbitrumInbox,
@@ -48,9 +51,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
         uint32 _circleDomainId,
         FunderInterface _customGasTokenFunder,
         uint256 _l3MaxSubmissionCost,
-        uint256 _l3GasPrice,
-        address _l3SpokePool,
-        address _crossDomainAdmin
+        uint256 _l3GasPrice
     )
         Arbitrum_CustomGasToken_AdapterBase(
             _l2ArbitrumInbox,
@@ -67,7 +68,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
     {}
 
     /**
-     * @notice Bridge tokens to Arbitrum-like L3.
+     * @notice Bridge tokens to an AVM L3.
      * @notice This contract must hold at least getL2CallValue() amount of ETH or custom gas token
      * to send a message via the Inbox successfully, or the message will get stuck.
      * @param l2Token L2 token to send.
@@ -83,10 +84,10 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
     }
 
     /**
-     * @notice Send cross-chain message to target on Arbitrum-like L3.
+     * @notice Send cross-chain message to target on an AVM L3.
      * @notice This contract must hold at least getL2CallValue() amount of the custom gas token
      * to send a message via the Inbox successfully, or the message will get stuck.
-     * @param target Contract on Arbitrum-like L3 that will receive message.
+     * @param target Contract on the AVM L3 that will receive message.
      * @param message Data to send to target.
      */
     function _relayL3Message(address target, bytes memory message) internal override {

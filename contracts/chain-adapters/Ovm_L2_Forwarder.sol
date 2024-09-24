@@ -9,10 +9,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @notice Contract containing logic to send messages from an OVM L2 to an Arbitrum-like L3.
- * @dev This contract is very similar to Arbitrum_CustomGasToken_Adapter. It is meant to bridge
+ * @notice Contract containing logic to send messages from an OVM L2 to an AVM L3.
+ * @dev This contract is very similar to the Arbitrum_Adapter. It is meant to bridge
  * tokens and send messages over a bridge which uses a custom gas token, except this contract makes
  * the assumption that it is deployed on an OpStack L2.
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -25,14 +26,16 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
 
     /**
      * @notice Constructs new L2 Forwarder.
-     * @param _l2ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
-     * @param _l2ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
+     * @param _l2ArbitrumInbox Inbox helper contract to send messages to L3.
+     * @param _l2ERC20GatewayRouter ERC20 gateway router contract to send tokens to L3.
      * @param _l3RefundL3Address L3 address to receive gas refunds on after a message is relayed.
      * @param _l2Usdc Native USDC address on L2.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _circleDomainId CCTP domain ID for the L3 network.
      * @param _l3MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
-     * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
+     * submission fee is a parameter unique to AVM retryable transactions. This value is hardcoded
      * and used for all messages sent by this adapter.
+     * @param _l3GasPrice gas price bid for message execution on L3.
      */
     constructor(
         ArbitrumInboxLike _l2ArbitrumInbox,
@@ -42,9 +45,7 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
         ITokenMessenger _cctpTokenMessenger,
         uint32 _circleDomainId,
         uint256 _l3MaxSubmissionCost,
-        uint256 _l3GasPrice,
-        address _l3SpokePool,
-        address _crossDomainAdmin
+        uint256 _l3GasPrice
     )
         Arbitrum_L2_Forwarder(
             _l2ArbitrumInbox,
@@ -54,9 +55,7 @@ contract Ovm_L2_Forwarder is Arbitrum_L2_Forwarder {
             _cctpTokenMessenger,
             _circleDomainId,
             _l3MaxSubmissionCost,
-            _l3GasPrice,
-            _l3SpokePool,
-            _crossDomainAdmin
+            _l3GasPrice
         )
     {}
 
