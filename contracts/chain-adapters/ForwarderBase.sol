@@ -3,8 +3,16 @@ pragma solidity ^0.8.0;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+/**
+ * @title ForwarderBase
+ * @notice Base contract deployed some network between L1 and the network housing a spoke pool contract. If a message is sent
+ * to this contract which came from the cross domain admin, then it is routed to the next network via the canonical messaging
+ * bridge (which may be done automatically by the network's finalization infrastructure). Tokens sent from L1 are stored temporarily
+ * on this contract. Any EOA can initiate a bridge of these tokens to the target `l3SpokePool`.
+ * @custom:security-contact bugs@across.to
+ */
 abstract contract ForwarderBase is UUPSUpgradeable {
-    // L3 address of the recipient of fallback messages and tokens.
+    // L3 address of the recipient of L1 messages and tokens.
     address public l3SpokePool;
 
     // L1 address of the contract which can relay messages to the l3SpokePool contract and update this proxy contract.
@@ -19,8 +27,8 @@ abstract contract ForwarderBase is UUPSUpgradeable {
     error InvalidL3SpokePool();
 
     /*
-     * @dev All functions with this modifier must revert if msg.sender != CROSS_DOMAIN_ADMIN, but each L2 may have
-     * unique aliasing logic, so it is up to the forwarder contract to verify that the sender is valid.
+     * @dev All functions with this modifier must revert if msg.sender != crossDomainAdmin. Each L2 may have
+     * unique aliasing logic, so it is up to the chain-specific forwarder contract to verify that the sender is valid.
      */
     modifier onlyAdmin() {
         _requireAdminSender();
@@ -55,7 +63,7 @@ abstract contract ForwarderBase is UUPSUpgradeable {
     /**
      * @notice When called by the cross domain admin (i.e. the hub pool), the msg.data should be some function
      * recognizable by the L3 spoke pool, such as "relayRootBundle" or "upgradeTo". Therefore, we simply forward
-     * this message to the L3 spoke pool using the implemented messaging logic of the L2 forwarder
+     * this message to the L3 spoke pool using the implemented messaging logic of the L2 forwarder.
      */
     fallback() external payable onlyAdmin {
         _relayL3Message(l3SpokePool, msg.data);
