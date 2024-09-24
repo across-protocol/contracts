@@ -76,7 +76,7 @@ interface ArbitrumL1ERC20GatewayLike {
     /**
      * @notice Deprecated in favor of outboundTransferCustomRefund but still used in custom bridges
      * like the DAI bridge.
-     * @dev Refunded to aliased L2 address of sender if sender has code on L1, otherwise to to sender's EOA on L2.
+     * @dev Refunded to aliased L2 address of sender if sender has code on L1, otherwise to sender's EOA on L2.
      * @param _l1Token L1 address of ERC20
      * @param _to Account to be credited with the tokens in the L2 (can be the user's L2 account or a contract),
      * not subject to L2 aliasing. This account, or its L2 alias if it have code in L1, will also be able to
