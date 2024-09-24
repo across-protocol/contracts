@@ -12,7 +12,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 abstract contract WithdrawalAdapter is CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
-    struct WithdrawalInformation {
+    struct WithdrawalInstruction {
         // L1 address of the recipient.
         address recipient;
         // Address of the l1 token to receive.
@@ -41,14 +41,14 @@ abstract contract WithdrawalAdapter is CircleCCTPAdapter {
 
     /*
      * @notice withdraws tokens to Ethereum given the input parameters.
-     * @param withdrawalInformation array containing information to withdraw a token. Includes the L1 recipient
+     * @param withdrawals array containing information to withdraw a token. Includes the L1 recipient
      * address, the amount to withdraw, and the token address of the L2 token to withdraw.
      */
-    function withdrawTokens(WithdrawalInformation[] memory withdrawalInformation) external {
-        uint256 informationLength = withdrawalInformation.length;
-        WithdrawalInformation memory withdrawal;
-        for (uint256 i = 0; i < informationLength; ++i) {
-            withdrawal = withdrawalInformation[i];
+    function withdrawTokens(WithdrawalInstruction[] memory withdrawals) external {
+        uint256 nWithdrawals = withdrawals.length;
+        WithdrawalInstruction memory withdrawal;
+        for (uint256 i = 0; i < nWithdrawals; ++i) {
+            withdrawal = withdrawals[i];
             withdrawToken(
                 withdrawal.recipient,
                 withdrawal.l1TokenAddress,

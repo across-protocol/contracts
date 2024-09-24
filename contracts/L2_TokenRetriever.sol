@@ -7,7 +7,7 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 import { WithdrawalAdapter } from "./chain-adapters/l2/WithdrawalAdapter.sol";
 
 interface IBridgeAdapter {
-    function withdrawTokens(WithdrawalAdapter.WithdrawalInformation[] memory) external;
+    function withdrawTokens(WithdrawalAdapter.WithdrawalInstruction[] memory) external;
 }
 
 /**
@@ -23,9 +23,9 @@ contract L2_TokenRetriever is Lockable {
         address l2Token;
     }
 
-    // Should be set to the bridge adapter which contains the proper logic to withdraw tokens on
-    // the deployed L2
-    address public immutable bridgeAdapter;
+    // Should be set to the withdrawal which contains the proper logic to withdraw tokens on
+    // the deployed L2.
+    address public immutable l2WithdrawalAdapter;
     // Should be set to the L1 address which will receive withdrawn tokens.
     address public immutable tokenRecipient;
 
@@ -33,11 +33,11 @@ contract L2_TokenRetriever is Lockable {
 
     /**
      * @notice Constructs the L2_TokenRetriever
-     * @param _bridgeAdapter contract which contains network's bridging logic.
+     * @param _l2WithdrawalAdapter contract which contains network's bridging logic.
      * @param _tokenRecipient L1 address of the recipient of withdrawn tokens.
      */
-    constructor(address _bridgeAdapter, address _tokenRecipient) {
-        bridgeAdapter = _bridgeAdapter;
+    constructor(address _l2WithdrawalAdapter, address _tokenRecipient) {
+        l2WithdrawalAdapter = _l2WithdrawalAdapter;
         tokenRecipient = _tokenRecipient;
     }
 
@@ -47,20 +47,22 @@ contract L2_TokenRetriever is Lockable {
      */
     function retrieve(TokenPair[] memory tokenPairs) external nonReentrant {
         uint256 nWithdrawals = tokenPairs.length;
-        WithdrawalAdapter.WithdrawalInformation[] memory withdrawals = new WithdrawalAdapter.WithdrawalInformation[](
+        WithdrawalAdapter.WithdrawalInstruction[] memory withdrawals = new WithdrawalAdapter.WithdrawalInstruction[](
             nWithdrawals
         );
         TokenPair memory tokenPair;
         for (uint256 i = 0; i < nWithdrawals; ++i) {
             tokenPair = tokenPairs[i];
-            withdrawals[i] = WithdrawalAdapter.WithdrawalInformation(
+            withdrawals[i] = WithdrawalAdapter.WithdrawalInstruction(
                 tokenRecipient,
                 tokenPair.l1Token,
                 tokenPair.l2Token,
                 IERC20Upgradeable(tokenPair.l2Token).balanceOf(address(this))
             );
         }
-        (bool success, ) = bridgeAdapter.delegatecall(abi.encodeCall(IBridgeAdapter.withdrawTokens, (withdrawals)));
+        (bool success, ) = l2WithdrawalAdapter.delegatecall(
+            abi.encodeCall(IBridgeAdapter.withdrawTokens, (withdrawals))
+        );
         if (!success) revert RetrieveFailed();
     }
 }
