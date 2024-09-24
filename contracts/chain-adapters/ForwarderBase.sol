@@ -2,9 +2,8 @@
 pragma solidity ^0.8.0;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { EIP712CrossChainUpgradeable } from "../upgradeable/EIP712CrossChainUpgradeable.sol";
 
-abstract contract ForwarderBase is UUPSUpgradeable, EIP712CrossChainUpgradeable {
+abstract contract ForwarderBase is UUPSUpgradeable {
     // L3 address of the recipient of fallback messages and tokens.
     address public l3SpokePool;
 
@@ -46,7 +45,6 @@ abstract contract ForwarderBase is UUPSUpgradeable, EIP712CrossChainUpgradeable 
      */
     function __Forwarder_init(address _l3SpokePool, address _crossDomainAdmin) public onlyInitializing {
         __UUPSUpgradeable_init();
-        __EIP712_init("ACROSS-V2", "1.0.0");
         _setL3SpokePool(_l3SpokePool);
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
