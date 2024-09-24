@@ -5,6 +5,11 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to a target (not necessarily a spoke pool) on L2.
+ * @notice Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
+ * will be the L3 spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
+ * contract DOES NOT send anything to the L2 containing info on the target L3 spoke pool. The L3 spoke pool address
+ * must instead be initialized on the `l2Target` contract as the same spoke pool address found in the hub pool's
+ * `crossChainContracts` mapping.
  * @notice There should be one of these adapters for each L3 spoke pool deployment, or equivalently, each L2
  * forwarder/adapter contract.
  * @notice The contract receiving messages on L2 will be "spoke pool like" functions, e.g. "relayRootBundle" and
