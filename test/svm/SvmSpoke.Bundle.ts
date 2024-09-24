@@ -619,9 +619,10 @@ describe("svm_spoke.bundle", () => {
   it("Execute Max Refunds", async () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
-    // Higher refund count panics out of memory when looping the transfers.
-    // TODO: split out claiming individual refunds to resolve this bottleneck.
-    const numberOfRefunds = 19;
+    // Higher refund count hits message size limit due to refund accounts also being present in calldata. This could be
+    // resolved by feeding calldata from a buffer account.
+    const numberOfRefunds = 21;
+    const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
     const refundAccounts: anchor.web3.PublicKey[] = [];
     const refundAmounts: BN[] = [];
@@ -694,23 +695,38 @@ describe("svm_spoke.bundle", () => {
       payer: payer.publicKey,
       recentSlot: await connection.getSlot(),
     });
-    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-      lookupTable: lookupTableAddress,
-      authority: payer.publicKey,
-      payer: payer.publicKey,
-      addresses: allAccounts,
-    });
 
-    // Submit the ALT creation and extend transaction
+    // Submit the ALT creation transaction
     await anchor.web3.sendAndConfirmTransaction(
       connection,
-      new anchor.web3.Transaction().add(lookupTableInstruction).add(extendInstruction),
+      new anchor.web3.Transaction().add(lookupTableInstruction),
       [payer],
       {
         skipPreflight: true, // Avoids recent slot mismatch in simulation.
-        commitment: "finalized", // Avoids invalid ALT index as ALT might not be active yet on the following tx.
       }
     );
+
+    // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
+    for (let i = 0; i < allAccounts.length; i += maxExtendedAccounts) {
+      const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+        lookupTable: lookupTableAddress,
+        authority: payer.publicKey,
+        payer: payer.publicKey,
+        addresses: allAccounts.slice(i, i + maxExtendedAccounts),
+      });
+
+      await anchor.web3.sendAndConfirmTransaction(
+        connection,
+        new anchor.web3.Transaction().add(extendInstruction),
+        [payer],
+        {
+          skipPreflight: true, // Avoids recent slot mismatch in simulation.
+        }
+      );
+    }
+
+    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Fetch the AddressLookupTableAccount
     const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
