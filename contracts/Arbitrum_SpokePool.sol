@@ -7,6 +7,7 @@ pragma solidity ^0.8.19;
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridgeInterfaces.sol";
+import { AddressUtils } from "./libraries/AddressUtils.sol";
 
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
@@ -54,7 +55,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == AddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
@@ -109,17 +110,6 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     function _whitelistToken(address _l2Token, address _l1Token) internal {
         whitelistedTokens[_l2Token] = _l1Token;
         emit WhitelistedTokens(_l2Token, _l1Token);
-    }
-
-    // L1 addresses are transformed during l1->l2 calls.
-    // See https://developer.offchainlabs.com/docs/l1_l2_messages#address-aliasing for more information.
-    // This cannot be pulled directly from Arbitrum contracts because their contracts are not 0.8.X compatible and
-    // this operation takes advantage of overflows, whose behavior changed in 0.8.0.
-    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        // Allows overflows as explained above.
-        unchecked {
-            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
-        }
     }
 
     // Apply AVM-specific transformation to cross domain admin address on L1.

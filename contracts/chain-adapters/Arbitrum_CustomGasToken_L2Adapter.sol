@@ -8,21 +8,24 @@ import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/C
 import { ArbitrumCustomGasTokenInbox, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 import { ForwarderBase } from "./ForwarderBase.sol";
 import { Arbitrum_CustomGasToken_AdapterBase, FunderInterface } from "./Arbitrum_CustomGasToken_AdapterBase.sol";
+import { AddressUtils } from "../libraries/AddressUtils.sol";
 
 /**
- * @notice Contract containing logic to send messages from Arbitrum to an AVM L3.
+ * @notice Contract to be deployed on L2 containing logic to send messages from Arbitrum to an AVM L3.
  * @dev This contract is very similar to Arbitrum_CustomGasToken_Adapter. It is meant to bridge
  * tokens and send messages over a bridge which uses a custom gas token, except this contract assumes
  * it is deployed on Arbitrum.
+ * @dev This contract sends messages to L3 when the msg.sender is the `crossDomainAdmin` (which should
+ * be set to the hub pool). The `crossDomainAdmin` is defined upon initialization.
  * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase {
+contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == AddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
@@ -41,6 +44,7 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
      * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
      * and used for all messages sent by this adapter.
      * @param _l3GasPrice Gas price bid for L3 execution. Should be set conservatively high to avoid stuck messages.
+     * @dev Both `crossDomainAdmin` and `l3SpokePool` are defined on initialization of the proxy.
      */
     constructor(
         ArbitrumCustomGasTokenInbox _l2ArbitrumInbox,
@@ -79,6 +83,9 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
         address,
         uint256 amount
     ) external payable override {
+        // The second field is hardcoded as address(0) since AVM gateway routers do not bridge a source token
+        // to a specified destination token, but instead derives the L2 token in the gateway router. Therefore,
+        // the second argument is not used by the adapter's bridging logic.
         _relayTokens(l2Token, address(0), amount, l3SpokePool);
         emit TokensForwarded(l2Token, amount);
     }
@@ -96,11 +103,4 @@ contract Arbitrum_CustomGasToken_L2_Forwarder is Arbitrum_CustomGasToken_Adapter
     }
 
     function _requireAdminSender() internal virtual override onlyFromCrossDomainAdmin {}
-
-    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        // Allows overflows as explained above.
-        unchecked {
-            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
-        }
-    }
 }

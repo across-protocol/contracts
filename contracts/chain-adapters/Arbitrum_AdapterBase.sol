@@ -125,7 +125,7 @@ contract Arbitrum_AdapterBase is CircleCCTPAdapter {
             IERC20(l1Token).safeIncreaseAllowance(erc20Gateway, amount);
 
             // `outboundTransfer` expects that the caller includes a bytes message as the last param that includes the
-            // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum/blob/e98d14873dd77513b569771f47b5e05b72402c5e/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L232
+            // maxSubmissionCost to use when creating an L2 retryable ticket: https://github.com/OffchainLabs/arbitrum-classic/blob/551a39b381dcea81e03e7599fcb01fddff4fe96c/packages/arb-bridge-peripherals/contracts/tokenbridge/ethereum/gateway/L1GatewayRouter.sol#L240
             bytes memory data = abi.encode(L2_MAX_SUBMISSION_COST, "");
 
             // Note: Legacy routers don't have the outboundTransferCustomRefund method, so default to using

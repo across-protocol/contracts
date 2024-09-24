@@ -8,6 +8,7 @@ import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapt
 import { ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 import { ForwarderBase } from "./ForwarderBase.sol";
 import { Arbitrum_AdapterBase } from "./Arbitrum_AdapterBase.sol";
+import { AddressUtils } from "../libraries/AddressUtils.sol";
 
 /**
  * @notice Contract containing logic to send messages from L2 to AVM L3s.
@@ -17,11 +18,11 @@ import { Arbitrum_AdapterBase } from "./Arbitrum_AdapterBase.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_L2_Forwarder is ForwarderBase, Arbitrum_AdapterBase {
+contract Arbitrum_L2Adapter is ForwarderBase, Arbitrum_AdapterBase {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
+        require(msg.sender == AddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
@@ -91,11 +92,4 @@ contract Arbitrum_L2_Forwarder is ForwarderBase, Arbitrum_AdapterBase {
     }
 
     function _requireAdminSender() internal virtual override onlyFromCrossDomainAdmin {}
-
-    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        // Allows overflows as explained above.
-        unchecked {
-            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
-        }
-    }
 }
