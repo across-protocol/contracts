@@ -132,7 +132,7 @@ describe("svm_spoke.fill", () => {
       await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
       assert.fail("Fill should have failed due to fill deadline passed");
     } catch (err) {
-      assert.include(err.toString(), "FillDeadlinePassed", "Expected FillDeadlinePassed error");
+      assert.include(err.toString(), "ExpiredFillDeadline", "Expected ExpiredFillDeadline error");
     }
   });
 
@@ -193,9 +193,9 @@ describe("svm_spoke.fill", () => {
     // Second fill attempt with the same data
     try {
       await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
-      assert.fail("Fill should have failed due to AlreadyFilled error");
+      assert.fail("Fill should have failed due to RelayFilled error");
     } catch (err) {
-      assert.include(err.toString(), "AlreadyFilled", "Expected AlreadyFilled error");
+      assert.include(err.toString(), "RelayFilled", "Expected RelayFilled error");
     }
   });
 

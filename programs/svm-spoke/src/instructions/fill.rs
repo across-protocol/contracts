@@ -100,7 +100,7 @@ pub fn fill_v3_relay(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -110,19 +110,19 @@ pub fn fill_v3_relay(
     let fill_status_account = &mut ctx.accounts.fill_status;
     require!(
         fill_status_account.status != FillStatus::Filled,
-        CustomError::AlreadyFilled
+        CustomError::RelayFilled
     );
 
     // Check if the fill deadline has passed
     require!(
-        current_timestamp <= relay_data.fill_deadline,
-        CustomError::FillDeadlinePassed
+        current_time <= relay_data.fill_deadline,
+        CustomError::ExpiredFillDeadline
     );
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
     if relay_data.exclusive_relayer != Pubkey::default() {
         require!(
-            current_timestamp > relay_data.exclusivity_deadline
+            current_time > relay_data.exclusivity_deadline
                 || ctx.accounts.signer.key() == relay_data.exclusive_relayer,
             CustomError::NotExclusiveRelayer
         );
@@ -210,7 +210,7 @@ pub fn close_fill_pda(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -224,7 +224,7 @@ pub fn close_fill_pda(
 
     // Check if the deposit has expired
     require!(
-        current_timestamp > relay_data.fill_deadline,
+        current_time > relay_data.fill_deadline,
         CustomError::FillDeadlineNotPassed
     );
 

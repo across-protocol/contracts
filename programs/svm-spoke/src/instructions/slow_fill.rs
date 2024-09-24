@@ -54,7 +54,7 @@ pub fn request_v3_slow_fill(
     let state = &mut ctx.accounts.state;
 
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -63,9 +63,12 @@ pub fn request_v3_slow_fill(
     // Check if the fill is within the exclusivity window & fill deadline.
     //TODO: ensure the require blocks here are equivilelent to evm.
     require!(
-        relay_data.exclusivity_deadline < current_timestamp
-            && relay_data.fill_deadline < current_timestamp,
-        CustomError::WithinFillWindow
+        relay_data.exclusivity_deadline < current_time,
+        CustomError::NoSlowFillsInExclusivityWindow
+    );
+    require!(
+        relay_data.fill_deadline < current_time,
+        CustomError::ExpiredFillDeadline
     );
 
     // Check the fill status

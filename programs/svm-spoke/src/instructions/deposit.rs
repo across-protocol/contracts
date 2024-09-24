@@ -89,7 +89,21 @@ pub fn deposit_v3(
     // spoke pool, create a route PDA, toggle it to enabled and then call deposit, passing in that PDA and
     // enable a deposit to occur against a route that was not canonically enabled? write some tests for this and
     // verify that this check is sufficient or update accordingly.
-    require!(ctx.accounts.route.enabled, CustomError::RouteNotEnabled);
+    require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
+
+    let current_time = if state.current_time != 0 {
+        state.current_time
+    } else {
+        Clock::get()?.unix_timestamp as u32
+    };
+
+    if current_time - quote_timestamp > state.deposit_quote_time_buffer {
+        return Err(CustomError::InvalidQuoteTimestamp.into());
+    }
+
+    if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
+        return Err(CustomError::InvalidFillDeadline.into());
+    }
 
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.user_token_account.to_account_info(),

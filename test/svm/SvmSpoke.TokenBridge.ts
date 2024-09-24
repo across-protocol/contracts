@@ -190,7 +190,7 @@ describe("svm_spoke.token_bridge", () => {
     const message = decodeMessageSentData(
       (await messageTransmitterProgram.account.messageSent.fetch(messageSentEventData.publicKey)).message
     );
-    assert.strictEqual(message.destinationDomain, remoteDomain, "Invalid destination domain");
+    assert.strictEqual(message.destinationDomain, remoteDomain.toNumber(), "Invalid destination domain");
     assert.isTrue(message.messageBody.burnToken.equals(mint), "Invalid burn token");
     assert.isTrue(message.messageBody.mintRecipient.equals(crossDomainAdmin), "Invalid mint recipient");
     assert.strictEqual(message.messageBody.amount.toString(), pendingToHubPool.toString(), "Invalid amount");
