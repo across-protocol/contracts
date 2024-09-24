@@ -5,6 +5,8 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 
 /**
  * @title ForwarderBase
+ * @notice This contract expects to receive messages and tokens from the Hub Pool on L1. It rejects messages which do not originate
+ * from the hub pool.
  * @notice Base contract deployed some network between L1 and the network housing a spoke pool contract. If a message is sent
  * to this contract which came from the cross domain admin, then it is routed to the next network via the canonical messaging
  * bridge (which may be done automatically by the network's finalization infrastructure). Tokens sent from L1 are stored temporarily
