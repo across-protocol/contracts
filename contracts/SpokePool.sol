@@ -563,7 +563,7 @@ abstract contract SpokePool is
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
-            exclusivityDeadline,
+            uint32(getCurrentTime()) + exclusivityPeriod,
             message
         );
     }
@@ -598,7 +598,7 @@ abstract contract SpokePool is
      * @param exclusiveRelayer See identically named parameter in depositV3() comments.
      * @param quoteTimestamp See identically named parameter in depositV3() comments.
      * @param fillDeadline See identically named parameter in depositV3() comments.
-     * @param exclusivityDeadline See identically named parameter in depositV3() comments.
+     * @param exclusivityPeriod See identically named parameter in depositV3() comments.
      * @param message See identically named parameter in depositV3() comments.
      */
     function unsafeDepositV3(
@@ -613,24 +613,24 @@ abstract contract SpokePool is
         uint96 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable nonReentrant unpausedDeposits {
-        // @dev Create the uint256 deposit hash by first left shifting the address (which is 20 bytes) by 12 bytes.
+        // @dev Create the uint256 deposit ID by first left shifting the address (which is 20 bytes) by 12 bytes.
         // This creates room in the right-most 12 bytes for the passed in uint96 deposit nonce, which we set by
         // bitwise OR-ing the left-shifted address with the nonce. We're then left with a 32 byte number.
-        // This guarantees the resultant hash won't collide with a safe deposit nonce which is set by
+        // This guarantees the resultant ID won't collide with a safe deposit ID which is set by
         // implicitly casting a uint32 to a uint256, whose left-most 24 bytes are 0, while we're guaranteed that
         // some of this deposit hash's first 24 bytes are not 0 due to the left shift of the msg.sender address, which
         // won't be the zero address.
 
-        // @dev For some L2's, it might actually be possible that the zero address can be the msg.sender which might
+        // @dev For some L2's, it could be possible that the zero address can be the msg.sender which might
         // make it possible for an unsafe deposit hash to collide with a safe deposit nonce. To prevent these cases,
         // we might want to consider explicitly checking that the msg.sender is not the zero address. However,
         // this is unlikely and we also should consider not checking it and incurring the extra gas cost:
-        // if (msg.sender == address()) revert InvalidUnsafeDepositor();
+        // if (msg.sender == address(0)) revert InvalidUnsafeDepositor();
 
-        uint256 depositHash = uint256((uint160(msg.sender) << 12) | depositNonce);
+        uint256 depositId = uint256((uint160(msg.sender) << 12) | depositNonce);
         _depositV3(
             depositor,
             recipient,
@@ -640,10 +640,10 @@ abstract contract SpokePool is
             outputAmount,
             destinationChainId,
             exclusiveRelayer,
-            depositHash,
+            depositId,
             quoteTimestamp,
             fillDeadline,
-            exclusivityDeadline,
+            uint32(getCurrentTime()) + exclusivityPeriod,
             message
         );
     }
@@ -1121,7 +1121,7 @@ abstract contract SpokePool is
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
-        uint256 depositNonce,
+        uint256 depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -1151,22 +1151,6 @@ abstract contract SpokePool is
         // situation won't be a problem for honest users.
         if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
 
-        // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
-        //  by forcing them to specify an exclusive relayer if the exclusivity period
-        // is in the future. If this deadline is 0, then the exclusive relayer must also be address(0).
-        // @dev Checks if either are > 0 by bitwise or-ing.
-        if (uint256(uint160(exclusiveRelayer)) | exclusivityDeadline != 0) {
-            // Now that we know one is nonzero, we need to perform checks on each.
-            // Check that exclusive relayer is nonzero.
-            if (exclusiveRelayer == address(0)) revert InvalidExclusiveRelayer();
-
-            // Check that deadline is in the future.
-            if (exclusivityDeadline < currentTime) revert InvalidExclusivityDeadline();
-        }
-
-        // No need to sanity check exclusivityDeadline because if its bigger than fillDeadline, then
-        // there the full deadline is exclusive, and if its too small, then there is no exclusivity period.
-
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be
         // wrapped.
@@ -1188,7 +1172,7 @@ abstract contract SpokePool is
             inputAmount,
             outputAmount,
             destinationChainId,
-            depositNonce,
+            depositId,
             quoteTimestamp,
             fillDeadline,
             exclusivityDeadline,
