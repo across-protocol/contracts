@@ -1,17 +1,12 @@
-import { ZERO_ADDRESS } from "@uma/common";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { L1_ADDRESS_MAP, WETH } from "./consts";
+import { DeployFunction } from "hardhat-deploy/types";
+import { L1_ADDRESS_MAP, WETH, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId, network } = hre;
-  const { deploy } = deployments;
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  const { deployer } = await getNamedAccounts();
-
-  const chainId = parseInt(await getChainId());
-
-  await deploy("Zora_Adapter", {
+  await hre.deployments.deploy("Zora_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,

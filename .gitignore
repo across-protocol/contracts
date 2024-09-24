@@ -5,6 +5,8 @@ coverage.json
 typechain
 dist
 typechain-types
+.DS_Store
+.yarn
 
 # Vim files
 *.swp
@@ -23,3 +25,10 @@ storage-layouts/proposed*
 
 # IDE
 .idea
+
+# Anchor files
+.anchor
+target
+**/*.rs.bk
+test-ledger
+idls

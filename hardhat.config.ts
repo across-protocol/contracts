@@ -84,6 +84,9 @@ const config: HardhatUserConfig = {
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Mode_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -105,6 +108,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: CHAIN_IDs.MAINNET,
+      companionNetworks: { l1: "mainnet" },
     },
     zksync: {
       chainId: CHAIN_IDs.ZK_SYNC,
@@ -117,7 +121,7 @@ const config: HardhatUserConfig = {
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     optimism: {
-      url: getNodeUrl("optimism", true, CHAIN_IDs.OPTIMISM),
+      url: getNodeUrl("optimism-mainnet", true, CHAIN_IDs.OPTIMISM),
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: CHAIN_IDs.OPTIMISM,
@@ -132,7 +136,7 @@ const config: HardhatUserConfig = {
     },
     arbitrum: {
       chainId: CHAIN_IDs.ARBITRUM,
-      url: getNodeUrl("arbitrum", true, CHAIN_IDs.ARBITRUM),
+      url: getNodeUrl("arbitrum-mainnet", true, CHAIN_IDs.ARBITRUM),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -149,10 +153,11 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: CHAIN_IDs.SEPOLIA,
+      companionNetworks: { l1: "sepolia" },
     },
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
-      url: getNodeUrl("polygon-matic", true, CHAIN_IDs.POLYGON),
+      url: getNodeUrl("polygon-mainnet", true, CHAIN_IDs.POLYGON),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -404,8 +409,8 @@ const config: HardhatUserConfig = {
         network: "mode",
         chainId: CHAIN_IDs.MODE,
         urls: {
-          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
-          browserURL: "https://modescan.io",
+          apiURL: "https://explorer.mode.network/api",
+          browserURL: "https://explorer.mode.network/",
         },
       },
       {
@@ -462,6 +467,9 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: "./typechain",
     target: "ethers-v5",
+  },
+  paths: {
+    tests: "./test/evm/hardhat",
   },
 };
 
