@@ -29,3 +29,27 @@ contract ArbitrumMockErc20GatewayRouter {
         return address(this);
     }
 }
+
+contract Inbox {
+    function createRetryableTicket(
+        address,
+        uint256,
+        uint256,
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata _data
+    ) external returns (uint256) {
+        return 0;
+    }
+}
+
+contract L2GatewayRouter {
+    function outboundTransfer(
+        address,
+        address,
+        uint256,
+        bytes calldata _data
+    ) public payable returns (bytes memory) {}
+}
