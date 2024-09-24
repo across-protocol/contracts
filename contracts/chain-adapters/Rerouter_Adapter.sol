@@ -5,6 +5,8 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to a target (not necessarily a spoke pool) on L2.
+ * @notice There should be one of these adapters for each L3 spoke pool deployment, or equivalently, each L2
+ * forwarder/adapter contract.
  * @notice The contract receiving messages on L2 will be "spoke pool like" functions, e.g. "relayRootBundle" and
  * "relaySpokePoolAdminFunction".
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
