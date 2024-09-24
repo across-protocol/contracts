@@ -11,7 +11,8 @@ const provider = anchor.AnchorProvider.env();
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
 const owner = provider.wallet.publicKey;
 const chainId = new BN(420);
-const remoteDomain = 0;
+const remoteDomain = new BN(0); // Ethereum
+const localDomain = 5; // Solana
 const crossDomainAdmin = evmAddressToPublicKey(ethers.Wallet.createRandom().address);
 
 const seedBalance = 20000000;
@@ -21,22 +22,42 @@ const exclusiveRelayer = Keypair.generate().publicKey;
 const outputToken = new PublicKey("1111111111113EsMD5n1VA94D2fALdb1SAKLam8j"); // TODO: this is lazy. this is cast USDC from Eth mainnet.
 const inputAmount = new BN(500000);
 const outputAmount = inputAmount;
-const quoteTimestamp = new BN(Math.floor(Date.now() / 1000));
-const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600);
-const exclusivityDeadline = new BN(Math.floor(Date.now() / 1000) + 300);
+const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 10); // 10 seconds ago.
+const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600); // 600 seconds from now.
+const exclusivityDeadline = new BN(Math.floor(Date.now() / 1000) + 300); // 300 seconds from now.
 const message = Buffer.from("Test message");
+const depositQuoteTimeBuffer = new BN(3600); // 1 hour.
+const fillDeadlineBuffer = new BN(3600 * 4); // 4 hours.
 
-const initializeState = async (seed?: BN) => {
+const initializeState = async (
+  seed?: BN,
+  initialState?: {
+    initialNumberOfDeposits: BN;
+    chainId: BN;
+    remoteDomain: BN;
+    crossDomainAdmin: PublicKey;
+    testableMode: boolean;
+    depositQuoteTimeBuffer: BN;
+    fillDeadlineBuffer: BN;
+  }
+) => {
   const actualSeed = seed || new BN(Math.floor(Math.random() * 1000000));
   const seeds = [Buffer.from("state"), actualSeed.toArrayLike(Buffer, "le", 8)];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
+  if (!initialState) {
+    initialState = {
+      initialNumberOfDeposits: new BN(0),
+      chainId,
+      remoteDomain,
+      crossDomainAdmin,
+      testableMode: true,
+      depositQuoteTimeBuffer,
+      fillDeadlineBuffer,
+    };
+  }
   await program.methods
-    .initialize(actualSeed, new BN(0), chainId, remoteDomain, crossDomainAdmin, true)
-    .accounts({
-      state: state as any,
-      signer: owner,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    })
+    .initialize(...[actualSeed, ...Object.values(initialState)])
+    .accounts({ state: state as any, signer: owner, systemProgram: anchor.web3.SystemProgram.programId })
     .rpc();
   return state;
 };
@@ -56,6 +77,10 @@ async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: an
   await program.methods.setCurrentTime(newTime).accounts({ state, signer: signer.publicKey }).signers([signer]).rpc();
 }
 
+async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
+  return (await program.account.state.fetch(state)).currentTime;
+}
+
 function assertSE(a: any, b: any, errorMessage: string) {
   assert.strictEqual(a.toString(), b.toString(), errorMessage);
 }
@@ -67,6 +92,7 @@ export const common = {
   owner,
   chainId,
   remoteDomain,
+  localDomain,
   crossDomainAdmin,
   seedBalance,
   destinationChainId,
@@ -79,10 +105,13 @@ export const common = {
   fillDeadline,
   exclusivityDeadline,
   message,
+  depositQuoteTimeBuffer,
+  fillDeadlineBuffer,
   initializeState,
   createRoutePda,
   getVaultAta,
   setCurrentTime,
+  getCurrentTime,
   assert,
   assertSE,
   depositData: {

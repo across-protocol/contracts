@@ -9,6 +9,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
+    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     state::{FillStatus, FillStatusAccount, State},
 };
 
@@ -91,13 +92,6 @@ pub struct V3RelayData {
     pub message: Vec<u8>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum FillType {
-    FastFill,
-    ReplacedSlowFill,
-    SlowFill,
-}
-
 pub fn fill_v3_relay(
     ctx: Context<FillV3Relay>,
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
@@ -106,7 +100,7 @@ pub fn fill_v3_relay(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -116,19 +110,19 @@ pub fn fill_v3_relay(
     let fill_status_account = &mut ctx.accounts.fill_status;
     require!(
         fill_status_account.status != FillStatus::Filled,
-        CustomError::AlreadyFilled
+        CustomError::RelayFilled
     );
 
     // Check if the fill deadline has passed
     require!(
-        current_timestamp <= relay_data.fill_deadline,
-        CustomError::FillDeadlinePassed
+        current_time <= relay_data.fill_deadline,
+        CustomError::ExpiredFillDeadline
     );
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
     if relay_data.exclusive_relayer != Pubkey::default() {
         require!(
-            current_timestamp > relay_data.exclusivity_deadline
+            current_time > relay_data.exclusivity_deadline
                 || ctx.accounts.signer.key() == relay_data.exclusive_relayer,
             CustomError::NotExclusiveRelayer
         );
@@ -216,7 +210,7 @@ pub fn close_fill_pda(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -230,7 +224,7 @@ pub fn close_fill_pda(
 
     // Check if the deposit has expired
     require!(
-        current_timestamp > relay_data.fill_deadline,
+        current_time > relay_data.fill_deadline,
         CustomError::FillDeadlineNotPassed
     );
 
@@ -238,29 +232,3 @@ pub fn close_fill_pda(
 }
 
 // Events.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3RelayExecutionEventInfo {
-    pub updated_recipient: Pubkey,
-    pub updated_message: Vec<u8>,
-    pub updated_output_amount: u64,
-    pub fill_type: FillType,
-}
-
-#[event]
-pub struct FilledV3Relay {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub repayment_chain_id: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub exclusive_relayer: Pubkey,
-    pub relayer: Pubkey,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub message: Vec<u8>,
-    pub relay_execution_info: V3RelayExecutionEventInfo,
-}

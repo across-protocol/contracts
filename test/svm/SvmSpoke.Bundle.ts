@@ -13,9 +13,10 @@ import {
   RelayerRefundLeaf,
   RelayerRefundLeafSolana,
   RelayerRefundLeafType,
+  readProgramEvents,
 } from "./utils";
 
-const { provider, program, owner, initializeState, connection, chainId } = common;
+const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
 describe("svm_spoke.bundle", () => {
   anchor.setProvider(provider);
@@ -139,7 +140,7 @@ describe("svm_spoke.bundle", () => {
       isSolana: true,
       leafId: new BN(0),
       chainId: chainId,
-      amountToReturn: new BN(0),
+      amountToReturn: new BN(69420),
       mintPublicKey: mint,
       refundAccounts: [relayerTA, relayerTB],
       refundAmounts: [relayerARefund, relayerBRefund],
@@ -190,6 +191,23 @@ describe("svm_spoke.bundle", () => {
       })
       .remainingAccounts(remainingAccounts)
       .rpc();
+
+    // Verify the ExecutedRelayerRefundRoot event
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for event processing
+    let events = await readProgramEvents(connection, program);
+    let event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+
+    // Remove the expectedValues object and use direct assertions
+    assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
+    assertSE(event.chainId, chainId, "chainId should match");
+    assertSE(event.refundAmounts[0], relayerARefund, "Relayer A refund amount should match");
+    assertSE(event.refundAmounts[1], relayerBRefund, "Relayer B refund amount should match");
+    assertSE(event.rootBundleId, stateAccountData.rootBundleId, "rootBundleId should match");
+    assertSE(event.leafId, leaf.leafId, "leafId should match");
+    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+    assertSE(event.refundAddresses[0], relayerTA, "Relayer A address should match");
+    assertSE(event.refundAddresses[1], relayerTB, "Relayer B address should match");
+    assertSE(event.caller, owner, "caller should match");
 
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
     const fRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;

@@ -10,10 +10,9 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { slowFillHashFn, SlowFillLeaf } from "./utils";
+import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array } from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
@@ -175,7 +174,7 @@ describe("svm_spoke.slow_fill", () => {
       await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to fill deadline not passed");
     } catch (err) {
-      assert.include(err.toString(), "WithinFillWindow", "Expected WithinFillWindow error");
+      assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the fillDeadline
@@ -205,7 +204,7 @@ describe("svm_spoke.slow_fill", () => {
       await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to being within exclusivity window");
     } catch (err) {
-      assert.include(err.toString(), "WithinFillWindow", "Expected WithinFillWindow error");
+      assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the fillDeadline.

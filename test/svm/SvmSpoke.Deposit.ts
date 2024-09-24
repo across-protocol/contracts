@@ -9,10 +9,11 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { readProgramEvents } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
+import { readProgramEvents } from "./utils";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
-const { createRoutePda, getVaultAta, assertSE, assert } = common;
+const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
+  common;
 
 describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
@@ -197,7 +198,7 @@ describe("svm_spoke.deposit", () => {
         .rpc();
       assert.fail("Deposit should have failed for a route that is explicitly disabled");
     } catch (err) {
-      assert.include(err.toString(), "RouteNotEnabled", "Expected RouteNotEnabled error");
+      assert.include(err.toString(), "DisabledRoute", "Expected DisabledRoute error");
     }
   });
 
@@ -221,6 +222,80 @@ describe("svm_spoke.deposit", () => {
     }
   });
 
+  it("Fails to deposit tokens with InvalidQuoteTimestamp when quote timestamp is in the future", async () => {
+    const currentTime = await getCurrentTime(program, state);
+    const futureQuoteTimestamp = new BN(currentTime + 10); // 10 seconds in the future
+
+    depositData.quoteTimestamp = futureQuoteTimestamp;
+
+    try {
+      await program.methods
+        .depositV3(...Object.values(depositData))
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
+    } catch (err) {
+      assert.include(
+        err.toString(),
+        "attempt to subtract with overflow",
+        "Expected underflow error due to future quote timestamp"
+      );
+    }
+  });
+
+  it("Fails to deposit tokens with quoteTimestamp is too old", async () => {
+    const currentTime = await getCurrentTime(program, state);
+    const futureQuoteTimestamp = new BN(currentTime - depositQuoteTimeBuffer.toNumber() - 1); // older than buffer.
+
+    depositData.quoteTimestamp = futureQuoteTimestamp;
+
+    try {
+      await program.methods
+        .depositV3(...Object.values(depositData))
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
+    } catch (err) {
+      assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
+    }
+  });
+
+  it("Fails to deposit tokens with InvalidFillDeadline when fill deadline is invalid", async () => {
+    const currentTime = await getCurrentTime(program, state);
+
+    // Case 1: Fill deadline is older than the current time on the contract
+    let invalidFillDeadline = currentTime - 1; // 1 second before current time on the contract.
+    depositData.fillDeadline = new BN(invalidFillDeadline);
+    depositData.quoteTimestamp = new BN(currentTime - 1); // 1 second before current time on the contract to reset.
+
+    try {
+      await program.methods
+        .depositV3(...Object.values(depositData))
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed due to InvalidFillDeadline (past deadline)");
+    } catch (err) {
+      assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for past deadline");
+    }
+
+    // Case 2: Fill deadline is too far ahead (longer than fill_deadline_buffer + currentTime)
+    invalidFillDeadline = currentTime + fillDeadlineBuffer.toNumber() + 1; // 1 seconds beyond the buffer
+    depositData.fillDeadline = new BN(invalidFillDeadline);
+
+    try {
+      await program.methods
+        .depositV3(...Object.values(depositData))
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed due to InvalidFillDeadline (future deadline)");
+    } catch (err) {
+      assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for future deadline");
+    }
+  });
   it("Fails to process deposit for mint inconsistent input_token", async () => {
     // Save the correct data and accounts from global scope before changing it when creating a new input token.
     const firstInputToken = inputToken;

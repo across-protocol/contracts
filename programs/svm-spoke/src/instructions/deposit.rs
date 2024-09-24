@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     error::CustomError,
+    event::V3FundsDeposited,
     state::{Route, State},
 };
 
@@ -84,7 +85,21 @@ pub fn deposit_v3(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    require!(ctx.accounts.route.enabled, CustomError::RouteNotEnabled);
+    require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
+
+    let current_time = if state.current_time != 0 {
+        state.current_time
+    } else {
+        Clock::get()?.unix_timestamp as u32
+    };
+
+    if current_time - quote_timestamp > state.deposit_quote_time_buffer {
+        return Err(CustomError::InvalidQuoteTimestamp.into());
+    }
+
+    if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
+        return Err(CustomError::InvalidFillDeadline.into());
+    }
 
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.user_token_account.to_account_info(),
@@ -117,21 +132,4 @@ pub fn deposit_v3(
     });
 
     Ok(())
-}
-
-#[event]
-pub struct V3FundsDeposited {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub destination_chain_id: u64,
-    pub deposit_id: u64,
-    pub quote_timestamp: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub exclusive_relayer: Pubkey,
-    pub message: Vec<u8>,
 }

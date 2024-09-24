@@ -15,7 +15,8 @@ use crate::{
 };
 
 // TODO: We can likely move some of the common exports to better locations. we are pulling a lot of these from fill.rs
-use crate::{FillType, FilledV3Relay, V3RelayData, V3RelayExecutionEventInfo};
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
+use crate::V3RelayData; // Pulled type definition from fill.rs.
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -53,7 +54,7 @@ pub fn request_v3_slow_fill(
     let state = &mut ctx.accounts.state;
 
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -62,9 +63,12 @@ pub fn request_v3_slow_fill(
     // Check if the fill is within the exclusivity window & fill deadline.
     //TODO: ensure the require blocks here are equivilelent to evm.
     require!(
-        relay_data.exclusivity_deadline < current_timestamp
-            && relay_data.fill_deadline < current_timestamp,
-        CustomError::WithinFillWindow
+        relay_data.exclusivity_deadline < current_time,
+        CustomError::NoSlowFillsInExclusivityWindow
+    );
+    require!(
+        relay_data.fill_deadline < current_time,
+        CustomError::ExpiredFillDeadline
     );
 
     // Check the fill status
@@ -269,21 +273,4 @@ pub fn execute_v3_slow_relay_leaf(
     });
 
     Ok(())
-}
-
-// Events.
-#[event]
-pub struct RequestedV3SlowFill {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub exclusive_relayer: Pubkey,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub message: Vec<u8>,
 }

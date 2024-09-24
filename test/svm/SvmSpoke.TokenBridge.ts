@@ -5,8 +5,7 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { common } from "./SvmSpoke.common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { findProgramAddress } from "../../src/SvmUtils";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType, relayerRefundHashFn } from "./utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType, relayerRefundHashFn, findProgramAddress } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
 
@@ -191,7 +190,7 @@ describe("svm_spoke.token_bridge", () => {
     const message = decodeMessageSentData(
       (await messageTransmitterProgram.account.messageSent.fetch(messageSentEventData.publicKey)).message
     );
-    assert.strictEqual(message.destinationDomain, remoteDomain, "Invalid destination domain");
+    assert.strictEqual(message.destinationDomain, remoteDomain.toNumber(), "Invalid destination domain");
     assert.isTrue(message.messageBody.burnToken.equals(mint), "Invalid burn token");
     assert.isTrue(message.messageBody.mintRecipient.equals(crossDomainAdmin), "Invalid mint recipient");
     assert.strictEqual(message.messageBody.amount.toString(), pendingToHubPool.toString(), "Invalid amount");
