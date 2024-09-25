@@ -4,16 +4,13 @@ pragma solidity ^0.8.0;
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to a target (not necessarily a spoke pool) on L2.
- * @notice Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
+ * @notice Contract containing logic to send messages from L1 to a target on L2.
+ * @dev Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
  * will be the L3 spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
- * contract DOES NOT send anything to the L2 containing info on the target L3 spoke pool. The L3 spoke pool address
- * must instead be initialized on the `l2Target` contract as the same spoke pool address found in the hub pool's
- * `crossChainContracts` mapping.
- * @notice There should be one of these adapters for each L3 spoke pool deployment, or equivalently, each L2
- * forwarder/adapter contract.
- * @notice The contract receiving messages on L2 will be "spoke pool like" functions, e.g. "relayRootBundle" and
- * "relaySpokePoolAdminFunction".
+ * contract cannot send anything directly to the L3 target. Instead, it "re-routes" messages to the L3 via an L2
+ * contract set as the `l2Target` in this contract. The L3 spoke pool address must be initialized on the `l2Target`
+ * contract to the same L3 spoke pool address found in the hub pool's `crossChainContracts` mapping. There should be
+ * one of these adapters for each L3 spoke pool deployment.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
@@ -30,7 +27,8 @@ contract Rerouter_Adapter is AdapterInterface {
     error RelayTokensFailed(address l1Token);
 
     /**
-     * @notice Constructs new Adapter for sending tokens/messages to an L2 target.
+     * @notice Constructs new Adapter for sending tokens/messages to an L2 target. This contract will
+     * re-route messages to the _l2Target via the _l1Adapter.
      * @param _l1Adapter Address of the adapter contract on mainnet which implements message transfers
      * and token relays.
      * @param _l2Target Address of the L2 contract which receives the token and message relays.
@@ -41,7 +39,7 @@ contract Rerouter_Adapter is AdapterInterface {
     }
 
     /**
-     * @notice Send cross-chain message to a target on L2.
+     * @notice Send cross-chain message to a target on L2 which will re-route messages to the intended L3 target.
      * @notice The original target field is omitted since messages are unconditionally sent to `l2Target`.
      * @param message Data to send to target.
      */

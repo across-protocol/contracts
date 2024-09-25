@@ -9,7 +9,11 @@ import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1Stand
 import { Rerouter_Adapter } from "../../../../contracts/chain-adapters/Rerouter_Adapter.sol";
 import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
+import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
+
+import "forge-std/console.sol";
 
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
@@ -31,62 +35,16 @@ contract Token_ERC20 is ERC20 {
     }
 }
 
-contract MinimalWeth is Token_ERC20 {
-    constructor(string memory name, string memory symbol) Token_ERC20(name, symbol) {}
-
-    function withdraw(uint256 amount) public {
-        _burn(msg.sender, amount);
-        (bool success, ) = payable(msg.sender).call{ value: amount }("");
-        require(success);
-    }
-}
-
-contract CrossDomainMessenger {
-    event MessageSent(address indexed target);
-
-    function sendMessage(
-        address target,
-        bytes calldata,
-        uint32
-    ) external {
-        emit MessageSent(target);
-    }
-}
-
-contract StandardBridge {
-    event ETHDepositInitiated(address indexed to, uint256 amount);
-
-    function depositERC20To(
-        address l1Token,
-        address l2Token,
-        address to,
-        uint256 amount,
-        uint32,
-        bytes calldata
-    ) external {
-        Token_ERC20(l1Token).burn(msg.sender, amount);
-        Token_ERC20(l2Token).mint(to, amount);
-    }
-
-    function depositETHTo(
-        address to,
-        uint32,
-        bytes calldata
-    ) external payable {
-        emit ETHDepositInitiated(to, msg.value);
-    }
-}
-
 contract ArbitrumL3AdapterTest is Test {
     Rerouter_Adapter l3Adapter;
     Optimism_Adapter optimismAdapter;
 
     Token_ERC20 l1Token;
     Token_ERC20 l2Token;
-    Token_ERC20 l1Weth;
-    Token_ERC20 l2Weth;
-    CrossDomainMessenger crossDomainMessenger;
-    StandardBridge standardBridge;
+    WETH9 l1Weth;
+    WETH9 l2Weth;
+    MockBedrockCrossDomainMessenger crossDomainMessenger;
+    MockBedrockL1StandardBridge standardBridge;
 
     address l2Target;
 
@@ -95,11 +53,11 @@ contract ArbitrumL3AdapterTest is Test {
 
         l1Token = new Token_ERC20("l1Token", "l1Token");
         l2Token = new Token_ERC20("l2Token", "l2Token");
-        l1Weth = new MinimalWeth("l1Weth", "l1Weth");
-        l2Weth = new MinimalWeth("l2Weth", "l2Weth");
+        l1Weth = new WETH9();
+        l2Weth = new WETH9();
 
-        crossDomainMessenger = new CrossDomainMessenger();
-        standardBridge = new StandardBridge();
+        crossDomainMessenger = new MockBedrockCrossDomainMessenger();
+        standardBridge = new MockBedrockL1StandardBridge();
 
         optimismAdapter = new Optimism_Adapter(
             WETH9Interface(address(l1Weth)),
@@ -113,29 +71,43 @@ contract ArbitrumL3AdapterTest is Test {
 
     // Messages should be indiscriminately sent to the l2Forwarder.
     function testRelayMessage(address target, bytes memory message) public {
+        vm.assume(target != l2Target);
         vm.expectEmit(address(crossDomainMessenger));
-        emit CrossDomainMessenger.MessageSent(l2Target);
+        emit MockBedrockCrossDomainMessenger.MessageSent(l2Target);
         l3Adapter.relayMessage(target, message);
     }
 
     // Sending Weth should call depositETHTo().
     function testRelayWeth(uint256 amountToSend, address random) public {
+        // Prevent fuzz testing with amountToSend * 2 > 2^256
+        amountToSend = uint256(bound(amountToSend, 1, 2**254));
         vm.deal(address(l1Weth), amountToSend);
-        l1Weth.mint(address(l3Adapter), amountToSend);
-        assertEq(amountToSend, l1Weth.totalSupply());
+        vm.deal(address(l3Adapter), amountToSend);
+
+        vm.startPrank(address(l3Adapter));
+        l1Weth.deposit{ value: amountToSend }();
+        vm.stopPrank();
+
+        assertEq(amountToSend * 2, l1Weth.totalSupply());
         vm.expectEmit(address(standardBridge));
-        emit StandardBridge.ETHDepositInitiated(l2Target, amountToSend);
+        emit MockBedrockL1StandardBridge.ETHDepositInitiated(l2Target, amountToSend);
         l3Adapter.relayTokens(address(l1Weth), address(l2Weth), amountToSend, random);
-        assertEq(0, l1Weth.totalSupply());
+        assertEq(0, l1Weth.balanceOf(address(l3Adapter)));
     }
 
     // Sending any random token should call depositERC20To().
     function testRelayToken(uint256 amountToSend, address random) public {
         l1Token.mint(address(l3Adapter), amountToSend);
         assertEq(amountToSend, l1Token.totalSupply());
+
+        vm.expectEmit(address(standardBridge));
+        emit MockBedrockL1StandardBridge.ERC20DepositInitiated(
+            l2Target,
+            address(l1Token),
+            address(l2Token),
+            amountToSend
+        );
         l3Adapter.relayTokens(address(l1Token), address(l2Token), amountToSend, random);
-        assertEq(amountToSend, l2Token.balanceOf(l2Target));
-        assertEq(amountToSend, l2Token.totalSupply());
-        assertEq(0, l1Token.totalSupply());
+        assertEq(0, l1Token.balanceOf(address(l3Adapter)));
     }
 }
