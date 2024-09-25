@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
@@ -22,7 +21,7 @@ import { AddressUtils } from "../libraries/AddressUtils.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase, AdapterInterface {
+contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
