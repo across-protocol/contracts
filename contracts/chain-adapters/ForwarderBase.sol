@@ -59,18 +59,6 @@ abstract contract ForwarderBase is UUPSUpgradeable {
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
 
-    // Added so that this contract may receive ETH to fund transaction gas fees.
-    receive() external payable {}
-
-    /**
-     * @dev When called by the cross domain admin (i.e. the hub pool), the msg.data should be some function
-     * recognizable by the L3 spoke pool, such as "relayRootBundle" or "upgradeTo". Therefore, we forward
-     * this message to the L3 spoke pool using the implemented messaging logic of the L2 forwarder.
-     */
-    fallback() external payable onlyAdmin {
-        _relayL3Message(l3SpokePool, msg.data);
-    }
-
     /**
      * @notice Sets a new cross domain admin for this contract.
      * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
@@ -86,27 +74,6 @@ abstract contract ForwarderBase is UUPSUpgradeable {
     function setL3SpokePool(address _newL3SpokePool) external onlyAdmin {
         _setL3SpokePool(_newL3SpokePool);
     }
-
-    /**
-     * @notice Bridge tokens to an L3.
-     * @param l2Token L2 token to deposit.
-     * @param l3Token L3 token to receive on the destination chain.
-     * @param amount Amount of L2 tokens to deposit and L3 tokens to receive.
-     * @dev relayTokens should only send tokens to the l3SpokePool address, so no access control
-     * is required.
-     */
-    function relayTokens(
-        address l2Token,
-        address l3Token,
-        uint256 amount
-    ) external payable virtual;
-
-    /**
-     * @notice Relay a message to a contract on L3.
-     * @dev This function should be implmented differently based on whether the L2-L3 bridge
-     * requires custom gas tokens to fund cross-chain transactions.
-     */
-    function _relayL3Message(address target, bytes memory message) internal virtual;
 
     // Function to be overridden to accomodate for each L2's unique method of address aliasing.
     function _requireAdminSender() internal virtual;
