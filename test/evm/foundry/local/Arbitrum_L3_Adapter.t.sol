@@ -13,8 +13,6 @@ import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 
-import "forge-std/console.sol";
-
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
 contract Mock_Rerouter_Adapter is Rerouter_Adapter {

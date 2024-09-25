@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to a target on L2.
+ * @notice Contract containing logic to send messages from L1 to a target on L3 via re-routing messages to an
+ * intermediate contract on L2.
  * @dev Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
  * will be the L3 spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
  * contract cannot send anything directly to the L3 target. Instead, it "re-routes" messages to the L3 via an L2
