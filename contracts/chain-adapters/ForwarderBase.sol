@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
  * @title ForwarderBase
@@ -13,7 +14,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
  * temporarily on this contract. Any EOA can initiate a bridge of these tokens to the target `l3SpokePool`.
  * @custom:security-contact bugs@across.to
  */
-abstract contract ForwarderBase is UUPSUpgradeable {
+abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     // L3 address of the recipient of L1 messages and tokens sent via the re-router adapter on L1.
     address public l3SpokePool;
 
