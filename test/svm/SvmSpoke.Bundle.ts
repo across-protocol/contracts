@@ -1,7 +1,14 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as crypto from "crypto";
 import { BN } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import {
+  AddressLookupTableProgram,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
@@ -612,7 +619,10 @@ describe("svm_spoke.bundle", () => {
   it("Execute Max Refunds", async () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
-    const numberOfRefunds = 5;
+    // Higher refund count hits message size limit due to refund accounts also being present in calldata. This could be
+    // resolved by feeding calldata from a buffer account.
+    const numberOfRefunds = 21;
+    const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
     const refundAccounts: anchor.web3.PublicKey[] = [];
     const refundAmounts: BN[] = [];
@@ -655,25 +665,95 @@ describe("svm_spoke.bundle", () => {
       .accounts({ state, rootBundle, signer: owner })
       .rpc();
 
-    const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
-
     // Verify valid leaf
     const proofAsNumbers = proof.map((p) => Array.from(p));
 
-    await program.methods
+    // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
+    // but also all static accounts.
+    const staticAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      // Appended by Acnhor `event_cpi` macro:
+      eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
+      program: program.programId,
+    };
+
+    const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
+
+    // Consolidate all accounts (static and remaining) into a single array for the ALT.
+    const allAccounts = [...Object.values(staticAccounts), ...refundAccounts];
+
+    // Create instructions for creating and extending the ALT.
+    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
+      authority: payer.publicKey,
+      payer: payer.publicKey,
+      recentSlot: await connection.getSlot(),
+    });
+
+    // Submit the ALT creation transaction
+    await anchor.web3.sendAndConfirmTransaction(
+      connection,
+      new anchor.web3.Transaction().add(lookupTableInstruction),
+      [payer],
+      {
+        skipPreflight: true, // Avoids recent slot mismatch in simulation.
+      }
+    );
+
+    // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
+    for (let i = 0; i < allAccounts.length; i += maxExtendedAccounts) {
+      const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+        lookupTable: lookupTableAddress,
+        authority: payer.publicKey,
+        payer: payer.publicKey,
+        addresses: allAccounts.slice(i, i + maxExtendedAccounts),
+      });
+
+      await anchor.web3.sendAndConfirmTransaction(
+        connection,
+        new anchor.web3.Transaction().add(extendInstruction),
+        [payer],
+        {
+          skipPreflight: true, // Avoids recent slot mismatch in simulation.
+        }
+      );
+    }
+
+    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Fetch the AddressLookupTableAccount
+    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
+    assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
+
+    // Build the instruction to execute relayer refund leaf
+    const executeInstruction = await program.methods
       .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-      .accounts({
-        state: state,
-        rootBundle: rootBundle,
-        signer: owner,
-        vault: vault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint: mint,
-        transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
+      .accounts(staticAccounts)
       .remainingAccounts(remainingAccounts)
-      .rpc();
+      .instruction();
+
+    // Build the instruction to increase the CU limit as the default 200k is not sufficient.
+    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
+
+    // Create the versioned transaction
+    const versionedTx = new VersionedTransaction(
+      new TransactionMessage({
+        payerKey: payer.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [computeBudgetInstruction, executeInstruction],
+      }).compileToV0Message([lookupTableAccount])
+    );
+
+    // Sign and submit the versioned transaction.
+    versionedTx.sign([payer]);
+    await connection.sendTransaction(versionedTx);
   });
 
   it("Increments pending amount to HubPool", async () => {
