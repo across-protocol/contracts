@@ -629,7 +629,7 @@ abstract contract SpokePool is
         // this is unlikely and we choose to not check it and incur the extra gas cost:
         // e.g. if (msg.sender == address(0)) revert InvalidUnsafeDepositor();
 
-        uint256 depositId = uint256(bytes32(abi.encodePacked(msg.sender, depositNonce)));
+        uint256 depositId = getUnsafeDepositId(msg.sender, depositNonce);
         _depositV3(
             depositor,
             recipient,
@@ -1105,6 +1105,17 @@ abstract contract SpokePool is
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp; // solhint-disable-line not-rely-on-time
+    }
+
+    /**
+     * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
+     * in unsafeDepositV3 and is provided as a convenience.
+     * @param depositor The address used as input to produce the deposit ID.
+     * @param depositNonce The nonce used as input to produce the deposit ID.
+     * @return The deposit ID for the unsafe deposit.
+     */
+    function getUnsafeDepositId(address depositor, uint96 depositNonce) public pure returns (uint256) {
+        return uint256(bytes32(abi.encodePacked(depositor, depositNonce)));
     }
 
     /**************************************

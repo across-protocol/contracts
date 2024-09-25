@@ -603,6 +603,7 @@ describe("SpokePool Depositor Logic", async function () {
       // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {address, forcedDepositId}.
       const forcedDepositId = "99";
       const expectedDepositId = ethers.utils.solidityPack(["address", "uint96"], [depositor.address, forcedDepositId]);
+      expect(await spokePool.getUnsafeDepositId(depositor.address, forcedDepositId)).to.equal(expectedDepositId);
       await expect(
         spokePool
           .connect(depositor)
