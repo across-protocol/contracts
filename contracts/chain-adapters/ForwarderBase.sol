@@ -5,16 +5,16 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 
 /**
  * @title ForwarderBase
- * @notice This contract expects to receive messages and tokens from the Hub Pool on L1. It rejects messages which do not originate
- * from the hub pool.
- * @notice Base contract deployed some network between L1 and the network housing a spoke pool contract. If a message is sent
- * to this contract which came from the cross domain admin, then it is routed to the next network via the canonical messaging
- * bridge (which may be done automatically by the network's finalization infrastructure). Tokens sent from L1 are stored temporarily
- * on this contract. Any EOA can initiate a bridge of these tokens to the target `l3SpokePool`.
+ * @notice This contract expects to receive messages and tokens from the Hub Pool on L1 and forwards them to targets on L3. Messages
+ * are intended to originate from the re-router adapter on L1 which will send messages here to re-route them to the corresponding L3
+ * spoke pool. It rejects messages which do not originate from the cross domain admin, which should be set to the hub pool.
+ * @dev Base contract designed to be deployed on L2 to re-route messages from L1 to L3. If a message is sent to this contract which
+ * came from the L1 cross domain admin, then it is routed to the L3 via the canonical messaging bridge. Tokens sent from L1 are stored
+ * temporarily on this contract. Any EOA can initiate a bridge of these tokens to the target `l3SpokePool`.
  * @custom:security-contact bugs@across.to
  */
 abstract contract ForwarderBase is UUPSUpgradeable {
-    // L3 address of the recipient of L1 messages and tokens.
+    // L3 address of the recipient of L1 messages and tokens sent via the re-router adapter on L1.
     address public l3SpokePool;
 
     // L1 address of the contract which can relay messages to the l3SpokePool contract and update this proxy contract.
@@ -59,12 +59,12 @@ abstract contract ForwarderBase is UUPSUpgradeable {
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
 
-    // Added so that this function may receive ETH in the event of stuck transactions.
+    // Added so that this contract may receive ETH to fund transaction gas fees.
     receive() external payable {}
 
     /**
-     * @notice When called by the cross domain admin (i.e. the hub pool), the msg.data should be some function
-     * recognizable by the L3 spoke pool, such as "relayRootBundle" or "upgradeTo". Therefore, we simply forward
+     * @dev When called by the cross domain admin (i.e. the hub pool), the msg.data should be some function
+     * recognizable by the L3 spoke pool, such as "relayRootBundle" or "upgradeTo". Therefore, we forward
      * this message to the L3 spoke pool using the implemented messaging logic of the L2 forwarder.
      */
     fallback() external payable onlyAdmin {
@@ -89,10 +89,11 @@ abstract contract ForwarderBase is UUPSUpgradeable {
 
     /**
      * @notice Bridge tokens to an L3.
-     * @notice relayTokens should only send tokens to L3_SPOKE_POOL, so no access control is required.
      * @param l2Token L2 token to deposit.
      * @param l3Token L3 token to receive on the destination chain.
      * @param amount Amount of L2 tokens to deposit and L3 tokens to receive.
+     * @dev relayTokens should only send tokens to the l3SpokePool address, so no access control
+     * is required.
      */
     function relayTokens(
         address l2Token,
@@ -101,8 +102,8 @@ abstract contract ForwarderBase is UUPSUpgradeable {
     ) external payable virtual;
 
     /**
-     * @notice Relay a message to a contract on L3. Implementation changes on whether the
-     * @notice This function should be implmented differently based on whether the L2-L3 bridge
+     * @notice Relay a message to a contract on L3.
+     * @dev This function should be implmented differently based on whether the L2-L3 bridge
      * requires custom gas tokens to fund cross-chain transactions.
      */
     function _relayL3Message(address target, bytes memory message) internal virtual;
