@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
@@ -18,7 +19,7 @@ import { AddressUtils } from "../libraries/AddressUtils.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_L2Adapter is ForwarderBase, Arbitrum_AdapterBase {
+contract Arbitrum_L2Adapter is ForwarderBase, Arbitrum_AdapterBase, AdapterInterface {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
@@ -73,7 +74,8 @@ contract Arbitrum_L2Adapter is ForwarderBase, Arbitrum_AdapterBase {
     function relayTokens(
         address l2Token,
         address,
-        uint256 amount
+        uint256 amount,
+        address
     ) external payable override {
         _relayTokens(l2Token, address(0), amount, l3SpokePool);
         emit TokensForwarded(l2Token, amount);
@@ -86,7 +88,7 @@ contract Arbitrum_L2Adapter is ForwarderBase, Arbitrum_AdapterBase {
      * @param target Contract on L3 that will receive message.
      * @param message Data to send to target.
      */
-    function _relayL3Message(address target, bytes memory message) internal override {
+    function relayMessage(address target, bytes memory message) external payable override onlyAdmin {
         _relayMessage(target, message);
         emit MessageForwarded(target, message);
     }

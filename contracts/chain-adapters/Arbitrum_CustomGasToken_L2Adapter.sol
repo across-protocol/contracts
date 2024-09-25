@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
@@ -21,7 +22,7 @@ import { AddressUtils } from "../libraries/AddressUtils.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase {
+contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBase, ForwarderBase, AdapterInterface {
     using SafeERC20 for IERC20;
 
     modifier onlyFromCrossDomainAdmin() {
@@ -81,7 +82,8 @@ contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBas
     function relayTokens(
         address l2Token,
         address,
-        uint256 amount
+        uint256 amount,
+        address
     ) external payable override {
         // The second field is hardcoded as address(0) since AVM gateway routers do not bridge a source token
         // to a specified destination token, but instead derives the L2 token in the gateway router. Therefore,
@@ -97,7 +99,7 @@ contract Arbitrum_CustomGasToken_L2Adapter is Arbitrum_CustomGasToken_AdapterBas
      * @param target Contract on the AVM L3 that will receive message.
      * @param message Data to send to target.
      */
-    function _relayL3Message(address target, bytes memory message) internal override {
+    function relayMessage(address target, bytes memory message) external payable override onlyAdmin {
         _relayMessage(target, message);
         emit MessageForwarded(target, message);
     }
