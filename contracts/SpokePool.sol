@@ -617,19 +617,19 @@ abstract contract SpokePool is
         bytes calldata message
     ) public payable nonReentrant unpausedDeposits {
         // @dev Create the uint256 deposit ID by concatenating the address (which is 20 bytes) with the 12 byte
-        // depositNonce parameter. We're then left with a 32 byte number if we keccak256 the resultant packed bytes.
-        // This guarantees the resultant ID won't collide with a safe deposit ID which is set by
-        // implicitly casting a uint32 to a uint256, whose left-most 24 bytes are 0, while we're guaranteed that
-        // some of this deposit hash's first 24 bytes are not 0 due to the left shift of the msg.sender address, which
-        // won't be the zero address.
+        // depositNonce parameter. The resultant 32 byte string can be casted to an "unsafe" uint256 deposit ID.
+        // This guarantees the resultant ID won't collide with a "safe" deposit ID which is set by
+        // implicitly casting a uint32 to a uint256, where the left-most 24 bytes are set to 0. We guarantee
+        // that there are no collisions between "unsafe" and "safe" deposit ID's as long as the msg.sender's address
+        // is not the zero address.
 
         // @dev For some L2's, it could be possible that the zero address can be the msg.sender which might
         // make it possible for an unsafe deposit hash to collide with a safe deposit nonce. To prevent these cases,
         // we might want to consider explicitly checking that the msg.sender is not the zero address. However,
-        // this is unlikely and we also should consider not checking it and incurring the extra gas cost:
-        // if (msg.sender == address(0)) revert InvalidUnsafeDepositor();
+        // this is unlikely and we choose to not check it and incur the extra gas cost:
+        // e.g. if (msg.sender == address(0)) revert InvalidUnsafeDepositor();
 
-        uint256 depositId = uint256(keccak256(abi.encodePacked(msg.sender, depositNonce)));
+        uint256 depositId = uint256(bytes32(abi.encodePacked(msg.sender, depositNonce)));
         _depositV3(
             depositor,
             recipient,
