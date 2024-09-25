@@ -42,7 +42,10 @@ contract Rerouter_Adapter is AdapterInterface {
     /**
      * @notice Send cross-chain message to a target on L2 which will re-route messages to the intended L3 target.
      * @param target Address of the L3 contract which receives `message` after it has been forwarded on L2.
-     * @param message Data to send to target.
+     * @param message Data to send to `target`.
+     * @dev The message passed into this function is wrapped into a `relayMessage` function call, which is then passed
+     * to L2. The l2Target contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
+     * `relayMessage` call will be these target and message values.
      */
     function relayMessage(address target, bytes memory message) external payable override {
         bytes memory updatedMessage = abi.encodeCall(AdapterInterface.relayMessage, (target, message));
