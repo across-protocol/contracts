@@ -574,12 +574,11 @@ abstract contract SpokePool is
      * function is designed to be used by anyone who wants to pre-compute their resultant relay data hash, which
      * could be useful for filling a deposit faster and avoiding any risk of a relay hash unexpectedly changing
      * due to another deposit front-running this one and incrementing the global deposit ID counter.
-     * @dev This is labeled "unsafe" because there is no guarantee that the depositId is unique which means that the
+     * @dev This is labeled "unsafe" because there is no guarantee that the depositId emitted in the resultant
+     * V3FundsDeposited event is unique which means that the
      * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
      * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
      * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
-     * @dev This is slightly more gas efficient than the depositV3() function because it doesn't
-     * increment the global deposit count.
      * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
      * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
      * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
@@ -610,24 +609,18 @@ abstract contract SpokePool is
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
-        uint96 depositNonce,
+        uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable nonReentrant unpausedDeposits {
-        // @dev Create the uint256 deposit ID by concatenating the address (which is 20 bytes) with the 12 byte
+        // @dev Create the uint256 deposit ID by concatenating the address with the inputted
         // depositNonce parameter. The resultant 32 byte string can be casted to an "unsafe" uint256 deposit ID.
-        // This guarantees the resultant ID won't collide with a "safe" deposit ID which is set by
-        // implicitly casting a uint32 to a uint256, where the left-most 24 bytes are set to 0. We guarantee
-        // that there are no collisions between "unsafe" and "safe" deposit ID's as long as the msg.sender's address
-        // is not the zero address.
-
-        // @dev For some L2's, it could be possible that the zero address can be the msg.sender which might
-        // make it possible for an unsafe deposit hash to collide with a safe deposit nonce. To prevent these cases,
-        // we might want to consider explicitly checking that the msg.sender is not the zero address. However,
-        // this is unlikely and we choose to not check it and incur the extra gas cost:
-        // e.g. if (msg.sender == address(0)) revert InvalidUnsafeDepositor();
+        // This probability that the resultant ID collides with a "safe" deposit ID is equal to the chance that the
+        // first 28 bytes of the hash are 0, which is too small for us to consider. Moreover, if the depositId collided
+        // with an already emitted safe deposit ID, then the deposit would only be unfillable if the rest of the
+        // deposit data also matched, which would be very unlikely.
 
         uint256 depositId = getUnsafeDepositId(msg.sender, depositNonce);
         _depositV3(
@@ -1114,8 +1107,8 @@ abstract contract SpokePool is
      * @param depositNonce The nonce used as input to produce the deposit ID.
      * @return The deposit ID for the unsafe deposit.
      */
-    function getUnsafeDepositId(address depositor, uint96 depositNonce) public pure returns (uint256) {
-        return uint256(bytes32(abi.encodePacked(depositor, depositNonce)));
+    function getUnsafeDepositId(address depositor, uint256 depositNonce) public pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(depositor, depositNonce)));
     }
 
     /**************************************
