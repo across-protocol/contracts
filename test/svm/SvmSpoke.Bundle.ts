@@ -622,7 +622,10 @@ describe("svm_spoke.bundle", () => {
 
     // Higher refund count panics out of memory when processing the refunds. This could be solved by splitting out
     // claiming of individual refunds, though currently Across protocol does not expect this to be above 25.
-    const numberOfRefunds = 33;
+    const solanaDistributions = 33;
+
+    // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
+    const evmDistributions = 100; // This would fit in 7 proof array elements.
 
     const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
     const maxInstructionDataFragment = 1000 - 4 - 4; // Anchor encoder buffer limit - 4 bytes vector length - 4 bytes for u32 offset.
@@ -630,7 +633,7 @@ describe("svm_spoke.bundle", () => {
     const refundAccounts: anchor.web3.PublicKey[] = [];
     const refundAmounts: BN[] = [];
 
-    for (let i = 0; i < numberOfRefunds; i++) {
+    for (let i = 0; i < solanaDistributions; i++) {
       const newRefundAccount = (
         await getOrCreateAssociatedTokenAccount(connection, payer, mint, Keypair.generate().publicKey)
       ).address;
@@ -647,6 +650,18 @@ describe("svm_spoke.bundle", () => {
       refundAccounts: refundAccounts,
       refundAmounts: refundAmounts,
     });
+
+    for (let i = 0; i < evmDistributions; i++) {
+      relayerRefundLeaves.push({
+        isSolana: false,
+        leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leafs at 1.
+        chainId: randomBigInt(2),
+        amountToReturn: randomBigInt(),
+        l2TokenAddress: randomAddress(),
+        refundAddresses: [randomAddress(), randomAddress()],
+        refundAmounts: [randomBigInt(), randomBigInt()],
+      } as RelayerRefundLeaf);
+    }
 
     const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
 
