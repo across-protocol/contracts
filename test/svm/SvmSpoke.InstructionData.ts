@@ -9,8 +9,9 @@ const { provider, program, connection, assertSE, assert } = common;
 describe("svm_spoke.instruction_data", () => {
   anchor.setProvider(provider);
 
-  let instructionData: PublicKey;
+  // We use different caller in each test as instructionData seed is derived from initializer's address.
   let caller: Keypair;
+  let instructionData: PublicKey;
 
   const initializeInstructionData = async (totalSize: number) => {
     const ix = await program.methods
