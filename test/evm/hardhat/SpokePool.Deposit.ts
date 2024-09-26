@@ -602,7 +602,9 @@ describe("SpokePool Depositor Logic", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
       // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {address, forcedDepositId}.
       const forcedDepositId = "99";
-      const expectedDepositId = BigNumber.from(ethers.utils.solidityKeccak256(["address", "uint256"], [depositor.address, forcedDepositId]));
+      const expectedDepositId = BigNumber.from(
+        ethers.utils.solidityKeccak256(["address", "uint256"], [depositor.address, forcedDepositId])
+      );
       expect(await spokePool.getUnsafeDepositId(depositor.address, forcedDepositId)).to.equal(expectedDepositId);
       await expect(
         spokePool
