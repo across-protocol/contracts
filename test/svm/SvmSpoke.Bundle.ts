@@ -795,6 +795,17 @@ describe("svm_spoke.bundle", () => {
     versionedTx.sign([payer]);
     await connection.sendTransaction(versionedTx);
 
+    // Verify all refund account balances.
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure account balances have been synced.
+    const refundBalances = await Promise.all(
+      refundAccounts.map(async (account) => {
+        return (await connection.getTokenAccountBalance(account)).value.amount;
+      })
+    );
+    refundBalances.forEach((balance, i) => {
+      assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+    });
+
     // Close the instruction data account.
     await program.methods.closeInstructionData().rpc();
   });
