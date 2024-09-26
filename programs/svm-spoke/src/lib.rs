@@ -9,6 +9,7 @@ declare_program!(token_messenger_minter);
 pub mod constants;
 mod constraints;
 pub mod error;
+pub mod event;
 mod instructions;
 mod state;
 pub mod utils;
@@ -24,11 +25,13 @@ pub mod svm_spoke {
     pub fn initialize(
         ctx: Context<Initialize>,
         seed: u64,
-        initial_number_of_deposits: u64,
+        initial_number_of_deposits: u32,
         chain_id: u64,
         remote_domain: u32,
         cross_domain_admin: Pubkey,
         testable_mode: bool,
+        deposit_quote_time_buffer: u32,
+        fill_deadline_buffer: u32,
     ) -> Result<()> {
         instructions::initialize(
             ctx,
@@ -38,6 +41,8 @@ pub mod svm_spoke {
             remote_domain,
             cross_domain_admin,
             testable_mode,
+            deposit_quote_time_buffer,
+            fill_deadline_buffer,
         )
     }
 

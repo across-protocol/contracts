@@ -43,6 +43,10 @@ export async function readEvents(
   }
 
   let events = [];
+
+  // TODO: Add support for version 0 transactions.
+  if (txResult.transaction.message.version !== "legacy") return events;
+
   for (const ixBlock of txResult.meta.innerInstructions) {
     for (const ix of ixBlock.instructions) {
       for (const program of programs) {

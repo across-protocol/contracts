@@ -8,13 +8,14 @@ use crate::constraints::is_local_or_remote_owner;
 
 use crate::{
     error::CustomError,
+    event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
     state::{RootBundle, Route, State},
 };
 
 //TODO: there is too much in this file now and it should be split up somewhat.
 
 #[derive(Accounts)]
-#[instruction(seed: u64, initial_number_of_deposits: u64, chain_id: u64)] // Add chain_id to instruction
+#[instruction(seed: u64)]
 pub struct Initialize<'info> {
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
@@ -32,11 +33,13 @@ pub struct Initialize<'info> {
 pub fn initialize(
     ctx: Context<Initialize>,
     seed: u64,
-    initial_number_of_deposits: u64,
-    chain_id: u64,              // Across definition of chainId for Solana.
-    remote_domain: u32,         // CCTP domain for Mainnet Ethereum.
-    cross_domain_admin: Pubkey, // HubPool on Mainnet Ethereum.
-    testable_mode: bool,        // If the contract is in testable mode, enabling time manipulation.
+    initial_number_of_deposits: u32,
+    chain_id: u64,                  // Across definition of chainId for Solana.
+    remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
+    cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
+    testable_mode: bool, // If the contract is in testable mode, enabling time manipulation.
+    deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
+    fill_deadline_buffer: u32, // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
@@ -50,6 +53,8 @@ pub fn initialize(
     } else {
         0
     }; // Set current_time to system time if testable_mode is true, else 0
+    state.deposit_quote_time_buffer = deposit_quote_time_buffer;
+    state.fill_deadline_buffer = fill_deadline_buffer;
     Ok(())
 }
 
@@ -162,7 +167,7 @@ pub struct SetEnableRoute<'info> {
         init_if_needed,
         payer = payer,
         space = DISCRIMINATOR_SIZE + Route::INIT_SPACE,
-        seeds = [b"route", origin_token.as_ref(), destination_chain_id.to_le_bytes().as_ref()],
+        seeds = [b"route", origin_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
         bump
     )]
     pub route: Account<'info, Route>,
@@ -176,7 +181,11 @@ pub struct SetEnableRoute<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mint::token_program = token_program)]
+    #[account(
+        mint::token_program = token_program,
+        // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
+        constraint = origin_token_mint.key() == origin_token.into() @ CustomError::InvalidMint
+    )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -234,25 +243,4 @@ pub fn relay_root_bundle(
     root_bundle.slow_relay_root = slow_relay_root;
     state.root_bundle_id += 1;
     Ok(())
-}
-#[event]
-pub struct SetXDomainAdmin {
-    pub new_admin: Pubkey,
-}
-
-#[event]
-pub struct PausedDeposits {
-    pub is_paused: bool,
-}
-
-#[event]
-pub struct PausedFills {
-    pub is_paused: bool,
-}
-
-#[event]
-pub struct EnabledDepositRoute {
-    pub origin_token: Pubkey,
-    pub destination_chain_id: u64,
-    pub enabled: bool,
 }
