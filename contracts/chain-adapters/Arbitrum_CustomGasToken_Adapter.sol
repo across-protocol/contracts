@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
+import { ArbitrumERC20Bridge as ArbitrumL1ERC20Bridge, ArbitrumCustomGasTokenInbox as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
 
 /**
  * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()
@@ -21,118 +22,6 @@ interface FunderInterface {
      * @param amount Amount to withdraw.
      */
     function withdraw(IERC20 token, uint256 amount) external;
-}
-
-/**
- * @title Staging ground for incoming and outgoing messages
- * @notice Unlike the standard Eth bridge, native token bridge escrows the custom ERC20 token which is
- * used as native currency on L2.
- * @dev Fees are paid in this token. There are certain restrictions on the native token:
- *       - The token can't be rebasing or have a transfer fee
- *       - The token must only be transferrable via a call to the token address itself
- *       - The token must only be able to set allowance via a call to the token address itself
- *       - The token must not have a callback on transfer, and more generally a user must not be able to make a transfer to themselves revert
- *       - The token must have a max of 2^256 - 1 wei total supply unscaled
- *       - The token must have a max of 2^256 - 1 wei total supply when scaled to 18 decimals
- */
-interface ArbitrumL1ERC20Bridge {
-    /**
-     * @notice Returns token that is escrowed in bridge on L1 side and minted on L2 as native currency.
-     * @dev This function doesn't exist on the generic Bridge interface.
-     * @return address of the native token.
-     */
-    function nativeToken() external view returns (address);
-
-    /**
-     * @dev number of decimals used by the native token
-     *      This is set on bridge initialization using nativeToken.decimals()
-     *      If the token does not have decimals() method, we assume it have 0 decimals
-     */
-    function nativeTokenDecimals() external view returns (uint8);
-}
-
-/**
- * @title Inbox for user and contract originated messages
- * @notice Messages created via this inbox are enqueued in the delayed accumulator
- * to await inclusion in the SequencerInbox
- */
-interface ArbitrumL1InboxLike {
-    /**
-     * @dev we only use this function to check the native token used by the bridge, so we hardcode the interface
-     * to return an ArbitrumL1ERC20Bridge instead of a more generic Bridge interface.
-     * @return address of the bridge.
-     */
-    function bridge() external view returns (ArbitrumL1ERC20Bridge);
-
-    /**
-     * @notice Put a message in the L2 inbox that can be reexecuted for some fixed amount of time if it reverts
-     * @notice Overloads the `createRetryableTicket` function but is not payable, and should only be called when paying
-     * for L1 to L2 message using a custom gas token.
-     * @dev all tokenTotalFeeAmount will be deposited to callValueRefundAddress on L2
-     * @dev Gas limit and maxFeePerGas should not be set to 1 as that is used to trigger the RetryableData error
-     * @dev In case of native token having non-18 decimals: tokenTotalFeeAmount is denominated in native token's decimals. All other value params - l2CallValue, maxSubmissionCost and maxFeePerGas are denominated in child chain's native 18 decimals.
-     * @param to destination L2 contract address
-     * @param l2CallValue call value for retryable L2 message
-     * @param maxSubmissionCost Max gas deducted from user's L2 balance to cover base submission fee
-     * @param excessFeeRefundAddress the address which receives the difference between execution fee paid and the actual execution cost. In case this address is a contract, funds will be received in its alias on L2.
-     * @param callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled. In case this address is a contract, funds will be received in its alias on L2.
-     * @param gasLimit Max gas deducted from user's L2 balance to cover L2 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param maxFeePerGas price bid for L2 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param tokenTotalFeeAmount amount of fees to be deposited in native token to cover for retryable ticket cost
-     * @param data ABI encoded data of L2 message
-     * @return unique message number of the retryable transaction
-     */
-    function createRetryableTicket(
-        address to,
-        uint256 l2CallValue,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 gasLimit,
-        uint256 maxFeePerGas,
-        uint256 tokenTotalFeeAmount,
-        bytes calldata data
-    ) external returns (uint256);
-}
-
-/**
- * @notice Layer 1 Gateway contract for bridging standard ERC20s to Arbitrum.
- */
-interface ArbitrumL1ERC20GatewayLike {
-    /**
-     * @notice Deposit ERC20 token from Ethereum into Arbitrum.
-     * @dev L2 address alias will not be applied to the following types of addresses on L1:
-     *      - an externally-owned account
-     *      - a contract in construction
-     *      - an address where a contract will be created
-     *      - an address where a contract lived, but was destroyed
-     * @param _l1Token L1 address of ERC20
-     * @param _refundTo Account, or its L2 alias if it have code in L1, to be credited with excess gas refund in L2
-     * @param _to Account to be credited with the tokens in the L2 (can be the user's L2 account or a contract),
-     * not subject to L2 aliasing. This account, or its L2 alias if it have code in L1, will also be able to
-     * cancel the retryable ticket and receive callvalue refund
-     * @param _amount Token Amount
-     * @param _maxGas Max gas deducted from user's L2 balance to cover L2 execution
-     * @param _gasPriceBid Gas price for L2 execution
-     * @param _data encoded data from router and user
-     * @return res abi encoded inbox sequence number
-     */
-    function outboundTransferCustomRefund(
-        address _l1Token,
-        address _refundTo,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-
-    /**
-     * @notice get ERC20 gateway for token.
-     * @param _token ERC20 address.
-     * @return address of ERC20 gateway.
-     */
-    function getGateway(address _token) external view returns (address);
 }
 
 /**
