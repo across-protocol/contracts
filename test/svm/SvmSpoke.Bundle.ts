@@ -654,7 +654,7 @@ describe("svm_spoke.bundle", () => {
     for (let i = 0; i < evmDistributions; i++) {
       relayerRefundLeaves.push({
         isSolana: false,
-        leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leafs at 1.
+        leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
         chainId: randomBigInt(2),
         amountToReturn: randomBigInt(),
         l2TokenAddress: randomAddress(),
