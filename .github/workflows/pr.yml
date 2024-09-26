@@ -81,7 +81,7 @@ jobs:
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
-      - name: Test svm
+      - name: Test svm-anchor
         shell: bash
         run: yarn test-svm
   forge:

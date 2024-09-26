@@ -23,11 +23,14 @@
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
     "lint-js": "yarn prettier --list-different && yarn lint-rust",
     "lint-rust": "cargo fmt --all -- --check && cargo clippy",
-    "lint-fix": "yarn prettier --write",
+    "lint-fix": "yarn prettier --write && cargo fmt --all",
     "prettier": "prettier .",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
-    "build": "hardhat compile && anchor build && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
+    "build-evm": "hardhat compile",
+    "build-svm": "echo 'Generating IDLs...' && anchor build > /dev/null 2>&1 || true && anchor run generateExternalTypes && anchor build",
+    "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
+    "build": "yarn build-evm && yarn build-svm && yarn build-ts",
     "test-evm": "IS_TEST=true hardhat test",
     "test-svm": "anchor test",
     "test": "yarn test-evm && yarn test-svm",
@@ -37,7 +40,7 @@
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.15",
-    "@coral-xyz/anchor": "^0.30.1",
+    "@coral-xyz/anchor": "^0.30.0",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/abstract-provider": "5.7.0",
@@ -46,11 +49,16 @@
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@scroll-tech/contracts": "^0.1.0",
+    "@solana-developers/helpers": "^2.4.0",
+    "@solana/spl-token": "^0.4.6",
+    "@solana/web3.js": "^1.31.0",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
     "@uma/core": "^2.56.0",
     "axios": "^1.7.4",
-    "zksync-web3": "^0.14.3"
+    "zksync-web3": "^0.14.3",
+    "bs58": "^6.0.0",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@consensys/linea-sdk": "^0.1.6",
@@ -64,6 +72,7 @@
     "@nomiclabs/hardhat-waffle": "2.0.3",
     "@openzeppelin/hardhat-upgrades": "^1.22.0",
     "@pinata/sdk": "^2.1.0",
+    "@types/bn.js": "^5.1.0",
     "@typechain/ethers-v5": "^11.0.0",
     "@typechain/hardhat": "^8.0.0",
     "@types/chai": "^4.3.5",
@@ -97,7 +106,7 @@
     "solidity-coverage": "^0.7.16",
     "ts-node": "^10.1.0",
     "typechain": "^8.1.1",
-    "typescript": "^4.5.2"
+    "typescript": "^5.6.2"
   },
   "husky": {
     "hooks": {
