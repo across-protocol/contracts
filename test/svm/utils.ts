@@ -3,9 +3,14 @@ import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import * as crypto from "crypto";
 
-import { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress } from "../../src/SvmUtils";
+import {
+  readProgramEvents,
+  calculateRelayHashUint8Array,
+  findProgramAddress,
+  LargeInstructionCoder,
+} from "../../src/SvmUtils";
 
-export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress, LargeInstructionCoder };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();

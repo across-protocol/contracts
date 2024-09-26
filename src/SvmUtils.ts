@@ -1,6 +1,7 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
+import { Layout } from "buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
 
@@ -154,3 +155,27 @@ export const readUInt256BE = (buffer: Buffer): BigInt => {
   }
   return result;
 };
+
+// This is extended Anchor instruction coder to handle large instruction data that is required when passing instruction
+// data from prefilled instruction data account. Base implementation restricts the buffer to only 1000 bytes.
+export class LargeInstructionCoder extends anchor.BorshInstructionCoder {
+  // Getter to access the private ixLayouts property from base class.
+  private getIxLayouts() {
+    type IdlDiscriminator = number[]; // This is not exported in Anchor.
+
+    return (this as any).ixLayouts as Map<string, { discriminator: IdlDiscriminator; layout: Layout }>;
+  }
+
+  public encode(ixName: string, ix: any): Buffer {
+    const buffer = Buffer.alloc(10240); // We don't currently need anything above instruction data account reallocation limit.
+    const encoder = this.getIxLayouts().get(ixName);
+    if (!encoder) {
+      throw new Error(`Unknown method: ${ixName}`);
+    }
+
+    const len = encoder.layout.encode(ix, buffer);
+    const data = buffer.slice(0, len);
+
+    return Buffer.concat([Buffer.from(encoder.discriminator), data]);
+  }
+}

@@ -190,4 +190,27 @@ pub mod svm_spoke {
 
         Ok(())
     }
+
+    pub fn initialize_instruction_data(
+        ctx: Context<InitializeInstructionData>,
+        total_size: u32,
+    ) -> Result<()> {
+        instructions::initialize_instruction_data(ctx, total_size)
+    }
+
+    pub fn write_instruction_data_fragment(
+        ctx: Context<WriteInstructionDataFragment>,
+        offset: u32,
+        fragment: Vec<u8>,
+    ) -> Result<()> {
+        instructions::write_instruction_data_fragment(ctx, offset, fragment)
+    }
+
+    pub fn call_with_instruction_data(ctx: Context<CallWithInstructionData>) -> Result<()> {
+        instructions::call_with_instruction_data(ctx)
+    }
+
+    pub fn close_instruction_data(_ctx: Context<CloseInstructionData>) -> Result<()> {
+        instructions::close_instruction_data()
+    }
 }

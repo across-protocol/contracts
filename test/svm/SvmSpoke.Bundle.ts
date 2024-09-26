@@ -14,6 +14,7 @@ import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
+  LargeInstructionCoder,
   relayerRefundHashFn,
   randomAddress,
   randomBigInt,
@@ -619,10 +620,12 @@ describe("svm_spoke.bundle", () => {
   it("Execute Max Refunds", async () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
-    // Higher refund count hits message size limit due to refund accounts also being present in calldata. This could be
-    // resolved by feeding calldata from a buffer account.
-    const numberOfRefunds = 21;
+    // Higher refund count panics out of memory when processing the refunds. This could be solved by splitting out
+    // claiming of individual refunds, though currently Across protocol does not expect this to be above 25.
+    const numberOfRefunds = 33;
+
     const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
+    const maxInstructionDataFragment = 1000 - 4 - 4; // Anchor encoder buffer limit - 4 bytes vector length - 4 bytes for u32 offset.
 
     const refundAccounts: anchor.web3.PublicKey[] = [];
     const refundAmounts: BN[] = [];
@@ -668,26 +671,33 @@ describe("svm_spoke.bundle", () => {
     // Verify valid leaf
     const proofAsNumbers = proof.map((p) => Array.from(p));
 
-    // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
-    // but also all static accounts.
-    const staticAccounts = {
-      state: state,
-      rootBundle: rootBundle,
-      signer: owner,
-      vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      mint: mint,
-      transferLiability,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      // Appended by Acnhor `event_cpi` macro:
-      eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
-      program: program.programId,
-    };
+    // We will be passing instruction data from a pre-filled data account via `call_with_instruction_data`, so all
+    // inner call accounts for `execute_relayer_refund_leaf` will be passed as remaining accounts.
+    const executeAccountMetas = [
+      { pubkey: state, isWritable: true, isSigner: false },
+      { pubkey: rootBundle, isWritable: true, isSigner: false },
+      { pubkey: payer.publicKey, isWritable: false, isSigner: true },
+      { pubkey: vault, isWritable: true, isSigner: false },
+      { pubkey: mint, isWritable: true, isSigner: false },
+      { pubkey: transferLiability, isWritable: true, isSigner: false },
+      { pubkey: TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
+      { pubkey: anchor.web3.SystemProgram.programId, isWritable: false, isSigner: false },
+      // Appended by Anchor `event_cpi` macro.
+      {
+        pubkey: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
+        isWritable: false,
+        isSigner: false,
+      },
+      { pubkey: program.programId, isWritable: false, isSigner: false },
+    ];
 
-    const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
+    // Append relayer refund accounts.
+    refundAccounts.forEach((account) => {
+      executeAccountMetas.push({ pubkey: account, isWritable: true, isSigner: false });
+    });
 
-    // Consolidate all accounts (static and remaining) into a single array for the ALT.
-    const allAccounts = [...Object.values(staticAccounts), ...refundAccounts];
+    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
+    const lookupAddresses = executeAccountMetas.map((account) => account.pubkey);
 
     // Create instructions for creating and extending the ALT.
     const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
@@ -707,12 +717,12 @@ describe("svm_spoke.bundle", () => {
     );
 
     // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
-    for (let i = 0; i < allAccounts.length; i += maxExtendedAccounts) {
+    for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
       const extendInstruction = AddressLookupTableProgram.extendLookupTable({
         lookupTable: lookupTableAddress,
         authority: payer.publicKey,
         payer: payer.publicKey,
-        addresses: allAccounts.slice(i, i + maxExtendedAccounts),
+        addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
       });
 
       await anchor.web3.sendAndConfirmTransaction(
@@ -732,11 +742,26 @@ describe("svm_spoke.bundle", () => {
     const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
     assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
 
-    // Build the instruction to execute relayer refund leaf
+    // Build the instruction to execute relayer refund leaf and write its instruction data to the data account.
+    const instructionCoder = new LargeInstructionCoder(program.idl);
+    const ixDataBytes = instructionCoder.encode("executeRelayerRefundLeaf", {
+      rootBundleId: stateAccountData.rootBundleId,
+      relayerRefundLeaf: leaf,
+      proof: proofAsNumbers,
+    });
+    await program.methods.initializeInstructionData(ixDataBytes.length).rpc();
+    for (let i = 0; i < ixDataBytes.length; i += maxInstructionDataFragment) {
+      const fragment = ixDataBytes.slice(i, i + maxInstructionDataFragment);
+      await program.methods.writeInstructionDataFragment(i, fragment).rpc();
+    }
+    const [instructionData] = PublicKey.findProgramAddressSync(
+      [Buffer.from("instruction_data"), payer.publicKey.toBuffer()],
+      program.programId
+    );
     const executeInstruction = await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-      .accounts(staticAccounts)
-      .remainingAccounts(remainingAccounts)
+      .callWithInstructionData()
+      .accounts({ instructionData })
+      .remainingAccounts(executeAccountMetas)
       .instruction();
 
     // Build the instruction to increase the CU limit as the default 200k is not sufficient.
@@ -754,6 +779,9 @@ describe("svm_spoke.bundle", () => {
     // Sign and submit the versioned transaction.
     versionedTx.sign([payer]);
     await connection.sendTransaction(versionedTx);
+
+    // Close the instruction data account.
+    await program.methods.closeInstructionData().rpc();
   });
 
   it("Increments pending amount to HubPool", async () => {
