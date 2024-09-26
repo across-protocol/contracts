@@ -96,7 +96,7 @@ describe("svm_spoke.instruction_data", () => {
     }
   });
 
-  it.only("Calls with large instruction data", async () => {
+  it("Calls with large instruction data", async () => {
     const inputSize = 10000;
     const inputData = crypto.randomBytes(inputSize);
 
