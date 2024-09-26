@@ -691,7 +691,7 @@ describe("svm_spoke.bundle", () => {
     const executeAccountMetas = [
       { pubkey: state, isWritable: true, isSigner: false },
       { pubkey: rootBundle, isWritable: true, isSigner: false },
-      { pubkey: payer.publicKey, isWritable: false, isSigner: true },
+      { pubkey: owner, isWritable: false, isSigner: true },
       { pubkey: vault, isWritable: true, isSigner: false },
       { pubkey: mint, isWritable: true, isSigner: false },
       { pubkey: transferLiability, isWritable: true, isSigner: false },
@@ -716,8 +716,8 @@ describe("svm_spoke.bundle", () => {
 
     // Create instructions for creating and extending the ALT.
     const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: payer.publicKey,
-      payer: payer.publicKey,
+      authority: owner,
+      payer: owner,
       recentSlot: await connection.getSlot(),
     });
 
@@ -735,8 +735,8 @@ describe("svm_spoke.bundle", () => {
     for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
       const extendInstruction = AddressLookupTableProgram.extendLookupTable({
         lookupTable: lookupTableAddress,
-        authority: payer.publicKey,
-        payer: payer.publicKey,
+        authority: owner,
+        payer: owner,
         addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
       });
 
@@ -770,7 +770,7 @@ describe("svm_spoke.bundle", () => {
       await program.methods.writeInstructionDataFragment(i, fragment).rpc();
     }
     const [instructionData] = PublicKey.findProgramAddressSync(
-      [Buffer.from("instruction_data"), payer.publicKey.toBuffer()],
+      [Buffer.from("instruction_data"), owner.toBuffer()],
       program.programId
     );
     const executeInstruction = await program.methods
@@ -785,7 +785,7 @@ describe("svm_spoke.bundle", () => {
     // Create the versioned transaction
     const versionedTx = new VersionedTransaction(
       new TransactionMessage({
-        payerKey: payer.publicKey,
+        payerKey: owner,
         recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
         instructions: [computeBudgetInstruction, executeInstruction],
       }).compileToV0Message([lookupTableAccount])
