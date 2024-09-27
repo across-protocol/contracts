@@ -16,7 +16,11 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
 contract Mock_Rerouter_Adapter is Rerouter_Adapter {
-    constructor(address _l1Adapter, address _l2Target) Rerouter_Adapter(_l1Adapter, _l2Target) {}
+    constructor(
+        address _l1Adapter,
+        address _l2Target,
+        uint256 _spokePoolChainId
+    ) Rerouter_Adapter(_l1Adapter, _l2Target, _spokePoolChainId) {}
 
     receive() external payable {}
 }
@@ -33,8 +37,8 @@ contract Token_ERC20 is ERC20 {
     }
 }
 
-contract ArbitrumL3AdapterTest is Test {
-    Rerouter_Adapter l3Adapter;
+contract RerouterAdapterTest is Test {
+    Rerouter_Adapter rerouterAdapter;
     Optimism_Adapter optimismAdapter;
 
     Token_ERC20 l1Token;
@@ -64,7 +68,7 @@ contract ArbitrumL3AdapterTest is Test {
             IERC20(address(0)),
             ITokenMessenger(address(0))
         );
-        l3Adapter = new Mock_Rerouter_Adapter(address(optimismAdapter), l2Target);
+        rerouterAdapter = new Mock_Rerouter_Adapter(address(optimismAdapter), l2Target, 100);
     }
 
     // Messages should be indiscriminately sent to the l2Forwarder.
@@ -72,7 +76,7 @@ contract ArbitrumL3AdapterTest is Test {
         vm.assume(target != l2Target);
         vm.expectEmit(address(crossDomainMessenger));
         emit MockBedrockCrossDomainMessenger.MessageSent(l2Target);
-        l3Adapter.relayMessage(target, message);
+        rerouterAdapter.relayMessage(target, message);
     }
 
     // Sending Weth should call depositETHTo().
@@ -80,22 +84,22 @@ contract ArbitrumL3AdapterTest is Test {
         // Prevent fuzz testing with amountToSend * 2 > 2^256
         amountToSend = uint256(bound(amountToSend, 1, 2**254));
         vm.deal(address(l1Weth), amountToSend);
-        vm.deal(address(l3Adapter), amountToSend);
+        vm.deal(address(rerouterAdapter), amountToSend);
 
-        vm.startPrank(address(l3Adapter));
+        vm.startPrank(address(rerouterAdapter));
         l1Weth.deposit{ value: amountToSend }();
         vm.stopPrank();
 
         assertEq(amountToSend * 2, l1Weth.totalSupply());
         vm.expectEmit(address(standardBridge));
         emit MockBedrockL1StandardBridge.ETHDepositInitiated(l2Target, amountToSend);
-        l3Adapter.relayTokens(address(l1Weth), address(l2Weth), amountToSend, random);
-        assertEq(0, l1Weth.balanceOf(address(l3Adapter)));
+        rerouterAdapter.relayTokens(address(l1Weth), address(l2Weth), amountToSend, random);
+        assertEq(0, l1Weth.balanceOf(address(rerouterAdapter)));
     }
 
     // Sending any random token should call depositERC20To().
     function testRelayToken(uint256 amountToSend, address random) public {
-        l1Token.mint(address(l3Adapter), amountToSend);
+        l1Token.mint(address(rerouterAdapter), amountToSend);
         assertEq(amountToSend, l1Token.totalSupply());
 
         vm.expectEmit(address(standardBridge));
@@ -105,7 +109,7 @@ contract ArbitrumL3AdapterTest is Test {
             address(l2Token),
             amountToSend
         );
-        l3Adapter.relayTokens(address(l1Token), address(l2Token), amountToSend, random);
-        assertEq(0, l1Token.balanceOf(address(l3Adapter)));
+        rerouterAdapter.relayTokens(address(l1Token), address(l2Token), amountToSend, random);
+        assertEq(0, l1Token.balanceOf(address(rerouterAdapter)));
     }
 }
