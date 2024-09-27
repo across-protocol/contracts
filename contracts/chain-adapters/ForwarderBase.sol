@@ -6,12 +6,12 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
  * @title ForwarderBase
- * @notice This contract expects to receive messages and tokens from the Hub Pool on L1 and forwards them to targets on L3. Messages
- * are intended to originate from the re-router adapter on L1 which will send messages here to re-route them to the corresponding L3
- * spoke pool. It rejects messages which do not originate from the cross domain admin, which should be set to the hub pool.
- * @dev Base contract designed to be deployed on L2 to re-route messages from L1 to L3. If a message is sent to this contract which
- * came from the L1 cross domain admin, then it is routed to the L3 via the canonical messaging bridge. Tokens sent from L1 are stored
- * temporarily on this contract. Any EOA can initiate a bridge of these tokens to the target `l3SpokePool`.
+ * @notice This contract expects to receive messages and tokens from an authorized sender on a previous layer and forwards messages and tokens
+ * to contracts on subsequent layers. Messages are intended to originate from the hub pool or other forwarder contracts. It rejects messages which
+ * do not originate from the cross domain admin, which should be set to these contracts, depending on the sender on the previous layer.
+ * @dev Base contract designed to be deployed on a layer > L1 to re-route messages to a further layer. If a message is sent to this contract which
+ * came from the cross domain admin, then it is routed to the next layer via the canonical messaging bridge. Tokens sent from L1 are accompanied by a
+ * message directing this contract on the next steps of the token relay.
  * @custom:security-contact bugs@across.to
  */
 abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
@@ -34,11 +34,14 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     // address can either be a spoke pool or a forwarder. This mapping requires that no destination addresses (i.e. spoke pool or
     // forwarder addresses) collide.
     mapping(address => RouteIndex) availableRoutes;
+    // Map which takes inputs the destination address and a token address on the current network and outputs the corresponding remote token address.
+    mapping(address => mapping(address => address)) remoteTokens;
 
     event TokensForwarded(address indexed target, address indexed baseToken, uint256 amount);
     event MessageForwarded(address indexed target, bytes message);
     event SetXDomainAdmin(address indexed crossDomainAdmin);
     event RouteUpdated(address indexed target, RouteIndex route);
+    event RemoteTokensUpdated(address indexed target, address indexed baseToken, address indexed remoteToken);
 
     error InvalidCrossDomainAdmin();
     error InvalidL3SpokePool();
@@ -55,8 +58,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     }
 
     /**
-     @notice Constructs the Forwarder contract.
-     @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done, 
+     * @notice Constructs the Forwarder contract.
+     * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
      * may disrupt the proxy if another EOA were to initialize it.
      */
     constructor() {
@@ -92,6 +95,23 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     function updateRoute(address _destinationAddress, RouteIndex memory _routeIndex) external onlyAdmin {
         availableRoutes[_destinationAddress] = _routeIndex;
         emit RouteUpdated(_destinationAddress, _routeIndex);
+    }
+
+    /**
+     * @notice Sets a new remote token in the remoteTokens mapping.
+     * @param _destinationAddress The address to set in the remoteTokens mapping. This is to identify the network associated with the
+     * remote token.
+     * @param _baseToken The address of the token which exists on the current network.
+     * @param _remoteToken The address of the token on the network which is next on the path to _destinationAddress.
+     * @dev This mapping also relies on using _destinationAddress to determine the network to bridge to.
+     */
+    function updateRemoteToken(
+        address _destinationAddress,
+        address _baseToken,
+        address _remoteToken
+    ) external onlyAdmin {
+        remoteTokens[_destinationAddress][_baseToken] = _remoteToken;
+        emit RemoteTokensUpdated(_destinationAddress, _baseToken, _remoteToken);
     }
 
     /**
