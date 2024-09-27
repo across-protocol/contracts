@@ -7,8 +7,13 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 /**
  * @title ForwarderBase
  * @notice This contract expects to receive messages and tokens from an authorized sender on a previous layer and forwards messages and tokens
- * to contracts on subsequent layers. Messages are intended to originate from the hub pool or other forwarder contracts. It rejects messages which
- * do not originate from the cross domain admin, which should be set to these contracts, depending on the sender on the previous layer.
+ * to contracts on subsequent layers. Messages are intended to originate from the hub pool or other forwarder contracts.
+ * @dev This contract rejects messages which do not originate from the cross domain admin, which should be set to these contracts, depending on the
+ * sender on the previous layer. Additionally, this contract only knows information about networks which roll up their state to the network on which
+ * this contract is deployed. Messages continue to be forwarded across an indefinite amount of layers by recursively wrapping and sending messages
+ * over canonical bridges, only stopping when the following network contains the intended target contract.
+ * @dev Since these contracts use destination addresses to derive a route to subsequent networks, it requires that all of these forwarder contracts
+ * AND spoke pool contracts which require forwarders to receive messages to not have same addresses.
  * @dev Base contract designed to be deployed on a layer > L1 to re-route messages to a further layer. If a message is sent to this contract which
  * came from the cross domain admin, then it is routed to the next layer via the canonical messaging bridge. Tokens sent from L1 are accompanied by a
  * message directing this contract on the next steps of the token relay.
@@ -19,8 +24,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      * @notice Struct containing all information needed in order to send a message to the next layer.
      * @dev We need to know three different addresses:
      *   - The address of the adapter to delegatecall, so that we may propagate message and token relays.
-     *   - The address of the next layer's forwarder, so that we can identify the intended recipient of message and token relays.
-     *   - The address of the next layer's spoke pool, so that we can determine whether the next chain contains the target spoke pool.
+     *   - The address of the next layer's forwarder, so that we can continue the message and token relay chain.
+     *   - The address of the next layer's spoke pool, so that we can determine whether the following network contains the target spoke pool.
      */
     struct RouteIndex {
         address adapter;
@@ -28,13 +33,14 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
         address spokePool;
     }
 
-    // L1 address of the contract which can relay messages to the l3SpokePool contract and update this proxy contract.
+    // Address of the contract which can relay messages to the subsequent forwarders/spoke pools and update this proxy contract.
     address public crossDomainAdmin;
     // Map from a destination address to the next token/message bridge route to reach the destination address. The destination
     // address can either be a spoke pool or a forwarder. This mapping requires that no destination addresses (i.e. spoke pool or
     // forwarder addresses) collide.
     mapping(address => RouteIndex) availableRoutes;
     // Map which takes inputs the destination address and a token address on the current network and outputs the corresponding remote token address.
+    // This also requires that no destination addresses collide.
     mapping(address => mapping(address => address)) remoteTokens;
 
     event TokensForwarded(address indexed target, address indexed baseToken, uint256 amount);
@@ -47,6 +53,10 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     error InvalidL3SpokePool();
     error RelayMessageFailed();
     error RelayTokensFailed(address baseToken);
+    // Error which is triggered when there is no adapter set for a given route.
+    error UninitializedRoute();
+    // Error which is triggered when we must send tokens or a message relay to a forwarder which is uninitialized.
+    error MalformedRoute();
 
     /*
      * @dev All functions with this modifier must revert if msg.sender != crossDomainAdmin. Each L2 may have
@@ -69,7 +79,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     /**
      * @notice Initializes the forwarder contract.
      * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
-     * In practice, this is the hub pool.
+     * In practice, this is the hub pool for forwarders deployed on L2, and other forwarder contracts on layers != L2.
      */
     function __Forwarder_init(address _crossDomainAdmin) public onlyInitializing {
         __UUPSUpgradeable_init();
@@ -124,11 +134,13 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      */
     function relayMessage(address target, bytes memory message) external payable override onlyAdmin {
         RouteIndex storage route = availableRoutes[target];
+        if (route.adapter == address(0)) revert UninitializedRoute();
         bool success;
         // Case 1: We are on the network immediately before our target, so we forward the original message over the canonical messaging bridge.
         if (target == route.spokePool || target == route.forwarder) {
             (success, ) = route.adapter.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (target, message)));
         } else {
+            if (route.forwarder == address(0)) revert MalformedRoute();
             // Case 2: We are not on the network immediately before our target, so we wrap the message in a `relayMessage` call and forward it
             // to the next forwarder on the path to the target contract.
             bytes memory wrappedMessage = abi.encodeCall(AdapterInterface.relayMessage, (target, message));
@@ -157,6 +169,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
         address target
     ) internal {
         RouteIndex storage route = availableRoutes[target];
+        if (route.adapter == address(0)) revert UninitializedRoute();
         bool success;
         // Case 1: We are immediately before the target spoke pool, so we send the tokens to the spoke pool
         // and do NOT follow it up with a message.
@@ -169,6 +182,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
             // Case 2: We are not immediately before the target spoke pool, so we send the tokens to the next
             // forwarder and accompany it with a message containing information about its intended destination.
 
+            if (route.forwarder == address(0)) revert MalformedRoute();
             // Send tokens to the forwarder.
             (success, ) = route.adapter.delegatecall(
                 abi.encodeCall(AdapterInterface.relayTokens, (baseToken, remoteToken, amount, route.forwarder))
