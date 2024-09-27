@@ -16,11 +16,7 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
 contract Mock_Rerouter_Adapter is Rerouter_Adapter {
-    constructor(
-        address _l1Adapter,
-        address _l2Target,
-        uint256 _spokePoolChainId
-    ) Rerouter_Adapter(_l1Adapter, _l2Target, _spokePoolChainId) {}
+    constructor(address _l1Adapter, address _l2Target) Rerouter_Adapter(_l1Adapter, _l2Target) {}
 
     receive() external payable {}
 }
@@ -68,7 +64,7 @@ contract RerouterAdapterTest is Test {
             IERC20(address(0)),
             ITokenMessenger(address(0))
         );
-        rerouterAdapter = new Mock_Rerouter_Adapter(address(optimismAdapter), l2Target, 100);
+        rerouterAdapter = new Mock_Rerouter_Adapter(address(optimismAdapter), l2Target);
     }
 
     // Messages should be indiscriminately sent to the l2Forwarder.

@@ -25,7 +25,6 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 contract Rerouter_Adapter is AdapterInterface {
     address public immutable l1Adapter;
     address public immutable l2Target;
-    uint256 public immutable spokePoolChainId;
 
     error RelayMessageFailed();
     error RelayTokensFailed(address l1Token);
@@ -36,16 +35,10 @@ contract Rerouter_Adapter is AdapterInterface {
      * @param _l1Adapter Address of the adapter contract on mainnet which implements message transfers
      * and token relays.
      * @param _l2Target Address of the L2 contract which receives the token and message relays.
-     * @param _spokePoolChainId Chain ID of the network which contains this adapter's corresponding spoke pool deployment.
      */
-    constructor(
-        address _l1Adapter,
-        address _l2Target,
-        uint256 _spokePoolChainId
-    ) {
+    constructor(address _l1Adapter, address _l2Target) {
         l1Adapter = _l1Adapter;
         l2Target = _l2Target;
-        spokePoolChainId = _spokePoolChainId;
     }
 
     /**
@@ -54,16 +47,12 @@ contract Rerouter_Adapter is AdapterInterface {
      * @param message Data to send to `target`.
      * @dev The message passed into this function is wrapped into a `relayMessage` function call, which is then passed
      * to L2. The l2Target contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
-     * `relayMessage` call will be these target and message values. When sending a message, `spokePoolChainId` is abi-encoded
-     * to provide the forwarder with the necessary information to determine subsequent bridge routes.
+     * `relayMessage` call will be these target and message values.
      */
     function relayMessage(address target, bytes memory message) external payable override {
-        bytes memory updatedMessage = abi.encode(
-            spokePoolChainId,
-            abi.encodeCall(AdapterInterface.relayMessage, (target, message))
-        );
+        bytes memory wrappedMessage = abi.encodeCall(AdapterInterface.relayMessage, (target, message));
         (bool success, ) = l1Adapter.delegatecall(
-            abi.encodeCall(AdapterInterface.relayMessage, (l2Target, updatedMessage))
+            abi.encodeCall(AdapterInterface.relayMessage, (l2Target, wrappedMessage))
         );
         if (!success) revert RelayMessageFailed();
     }
@@ -74,8 +63,8 @@ contract Rerouter_Adapter is AdapterInterface {
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param target The address of the spoke pool which should ultimately receive `amount` of `l1Token`.
-     * @dev When sending a message, `spokePoolChainId` is abi-encoded to provide the forwarder with the necessary information
-     * to determine subsequent bridge routes.
+     * @dev When sending tokens, we follow-up with a message describing the amount of tokens we wish to continue bridging.
+     * This allows forwarders to know how much of some token to allocate to a certain target.
      */
     function relayTokens(
         address l1Token,
@@ -90,10 +79,7 @@ contract Rerouter_Adapter is AdapterInterface {
         if (!success) revert RelayTokensFailed(l1Token);
 
         // Follow-up token relay with a message to continue the token relay on L2.
-        bytes memory message = abi.encode(
-            spokePoolChainId,
-            abi.encodeCall(AdapterInterface.relayTokens, (l1Token, l2Token, amount, target))
-        );
+        bytes memory message = abi.encodeCall(AdapterInterface.relayTokens, (l1Token, l2Token, amount, target));
         (success, ) = l1Adapter.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (l2Target, message)));
         if (!success) revert RelayMessageFailed();
     }
