@@ -35,10 +35,10 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     // forwarder addresses) collide.
     mapping(address => RouteIndex) availableRoutes;
 
-    event TokensForwarded(address indexed l2Token, uint256 amount);
+    event TokensForwarded(address indexed target, address indexed baseToken, uint256 amount);
     event MessageForwarded(address indexed target, bytes message);
     event SetXDomainAdmin(address indexed crossDomainAdmin);
-    event SetL3SpokePool(address indexed l3SpokePool);
+    event RouteUpdated(address indexed target, RouteIndex route);
 
     error InvalidCrossDomainAdmin();
     error InvalidL3SpokePool();
@@ -91,6 +91,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      */
     function updateRoute(address _destinationAddress, RouteIndex memory _routeIndex) external onlyAdmin {
         availableRoutes[_destinationAddress] = _routeIndex;
+        emit RouteUpdated(_destinationAddress, _routeIndex);
     }
 
     /**
@@ -116,6 +117,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
             );
         }
         if (!success) revert RelayMessageFailed();
+        emit MessageForwarded(target, message);
     }
 
     /**
@@ -163,6 +165,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
             );
             if (!success) revert RelayMessageFailed();
         }
+        emit TokensForwarded(target, baseToken, amount);
     }
 
     // Function to be overridden to accomodate for each L2's unique method of address aliasing.
