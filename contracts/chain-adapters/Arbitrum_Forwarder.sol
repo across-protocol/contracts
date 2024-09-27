@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ForwarderBase } from "./ForwarderBase.sol";
 import { ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridgeInterfaces.sol";
-import { AddressUtils } from "../libraries/AddressUtils.sol";
+import { CrossDomainAddressUtils } from "../libraries/CrossDomainAddressUtils.sol";
 
 /**
  * @title Arbitrum_Forwarder
@@ -15,7 +15,7 @@ contract Arbitrum_Forwarder is ForwarderBase {
     ArbitrumL1ERC20GatewayLike public immutable arbitrumGatewayRouter;
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == AddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == CrossDomainAddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 

@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
  * @title AddressUtils
  * @notice This library contains internal functions for manipulating addresses.
  */
-library AddressUtils {
+library CrossDomainAddressUtils {
     // L1 addresses are transformed during l1->l2 calls.
     // This cannot be pulled directly from Arbitrum contracts because their contracts are not 0.8.X compatible and
     // this operation takes advantage of overflows, whose behavior changed in 0.8.0.

@@ -7,7 +7,7 @@ pragma solidity ^0.8.19;
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridgeInterfaces.sol";
-import { AddressUtils } from "./libraries/AddressUtils.sol";
+import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
@@ -55,7 +55,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == AddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == CrossDomainAddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
