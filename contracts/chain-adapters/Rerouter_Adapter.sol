@@ -4,16 +4,16 @@ pragma solidity ^0.8.0;
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to a target on L3 via re-routing messages to an
- * intermediate contract on L2.
+ * @notice Contract containing logic to send messages from L1 to a target on an arbitrary layer via re-routing messages
+ * through intermediate contracts.
  * @dev Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
- * will be the L3 spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
- * contract cannot send anything directly to the L3 target. Instead, it "re-routes" messages to the L3 via an L2
- * contract set as the `l2Target` in this contract. The L3 spoke pool address must be initialized on the `l2Target`
- * contract to the same L3 spoke pool address found in the hub pool's `crossChainContracts` mapping. There should be
- * one of these adapters for each L3 spoke pool deployment.
- * @dev The contract set as the l2Target must implement ForwarderBase in order for tokens and messages to be automatically
- * forwarded to the next layers.
+ * will be the remote spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
+ * contract cannot send anything directly to the this target, since it does not exist on L2. Instead, it "re-routes"
+ * messages to the remote network via intermediate forwarder contracts,beginning with an L2 forwarder, which is set as the
+ * `l2Target` in this contract. Each forwarder contract contains logic which determines the path a message or token relay
+ * must take to ultimately arrive at the spoke pool. There should be one of these adapters for each L3 spoke pool deployment.
+ * @dev All forwarder contracts, including `l2Target`, must implement ForwarderBase in order for tokens and messages to be
+ * automatically relayed to the subsequent layers.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
@@ -42,11 +42,12 @@ contract Rerouter_Adapter is AdapterInterface {
     }
 
     /**
-     * @notice Send cross-chain message to a target on L2 which will re-route messages to the intended L3 target.
-     * @param target Address of the L3 contract which receives `message` after it has been forwarded on L2.
+     * @notice Send cross-chain message to a target on L2 which will re-route messages to the intended remote target.
+     * @param target Address of the remote contract which receives `message` after it has been forwarded by all intermediate
+     * contracts.
      * @param message Data to send to `target`.
      * @dev The message passed into this function is wrapped into a `relayMessage` function call, which is then passed
-     * to L2. The l2Target contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
+     * to L2. The `l2Target` contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
      * `relayMessage` call will be these target and message values.
      */
     function relayMessage(address target, bytes memory message) external payable override {
