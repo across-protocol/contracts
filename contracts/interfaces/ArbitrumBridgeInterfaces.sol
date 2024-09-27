@@ -195,6 +195,12 @@ interface ArbitrumL1ERC20GatewayLike {
         uint256 _gasPriceBid,
         bytes calldata _data
     ) external payable returns (bytes memory);
+
+    /**
+     * @notice Fetches the l2 token address from the gateway router for the input l1 token address
+     * @param _l1Erc20 address of the l1 token.
+     */
+    function calculateL2TokenAddress(address _l1Erc20) external view returns (address);
 }
 
 interface ArbitrumL2ERC20GatewayLike {
