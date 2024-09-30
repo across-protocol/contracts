@@ -23,8 +23,8 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 contract Rerouter_Adapter is AdapterInterface {
-    address public immutable l1Adapter;
-    address public immutable l2Target;
+    address public immutable L1_ADAPTER;
+    address public immutable L2_TARGET;
 
     error RelayMessageFailed();
     error RelayTokensFailed(address l1Token);
@@ -37,8 +37,8 @@ contract Rerouter_Adapter is AdapterInterface {
      * @param _l2Target Address of the L2 contract which receives the token and message relays.
      */
     constructor(address _l1Adapter, address _l2Target) {
-        l1Adapter = _l1Adapter;
-        l2Target = _l2Target;
+        L1_ADAPTER = _l1Adapter;
+        L2_TARGET = _l2Target;
     }
 
     /**
@@ -52,8 +52,8 @@ contract Rerouter_Adapter is AdapterInterface {
      */
     function relayMessage(address target, bytes memory message) external payable override {
         bytes memory wrappedMessage = abi.encodeCall(AdapterInterface.relayMessage, (target, message));
-        (bool success, ) = l1Adapter.delegatecall(
-            abi.encodeCall(AdapterInterface.relayMessage, (l2Target, wrappedMessage))
+        (bool success, ) = L1_ADAPTER.delegatecall(
+            abi.encodeCall(AdapterInterface.relayMessage, (L2_TARGET, wrappedMessage))
         );
         if (!success) revert RelayMessageFailed();
     }
@@ -74,14 +74,14 @@ contract Rerouter_Adapter is AdapterInterface {
         address target
     ) external payable override {
         // Relay tokens to the forwarder.
-        (bool success, ) = l1Adapter.delegatecall(
-            abi.encodeCall(AdapterInterface.relayTokens, (l1Token, l2Token, amount, l2Target))
+        (bool success, ) = L1_ADAPTER.delegatecall(
+            abi.encodeCall(AdapterInterface.relayTokens, (l1Token, l2Token, amount, L2_TARGET))
         );
         if (!success) revert RelayTokensFailed(l1Token);
 
         // Follow-up token relay with a message to continue the token relay on L2.
         bytes memory message = abi.encodeCall(AdapterInterface.relayTokens, (l1Token, l2Token, amount, target));
-        (success, ) = l1Adapter.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (l2Target, message)));
+        (success, ) = L1_ADAPTER.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (L2_TARGET, message)));
         if (!success) revert RelayMessageFailed();
     }
 }
