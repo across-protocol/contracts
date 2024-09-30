@@ -37,6 +37,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
         address spokePool;
     }
 
+    // Address that can relay messages using this contract and also upgrade this contract.
+    address public crossDomainAdmin;
+
     // Map from a destination address to the next token/message bridge route to reach the destination address. The destination address can either be a
     // spoke pool or a forwarder. Destination addresses are used as the key in this mapping because the `target` address is the only information
     // we receive when `relay{Message/Token}` is called on this contract, so we assume that these destination contracts on all the possible next
@@ -51,6 +54,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     event TokensForwarded(address indexed target, address indexed baseToken, uint256 amount);
     event MessageForwarded(address indexed target, bytes message);
     event RouteUpdated(address indexed target, Route route);
+    event SetXDomainAdmin(address indexed crossDomainAdmin);
     event DestinationChainTokensUpdated(
         address indexed target,
         address indexed baseToken,
@@ -76,6 +80,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
 
     /**
      * @notice Constructs the Forwarder contract.
+     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages 
+     * to this forwarder contract.
      * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
      * may disrupt the proxy if another EOA were to initialize it.
      */
@@ -86,8 +92,17 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     /**
      * @notice Initializes the forwarder contract.
      */
-    function __Forwarder_init() public onlyInitializing {
+    function __Forwarder_init(address _crossDomainAdmin) public onlyInitializing {
         __UUPSUpgradeable_init();
+        _setCrossDomainAdmin(_crossDomainAdmin);
+    }
+
+    /**
+     * @notice Sets a new cross domain admin for this contract.
+     * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
+     */
+    function setCrossDomainAdmin(address _newCrossDomainAdmin) external onlyAdmin {
+        _setCrossDomainAdmin(_newCrossDomainAdmin);
     }
 
     /**
@@ -211,4 +226,15 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     // We also want to restrict who can upgrade this contract. The same admin that can relay messages through this
     // contract can upgrade this contract.
     function _authorizeUpgrade(address) internal virtual override onlyAdmin {}
+
+    function _setCrossDomainAdmin(address _newCrossDomainAdmin) internal {
+        if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
+        crossDomainAdmin = _newCrossDomainAdmin;
+        emit SetXDomainAdmin(_newCrossDomainAdmin);
+    }
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    uint256[1000] private __gap;
 }
