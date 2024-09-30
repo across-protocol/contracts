@@ -4,17 +4,15 @@ pragma solidity ^0.8.0;
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to non-spoke pool L2 targets via re-routing message recipients
- * before submission. This ultimately enables sending messages to targets on arbitrary layers via forwarding through intermediate
- * contracts.
- * @dev Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
- * will be the remote spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
- * contract cannot send anything directly to the this target, since it does not exist on L2. Instead, it "re-routes"
- * messages to the remote network via intermediate forwarder contracts,beginning with an L2 forwarder, which is set as the
- * `l2Target` in this contract. Each forwarder contract contains logic which determines the path a message or token relay
- * must take to ultimately arrive at the spoke pool. There should be one of these adapters for each L3 spoke pool deployment.
- * @dev All forwarder contracts, including `l2Target`, must implement ForwarderBase in order for tokens and messages to be
- * automatically relayed to the subsequent layers.
+ * @notice Contract containing logic to send messages from L1 to "L3" networks that do not have direct connections
+ * with L1. L3's are defined as networks that connect to L1 indirectly via L2, and this contract sends
+ * messages to those L3's by rerouting them via those L2's. This contract is called a "Rerouter" because it uses 
+ * (i.e. delegatecall's) existing L2 adapter logic to send a message first from L1 to L2 and then from L2 to L3.
+ * @dev Due to the constraints of the `SetCrossChainContracts` event as outlined in UMIP-157 and how the HubPool 
+ * delegatecalls adapters like this one, all messages relayed through this
+ * adapter have target addresses on the L3's. However, these target addresses do not exist on L2 where all messages are 
+ * rerouted through. Therefore, this contract is designed to be used in tandem with "L2 Forwarder Adapters" which help
+ * get the messages from L1 to L3 via L2's.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
@@ -24,18 +22,21 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 contract Rerouter_Adapter is AdapterInterface {
+    // Adapter designed to relay messages from L1 to L2 addresses and delegatecalled by this contract to reroute
+    // messages to L3 via the L2_TARGET.
     address public immutable L1_ADAPTER;
+    // L2_TARGET is a "Forwarder" contract that will help relay messages from L1 to L3. Messages are "rerouted" through
+    // the L2_TARGET.
     address public immutable L2_TARGET;
 
     error RelayMessageFailed();
     error RelayTokensFailed(address l1Token);
 
     /**
-     * @notice Constructs new Adapter for sending tokens/messages to an L2 target. This contract will
-     * re-route messages to L2_TARGET via the L1_ADAPTER contract.
+     * @notice Constructs new Adapter. This contract will re-route messages destined for an L3 to L2_TARGET via the L1_ADAPTER contract.
      * @param _l1Adapter Address of the adapter contract on mainnet which implements message transfers
-     * and token relays.
-     * @param _l2Target Address of the L2 contract which receives the token and message relays.
+     * and token relays to the L2 where _l2Target is deployed.
+     * @param _l2Target Address of the L2 contract which receives the token and message relays in order to forward them to an L3.
      */
     constructor(address _l1Adapter, address _l2Target) {
         L1_ADAPTER = _l1Adapter;
@@ -43,14 +44,14 @@ contract Rerouter_Adapter is AdapterInterface {
     }
 
     /**
-     * @notice Send cross-chain message to a target on L2 which will forward messages to the intended remote target.
+     * @notice Send cross-chain message to a target on L2 which will forward messages to the intended remote target on an L3.
      * @param target Address of the remote contract which receives `message` after it has been forwarded by all intermediate
      * contracts.
      * @param message Data to send to `target`.
      * @dev The message passed into this function is wrapped into a `relayMessage` function call, which is then passed
      * to L2. The `L2_TARGET` contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
      * `relayMessage` call will be these `target` and `message` values. From there, the forwarder derives the next appropriate
-     * method to send `message` to the following layers.
+     * method to send `message` to the following layers and ultimately to the target on L3.
      */
     function relayMessage(address target, bytes memory message) external payable override {
         bytes memory wrappedMessage = abi.encodeCall(AdapterInterface.relayMessage, (target, message));
