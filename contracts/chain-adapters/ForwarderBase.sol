@@ -93,7 +93,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     /**
      * @notice Maps a new set of contracts that exist on the network to a destination address.
      * @param _destinationAddress The address on the destination chain that we want to send messages to from this contract.
-     * @param _route Contracts available on the destinatio network that we want to send messages to.
+     * @param _route Contracts available on the destination network that we want to send messages to.
      * @dev Each forwarder will not know how many layers it must traverse to arrive at _destinationAddress until it is precisely
      * one layer away. The possibleRoutes mapping lets the forwarder know what path it should take to progess, and then relies on
      * the forwarders on the subsequent layers to derive the next route in sequence.
