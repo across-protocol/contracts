@@ -8,12 +8,15 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
  * @title ForwarderBase
  * @notice This contract expects to receive messages and tokens from an authorized sender on a previous layer and forwards messages and tokens
  * to contracts on subsequent layers. Messages are intended to originate from the hub pool or other forwarder contracts.
- * @dev This contract rejects messages which do not originate from the cross domain admin, which should be set to these contracts, depending on the
- * sender on the previous layer. Additionally, this contract only knows information about networks which roll up their state to the network on which
- * this contract is deployed. Messages continue to be forwarded across an indefinite amount of layers by recursively wrapping and sending messages
- * over canonical bridges, only stopping when the following network contains the intended target contract.
+ * @dev This contract rejects messages which do not originate from the cross domain admin, which should be set to authorized contracts, such as the hub
+ * pool or other forwarder contracts, depending on the `msg.sender` on the previous layer. This contract only knows information about networks which roll
+ * up their state to the network on which this contract is deployed. Messages continue to be forwarded across an indefinite amount of layers by recursively
+ * wrapping and sending messages over canonical bridges, only stopping when the following network contains the intended target contract.
  * @dev Since these contracts use destination addresses to derive a route to subsequent networks, it requires that all of these forwarder contracts
- * AND spoke pool contracts which require forwarders to receive messages to not have same addresses.
+ * AND spoke pool contracts which require forwarders to receive messages do not have same addresses.
+ * @dev Every contract which inherits ForwarderBase must implement two functions, which are both dependent on the architecture of the network on which the
+ * contract is deployed: `_requireAdminSender` should enforce that the `msg.sender` of calls to this contract are from the initialized `crossDomainAdmin`, and
+ * `relayTokens` should determine the address of the token to relay on the subsequent network, before calling `_relayTokens`.
  * @dev Base contract designed to be deployed on a layer > L1 to re-route messages to a further layer. If a message is sent to this contract which
  * came from the cross domain admin, then it is routed to the next layer via the canonical messaging bridge. Tokens sent from L1 are accompanied by a
  * message directing this contract on the next steps of the token relay.
@@ -21,14 +24,17 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
  */
 abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     /**
-     * @notice Struct containing all information needed in order to send a message to the next layer.
+     * @notice Route contains all information needed in order to send a message to the next layer. It describes two possible paths: a message is sent
+     * through `adapter` to the `forwarder`, or a message is sent through `adapter` to the `spokePool`.
      * @dev We need to know three different addresses:
      *   - The address of the adapter to delegatecall, so that we may propagate message and token relays.
      *   - The address of the next layer's forwarder, so that we can continue the message and token relay chain.
      *   - The address of the next layer's spoke pool, so that we can determine whether the following network contains the target spoke pool.
      * these addresses describe the path a message or token relay must take to arrive at the next layer. A Route only describes the path to arrive
      * a layer closer to to the ultimate target, unless one of the `forwarder` or `spokePool` addresses equal the target contract, in which case
-     * the path ends.
+     * the path ends. All Routes must contain an adapter address; however, not all Routes must contain a forwarder or spokePool address. For example,
+     * we may send a message to a spoke pool on a network with no corresponding forwarder contract, or we may send a message to a network which contains
+     * a forwarder contract but no spoke pool.
      */
     struct Route {
         address adapter;
@@ -38,9 +44,10 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
 
     // Address of the contract which can relay messages to the subsequent forwarders/spoke pools and update this proxy contract.
     address public crossDomainAdmin;
-    // Map from a destination address to the next token/message bridge route to reach the destination address. The destination
-    // address can either be a spoke pool or a forwarder. This mapping requires that no destination addresses (i.e. spoke pool or
-    // forwarder addresses) collide. We cannot use the destination chain ID as a key here since we do not have that information.
+    // Map from a destination address to the next token/message bridge route to reach the destination address. The destination address can either be a
+    // spoke pool or a forwarder.
+    // This mapping requires that no destination addresses (i.e. spoke pool or forwarder addresses) collide. We cannot use the
+    // destination chain ID as a key here since we do not have that information.
     mapping(address => Route) possibleRoutes;
     // Map which takes inputs the destination address and a token address on the current network and outputs the corresponding remote token address.
     // This also requires that no destination addresses collide.
@@ -62,7 +69,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     error RelayTokensFailed(address baseToken);
     // Error which is triggered when there is no adapter set for a given route.
     error UninitializedRoute();
-    // Error which is triggered when we must send tokens or a message relay to a forwarder which is uninitialized.
+    // Error which is triggered when we attempted send tokens or a message relay to a forwarder which is uninitialized.
     error MalformedRoute();
 
     /*
@@ -120,7 +127,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      * destination chain token.
      * @param _baseToken The address of the token which exists on the current network.
      * @param _destinationChainToken The address of the token on the network which is next on the path to _destinationAddress.
-     * @dev This mapping also relies on using _destinationAddress to determine the network to bridge to.
+     * @dev This mapping also relies on using _destinationAddress to determine the network to bridge to. Consequently, it requires that a new
+     * _destinationAddress does not collide with an existing key in the `destinationChainTokens` mapping.
      */
     function updateRemoteToken(
         address _destinationAddress,
@@ -134,8 +142,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     /**
      * @notice Relays a specified message to a contract on the following layer. If `target` exists on the following layer, then `message` is sent
      * to it. Otherwise, `message` is sent to the next layer's forwarder contract.
-     * @param target The address of the contract that will receive the input message.
-     * @param message The data to execute on the contract.
+     * @param target The address of the spoke pool or forwarder contract that will receive the input message.
+     * @param message The data to execute on the target contract.
      * @dev Each forwarder will only know if they are on the layer directly before the layer which contains the `target` contract.
      * If the next layer contains the target, we send `message` cross-chain normally. Otherwise, we wrap `message` into a `relayMessage`
      * call to the next layer's forwarder contract.
@@ -161,14 +169,15 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     }
 
     /**
-     * @notice Relays `amount` of a token to `target` over an arbitrary number of layers.
+     * @notice Relays `amount` of a token to a contract on the following layer. If `target` does not exist on the following layer, then the tokens
+     * are sent to the following layer's forwarder contract.
      * @param baseToken This layer's address of the token to send.
      * @param destinationChainToken The next layer's address of the token to send.
      * @param amount The amount of the token to send.
-     * @param target The address of the contract that will receive the tokens.
-     * @dev The relayTokens function (which must be implemented on a per-chain basis) needs to inductively determine the address of the
-     * remote token given a known baseToken. Then, once the correct addresses are obtained, this function may be called to finish the
-     * relay of tokens.
+     * @param target The address of the contract that which will *ultimately* receive the tokens. That is, the spoke pool contract address on an
+     * arbitrary layer which receives `amount` of a token after all forwards have been completed.
+     * @dev The relayTokens function (which must be implemented on a per-chain basis) needs to inductively determine the address of the remote token
+     * given a known baseToken. Then, once the correct addresses are obtained, this function may be called to finish the relay of tokens.
      */
     function _relayTokens(
         address baseToken,
