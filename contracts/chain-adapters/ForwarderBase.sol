@@ -37,9 +37,6 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
         address spokePool;
     }
 
-    // Address of the contract which can relay messages to the subsequent forwarders/spoke pools and update this proxy contract.
-    address public crossDomainAdmin;
-
     // Map from a destination address to the next token/message bridge route to reach the destination address. The destination address can either be a
     // spoke pool or a forwarder. Destination addresses are used as the key in this mapping because the `target` address is the only information
     // we receive when `relay{Message/Token}` is called on this contract, so we assume that these destination contracts on all the possible next
