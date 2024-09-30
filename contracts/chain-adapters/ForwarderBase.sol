@@ -26,8 +26,11 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      *   - The address of the adapter to delegatecall, so that we may propagate message and token relays.
      *   - The address of the next layer's forwarder, so that we can continue the message and token relay chain.
      *   - The address of the next layer's spoke pool, so that we can determine whether the following network contains the target spoke pool.
+     * these addresses describe the path a message or token relay must take to arrive at the next layer. A Route only describes the path to arrive
+     * a layer closer to to the ultimate target, unless one of the `forwarder` or `spokePool` addresses equal the target contract, in which case
+     * the path ends.
      */
-    struct RouteIndex {
+    struct Route {
         address adapter;
         address forwarder;
         address spokePool;
@@ -37,17 +40,21 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     address public crossDomainAdmin;
     // Map from a destination address to the next token/message bridge route to reach the destination address. The destination
     // address can either be a spoke pool or a forwarder. This mapping requires that no destination addresses (i.e. spoke pool or
-    // forwarder addresses) collide.
-    mapping(address => RouteIndex) availableRoutes;
+    // forwarder addresses) collide. We cannot use the destination chain ID as a key here since we do not have that information.
+    mapping(address => Route) possibleRoutes;
     // Map which takes inputs the destination address and a token address on the current network and outputs the corresponding remote token address.
     // This also requires that no destination addresses collide.
-    mapping(address => mapping(address => address)) remoteTokens;
+    mapping(address => mapping(address => address)) destinationChainTokens;
 
     event TokensForwarded(address indexed target, address indexed baseToken, uint256 amount);
     event MessageForwarded(address indexed target, bytes message);
     event SetXDomainAdmin(address indexed crossDomainAdmin);
-    event RouteUpdated(address indexed target, RouteIndex route);
-    event RemoteTokensUpdated(address indexed target, address indexed baseToken, address indexed remoteToken);
+    event RouteUpdated(address indexed target, Route route);
+    event DestinationChainTokensUpdated(
+        address indexed target,
+        address indexed baseToken,
+        address indexed destinationChainToken
+    );
 
     error InvalidCrossDomainAdmin();
     error InvalidL3SpokePool();
@@ -95,37 +102,38 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     }
 
     /**
-     * @notice Sets a new RouteIndex to a specified address.
-     * @param _destinationAddress The address to set in the availableRoutes mapping.
-     * @param _routeIndex RouteIndex struct containing the next immediate path to reach the _destination address.
+     * @notice Sets a new Route to a specified address.
+     * @param _destinationAddress The address to set in the possibleRoutes mapping.
+     * @param _route Route struct containing the next immediate path to reach the _destination address.
      * @dev Each forwarder will not know how many layers it must traverse to arrive at _destinationAddress until it is precisely
-     * one layer away. The availableRoutes mapping lets the forwarder know what path it should take to progess, and then relies on
+     * one layer away. The possibleRoutes mapping lets the forwarder know what path it should take to progess, and then relies on
      * the forwarders on the subsequent layers to derive the next route in sequence.
      */
-    function updateRoute(address _destinationAddress, RouteIndex memory _routeIndex) external onlyAdmin {
-        availableRoutes[_destinationAddress] = _routeIndex;
-        emit RouteUpdated(_destinationAddress, _routeIndex);
+    function updateRoute(address _destinationAddress, Route memory _route) external onlyAdmin {
+        possibleRoutes[_destinationAddress] = _route;
+        emit RouteUpdated(_destinationAddress, _route);
     }
 
     /**
-     * @notice Sets a new remote token in the remoteTokens mapping.
-     * @param _destinationAddress The address to set in the remoteTokens mapping. This is to identify the network associated with the
-     * remote token.
+     * @notice Sets a new remote token in the destinationChainTokens mapping.
+     * @param _destinationAddress The address to set in the destinationChainTokens mapping. This is to identify the network associated with the
+     * destination chain token.
      * @param _baseToken The address of the token which exists on the current network.
-     * @param _remoteToken The address of the token on the network which is next on the path to _destinationAddress.
+     * @param _destinationChainToken The address of the token on the network which is next on the path to _destinationAddress.
      * @dev This mapping also relies on using _destinationAddress to determine the network to bridge to.
      */
     function updateRemoteToken(
         address _destinationAddress,
         address _baseToken,
-        address _remoteToken
+        address _destinationChainToken
     ) external onlyAdmin {
-        remoteTokens[_destinationAddress][_baseToken] = _remoteToken;
-        emit RemoteTokensUpdated(_destinationAddress, _baseToken, _remoteToken);
+        destinationChainTokens[_destinationAddress][_baseToken] = _destinationChainToken;
+        emit DestinationChainTokensUpdated(_destinationAddress, _baseToken, _destinationChainToken);
     }
 
     /**
-     * @notice Relays a specified message to a target on an arbitrary layer.
+     * @notice Relays a specified message to a contract on the following layer. If `target` exists on the following layer, then `message` is sent
+     * to it. Otherwise, `message` is sent to the next layer's forwarder contract.
      * @param target The address of the contract that will receive the input message.
      * @param message The data to execute on the contract.
      * @dev Each forwarder will only know if they are on the layer directly before the layer which contains the `target` contract.
@@ -133,7 +141,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      * call to the next layer's forwarder contract.
      */
     function relayMessage(address target, bytes memory message) external payable override onlyAdmin {
-        RouteIndex storage route = availableRoutes[target];
+        Route storage route = possibleRoutes[target];
         if (route.adapter == address(0)) revert UninitializedRoute();
         bool success;
         // Case 1: We are on the network immediately before our target, so we forward the original message over the canonical messaging bridge.
@@ -155,7 +163,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
     /**
      * @notice Relays `amount` of a token to `target` over an arbitrary number of layers.
      * @param baseToken This layer's address of the token to send.
-     * @param remoteToken The next layer's address of the token to send.
+     * @param destinationChainToken The next layer's address of the token to send.
      * @param amount The amount of the token to send.
      * @param target The address of the contract that will receive the tokens.
      * @dev The relayTokens function (which must be implemented on a per-chain basis) needs to inductively determine the address of the
@@ -164,18 +172,18 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
      */
     function _relayTokens(
         address baseToken,
-        address remoteToken,
+        address destinationChainToken,
         uint256 amount,
         address target
     ) internal {
-        RouteIndex storage route = availableRoutes[target];
+        Route storage route = possibleRoutes[target];
         if (route.adapter == address(0)) revert UninitializedRoute();
         bool success;
         // Case 1: We are immediately before the target spoke pool, so we send the tokens to the spoke pool
         // and do NOT follow it up with a message.
         if (target == route.spokePool) {
             (success, ) = route.adapter.delegatecall(
-                abi.encodeCall(AdapterInterface.relayTokens, (baseToken, remoteToken, amount, target))
+                abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
             );
             if (!success) revert RelayTokensFailed(baseToken);
         } else {
@@ -185,14 +193,17 @@ abstract contract ForwarderBase is UUPSUpgradeable, AdapterInterface {
             if (route.forwarder == address(0)) revert MalformedRoute();
             // Send tokens to the forwarder.
             (success, ) = route.adapter.delegatecall(
-                abi.encodeCall(AdapterInterface.relayTokens, (baseToken, remoteToken, amount, route.forwarder))
+                abi.encodeCall(
+                    AdapterInterface.relayTokens,
+                    (baseToken, destinationChainToken, amount, route.forwarder)
+                )
             );
             if (!success) revert RelayTokensFailed(baseToken);
 
             // Send a follow-up message to the forwarder which tells it to continue bridging.
             bytes memory message = abi.encodeCall(
                 AdapterInterface.relayTokens,
-                (baseToken, remoteToken, amount, target)
+                (baseToken, destinationChainToken, amount, target)
             );
             (success, ) = route.adapter.delegatecall(
                 abi.encodeCall(AdapterInterface.relayMessage, (route.forwarder, message))
