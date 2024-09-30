@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to a target on an arbitrary layer via re-routing messages
- * through intermediate contracts.
+ * @notice Contract containing logic to send messages from L1 to non-spoke pool L2 targets via re-routing message recipients
+ * before submission. This ultimately enables sending messages to targets on arbitrary layers via forwarding through intermediate
+ * contracts.
  * @dev Since this adapter is normally called by the hub pool, the target of both `relayMessage` and `relayTokens`
  * will be the remote spoke pool due to the constraints of `setCrossChainContracts` outlined in UMIP 157. However, this
  * contract cannot send anything directly to the this target, since it does not exist on L2. Instead, it "re-routes"
@@ -31,7 +32,7 @@ contract Rerouter_Adapter is AdapterInterface {
 
     /**
      * @notice Constructs new Adapter for sending tokens/messages to an L2 target. This contract will
-     * re-route messages to the _l2Target via the _l1Adapter.
+     * re-route messages to L2_TARGET via the L1_ADAPTER contract.
      * @param _l1Adapter Address of the adapter contract on mainnet which implements message transfers
      * and token relays.
      * @param _l2Target Address of the L2 contract which receives the token and message relays.
@@ -42,13 +43,14 @@ contract Rerouter_Adapter is AdapterInterface {
     }
 
     /**
-     * @notice Send cross-chain message to a target on L2 which will re-route messages to the intended remote target.
+     * @notice Send cross-chain message to a target on L2 which will forward messages to the intended remote target.
      * @param target Address of the remote contract which receives `message` after it has been forwarded by all intermediate
      * contracts.
      * @param message Data to send to `target`.
      * @dev The message passed into this function is wrapped into a `relayMessage` function call, which is then passed
-     * to L2. The `l2Target` contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
-     * `relayMessage` call will be these target and message values.
+     * to L2. The `L2_TARGET` contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
+     * `relayMessage` call will be these `target` and `message` values. From there, the forwarder derives the next appropriate
+     * method to send `message` to the following layers.
      */
     function relayMessage(address target, bytes memory message) external payable override {
         bytes memory wrappedMessage = abi.encodeCall(AdapterInterface.relayMessage, (target, message));
@@ -59,11 +61,11 @@ contract Rerouter_Adapter is AdapterInterface {
     }
 
     /**
-     * @notice Bridge tokens to a target on L2.
+     * @notice Bridge tokens to a target on L2 and follow up the token bridge with a call to continue bridging the sent tokens.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
-     * @param target The address of the spoke pool which should ultimately receive `amount` of `l1Token`.
+     * @param target The address of the contract which should ultimately receive `amount` of `l1Token`.
      * @dev When sending tokens, we follow-up with a message describing the amount of tokens we wish to continue bridging.
      * This allows forwarders to know how much of some token to allocate to a certain target.
      */
