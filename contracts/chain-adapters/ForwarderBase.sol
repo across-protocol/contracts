@@ -33,7 +33,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     error RelayMessageFailed();
     error RelayTokensFailed(address baseToken);
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
-    error UninitializedRoute();
+    error UninitializedChainAdapter();
 
     /*
      * @dev Cross domain admin permissioning is implemented specifically for each L2 that this contract is deployed on, so this base contract
@@ -98,7 +98,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         bytes memory message
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
-        if (adapter == address(0)) revert UninitializedRoute();
+        if (adapter == address(0)) revert UninitializedChainAdapter();
 
         // The forwarder assumes that `target` exists on the following network.
         (bool success, ) = adapter.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (target, message)));
@@ -124,7 +124,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         address target
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
-        if (adapter == address(0)) revert UninitializedRoute();
+        if (adapter == address(0)) revert UninitializedChainAdapter();
         (bool success, ) = adapter.delegatecall(
             abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
         );
