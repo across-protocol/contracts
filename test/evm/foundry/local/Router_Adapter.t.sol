@@ -9,7 +9,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 
-import { Rerouter_Adapter } from "../../../../contracts/chain-adapters/Rerouter_Adapter.sol";
+import { Router_Adapter } from "../../../../contracts/chain-adapters/Router_Adapter.sol";
 import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
@@ -21,14 +21,14 @@ import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpToke
 
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
-contract Mock_Rerouter_Adapter is Rerouter_Adapter {
+contract Mock_Router_Adapter is Router_Adapter {
     constructor(
         address _l1Adapter,
         address _l2Target,
         uint256 _l2ChainId,
         uint256 _l3ChainId,
         HubPoolInterface _hubPool
-    ) Rerouter_Adapter(_l1Adapter, _l2Target, _l2ChainId, _l3ChainId, _hubPool) {}
+    ) Router_Adapter(_l1Adapter, _l2Target, _l2ChainId, _l3ChainId, _hubPool) {}
 
     receive() external payable {}
 }
@@ -45,8 +45,8 @@ contract Token_ERC20 is ERC20 {
     }
 }
 
-contract RerouterAdapterTest is Test {
-    Rerouter_Adapter rerouterAdapter;
+contract RouterAdapterTest is Test {
+    Router_Adapter routerAdapter;
     Optimism_Adapter optimismAdapter;
 
     Token_ERC20 l1Token;
@@ -101,13 +101,7 @@ contract RerouterAdapterTest is Test {
             IERC20(address(0)),
             ITokenMessenger(address(0))
         );
-        rerouterAdapter = new Mock_Rerouter_Adapter(
-            address(optimismAdapter),
-            l2Target,
-            L2_CHAIN_ID,
-            L3_CHAIN_ID,
-            hubPool
-        );
+        routerAdapter = new Mock_Router_Adapter(address(optimismAdapter), l2Target, L2_CHAIN_ID, L3_CHAIN_ID, hubPool);
     }
 
     // Messages should be indiscriminately sent to the l2Forwarder.
@@ -115,7 +109,7 @@ contract RerouterAdapterTest is Test {
         vm.assume(target != l2Target);
         vm.expectEmit(address(crossDomainMessenger));
         emit MockBedrockCrossDomainMessenger.MessageSent(l2Target);
-        rerouterAdapter.relayMessage(target, message);
+        routerAdapter.relayMessage(target, message);
     }
 
     // Sending Weth should call depositETHTo().
@@ -123,22 +117,22 @@ contract RerouterAdapterTest is Test {
         // Prevent fuzz testing with amountToSend * 2 > 2^256
         amountToSend = uint256(bound(amountToSend, 1, 2**254));
         vm.deal(address(l1Weth), amountToSend);
-        vm.deal(address(rerouterAdapter), amountToSend);
+        vm.deal(address(routerAdapter), amountToSend);
 
-        vm.startPrank(address(rerouterAdapter));
+        vm.startPrank(address(routerAdapter));
         l1Weth.deposit{ value: amountToSend }();
         vm.stopPrank();
 
         assertEq(amountToSend * 2, l1Weth.totalSupply());
         vm.expectEmit(address(standardBridge));
         emit MockBedrockL1StandardBridge.ETHDepositInitiated(l2Target, amountToSend);
-        rerouterAdapter.relayTokens(address(l1Weth), address(l2Weth), amountToSend, random);
-        assertEq(0, l1Weth.balanceOf(address(rerouterAdapter)));
+        routerAdapter.relayTokens(address(l1Weth), address(l2Weth), amountToSend, random);
+        assertEq(0, l1Weth.balanceOf(address(routerAdapter)));
     }
 
     // Sending any random token should call depositERC20To().
     function testRelayToken(uint256 amountToSend, address random) public {
-        l1Token.mint(address(rerouterAdapter), amountToSend);
+        l1Token.mint(address(routerAdapter), amountToSend);
         assertEq(amountToSend, l1Token.totalSupply());
 
         vm.expectEmit(address(standardBridge));
@@ -148,7 +142,7 @@ contract RerouterAdapterTest is Test {
             address(l2Token),
             amountToSend
         );
-        rerouterAdapter.relayTokens(address(l1Token), address(l2Token), amountToSend, random);
-        assertEq(0, l1Token.balanceOf(address(rerouterAdapter)));
+        routerAdapter.relayTokens(address(l1Token), address(l2Token), amountToSend, random);
+        assertEq(0, l1Token.balanceOf(address(routerAdapter)));
     }
 }

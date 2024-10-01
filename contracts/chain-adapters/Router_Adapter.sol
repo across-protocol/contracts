@@ -8,7 +8,7 @@ import { HubPoolInterface } from "../interfaces/HubPoolInterface.sol";
 /**
  * @notice Contract containing logic to send messages from L1 to "L3" networks that do not have direct connections
  * with L1. L3's are defined as networks that connect to L1 indirectly via L2, and this contract sends
- * messages to those L3's by rerouting them via those L2's. This contract is called a "Rerouter" because it uses
+ * messages to those L3's by rerouting them via those L2's. This contract is called a "Router" because it uses
  * (i.e. delegatecall's) existing L2 adapter logic to send a message first from L1 to L2 and then from L2 to L3.
  * @dev Due to the constraints of the `SetCrossChainContracts` event as outlined in UMIP-157 and how the HubPool
  * delegatecalls adapters like this one, all messages relayed through this
@@ -23,7 +23,7 @@ import { HubPoolInterface } from "../interfaces/HubPoolInterface.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Rerouter_Adapter is AdapterInterface {
+contract Router_Adapter is AdapterInterface {
     // Adapter designed to relay messages from L1 to L2 addresses and delegatecalled by this contract to reroute
     // messages to L3 via the L2_TARGET.
     address public immutable L1_ADAPTER;
