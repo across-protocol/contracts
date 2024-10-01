@@ -615,14 +615,12 @@ abstract contract SpokePool is
         uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable nonReentrant unpausedDeposits {
-        // @dev Create the uint256 deposit ID by concatenating the address with the inputted
-        // depositNonce parameter. The resultant 32 byte string can be casted to an "unsafe" uint256 deposit ID.
-        // This probability that the resultant ID collides with a "safe" deposit ID is equal to the chance that the
-        // first 28 bytes of the hash are 0, which is too small for us to consider. Moreover, if the depositId collided
-        // with an already emitted safe deposit ID, then the deposit would only be unfillable if the rest of the
-        // deposit data also matched, which would be very unlikely.
+        // @dev Create the uint256 deposit ID by concatenating the msg.sender and depositor address with the inputted
+        // depositNonce parameter. The resultant 32 byte string will be hashed and then casted to an "unsafe"
+        // uint256 deposit ID. The probability that the resultant ID collides with a "safe" deposit ID is
+        // equal to the chance that the first 28 bytes of the hash are 0, which is too small for us to consider.
 
-        uint256 depositId = getUnsafeDepositId(msg.sender, depositNonce);
+        uint256 depositId = getUnsafeDepositId(msg.sender, depositor, depositNonce);
         _depositV3(
             depositor,
             recipient,
@@ -1103,12 +1101,19 @@ abstract contract SpokePool is
     /**
      * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
      * in unsafeDepositV3 and is provided as a convenience.
-     * @param depositor The address used as input to produce the deposit ID.
+     * @dev msg.sender and depositor are both used as inputs to allow passthrough depositors to create unique
+     * deposit hash spaces for unique depositors.
+     * @param sender The msg.sender address used as input to produce the deposit ID.
+     * @param depositor The depositor address used as input to produce the deposit ID.
      * @param depositNonce The nonce used as input to produce the deposit ID.
      * @return The deposit ID for the unsafe deposit.
      */
-    function getUnsafeDepositId(address depositor, uint256 depositNonce) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(depositor, depositNonce)));
+    function getUnsafeDepositId(
+        address sender,
+        address depositor,
+        uint256 depositNonce
+    ) public pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(sender, depositor, depositNonce)));
     }
 
     /**************************************

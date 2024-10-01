@@ -25,7 +25,6 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
-  zeroAddress,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -600,16 +599,25 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("unsafe deposit ID", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
-      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {address, forcedDepositId}.
+      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, forcedDepositId}.
       const forcedDepositId = "99";
       const expectedDepositId = BigNumber.from(
-        ethers.utils.solidityKeccak256(["address", "uint256"], [depositor.address, forcedDepositId])
+        ethers.utils.solidityKeccak256(
+          ["address", "address", "uint256"],
+          [depositor.address, recipient.address, forcedDepositId]
+        )
       );
-      expect(await spokePool.getUnsafeDepositId(depositor.address, forcedDepositId)).to.equal(expectedDepositId);
+      expect(await spokePool.getUnsafeDepositId(depositor.address, recipient.address, forcedDepositId)).to.equal(
+        expectedDepositId
+      );
+      // Note: we deliberately set the depositor != msg.sender to test that the hashing algorithm correctly includes
+      // both addresses in the hash.
       await expect(
         spokePool
           .connect(depositor)
-          .unsafeDepositV3(...getUnsafeDepositArgsFromRelayData({ ...relayData }, forcedDepositId))
+          .unsafeDepositV3(
+            ...getUnsafeDepositArgsFromRelayData({ ...relayData, depositor: recipient.address }, forcedDepositId)
+          )
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
@@ -622,7 +630,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
           relayData.fillDeadline,
           currentTime,
-          depositor.address,
+          recipient.address,
           relayData.recipient,
           relayData.exclusiveRelayer,
           relayData.message
