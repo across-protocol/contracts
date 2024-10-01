@@ -81,7 +81,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
      * @dev Actual bridging logic is delegated to the adapter contract so that the forwarder can function irrespective of the "flavor" of
      * L3 (e.g. ArbitrumOrbit, OpStack, etc.).
      */
-    function updateRoute(uint256 _destinationChainId, address _l2Adapter) external onlyAdmin {
+    function updateAdapter(uint256 _destinationChainId, address _l2Adapter) external onlyAdmin {
         chainAdapters[_destinationChainId] = _l2Adapter;
         emit ChainAdaptersUpdated(_destinationChainId, _l2Adapter);
     }
