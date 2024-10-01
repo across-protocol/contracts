@@ -6,8 +6,8 @@ pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
-import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridgeInterfaces.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
+import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
 
 /**
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
