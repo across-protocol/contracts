@@ -27,17 +27,13 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
 
     event ChainAdaptersUpdated(uint256 indexed destinationChainId, address l2Adapter);
     event SetXDomainAdmin(address indexed crossDomainAdmin);
-    event DestinationChainTokensUpdated(
-        address indexed target,
-        address indexed baseToken,
-        address indexed destinationChainToken
-    );
 
     error InvalidCrossDomainAdmin();
+    error InvalidChainAdapter();
     error RelayMessageFailed();
     error RelayTokensFailed(address baseToken);
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
-    error UninitializedRoute();
+    error UninitializedChainAdapter();
 
     /*
      * @dev Cross domain admin permissioning is implemented specifically for each L2 that this contract is deployed on, so this base contract
@@ -71,7 +67,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
      * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
      */
     function setCrossDomainAdmin(address _newCrossDomainAdmin) external onlyAdmin {
+        if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         _setCrossDomainAdmin(_newCrossDomainAdmin);
+        emit SetXDomainAdmin(_newCrossDomainAdmin);
     }
 
     /**
@@ -82,6 +80,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
      * L3 (e.g. ArbitrumOrbit, OpStack, etc.).
      */
     function updateAdapter(uint256 _destinationChainId, address _l2Adapter) external onlyAdmin {
+        if (_l2Adapter == address(0)) revert InvalidChainAdapter();
         chainAdapters[_destinationChainId] = _l2Adapter;
         emit ChainAdaptersUpdated(_destinationChainId, _l2Adapter);
     }
@@ -99,7 +98,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         bytes memory message
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
-        if (adapter == address(0)) revert UninitializedRoute();
+        if (adapter == address(0)) revert UninitializedChainAdapter();
 
         // The forwarder assumes that `target` exists on the following network.
         (bool success, ) = adapter.delegatecall(abi.encodeCall(AdapterInterface.relayMessage, (target, message)));
@@ -125,7 +124,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         address target
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
-        if (adapter == address(0)) revert UninitializedRoute();
+        if (adapter == address(0)) revert UninitializedChainAdapter();
+
         (bool success, ) = adapter.delegatecall(
             abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
         );
