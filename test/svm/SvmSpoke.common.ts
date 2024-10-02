@@ -55,6 +55,7 @@ const initializeState = async (
       fillDeadlineBuffer,
     };
   }
+  const initializeAccounts = { state: state as any, signer: owner, systemProgram: anchor.web3.SystemProgram.programId };
   await program.methods
     .initialize(
       actualSeed,
@@ -66,11 +67,7 @@ const initializeState = async (
       initialState.depositQuoteTimeBuffer.toNumber(),
       initialState.fillDeadlineBuffer.toNumber()
     )
-    .accounts([
-      { pubkey: state, isSigner: false, isWritable: false },
-      { pubkey: owner, isSigner: true, isWritable: false },
-      { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false },
-    ])
+    .accounts(initializeAccounts)
     .rpc();
   return state;
 };

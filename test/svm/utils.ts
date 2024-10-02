@@ -63,6 +63,10 @@ export interface RelayerRefundLeafSolana {
 
 export type RelayerRefundLeafType = RelayerRefundLeaf | RelayerRefundLeafSolana;
 
+export function convertLeafIdToNumber(leaf: RelayerRefundLeafSolana) {
+  return { ...leaf, leafId: leaf.leafId.toNumber() };
+}
+
 export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefundLeafSolana): string {
   const refundAmountsBuffer = Buffer.concat(
     relayData.refundAmounts.map((amount) => {

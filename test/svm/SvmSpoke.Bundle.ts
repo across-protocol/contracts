@@ -21,6 +21,7 @@ import {
   RelayerRefundLeafSolana,
   RelayerRefundLeafType,
   readProgramEvents,
+  convertLeafIdToNumber,
 } from "./utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
@@ -87,21 +88,23 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Try to relay root bundle as non-owner
+    let relayRootBundleAccounts = { state: state, rootBundle, signer: nonOwner.publicKey };
     try {
       await program.methods
         .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
-        .accounts({ state: state, rootBundle, signer: nonOwner.publicKey })
+        .accounts(relayRootBundleAccounts)
         .signers([nonOwner])
         .rpc();
       assert.fail("Non-owner should not be able to relay root bundle");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Only the owner can call this function!", "Expected owner check error");
     }
 
     // Relay root bundle as owner
+    relayRootBundleAccounts = { state, rootBundle, signer: owner };
     await program.methods
       .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
-      .accounts({ state, rootBundle, signer: owner })
+      .accounts(relayRootBundleAccounts)
       .rpc();
 
     // Fetch the relayer refund root and slow relay root
@@ -130,9 +133,10 @@ describe("svm_spoke.bundle", () => {
     const seeds2 = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer2];
     const [rootBundle2] = PublicKey.findProgramAddressSync(seeds2, program.programId);
 
+    relayRootBundleAccounts = { state, rootBundle: rootBundle2, signer: owner };
     await program.methods
       .relayRootBundle(relayerRefundRootArray2, slowRelayRootArray2)
-      .accounts({ state, rootBundle: rootBundle2, signer: owner })
+      .accounts(relayRootBundleAccounts)
       .rpc();
 
     stateAccountData = await program.account.state.fetch(state);
@@ -168,10 +172,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
       { pubkey: relayerTA, isWritable: true, isSigner: false },
@@ -183,19 +185,21 @@ describe("svm_spoke.bundle", () => {
     const iRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
 
     // Verify valid leaf
+    let executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      program: program.programId,
+    };
     const proofAsNumbers = proof.map((p) => Array.from(p));
     await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-      .accounts({
-        state: state,
-        rootBundle: rootBundle,
-        signer: owner,
-        vault: vault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint: mint,
-        transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
+      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+      .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
 
@@ -228,22 +232,24 @@ describe("svm_spoke.bundle", () => {
 
     // Try to execute the same leaf again. This should fail due to the claimed bitmap.
     try {
+      executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
       assert.fail("Leaf should not be executed multiple times");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Leaf already claimed!", "Expected claimed leaf error");
     }
   });
@@ -294,10 +300,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
       { pubkey: relayerTA, isWritable: true, isSigner: false },
@@ -309,6 +313,17 @@ describe("svm_spoke.bundle", () => {
     const iRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
 
     // Verify valid leaf with invalid accounts
+    let executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      program: program.programId,
+    };
     try {
       const wrongRemainingAccounts = [
         { pubkey: Keypair.generate().publicKey, isWritable: true, isSigner: false },
@@ -317,36 +332,29 @@ describe("svm_spoke.bundle", () => {
 
       // Verify valid leaf
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(wrongRemainingAccounts)
         .rpc();
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Account not found");
     }
 
     // Verify valid leaf
+    executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      program: program.programId,
+    };
     await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-      .accounts({
-        state: state,
-        rootBundle: rootBundle,
-        signer: owner,
-        vault: vault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint: mint,
-        transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
+      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+      .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
 
@@ -370,26 +378,28 @@ describe("svm_spoke.bundle", () => {
 
     // Verify invalid leaf
     try {
+      const executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
         .executeRelayerRefundLeaf(
           stateAccountData.rootBundleId,
-          invalidRelayerRefundLeaf as RelayerRefundLeafSolana,
+          convertLeafIdToNumber(invalidRelayerRefundLeaf as RelayerRefundLeafSolana),
           proofAsNumbers
         )
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
       assert.fail("Invalid leaf should not be verified");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Invalid Merkle proof");
     }
   });
@@ -402,7 +412,6 @@ describe("svm_spoke.bundle", () => {
     relayerRefundLeaves.push({
       isSolana: true,
       leafId: new BN(0),
-      // Set chainId to 1000. this is a diffrent chainId than what is set in the initialization. This mimics trying to execute a leaf for another chain on the SVM chain.
       // Set chainId to 1000. this is a diffrent chainId than what is set in the initialization. This mimics trying to execute a leaf for another chain on the SVM chain.
       chainId: new BN(1000),
       amountToReturn: new BN(0),
@@ -426,10 +435,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
       { pubkey: relayerTA, isWritable: true, isSigner: false },
@@ -438,21 +445,23 @@ describe("svm_spoke.bundle", () => {
 
     const proofAsNumbers = proof.map((p) => Array.from(p));
     try {
+      const executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Invalid chain id");
     }
   });
@@ -487,10 +496,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
       { pubkey: relayerTA, isWritable: true, isSigner: false },
@@ -499,21 +506,23 @@ describe("svm_spoke.bundle", () => {
 
     const proofAsNumbers = proof.map((p) => Array.from(p));
     try {
+      const executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Invalid mint");
     }
   });
@@ -548,10 +557,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
 
@@ -560,22 +567,24 @@ describe("svm_spoke.bundle", () => {
 
     // Execute all leaves
     for (let i = 0; i < 5; i++) {
+      const executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
         .executeRelayerRefundLeaf(
           stateAccountData.rootBundleId,
-          relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+          convertLeafIdToNumber(relayerRefundLeaves[i] as RelayerRefundLeafSolana),
           proof[i]
         )
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
     }
@@ -591,26 +600,28 @@ describe("svm_spoke.bundle", () => {
     // Try to execute the same leaves again. This should fail due to the claimed bitmap.
     for (let i = 0; i < 5; i++) {
       try {
+        const executeRelayerRefundLeafAccounts = {
+          state: state,
+          rootBundle: rootBundle,
+          signer: owner,
+          vault: vault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          mint: mint,
+          transferLiability,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          program: program.programId,
+        };
         await program.methods
           .executeRelayerRefundLeaf(
             stateAccountData.rootBundleId,
-            relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+            convertLeafIdToNumber(relayerRefundLeaves[i] as RelayerRefundLeafSolana),
             proof[i]
           )
-          .accounts({
-            state: state,
-            rootBundle: rootBundle,
-            signer: owner,
-            vault: vault,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            mint: mint,
-            transferLiability,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
+          .accounts(executeRelayerRefundLeafAccounts)
           .remainingAccounts(remainingAccounts)
           .rpc();
         assert.fail("Leaf should not be executed multiple times");
-      } catch (err) {
+      } catch (err: any) {
         assert.include(err.toString(), "Leaf already claimed!", "Expected claimed leaf error");
       }
     }
@@ -660,10 +671,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     // Verify valid leaf
     const proofAsNumbers = proof.map((p) => Array.from(p));
@@ -734,7 +743,7 @@ describe("svm_spoke.bundle", () => {
 
     // Build the instruction to execute relayer refund leaf
     const executeInstruction = await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
       .accounts(staticAccounts)
       .remainingAccounts(remainingAccounts)
       .instruction();
@@ -780,23 +789,23 @@ describe("svm_spoke.bundle", () => {
       rootBundleIdBuffer.writeUInt32LE(rootBundleId);
       const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
-      await program.methods
-        .relayRootBundle(Array.from(root), Array.from(root))
-        .accounts({ state, rootBundle, signer: owner })
-        .rpc();
+      let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
       const proofAsNumbers = proof.map((p) => Array.from(p));
+      const executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+        .accounts(executeRelayerRefundLeafAccounts)
         .rpc();
     };
 
