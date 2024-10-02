@@ -56,8 +56,21 @@ const initializeState = async (
     };
   }
   await program.methods
-    .initialize(...[actualSeed, ...Object.values(initialState)])
-    .accounts({ state: state as any, signer: owner, systemProgram: anchor.web3.SystemProgram.programId })
+    .initialize(
+      actualSeed,
+      initialState.initialNumberOfDeposits.toNumber(),
+      initialState.chainId,
+      initialState.remoteDomain.toNumber(),
+      initialState.crossDomainAdmin,
+      initialState.testableMode,
+      initialState.depositQuoteTimeBuffer.toNumber(),
+      initialState.fillDeadlineBuffer.toNumber()
+    )
+    .accounts([
+      { pubkey: state, isSigner: false, isWritable: false },
+      { pubkey: owner, isSigner: true, isWritable: false },
+      { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false },
+    ])
     .rpc();
   return state;
 };
