@@ -125,6 +125,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
         if (adapter == address(0)) revert UninitializedChainAdapter();
+
         (bool success, ) = adapter.delegatecall(
             abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
         );
