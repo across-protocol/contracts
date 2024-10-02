@@ -9,7 +9,7 @@ import { evmAddressToPublicKey } from "../../src/SvmUtils";
 import { encodeMessageHeader } from "./cctpHelpers";
 import { common } from "./SvmSpoke.common";
 
-const { createRoutePda, getVaultAta } = common;
+const { createRoutePda, getVaultAta, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
 describe("svm_spoke.handle_receive_message", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
@@ -24,11 +24,6 @@ describe("svm_spoke.handle_receive_message", () => {
   let usedNonces: anchor.web3.PublicKey;
   let selfAuthority: anchor.web3.PublicKey;
   let eventAuthority: anchor.web3.PublicKey;
-  let seed: anchor.BN;
-  const chainId = new anchor.BN(420);
-  const remoteDomain = 0; // Ethereum
-  const localDomain = 5; // Solana
-  const crossDomainAdmin = evmAddressToPublicKey(ethers.Wallet.createRandom().address);
   const firstNonce = 1;
   const attestation = Buffer.alloc(0);
   let nonce = firstNonce;
@@ -45,15 +40,7 @@ describe("svm_spoke.handle_receive_message", () => {
   ]);
 
   beforeEach(async () => {
-    seed = new anchor.BN(Math.floor(Math.random() * 1000000));
-    const seeds = [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)];
-    [state] = anchor.web3.PublicKey.findProgramAddressSync(seeds, program.programId);
-
-    // Initialize the state with an initial number of deposits
-    await program.methods
-      .initialize(seed, new anchor.BN(0), chainId, remoteDomain, crossDomainAdmin, true)
-      .accounts({ state, signer: owner, systemProgram: anchor.web3.SystemProgram.programId })
-      .rpc();
+    state = await initializeState();
 
     nonce += 1; // Increment CCTP nonce.
 
@@ -310,7 +297,7 @@ describe("svm_spoke.handle_receive_message", () => {
 
   it("Enables and disables route remotely", async () => {
     // Enable the route.
-    const originToken = Keypair.generate().publicKey;
+    const originToken = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
     const routeChainId = 1;
     let calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, true]);
     let messageBody = Buffer.from(calldata.slice(2), "hex");
@@ -326,9 +313,8 @@ describe("svm_spoke.handle_receive_message", () => {
     });
 
     // Remaining accounts specific to SetEnableRoute.
-    const routePda = createRoutePda(originToken, new anchor.BN(routeChainId));
-    const tokenMint = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
-    const vault = getVaultAta(tokenMint, state);
+    const routePda = createRoutePda(originToken, state, new anchor.BN(routeChainId));
+    const vault = getVaultAta(originToken, state);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const enableRouteRemainingAccounts = remainingAccounts.slice(0, 3);
     // payer in self-invoked SetEnableRoute.
@@ -359,7 +345,7 @@ describe("svm_spoke.handle_receive_message", () => {
     enableRouteRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
-      pubkey: tokenMint,
+      pubkey: originToken,
     });
     // token_program in self-invoked SetEnableRoute.
     enableRouteRemainingAccounts.push({

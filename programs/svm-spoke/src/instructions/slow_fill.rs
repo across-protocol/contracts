@@ -15,7 +15,8 @@ use crate::{
 };
 
 // TODO: We can likely move some of the common exports to better locations. we are pulling a lot of these from fill.rs
-use crate::{FillType, FilledV3Relay, V3RelayData, V3RelayExecutionEventInfo};
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
+use crate::V3RelayData; // Pulled type definition from fill.rs.
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -53,7 +54,7 @@ pub fn request_v3_slow_fill(
     let state = &mut ctx.accounts.state;
 
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_timestamp = if state.current_time != 0 {
+    let current_time = if state.current_time != 0 {
         state.current_time
     } else {
         Clock::get()?.unix_timestamp as u32
@@ -62,9 +63,12 @@ pub fn request_v3_slow_fill(
     // Check if the fill is within the exclusivity window & fill deadline.
     //TODO: ensure the require blocks here are equivilelent to evm.
     require!(
-        relay_data.exclusivity_deadline < current_timestamp
-            && relay_data.fill_deadline < current_timestamp,
-        CustomError::WithinFillWindow
+        relay_data.exclusivity_deadline < current_time,
+        CustomError::NoSlowFillsInExclusivityWindow
+    );
+    require!(
+        relay_data.fill_deadline < current_time,
+        CustomError::ExpiredFillDeadline
     );
 
     // Check the fill status
@@ -151,7 +155,10 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
-        bump)]
+        bump,
+        // Make sure caller provided relay_hash used in PDA seeds is valid.
+        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ CustomError::InvalidRelayHash
+    )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
@@ -160,13 +167,18 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     )]
     pub recipient: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        token::token_program = token_program,
+        address = slow_fill_leaf.relay_data.output_token @ CustomError::InvalidMint
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = mint,
         associated_token::authority = recipient,
+        associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -174,6 +186,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = state,
+        associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
@@ -188,10 +201,16 @@ pub fn execute_v3_slow_relay_leaf(
     root_bundle_id: u32,
     proof: Vec<[u8; 32]>,
 ) -> Result<()> {
-    let relay_data = slow_fill_leaf.relay_data.clone(); // Clone relay_data to avoid move
+    let relay_data = slow_fill_leaf.relay_data;
+
+    let slow_fill = V3SlowFill {
+        relay_data: relay_data.clone(), // Clone relay_data to avoid move
+        chain_id: ctx.accounts.state.chain_id, // This overrides caller provided chain_id, same as in EVM SpokePool.
+        updated_output_amount: slow_fill_leaf.updated_output_amount,
+    };
 
     let root = ctx.accounts.root_bundle.slow_relay_root;
-    let leaf = slow_fill_leaf.to_keccak_hash();
+    let leaf = slow_fill.to_keccak_hash();
     verify_merkle_proof(root, leaf, proof)?;
 
     // Check if the fill status is unfilled
@@ -254,21 +273,4 @@ pub fn execute_v3_slow_relay_leaf(
     });
 
     Ok(())
-}
-
-// Events.
-#[event]
-pub struct RequestedV3SlowFill {
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub exclusive_relayer: Pubkey,
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub message: Vec<u8>,
 }
