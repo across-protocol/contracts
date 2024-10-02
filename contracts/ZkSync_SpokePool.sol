@@ -63,7 +63,7 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == CrossDomainAddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 

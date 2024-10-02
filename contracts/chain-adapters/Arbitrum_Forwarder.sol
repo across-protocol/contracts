@@ -13,7 +13,7 @@ import { CrossDomainAddressUtils } from "../libraries/CrossDomainAddressUtils.so
 contract Arbitrum_Forwarder is ForwarderBase {
     // On Arbitrum, L1 msg.senders are derived by aliasing a L1 address.
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == CrossDomainAddressUtils._applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
