@@ -1101,19 +1101,19 @@ abstract contract SpokePool is
     /**
      * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
      * in unsafeDepositV3 and is provided as a convenience.
-     * @dev msg.sender and depositor are both used as inputs to allow passthrough depositors to create unique
+     * @dev msgSenderand depositor are both used as inputs to allow passthrough depositors to create unique
      * deposit hash spaces for unique depositors.
-     * @param sender The msg.sender address used as input to produce the deposit ID.
+     * @param msgSender The caller of the transaction used as input to produce the deposit ID.
      * @param depositor The depositor address used as input to produce the deposit ID.
      * @param depositNonce The nonce used as input to produce the deposit ID.
      * @return The deposit ID for the unsafe deposit.
      */
     function getUnsafeDepositId(
-        address sender,
+        address msgSender,
         address depositor,
         uint256 depositNonce
     ) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(sender, depositor, depositNonce)));
+        return uint256(keccak256(abi.encodePacked(msgSender, depositor, depositNonce)));
     }
 
     /**************************************
