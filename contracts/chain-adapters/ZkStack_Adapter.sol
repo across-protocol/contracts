@@ -7,7 +7,7 @@ import "../external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// The BridgeHub is the main interaction point for briding into ZkStack chains.
+// The BridgeHub is the main interaction point for bridging into ZkStack chains.
 interface BridgeHubInterface {
     struct L2TransactionRequestDirect {
         uint256 chainId;
