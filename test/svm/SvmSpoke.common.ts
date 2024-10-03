@@ -84,7 +84,8 @@ const getVaultAta = (tokenMint: PublicKey, state: PublicKey) => {
 };
 
 async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: anchor.web3.Keypair, newTime: BN) {
-  await program.methods.setCurrentTime(newTime).accounts({ state, signer: signer.publicKey }).signers([signer]).rpc();
+  let setCurrentTimeAccounts = { state, signer: signer.publicKey };
+  await program.methods.setCurrentTime(newTime.toNumber()).accounts(setCurrentTimeAccounts).signers([signer]).rpc();
 }
 
 async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
@@ -94,6 +95,36 @@ async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
 function assertSE(a: any, b: any, errorMessage: string) {
   assert.strictEqual(a.toString(), b.toString(), errorMessage);
 }
+
+interface DepositData {
+  depositor: PublicKey | null; // Adjust type as necessary
+  recipient: PublicKey;
+  inputToken: PublicKey | null; // Adjust type as necessary
+  outputToken: PublicKey;
+  inputAmount: BN;
+  outputAmount: BN;
+  destinationChainId: BN;
+  exclusiveRelayer: PublicKey;
+  quoteTimestamp: BN;
+  fillDeadline: BN;
+  exclusivityDeadline: BN;
+  message: Buffer;
+}
+
+export type DepositDataValues = [
+  PublicKey,
+  PublicKey,
+  PublicKey,
+  PublicKey,
+  BN,
+  BN,
+  BN,
+  PublicKey,
+  number,
+  number,
+  number,
+  Buffer
+];
 
 export const common = {
   provider,
@@ -137,5 +168,5 @@ export const common = {
     fillDeadline,
     exclusivityDeadline,
     message,
-  },
+  } as DepositData,
 };
