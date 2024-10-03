@@ -165,7 +165,7 @@ export async function loadExecuteRelayerRefundLeafParams(
   relayerRefundLeaf: RelayerRefundLeafSolana,
   proof: number[][]
 ) {
-  const maxInstructionDataFragment = 900; // Should not exceed message size limit when writing to the data account.
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   // Close the instruction params account if the caller has used it before.
   const [instructionParams] = PublicKey.findProgramAddressSync(
@@ -184,8 +184,8 @@ export async function loadExecuteRelayerRefundLeafParams(
 
   await program.methods.initializeInstructionParams(instructionParamsBytes.length).rpc();
 
-  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionDataFragment) {
-    const fragment = instructionParamsBytes.slice(i, i + maxInstructionDataFragment);
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
 }
