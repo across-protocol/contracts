@@ -18,7 +18,7 @@ describe("svm_spoke.routes", () => {
 
   beforeEach(async () => {
     state = await initializeState();
-    tokenMint = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
+    tokenMint = await createMint(provider.connection, (provider.wallet as any).payer, owner, owner, 6);
 
     // Create a PDA for the route
     routeChainId = new BN(1);
@@ -44,7 +44,7 @@ describe("svm_spoke.routes", () => {
   it("Sets, retrieves, and controls access to route enablement", async () => {
     // Enable the route as owner
     await program.methods
-      .setEnableRoute(tokenMint.toBytes(), routeChainId, true)
+      .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, true)
       .accounts(setEnableRouteAccounts)
       .rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -64,7 +64,7 @@ describe("svm_spoke.routes", () => {
 
     // Disable the route as owner
     await program.methods
-      .setEnableRoute(tokenMint.toBytes(), routeChainId, false)
+      .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, false)
       .accounts(setEnableRouteAccounts)
       .rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -85,12 +85,12 @@ describe("svm_spoke.routes", () => {
     // Try to enable the route as non-owner
     try {
       await program.methods
-        .setEnableRoute(tokenMint.toBytes(), routeChainId, true)
+        .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, true)
         .accounts({ ...setEnableRouteAccounts, signer: nonOwner.publicKey })
         .signers([nonOwner])
         .rpc();
       assert.fail("Non-owner should not be able to set route enablement");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Only the owner can call this function!", "Expected owner check error");
     }
 
@@ -113,11 +113,11 @@ describe("svm_spoke.routes", () => {
 
     try {
       await program.methods
-        .setEnableRoute(wrongOriginToken.toBytes(), routeChainId, true)
+        .setEnableRoute(Array.from(wrongOriginToken.toBytes()), routeChainId, true)
         .accounts({ ...setEnableRouteAccounts, route: wrongRoutePda })
         .rpc();
       assert.fail("Setting route with wrong origin token should fail");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
