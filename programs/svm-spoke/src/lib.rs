@@ -64,11 +64,8 @@ pub mod svm_spoke {
 
     pub fn execute_relayer_refund_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
-        root_bundle_id: u32,
-        relayer_refund_leaf: RelayerRefundLeaf,
-        proof: Vec<[u8; 32]>,
     ) -> Result<()> {
-        instructions::execute_relayer_refund_leaf(ctx, root_bundle_id, relayer_refund_leaf, proof)
+        instructions::execute_relayer_refund_leaf(ctx)
     }
 
     pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
@@ -191,26 +188,22 @@ pub mod svm_spoke {
         Ok(())
     }
 
-    pub fn initialize_instruction_data(
-        ctx: Context<InitializeInstructionData>,
+    pub fn initialize_instruction_params(
+        _ctx: Context<InitializeInstructionParams>,
         total_size: u32,
     ) -> Result<()> {
-        instructions::initialize_instruction_data(ctx, total_size)
+        Ok(())
     }
 
-    pub fn write_instruction_data_fragment(
-        ctx: Context<WriteInstructionDataFragment>,
+    pub fn write_instruction_params_fragment<'info>(
+        ctx: Context<WriteInstructionParamsFragment<'info>>,
         offset: u32,
         fragment: Vec<u8>,
     ) -> Result<()> {
-        instructions::write_instruction_data_fragment(ctx, offset, fragment)
+        instructions::write_instruction_params_fragment(ctx, offset, fragment)
     }
 
-    pub fn call_with_instruction_data(ctx: Context<CallWithInstructionData>) -> Result<()> {
-        instructions::call_with_instruction_data(ctx)
-    }
-
-    pub fn close_instruction_data(_ctx: Context<CloseInstructionData>) -> Result<()> {
-        instructions::close_instruction_data()
+    pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<()> {
+        instructions::close_instruction_params(ctx)
     }
 }

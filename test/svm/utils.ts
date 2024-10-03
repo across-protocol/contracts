@@ -1,16 +1,17 @@
-import { BN } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import * as crypto from "crypto";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 
 import {
   readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
-  LargeInstructionCoder,
+  LargeAccountsCoder,
 } from "../../src/SvmUtils";
 
-export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress, LargeInstructionCoder };
+export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();
@@ -155,4 +156,36 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
 
   const slowFillHash = ethers.utils.keccak256(contentToHash);
   return slowFillHash;
+}
+
+export async function loadExecuteRelayerRefundLeafParams(
+  program: Program<SvmSpoke>,
+  caller: PublicKey,
+  rootBundleId: number,
+  relayerRefundLeaf: RelayerRefundLeafSolana,
+  proof: number[][]
+) {
+  const maxInstructionDataFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  // Close the instruction params account if the caller has used it before.
+  const [instructionParams] = PublicKey.findProgramAddressSync(
+    [Buffer.from("instruction_params"), caller.toBuffer()],
+    program.programId
+  );
+  const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
+  if (accountInfo !== null) await program.methods.closeInstructionParams().rpc();
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("executeRelayerRefundLeafParams", {
+    rootBundleId,
+    relayerRefundLeaf,
+    proof,
+  });
+
+  await program.methods.initializeInstructionParams(instructionParamsBytes.length).rpc();
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionDataFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionDataFragment);
+    await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
+  }
 }
