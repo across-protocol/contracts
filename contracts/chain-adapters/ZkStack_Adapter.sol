@@ -232,7 +232,7 @@ contract ZkStack_Adapter is AdapterInterface {
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
                     secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
-                    secondBridgeValue: amount,
+                    secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
             );
