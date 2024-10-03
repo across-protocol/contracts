@@ -28,8 +28,10 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(
         mut,
         seeds =[b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
-        realloc = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE
-            + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
+        realloc = std::cmp::max(
+            DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
+            root_bundle.to_account_info().data_len()
+        ),
         realloc::payer = signer,
         realloc::zero = false
     )]
