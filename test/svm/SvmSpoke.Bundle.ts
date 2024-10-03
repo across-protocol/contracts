@@ -824,4 +824,77 @@ describe("svm_spoke.bundle", () => {
       "Pending amount should be incremented by second amount"
     );
   });
+
+  it("Reversed Relayer Leaf Refunds", async () => {
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerRefundAmount = new BN(100000);
+
+    // Generate 10 sequential leaves. This exceeds 1 claimed bitmap byte so we can test claiming lower index after
+    // higher index does not shrink root_bundle account size.
+    const numberOfRefunds = 10;
+    for (let i = 0; i < numberOfRefunds; i++) {
+      relayerRefundLeaves.push({
+        isSolana: true,
+        leafId: new BN(i),
+        chainId: chainId,
+        amountToReturn: new BN(0),
+        mintPublicKey: mint,
+        refundAccounts: [relayerTA],
+        refundAmounts: [relayerRefundAmount],
+      });
+    }
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+    const root = merkleTree.getRoot();
+    const proof = relayerRefundLeaves.map((leaf) => merkleTree.getProof(leaf).map((p) => Array.from(p)));
+
+    let stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    await program.methods
+      .relayRootBundle(Array.from(root), Array.from(root))
+      .accounts({ state, rootBundle, signer: owner })
+      .rpc();
+
+    const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
+
+    const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const iRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
+
+    // Execute all leaves in reverse order
+    for (let i = numberOfRefunds - 1; i >= 0; i--) {
+      await program.methods
+        .executeRelayerRefundLeaf(
+          stateAccountData.rootBundleId,
+          relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+          proof[i]
+        )
+        .accounts({
+          state: state,
+          rootBundle: rootBundle,
+          signer: owner,
+          vault: vault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          mint: mint,
+          transferLiability,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+    }
+
+    const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const fRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
+
+    const totalRefund = relayerRefundAmount.mul(new BN(numberOfRefunds)).toString();
+
+    assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
+    assert.strictEqual(BigInt(fRelayerABal) - BigInt(iRelayerABal), BigInt(totalRefund), "Relayer A bal");
+  });
 });
