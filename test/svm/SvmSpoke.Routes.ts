@@ -18,7 +18,7 @@ describe("svm_spoke.routes", () => {
 
   beforeEach(async () => {
     state = await initializeState();
-    tokenMint = await createMint(provider.connection, (provider.wallet as any).payer, owner, owner, 6);
+    tokenMint = await createMint(provider.connection, (provider.wallet as anchor.Wallet).payer, owner, owner, 6);
 
     // Create a PDA for the route
     routeChainId = new BN(1);

@@ -5,7 +5,13 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { common } from "./SvmSpoke.common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType, relayerRefundHashFn, findProgramAddress } from "./utils";
+import {
+  RelayerRefundLeafSolana,
+  RelayerRefundLeafType,
+  relayerRefundHashFn,
+  findProgramAddress,
+  convertLeafIdToNumber,
+} from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
 
@@ -71,31 +77,36 @@ describe("svm_spoke.token_bridge", () => {
 
     await mintTo(connection, payer, mint, vault, provider.publicKey, initialMintAmount);
 
-    transferLiability = findProgramAddress("transfer_liability", program.programId, [mint]).publicKey;
-    localToken = findProgramAddress("local_token", tokenMessengerMinterProgram.programId, [mint]).publicKey;
+    transferLiability = findProgramAddress("transfer_liability", program.programId, [mint as any]).publicKey;
+    localToken = findProgramAddress("local_token", tokenMessengerMinterProgram.programId, [mint as any]).publicKey;
 
     // add local cctp token
-    const custodyTokenAccount = findProgramAddress("custody", tokenMessengerMinterProgram.programId, [mint]).publicKey;
-    await tokenMessengerMinterProgram.methods
-      .addLocalToken({})
-      .accounts({
-        tokenController: owner,
-        tokenMinter,
-        localToken,
-        custodyTokenAccount,
-        localTokenMint: mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
+    const custodyTokenAccount = findProgramAddress("custody", tokenMessengerMinterProgram.programId, [
+      mint as any,
+    ]).publicKey;
+    const addLocalTokenAccounts = {
+      tokenController: owner,
+      tokenMinter,
+      localToken,
+      custodyTokenAccount,
+      localTokenMint: mint,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      program: tokenMessengerMinterProgram.programId,
+      eventAuthority,
+    };
+    await tokenMessengerMinterProgram.methods.addLocalToken({}).accounts(addLocalTokenAccounts).rpc();
 
     // set max burn amount per CCTP message for local token to total mint amount.
+    const setMaxBurnAmountPerMessageAccounts = {
+      tokenMinter,
+      localToken,
+      program: tokenMessengerMinterProgram.programId,
+      eventAuthority,
+    };
     await tokenMessengerMinterProgram.methods
       .setMaxBurnAmountPerMessage({ burnLimitPerMessage: new anchor.BN(initialMintAmount) })
-      .accounts({
-        tokenMinter,
-        localToken,
-      })
+      .accounts(setMaxBurnAmountPerMessageAccounts)
       .rpc();
 
     // Populate accounts for bridgeTokensToHubPool.
@@ -145,25 +156,32 @@ describe("svm_spoke.token_bridge", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
+    const relayRootBundleAccounts = {
+      state,
+      rootBundle,
+      signer: owner,
+    };
     await program.methods
       .relayRootBundle(Array.from(root), Array.from(Buffer.alloc(32)))
-      .accounts({ state, rootBundle, signer: owner })
+      .accounts(relayRootBundleAccounts)
       .rpc();
 
     // Execute relayer refund leaf.
     const proofAsNumbers = proof.map((p) => Array.from(p));
+    const executeRelayerRefundLeafAccounts = {
+      state,
+      rootBundle,
+      signer: owner,
+      vault,
+      mint,
+      transferLiability,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      program: program.programId,
+    };
     await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
-      .accounts({
-        state,
-        rootBundle,
-        signer: owner,
-        vault,
-        mint,
-        transferLiability,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
+      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
+      .accounts(executeRelayerRefundLeafAccounts)
       .rpc();
   };
 
@@ -209,7 +227,7 @@ describe("svm_spoke.token_bridge", () => {
         .signers([messageSentEventData])
         .rpc();
       assert.fail("Should not be able to bridge above pending tokens to HubPool");
-    } catch (error) {
+    } catch (error: any) {
       assert.instanceOf(error, anchor.AnchorError);
       assert.strictEqual(
         error.error.errorCode.code,
@@ -273,7 +291,7 @@ describe("svm_spoke.token_bridge", () => {
         .signers([messageSentEventData])
         .rpc();
       assert.fail("Should not be able to bridge above pending tokens to HubPool");
-    } catch (error) {
+    } catch (error: any) {
       assert.instanceOf(error, anchor.AnchorError);
       assert.strictEqual(
         error.error.errorCode.code,
