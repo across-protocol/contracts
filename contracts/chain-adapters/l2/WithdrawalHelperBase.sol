@@ -7,23 +7,32 @@ import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCall
 import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
 
 /**
- * @title WithdrawalAdapterBase
+ * @title WithdrawalHelperBase
  * @notice This contract contains general configurations for bridging tokens from an L2 to a single recipient on L1.
  * @dev This contract should be deployed on L2. It provides an interface to withdraw tokens to some address on L1. The only
  * function which must be implemented in contracts which inherit this contract is `withdrawToken`. It is up to that function
  * to determine which bridges to use for an input L2 token. Importantly, that function must also verify that the l2 to l1
  * token mapping is correct so that the bridge call itself can succeed.
  */
-abstract contract WithdrawalAdapterBase is CircleCCTPAdapter, MultiCaller {
+abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
     using SafeERC20 for IERC20;
 
     // The L1 address which will unconditionally receive all withdrawals from this contract.
     address public immutable TOKEN_RECIPIENT;
     // The address of the primary or default token gateway/canonical bridge contract on L2.
     address public immutable L2_TOKEN_GATEWAY;
+    // The address of the hub pool contract on L1. As a last resort, the hub pool can rescue stuck tokens on this withdrawal helper contract,
+    // similar to how it may send admin functions to spoke pools.
+    address public immutable HUB_POOL;
+
+    // Functions which contain this modifier should only be callable via a cross-chain call where the L1 msg.sender is the hub pool.
+    modifier onlyHubPool() {
+        _requireHubPoolSender();
+        _;
+    }
 
     /*
-     * @notice Constructs a new withdrawal adapter.
+     * @notice Constructs a new withdrawal helper.
      * @param _l2Usdc Address of native USDC on the L2.
      * @param _cctpTokenMessenger Address of the CCTP token messenger contract on L2.
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network.
@@ -35,10 +44,28 @@ abstract contract WithdrawalAdapterBase is CircleCCTPAdapter, MultiCaller {
         ITokenMessenger _cctpTokenMessenger,
         uint32 _destinationCircleDomainId,
         address _l2TokenGateway,
-        address _tokenRecipient
+        address _tokenRecipient,
+        address _hubPool
     ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId) {
         L2_TOKEN_GATEWAY = _l2TokenGateway;
         TOKEN_RECIPIENT = _tokenRecipient;
+        HUB_POOL = _hubPool;
+    }
+
+    /*
+     * @notice Transfers a specified amount of an L2 token to an address on L2.
+     * @param l2Token Address of the L2 token to send.
+     * @param to Address which should receive the L2 token.
+     * @param amount Amount of the L2 token to send to `to`.
+     * @dev This function should only be callable via a rescue adapter. This function is solely for times when token withdrawals from L2-L1
+     * cannot succeed for whatever reason, so the tokens must be sent to an alternate address.
+     */
+    function sendTokenTo(
+        address l2Token,
+        address to,
+        uint256 amount
+    ) external onlyHubPool {
+        IERC20(l2Token).safeTransfer(to, amount);
     }
 
     /*
@@ -57,4 +84,10 @@ abstract contract WithdrawalAdapterBase is CircleCCTPAdapter, MultiCaller {
         address l2Token,
         uint256 amountToReturn
     ) public virtual;
+
+    /*
+     * @notice Checks that the L1 msg.sender is the `HUB_POOL` address.
+     * @dev This implementation must change on a per-chain basis, since each L2 network has their own method of deriving the L1 msg.sender.
+     */
+    function _requireHubPoolSender() internal virtual;
 }

@@ -7,23 +7,29 @@ pragma solidity ^0.8.19;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ArbitrumL2ERC20GatewayLike } from "../../interfaces/ArbitrumBridge.sol";
-import { WithdrawalAdapterBase } from "./WithdrawalAdapterBase.sol";
+import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
 import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
+import { CrossDomainAddressUtils } from "../../libraries/CrossDomainAddressUtils.sol";
 
 /**
- * @title Arbitrum_WithdrawalAdapter
+ * @title Arbitrum_WithdrawalHelper
  * @notice This contract interfaces with L2-L1 token bridges and withdraws tokens to a single address on L1.
  * @dev This contract should be deployed on Arbitrum L2s which only use CCTP or the canonical Arbitrum gateway router to withdraw tokens.
  * @custom:security-contact bugs@across.to
  */
-contract Arbitrum_WithdrawalAdapter is WithdrawalAdapterBase {
+contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
     using SafeERC20 for IERC20;
 
     // Error which triggers when the supplied L1 token does not match the Arbitrum gateway router's expected L2 token.
     error InvalidTokenMapping();
 
+    modifier onlyFromHubPool() {
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(HUB_POOL), "ONLY_HUB_POOL");
+        _;
+    }
+
     /*
-     * @notice Constructs the Arbitrum_WithdrawalAdapter.
+     * @notice Constructs the Arbitrum_WithdrawalHelper.
      * @param _l2Usdc Address of native USDC on the L2.
      * @param _cctpTokenMessenger Address of the CCTP token messenger contract on L2.
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network. For Ethereum, this is 0.
@@ -35,14 +41,16 @@ contract Arbitrum_WithdrawalAdapter is WithdrawalAdapterBase {
         ITokenMessenger _cctpTokenMessenger,
         uint32 _destinationCircleDomainId,
         address _l2GatewayRouter,
-        address _tokenRecipient
+        address _tokenRecipient,
+        address _hubPool
     )
-        WithdrawalAdapterBase(
+        WithdrawalHelperBase(
             _l2Usdc,
             _cctpTokenMessenger,
             _destinationCircleDomainId,
             _l2GatewayRouter,
-            _tokenRecipient
+            _tokenRecipient,
+            _hubPool
         )
     {}
 
@@ -58,7 +66,7 @@ contract Arbitrum_WithdrawalAdapter is WithdrawalAdapterBase {
         uint256 amountToReturn
     ) public override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
-        if (_isCCTPEnabled() && l2Token == address(usdcToken)) {
+        if (l2Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(TOKEN_RECIPIENT, amountToReturn);
         } else {
             // Otherwise, we use the Arbitrum ERC20 Gateway router.
@@ -76,4 +84,6 @@ contract Arbitrum_WithdrawalAdapter is WithdrawalAdapterBase {
             );
         }
     }
+
+    function _requireHubPoolSender() internal override onlyFromHubPool {}
 }

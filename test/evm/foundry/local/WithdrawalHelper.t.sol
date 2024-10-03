@@ -6,30 +6,34 @@ import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
-import { Arbitrum_WithdrawalAdapter } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalAdapter.sol";
-import { Ovm_WithdrawalAdapter, IOvm_SpokePool } from "../../../../contracts/chain-adapters/l2/Ovm_WithdrawalAdapter.sol";
+import { Arbitrum_WithdrawalHelper } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalHelper.sol";
+import { Ovm_WithdrawalHelper, IOvm_SpokePool } from "../../../../contracts/chain-adapters/l2/Ovm_WithdrawalHelper.sol";
 import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import { L2GatewayRouter } from "../../../../contracts/test/ArbitrumMocks.sol";
 import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { Base_SpokePool } from "../../../../contracts/Base_SpokePool.sol";
+import { Ovm_SpokePool } from "../../../../contracts/Ovm_SpokePool.sol";
+import { WithdrawalHelperBase } from "../../../../contracts/chain-adapters/l2/WithdrawalHelperBase.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 
-contract Mock_Ovm_WithdrawalAdapter is Ovm_WithdrawalAdapter {
+contract Mock_Ovm_WithdrawalHelper is Ovm_WithdrawalHelper {
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
         address _tokenRecipient,
+        address _hubPool,
         IOvm_SpokePool _spokePool
     )
-        Ovm_WithdrawalAdapter(
+        Ovm_WithdrawalHelper(
             _l2Usdc,
             _cctpTokenMessenger,
             _destinationCircleDomainId,
             _l2Gateway,
             _tokenRecipient,
+            _hubPool,
             _spokePool
         )
     {}
@@ -51,8 +55,8 @@ contract Token_ERC20 is ERC20 {
 
 contract WithdrawalAdapterTest is Test {
     uint32 constant fillDeadlineBuffer = type(uint32).max;
-    Arbitrum_WithdrawalAdapter arbitrumWithdrawalAdapter;
-    Mock_Ovm_WithdrawalAdapter ovmWithdrawalAdapter;
+    Arbitrum_WithdrawalHelper arbitrumWithdrawalHelper;
+    Mock_Ovm_WithdrawalHelper ovmWithdrawalHelper;
     Base_SpokePool ovmSpokePool;
 
     L2GatewayRouter arbBridge;
@@ -115,32 +119,37 @@ contract WithdrawalAdapterTest is Test {
         );
         address proxy = address(
             // The cross domain admin is set as the messenger so that we may set remote token mappings.
-            new ERC1967Proxy(
-                address(implementation),
-                abi.encodeCall(Base_SpokePool.initialize, (0, address(messenger), owner))
-            )
+            new ERC1967Proxy(address(implementation), abi.encodeCall(Base_SpokePool.initialize, (0, hubPool, owner)))
         );
         ovmSpokePool = Base_SpokePool(payable(proxy));
         vm.stopPrank();
 
         // Set a custom token and bridge mapping in the spoke pool.
-        vm.startPrank(address(messenger));
-        ovmSpokePool.setRemoteL1Token(address(l2CustomToken), address(l1CustomToken));
-        ovmSpokePool.setTokenBridge(address(l2CustomToken), address(customOvmBridge));
+        vm.startPrank(hubPool);
+        messenger.impersonateCall(
+            address(ovmSpokePool),
+            abi.encodeCall(Ovm_SpokePool.setRemoteL1Token, (address(l2CustomToken), address(l1CustomToken)))
+        );
+        messenger.impersonateCall(
+            address(ovmSpokePool),
+            abi.encodeCall(Ovm_SpokePool.setTokenBridge, (address(l2CustomToken), address(customOvmBridge)))
+        );
         vm.stopPrank();
 
-        arbitrumWithdrawalAdapter = new Arbitrum_WithdrawalAdapter(
+        arbitrumWithdrawalHelper = new Arbitrum_WithdrawalHelper(
             l2Usdc,
             tokenMessenger,
             CircleDomainIds.Ethereum,
             address(arbBridge),
+            hubPool,
             hubPool
         );
-        ovmWithdrawalAdapter = new Mock_Ovm_WithdrawalAdapter(
+        ovmWithdrawalHelper = new Mock_Ovm_WithdrawalHelper(
             l2Usdc,
             tokenMessenger,
             CircleDomainIds.Ethereum,
             address(ovmBridge),
+            hubPool,
             hubPool,
             IOvm_SpokePool(address(ovmSpokePool))
         );
@@ -148,26 +157,26 @@ contract WithdrawalAdapterTest is Test {
 
     // This test should call the gateway router contract.
     function testWithdrawTokenArbitrum(uint256 amountToReturn) public {
-        l2Token.mint(address(arbitrumWithdrawalAdapter), amountToReturn);
+        l2Token.mint(address(arbitrumWithdrawalHelper), amountToReturn);
 
         vm.expectEmit(address(arbBridge));
         emit L2GatewayRouter.OutboundTransfer(address(l1Token), hubPool, amountToReturn);
-        arbitrumWithdrawalAdapter.withdrawToken(address(l1Token), address(l2Token), amountToReturn);
+        arbitrumWithdrawalHelper.withdrawToken(address(l1Token), address(l2Token), amountToReturn);
     }
 
     // This test should error since the token mappings are incorrect.
     function testWithdrawInvalidTokenArbitrum(uint256 amountToReturn, address invalidToken) public {
-        l2Token.mint(address(arbitrumWithdrawalAdapter), amountToReturn);
+        l2Token.mint(address(arbitrumWithdrawalHelper), amountToReturn);
 
-        vm.expectRevert(Arbitrum_WithdrawalAdapter.InvalidTokenMapping.selector);
-        arbitrumWithdrawalAdapter.withdrawToken(invalidToken, address(l2Token), amountToReturn);
+        vm.expectRevert(Arbitrum_WithdrawalHelper.InvalidTokenMapping.selector);
+        arbitrumWithdrawalHelper.withdrawToken(invalidToken, address(l2Token), amountToReturn);
     }
 
     // This test should call the OpStack standard bridge with l2Eth as the input token.
     function testWithdrawEthOvm(uint256 amountToReturn, address random) public {
         // Give the withdrawal adapter some WETH.
-        vm.startPrank(address(ovmWithdrawalAdapter));
-        vm.deal(address(ovmWithdrawalAdapter), amountToReturn);
+        vm.startPrank(address(ovmWithdrawalHelper));
+        vm.deal(address(ovmWithdrawalHelper), amountToReturn);
         l2Weth.deposit{ value: amountToReturn }();
         vm.stopPrank();
 
@@ -177,30 +186,55 @@ contract WithdrawalAdapterTest is Test {
             hubPool,
             amountToReturn
         );
-        ovmWithdrawalAdapter.withdrawToken(random, address(l2Weth), amountToReturn);
+        ovmWithdrawalHelper.withdrawToken(random, address(l2Weth), amountToReturn);
     }
 
     // This test should call the OpStack standard bridge with l2Token as the input token. `withdrawTo` should be called.
     function testWithdrawTokenOvm(uint256 amountToReturn) public {
-        l2Token.mint(address(arbitrumWithdrawalAdapter), amountToReturn);
+        l2Token.mint(address(arbitrumWithdrawalHelper), amountToReturn);
 
         vm.expectEmit(address(ovmBridge));
         emit MockBedrockL2StandardBridge.ERC20WithdrawalInitiated(address(l2Token), hubPool, amountToReturn);
-        ovmWithdrawalAdapter.withdrawToken(address(l1Token), address(l2Token), amountToReturn);
+        ovmWithdrawalHelper.withdrawToken(address(l1Token), address(l2Token), amountToReturn);
     }
 
     // This test should use a custom token bridge with a custom l1/l2 token mapping. `bridgeERC20To` should be called.
     function testWithdrawCustomMappingsOvm(uint256 amountToReturn) public {
-        l2CustomToken.mint(address(ovmWithdrawalAdapter), amountToReturn);
+        l2CustomToken.mint(address(ovmWithdrawalHelper), amountToReturn);
         l1CustomToken.mint(address(customOvmBridge), amountToReturn);
         assertEq(0, l1CustomToken.balanceOf(hubPool));
         assertEq(0, l2CustomToken.balanceOf(hubPool));
-        assertEq(amountToReturn, l2CustomToken.balanceOf(address(ovmWithdrawalAdapter)));
+        assertEq(amountToReturn, l2CustomToken.balanceOf(address(ovmWithdrawalHelper)));
 
-        ovmWithdrawalAdapter.withdrawToken(address(l1CustomToken), address(l2CustomToken), amountToReturn);
+        ovmWithdrawalHelper.withdrawToken(address(l1CustomToken), address(l2CustomToken), amountToReturn);
 
         assertEq(amountToReturn, l1CustomToken.balanceOf(hubPool));
         assertEq(0, l2CustomToken.balanceOf(hubPool));
-        assertEq(0, l2CustomToken.balanceOf(address(ovmWithdrawalAdapter)));
+        assertEq(0, l2CustomToken.balanceOf(address(ovmWithdrawalHelper)));
+    }
+
+    function testRescueTokensWithAdminMessage(uint256 amountToReturn, address rando) public {
+        vm.assume(rando != hubPool);
+        l2CustomToken.mint(address(ovmWithdrawalHelper), amountToReturn);
+
+        // Should revert if we are an unauthorized user.
+        vm.startPrank(rando);
+        vm.expectRevert(Ovm_WithdrawalHelper.NotHubPool.selector);
+        messenger.impersonateCall(
+            address(ovmWithdrawalHelper),
+            abi.encodeCall(WithdrawalHelperBase.sendTokenTo, (address(l2CustomToken), hubPool, amountToReturn))
+        );
+        vm.stopPrank();
+
+        // Should work if we are an authorized user.
+        vm.startPrank(hubPool);
+        messenger.impersonateCall(
+            address(ovmWithdrawalHelper),
+            abi.encodeCall(WithdrawalHelperBase.sendTokenTo, (address(l2CustomToken), hubPool, amountToReturn))
+        );
+        vm.stopPrank();
+
+        assertEq(0, l2CustomToken.balanceOf(address(ovmWithdrawalHelper)));
+        assertEq(amountToReturn, l2CustomToken.balanceOf(hubPool));
     }
 }

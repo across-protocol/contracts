@@ -59,6 +59,8 @@ contract MockBedrockL1StandardBridge {
 contract MockBedrockCrossDomainMessenger {
     event MessageSent(address indexed target);
 
+    address private msgSender;
+
     function sendMessage(
         address target,
         bytes calldata,
@@ -67,7 +69,21 @@ contract MockBedrockCrossDomainMessenger {
         emit MessageSent(target);
     }
 
+    // Impersonates making a call on L2 from L1.
+    function impersonateCall(address target, bytes memory data) external payable returns (bytes memory) {
+        msgSender = msg.sender;
+        (bool success, bytes memory returnData) = target.call{ value: msg.value }(data);
+
+        // Revert if call reverted.
+        if (!success) {
+            assembly {
+                revert(add(32, returnData), mload(returnData))
+            }
+        }
+        return returnData;
+    }
+
     function xDomainMessageSender() external view returns (address) {
-        return address(this);
+        return msgSender;
     }
 }

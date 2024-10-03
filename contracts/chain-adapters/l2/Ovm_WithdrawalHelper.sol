@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import { WithdrawalAdapterBase } from "./WithdrawalAdapterBase.sol";
+import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
+import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import { IL2ERC20Bridge } from "../../Ovm_SpokePool.sol";
 
 /**
@@ -39,7 +40,7 @@ interface IOvm_SpokePool {
  * which has a special SNX bridge (and thus this adapter will NOT work for Optimism).
  * @custom:security-contact bugs@across.to
  */
-contract Ovm_WithdrawalAdapter is WithdrawalAdapterBase {
+contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
     using SafeERC20 for IERC20;
 
     // Address for the wrapped native token on this chain. For Ovm standard bridges, we need to unwrap
@@ -52,6 +53,11 @@ contract Ovm_WithdrawalAdapter is WithdrawalAdapterBase {
     // Address of native ETH on the l2. For OpStack chains, this address is used to indicate a native ETH withdrawal.
     // In general, this address is 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
     address public immutable l2Eth;
+    // Address of the messenger contract on L2. This is by default defined in Lib_PredeployAddresses.
+    address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
+
+    // Error which triggers when the L1 msg.sender is not the hub pool.
+    error NotHubPool();
 
     /*
      * @notice Constructs the Ovm_WithdrawalAdapter.
@@ -69,8 +75,18 @@ contract Ovm_WithdrawalAdapter is WithdrawalAdapterBase {
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
         address _tokenRecipient,
+        address _hubPool,
         IOvm_SpokePool _spokePool
-    ) WithdrawalAdapterBase(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId, _l2Gateway, _tokenRecipient) {
+    )
+        WithdrawalHelperBase(
+            _l2Usdc,
+            _cctpTokenMessenger,
+            _destinationCircleDomainId,
+            _l2Gateway,
+            _tokenRecipient,
+            _hubPool
+        )
+    {
         spokePool = _spokePool;
 
         // These addresses should only change network-by-network, or after a bridge upgrade, so we define them once in the constructor.
@@ -110,7 +126,7 @@ contract Ovm_WithdrawalAdapter is WithdrawalAdapterBase {
             );
         }
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
-        else if (_isCCTPEnabled() && l2Token == address(usdcToken)) {
+        else if (l2Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(TOKEN_RECIPIENT, amountToReturn);
         }
         // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
@@ -150,5 +166,9 @@ contract Ovm_WithdrawalAdapter is WithdrawalAdapterBase {
                 );
             }
         }
+    }
+
+    function _requireHubPoolSender() internal view override {
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != HUB_POOL) revert NotHubPool();
     }
 }
