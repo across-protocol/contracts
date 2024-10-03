@@ -51,9 +51,9 @@ describe("Ethereum Spoke Pool", function () {
   });
 
   it("Only owner can set the hub pool address", async function () {
-    await expect(spokePool.connect(rando).setHubPool(rando.address)).to.be.reverted;
-    await spokePool.connect(owner).setHubPool(rando.address);
-    expect(await spokePool.hubPool()).to.equal(rando.address);
+    await expect(spokePool.connect(rando).setWithdrawalRecipient(rando.address)).to.be.reverted;
+    await spokePool.connect(owner).setWithdrawalRecipient(rando.address);
+    expect(await spokePool.withdrawalRecipient()).to.equal(rando.address);
   });
 
   it("Only owner can initialize a relayer refund", async function () {

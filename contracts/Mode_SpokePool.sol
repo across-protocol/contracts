@@ -32,13 +32,14 @@ contract Mode_SpokePool is Ovm_SpokePool {
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, Lib_PredeployAddresses.OVM_ETH);
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient, Lib_PredeployAddresses.OVM_ETH);
     }
 }

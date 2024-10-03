@@ -124,9 +124,9 @@ describe("Polygon Spoke Pool", function () {
 
   it("Only correct caller can set the hub pool address", async function () {
     // Cannot call directly
-    await expect(polygonSpokePool.setHubPool(rando.address)).to.be.reverted;
+    await expect(polygonSpokePool.setWithdrawalRecipient(rando.address)).to.be.reverted;
 
-    const setHubPoolData = polygonSpokePool.interface.encodeFunctionData("setHubPool", [rando.address]);
+    const setHubPoolData = polygonSpokePool.interface.encodeFunctionData("setWithdrawalRecipient", [rando.address]);
 
     // Wrong rootMessageSender address.
     await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, setHubPoolData)).to.be
@@ -137,7 +137,7 @@ describe("Polygon Spoke Pool", function () {
       .reverted;
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setHubPoolData);
-    expect(await polygonSpokePool.hubPool()).to.equal(rando.address);
+    expect(await polygonSpokePool.withdrawalRecipient()).to.equal(rando.address);
   });
 
   it("Only correct caller can enable a route", async function () {
