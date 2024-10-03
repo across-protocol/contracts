@@ -126,11 +126,7 @@ describe("svm_spoke.instruction_params", () => {
     await anchor.web3.sendAndConfirmTransaction(connection, new anchor.web3.Transaction().add(ix), [caller]);
 
     // Instruction params account should not exist.
-    try {
-      await program.account.executeRelayerRefundLeafParams.fetch(instructionParams);
-      assert.fail("Instruction params account should not exist");
-    } catch (err) {
-      assert.include(err.toString(), "Account does not exist or has no data", "Expected account fetch error");
-    }
+    const instructionParamsAccount = await connection.getAccountInfo(instructionParams);
+    assert.isNull(instructionParamsAccount, "Instruction params account not closed");
   });
 });
