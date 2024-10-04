@@ -16,6 +16,17 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
+
+      - name: Cache yarn dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn-cache
+          key: ${{ runner.os }}-yarn-${{ matrix.node }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-${{ matrix.node }}
+
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
@@ -57,6 +68,17 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
+
+      - name: Cache yarn dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn-cache
+          key: ${{ runner.os }}-yarn-${{ matrix.node }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-${{ matrix.node }}
+
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
@@ -99,6 +121,17 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
+
+      - name: Cache yarn dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn-cache
+          key: ${{ runner.os }}-yarn-${{ matrix.node }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-${{ matrix.node }}
+
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
