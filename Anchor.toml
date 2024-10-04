@@ -5,18 +5,18 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-svm_spoke = "E5USYAs9DUzn6ykrWZXuEkbCnY3kzNMPGNFH2okvUvqe"
+svm_spoke = "AxTREn1gED7XeKaQhNn9HHkCrcDdDpjY45paoFdY3peX"
 test = "GZp7L6MZ93G7TpAyxmaJ3GYgXnxH8x5oxSDmnEoob1Zu"
 
 [programs.devnet]
-svm_spoke = "CUnrs9pnNFDw6xAybcJfLftcutevE1f63ZJn6xt6A8f6"
+svm_spoke = "AxTREn1gED7XeKaQhNn9HHkCrcDdDpjY45paoFdY3peX"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = "test/svm/keys/localnet-wallet.json"
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
