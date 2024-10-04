@@ -21,9 +21,17 @@ contract Ovm_Forwarder is ForwarderBase {
     error NotCrossDomainAdmin();
 
     /**
-     @notice Constructs an Ovm specific forwarder contract.
+     * @notice Constructs an Ovm specific forwarder contract.
      */
     constructor() ForwarderBase() {}
+
+    /**
+     * @notice Initializes the forwarder contract.
+     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
+     */
+    function initialize(address _crossDomainAdmin) public initializer {
+        __Forwarder_init(_crossDomainAdmin);
+    }
 
     function _requireAdminSender() internal view override {
         if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
