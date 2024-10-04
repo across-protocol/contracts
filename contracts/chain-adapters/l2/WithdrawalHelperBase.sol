@@ -99,7 +99,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     ) public virtual;
 
     /*
-     * @notice Checks that the L1 msg.sender is the `CROSS_DOMAIN_ADMIN` address.
+     * @notice Checks that the L1 msg.sender is the `crossDomainAdmin` address.
      * @dev This implementation must change on a per-chain basis, since each L2 network has their own method of deriving the L1 msg.sender.
      */
     function _requireAdminSender() internal virtual;

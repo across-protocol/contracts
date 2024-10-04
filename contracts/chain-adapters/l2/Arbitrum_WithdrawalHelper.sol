@@ -23,11 +23,6 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
     // Error which triggers when the supplied L1 token does not match the Arbitrum gateway router's expected L2 token.
     error InvalidTokenMapping();
 
-    modifier onlyCrossDomainAdmin() {
-        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
-        _;
-    }
-
     /*
      * @notice Constructs the Arbitrum_WithdrawalHelper.
      * @param _l2Usdc Address of native USDC on the L2.
@@ -91,5 +86,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         }
     }
 
-    function _requireAdminSender() internal override onlyCrossDomainAdmin {}
+    function _requireAdminSender() internal override {
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
+    }
 }
