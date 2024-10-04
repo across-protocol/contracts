@@ -166,6 +166,7 @@ contract WithdrawalAdapterTest is Test {
 
     // This test should error since the token mappings are incorrect.
     function testWithdrawInvalidTokenArbitrum(uint256 amountToReturn, address invalidToken) public {
+        vm.assume(invalidToken != address(l1Token));
         l2Token.mint(address(arbitrumWithdrawalHelper), amountToReturn);
 
         vm.expectRevert(Arbitrum_WithdrawalHelper.InvalidTokenMapping.selector);
