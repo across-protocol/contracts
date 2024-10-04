@@ -21,13 +21,13 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
     address public immutable TOKEN_RECIPIENT;
     // The address of the primary or default token gateway/canonical bridge contract on L2.
     address public immutable L2_TOKEN_GATEWAY;
-    // The address of the hub pool contract on L1. As a last resort, the hub pool can rescue stuck tokens on this withdrawal helper contract,
-    // similar to how it may send admin functions to spoke pools.
-    address public immutable HUB_POOL;
+    // The address of the admin contract on L1,which will likely be the hub pool. As a last resort, this admin can rescue stuck tokens
+    // on this withdrawal helper contract, similar to how it may send admin functions to spoke pools.
+    address public immutable CROSS_DOMAIN_ADMIN;
 
     // Functions which contain this modifier should only be callable via a cross-chain call where the L1 msg.sender is the hub pool.
-    modifier onlyHubPool() {
-        _requireHubPoolSender();
+    modifier onlyAdmin() {
+        _requireAdminSender();
         _;
     }
 
@@ -38,6 +38,8 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network.
      * @param _l2TokenGateway Address of the network's l2 token gateway/bridge contract.
      * @param _tokenRecipient L1 address which will unconditionally receive all withdrawals originating from this contract.
+     * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
+     * L2 address.
      */
     constructor(
         IERC20 _l2Usdc,
@@ -45,11 +47,11 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
         uint32 _destinationCircleDomainId,
         address _l2TokenGateway,
         address _tokenRecipient,
-        address _hubPool
+        address _crossDomainAdmin
     ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId) {
         L2_TOKEN_GATEWAY = _l2TokenGateway;
         TOKEN_RECIPIENT = _tokenRecipient;
-        HUB_POOL = _hubPool;
+        CROSS_DOMAIN_ADMIN = _crossDomainAdmin;
     }
 
     /*
@@ -64,7 +66,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
         address l2Token,
         address to,
         uint256 amount
-    ) external onlyHubPool {
+    ) external onlyAdmin {
         IERC20(l2Token).safeTransfer(to, amount);
     }
 
@@ -86,8 +88,8 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
     ) public virtual;
 
     /*
-     * @notice Checks that the L1 msg.sender is the `HUB_POOL` address.
+     * @notice Checks that the L1 msg.sender is the `CROSS_DOMAIN_ADMIN` address.
      * @dev This implementation must change on a per-chain basis, since each L2 network has their own method of deriving the L1 msg.sender.
      */
-    function _requireHubPoolSender() internal virtual;
+    function _requireAdminSender() internal virtual;
 }

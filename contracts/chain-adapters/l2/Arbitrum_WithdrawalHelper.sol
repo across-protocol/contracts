@@ -23,8 +23,8 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
     // Error which triggers when the supplied L1 token does not match the Arbitrum gateway router's expected L2 token.
     error InvalidTokenMapping();
 
-    modifier onlyFromHubPool() {
-        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(HUB_POOL), "ONLY_HUB_POOL");
+    modifier onlyCrossDomainAdmin() {
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(CROSS_DOMAIN_ADMIN), "ONLY_CROSS_DOMAIN_ADMIN");
         _;
     }
 
@@ -35,6 +35,8 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network. For Ethereum, this is 0.
      * @param _l2GatewayRouter Address of the Arbitrum l2 gateway router contract.
      * @param _tokenRecipient L1 Address which will unconditionally receive tokens withdrawn from this contract.
+     * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
+     * L2 address.
      */
     constructor(
         IERC20 _l2Usdc,
@@ -42,7 +44,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         uint32 _destinationCircleDomainId,
         address _l2GatewayRouter,
         address _tokenRecipient,
-        address _hubPool
+        address _crossDomainAdmin
     )
         WithdrawalHelperBase(
             _l2Usdc,
@@ -50,7 +52,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
             _destinationCircleDomainId,
             _l2GatewayRouter,
             _tokenRecipient,
-            _hubPool
+            _crossDomainAdmin
         )
     {}
 
@@ -85,5 +87,5 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         }
     }
 
-    function _requireHubPoolSender() internal override onlyFromHubPool {}
+    function _requireAdminSender() internal override onlyCrossDomainAdmin {}
 }

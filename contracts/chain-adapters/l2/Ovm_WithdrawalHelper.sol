@@ -56,8 +56,8 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
     // Address of the messenger contract on L2. This is by default defined in Lib_PredeployAddresses.
     address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
 
-    // Error which triggers when the L1 msg.sender is not the hub pool.
-    error NotHubPool();
+    // Error which triggers when the L1 msg.sender is not the cross domain admin address.
+    error NotCrossDomainAdmin();
 
     /*
      * @notice Constructs the Ovm_WithdrawalAdapter.
@@ -67,6 +67,8 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
      * is 0.
      * @param _l2Gateway Address of the Optimism ERC20 L2 standard bridge contract.
      * @param _tokenRecipient The L1 address which will unconditionally receive tokens from withdrawals by this contract.
+     * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
+     * L2 address.
      * @param _spokePool The contract address of the Ovm_SpokePool which is deployed on this L2 network.
      */
     constructor(
@@ -75,7 +77,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
         address _tokenRecipient,
-        address _hubPool,
+        address _crossDomainAdmin,
         IOvm_SpokePool _spokePool
     )
         WithdrawalHelperBase(
@@ -84,7 +86,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
             _destinationCircleDomainId,
             _l2Gateway,
             _tokenRecipient,
-            _hubPool
+            _crossDomainAdmin
         )
     {
         spokePool = _spokePool;
@@ -168,7 +170,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
         }
     }
 
-    function _requireHubPoolSender() internal view override {
-        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != HUB_POOL) revert NotHubPool();
+    function _requireAdminSender() internal view override {
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != CROSS_DOMAIN_ADMIN) revert NotCrossDomainAdmin();
     }
 }
