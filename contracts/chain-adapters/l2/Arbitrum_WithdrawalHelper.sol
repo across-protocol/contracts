@@ -52,6 +52,14 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         )
     {}
 
+    /**
+     * @notice Initializes the withdrawal helper contract.
+     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
+     */
+    function initialize(address _crossDomainAdmin) public initializer {
+        __WithdrawalHelper_init(_crossDomainAdmin);
+    }
+
     /*
      * @notice Calls CCTP or the Arbitrum gateway router to withdraw tokens back to the TOKEN_RECIPIENT L1 address.
      * @param l1Token Address of the L1 token to receive.

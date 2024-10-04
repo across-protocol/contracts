@@ -65,7 +65,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      * @notice Initializes the withdrawal helper contract.
      * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
      */
-    function initialize(address _crossDomainAdmin) public initializer {
+    function __WithdrawalHelper_init(address _crossDomainAdmin) public onlyInitializing {
         __UUPSUpgradeable_init();
         _setCrossDomainAdmin(_crossDomainAdmin);
     }

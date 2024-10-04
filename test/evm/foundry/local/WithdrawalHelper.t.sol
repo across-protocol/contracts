@@ -145,7 +145,7 @@ contract WithdrawalAdapterTest is Test {
         proxy = address(
             new ERC1967Proxy(
                 address(arbitrumWithdrawalHelper),
-                abi.encodeCall(WithdrawalHelperBase.initialize, (hubPool))
+                abi.encodeCall(Ovm_WithdrawalHelper.initialize, (hubPool))
             )
         );
         arbitrumWithdrawalHelper = Arbitrum_WithdrawalHelper(payable(proxy));
@@ -159,7 +159,7 @@ contract WithdrawalAdapterTest is Test {
             IOvm_SpokePool(address(ovmSpokePool))
         );
         proxy = address(
-            new ERC1967Proxy(address(ovmWithdrawalHelper), abi.encodeCall(WithdrawalHelperBase.initialize, (hubPool)))
+            new ERC1967Proxy(address(ovmWithdrawalHelper), abi.encodeCall(Ovm_WithdrawalHelper.initialize, (hubPool)))
         );
         ovmWithdrawalHelper = Mock_Ovm_WithdrawalHelper(payable(proxy));
     }

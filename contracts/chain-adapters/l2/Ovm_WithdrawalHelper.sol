@@ -86,6 +86,14 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
         l2Eth = spokePool.l2Eth();
     }
 
+    /**
+     * @notice Initializes the withdrawal helper contract.
+     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
+     */
+    function initialize(address _crossDomainAdmin) public initializer {
+        __WithdrawalHelper_init(_crossDomainAdmin);
+    }
+
     /*
      * @notice Calls CCTP or the Optimism token gateway to withdraw tokens back to the recipient.
      * @param l2Token address of the l2Token to send back.
