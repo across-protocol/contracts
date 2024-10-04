@@ -87,6 +87,6 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
     }
 
     function _requireAdminSender() internal override {
-        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_CROSS_DOMAIN_ADMIN");
+        if (msg.sender != CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin)) revert NotCrossDomainAdmin();
     }
 }

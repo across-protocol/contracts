@@ -233,7 +233,7 @@ contract WithdrawalAdapterTest is Test {
 
         // Should revert if we are an unauthorized user.
         vm.startPrank(rando);
-        vm.expectRevert(Ovm_WithdrawalHelper.NotCrossDomainAdmin.selector);
+        vm.expectRevert(WithdrawalHelperBase.NotCrossDomainAdmin.selector);
         messenger.impersonateCall(
             address(ovmWithdrawalHelper),
             abi.encodeCall(UUPSUpgradeable.upgradeTo, (newImplementation))

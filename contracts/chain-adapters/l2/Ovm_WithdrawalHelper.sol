@@ -56,9 +56,6 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
     // Address of the messenger contract on L2. This is by default defined in Lib_PredeployAddresses.
     address public constant MESSENGER = Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER;
 
-    // Error which triggers when the L1 msg.sender is not the cross domain admin address.
-    error NotCrossDomainAdmin();
-
     /*
      * @notice Constructs the Ovm_WithdrawalAdapter.
      * @param _l2Usdc Address of native USDC on the L2.

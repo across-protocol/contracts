@@ -30,6 +30,8 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
 
     // Error which triggers when the cross domain admin was attempted to be set to the zero address.
     error InvalidCrossDomainAdmin();
+    // Error which triggers when the caller of a protected function is not the cross domain admin.
+    error NotCrossDomainAdmin();
 
     // Functions which contain this modifier should only be callable via a cross-chain call where the L1 msg.sender is the hub pool.
     modifier onlyAdmin() {
