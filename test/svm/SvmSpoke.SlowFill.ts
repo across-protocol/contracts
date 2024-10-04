@@ -17,9 +17,18 @@ import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
 
+const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
+  return {
+    ...relayData,
+    depositId: relayData.depositId.toNumber(),
+    fillDeadline: relayData.fillDeadline.toNumber(),
+    exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
+  };
+};
+
 describe("svm_spoke.slow_fill", () => {
   anchor.setProvider(provider);
-  const payer = anchor.AnchorProvider.env().wallet.payer;
+  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
 
@@ -112,9 +121,10 @@ describe("svm_spoke.slow_fill", () => {
     const relayerRefundRoot = crypto.randomBytes(32);
 
     // Relay root bundle
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
     await program.methods
       .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
-      .accounts({ state, rootBundle, signer: owner })
+      .accounts(relayRootBundleAccounts)
       .rpc();
 
     const proofAsNumbers = proof.map((p) => Array.from(p));
@@ -169,18 +179,27 @@ describe("svm_spoke.slow_fill", () => {
 
   it("Requests a V3 slow fill, verify the event & state change", async () => {
     // Attempt to request a slow fill before the fillDeadline
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods
+        .requestV3SlowFill(relayHash, formatRelayData(relayData))
+        .accounts(requestAccounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Request should have failed due to fill deadline not passed");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the fillDeadline
     await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
 
-    await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+    await program.methods
+      .requestV3SlowFill(relayHash, formatRelayData(relayData))
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
 
     // Fetch and verify the RequestedV3SlowFill event
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -190,20 +209,32 @@ describe("svm_spoke.slow_fill", () => {
 
     // Verify that the event data matches the relay data.
     Object.keys(relayData).forEach((key) => {
-      assertSE(event[key], relayData[key], `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      assertSE(
+        event[key],
+        relayData[key as keyof typeof relayData],
+        `${key.charAt(0).toUpperCase() + key.slice(1)} should match`
+      );
     });
   });
 
   it("Fails to request a V3 slow fill if the relay has already been filled", async () => {
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Fill the relay first
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(fillAccounts).signers([relayer]).rpc();
+    await program.methods
+      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1))
+      .accounts(fillAccounts)
+      .signers([relayer])
+      .rpc();
 
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods
+        .requestV3SlowFill(relayHash, formatRelayData(relayData))
+        .accounts(requestAccounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Request should have failed due to being within exclusivity window");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
@@ -212,9 +243,13 @@ describe("svm_spoke.slow_fill", () => {
 
     // Attempt to request a slow fill after the relay has been filled.
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods
+        .requestV3SlowFill(relayHash, formatRelayData(relayData))
+        .accounts(requestAccounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Request should have failed due to relay already being filled");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "InvalidSlowFillRequest", "Expected InvalidSlowFillRequest error");
     }
   });
@@ -231,7 +266,11 @@ describe("svm_spoke.slow_fill", () => {
     await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
 
     // Request a slow fill
-    await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+    await program.methods
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
 
     // Fetch FillStatusAccount after requestV3SlowFill
     fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
@@ -251,13 +290,21 @@ describe("svm_spoke.slow_fill", () => {
     await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
 
     // Request a slow fill
-    await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+    await program.methods
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
 
     // Attempt to request a slow fill again for the same relay
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods
+        .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+        .accounts(requestAccounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Request should have failed due to relay already being requested for slow fill");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "InvalidSlowFillRequest", "Expected InvalidSlowFillRequest error");
     }
   });
@@ -271,47 +318,49 @@ describe("svm_spoke.slow_fill", () => {
 
     // Attempt to execute V3 slow relay leaf before requesting slow fill. This should fail before requested,
     // even if there is a valid proof.
+    const executeSlowRelayLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      fillStatus: requestAccounts.fillStatus,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      recipient,
+      recipientTokenAccount: recipientTA,
+      program: program.programId,
+    };
     try {
       await program.methods
-        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          fillStatus: requestAccounts.fillStatus,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          recipient,
-          recipientTokenAccount: recipientTA,
-        })
+        .executeV3SlowRelayLeaf(
+          Array.from(relayHash),
+          { ...leaf, relayData: formatRelayData(relayData) },
+          rootBundleId,
+          proofAsNumbers
+        )
+        .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed due to fill status account not being initialized");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
     }
 
     // Request V3 slow fill
     await program.methods
-      .requestV3SlowFill(relayHash, leaf.relayData)
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
     // Execute V3 slow relay leaf after requesting slow fill
     await program.methods
-      .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
-      .accounts({
-        state: state,
-        rootBundle,
-        signer: owner,
-        fillStatus: requestAccounts.fillStatus,
-        vault: vault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint: mint,
-        recipient,
-        recipientTokenAccount: recipientTA,
-      })
+      .executeV3SlowRelayLeaf(
+        Array.from(relayHash),
+        { ...leaf, relayData: formatRelayData(relayData) },
+        rootBundleId,
+        proofAsNumbers
+      )
+      .accounts(executeSlowRelayLeafAccounts)
       .rpc();
 
     // Verify the results
@@ -332,7 +381,12 @@ describe("svm_spoke.slow_fill", () => {
 
   it("Fails to request a V3 slow fill when fills are paused", async () => {
     // Pause fills
-    await program.methods.pauseFills(true).accounts({ state, signer: owner }).rpc();
+    const pauseFillsAccounts = {
+      state: state,
+      signer: owner,
+      program: program.programId,
+    };
+    await program.methods.pauseFills(true).accounts(pauseFillsAccounts).rpc();
     const stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedFills, "Fills should be paused");
 
@@ -342,9 +396,13 @@ describe("svm_spoke.slow_fill", () => {
     // Attempt to request a slow fill. This should fail because fills are paused.
     try {
       const relayHash = calculateRelayHashUint8Array(relayData, chainId);
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods
+        .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+        .accounts(requestAccounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Request should have failed due to fills being paused");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "FillsArePaused", "Expected error code FillsArePaused");
     }
@@ -354,7 +412,7 @@ describe("svm_spoke.slow_fill", () => {
     // Request V3 slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(relayHash, leaf.relayData)
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -363,22 +421,29 @@ describe("svm_spoke.slow_fill", () => {
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
     try {
+      const executeSlowRelayLeafAccounts = {
+        state: state,
+        rootBundle,
+        signer: owner,
+        fillStatus: requestAccounts.fillStatus,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        recipient: wrongRecipient,
+        recipientTokenAccount: wrongRecipientTA,
+        program: program.programId,
+      };
       await program.methods
-        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
-        .accounts({
-          state: state,
-          rootBundle,
-          signer: owner,
-          fillStatus: requestAccounts.fillStatus,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          recipient: wrongRecipient,
-          recipientTokenAccount: wrongRecipientTA,
-        })
+        .executeV3SlowRelayLeaf(
+          Array.from(relayHash),
+          { ...leaf, relayData: formatRelayData(relayData) },
+          rootBundleId,
+          proofAsNumbers
+        )
+        .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong recipient");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
     }
@@ -395,7 +460,7 @@ describe("svm_spoke.slow_fill", () => {
       rootBundle: firstRootBundle,
     } = await relaySlowFillRootBundle(firstRecipient);
     await program.methods
-      .requestV3SlowFill(firstRelayHash, firstLeaf.relayData)
+      .requestV3SlowFill(Array.from(firstRelayHash), formatRelayData(firstLeaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -408,7 +473,7 @@ describe("svm_spoke.slow_fill", () => {
     const secondRecipient = Keypair.generate().publicKey;
     const { relayHash: secondRelayHash, leaf: secondLeaf } = await relaySlowFillRootBundle(secondRecipient);
     await program.methods
-      .requestV3SlowFill(secondRelayHash, secondLeaf.relayData)
+      .requestV3SlowFill(Array.from(secondRelayHash), formatRelayData(secondLeaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -416,19 +481,26 @@ describe("svm_spoke.slow_fill", () => {
 
     const iFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
     // Execute V3 slow relay leaf for the first recipient.
+    const executeSlowRelayLeafAccounts = {
+      state,
+      firstRootBundle,
+      signer: owner,
+      fillStatus: firstFillStatus,
+      vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint,
+      recipient: firstRecipient,
+      recipientTokenAccount: firstRecipientTA,
+      program: program.programId,
+    };
     await program.methods
-      .executeV3SlowRelayLeaf(firstRelayHash, firstLeaf, firstRootBundleId, firstProofAsNumbers)
-      .accounts({
-        state,
-        firstRootBundle,
-        signer: owner,
-        fillStatus: firstFillStatus,
-        vault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint,
-        recipient: firstRecipient,
-        recipientTokenAccount: firstRecipientTA,
-      })
+      .executeV3SlowRelayLeaf(
+        Array.from(firstRelayHash),
+        { ...firstLeaf, relayData: formatRelayData(firstLeaf.relayData) },
+        firstRootBundleId,
+        firstProofAsNumbers
+      )
+      .accounts(executeSlowRelayLeafAccounts)
       .rpc();
     const fFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
     assert.strictEqual(
@@ -440,22 +512,29 @@ describe("svm_spoke.slow_fill", () => {
     // Try to replay execute V3 slow relay leaf for the first recipient using the fill status account that is derived
     // from the second relay hash. This should fail due to mismatching relay hash.
     try {
+      const executeSlowRelayLeafAccounts = {
+        state,
+        firstRootBundle,
+        signer: owner,
+        fillStatus: secondFillStatus,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
+        recipient: firstRecipient,
+        recipientTokenAccount: firstRecipientTA,
+        program: program.programId,
+      };
       await program.methods
-        .executeV3SlowRelayLeaf(secondRelayHash, firstLeaf, firstRootBundleId, firstProofAsNumbers)
-        .accounts({
-          state,
-          firstRootBundle,
-          signer: owner,
-          fillStatus: secondFillStatus,
-          vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint,
-          recipient: firstRecipient,
-          recipientTokenAccount: firstRecipientTA,
-        })
+        .executeV3SlowRelayLeaf(
+          Array.from(secondRelayHash),
+          { ...firstLeaf, relayData: formatRelayData(firstLeaf.relayData) },
+          firstRootBundleId,
+          firstProofAsNumbers
+        )
+        .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong fill status account");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidRelayHash", "Expected error code InvalidRelayHash");
     }
@@ -465,7 +544,7 @@ describe("svm_spoke.slow_fill", () => {
     // Request V3 slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(relayHash, leaf.relayData)
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -478,22 +557,29 @@ describe("svm_spoke.slow_fill", () => {
 
     // Try to execute V3 slow relay leaf with inconsistent mint should fail.
     try {
+      const executeSlowRelayLeafAccounts = {
+        state,
+        rootBundle,
+        signer: owner,
+        fillStatus: requestAccounts.fillStatus,
+        vault: wrongVault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: wrongMint,
+        recipient,
+        recipientTokenAccount: wrongRecipientTA,
+        program: program.programId,
+      };
       await program.methods
-        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
-        .accounts({
-          state,
-          rootBundle,
-          signer: owner,
-          fillStatus: requestAccounts.fillStatus,
-          vault: wrongVault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: wrongMint,
-          recipient,
-          recipientTokenAccount: wrongRecipientTA,
-        })
+        .executeV3SlowRelayLeaf(
+          Array.from(relayHash),
+          { ...leaf, relayData: formatRelayData(relayData) },
+          rootBundleId,
+          proofAsNumbers
+        )
+        .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed for inconsistent mint");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
@@ -507,7 +593,7 @@ describe("svm_spoke.slow_fill", () => {
       anotherChainId
     );
     await program.methods
-      .requestV3SlowFill(relayHash, leaf.relayData)
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -515,22 +601,29 @@ describe("svm_spoke.slow_fill", () => {
     // Trying to execute V3 slow relay leaf for another chain should fail as the program overrides chain_id that should
     // invalidate the proofs.
     try {
+      const executeSlowRelayLeafAccounts = {
+        state,
+        rootBundle,
+        signer: owner,
+        fillStatus: requestAccounts.fillStatus,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
+        recipient,
+        recipientTokenAccount: recipientTA,
+        program: program.programId,
+      };
       await program.methods
-        .executeV3SlowRelayLeaf(relayHash, leaf, rootBundleId, proofAsNumbers)
-        .accounts({
-          state,
-          rootBundle,
-          signer: owner,
-          fillStatus: requestAccounts.fillStatus,
-          vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint,
-          recipient,
-          recipientTokenAccount: recipientTA,
-        })
+        .executeV3SlowRelayLeaf(
+          Array.from(relayHash),
+          { ...leaf, relayData: formatRelayData(relayData) },
+          rootBundleId,
+          proofAsNumbers
+        )
+        .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed for another chain");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidProof", "Expected error code InvalidProof");
     }

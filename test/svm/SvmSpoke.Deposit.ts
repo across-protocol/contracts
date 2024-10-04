@@ -9,7 +9,7 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { common } from "./SvmSpoke.common";
+import { common, DepositDataValues } from "./SvmSpoke.common";
 import { readProgramEvents } from "./utils";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
@@ -19,7 +19,7 @@ describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
-  const payer = anchor.AnchorProvider.env().wallet.payer;
+  const payer = (anchor.AnchorProvider.env().wallet as any).payer;
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey;
   let depositAccounts: any; // Re-used between tests to simplify props.
   let setEnableRouteAccounts: any; // Common variable for setEnableRoute accounts
@@ -49,7 +49,7 @@ describe("svm_spoke.deposit", () => {
     };
 
     await program.methods
-      .setEnableRoute(inputToken.toBytes(), routeChainId, true)
+      .setEnableRoute(Array.from(inputToken.toBuffer()), routeChainId, true)
       .accounts(setEnableRouteAccounts)
       .rpc();
 
@@ -84,8 +84,9 @@ describe("svm_spoke.deposit", () => {
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
 
     // Execute the deposit_v3 call
+    let depositDataValues = Object.values(depositData) as DepositDataValues;
     await program.methods
-      .depositV3(...Object.values(depositData))
+      .depositV3(...depositDataValues)
       .accounts(depositAccounts)
       .signers([depositor])
       .rpc();
@@ -106,8 +107,10 @@ describe("svm_spoke.deposit", () => {
     const secondInputAmount = new BN(300000);
 
     // Execute the second deposit_v3 call
+
+    depositDataValues = Object.values({ ...depositData, inputAmount: secondInputAmount }) as DepositDataValues;
     await program.methods
-      .depositV3(...Object.values({ ...depositData, inputAmount: secondInputAmount }))
+      .depositV3(...depositDataValues)
       .accounts(depositAccounts)
       .signers([depositor])
       .rpc();
@@ -133,8 +136,9 @@ describe("svm_spoke.deposit", () => {
     depositData.inputAmount = depositData.inputAmount.add(new BN(69));
 
     // Execute the first deposit_v3 call
+    let depositDataValues = Object.values(depositData) as DepositDataValues;
     await program.methods
-      .depositV3(...Object.values(depositData))
+      .depositV3(...depositDataValues)
       .accounts(depositAccounts)
       .signers([depositor])
       .rpc();
@@ -150,7 +154,7 @@ describe("svm_spoke.deposit", () => {
 
     // Execute the second deposit_v3 call
     await program.methods
-      .depositV3(...Object.values(depositData))
+      .depositV3(...depositDataValues)
       .accounts(depositAccounts)
       .signers([depositor])
       .rpc();
@@ -168,17 +172,24 @@ describe("svm_spoke.deposit", () => {
 
   it("Fails to deposit tokens to a route that is uninitalized", async () => {
     const differentChainId = new BN(2); // Different chain ID
+    if (!depositData.inputToken) {
+      throw new Error("Input token is null");
+    }
     const differentRoutePda = createRoutePda(depositData.inputToken, state, differentChainId);
     depositAccounts.route = differentRoutePda;
 
     try {
+      const depositDataValues = Object.values({
+        ...depositData,
+        destinationChainId: differentChainId,
+      }) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values({ ...depositData, destinationChainId: differentChainId }))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed for a route that is not initialized");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
     }
   });
@@ -186,37 +197,40 @@ describe("svm_spoke.deposit", () => {
   it("Fails to deposit tokens to a route that is explicitly disabled", async () => {
     // Disable the route
     await program.methods
-      .setEnableRoute(depositData.inputToken.toBytes(), depositData.destinationChainId, false)
+      .setEnableRoute(Array.from(depositData.inputToken!.toBuffer()), depositData.destinationChainId, false)
       .accounts(setEnableRouteAccounts)
       .rpc();
 
     try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(depositData))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed for a route that is explicitly disabled");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "DisabledRoute", "Expected DisabledRoute error");
     }
   });
 
   it("Fails to process deposit when deposits are paused", async () => {
     // Pause deposits
-    await program.methods.pauseDeposits(true).accounts({ state, signer: owner }).rpc();
+    const pauseDepositsAccounts = { state, signer: owner, program: program.programId };
+    await program.methods.pauseDeposits(true).accounts(pauseDepositsAccounts).rpc();
     const stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedDeposits, "Deposits should be paused");
 
     // Try to deposit. This should fail because deposits are paused.
     try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(depositData))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Should not be able to process deposit when deposits are paused");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "DepositsArePaused", "Expected error code DepositsArePaused");
     }
@@ -229,13 +243,14 @@ describe("svm_spoke.deposit", () => {
     depositData.quoteTimestamp = futureQuoteTimestamp;
 
     try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(depositData))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(
         err.toString(),
         "attempt to subtract with overflow",
@@ -251,13 +266,14 @@ describe("svm_spoke.deposit", () => {
     depositData.quoteTimestamp = futureQuoteTimestamp;
 
     try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(depositData))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
     }
   });
@@ -271,13 +287,14 @@ describe("svm_spoke.deposit", () => {
     depositData.quoteTimestamp = new BN(currentTime - 1); // 1 second before current time on the contract to reset.
 
     try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(depositData))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed due to InvalidFillDeadline (past deadline)");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for past deadline");
     }
 
@@ -286,13 +303,14 @@ describe("svm_spoke.deposit", () => {
     depositData.fillDeadline = new BN(invalidFillDeadline);
 
     try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(depositData))
+        .depositV3(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed due to InvalidFillDeadline (future deadline)");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for future deadline");
     }
   });
@@ -310,13 +328,14 @@ describe("svm_spoke.deposit", () => {
     const malformedDepositData = { ...depositData, inputToken: firstInputToken };
     const malformedDepositAccounts = { ...depositAccounts, route: firstDepositAccounts.route };
     try {
+      const depositDataValues = Object.values(malformedDepositData) as DepositDataValues;
       await program.methods
-        .depositV3(...Object.values(malformedDepositData))
+        .depositV3(...depositDataValues)
         .accounts(malformedDepositAccounts)
         .signers([depositor])
         .rpc();
       assert.fail("Should not be able to process deposit for inconsistent mint");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
@@ -341,10 +360,11 @@ describe("svm_spoke.deposit", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
+      program: program.programId,
     };
 
     await program.methods
-      .setEnableRoute(inputToken.toBytes(), fakeRouteChainId, true)
+      .setEnableRoute(Array.from(inputToken.toBuffer()), fakeRouteChainId, true)
       .accounts(fakeSetEnableRouteAccounts)
       .rpc();
 
@@ -358,16 +378,16 @@ describe("svm_spoke.deposit", () => {
       vault: fakeVault,
       mint: inputToken,
       tokenProgram: TOKEN_PROGRAM_ID,
+      program: program.programId,
     };
 
     // Deposit with the fake state and route PDA should succeed.
+    const depositDataValues = Object.values({
+      ...depositData,
+      destinationChainId: fakeRouteChainId,
+    }) as DepositDataValues;
     await program.methods
-      .depositV3(
-        ...Object.values({
-          ...depositData,
-          destinationChainId: fakeRouteChainId,
-        })
-      )
+      .depositV3(...depositDataValues)
       .accounts(fakeDepositAccounts)
       .signers([depositor])
       .rpc();
@@ -392,17 +412,16 @@ describe("svm_spoke.deposit", () => {
 
     // Deposit with the fake route in the original program state should fail.
     try {
+      const depositDataValues = Object.values({
+        ...{ ...depositData, destinationChainId: fakeRouteChainId },
+      }) as DepositDataValues;
       await program.methods
-        .depositV3(
-          ...Object.values({
-            ...{ ...depositData, destinationChainId: fakeRouteChainId },
-          })
-        )
+        .depositV3(...depositDataValues)
         .accounts({ ...depositAccounts, route: fakeRoutePda })
         .signers([depositor])
         .rpc();
       assert.fail("Deposit should have failed for a fake route PDA");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "A seeds constraint was violated");
     }
 

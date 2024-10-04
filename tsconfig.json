@@ -18,9 +18,6 @@
     "tasks/enableL1TokenAcrossEcosystem.ts",
     "utils/utils.ts"
   ],
-  "exclude": [
-    "./test/svm", // Added exclusion for /test/svm &/scripts/svm files until we fix build issues on types.
-    "./scripts/svm"
-  ],
+  "exclude": ["./scripts/svm"],
   "files": ["./hardhat.config.ts"]
 }

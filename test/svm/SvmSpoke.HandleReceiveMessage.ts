@@ -30,7 +30,7 @@ describe("svm_spoke.handle_receive_message", () => {
   let remainingAccounts: anchor.web3.AccountMeta[];
   const cctpMessageversion = 0;
   let destinationCaller = new anchor.web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
-  let receiveMessageAccounts;
+  let receiveMessageAccounts: any;
 
   const ethereumIface = new ethers.utils.Interface([
     "function pauseDeposits(bool pause)",
@@ -121,7 +121,7 @@ describe("svm_spoke.handle_receive_message", () => {
 
     const message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: unauthorizedSender,
@@ -137,7 +137,7 @@ describe("svm_spoke.handle_receive_message", () => {
         .remainingAccounts(remainingAccounts)
         .rpc();
       assert.fail("Should not be able to receive message from unauthorized sender");
-    } catch (error) {
+    } catch (error: any) {
       assert.instanceOf(error, anchor.AnchorError);
       assert.strictEqual(error.error.errorCode.code, "InvalidRemoteSender", "Expected error code InvalidRemoteSender");
     }
@@ -171,7 +171,7 @@ describe("svm_spoke.handle_receive_message", () => {
         .remainingAccounts(remainingAccounts)
         .rpc();
       assert.fail("Should not be able to receive message from wrong source domain");
-    } catch (error) {
+    } catch (error: any) {
       assert.instanceOf(error, anchor.AnchorError);
       assert.strictEqual(error.error.errorCode.code, "InvalidRemoteDomain", "Expected error code InvalidRemoteDomain");
     }
@@ -183,7 +183,7 @@ describe("svm_spoke.handle_receive_message", () => {
     let messageBody = Buffer.from(calldata.slice(2), "hex");
     let message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
@@ -205,7 +205,7 @@ describe("svm_spoke.handle_receive_message", () => {
     messageBody = Buffer.from(calldata.slice(2), "hex");
     message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
@@ -228,7 +228,7 @@ describe("svm_spoke.handle_receive_message", () => {
     let messageBody = Buffer.from(calldata.slice(2), "hex");
     let message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
@@ -250,7 +250,7 @@ describe("svm_spoke.handle_receive_message", () => {
     messageBody = Buffer.from(calldata.slice(2), "hex");
     message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
@@ -274,7 +274,7 @@ describe("svm_spoke.handle_receive_message", () => {
     let messageBody = Buffer.from(calldata.slice(2), "hex");
     let message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
@@ -297,13 +297,13 @@ describe("svm_spoke.handle_receive_message", () => {
 
   it("Enables and disables route remotely", async () => {
     // Enable the route.
-    const originToken = await createMint(provider.connection, provider.wallet.payer, owner, owner, 6);
+    const originToken = await createMint(provider.connection, (provider.wallet as any).payer, owner, owner, 6);
     const routeChainId = 1;
     let calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, true]);
     let messageBody = Buffer.from(calldata.slice(2), "hex");
     let message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
@@ -392,7 +392,7 @@ describe("svm_spoke.handle_receive_message", () => {
     messageBody = Buffer.from(calldata.slice(2), "hex");
     message = encodeMessageHeader({
       version: cctpMessageversion,
-      sourceDomain: remoteDomain,
+      sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
       nonce: BigInt(nonce),
       sender: crossDomainAdmin,
