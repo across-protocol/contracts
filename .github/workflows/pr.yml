@@ -1,18 +1,11 @@
 name: Checks
-on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
-      - develop
+on: [push, pull_request]
 
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
     strategy:
       matrix:
         node:
@@ -65,6 +58,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
     strategy:
       matrix:
         node:
@@ -118,6 +112,7 @@ jobs:
   forge:
     name: Forge
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
     strategy:
       matrix:
         node:
