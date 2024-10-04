@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { Arbitrum_WithdrawalHelper } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalHelper.sol";
@@ -24,7 +25,6 @@ contract Mock_Ovm_WithdrawalHelper is Ovm_WithdrawalHelper {
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
         address _tokenRecipient,
-        address _hubPool,
         IOvm_SpokePool _spokePool
     )
         Ovm_WithdrawalHelper(
@@ -33,7 +33,6 @@ contract Mock_Ovm_WithdrawalHelper is Ovm_WithdrawalHelper {
             _destinationCircleDomainId,
             _l2Gateway,
             _tokenRecipient,
-            _hubPool,
             _spokePool
         )
     {}
@@ -141,18 +140,28 @@ contract WithdrawalAdapterTest is Test {
             tokenMessenger,
             CircleDomainIds.Ethereum,
             address(arbBridge),
-            hubPool,
             hubPool
         );
+        proxy = address(
+            new ERC1967Proxy(
+                address(arbitrumWithdrawalHelper),
+                abi.encodeCall(WithdrawalHelperBase.initialize, (hubPool))
+            )
+        );
+        arbitrumWithdrawalHelper = Arbitrum_WithdrawalHelper(payable(proxy));
+
         ovmWithdrawalHelper = new Mock_Ovm_WithdrawalHelper(
             l2Usdc,
             tokenMessenger,
             CircleDomainIds.Ethereum,
             address(ovmBridge),
             hubPool,
-            hubPool,
             IOvm_SpokePool(address(ovmSpokePool))
         );
+        proxy = address(
+            new ERC1967Proxy(address(ovmWithdrawalHelper), abi.encodeCall(WithdrawalHelperBase.initialize, (hubPool)))
+        );
+        ovmWithdrawalHelper = Mock_Ovm_WithdrawalHelper(payable(proxy));
     }
 
     // This test should call the gateway router contract.
@@ -214,16 +223,20 @@ contract WithdrawalAdapterTest is Test {
         assertEq(0, l2CustomToken.balanceOf(address(ovmWithdrawalHelper)));
     }
 
-    function testRescueTokensWithAdminMessage(uint256 amountToReturn, address rando) public {
+    function testUpgrade(uint256 amountToReturn, address rando) public {
         vm.assume(rando != hubPool);
         l2CustomToken.mint(address(ovmWithdrawalHelper), amountToReturn);
+
+        address newImplementation = address(
+            new Arbitrum_WithdrawalHelper(l2Usdc, tokenMessenger, CircleDomainIds.Ethereum, address(arbBridge), hubPool)
+        );
 
         // Should revert if we are an unauthorized user.
         vm.startPrank(rando);
         vm.expectRevert(Ovm_WithdrawalHelper.NotCrossDomainAdmin.selector);
         messenger.impersonateCall(
             address(ovmWithdrawalHelper),
-            abi.encodeCall(WithdrawalHelperBase.sendTokenTo, (address(l2CustomToken), hubPool, amountToReturn))
+            abi.encodeCall(UUPSUpgradeable.upgradeTo, (newImplementation))
         );
         vm.stopPrank();
 
@@ -231,11 +244,8 @@ contract WithdrawalAdapterTest is Test {
         vm.startPrank(hubPool);
         messenger.impersonateCall(
             address(ovmWithdrawalHelper),
-            abi.encodeCall(WithdrawalHelperBase.sendTokenTo, (address(l2CustomToken), hubPool, amountToReturn))
+            abi.encodeCall(UUPSUpgradeable.upgradeTo, (newImplementation))
         );
         vm.stopPrank();
-
-        assertEq(0, l2CustomToken.balanceOf(address(ovmWithdrawalHelper)));
-        assertEq(amountToReturn, l2CustomToken.balanceOf(hubPool));
     }
 }

@@ -77,18 +77,8 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
         address _tokenRecipient,
-        address _crossDomainAdmin,
         IOvm_SpokePool _spokePool
-    )
-        WithdrawalHelperBase(
-            _l2Usdc,
-            _cctpTokenMessenger,
-            _destinationCircleDomainId,
-            _l2Gateway,
-            _tokenRecipient,
-            _crossDomainAdmin
-        )
-    {
+    ) WithdrawalHelperBase(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId, _l2Gateway, _tokenRecipient) {
         spokePool = _spokePool;
 
         // These addresses should only change network-by-network, or after a bridge upgrade, so we define them once in the constructor.
@@ -171,6 +161,6 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
     }
 
     function _requireAdminSender() internal view override {
-        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != CROSS_DOMAIN_ADMIN) revert NotCrossDomainAdmin();
+        if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
     }
 }

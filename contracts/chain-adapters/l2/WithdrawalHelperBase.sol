@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title WithdrawalHelperBase
@@ -14,7 +15,7 @@ import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libra
  * to determine which bridges to use for an input L2 token. Importantly, that function must also verify that the l2 to l1
  * token mapping is correct so that the bridge call itself can succeed.
  */
-abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
+abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     // The L1 address which will unconditionally receive all withdrawals from this contract.
@@ -23,7 +24,12 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
     address public immutable L2_TOKEN_GATEWAY;
     // The address of the admin contract on L1,which will likely be the hub pool. As a last resort, this admin can rescue stuck tokens
     // on this withdrawal helper contract, similar to how it may send admin functions to spoke pools.
-    address public immutable CROSS_DOMAIN_ADMIN;
+    address public crossDomainAdmin;
+
+    event SetXDomainAdmin(address _crossDomainAdmin);
+
+    // Error which triggers when the cross domain admin was attempted to be set to the zero address.
+    error InvalidCrossDomainAdmin();
 
     // Functions which contain this modifier should only be callable via a cross-chain call where the L1 msg.sender is the hub pool.
     modifier onlyAdmin() {
@@ -40,34 +46,39 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
      * @param _tokenRecipient L1 address which will unconditionally receive all withdrawals originating from this contract.
      * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
      * L2 address.
+     * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
+     * may disrupt the proxy if another EOA were to initialize it.
      */
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _destinationCircleDomainId,
         address _l2TokenGateway,
-        address _tokenRecipient,
-        address _crossDomainAdmin
+        address _tokenRecipient
     ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId) {
         L2_TOKEN_GATEWAY = _l2TokenGateway;
         TOKEN_RECIPIENT = _tokenRecipient;
-        CROSS_DOMAIN_ADMIN = _crossDomainAdmin;
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initializes the withdrawal helper contract.
+     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
+     */
+    function initialize(address _crossDomainAdmin) public initializer {
+        __UUPSUpgradeable_init();
+        _setCrossDomainAdmin(_crossDomainAdmin);
     }
 
     /*
-     * @notice Transfers a specified amount of an L2 token to an address on L2.
-     * @param l2Token Address of the L2 token to send.
-     * @param to Address which should receive the L2 token.
-     * @param amount Amount of the L2 token to send to `to`.
-     * @dev This function should only be callable via a rescue adapter. This function is solely for times when token withdrawals from L2-L1
-     * cannot succeed for whatever reason, so the tokens must be sent to an alternate address.
+     * @notice Sets a new cross domain admin. The admin cannot be the zero address. The cross domain admin is the only address which may call
+     * upgrade this contract.
+     * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
      */
-    function sendTokenTo(
-        address l2Token,
-        address to,
-        uint256 amount
-    ) external onlyAdmin {
-        IERC20(l2Token).safeTransfer(to, amount);
+    function _setCrossDomainAdmin(address _newCrossDomainAdmin) internal {
+        if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
+        crossDomainAdmin = _newCrossDomainAdmin;
+        emit SetXDomainAdmin(_newCrossDomainAdmin);
     }
 
     /*
@@ -92,4 +103,15 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller {
      * @dev This implementation must change on a per-chain basis, since each L2 network has their own method of deriving the L1 msg.sender.
      */
     function _requireAdminSender() internal virtual;
+
+    /*
+     * @notice Access control check for upgrading this proxy contract
+     * @dev This requires that _requireAdminSender() is properly implemented on all contracts which inherit WithdrawalHelperBase.
+     */
+    function _authorizeUpgrade(address) internal override onlyAdmin {}
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    uint256[1000] private __gap;
 }
