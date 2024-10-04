@@ -1,19 +1,9 @@
 name: Checks
-on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
-      - develop
-
+on: [push, pull_request]
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' || github.event.pull_request == null }}
     strategy:
       matrix:
         node:
@@ -26,17 +16,6 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-
-      - name: Cache yarn dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn-cache
-          key: ${{ runner.os }}-yarn-${{ matrix.node }}-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-${{ matrix.node }}
-
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
@@ -66,7 +45,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' || github.event.pull_request == null }}
     strategy:
       matrix:
         node:
@@ -79,17 +57,6 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-
-      - name: Cache yarn dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn-cache
-          key: ${{ runner.os }}-yarn-${{ matrix.node }}-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-${{ matrix.node }}
-
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
@@ -114,13 +81,12 @@ jobs:
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
-      - name: Test svm-anchor
+      - name: Test svm
         shell: bash
         run: yarn test-svm
   forge:
     name: Forge
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' || github.event.pull_request == null }}
     strategy:
       matrix:
         node:
@@ -133,17 +99,6 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-
-      - name: Cache yarn dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn-cache
-          key: ${{ runner.os }}-yarn-${{ matrix.node }}-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-${{ matrix.node }}
-
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
