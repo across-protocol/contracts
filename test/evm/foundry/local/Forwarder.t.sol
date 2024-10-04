@@ -30,7 +30,7 @@ contract Token_ERC20 is ERC20 {
     }
 }
 
-contract RouterAdapterTest is Test {
+contract ForwarderTest is Test {
     Arbitrum_Forwarder arbitrumForwarder;
     Optimism_Adapter optimismAdapter;
 
