@@ -16,7 +16,7 @@ const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
 describe("svm_spoke.fill", () => {
   anchor.setProvider(provider);
-  const payer = (anchor.AnchorProvider.env().wallet as any).payer;
+  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
 

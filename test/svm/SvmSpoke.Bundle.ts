@@ -41,7 +41,7 @@ describe("svm_spoke.bundle", () => {
     vault: PublicKey,
     transferLiability: PublicKey;
 
-  const payer = (anchor.AnchorProvider.env().wallet as any).payer;
+  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   before(async () => {
