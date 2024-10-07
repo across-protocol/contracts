@@ -75,4 +75,8 @@ pub enum CustomError {
     InvalidFillDeadline,
     #[msg("Overflow writing to parameters account!")]
     ParamsWriteOverflow,
+    #[msg("Invalid refund address!")]
+    InvalidRefund,
+    #[msg("Zero relayer refund claim!")]
+    ZeroRefundClaim,
 }

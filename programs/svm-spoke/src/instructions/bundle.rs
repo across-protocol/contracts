@@ -5,7 +5,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
     event::ExecutedRelayerRefundRoot,
-    state::{ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
+    state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
 
@@ -106,9 +106,12 @@ impl RelayerRefundLeaf {
     }
 }
 
-pub fn execute_relayer_refund_leaf<'info>(
-    ctx: Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
-) -> Result<()> {
+pub fn execute_relayer_refund_leaf<'c, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+) -> Result<()>
+where
+    'c: 'info,
+{
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
     let root_bundle_id = instruction_params.root_bundle_id;
@@ -147,29 +150,41 @@ pub fn execute_relayer_refund_leaf<'info>(
     let signer_seeds = &[&seeds[..]];
 
     for (i, amount) in relayer_refund_leaf.refund_amounts.iter().enumerate() {
-        let refund_account = relayer_refund_leaf.refund_accounts[i];
         let amount = *amount as u64;
 
-        // TODO: we might be able to just use the refund_account and improve this block but it's not clear yet if that's possible.
-        let refund_account_info = ctx
-            .remaining_accounts
-            .iter()
-            .find(|account| account.key == &refund_account)
-            .cloned()
-            .ok_or(CustomError::AccountNotFound)?;
+        // Refund account holds either a regular token account or a claim account. This checks all required constraints.
+        let refund_account = RefundAccount::try_from_remaining_account(
+            ctx.remaining_accounts,
+            i,
+            &relayer_refund_leaf.refund_accounts[i],
+            &ctx.accounts.mint.key(),
+            &ctx.accounts.token_program.key(),
+        )?;
 
-        let transfer_accounts = TransferChecked {
-            from: ctx.accounts.vault.to_account_info(),
-            mint: ctx.accounts.mint.to_account_info(),
-            to: refund_account_info.to_account_info(),
-            authority: ctx.accounts.state.to_account_info(),
-        };
-        let cpi_context = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            transfer_accounts,
-            signer_seeds,
-        );
-        transfer_checked(cpi_context, amount, ctx.accounts.mint.decimals)?;
+        match refund_account {
+            // Valid token account was passed, transfer the refund atomically.
+            RefundAccount::TokenAccount(token_account) => {
+                let transfer_accounts = TransferChecked {
+                    from: ctx.accounts.vault.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    to: token_account.to_account_info(),
+                    authority: ctx.accounts.state.to_account_info(),
+                };
+                let cpi_context = CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    transfer_accounts,
+                    signer_seeds,
+                );
+                transfer_checked(cpi_context, amount, ctx.accounts.mint.decimals)?;
+            }
+            // Valid claim account was passed, increment the claim account amount.
+            RefundAccount::ClaimAccount(mut claim_account) => {
+                claim_account.amount += amount;
+
+                // Persist the updated claim account (Anchor handles this only for static accounts).
+                claim_account.exit(ctx.program_id)?;
+            }
+        }
     }
 
     if relayer_refund_leaf.amount_to_return > 0 {
