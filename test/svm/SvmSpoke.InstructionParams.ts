@@ -15,9 +15,10 @@ describe("svm_spoke.instruction_params", () => {
   let instructionParams: PublicKey;
 
   const initializeInstructionParams = async (totalSize: number) => {
+    const initializeInstructionParamsAccounts = { signer: caller.publicKey, instructionParams };
     const ix = await program.methods
       .initializeInstructionParams(totalSize)
-      .accounts({ signer: caller.publicKey, instructionParams })
+      .accounts(initializeInstructionParamsAccounts)
       .instruction();
     await anchor.web3.sendAndConfirmTransaction(connection, new anchor.web3.Transaction().add(ix), [caller]);
   };
@@ -28,9 +29,10 @@ describe("svm_spoke.instruction_params", () => {
 
     for (let i = 0; i < data.length; i += maxInstructionParamsFragment) {
       const fragment = data.slice(i, i + maxInstructionParamsFragment);
+      const writeInstructionParamsAccounts = { signer: caller.publicKey, instructionParams };
       const ix = await program.methods
         .writeInstructionParamsFragment(i, fragment)
-        .accounts({ signer: caller.publicKey, instructionParams })
+        .accounts(writeInstructionParamsAccounts)
         .instruction();
       await anchor.web3.sendAndConfirmTransaction(connection, new anchor.web3.Transaction().add(ix), [caller]);
     }
@@ -93,9 +95,10 @@ describe("svm_spoke.instruction_params", () => {
 
     // Try to write to the instruction data from a default payer should fail due to instructionParams seed mismatch.
     try {
-      await program.methods.writeInstructionParamsFragment(0, inputData).accounts({ instructionParams }).rpc();
+      const writeInstructionParamsAccounts = { instructionParams };
+      await program.methods.writeInstructionParamsFragment(0, inputData).accounts(writeInstructionParamsAccounts).rpc();
       assert.fail("Write instruction params should have failed");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assertSE(err.error.errorCode.code, "ConstraintSeeds", "Expected error code ConstraintSeeds");
     }
@@ -109,9 +112,10 @@ describe("svm_spoke.instruction_params", () => {
 
     // Try to close the instruction data from a default payer should fail due to instructionData seed mismatch.
     try {
-      await program.methods.closeInstructionParams().accounts({ instructionParams }).rpc();
+      const closeInstructionParamsAccounts = { instructionParams };
+      await program.methods.closeInstructionParams().accounts(closeInstructionParamsAccounts).rpc();
       assert.fail("Close instruction params should have failed");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assertSE(err.error.errorCode.code, "ConstraintSeeds", "Expected error code ConstraintSeeds");
     }

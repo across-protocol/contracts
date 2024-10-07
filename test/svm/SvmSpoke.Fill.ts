@@ -16,7 +16,7 @@ const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
 describe("svm_spoke.fill", () => {
   anchor.setProvider(provider);
-  const payer = anchor.AnchorProvider.env().wallet.payer;
+  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
 
@@ -92,7 +92,7 @@ describe("svm_spoke.fill", () => {
     let relayerAccount = await getAccount(connection, relayerTA);
     assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
 
     // Verify relayer's balance after the fill
@@ -109,7 +109,7 @@ describe("svm_spoke.fill", () => {
   });
 
   it("Verifies FilledV3Relay event after filling a relay", async () => {
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
 
     // Fetch and verify the FilledV3Relay event
@@ -127,11 +127,11 @@ describe("svm_spoke.fill", () => {
   it("Fails to fill a V3 relay after the fill deadline", async () => {
     updateRelayData({ ...relayData, fillDeadline: new BN(Math.floor(Date.now() / 1000) - 69) }); // 69 seconds ago
 
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
       assert.fail("Fill should have failed due to fill deadline passed");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "ExpiredFillDeadline", "Expected ExpiredFillDeadline error");
     }
   });
@@ -141,7 +141,7 @@ describe("svm_spoke.fill", () => {
     accounts.relayer = otherRelayer.publicKey;
     accounts.relayerTA = otherRelayerTA;
 
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
         .fillV3Relay(relayHash, relayData, new BN(1))
@@ -149,7 +149,7 @@ describe("svm_spoke.fill", () => {
         .signers([otherRelayer])
         .rpc();
       assert.fail("Fill should have failed due to non-exclusive relayer before exclusivity deadline");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "NotExclusiveRelayer", "Expected NotExclusiveRelayer error");
     }
   });
@@ -164,7 +164,7 @@ describe("svm_spoke.fill", () => {
     const recipientAccountBefore = await getAccount(connection, recipientTA);
     const relayerAccountBefore = await getAccount(connection, otherRelayerTA);
 
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([otherRelayer]).rpc();
 
     // Verify relayer's balance after the fill
@@ -185,7 +185,7 @@ describe("svm_spoke.fill", () => {
   });
 
   it("Fails to fill a V3 relay with the same deposit data multiple times", async () => {
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // First fill attempt
     await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
@@ -194,13 +194,13 @@ describe("svm_spoke.fill", () => {
     try {
       await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
       assert.fail("Fill should have failed due to RelayFilled error");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "RelayFilled", "Expected RelayFilled error");
     }
   });
 
   it("Closes the fill PDA after the fill", async () => {
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     const closeFillPdaAccounts = {
       state,
@@ -220,7 +220,7 @@ describe("svm_spoke.fill", () => {
     try {
       await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
       assert.fail("Closing fill PDA should have failed before fill deadline");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "FillDeadlineNotPassed", "Expected FillDeadlineNotPassed error");
     }
 
@@ -244,7 +244,11 @@ describe("svm_spoke.fill", () => {
     assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before fillV3Relay");
 
     // Fill the relay
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+    await program.methods
+      .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
 
     // Fetch FillStatusAccount after fillV3Relay
     fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
@@ -255,16 +259,17 @@ describe("svm_spoke.fill", () => {
 
   it("Fails to fill a relay when fills are paused", async () => {
     // Pause fills
-    await program.methods.pauseFills(true).accounts({ state, signer: owner }).rpc();
+    const pauseFillsAccounts = { state: state, signer: owner, program: program.programId };
+    await program.methods.pauseFills(true).accounts(pauseFillsAccounts).rpc();
     const stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedFills, "Fills should be paused");
 
     // Try to fill the relay. This should fail because fills are paused.
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
       assert.fail("Should not be able to fill relay when fills are paused");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Fills are currently paused!", "Expected fills paused error");
     }
   });
@@ -279,7 +284,7 @@ describe("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1))
+        .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
         .accounts({
           ...accounts,
           recipient: wrongRecipient,
@@ -289,7 +294,7 @@ describe("svm_spoke.fill", () => {
         .signers([relayer])
         .rpc();
       assert.fail("Should not be able to fill relay to wrong recipient");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
     }
@@ -307,7 +312,7 @@ describe("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1))
+        .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
         .accounts({
           ...accounts,
           mintAccount: wrongMint,
@@ -317,7 +322,7 @@ describe("svm_spoke.fill", () => {
         .signers([relayer])
         .rpc();
       assert.fail("Should not be able to process fill for inconsistent mint");
-    } catch (err) {
+    } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }

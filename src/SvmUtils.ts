@@ -5,8 +5,8 @@ import { Layout } from "buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
 
-export function findProgramAddress(label: string, program: PublicKey, extraSeeds = null) {
-  const seeds = [Buffer.from(anchor.utils.bytes.utf8.encode(label))];
+export function findProgramAddress(label: string, program: PublicKey, extraSeeds?: string[]) {
+  const seeds: Buffer[] = [Buffer.from(anchor.utils.bytes.utf8.encode(label))];
   if (extraSeeds) {
     for (const extraSeed of extraSeeds) {
       if (typeof extraSeed === "string") {
@@ -16,7 +16,7 @@ export function findProgramAddress(label: string, program: PublicKey, extraSeeds
       } else if (Buffer.isBuffer(extraSeed)) {
         seeds.push(extraSeed);
       } else {
-        seeds.push(extraSeed.toBuffer());
+        seeds.push((extraSeed as any).toBuffer());
       }
     }
   }
@@ -27,7 +27,7 @@ export function findProgramAddress(label: string, program: PublicKey, extraSeeds
 export async function readEvents(
   connection: Connection,
   txSignature: string,
-  programs,
+  programs: Program<anchor.Idl>[],
   commitment: Finality = "confirmed"
 ) {
   const txResult = await connection.getTransaction(txSignature, {
@@ -39,16 +39,16 @@ export async function readEvents(
   for (const program of programs) {
     eventAuthorities.set(
       program.programId.toString(),
-      findProgramAddress("__event_authority", program.programId, null).publicKey.toString()
+      findProgramAddress("__event_authority", program.programId).publicKey.toString()
     );
   }
 
-  let events = [];
+  let events: any[] = [];
 
   // TODO: Add support for version 0 transactions.
-  if (txResult.transaction.message.version !== "legacy") return events;
+  if (!txResult || txResult.transaction.message.version !== "legacy") return events;
 
-  for (const ixBlock of txResult.meta.innerInstructions) {
+  for (const ixBlock of txResult.meta?.innerInstructions ?? []) {
     for (const ix of ixBlock.instructions) {
       for (const program of programs) {
         const programStr = program.programId.toString();
@@ -63,8 +63,8 @@ export async function readEvents(
           const event = program.coder.events.decode(eventData);
           events.push({
             program: program.programId,
-            data: event.data,
-            name: event.name,
+            data: event?.data,
+            name: event?.name,
           });
         }
       }
@@ -74,7 +74,7 @@ export async function readEvents(
   return events;
 }
 
-export function getEvent(events, program: PublicKey, eventName: string) {
+export function getEvent(events: any[], program: PublicKey, eventName: string) {
   for (const event of events) {
     if (event.name === eventName && program.toString() === event.program.toString()) {
       return event.data;
@@ -104,7 +104,7 @@ export async function subscribeToCpiEventsForProgram(
   callback: (events: any[]) => void
 ) {
   const subscriptionId = connection.onLogs(
-    new PublicKey(findProgramAddress("__event_authority", program.programId, null).publicKey.toString()),
+    new PublicKey(findProgramAddress("__event_authority", program.programId).publicKey.toString()),
     async (logs: Logs) => {
       callback(await readEvents(connection, logs.signature, [program], "confirmed"));
     },

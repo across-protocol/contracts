@@ -16,11 +16,10 @@
     "./index.ts",
     "./test-utils.ts",
     "tasks/enableL1TokenAcrossEcosystem.ts",
-    "utils/utils.ts"
+    "utils/utils.ts",
+    "src/types"
   ],
-  "exclude": [
-    "./test/svm", // Added exclusion for /test/svm &/scripts/svm files until we fix build issues on types.
-    "./scripts/svm"
-  ],
-  "files": ["./hardhat.config.ts"]
+  "exclude": ["./scripts/svm"],
+  "files": ["./hardhat.config.ts"],
+  "typeRoots": ["./node_modules/@types", "./src/types"]
 }
