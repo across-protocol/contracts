@@ -26,7 +26,7 @@ export function findProgramAddress(label: string, program: PublicKey, extraSeeds
 export async function readEvents(
   connection: Connection,
   txSignature: string,
-  programs: Program<any>[],
+  programs: Program<anchor.Idl>[],
   commitment: Finality = "confirmed"
 ) {
   const txResult = await connection.getTransaction(txSignature, {
