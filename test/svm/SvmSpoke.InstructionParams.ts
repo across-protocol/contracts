@@ -95,7 +95,7 @@ describe("svm_spoke.instruction_params", () => {
 
     // Try to write to the instruction data from a default payer should fail due to instructionParams seed mismatch.
     try {
-      const writeInstructionParamsAccounts = { signer: caller.publicKey, instructionParams };
+      const writeInstructionParamsAccounts = { instructionParams };
       await program.methods.writeInstructionParamsFragment(0, inputData).accounts(writeInstructionParamsAccounts).rpc();
       assert.fail("Write instruction params should have failed");
     } catch (err: any) {
@@ -112,7 +112,7 @@ describe("svm_spoke.instruction_params", () => {
 
     // Try to close the instruction data from a default payer should fail due to instructionData seed mismatch.
     try {
-      const closeInstructionParamsAccounts = { signer: caller.publicKey, instructionParams };
+      const closeInstructionParamsAccounts = { instructionParams };
       await program.methods.closeInstructionParams().accounts(closeInstructionParamsAccounts).rpc();
       assert.fail("Close instruction params should have failed");
     } catch (err: any) {
