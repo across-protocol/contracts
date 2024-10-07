@@ -341,7 +341,7 @@ describe("svm_spoke.bundle", () => {
         .remainingAccounts(wrongRemainingAccounts)
         .rpc();
     } catch (err: any) {
-      assertSE(err.error.errorCode.code, "AccountNotInitialized", "Expected error code AccountNotInitialized");
+      assert.include(err.toString(), "AccountNotInitialized");
     }
 
     // Verify valid leaf
