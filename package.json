@@ -108,6 +108,9 @@
     "typechain": "^8.1.1",
     "typescript": "^5.6.2"
   },
+  "peerDependencies": {
+    "buffer-layout": "^1.2.2"
+  },
   "husky": {
     "hooks": {
       "pre-commit": "echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"

@@ -64,11 +64,8 @@ pub mod svm_spoke {
 
     pub fn execute_relayer_refund_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
-        root_bundle_id: u32,
-        relayer_refund_leaf: RelayerRefundLeaf,
-        proof: Vec<[u8; 32]>,
     ) -> Result<()> {
-        instructions::execute_relayer_refund_leaf(ctx, root_bundle_id, relayer_refund_leaf, proof)
+        instructions::execute_relayer_refund_leaf(ctx)
     }
 
     pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
@@ -189,5 +186,24 @@ pub mod svm_spoke {
         ctx.accounts.bridge_tokens_to_hub_pool(amount, &ctx.bumps)?;
 
         Ok(())
+    }
+
+    pub fn initialize_instruction_params(
+        _ctx: Context<InitializeInstructionParams>,
+        total_size: u32,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn write_instruction_params_fragment<'info>(
+        ctx: Context<WriteInstructionParamsFragment<'info>>,
+        offset: u32,
+        fragment: Vec<u8>,
+    ) -> Result<()> {
+        instructions::write_instruction_params_fragment(ctx, offset, fragment)
+    }
+
+    pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<()> {
+        instructions::close_instruction_params(ctx)
     }
 }

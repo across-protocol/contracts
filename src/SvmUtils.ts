@@ -1,6 +1,7 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
+import { Layout } from "buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
 
@@ -154,3 +155,24 @@ export const readUInt256BE = (buffer: Buffer): BigInt => {
   }
   return result;
 };
+
+// This is extended Anchor accounts coder to handle large account data that is required when passing instruction
+// parameters from prefilled data account. Base implementation restricts the buffer to only 1000 bytes.
+export class LargeAccountsCoder<A extends string = string> extends anchor.BorshAccountsCoder<A> {
+  // Getter to access the private accountLayouts property from base class.
+  private getAccountLayouts() {
+    return (this as any).accountLayouts as Map<A, Layout>;
+  }
+
+  public async encode<T = any>(accountName: A, account: T): Promise<Buffer> {
+    const buffer = Buffer.alloc(10240); // We don't currently need anything above instruction data account reallocation limit.
+    const layout = this.getAccountLayouts().get(accountName);
+    if (!layout) {
+      throw new Error(`Unknown account: ${accountName}`);
+    }
+    const len = layout.encode(account, buffer);
+    const accountData = buffer.slice(0, len);
+    const discriminator = this.accountDiscriminator(accountName);
+    return Buffer.concat([discriminator, accountData]);
+  }
+}
