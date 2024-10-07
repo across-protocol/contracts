@@ -4,7 +4,7 @@ use svm_spoke::constants::DISCRIMINATOR_SIZE;
 use svm_spoke::error::CustomError;
 use svm_spoke::utils::{is_claimed, process_proof, set_claimed};
 
-declare_id!("2Sayo37euGp1XHH4EfGYN3TkAzEn6sBENLDiWq8eWzD8");
+declare_id!("B5nX7hRb9t6x3Bcog7pyPZP4rc6iXSRFwTpxy6taFZpo");
 
 // This program is used to test the svm_spoke program internal utils methods. It's kept separate from the svm_spoke
 // as it simply exports utils methods so direct unit tests can be run against them.
@@ -77,6 +77,20 @@ pub mod test {
             return Err(CustomError::InvalidProof.into());
         }
         msg!("Merkle proof verified successfully");
+        Ok(())
+    }
+
+    #[derive(Accounts)]
+    pub struct EmitLargeLog {}
+    #[event]
+    pub struct TestEvent {
+        message: String,
+    }
+    pub fn test_emit_large_log(_ctx: Context<EmitLargeLog>, length: u32) -> Result<()> {
+        let large_message = "LOG_TO_TEST_LARGE_MESSAGE".repeat(length as usize);
+        emit!(TestEvent {
+            message: large_message.into()
+        });
         Ok(())
     }
 }

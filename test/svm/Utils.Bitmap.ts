@@ -11,7 +11,7 @@ describe("utils.bitmap", () => {
   const provider = anchor.AnchorProvider.env();
 
   let bitmapAccount: anchor.web3.PublicKey;
-  const signer = (provider.wallet as anchor.Wallet).payer; // Use the provider's signer
+  const signer = (provider.wallet as anchor.Wallet).payer;
 
   before(async () => {
     const seeds = [Buffer.from("bitmap_account")];

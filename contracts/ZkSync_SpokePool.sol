@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
+import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
@@ -62,7 +63,7 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
@@ -116,15 +117,6 @@ contract ZkSync_SpokePool is SpokePool {
         address oldErc20Bridge = address(zkErc20Bridge);
         zkErc20Bridge = _zkErc20Bridge;
         emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
-    }
-
-    // L1 addresses are transformed during l1->l2 calls.
-    // See https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#mailboxfacet for more information.
-    // Another source: https://github.com/matter-labs/era-contracts/blob/41c25aa16d182f757c3fed1463c78a81896f65e6/ethereum/contracts/vendor/AddressAliasHelper.sol#L28
-    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        unchecked {
-            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
-        }
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}

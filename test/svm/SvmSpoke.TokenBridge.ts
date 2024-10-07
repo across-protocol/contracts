@@ -11,6 +11,7 @@ import {
   relayerRefundHashFn,
   findProgramAddress,
   convertLeafIdToNumber,
+  loadExecuteRelayerRefundLeafParams,
 } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
@@ -179,10 +180,8 @@ describe("svm_spoke.token_bridge", () => {
       systemProgram: anchor.web3.SystemProgram.programId,
       program: program.programId,
     };
-    await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, convertLeafIdToNumber(leaf), proofAsNumbers)
-      .accounts(executeRelayerRefundLeafAccounts)
-      .rpc();
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+    await program.methods.executeRelayerRefundLeaf().accounts(executeRelayerRefundLeafAccounts).rpc();
   };
 
   it("Bridge all pending tokens to HubPool in single transaction", async () => {

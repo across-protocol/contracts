@@ -1,15 +1,16 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import { Program, BN, utils, BorshAccountsCoder, Idl } from "@coral-xyz/anchor";
+import { Layout } from "buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
 
 export function findProgramAddress(label: string, program: PublicKey, extraSeeds?: string[]) {
-  const seeds: Buffer[] = [Buffer.from(anchor.utils.bytes.utf8.encode(label))];
+  const seeds: Buffer[] = [Buffer.from(utils.bytes.utf8.encode(label))];
   if (extraSeeds) {
     for (const extraSeed of extraSeeds) {
       if (typeof extraSeed === "string") {
-        seeds.push(Buffer.from(anchor.utils.bytes.utf8.encode(extraSeed)));
+        seeds.push(Buffer.from(utils.bytes.utf8.encode(extraSeed)));
       } else if (Array.isArray(extraSeed)) {
         seeds.push(Buffer.from(extraSeed));
       } else if (Buffer.isBuffer(extraSeed)) {
@@ -26,7 +27,7 @@ export function findProgramAddress(label: string, program: PublicKey, extraSeeds
 export async function readEvents(
   connection: Connection,
   txSignature: string,
-  programs: Program<any>[],
+  programs: Program<Idl>[],
   commitment: Finality = "confirmed"
 ) {
   const txResult = await connection.getTransaction(txSignature, {
@@ -57,8 +58,8 @@ export async function readEvents(
           (txResult.transaction.message as any).accountKeys[ix.accounts[0]].toString() ===
             eventAuthorities.get(programStr)
         ) {
-          const ixData = anchor.utils.bytes.bs58.decode(ix.data);
-          const eventData = anchor.utils.bytes.base64.encode(Buffer.from(new Uint8Array(ixData).slice(8)));
+          const ixData = utils.bytes.bs58.decode(ix.data);
+          const eventData = utils.bytes.base64.encode(Buffer.from(new Uint8Array(ixData).slice(8)));
           const event = program.coder.events.decode(eventData);
           events.push({
             program: program.programId,
@@ -121,7 +122,7 @@ export const evmAddressToPublicKey = (address: string): PublicKey => {
 // TODO: we are inconsistant with where we are placing some utils. we have some stuff here, some stuff that we might
 // want to re-use within the test directory. more over, when moving things into the canonical across repo, we should
 // re-use the test utils there.
-export function calculateRelayHashUint8Array(relayData: any, chainId: anchor.BN): Uint8Array {
+export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8Array {
   const messageBuffer = Buffer.alloc(4);
   messageBuffer.writeUInt32LE(relayData.message.length, 0);
 
@@ -134,7 +135,7 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: anchor.BN)
     relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    new anchor.BN(relayData.depositId).toArrayLike(Buffer, "le", 4),
+    new BN(relayData.depositId).toArrayLike(Buffer, "le", 4),
     new BN(relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
     new BN(relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
     messageBuffer,
@@ -154,3 +155,24 @@ export const readUInt256BE = (buffer: Buffer): BigInt => {
   }
   return result;
 };
+
+// This is extended Anchor accounts coder to handle large account data that is required when passing instruction
+// parameters from prefilled data account. Base implementation restricts the buffer to only 1000 bytes.
+export class LargeAccountsCoder<A extends string = string> extends BorshAccountsCoder<A> {
+  // Getter to access the private accountLayouts property from base class.
+  private getAccountLayouts() {
+    return (this as any).accountLayouts as Map<A, Layout>;
+  }
+
+  public async encode<T = any>(accountName: A, account: T): Promise<Buffer> {
+    const buffer = Buffer.alloc(10240); // We don't currently need anything above instruction data account reallocation limit.
+    const layout = this.getAccountLayouts().get(accountName);
+    if (!layout) {
+      throw new Error(`Unknown account: ${accountName}`);
+    }
+    const len = layout.encode(account, buffer);
+    const accountData = buffer.slice(0, len);
+    const discriminator = this.accountDiscriminator(accountName);
+    return Buffer.concat([discriminator, accountData]);
+  }
+}

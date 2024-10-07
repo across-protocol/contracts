@@ -73,4 +73,6 @@ pub enum CustomError {
     InvalidQuoteTimestamp,
     #[msg("Ivalid fill deadline!")]
     InvalidFillDeadline,
+    #[msg("Overflow writing to parameters account!")]
+    ParamsWriteOverflow,
 }

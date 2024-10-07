@@ -5,7 +5,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
     event::ExecutedRelayerRefundRoot,
-    state::{RootBundle, State, TransferLiability},
+    state::{ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
 
@@ -15,15 +15,23 @@ use anchor_spl::token_interface::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(root_bundle_id: u32, relayer_refund_leaf: RelayerRefundLeaf)]
 pub struct ExecuteRelayerRefundLeaf<'info> {
+    #[account(
+        seeds = [b"instruction_params", signer.key().as_ref()],
+        bump
+    )]
+    pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
+
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(
         mut,
-        seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump,
-        realloc = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + relayer_refund_leaf.leaf_id as usize / 8,
+        seeds =[b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        realloc = std::cmp::max(
+            DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
+            root_bundle.to_account_info().data_len()
+        ),
         realloc::payer = signer,
         realloc::zero = false
     )]
@@ -43,7 +51,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(
         mut,
         mint::token_program = token_program,
-        address = relayer_refund_leaf.mint_public_key @ CustomError::InvalidMint
+        address = instruction_params.relayer_refund_leaf.mint_public_key @ CustomError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -61,13 +69,15 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
     pub chain_id: u64,
     pub leaf_id: u32,
     pub mint_public_key: Pubkey,
+    #[max_len(0)]
     pub refund_amounts: Vec<u64>,
+    #[max_len(0)]
     pub refund_accounts: Vec<Pubkey>,
 }
 
@@ -98,10 +108,13 @@ impl RelayerRefundLeaf {
 
 pub fn execute_relayer_refund_leaf<'info>(
     ctx: Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    root_bundle_id: u32,
-    relayer_refund_leaf: RelayerRefundLeaf,
-    proof: Vec<[u8; 32]>,
 ) -> Result<()> {
+    // Get pre-loaded instruction parameters.
+    let instruction_params = &ctx.accounts.instruction_params;
+    let root_bundle_id = instruction_params.root_bundle_id;
+    let relayer_refund_leaf = instruction_params.relayer_refund_leaf.to_owned();
+    let proof = instruction_params.proof.to_owned();
+
     let state = &mut ctx.accounts.state;
 
     let root = ctx.accounts.root_bundle.relayer_refund_root;

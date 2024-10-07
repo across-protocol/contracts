@@ -16,7 +16,9 @@
     "./index.ts",
     "./test-utils.ts",
     "tasks/enableL1TokenAcrossEcosystem.ts",
-    "utils/utils.ts"
+    "utils/utils.ts",
+    "src/types"
   ],
-  "files": ["./hardhat.config.ts"]
+  "files": ["./hardhat.config.ts"],
+  "typeRoots": ["./node_modules/@types", "./src/types"]
 }

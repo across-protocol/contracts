@@ -19,7 +19,7 @@ describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
-  const payer = (anchor.AnchorProvider.env().wallet as any).payer;
+  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey;
   let depositAccounts: any; // Re-used between tests to simplify props.
   let setEnableRouteAccounts: any; // Common variable for setEnableRoute accounts
