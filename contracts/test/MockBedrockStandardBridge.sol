@@ -22,7 +22,7 @@ contract MockBedrockL2StandardBridge is IL2ERC20Bridge {
         address _remoteToken,
         address _to,
         uint256 _amount,
-        uint256,
+        uint32,
         bytes calldata
     ) external {
         // Check that caller has approved this contract to pull funds, mirroring mainnet's behavior
