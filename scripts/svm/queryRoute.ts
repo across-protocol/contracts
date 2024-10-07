@@ -20,40 +20,44 @@ const programId = program.programId;
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
+  .option("seed", { type: "string", demandOption: true, describe: "Seed for the state account PDA" })
   .option("originToken", { type: "string", demandOption: true, describe: "Origin token public key" })
   .option("chainId", { type: "string", demandOption: true, describe: "Chain ID" }).argv;
 
-const originToken = Array.from(new PublicKey(argv.originToken).toBytes()); // Convert to number[]
-const chainId = new BN(argv.chainId);
-
-// Define the route account PDA
-const [routePda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("route"), Buffer.from(originToken), chainId.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
-// Define the state account PDA (assuming the seed is known or can be derived)
-const seed = new BN(0); // Replace with actual seed if known
-const [statePda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
-// Compute the vault address
-const vault = getAssociatedTokenAddressSync(
-  new PublicKey(originToken),
-  statePda,
-  true,
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID
-);
-
 async function queryRoute(): Promise<void> {
+  const resolvedArgv = await argv;
+  const seed = new BN(resolvedArgv.seed);
+  const originToken = Array.from(new PublicKey(resolvedArgv.originToken).toBytes()); // Convert to number[]
+  const chainId = new BN(resolvedArgv.chainId);
+
+  // Define the state account PDA
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
+  // Define the route account PDA
+  const [routePda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("route"), Buffer.from(originToken), statePda.toBytes(), chainId.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
+  // Compute the vault address
+  const vault = getAssociatedTokenAddressSync(
+    new PublicKey(originToken),
+    statePda,
+    true,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
   console.log("Querying route...");
   console.table([
+    { Property: "seed", Value: seed.toString() },
     { Property: "originToken", Value: new PublicKey(originToken).toString() },
     { Property: "chainId", Value: chainId.toString() },
     { Property: "programId", Value: programId.toString() },
+    { Property: "statePda", Value: statePda.toString() },
     { Property: "routePda", Value: routePda.toString() },
     { Property: "vault", Value: vault.toString() },
   ]);
@@ -67,7 +71,7 @@ async function queryRoute(): Promise<void> {
       { Property: "Enabled", Value: route.enabled },
       { Property: "vaultBalance", Value: vaultAccount.amount.toString() },
     ]);
-  } catch (error) {
+  } catch (error: any) {
     if (error.message.includes("Account does not exist or has no data")) {
       console.log("No route has been created for the given origin token and chain ID.");
     } else {

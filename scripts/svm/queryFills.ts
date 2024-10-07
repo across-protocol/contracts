@@ -20,15 +20,16 @@ const argv = yargs(hideBin(process.argv)).option("seed", {
   describe: "Seed for the state account PDA",
 }).argv;
 
-const seed = new BN(argv.seed);
-
-// Define the state account PDA
-const [statePda, _] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
 async function queryFills(): Promise<void> {
+  const resolvedArgv = await argv;
+  const seed = new BN(resolvedArgv.seed);
+
+  // Define the state account PDA
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
   console.table([
     { Property: "seed", Value: seed.toString() },
     { Property: "programId", Value: programId.toString() },

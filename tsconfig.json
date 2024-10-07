@@ -18,6 +18,5 @@
     "tasks/enableL1TokenAcrossEcosystem.ts",
     "utils/utils.ts"
   ],
-  "exclude": ["./scripts/svm"],
   "files": ["./hardhat.config.ts"]
 }

@@ -1,6 +1,6 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
 
@@ -135,8 +135,8 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: anchor.BN)
     relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     relayData.originChainId.toArrayLike(Buffer, "le", 8),
     new anchor.BN(relayData.depositId).toArrayLike(Buffer, "le", 4),
-    relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
-    relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
+    new BN(relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
     messageBuffer,
     relayData.message,
     chainId.toArrayLike(Buffer, "le", 8),

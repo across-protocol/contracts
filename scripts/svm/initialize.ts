@@ -10,8 +10,8 @@ import { evmAddressToPublicKey } from "../../src/SvmUtils";
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const idl = require("../../target/idl/svm_spoke.json");
-// const program = new Program<SvmSpoke>(idl, provider);
-// const programId = program.programId;
+const program = new Program<SvmSpoke>(idl, provider);
+const programId = program.programId;
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
@@ -36,7 +36,7 @@ const argv = yargs(hideBin(process.argv))
 async function initialize(): Promise<void> {
   const resolvedArgv = await argv;
   const seed = new BN(resolvedArgv.seed);
-  const initialNumberOfDeposits = resolvedArgv.initNumbDeposits;
+  const initialNumberOfDeposits = new BN(resolvedArgv.initNumbDeposits);
   const chainId = new BN(resolvedArgv.chainId);
   const remoteDomain = resolvedArgv.remoteDomain;
   const crossDomainAdmin = evmAddressToPublicKey(resolvedArgv.crossDomainAdmin); // Use the function to cast the value
@@ -46,50 +46,50 @@ async function initialize(): Promise<void> {
 
   // Define the state account PDA
   console.log("Seed:", seed.toString());
-  console.log("seed.toArrayLike(Buffer", seed.toArrayLike(Buffer, "le", 8));
-  // const [statePda, _] = PublicKey.findProgramAddressSync(
-  //   [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  //   programId
-  // );
+  console.log("seed.toArrayLike(Buffer", new BN(seed).toArrayLike(Buffer, "le", 8));
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), new BN(seed).toArrayLike(Buffer, "le", 8)],
+    programId
+  );
 
-  // // Define the signer (replace with your actual signer)
-  // const signer = provider.wallet.publicKey;
+  // Define the signer (replace with your actual signer)
+  const signer = provider.wallet.publicKey;
 
-  // console.log("Initializing...");
-  // console.table([
-  //   { Property: "seed", Value: seed.toString() },
-  //   { Property: "initialNumberOfDeposits", Value: initialNumberOfDeposits.toString() },
-  //   { Property: "programId", Value: programId.toString() },
-  //   { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },
-  //   { Property: "statePda", Value: statePda.toString() },
-  //   { Property: "chainId", Value: chainId.toString() },
-  //   { Property: "remoteDomain", Value: remoteDomain.toString() },
-  //   { Property: "crossDomainAdmin", Value: crossDomainAdmin.toString() },
-  //   { Property: "testableMode", Value: testableMode.toString() },
-  //   { Property: "depositQuoteTimeBuffer", Value: depositQuoteTimeBuffer.toString() },
-  //   { Property: "fillDeadlineBuffer", Value: fillDeadlineBuffer.toString() },
-  // ]);
+  console.log("Initializing...");
+  console.table([
+    { Property: "seed", Value: seed.toString() },
+    { Property: "initialNumberOfDeposits", Value: initialNumberOfDeposits.toString() },
+    { Property: "programId", Value: programId.toString() },
+    { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },
+    { Property: "statePda", Value: statePda.toString() },
+    { Property: "chainId", Value: chainId.toString() },
+    { Property: "remoteDomain", Value: remoteDomain.toString() },
+    { Property: "crossDomainAdmin", Value: crossDomainAdmin.toString() },
+    { Property: "testableMode", Value: testableMode.toString() },
+    { Property: "depositQuoteTimeBuffer", Value: depositQuoteTimeBuffer.toString() },
+    { Property: "fillDeadlineBuffer", Value: fillDeadlineBuffer.toString() },
+  ]);
 
-  // const tx = await (
-  //   program.methods.initialize(
-  //     seed,
-  //     initialNumberOfDeposits,
-  //     chainId,
-  //     remoteDomain,
-  //     crossDomainAdmin,
-  //     testableMode,
-  //     depositQuoteTimeBuffer,
-  //     fillDeadlineBuffer
-  //   ) as any
-  // )
-  //   .accounts({
-  //     state: statePda,
-  //     signer: signer,
-  //     systemProgram: SystemProgram.programId,
-  //   })
-  //   .rpc();
+  const tx = await (
+    program.methods.initialize(
+      seed,
+      initialNumberOfDeposits.toNumber(),
+      chainId,
+      remoteDomain,
+      crossDomainAdmin,
+      testableMode,
+      depositQuoteTimeBuffer,
+      fillDeadlineBuffer
+    ) as any
+  )
+    .accounts({
+      state: statePda,
+      signer: signer,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
 
-  // console.log("Transaction signature:", tx);
+  console.log("Transaction signature:", tx);
 }
 
 // Run the initialize function
