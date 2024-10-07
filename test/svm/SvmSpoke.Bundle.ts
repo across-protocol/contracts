@@ -14,6 +14,7 @@ import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
+  loadExecuteRelayerRefundLeafParams,
   relayerRefundHashFn,
   randomAddress,
   randomBigInt,
@@ -184,8 +185,9 @@ describe("svm_spoke.bundle", () => {
 
     // Verify valid leaf
     const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
     await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+      .executeRelayerRefundLeaf()
       .accounts({
         state: state,
         rootBundle: rootBundle,
@@ -228,8 +230,9 @@ describe("svm_spoke.bundle", () => {
 
     // Try to execute the same leaf again. This should fail due to the claimed bitmap.
     try {
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -316,8 +319,9 @@ describe("svm_spoke.bundle", () => {
       ];
 
       // Verify valid leaf
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -335,8 +339,9 @@ describe("svm_spoke.bundle", () => {
     }
 
     // Verify valid leaf
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
     await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+      .executeRelayerRefundLeaf()
       .accounts({
         state: state,
         rootBundle: rootBundle,
@@ -370,12 +375,15 @@ describe("svm_spoke.bundle", () => {
 
     // Verify invalid leaf
     try {
+      await loadExecuteRelayerRefundLeafParams(
+        program,
+        owner,
+        stateAccountData.rootBundleId,
+        invalidRelayerRefundLeaf as RelayerRefundLeafSolana,
+        proofAsNumbers
+      );
       await program.methods
-        .executeRelayerRefundLeaf(
-          stateAccountData.rootBundleId,
-          invalidRelayerRefundLeaf as RelayerRefundLeafSolana,
-          proofAsNumbers
-        )
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -438,8 +446,9 @@ describe("svm_spoke.bundle", () => {
 
     const proofAsNumbers = proof.map((p) => Array.from(p));
     try {
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -499,8 +508,9 @@ describe("svm_spoke.bundle", () => {
 
     const proofAsNumbers = proof.map((p) => Array.from(p));
     try {
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -560,12 +570,15 @@ describe("svm_spoke.bundle", () => {
 
     // Execute all leaves
     for (let i = 0; i < 5; i++) {
+      await loadExecuteRelayerRefundLeafParams(
+        program,
+        owner,
+        stateAccountData.rootBundleId,
+        relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+        proof[i]
+      );
       await program.methods
-        .executeRelayerRefundLeaf(
-          stateAccountData.rootBundleId,
-          relayerRefundLeaves[i] as RelayerRefundLeafSolana,
-          proof[i]
-        )
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -591,12 +604,15 @@ describe("svm_spoke.bundle", () => {
     // Try to execute the same leaves again. This should fail due to the claimed bitmap.
     for (let i = 0; i < 5; i++) {
       try {
+        await loadExecuteRelayerRefundLeafParams(
+          program,
+          owner,
+          stateAccountData.rootBundleId,
+          relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+          proof[i]
+        );
         await program.methods
-          .executeRelayerRefundLeaf(
-            stateAccountData.rootBundleId,
-            relayerRefundLeaves[i] as RelayerRefundLeafSolana,
-            proof[i]
-          )
+          .executeRelayerRefundLeaf()
           .accounts({
             state: state,
             rootBundle: rootBundle,
@@ -619,15 +635,20 @@ describe("svm_spoke.bundle", () => {
   it("Execute Max Refunds", async () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
-    // Higher refund count hits message size limit due to refund accounts also being present in calldata. This could be
-    // resolved by feeding calldata from a buffer account.
-    const numberOfRefunds = 21;
+    // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
+    // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
+    // protocol does not expect this to be above 25.
+    const solanaDistributions = 28;
+
+    // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
+    const evmDistributions = 100; // This would fit in 7 proof array elements.
+
     const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
     const refundAccounts: anchor.web3.PublicKey[] = [];
     const refundAmounts: BN[] = [];
 
-    for (let i = 0; i < numberOfRefunds; i++) {
+    for (let i = 0; i < solanaDistributions; i++) {
       const newRefundAccount = (
         await getOrCreateAssociatedTokenAccount(connection, payer, mint, Keypair.generate().publicKey)
       ).address;
@@ -644,6 +665,18 @@ describe("svm_spoke.bundle", () => {
       refundAccounts: refundAccounts,
       refundAmounts: refundAmounts,
     });
+
+    for (let i = 0; i < evmDistributions; i++) {
+      relayerRefundLeaves.push({
+        isSolana: false,
+        leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
+        chainId: randomBigInt(2),
+        amountToReturn: randomBigInt(),
+        l2TokenAddress: randomAddress(),
+        refundAddresses: [randomAddress(), randomAddress()],
+        refundAmounts: [randomBigInt(), randomBigInt()],
+      } as RelayerRefundLeaf);
+    }
 
     const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
 
@@ -668,9 +701,15 @@ describe("svm_spoke.bundle", () => {
     // Verify valid leaf
     const proofAsNumbers = proof.map((p) => Array.from(p));
 
+    const [instructionParams] = PublicKey.findProgramAddressSync(
+      [Buffer.from("instruction_params"), owner.toBuffer()],
+      program.programId
+    );
+
     // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
     // but also all static accounts.
     const staticAccounts = {
+      instructionParams,
       state: state,
       rootBundle: rootBundle,
       signer: owner,
@@ -686,13 +725,13 @@ describe("svm_spoke.bundle", () => {
 
     const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
 
-    // Consolidate all accounts (static and remaining) into a single array for the ALT.
-    const allAccounts = [...Object.values(staticAccounts), ...refundAccounts];
+    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
+    const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
 
     // Create instructions for creating and extending the ALT.
     const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: payer.publicKey,
-      payer: payer.publicKey,
+      authority: owner,
+      payer: owner,
       recentSlot: await connection.getSlot(),
     });
 
@@ -707,12 +746,12 @@ describe("svm_spoke.bundle", () => {
     );
 
     // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
-    for (let i = 0; i < allAccounts.length; i += maxExtendedAccounts) {
+    for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
       const extendInstruction = AddressLookupTableProgram.extendLookupTable({
         lookupTable: lookupTableAddress,
-        authority: payer.publicKey,
-        payer: payer.publicKey,
-        addresses: allAccounts.slice(i, i + maxExtendedAccounts),
+        authority: owner,
+        payer: owner,
+        addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
       });
 
       await anchor.web3.sendAndConfirmTransaction(
@@ -732,9 +771,11 @@ describe("svm_spoke.bundle", () => {
     const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
     assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
 
-    // Build the instruction to execute relayer refund leaf
+    // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
     const executeInstruction = await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+      .executeRelayerRefundLeaf()
       .accounts(staticAccounts)
       .remainingAccounts(remainingAccounts)
       .instruction();
@@ -745,7 +786,7 @@ describe("svm_spoke.bundle", () => {
     // Create the versioned transaction
     const versionedTx = new VersionedTransaction(
       new TransactionMessage({
-        payerKey: payer.publicKey,
+        payerKey: owner,
         recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
         instructions: [computeBudgetInstruction, executeInstruction],
       }).compileToV0Message([lookupTableAccount])
@@ -754,6 +795,17 @@ describe("svm_spoke.bundle", () => {
     // Sign and submit the versioned transaction.
     versionedTx.sign([payer]);
     await connection.sendTransaction(versionedTx);
+
+    // Verify all refund account balances.
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure account balances have been synced.
+    const refundBalances = await Promise.all(
+      refundAccounts.map(async (account) => {
+        return (await connection.getTokenAccountBalance(account)).value.amount;
+      })
+    );
+    refundBalances.forEach((balance, i) => {
+      assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+    });
   });
 
   it("Increments pending amount to HubPool", async () => {
@@ -785,8 +837,9 @@ describe("svm_spoke.bundle", () => {
         .accounts({ state, rootBundle, signer: owner })
         .rpc();
       const proofAsNumbers = proof.map((p) => Array.from(p));
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
       await program.methods
-        .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,
@@ -869,12 +922,15 @@ describe("svm_spoke.bundle", () => {
 
     // Execute all leaves in reverse order
     for (let i = numberOfRefunds - 1; i >= 0; i--) {
+      await await loadExecuteRelayerRefundLeafParams(
+        program,
+        owner,
+        stateAccountData.rootBundleId,
+        relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+        proof[i]
+      );
       await program.methods
-        .executeRelayerRefundLeaf(
-          stateAccountData.rootBundleId,
-          relayerRefundLeaves[i] as RelayerRefundLeafSolana,
-          proof[i]
-        )
+        .executeRelayerRefundLeaf()
         .accounts({
           state: state,
           rootBundle: rootBundle,

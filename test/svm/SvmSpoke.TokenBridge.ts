@@ -5,7 +5,13 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { common } from "./SvmSpoke.common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType, relayerRefundHashFn, findProgramAddress } from "./utils";
+import {
+  RelayerRefundLeafSolana,
+  RelayerRefundLeafType,
+  relayerRefundHashFn,
+  findProgramAddress,
+  loadExecuteRelayerRefundLeafParams,
+} from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
 
@@ -152,8 +158,9 @@ describe("svm_spoke.token_bridge", () => {
 
     // Execute relayer refund leaf.
     const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
     await program.methods
-      .executeRelayerRefundLeaf(stateAccountData.rootBundleId, leaf, proofAsNumbers)
+      .executeRelayerRefundLeaf()
       .accounts({
         state,
         rootBundle,

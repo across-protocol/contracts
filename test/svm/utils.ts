@@ -1,9 +1,15 @@
-import { BN } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import * as crypto from "crypto";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 
-import { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress } from "../../src/SvmUtils";
+import {
+  readProgramEvents,
+  calculateRelayHashUint8Array,
+  findProgramAddress,
+  LargeAccountsCoder,
+} from "../../src/SvmUtils";
 
 export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
 
@@ -150,4 +156,36 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
 
   const slowFillHash = ethers.utils.keccak256(contentToHash);
   return slowFillHash;
+}
+
+export async function loadExecuteRelayerRefundLeafParams(
+  program: Program<SvmSpoke>,
+  caller: PublicKey,
+  rootBundleId: number,
+  relayerRefundLeaf: RelayerRefundLeafSolana,
+  proof: number[][]
+) {
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  // Close the instruction params account if the caller has used it before.
+  const [instructionParams] = PublicKey.findProgramAddressSync(
+    [Buffer.from("instruction_params"), caller.toBuffer()],
+    program.programId
+  );
+  const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
+  if (accountInfo !== null) await program.methods.closeInstructionParams().rpc();
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("executeRelayerRefundLeafParams", {
+    rootBundleId,
+    relayerRefundLeaf,
+    proof,
+  });
+
+  await program.methods.initializeInstructionParams(instructionParamsBytes.length).rpc();
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
+    await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
+  }
 }
