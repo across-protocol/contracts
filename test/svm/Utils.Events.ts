@@ -101,7 +101,6 @@ describe("utils.events", () => {
       if (!instruction) {
         continue;
       }
-      // Type guard to check if instruction is of type PartiallyDecodedInstruction
       let decodedIx;
       if ("data" in instruction) {
         decodedIx = borshCoder.instruction.decode(instruction.data, "base58");
