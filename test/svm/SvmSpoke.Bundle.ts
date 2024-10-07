@@ -866,10 +866,8 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    await program.methods
-      .relayRootBundle(Array.from(root), Array.from(root))
-      .accounts({ state, rootBundle, signer: owner })
-      .rpc();
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
 
@@ -878,22 +876,24 @@ describe("svm_spoke.bundle", () => {
 
     // Execute all leaves in reverse order
     for (let i = numberOfRefunds - 1; i >= 0; i--) {
+      const executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        program: program.programId,
+      };
       await program.methods
         .executeRelayerRefundLeaf(
           stateAccountData.rootBundleId,
-          relayerRefundLeaves[i] as RelayerRefundLeafSolana,
+          convertLeafIdToNumber(relayerRefundLeaves[i] as RelayerRefundLeafSolana),
           proof[i]
         )
-        .accounts({
-          state: state,
-          rootBundle: rootBundle,
-          signer: owner,
-          vault: vault,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          mint: mint,
-          transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
     }

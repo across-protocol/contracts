@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { BorshCoder, EventParser, Program } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import { Test } from "../../target/types/test";
+import { ParsedInstruction } from "@solana/web3.js";
 
 describe("utils.events", () => {
   const provider = anchor.AnchorProvider.env();
@@ -100,10 +101,17 @@ describe("utils.events", () => {
       if (!instruction) {
         continue;
       }
-      const decodedIx = borshCoder.instruction.decode(instruction.data, "base58");
+      // Type guard to check if instruction is of type PartiallyDecodedInstruction
+      let decodedIx;
+      if ("data" in instruction) {
+        decodedIx = borshCoder.instruction.decode(instruction.data, "base58");
+        recoveredFunctionName = decodedIx?.name;
+      } else {
+        console.error("Instruction does not have data");
+      }
 
       recoveredFunctionName = decodedIx?.name;
-      recoveredLength = decodedIx?.data?.length;
+      recoveredLength = (decodedIx as unknown as { data: { length: number } }).data.length;
     }
 
     expect(recoveredFunctionName).to.equal("testEmitLargeLog");
