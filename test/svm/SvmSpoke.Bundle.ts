@@ -334,8 +334,9 @@ describe("svm_spoke.bundle", () => {
         })
         .remainingAccounts(wrongRemainingAccounts)
         .rpc();
+      assert.fail("Should not be able to get refunds to invalid accounts");
     } catch (err) {
-      assert.include(err.toString(), "Account not found");
+      assertSE(err.error.errorCode.code, "AccountNotInitialized", "Expected error code AccountNotInitialized");
     }
 
     // Verify valid leaf
