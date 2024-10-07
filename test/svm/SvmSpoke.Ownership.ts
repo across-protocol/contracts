@@ -41,7 +41,11 @@ describe("svm_spoke.ownership", () => {
       if (key !== "testableMode") {
         // We dont store testableMode in state.
         const adjustedKey = key === "initialNumberOfDeposits" ? "numberOfDeposits" : key; // stored with diff key in state.
-        assertSE(stateData[adjustedKey], initialState[key], `${key} should match`);
+        assertSE(
+          stateData[adjustedKey as keyof typeof stateData],
+          initialState[key as keyof typeof initialState],
+          `${key} should match`
+        );
       }
     });
   });
@@ -50,7 +54,8 @@ describe("svm_spoke.ownership", () => {
     assert.isFalse((await program.account.state.fetch(state)).pausedDeposits, "Deposits should not be paused");
 
     // Pause deposits as owner
-    await program.methods.pauseDeposits(true).accounts({ state, signer: owner }).rpc();
+    const pauseDepositsAccounts = { state, signer: owner, program: program.programId };
+    await program.methods.pauseDeposits(true).accounts(pauseDepositsAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Fetch the updated state
@@ -63,7 +68,7 @@ describe("svm_spoke.ownership", () => {
     assert.isTrue(pausedDepositEvents[0].data.isPaused, "PausedDeposits event should indicate deposits are paused");
 
     // Unpause deposits as owner
-    await program.methods.pauseDeposits(false).accounts({ state, signer: owner }).rpc();
+    await program.methods.pauseDeposits(false).accounts(pauseDepositsAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Fetch the updated state
@@ -77,13 +82,10 @@ describe("svm_spoke.ownership", () => {
 
     // Try to pause deposits as non-owner
     try {
-      await program.methods
-        .pauseDeposits(true)
-        .accounts({ state, signer: nonOwner.publicKey })
-        .signers([nonOwner])
-        .rpc();
+      const pauseDepositsAccounts = { state, signer: nonOwner.publicKey, program: program.programId };
+      await program.methods.pauseDeposits(true).accounts(pauseDepositsAccounts).signers([nonOwner]).rpc();
       assert.fail("Non-owner should not be able to pause deposits");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Only the owner can call this function!", "Expected owner check error");
     }
   });
@@ -92,7 +94,8 @@ describe("svm_spoke.ownership", () => {
     assert.isFalse((await program.account.state.fetch(state)).pausedFills, "Fills should not be paused");
 
     // Pause fills as owner
-    await program.methods.pauseFills(true).accounts({ state, signer: owner }).rpc();
+    const pauseFillsAccounts = { state, signer: owner, program: program.programId };
+    await program.methods.pauseFills(true).accounts(pauseFillsAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Fetch the updated state
@@ -105,7 +108,7 @@ describe("svm_spoke.ownership", () => {
     assert.isTrue(pausedFillEvents[0].data.isPaused, "PausedFills event should indicate fills are paused");
 
     // Unpause fills as owner
-    await program.methods.pauseFills(false).accounts({ state, signer: owner }).rpc();
+    await program.methods.pauseFills(false).accounts(pauseFillsAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Fetch the updated state
@@ -119,16 +122,18 @@ describe("svm_spoke.ownership", () => {
 
     // Try to pause fills as non-owner
     try {
-      await program.methods.pauseFills(true).accounts({ state, signer: nonOwner.publicKey }).signers([nonOwner]).rpc();
+      const pauseFillsAccounts = { state, signer: nonOwner.publicKey, program: program.programId };
+      await program.methods.pauseFills(true).accounts(pauseFillsAccounts).signers([nonOwner]).rpc();
       assert.fail("Non-owner should not be able to pause fills");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Only the owner can call this function!", "Expected owner check error");
     }
   });
 
   it("Transfers ownership", async () => {
     // Transfer ownership to newOwner
-    await program.methods.transferOwnership(newOwner.publicKey).accounts({ state, signer: owner }).rpc();
+    const transferOwnershipAccounts = { state, signer: owner };
+    await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Verify the new owner
@@ -137,20 +142,25 @@ describe("svm_spoke.ownership", () => {
 
     // Try to transfer ownership as non-owner
     try {
+      const transferOwnershipAccounts = { state, signer: nonOwner.publicKey };
       await program.methods
         .transferOwnership(nonOwner.publicKey)
-        .accounts({ state, signer: nonOwner.publicKey })
+        .accounts(transferOwnershipAccounts)
         .signers([nonOwner])
         .rpc();
       assert.fail("Non-owner should not be able to transfer ownership");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Only the owner can call this function!", "Expected owner check error");
     }
   });
 
   it("Sets cross-domain admin", async () => {
     // Set cross-domain admin as owner
-    await program.methods.setCrossDomainAdmin(newCrossDomainAdmin.publicKey).accounts({ state, signer: owner }).rpc();
+    const setCrossDomainAdminAccounts = { state, signer: owner, program: program.programId };
+    await program.methods
+      .setCrossDomainAdmin(newCrossDomainAdmin.publicKey)
+      .accounts(setCrossDomainAdminAccounts)
+      .rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Verify the new cross-domain admin
@@ -172,13 +182,14 @@ describe("svm_spoke.ownership", () => {
 
     // Try to set cross-domain admin as non-owner
     try {
+      const setCrossDomainAdminAccounts = { state, signer: nonOwner.publicKey, program: program.programId };
       await program.methods
         .setCrossDomainAdmin(nonOwner.publicKey)
-        .accounts({ state, signer: nonOwner.publicKey })
+        .accounts(setCrossDomainAdminAccounts)
         .signers([nonOwner])
         .rpc();
       assert.fail("Non-owner should not be able to set cross-domain admin");
-    } catch (err) {
+    } catch (err: any) {
       assert.include(err.toString(), "Only the owner can call this function!", "Expected owner check error");
     }
   });

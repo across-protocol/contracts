@@ -10,23 +10,20 @@ describe("utils.bitmap", () => {
   const program = anchor.workspace.Test as Program<Test>;
   const provider = anchor.AnchorProvider.env();
 
-  let bitmapAccount;
-  const signer = provider.wallet.payer; // Use the provider's signer
+  let bitmapAccount: anchor.web3.PublicKey;
+  const signer = (provider.wallet as anchor.Wallet).payer;
 
   before(async () => {
     const seeds = [Buffer.from("bitmap_account")];
     bitmapAccount = anchor.web3.PublicKey.findProgramAddressSync(seeds, program.programId)[0];
 
     // Initialize the Bitmap account
-    await program.methods
-      .initialize()
-      .accounts({
-        bitmapAccount,
-        signer: signer.publicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([signer])
-      .rpc();
+    const initializeAccounts = {
+      bitmapAccount,
+      signer: signer.publicKey,
+      systemProgram: SystemProgram.programId,
+    };
+    await program.methods.initialize().accounts(initializeAccounts).signers([signer]).rpc();
   });
   it("Set and read multiple claims", async () => {
     const indices = [0, 1, 42, 69, 1449, 1501];
@@ -42,15 +39,12 @@ describe("utils.bitmap", () => {
     }
 
     for (const index of indices) {
-      await program.methods
-        .testSetClaimed(index)
-        .accounts({
-          bitmapAccount,
-          signer: signer.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([signer])
-        .rpc();
+      const setClaimedAccounts = {
+        bitmapAccount,
+        signer: signer.publicKey,
+        systemProgram: SystemProgram.programId,
+      };
+      await program.methods.testSetClaimed(index).accounts(setClaimedAccounts).signers([signer]).rpc();
     }
 
     for (const index of indices) {

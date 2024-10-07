@@ -98,7 +98,7 @@ describe("utils.merkle", () => {
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     const invalidLeaf = ethers.utils.arrayify(hashFn(invalidRelayerRefundLeaf));
 
-    let error;
+    let error: any;
     try {
       await program.methods
         .verify(
