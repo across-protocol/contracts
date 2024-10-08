@@ -55,16 +55,17 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
      * @param _succinctTargetAmb Address of the succinct AMB contract.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint16 _hubChainId,
         address _succinctTargetAmb,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         succinctTargetAmb = _succinctTargetAmb;
         hubChainId = _hubChainId;
     }
@@ -92,7 +93,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         // Validate msg.sender as succinct, the x-chain sender as being the hubPool (the admin) and the source chain as
         // 1 (mainnet).
         require(msg.sender == succinctTargetAmb, "caller not succinct AMB");
-        require(_senderAddress == hubPool, "sender not hubPool");
+        require(_senderAddress == crossDomainAdmin, "sender not hubPool");
         require(_sourceChainId == hubChainId, "source chain not hub chain");
 
         /// @custom:oz-upgrades-unsafe-allow delegatecall

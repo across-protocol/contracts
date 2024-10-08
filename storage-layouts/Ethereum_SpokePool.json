@@ -68,7 +68,7 @@
     },
     {
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
-      "label": "hubPool",
+      "label": "withdrawalRecipient",
       "offset": 0,
       "slot": "2154"
     },

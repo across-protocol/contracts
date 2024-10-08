@@ -104,10 +104,10 @@ describe("Optimism Spoke Pool", function () {
   });
 
   it("Only cross domain owner can set the hub pool address", async function () {
-    await expect(optimismSpokePool.setHubPool(rando.address)).to.be.reverted;
+    await expect(optimismSpokePool.setWithdrawalRecipient(rando.address)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setHubPool(rando.address);
-    expect(await optimismSpokePool.hubPool()).to.equal(rando.address);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setWithdrawalRecipient(rando.address);
+    expect(await optimismSpokePool.withdrawalRecipient()).to.equal(rando.address);
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {
