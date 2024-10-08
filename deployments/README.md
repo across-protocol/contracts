@@ -113,3 +113,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## World Chain mainnet (480)
+
+| Contract Name    | Address                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Zora_SpokePool   | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://worldchain-mainnet.explorer.alchemy.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
