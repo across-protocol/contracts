@@ -125,7 +125,7 @@ abstract contract SpokePool is
 
     bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
         keccak256(
-            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
+            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
 
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
@@ -485,6 +485,11 @@ abstract contract SpokePool is
      ********************************************/
 
     /**
+     * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
+     * as exact timestamp on the destination chain before which only the exclusiveRelayer could fill the deposit. Now,
+     * the caller is expected to pass in an exclusivityPeriod which is the number of seconds to be added to the
+     * block.timestamp to produce the exclusivityDeadline. This allows the caller to ignore any latency associated
+     * with this transaction being mined and propagating this transaction to the miner.
      * @notice Request to bridge input token cross chain to a destination chain and receive a specified amount
      * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
      * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
@@ -523,7 +528,7 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
-     * @param exclusivityPeriod Added to the current time to set the exclusive reayer deadline,
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
      * anyone can fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
@@ -543,59 +548,92 @@ abstract contract SpokePool is
         uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
-        // Check that deposit route is enabled for the input token. There are no checks required for the output token
-        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
-
-        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
-        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
-        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
-        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
-        // This will underflow if quoteTimestamp is more than depositQuoteTimeBuffer;
-        // this is safe but will throw an unintuitive error.
-
-        // slither-disable-next-line timestamp
-        uint256 currentTime = getCurrentTime();
-        if (currentTime - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
-
-        // fillDeadline is relative to the destination chain.
-        // Don’t allow fillDeadline to be more than several bundles into the future.
-        // This limits the maximum required lookback for dataworker and relayer instances.
-        // Also, don't allow fillDeadline to be in the past. This poses a potential UX issue if the destination
-        // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
-        // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
-        // situation won't be a problem for honest users.
-        if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
-
-        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
-        // transaction then the user is sending the native token. In this case, the native token should be
-        // wrapped.
-        if (inputToken == address(wrappedNativeToken) && msg.value > 0) {
-            if (msg.value != inputAmount) revert MsgValueDoesNotMatchInputAmount();
-            wrappedNativeToken.deposit{ value: msg.value }();
-            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
-            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
-            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else {
-            // msg.value should be 0 if input token isn't the wrapped native token.
-            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
-            IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
-        }
-
-        emit V3FundsDeposited(
+        _depositV3(
+            depositor,
+            recipient,
             inputToken,
             outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,
+            exclusiveRelayer,
             // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            // @dev Implicitly casts from uint32 to uint256 by padding the left-most bytes with zeros. Guarantees
+            // that the 24 most significant bytes are 0.
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
             uint32(getCurrentTime()) + exclusivityPeriod,
+            message
+        );
+    }
+
+    /**
+     * @notice See depositV3 for details. This function is identical to depositV3 except that it does not use the
+     * global deposit ID counter as a deposit nonce, instead allowing the caller to pass in a deposit nonce. This
+     * function is designed to be used by anyone who wants to pre-compute their resultant relay data hash, which
+     * could be useful for filling a deposit faster and avoiding any risk of a relay hash unexpectedly changing
+     * due to another deposit front-running this one and incrementing the global deposit ID counter.
+     * @dev This is labeled "unsafe" because there is no guarantee that the depositId emitted in the resultant
+     * V3FundsDeposited event is unique which means that the
+     * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
+     * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
+     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
+     * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
+     * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
+     * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
+     * deposits with deposit hashes that map exactly to the one emitted by this contract.
+     * @param depositNonce The nonce that uniquely identifies this deposit. This function will combine this parameter
+     * with the msg.sender address to create a unique uint256 depositNonce and ensure that the msg.sender cannot
+     * use this function to front-run another depositor's unsafe deposit. This function guarantees that the resultant
+     * deposit nonce will not collide with a safe uint256 deposit nonce whose 24 most significant bytes are always 0.
+     * @param depositor See identically named parameter in depositV3() comments.
+     * @param recipient See identically named parameter in depositV3() comments.
+     * @param inputToken See identically named parameter in depositV3() comments.
+     * @param outputToken See identically named parameter in depositV3() comments.
+     * @param inputAmount See identically named parameter in depositV3() comments.
+     * @param outputAmount See identically named parameter in depositV3() comments.
+     * @param destinationChainId See identically named parameter in depositV3() comments.
+     * @param exclusiveRelayer See identically named parameter in depositV3() comments.
+     * @param quoteTimestamp See identically named parameter in depositV3() comments.
+     * @param fillDeadline See identically named parameter in depositV3() comments.
+     * @param exclusivityPeriod See identically named parameter in depositV3() comments.
+     * @param message See identically named parameter in depositV3() comments.
+     */
+    function unsafeDepositV3(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint256 depositNonce,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityPeriod,
+        bytes calldata message
+    ) public payable nonReentrant unpausedDeposits {
+        // @dev Create the uint256 deposit ID by concatenating the msg.sender and depositor address with the inputted
+        // depositNonce parameter. The resultant 32 byte string will be hashed and then casted to an "unsafe"
+        // uint256 deposit ID. The probability that the resultant ID collides with a "safe" deposit ID is
+        // equal to the chance that the first 28 bytes of the hash are 0, which is too small for us to consider.
+
+        uint256 depositId = getUnsafeDepositId(msg.sender, depositor, depositNonce);
+        _depositV3(
             depositor,
             recipient,
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
             exclusiveRelayer,
+            depositId,
+            quoteTimestamp,
+            fillDeadline,
+            uint32(getCurrentTime()) + exclusivityPeriod,
             message
         );
     }
@@ -749,7 +787,7 @@ abstract contract SpokePool is
      */
     function speedUpV3Deposit(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
         bytes calldata updatedMessage,
@@ -922,10 +960,8 @@ abstract contract SpokePool is
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
-        // this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime()) {
-            revert NoSlowFillsInExclusivityWindow();
-        }
+        // during this exclusivity period.
+        if (relayData.exclusivityDeadline >= getCurrentTime()) revert NoSlowFillsInExclusivityWindow();
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
@@ -1062,9 +1098,98 @@ abstract contract SpokePool is
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
+    /**
+     * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
+     * in unsafeDepositV3 and is provided as a convenience.
+     * @dev msgSenderand depositor are both used as inputs to allow passthrough depositors to create unique
+     * deposit hash spaces for unique depositors.
+     * @param msgSender The caller of the transaction used as input to produce the deposit ID.
+     * @param depositor The depositor address used as input to produce the deposit ID.
+     * @param depositNonce The nonce used as input to produce the deposit ID.
+     * @return The deposit ID for the unsafe deposit.
+     */
+    function getUnsafeDepositId(
+        address msgSender,
+        address depositor,
+        uint256 depositNonce
+    ) public pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(msgSender, depositor, depositNonce)));
+    }
+
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
+
+    function _depositV3(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint256 depositId,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes calldata message
+    ) internal {
+        // Check that deposit route is enabled for the input token. There are no checks required for the output token
+        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
+        if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
+
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
+        // This will underflow if quoteTimestamp is more than depositQuoteTimeBuffer;
+        // this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        uint256 currentTime = getCurrentTime();
+        if (currentTime - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
+
+        // fillDeadline is relative to the destination chain.
+        // Don’t allow fillDeadline to be more than several bundles into the future.
+        // This limits the maximum required lookback for dataworker and relayer instances.
+        // Also, don't allow fillDeadline to be in the past. This poses a potential UX issue if the destination
+        // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
+        // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
+        // situation won't be a problem for honest users.
+        if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
+
+        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
+        // transaction then the user is sending the native token. In this case, the native token should be
+        // wrapped.
+        if (inputToken == address(wrappedNativeToken) && msg.value > 0) {
+            if (msg.value != inputAmount) revert MsgValueDoesNotMatchInputAmount();
+            wrappedNativeToken.deposit{ value: msg.value }();
+            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
+            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
+            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+        } else {
+            // msg.value should be 0 if input token isn't the wrapped native token.
+            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
+            IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+        }
+
+        emit V3FundsDeposited(
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            depositId,
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityDeadline,
+            depositor,
+            recipient,
+            exclusiveRelayer,
+            message
+        );
+    }
 
     function _deposit(
         address depositor,
@@ -1192,7 +1317,7 @@ abstract contract SpokePool is
 
     function _verifyUpdateV3DepositMessage(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -1367,7 +1492,7 @@ abstract contract SpokePool is
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (recipientToSend.isContract() && updatedMessage.length > 0) {
+        if (updatedMessage.length > 0 && recipientToSend.isContract()) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,

@@ -8,3 +8,5 @@ dist
 artifacts-zk
 cache-zk
 lib
+target
+idls

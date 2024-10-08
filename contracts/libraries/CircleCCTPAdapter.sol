@@ -13,7 +13,7 @@ library CircleDomainIds {
     uint32 public constant Polygon = 7;
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
     // assigned a domain ID by Circle.
-    uint32 public constant UNINTIALIZED = type(uint32).max;
+    uint32 public constant UNINITIALIZED = type(uint32).max;
 }
 
 /**
