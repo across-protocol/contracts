@@ -53,8 +53,6 @@ pub enum CustomError {
     InvalidRemoteSender,
     #[msg("Invalid Merkle proof!")]
     InvalidProof,
-    #[msg("Account not found!")]
-    AccountNotFound,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
     #[msg("Invalid chain id!")]
