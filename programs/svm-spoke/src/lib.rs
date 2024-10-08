@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("AxTREn1gED7XeKaQhNn9HHkCrcDdDpjY45paoFdY3peX");
+declare_id!("E5USYAs9DUzn6ykrWZXuEkbCnY3kzNMPGNFH2okvUvqe");
 
 // External programs from idls directory (requires `anchor run generateExternalTypes`).
 declare_program!(message_transmitter);
