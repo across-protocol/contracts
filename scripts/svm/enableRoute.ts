@@ -23,7 +23,7 @@ const argv = yargs(hideBin(process.argv))
 async function enableRoute(): Promise<void> {
   const resolvedArgv = await argv;
   const seed = new BN(resolvedArgv.seed);
-  const originToken = Array.from(new PublicKey(resolvedArgv.originToken).toBytes()); // Convert to number[]
+  const originToken = Array.from(new PublicKey(resolvedArgv.originToken).toBytes());
   const chainId = new BN(resolvedArgv.chainId);
   const enabled = resolvedArgv.enabled;
 

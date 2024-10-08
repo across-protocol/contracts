@@ -46,7 +46,7 @@ async function closeExpiredRelays(): Promise<void> {
     for (const event of fillEvents) {
       const currentTime = Math.floor(Date.now() / 1000);
       if (currentTime > event.data.fillDeadline) {
-        await closeFillPda(event.data, seed); // Pass seed as an argument
+        await closeFillPda(event.data, seed);
       } else {
         console.log(
           `Found relay with depositId: ${event.data.depositId} from source chain id: ${event.data.originChainId}, but it is not expired yet.`
@@ -76,7 +76,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
   };
 
   const [statePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)], // Use the seed parameter
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     programId
   );
 
