@@ -19,7 +19,6 @@
     "utils/utils.ts",
     "src/types"
   ],
-  "exclude": ["./scripts/svm"],
   "files": ["./hardhat.config.ts"],
   "typeRoots": ["./node_modules/@types", "./src/types"]
 }

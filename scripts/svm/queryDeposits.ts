@@ -14,21 +14,22 @@ const program = new Program<SvmSpoke>(idl, provider);
 const programId = program.programId;
 
 // Parse arguments
-const argv = yargs(hideBin(process.argv)).option("seed", {
+const argvPromise = yargs(hideBin(process.argv)).option("seed", {
   type: "string",
   demandOption: true,
   describe: "Seed for the state account PDA",
 }).argv;
 
-const seed = new BN(argv.seed);
-
-// Define the state account PDA
-const [statePda, _] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
 async function queryDeposits(): Promise<void> {
+  const argv = await argvPromise;
+  const seed = new BN(argv.seed);
+
+  // Define the state account PDA
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
   console.table([
     { Property: "seed", Value: seed.toString() },
     { Property: "programId", Value: programId.toString() },
@@ -37,7 +38,6 @@ async function queryDeposits(): Promise<void> {
 
   try {
     const events = await readProgramEvents(provider.connection, program);
-    console.log("events", events);
     const depositEvents = events.filter((event) => event.name === "v3FundsDeposited");
 
     if (depositEvents.length === 0) {

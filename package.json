@@ -52,6 +52,7 @@
     "@solana-developers/helpers": "^2.4.0",
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "^1.31.0",
+    "@types/yargs": "^17.0.33",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
     "@uma/core": "^2.56.0",

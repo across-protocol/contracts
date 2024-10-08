@@ -8,8 +8,6 @@ const { provider, program, connection, assertSE, assert } = common;
 describe("svm_spoke.instruction_params", () => {
   anchor.setProvider(provider);
 
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
-
   // We use different caller in each test as instructionData seed is derived from initializer's address.
   let caller: Keypair;
   let instructionParams: PublicKey;
@@ -42,7 +40,7 @@ describe("svm_spoke.instruction_params", () => {
     caller = Keypair.generate();
 
     await connection.requestAirdrop(caller.publicKey, 10_000_000_000); // 10 SOL
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Wait so that subsequent transactions have funds.
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait so that subsequent transactions have funds.
 
     [instructionParams] = PublicKey.findProgramAddressSync(
       [Buffer.from("instruction_params"), caller.publicKey.toBuffer()],
