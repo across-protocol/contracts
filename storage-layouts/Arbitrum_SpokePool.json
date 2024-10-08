@@ -68,7 +68,7 @@
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "hubPool",
+      "label": "withdrawalRecipient",
       "offset": 0,
       "slot": "2154"
     },
