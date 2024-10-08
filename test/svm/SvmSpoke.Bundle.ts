@@ -341,7 +341,7 @@ describe("svm_spoke.bundle", () => {
         .remainingAccounts(wrongRemainingAccounts)
         .rpc();
     } catch (err: any) {
-      assert.include(err.toString(), "AccountNotInitialized");
+      assert.include(err.toString(), "Invalid refund address");
     }
 
     // Verify valid leaf
