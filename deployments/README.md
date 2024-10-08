@@ -116,7 +116,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## World Chain mainnet (480)
 
-| Contract Name    | Address                                                                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Zora_SpokePool   | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://worldchain-mainnet.explorer.alchemy.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name        | Address                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| WorldChain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet.explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler     | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
