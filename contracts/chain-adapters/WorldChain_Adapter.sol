@@ -51,7 +51,7 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
             _l1Usdc,
             // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
             ITokenMessenger(address(0)),
-            CircleDomainIds.UNINTIALIZED
+            CircleDomainIds.UNINITIALIZED
         )
     {
         L1_WETH = _l1Weth;
