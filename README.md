@@ -12,6 +12,16 @@ These contracts were [audited by OpenZeppelin](https://blog.openzeppelin.com/uma
 
 [This video](https://www.youtube.com/watch?v=iuxf6Crv8MI) is also useful for understanding the technical architecture.
 
+## Publishing NPM packages via GitHub Actions
+
+Publishing new `npm` packages should be done from the [`audit-latest` branch](https://github.com/across-protocol/contracts/tree/audit-latest). This is a protected branch. First check that the code you want to publish is at the HEAD of the `audit-latest` branch. The `package.json` `version` field should be equal to the next package version that you want to release. 
+
+To initiate a new build, create a new release using GitHub actions. Set the release name and tag name equal to the version set in the `package.json`. There will be errors releasing the package if the version is already used or not up to date with the `package.json` `version`.
+
+Generate notes automatically by clicking the the "generate notes" button.
+
+Finally, publish the new version. This will kick off a run of the `./.github/workflows/publish.yml` script.
+
 ## Deployed Contract Versions
 
 The latest contract deployments on Production will always be under the `deployed` tag.
