@@ -23,11 +23,12 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      * @dev crossDomainAdmin is unused on this contract.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
-    function initialize(uint32 _initialDepositId, address _hubPool) public initializer {
+    function initialize(uint32 _initialDepositId, address _withdrawalRecipient) public initializer {
         __Ownable_init();
-        __SpokePool_init(_initialDepositId, _hubPool, _hubPool);
+        __SpokePool_init(_initialDepositId, _withdrawalRecipient, _withdrawalRecipient);
     }
 
     /**************************************
@@ -35,7 +36,7 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        IERC20Upgradeable(l2TokenAddress).safeTransfer(hubPool, amountToReturn);
+        IERC20Upgradeable(l2TokenAddress).safeTransfer(withdrawalRecipient, amountToReturn);
     }
 
     // The SpokePool deployed to the same network as the HubPool must be owned by the HubPool.

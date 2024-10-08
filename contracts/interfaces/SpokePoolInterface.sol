@@ -36,7 +36,7 @@ interface SpokePoolInterface {
 
     function setCrossDomainAdmin(address newCrossDomainAdmin) external;
 
-    function setHubPool(address newHubPool) external;
+    function setWithdrawalRecipient(address newWithdrawalRecipient) external;
 
     function setEnableRoute(
         address originToken,
@@ -88,7 +88,7 @@ interface SpokePoolInterface {
     error InvalidRelayerFeePct();
     error MaxTransferSizeExceeded();
     error InvalidCrossDomainAdmin();
-    error InvalidHubPool();
+    error InvalidWithdrawalRecipient();
     error DepositsArePaused();
     error FillsArePaused();
 }
