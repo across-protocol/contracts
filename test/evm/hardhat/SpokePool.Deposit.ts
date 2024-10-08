@@ -25,7 +25,6 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
-  zeroAddress,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -366,6 +365,28 @@ describe("SpokePool Depositor Logic", async function () {
         _relayData.message,
       ];
     }
+    function getUnsafeDepositArgsFromRelayData(
+      _relayData: V3RelayData,
+      _depositId: string,
+      _destinationChainId = destinationChainId,
+      _quoteTimestamp = quoteTimestamp
+    ) {
+      return [
+        _relayData.depositor,
+        _relayData.recipient,
+        _relayData.inputToken,
+        _relayData.outputToken,
+        _relayData.inputAmount,
+        _relayData.outputAmount,
+        _destinationChainId,
+        _relayData.exclusiveRelayer,
+        _depositId,
+        _quoteTimestamp,
+        _relayData.fillDeadline,
+        _relayData.exclusivityDeadline,
+        _relayData.message,
+      ];
+    }
     beforeEach(async function () {
       relayData = {
         depositor: depositor.address,
@@ -575,6 +596,45 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
       );
+    });
+    it("unsafe deposit ID", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, forcedDepositId}.
+      const forcedDepositId = "99";
+      const expectedDepositId = BigNumber.from(
+        ethers.utils.solidityKeccak256(
+          ["address", "address", "uint256"],
+          [depositor.address, recipient.address, forcedDepositId]
+        )
+      );
+      expect(await spokePool.getUnsafeDepositId(depositor.address, recipient.address, forcedDepositId)).to.equal(
+        expectedDepositId
+      );
+      // Note: we deliberately set the depositor != msg.sender to test that the hashing algorithm correctly includes
+      // both addresses in the hash.
+      await expect(
+        spokePool
+          .connect(depositor)
+          .unsafeDepositV3(
+            ...getUnsafeDepositArgsFromRelayData({ ...relayData, depositor: recipient.address }, forcedDepositId)
+          )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          expectedDepositId,
+          quoteTimestamp,
+          relayData.fillDeadline,
+          currentTime,
+          recipient.address,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
+          relayData.message
+        );
     });
   });
   describe("speed up V3 deposit", function () {
