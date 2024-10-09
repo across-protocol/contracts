@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
-    ZERO_ADDRESS,
+    USDC[spokeChainId],
     // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
