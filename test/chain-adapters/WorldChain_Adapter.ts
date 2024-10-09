@@ -12,7 +12,7 @@ import {
   toWei,
   getContractFactory,
   seedWallet,
-} from "../../../../utils/utils";
+} from "../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 
