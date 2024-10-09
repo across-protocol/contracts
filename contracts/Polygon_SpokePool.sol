@@ -97,18 +97,19 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * relay hash collisions.
      * @param _polygonTokenBridger Token routing contract that sends tokens from here to HubPool. Changeable by Admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      * @param _fxChild FxChild contract, changeable by Admin.
      */
     function initialize(
         uint32 _initialDepositId,
         PolygonTokenBridger _polygonTokenBridger,
         address _crossDomainAdmin,
-        address _hubPool,
+        address _withdrawalRecipient,
         address _fxChild
     ) public initializer {
         callValidated = false;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setPolygonTokenBridger(payable(_polygonTokenBridger));
         //slither-disable-next-line missing-zero-check
         _setFxChild(_fxChild);
@@ -239,7 +240,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
-            _transferUsdc(hubPool, amountToReturn);
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         } else {
             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
                 address(polygonTokenBridger),

@@ -25,6 +25,9 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | Lisk Adapter        | [0x8229E812f20537caA1e8Fb41749b4887B8a75C3B](https://etherscan.io/address/0x8229E812f20537caA1e8Fb41749b4887B8a75C3B) |
 | Blast Adapter       | [0xF2bEf5E905AAE0295003ab14872F811E914EdD81](https://etherscan.io/address/0xF2bEf5E905AAE0295003ab14872F811E914EdD81) |
 | Scroll Adapter      | [0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F](https://etherscan.io/address/0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F) |
+| Redstone Adapter    | [0x188F8C95B7cfB7993B53a4F643efa687916f73fA](https://etherscan.io/address/0x188F8C95B7cfB7993B53a4F643efa687916f73fA) |
+| Zora Adapter        | [0x024F2fC31CBDD8de17194b1892c834f98Ef5169b](https://etherscan.io/address/0x024F2fC31CBDD8de17194b1892c834f98Ef5169b) |
+| WorldChain Adapter  | [0x8eBebfc894047bEE213A561b8792fCa71241731f](https://etherscan.io/address/0x8eBebfc894047bEE213A561b8792fCa71241731f) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
@@ -113,3 +116,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## World Chain mainnet (480)
+
+| Contract Name        | Address                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| WorldChain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet.explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler     | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
