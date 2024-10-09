@@ -885,7 +885,11 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+        if (
+            relayData.exclusiveRelayer != msg.sender &&
+            relayData.exclusivityDeadline >= getCurrentTime() &&
+            relayData.exclusiveRelayer != address(0)
+        ) {
             revert NotExclusiveRelayer();
         }
 
