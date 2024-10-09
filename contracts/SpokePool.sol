@@ -885,7 +885,11 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+        if (
+            relayData.exclusiveRelayer != msg.sender &&
+            relayData.exclusivityDeadline >= getCurrentTime() &&
+            relayData.exclusiveRelayer != address(0)
+        ) {
             revert NotExclusiveRelayer();
         }
 
@@ -931,7 +935,9 @@ abstract contract SpokePool is
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime()) revert NoSlowFillsInExclusivityWindow();
+        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != address(0)) {
+            revert NotExclusiveRelayer();
+        }
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
