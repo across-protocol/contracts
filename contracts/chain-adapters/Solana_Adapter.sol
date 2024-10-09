@@ -26,26 +26,45 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
     // solhint-disable-next-line immutable-vars-naming
     IMessageTransmitter public immutable cctpMessageTransmitter;
 
+    // Solana spoke pool address, decoded from Base58 to bytes32.
     bytes32 public immutable SOLANA_SPOKE_POOL_BYTES32;
+
+    // Solana spoke pool address, mapped to its EVM address representation.
     address public immutable SOLANA_SPOKE_POOL_ADDRESS;
 
+    // USDC mint address on Solana, decoded from Base58 to bytes32.
     bytes32 public immutable SOLANA_USDC_BYTES32;
+
+    // USDC mint address on Solana, mapped to its EVM address representation.
     address public immutable SOLANA_USDC_ADDRESS;
 
+    // USDC token address on Solana for the spoke pool (vault ATA), decoded from Base58 to bytes32.
     bytes32 public immutable SOLANA_SPOKE_POOL_USDC_VAULT;
 
+    // Custom errors for constructor argument validation.
     error InvalidCctpTokenMessenger(address tokenMessenger);
     error InvalidCctpMessageTransmitter(address messageTransmitter);
 
+    // Custom errors for relayMessage validation.
     error InvalidRelayMessageTarget(address target);
     error InvalidOriginToken(address originToken);
     error InvalidDestinationChainId(uint256 destinationChainId);
 
+    // Custom errors for relayTokens validation.
     error InvalidL1Token(address l1Token);
     error InvalidL2Token(address l2Token);
     error InvalidAmount(uint256 amount);
     error InvalidTokenRecipient(address to);
 
+    /**
+     * @notice Constructs new Adapter.
+     * @param _l1Usdc USDC address on L1.
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge tokens via CCTP.
+     * @param _cctpMessageTransmitter MessageTransmitter contract to bridge messages via CCTP.
+     * @param solanaSpokePool Solana spoke pool address, decoded from Base58 to bytes32.
+     * @param solanaUsdc USDC mint address on Solana, decoded from Base58 to bytes32.
+     * @param solanaSpokePoolUsdcVault USDC token address on Solana for the spoke pool, decoded from Base58 to bytes32.
+     */
     constructor(
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
