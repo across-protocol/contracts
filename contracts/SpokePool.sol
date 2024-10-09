@@ -985,6 +985,24 @@ abstract contract SpokePool is
         );
     }
 
+    function fill(
+        bytes32 orderId,
+        bytes calldata originData,
+        bytes calldata fillerData
+    ) external {
+        if (keccak256(originData) != orderId) {
+            revert WrongERC7683OrderId();
+        }
+
+        // Must do a delegatecall because the function requires the inputs to be calldata.
+        (bool success, bytes memory data) = address(this).delegatecall(
+            abi.encodeWithSelector(this.fillV3Relay.selector, abi.encodePacked(originData, fillerData))
+        );
+        if (!success) {
+            revert LowLevelCallFailed(data);
+        }
+    }
+
     /**************************************
      *         DATA WORKER FUNCTIONS      *
      **************************************/
