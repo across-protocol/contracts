@@ -161,9 +161,10 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
     }
 
     /**
-     * @notice Computes the Across depositId for an order with certain params.
-     * @dev if a 0 depositNonce is used, the depositId will not be deterministic, but you will be safe from collisions.
-     * See the unsafeDepositV3 method on SpokePool for more details.
+     * @notice Convenience method to compute the Across depositId for orders sent through 7683.
+     * @dev if a 0 depositNonce is used, the depositId will not be deterministic (meaning it can change depending on
+     * when the open txn is mined), but you will be safe from collisions. See the unsafeDepositV3 method on SpokePool
+     * for more details on how to choose between deterministic and non-deterministic.
      * @param depositNonce the depositNonce field in the order.
      * @param depositor the sender or signer of the order.
      * @return the resulting Across depositId.
