@@ -4,18 +4,10 @@ import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
-
-// https://github.com/defi-wonderland/opUSDC/blob/ef22e5731f1655bf5249b2160452cce9aa06ff3f/src/contracts/L2OpUSDCBridgeAdapter.sol#L150
-interface UsdcBridgeInterface {
-    function sendMessage(
-        address to,
-        uint256 amount,
-        uint32 minGasLimit
-    ) external;
-}
+import { IOpUSDCBridgeAdapter } from "./external/interfaces/IOpUSDCBridgeAdapter.sol";
 
 /**
- * @notice WorldChain Spoke pool.
+ * @notice World Chain Spoke pool.
  * @custom:security-contact bugs@across.to
  */
 contract WorldChain_SpokePool is Ovm_SpokePool {
@@ -42,7 +34,7 @@ contract WorldChain_SpokePool is Ovm_SpokePool {
     {} // solhint-disable-line no-empty-blocks
 
     /**
-     * @notice Construct the OVM WorldChain SpokePool.
+     * @notice Construct the OVM World Chain SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
@@ -63,7 +55,7 @@ contract WorldChain_SpokePool is Ovm_SpokePool {
         // WorldChain, this block of code will be unused.
         if (l2TokenAddress == address(usdcToken) && !_isCCTPEnabled()) {
             usdcToken.safeIncreaseAllowance(USDC_BRIDGE, amountToReturn);
-            UsdcBridgeInterface(USDC_BRIDGE).sendMessage(
+            IOpUSDCBridgeAdapter(USDC_BRIDGE).sendMessage(
                 withdrawalRecipient, // _to. Withdraw, over the bridge, to the l1 pool contract.
                 amountToReturn, // _amount.
                 l1Gas // _minGasLimit. Same value used in other OpStack bridges.

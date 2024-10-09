@@ -16,7 +16,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
-    USDC[spokeChainId],
+    // World Chain's bridged USDC is upgradeable to native. There are not two different
+    // addresses for bridges/native USDC. This address is also used in the spoke pool
+    // to determine whether to use CCTP (in the future) or the custom USDC bridge.
+    USDCe[spokeChainId],
     // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
