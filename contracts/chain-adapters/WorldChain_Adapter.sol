@@ -92,7 +92,7 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
             if (_isCCTPEnabled()) {
                 _transferUsdc(to, amount);
             } else {
-                // Use Circle's standard bridge for Bridged USDC.
+                // Use WorldChain's OP USDC bridge for Bridged USDC.
                 IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
                 L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
             }
