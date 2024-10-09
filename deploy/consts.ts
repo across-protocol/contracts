@@ -5,6 +5,7 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
+export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
