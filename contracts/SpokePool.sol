@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
+import "./erc7683/ERC7683.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
@@ -33,7 +34,8 @@ abstract contract SpokePool is
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
     MultiCallerUpgradeable,
-    EIP712CrossChainUpgradeable
+    EIP712CrossChainUpgradeable,
+    IDestinationSettler
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
@@ -985,6 +987,13 @@ abstract contract SpokePool is
         );
     }
 
+    /**
+     * @notice Fills a single leg of a particular order on the destination chain
+     * @dev ERC-7683 fill function.
+     * @param orderId Unique order identifier for this order
+     * @param originData Data emitted on the origin to parameterize the fill
+     * @param fillerData Data provided by the filler to inform the fill or express their preferences
+     */
     function fill(
         bytes32 orderId,
         bytes calldata originData,
