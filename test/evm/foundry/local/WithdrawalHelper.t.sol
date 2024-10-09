@@ -36,8 +36,6 @@ contract Mock_Ovm_WithdrawalHelper is Ovm_WithdrawalHelper {
             _spokePool
         )
     {}
-
-    receive() external payable {}
 }
 
 contract Token_ERC20 is ERC20 {
