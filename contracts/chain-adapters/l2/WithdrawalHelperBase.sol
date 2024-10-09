@@ -64,6 +64,13 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     }
 
     /**
+     * @notice Receives the native token from bridge contracts.
+     * @dev When bridging from L3 to the L2's native token, OpStack bridges will send the "unwrapped"/native token to the recipient on L2
+     * during withdrawals. This means that this contract must be able to accept value transfers.
+     */
+    receive() external payable {}
+
+    /**
      * @notice Initializes the withdrawal helper contract.
      * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
      */
