@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./interfaces/AdapterInterface.sol";
-import "../external/interfaces/WETH9Interface.sol";
-
-// @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
-// this contract's state variables to be `immutable` because of the delegateCall call.
-import "./CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../libraries/CircleCCTPAdapter.sol";
-import "../external/interfaces/CCTPInterfaces.sol";
+import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
+import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
+import { IOpUSDCBridgeAdapter } from "../external/interfaces/IOpUSDCBridgeAdapter.sol";
+import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
+
+// @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
+// this contract's state variables to be `immutable` because of the delegateCall call.
+import { CrossDomainEnabled } from "./CrossDomainEnabled.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to World Chain. This is a clone of the Base/Mode adapter
@@ -32,6 +32,7 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
     WETH9Interface public immutable L1_WETH;
 
     IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
+    IOpUSDCBridgeAdapter public immutable L1_OP_USDC_BRIDGE;
 
     /**
      * @notice Constructs new Adapter.
@@ -42,9 +43,10 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
      */
     constructor(
         WETH9Interface _l1Weth,
+        IERC20 _l1Usdc,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
-        IERC20 _l1Usdc
+        IOpUSDCBridgeAdapter _l1USDCBridge
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(
@@ -56,6 +58,7 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
+        L1_OP_USDC_BRIDGE = _l1USDCBridge;
     }
 
     /**
@@ -85,15 +88,17 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
-        }
-        // Check if this token is USDC, which requires a custom bridge via CCTP.
-        else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
-            _transferUsdc(to, amount);
+        } else if (l1Token == address(usdcToken)) {
+            if (_isCCTPEnabled()) {
+                _transferUsdc(to, amount);
+            } else {
+                // Use WorldChain's OP USDC bridge for Bridged USDC.
+                IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
+                L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
+            }
         } else {
-            IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
-
-            IERC20(l1Token).safeIncreaseAllowance(address(_l1StandardBridge), amount);
-            _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
+            IERC20(l1Token).safeIncreaseAllowance(address(L1_STANDARD_BRIDGE), amount);
+            L1_STANDARD_BRIDGE.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
