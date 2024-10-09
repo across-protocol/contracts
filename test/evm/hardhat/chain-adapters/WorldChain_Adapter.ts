@@ -87,7 +87,8 @@ describe("World Chain Adapter", function () {
 
     await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
 
+    const l2Gas = await adapter.L2_GAS_LIMIT();
     expect(opUSDCBridge.sendMessage).to.have.been.calledOnce;
-    expect(opUSDCBridge.sendMessage).to.have.been.calledWith(mockSpoke.address, tokensSendToL2, 200000);
+    expect(opUSDCBridge.sendMessage).to.have.been.calledWith(mockSpoke.address, tokensSendToL2, l2Gas);
   });
 });
