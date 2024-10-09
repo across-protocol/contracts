@@ -936,7 +936,6 @@ abstract contract SpokePool is
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
         if (
-            relayData.exclusiveRelayer != msg.sender &&
             relayData.exclusivityDeadline >= getCurrentTime() &&
             relayData.exclusiveRelayer != address(0)
         ) {
