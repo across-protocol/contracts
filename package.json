@@ -50,6 +50,7 @@
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@scroll-tech/contracts": "^0.1.0",
     "@solana-developers/helpers": "^2.4.0",
+    "@solana/buffer-layout": "^4.0.1",
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "^1.31.0",
     "@types/yargs": "^17.0.33",

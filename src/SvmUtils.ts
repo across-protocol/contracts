@@ -1,7 +1,7 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
 import * as anchor from "@coral-xyz/anchor";
 import { Program, BN, utils, BorshAccountsCoder, Idl } from "@coral-xyz/anchor";
-import { Layout } from "buffer-layout";
+import { Layout } from "@solana/buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
 
@@ -161,7 +161,7 @@ export const readUInt256BE = (buffer: Buffer): BigInt => {
 export class LargeAccountsCoder<A extends string = string> extends BorshAccountsCoder<A> {
   // Getter to access the private accountLayouts property from base class.
   private getAccountLayouts() {
-    return (this as any).accountLayouts as Map<A, Layout>;
+    return (this as any).accountLayouts as Map<A, Layout<any>>;
   }
 
   public async encode<T = any>(accountName: A, account: T): Promise<Buffer> {
