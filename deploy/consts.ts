@@ -48,6 +48,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zoraStandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
     worldChainCrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
     worldChainStandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
+    worldChainOpUSDCBridge: "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB",
   },
   [CHAIN_IDs.SEPOLIA]: {
     optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
