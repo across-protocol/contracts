@@ -4,7 +4,7 @@ use svm_spoke::constants::DISCRIMINATOR_SIZE;
 use svm_spoke::error::CustomError;
 use svm_spoke::utils::{is_claimed, process_proof, set_claimed};
 
-declare_id!("6T5X9ty39dQgroo1xs27Y3Jt7Ynp5ACRbi4GZ7sUWiHw");
+declare_id!("84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4");
 
 // This program is used to test the svm_spoke program internal utils methods. It's kept separate from the svm_spoke
 // as it simply exports utils methods so direct unit tests can be run against them.

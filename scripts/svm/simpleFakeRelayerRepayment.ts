@@ -1,6 +1,14 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram, Keypair } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  Keypair,
+  ComputeBudgetProgram,
+  AddressLookupTableProgram,
+  VersionedTransaction,
+  TransactionMessage,
+} from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -28,14 +36,15 @@ const programId = program.programId;
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
   .option("seed", { type: "string", demandOption: true, describe: "Seed for the state account PDA" })
-  .option("amounts", { type: "array", demandOption: true, describe: "Array of amounts for repayment leaves" })
+  .option("numberOfRelayersToRepay", { type: "string", demandOption: true, describe: "Number of relayers to repay" })
   .option("inputToken", { type: "string", demandOption: true, describe: "Mint address of the existing token" }).argv;
 
 async function testBundleLogic(): Promise<void> {
   console.log("Fake Relayer Repayment...");
   const resolvedArgv = await argv;
   const seed = new BN(resolvedArgv.seed);
-  const amounts = (resolvedArgv.amounts as string[]).map((amount) => new BN(amount));
+  const numberOfRelayersToRepay = parseInt(resolvedArgv.numberOfRelayersToRepay, 10);
+  const amounts = Array.from({ length: numberOfRelayersToRepay }, (_, i) => new BN(i + 1));
   const inputToken = new PublicKey(resolvedArgv.inputToken);
 
   const signer = provider.wallet.publicKey;
@@ -63,7 +72,7 @@ async function testBundleLogic(): Promise<void> {
 
   console.table([
     { property: "seed", value: seed.toString() },
-    { property: "amounts", value: amounts },
+    { property: "numberOfRelayersToRepay", value: numberOfRelayersToRepay },
     { property: "inputToken", value: inputToken.toString() },
     { property: "signer", value: signer.toString() },
     { property: "statePda", value: statePda.toString() },
@@ -112,13 +121,19 @@ async function testBundleLogic(): Promise<void> {
       recipient.publicKey
     );
     refundAccounts.push(refundAccount);
-    console.log(`Created refund account for recipient ${i + 1}: ${refundAccount.toBase58()}`);
+    console.log(
+      `Created refund account for recipient ${
+        i + 1
+      }: ${refundAccount.toBase58()}. owner ${recipient.publicKey.toBase58()}`
+    );
   }
 
+  console.log("building merkle tree...");
+  // Fetch the state account to get the chainId
   const relayerRefundLeaf: RelayerRefundLeafType = {
     isSolana: true,
-    leafId: new BN(0), // Single leaf
-    chainId: new BN(1),
+    leafId: new BN(0), // this is the first and only leaf in the tree.
+    chainId: new BN((await program.account.state.fetch(statePda)).chainId), // set chainId to svm spoke chainId.
     amountToReturn: new BN(0),
     mintPublicKey: inputToken,
     refundAccounts: refundAccounts, // Array of refund accounts
@@ -128,7 +143,7 @@ async function testBundleLogic(): Promise<void> {
   const merkleTree = new MerkleTree<RelayerRefundLeafType>([relayerRefundLeaf], relayerRefundHashFn);
   const root = merkleTree.getRoot();
 
-  console.log("Merkle Tree Generation. Root: ", Buffer.from(root).toString("hex"));
+  console.log("Merkle Tree Generated. Root: ", Buffer.from(root).toString("hex"));
 
   // Set the tree using the methods from the .Bundle test
   const state = await program.account.state.fetch(statePda); // Fetch the state account
@@ -168,30 +183,111 @@ async function testBundleLogic(): Promise<void> {
   // Load the instruction parameters
   const proofAsNumbers = proof.map((p) => Array.from(p));
   console.log("loading execute relayer refund leaf params...");
+
+  const [instructionParams] = PublicKey.findProgramAddressSync(
+    [Buffer.from("instruction_params"), signer.toBuffer()],
+    program.programId
+  );
+
+  const staticAccounts = {
+    instructionParams,
+    state: statePda,
+    rootBundle: rootBundle,
+    signer: signer,
+    vault: vault,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    mint: inputToken,
+    transferLiability,
+    systemProgram: anchor.web3.SystemProgram.programId,
+    // Appended by Acnhor `event_cpi` macro:
+    eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
+    program: program.programId,
+  };
+
+  const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
+
+  // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
+  const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
+    authority: signer,
+    payer: signer,
+    recentSlot: await provider.connection.getSlot(),
+  });
+
+  // Submit the ALT creation transaction
+  await anchor.web3.sendAndConfirmTransaction(
+    provider.connection,
+    new anchor.web3.Transaction().add(lookupTableInstruction),
+    [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+    { skipPreflight: true }
+  );
+
+  const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
+
+  // Create the transaction with the compute budget expansion instruction & use extended ALT account.
+
+  // Extend the ALT with all accounts
+  const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
+  for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
+    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+      lookupTable: lookupTableAddress,
+      authority: signer,
+      payer: signer,
+      addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
+    });
+
+    await anchor.web3.sendAndConfirmTransaction(
+      provider.connection,
+      new anchor.web3.Transaction().add(extendInstruction),
+      [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+      { skipPreflight: true }
+    );
+  }
+  // Fetch the AddressLookupTableAccount
+  const lookupTableAccount = (await provider.connection.getAddressLookupTable(lookupTableAddress)).value;
+  if (!lookupTableAccount) {
+    throw new Error("AddressLookupTableAccount not fetched");
+  }
+
   await loadExecuteRelayerRefundLeafParams(program, signer, rootBundleId, leaf, proofAsNumbers);
 
-  console.log("loaded execute relayer refund leaf params. Executing relayer refund leaf...");
+  console.log(`loaded execute relayer refund leaf params ${instructionParams}. \nExecuting relayer refund leaf...`);
 
-  const executeRelayerRefundLeafTx = await (program.methods.executeRelayerRefundLeaf() as any)
-    .accounts({
-      state: statePda,
-      rootBundle: rootBundle,
-      signer: signer,
-      vault: getAssociatedTokenAddressSync(inputToken, statePda, true),
-      mint: inputToken,
-      transferLiability: transferLiability, // Use the derived PDA
-      tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId,
-    })
-    .remainingAccounts(refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false })))
+  const executeInstruction = await program.methods
+    .executeRelayerRefundLeaf()
+    .accounts(staticAccounts)
+    .remainingAccounts(remainingAccounts)
+    .instruction();
+
+  // Create the versioned transaction
+  const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
+  const versionedTx = new VersionedTransaction(
+    new TransactionMessage({
+      payerKey: signer,
+      recentBlockhash: (await provider.connection.getLatestBlockhash()).blockhash,
+      instructions: [computeBudgetInstruction, executeInstruction],
+    }).compileToV0Message([lookupTableAccount])
+  );
+
+  // Sign and submit the versioned transaction
+  versionedTx.sign([(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer]);
+  const tx = await provider.connection.sendTransaction(versionedTx);
+  console.log(`Execute relayer refund leaf transaction sent: ${tx}`);
+
+  // Close the instruction parameters account
+  console.log("Closing instruction params...");
+  const closeInstructionParamsTx = await (program.methods.closeInstructionParams() as any)
+    .accounts({ signer: signer, instructionParams: instructionParams })
     .rpc();
-  console.log(`Execute relayer refund leaf transaction sent: ${executeRelayerRefundLeafTx}`);
+  console.log(`Close instruction params transaction sent: ${closeInstructionParamsTx}`);
+  // Note we cant close the lookup table account as it needs to be both deactivated and expired at to do this.
 
   // Check that the relayers got back the amount you were expecting
+  const relayerBalances = [];
   for (let i = 0; i < refundAccounts.length; i++) {
     const balance = await provider.connection.getTokenAccountBalance(refundAccounts[i]);
-    console.log(`Relayer ${i + 1} received: ${balance.value.amount} tokens`);
+    relayerBalances.push({ relayer: i + 1, tokensReceived: balance.value.amount });
   }
+  console.table(relayerBalances);
 }
 
 // Run the testBundleLogic function

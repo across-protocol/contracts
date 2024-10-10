@@ -5,11 +5,11 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-svm_spoke = "FHFiWaRQViVJUtvhpyoCzFZo2Adt4NGEuT1B1nLt5Gyh"
+svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
 
 [programs.localnet]
-svm_spoke = "FHFiWaRQViVJUtvhpyoCzFZo2Adt4NGEuT1B1nLt5Gyh"
-test = "6T5X9ty39dQgroo1xs27Y3Jt7Ynp5ACRbi4GZ7sUWiHw"
+svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
+test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 
 [registry]
 url = "https://api.apr.dev"
@@ -20,6 +20,7 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelayerPdas.ts"
+closeDataworkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataworkerLookUpTables.ts"
 enableRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/enableRoute.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
 initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"
