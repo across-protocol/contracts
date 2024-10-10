@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 /// @notice Tokens sent by the swapper as inputs to the order
 struct Input {
     /// @dev The address of the ERC20 token on the origin chain
-    address token;
+    bytes32 token;
     /// @dev The amount of the token to be sent
     uint256 amount;
 }
@@ -13,11 +13,11 @@ struct Input {
 struct Output {
     /// @dev The address of the ERC20 token on the destination chain
     /// @dev address(0) used as a sentinel for the native token
-    address token;
+    bytes32 token;
     /// @dev The amount of the token to be sent
     uint256 amount;
     /// @dev The address to receive the output tokens
-    address recipient;
+    bytes32 recipient;
     /// @dev The destination chain for this output
     uint32 chainId;
 }
@@ -30,7 +30,7 @@ struct CrossChainOrder {
     address settlementContract;
     /// @dev The address of the user who is initiating the swap,
     /// whose input tokens will be taken and escrowed
-    address swapper;
+    bytes32 swapper;
     /// @dev Nonce to be used as replay protection for the order
     uint256 nonce;
     /// @dev The chainId of the origin chain
@@ -53,7 +53,7 @@ struct ResolvedCrossChainOrder {
     /// @dev The contract address that the order is meant to be settled by.
     address settlementContract;
     /// @dev The address of the user who is initiating the swap
-    address swapper;
+    bytes32 swapper;
     /// @dev Nonce to be used as replay protection for the order
     uint256 nonce;
     /// @dev The chainId of the origin chain

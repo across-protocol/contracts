@@ -6,18 +6,18 @@ import { CrossChainOrder } from "./ERC7683.sol";
 
 // Data unique to every CrossChainOrder settled on Across
 struct AcrossOrderData {
-    address inputToken;
+    bytes32 inputToken;
     uint256 inputAmount;
-    address outputToken;
+    bytes32 outputToken;
     uint256 outputAmount;
     uint32 destinationChainId;
-    address recipient;
+    bytes32 recipient;
     uint32 exclusivityDeadlineOffset;
     bytes message;
 }
 
 struct AcrossFillerData {
-    address exclusiveRelayer;
+    bytes32 exclusiveRelayer;
 }
 
 /**

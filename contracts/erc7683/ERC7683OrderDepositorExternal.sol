@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 import "../external/interfaces/IPermit2.sol";
+import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice ERC7683OrderDepositorExternal processes an external order type and translates it into an AcrossV3Deposit
@@ -13,6 +14,8 @@ import "../external/interfaces/IPermit2.sol";
  */
 contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
     using SafeERC20 for IERC20;
+    using Bytes32ToAddress for bytes32;
+
     V3SpokePoolInterface public immutable SPOKE_POOL;
 
     constructor(
@@ -24,20 +27,20 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
     }
 
     function _callDeposit(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes memory message
     ) internal override {
-        IERC20(inputToken).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
+        IERC20(inputToken.toAddress()).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
 
         SPOKE_POOL.depositV3(
             depositor,

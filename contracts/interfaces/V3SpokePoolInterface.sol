@@ -36,16 +36,16 @@ interface V3SpokePoolInterface {
     // replay attacks on other chains. If any portion of this data differs, the relay is considered to be
     // completely distinct.
     struct V3RelayData {
-        // The address that made the deposit on the origin chain.
-        address depositor;
-        // The recipient address on the destination chain.
-        address recipient;
+        // The bytes32 that made the deposit on the origin chain.
+        bytes32 depositor;
+        // The recipient bytes32 on the destination chain.
+        bytes32 recipient;
         // This is the exclusive relayer who can fill the deposit before the exclusivity deadline.
-        address exclusiveRelayer;
+        bytes32 exclusiveRelayer;
         // Token that is deposited on origin chain by depositor.
-        address inputToken;
+        bytes32 inputToken;
         // Token that is received on destination chain by recipient.
-        address outputToken;
+        bytes32 outputToken;
         // The amount of input token deposited by depositor.
         uint256 inputAmount;
         // The amount of output token to be received by recipient.
@@ -77,7 +77,7 @@ interface V3SpokePoolInterface {
         V3RelayData relay;
         bytes32 relayHash;
         uint256 updatedOutputAmount;
-        address updatedRecipient;
+        bytes32 updatedRecipient;
         bytes updatedMessage;
         uint256 repaymentChainId;
     }
@@ -86,7 +86,7 @@ interface V3SpokePoolInterface {
     // Similar to V3RelayExecutionParams, these parameters are not used to uniquely identify the deposit being
     // filled so they don't have to be unpacked by all clients.
     struct V3RelayExecutionEventInfo {
-        address updatedRecipient;
+        bytes32 updatedRecipient;
         bytes updatedMessage;
         uint256 updatedOutputAmount;
         FillType fillType;
@@ -97,8 +97,8 @@ interface V3SpokePoolInterface {
      **************************************/
 
     event V3FundsDeposited(
-        address inputToken,
-        address outputToken,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 indexed destinationChainId,
@@ -106,24 +106,24 @@ interface V3SpokePoolInterface {
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
-        address indexed depositor,
-        address recipient,
-        address exclusiveRelayer,
+        bytes32 indexed depositor,
+        bytes32 recipient,
+        bytes32 exclusiveRelayer,
         bytes message
     );
 
     event RequestedSpeedUpV3Deposit(
         uint256 updatedOutputAmount,
         uint32 indexed depositId,
-        address indexed depositor,
-        address updatedRecipient,
+        bytes32 indexed depositor,
+        bytes32 updatedRecipient,
         bytes updatedMessage,
         bytes depositorSignature
     );
 
     event FilledV3Relay(
-        address inputToken,
-        address outputToken,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 repaymentChainId,
@@ -131,26 +131,26 @@ interface V3SpokePoolInterface {
         uint32 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
-        address exclusiveRelayer,
-        address indexed relayer,
-        address depositor,
-        address recipient,
+        bytes32 exclusiveRelayer,
+        bytes32 indexed relayer,
+        bytes32 depositor,
+        bytes32 recipient,
         bytes message,
         V3RelayExecutionEventInfo relayExecutionInfo
     );
 
     event RequestedV3SlowFill(
-        address inputToken,
-        address outputToken,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 indexed originChainId,
         uint32 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
-        address exclusiveRelayer,
-        address depositor,
-        address recipient,
+        bytes32 exclusiveRelayer,
+        bytes32 depositor,
+        bytes32 recipient,
         bytes message
     );
 
@@ -159,14 +159,14 @@ interface V3SpokePoolInterface {
      **************************************/
 
     function depositV3(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -174,24 +174,24 @@ interface V3SpokePoolInterface {
     ) external payable;
 
     function depositV3Now(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 fillDeadlineOffset,
         uint32 exclusivityDeadline,
         bytes calldata message
     ) external payable;
 
     function speedUpV3Deposit(
-        address depositor,
+        bytes32 depositor,
         uint32 depositId,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) external;
@@ -202,7 +202,7 @@ interface V3SpokePoolInterface {
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) external;

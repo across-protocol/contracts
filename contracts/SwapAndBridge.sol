@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "./libraries/AddressConverters.sol";
 
 /**
  * @title SwapAndBridgeBase
@@ -14,6 +15,8 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  */
 abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
+    using Bytes32ToAddress for bytes32;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
     // surface and we should whitelist which function selectors are allowed to be called on the exchange.
@@ -30,19 +33,19 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     // until after the swap.
     struct DepositData {
         // Token received on destination chain.
-        address outputToken;
+        bytes32 outputToken;
         // Amount of output token to be received by recipient.
         uint256 outputAmount;
         // The account credited with deposit who can submit speedups to the Across deposit.
-        address depositor;
+        bytes32 depositor;
         // The account that will receive the output token on the destination chain. If the output token is
         // wrapped native token, then if this is an EOA then they will receive native token on the destination
         // chain and if this is a contract then they will receive an ERC20.
-        address recipient;
+        bytes32 recipient;
         // The destination chain identifier.
         uint256 destinationChainid;
         // The account that can exclusively fill the deposit before the exclusivity deadline.
-        address exclusiveRelayer;
+        bytes32 exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
         // relative to this chain's current time or deposit will revert.
         uint32 quoteTimestamp;
@@ -56,17 +59,19 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
 
     event SwapBeforeBridge(
         address exchange,
-        address indexed swapToken,
-        address indexed acrossInputToken,
+        bytes32 indexed swapToken,
+        bytes32 indexed acrossInputToken,
         uint256 swapTokenAmount,
         uint256 acrossInputAmount,
-        address indexed acrossOutputToken,
+        bytes32 indexed acrossOutputToken,
         uint256 acrossOutputAmount
     );
 
-    /****************************************
+    /**
+     *
      *                ERRORS                *
-     ****************************************/
+     *
+     */
     error MinimumExpectedInputAmount();
     error LeftoverSrcTokens();
     error InvalidFunctionSelector();
@@ -95,8 +100,8 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData,
-        IERC20 _swapToken,
-        IERC20 _acrossInputToken
+        bytes32 _swapToken,
+        bytes32 _acrossInputToken
     ) internal {
         // Note: this check should never be impactful, but is here out of an abundance of caution.
         // For example, if the exchange address in the contract is also an ERC20 token that is approved by some
@@ -104,12 +109,12 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         if (!allowedSelectors[bytes4(routerCalldata)]) revert InvalidFunctionSelector();
 
         // Pull tokens from caller into this contract.
-        _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
+        IERC20(_swapToken.toAddress()).safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         // Swap and run safety checks.
-        uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
-        uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
+        uint256 srcBalanceBefore = IERC20(_swapToken.toAddress()).balanceOf(address(this));
+        uint256 dstBalanceBefore = IERC20(_acrossInputToken.toAddress()).balanceOf(address(this));
 
-        _swapToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
+        IERC20(_swapToken.toAddress()).safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
         require(success, string(result));
@@ -131,39 +136,42 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
      * @param swapTokenBalanceBefore Balance of swapToken before swap.
      * @param inputTokenBalanceBefore Amount of Across input token we held before swap
      * @param minExpectedInputTokenAmount Minimum amount of received acrossInputToken that we'll bridge
-     **/
+     *
+     */
     function _checkSwapOutputAndDeposit(
         uint256 swapTokenAmount,
         uint256 swapTokenBalanceBefore,
         uint256 inputTokenBalanceBefore,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData,
-        IERC20 _swapToken,
-        IERC20 _acrossInputToken
+        bytes32 _swapToken,
+        bytes32 _acrossInputToken
     ) internal {
         // Sanity check that we received as many tokens as we require:
-        uint256 returnAmount = _acrossInputToken.balanceOf(address(this)) - inputTokenBalanceBefore;
+        uint256 returnAmount = IERC20(_acrossInputToken.toAddress()).balanceOf(address(this)) - inputTokenBalanceBefore;
         // Sanity check that received amount from swap is enough to submit Across deposit with.
         if (returnAmount < minExpectedInputTokenAmount) revert MinimumExpectedInputAmount();
         // Sanity check that we don't have any leftover swap tokens that would be locked in this contract (i.e. check
         // that we weren't partial filled).
-        if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
+        if (swapTokenBalanceBefore - IERC20(_swapToken.toAddress()).balanceOf(address(this)) != swapTokenAmount) {
+            revert LeftoverSrcTokens();
+        }
 
         emit SwapBeforeBridge(
             EXCHANGE,
-            address(_swapToken),
-            address(_acrossInputToken),
+            _swapToken,
+            _acrossInputToken,
             swapTokenAmount,
             returnAmount,
             depositData.outputToken,
             depositData.outputAmount
         );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
+        IERC20(_acrossInputToken.toAddress()).safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
         SPOKE_POOL.depositV3(
             depositData.depositor,
             depositData.recipient,
-            address(_acrossInputToken), // input token
+            _acrossInputToken, // input token
             depositData.outputToken, // output token
             returnAmount, // input amount.
             depositData.outputAmount, // output amount
@@ -189,10 +197,10 @@ contract SwapAndBridge is SwapAndBridgeBase {
     // This contract simply enables the caller to swap a token on this chain for another specified one
     // and bridge it as the input token via Across. This simplification is made to make the code
     // easier to reason about and solve a specific use case for Across.
-    IERC20 public immutable SWAP_TOKEN;
+    bytes32 public immutable SWAP_TOKEN;
 
     // The token that will be bridged via Across as the inputToken.
-    IERC20 public immutable ACROSS_INPUT_TOKEN;
+    bytes32 public immutable ACROSS_INPUT_TOKEN;
 
     /**
      * @notice Construct a new SwapAndBridge contract.
@@ -206,8 +214,8 @@ contract SwapAndBridge is SwapAndBridgeBase {
         V3SpokePoolInterface _spokePool,
         address _exchange,
         bytes4[] memory _allowedSelectors,
-        IERC20 _swapToken,
-        IERC20 _acrossInputToken
+        bytes32 _swapToken,
+        bytes32 _acrossInputToken
     ) SwapAndBridgeBase(_spokePool, _exchange, _allowedSelectors) {
         SWAP_TOKEN = _swapToken;
         ACROSS_INPUT_TOKEN = _acrossInputToken;
@@ -275,8 +283,8 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @param depositData Specifies the Across deposit params we'll send after the swap.
      */
     function swapAndBridge(
-        IERC20 swapToken,
-        IERC20 acrossInputToken,
+        bytes32 swapToken,
+        bytes32 acrossInputToken,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,

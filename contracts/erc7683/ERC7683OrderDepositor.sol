@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Input, Output, CrossChainOrder, ResolvedCrossChainOrder, ISettlementContract } from "./ERC7683.sol";
 import { AcrossOrderData, AcrossFillerData, ERC7683Permit2Lib } from "./ERC7683Across.sol";
+import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice ERC7683OrderDepositor processes an external order type and translates it into an AcrossV3 deposit.
@@ -17,6 +18,8 @@ import { AcrossOrderData, AcrossFillerData, ERC7683Permit2Lib } from "./ERC7683A
 abstract contract ERC7683OrderDepositor is ISettlementContract {
     error WrongSettlementContract();
     error WrongChainId();
+
+    using Bytes32ToAddress for bytes32;
 
     // Permit2 contract for this network.
     IPermit2 public immutable PERMIT2;
@@ -169,7 +172,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
     ) internal {
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
             permitted: IPermit2.TokenPermissions({
-                token: acrossOrderData.inputToken,
+                token: acrossOrderData.inputToken.toAddress(),
                 amount: acrossOrderData.inputAmount
             }),
             nonce: order.nonce,
@@ -185,7 +188,7 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
         PERMIT2.permitWitnessTransferFrom(
             permit,
             signatureTransferDetails,
-            order.swapper,
+            order.swapper.toAddress(),
             ERC7683Permit2Lib.hashOrder(order, ERC7683Permit2Lib.hashOrderData(acrossOrderData)), // witness data hash
             ERC7683Permit2Lib.PERMIT2_ORDER_TYPE, // witness data type string
             signature
@@ -193,14 +196,14 @@ abstract contract ERC7683OrderDepositor is ISettlementContract {
     }
 
     function _callDeposit(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,

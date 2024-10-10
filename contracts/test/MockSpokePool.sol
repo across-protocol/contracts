@@ -105,7 +105,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function fillRelayV3Internal(
         V3RelayExecutionParams memory relayExecution,
-        address relayer,
+        bytes32 relayer,
         bool isSlowFill
     ) external {
         _fillRelayV3(relayExecution, relayer, isSlowFill);
@@ -161,7 +161,9 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         if (originToken == address(wrappedNativeToken) && msg.value > 0) {
             require(msg.value == amount);
             wrappedNativeToken.deposit{ value: msg.value }();
-        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else {
+            IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        }
 
         emit FundsDeposited(
             amount,
@@ -438,21 +440,23 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return fillAmountPreFees;
 
         if (relayData.destinationToken == address(wrappedNativeToken)) {
-            if (!relayExecution.slowFill)
+            if (!relayExecution.slowFill) {
                 IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            }
             _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
         } else {
-            if (!relayExecution.slowFill)
+            if (!relayExecution.slowFill) {
                 IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
                     msg.sender,
                     relayExecution.updatedRecipient,
                     amountToSend
                 );
-            else
+            } else {
                 IERC20Upgradeable(relayData.destinationToken).safeTransfer(
                     relayExecution.updatedRecipient,
                     amountToSend
                 );
+            }
         }
     }
 
