@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "./libraries/AddressConverters.sol";
+import { Bytes32ToAddress } from "./libraries/AddressConverters.sol";
 
 /**
  * @title SwapAndBridgeBase
@@ -15,7 +15,6 @@ import "./libraries/AddressConverters.sol";
  */
 abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
-    using AddressToBytes32 for address;
     using Bytes32ToAddress for bytes32;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
