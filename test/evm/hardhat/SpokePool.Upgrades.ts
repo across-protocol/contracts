@@ -29,7 +29,7 @@ describe("SpokePool Upgrade Functions", async function () {
 
     // Hub pool should be changed.
     const spokePoolContract = (await ethers.getContractFactory("MockSpokePoolV2")).attach(spokePool.address);
-    expect(await spokePoolContract.hubPool()).to.equal(newHubPool);
+    expect(await spokePoolContract.withdrawalRecipient()).to.equal(newHubPool);
 
     // Can't reinitialize again.
     expect(spokePoolContract.reinitialize(newHubPool)).to.be.revertedWith(

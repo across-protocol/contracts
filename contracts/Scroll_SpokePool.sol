@@ -56,16 +56,17 @@ contract Scroll_SpokePool is SpokePool {
      * @param _l2ScrollMessenger Scroll Messenger contract on L2.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         IL2GatewayRouterExtended _l2GatewayRouter,
         IScrollMessenger _l2ScrollMessenger,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setL2GatewayRouter(_l2GatewayRouter);
         _setL2MessageService(_l2ScrollMessenger);
     }
@@ -107,7 +108,7 @@ contract Scroll_SpokePool is SpokePool {
         // Note: This happens due to the L2GatewayRouter.getERC20Gateway() call
         l2GatewayRouter.withdrawERC20(
             l2TokenAddress,
-            hubPool,
+            withdrawalRecipient,
             amountToReturn,
             // This is the gasLimit for the L2 -> L1 transaction. We don't need to set it.
             // Scroll official docs say it's for compatibility reasons.
