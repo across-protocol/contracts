@@ -866,7 +866,7 @@ abstract contract SpokePool is
         if (
             relayData.exclusiveRelayer.toAddress() != msg.sender &&
             relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer.toAddress() != address(0)
+            relayData.exclusiveRelayer != bytes32(0)
         ) {
             revert NotExclusiveRelayer();
         }
