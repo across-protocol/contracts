@@ -30,11 +30,11 @@ yarn build # Will build all code. Compile solidity & rust, generate ts outputs.
 ## Test
 
 ```shell
-yarn test # Run all unit tests without gas analysis.
+yarn test # Run all unit tests without gas analysis
 yarn test:gas-analytics # Run only tests that count gas costs
 yarn test:report-gas # Run unit tests with hardhat-gas-reporter enabled
-yarn test-evm # Only test EVM code.
-yarn test-svm # Only test SVM code.
+yarn test-evm # Only test EVM code
+yarn test-svm # Only test SVM code
 ```
 
 ## Lint
@@ -43,7 +43,7 @@ yarn test-svm # Only test SVM code.
 yarn lint
 yarn lint-js # Only lint Javascript
 yarn lint-rust # Only lint rust
-yarn lint-solidity # Only lint solidity.
+yarn lint-solidity # Only lint solidity
 yarn lint-fix
 ```
 
