@@ -37,7 +37,7 @@ const opUSDCBridgeABI = [
   },
 ];
 
-describe("World Chain Adapter", function () {
+describe("OP Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, l2Weth, usdc, l2Usdc, hubPool, mockSpoke, timer } = await hubPoolFixture());
@@ -57,7 +57,7 @@ describe("World Chain Adapter", function () {
     opUSDCBridge = await createFakeFromABI(opUSDCBridgeABI);
 
     adapter = await (
-      await getContractFactory("WorldChain_Adapter", owner)
+      await getContractFactory("OP_Adapter", owner)
     ).deploy(
       weth.address,
       usdc.address,
@@ -73,7 +73,7 @@ describe("World Chain Adapter", function () {
     await hubPool.setPoolRebalanceRoute(WORLD_CHAIN, weth.address, l2Weth);
   });
 
-  it("Correctly routes USDC via WorldChain's OP USDC bridge", async function () {
+  it("Correctly routes USDC via the configured OP USDC bridge", async function () {
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
 
