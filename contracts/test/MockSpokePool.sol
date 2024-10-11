@@ -105,7 +105,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function fillRelayV3Internal(
         V3RelayExecutionParams memory relayExecution,
-        address relayer,
+        bytes32 relayer,
         bool isSlowFill
     ) external {
         _fillRelayV3(relayExecution, relayer, isSlowFill);

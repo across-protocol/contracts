@@ -97,6 +97,7 @@ pub fn fill_v3_relay(
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData,
     repayment_chain_id: u64,
+    repayment_address: Pubkey,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
@@ -160,6 +161,7 @@ pub fn fill_v3_relay(
         input_amount: relay_data.input_amount,
         output_amount: relay_data.output_amount,
         repayment_chain_id,
+        repayment_address,
         origin_chain_id: relay_data.origin_chain_id,
         deposit_id: relay_data.deposit_id,
         fill_deadline: relay_data.fill_deadline,

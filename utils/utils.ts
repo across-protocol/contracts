@@ -101,6 +101,8 @@ export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
+export const addressToBytes32 = (address: string) => ethers.utils.hexZeroPad(address.toLowerCase(), 32);
+
 export async function seedWallet(
   walletToFund: Signer,
   tokens: Contract[],

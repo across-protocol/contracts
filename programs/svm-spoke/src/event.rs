@@ -64,6 +64,7 @@ pub struct FilledV3Relay {
     pub input_amount: u64,
     pub output_amount: u64,
     pub repayment_chain_id: u64,
+    pub repayment_address: Pubkey,
     pub origin_chain_id: u64,
     pub deposit_id: u32,
     pub fill_deadline: u32,
