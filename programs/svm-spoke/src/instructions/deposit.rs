@@ -93,8 +93,8 @@ pub fn deposit_v3(
         Clock::get()?.unix_timestamp as u32
     };
 
-    // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction 
-    // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown, 
+    // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction
+    // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
     // not caught via overflow.
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
         return Err(CustomError::InvalidQuoteTimestamp.into());
