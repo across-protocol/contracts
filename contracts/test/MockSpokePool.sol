@@ -5,13 +5,17 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../SpokePool.sol";
 import "./interfaces/MockV2SpokePoolInterface.sol";
 import "./V2MerkleLib.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
  * @title MockSpokePool
  * @notice Implements abstract contract for testing.
  */
+
 contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using AddressToBytes32 for address;
+    using Bytes32ToAddress for bytes32;
 
     uint256 private chainId_;
     uint256 private currentTime;
@@ -56,11 +60,11 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function _verifyUpdateDepositMessage(
-        address depositor,
+        bytes32 depositor,
         uint32 depositId,
         uint256 originChainId,
         int64 updatedRelayerFeePct,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) internal view {
@@ -83,11 +87,11 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function verifyUpdateV3DepositMessage(
-        address depositor,
+        bytes32 depositor,
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) public view {
@@ -180,10 +184,10 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function speedUpDeposit(
-        address depositor,
+        bytes32 depositor,
         int64 updatedRelayerFeePct,
         uint32 depositId,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) public nonReentrant {
@@ -212,9 +216,9 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function fillRelay(
-        address depositor,
-        address recipient,
-        address destinationToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 destinationToken,
         uint256 amount,
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
@@ -255,9 +259,9 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 destinationToken,
         uint256 amount,
         uint256 originChainId,
         int64 realizedLpFeePct,
@@ -286,10 +290,10 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function fillRelayWithUpdatedDeposit(
-        address depositor,
-        address recipient,
-        address updatedRecipient,
-        address destinationToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 updatedRecipient,
+        bytes32 destinationToken,
         uint256 amount,
         uint256 maxTokensToSend,
         uint256 repaymentChainId,
@@ -342,9 +346,9 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function _executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 destinationToken,
         uint256 amount,
         uint256 originChainId,
         uint256 destinationChainId,
@@ -437,23 +441,29 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
         relayFills[relayExecution.relayHash] += fillAmountPreFees;
 
-        if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return fillAmountPreFees;
+        if (msg.sender.toBytes32() == relayExecution.updatedRecipient && !relayExecution.slowFill) {
+            return fillAmountPreFees;
+        }
 
-        if (relayData.destinationToken == address(wrappedNativeToken)) {
+        if (relayData.destinationToken == address(wrappedNativeToken).toBytes32()) {
             if (!relayExecution.slowFill) {
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    amountToSend
+                );
             }
-            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient.toAddress()), amountToSend);
         } else {
             if (!relayExecution.slowFill) {
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransferFrom(
                     msg.sender,
-                    relayExecution.updatedRecipient,
+                    relayExecution.updatedRecipient.toAddress(),
                     amountToSend
                 );
             } else {
-                IERC20Upgradeable(relayData.destinationToken).safeTransfer(
-                    relayExecution.updatedRecipient,
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransfer(
+                    relayExecution.updatedRecipient.toAddress(),
                     amountToSend
                 );
             }
@@ -496,7 +506,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
             relayExecution.relay.realizedLpFeePct,
             relayExecution.relay.depositId,
             relayExecution.relay.destinationToken,
-            msg.sender,
+            msg.sender.toBytes32(),
             relayExecution.relay.depositor,
             relayExecution.relay.recipient,
             relayExecution.relay.message,

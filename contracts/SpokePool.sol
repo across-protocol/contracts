@@ -68,7 +68,7 @@ abstract contract SpokePool is
     RootBundle[] public rootBundles;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
+    mapping(bytes32 => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -199,8 +199,8 @@ abstract contract SpokePool is
     event RequestedSpeedUpDeposit(
         int64 newRelayerFeePct,
         uint32 indexed depositId,
-        address indexed depositor,
-        address updatedRecipient,
+        bytes32 indexed depositor,
+        bytes32 updatedRecipient,
         bytes updatedMessage,
         bytes depositorSignature
     );
@@ -215,10 +215,10 @@ abstract contract SpokePool is
         int64 relayerFeePct,
         int64 realizedLpFeePct,
         uint32 indexed depositId,
-        address destinationToken,
-        address relayer,
-        address indexed depositor,
-        address recipient,
+        bytes32 destinationToken,
+        bytes32 relayer,
+        bytes32 indexed depositor,
+        bytes32 recipient,
         bytes message,
         RelayExecutionInfo updatableRelayData
     );
@@ -235,7 +235,7 @@ abstract contract SpokePool is
     /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
 
     struct RelayExecutionInfo {
-        address recipient;
+        bytes32 recipient;
         bytes message;
         int64 relayerFeePct;
         bool isSlowRelay;
@@ -376,7 +376,7 @@ abstract contract SpokePool is
         uint256 destinationChainId,
         bool enabled
     ) public override onlyAdmin nonReentrant {
-        enabledDepositRoutes[originToken][destinationChainId] = enabled;
+        enabledDepositRoutes[originToken.toBytes32()][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
@@ -576,7 +576,7 @@ abstract contract SpokePool is
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[inputToken.toAddress()][destinationChainId]) revert DisabledRoute();
+        if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
 
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
@@ -787,11 +787,11 @@ abstract contract SpokePool is
         bytes calldata depositorSignature
     ) public override nonReentrant {
         _verifyUpdateV3DepositMessage(
-            depositor.toAddress(),
+            depositor,
             depositId,
             chainId(),
             updatedOutputAmount,
-            updatedRecipient.toAddress(),
+            updatedRecipient,
             updatedMessage,
             depositorSignature
         );
@@ -924,11 +924,11 @@ abstract contract SpokePool is
         });
 
         _verifyUpdateV3DepositMessage(
-            relayData.depositor.toAddress(),
+            relayData.depositor,
             relayData.depositId,
             relayData.originChainId,
             updatedOutputAmount,
-            updatedRecipient.toAddress(),
+            updatedRecipient,
             updatedMessage,
             depositorSignature
         );
@@ -1114,7 +1114,7 @@ abstract contract SpokePool is
         bytes memory message
     ) internal {
         // Check that deposit route is enabled.
-        if (!enabledDepositRoutes[originToken.toAddress()][destinationChainId]) revert DisabledRoute();
+        if (!enabledDepositRoutes[originToken][destinationChainId]) revert DisabledRoute();
 
         // We limit the relay fees to prevent the user spending all their funds on fees.
         if (SignedMath.abs(relayerFeePct) >= 0.5e18) revert InvalidRelayerFeePct();
@@ -1230,11 +1230,11 @@ abstract contract SpokePool is
     }
 
     function _verifyUpdateV3DepositMessage(
-        address depositor,
+        bytes32 depositor,
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) internal view {
@@ -1267,7 +1267,7 @@ abstract contract SpokePool is
     // this function for L2s where ecrecover is different from how it works on Ethereum, otherwise there is the
     // potential to forge a signature from the depositor using a different private key than the original depositor's.
     function _verifyDepositorSignature(
-        address depositor,
+        bytes32 depositor,
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
@@ -1278,7 +1278,11 @@ abstract contract SpokePool is
         // - For an EIP-1271 signature to work, the depositor contract address must map to a deployed contract on the destination
         //   chain that can validate the signature.
         // - Regular signatures from an EOA are also supported.
-        bool isValid = SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature);
+        bool isValid = SignatureChecker.isValidSignatureNow(
+            depositor.toAddress(),
+            ethSignedMessageHash,
+            depositorSignature
+        );
         if (!isValid) revert InvalidDepositorSignature();
     }
 
