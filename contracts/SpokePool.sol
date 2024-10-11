@@ -839,9 +839,8 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer != msg.sender &&
-            relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer != address(0)
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline) &&
+            relayData.exclusiveRelayer != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -886,9 +885,8 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer != msg.sender &&
-            relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer != address(0)
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline) &&
+            relayData.exclusiveRelayer != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -935,7 +933,7 @@ abstract contract SpokePool is
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != address(0)) {
+        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline)) {
             revert NotExclusiveRelayer();
         }
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
@@ -1412,6 +1410,11 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
+    }
+
+    // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
+    function _fillIsExclusive(address exclusiveRelayer, uint32 exclusivityDeadline) internal returns (bool) {
+        return exclusivityDeadline >= getCurrentTime() && exclusiveRelayer != address(0);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
