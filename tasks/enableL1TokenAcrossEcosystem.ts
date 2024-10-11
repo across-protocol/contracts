@@ -145,6 +145,32 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     // Construct calldata to enable these tokens.
     const callData = [];
 
+    // If deposit route chains are defined then we don't want to add a new PoolRebalanceRoute
+    console.log("\nAdding calldata to set the pool rebalance route for the respective destination tokens:");
+    let i = 0; // counter for logging.
+    const rebalanceRoutesSkipped: number[] = [];
+    chainIds.forEach((toId) => {
+      const destinationToken = tokens[toId].address;
+      if (destinationToken === NO_ADDRESS) {
+        return;
+      }
+
+      // If deposit route chains are defined, only add route if it involves a chain on that list
+      if (depositRouteChains.length === 0 || depositRouteChains.includes(toId)) {
+        const n = (++i).toString().padStart(2, " ");
+        console.log(
+          `\t${n} Setting rebalance route for chain ${symbol} ${hubChainId} -> ${destinationToken} on ${toId}.`
+        );
+        callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, destinationToken]));
+      } else {
+        rebalanceRoutesSkipped.push(toId);
+      }
+    });
+
+    if (rebalanceRoutesSkipped.length > 0) {
+      console.log(`\n\tSkipped pool rebalance routes ${hubChainId} -> ${rebalanceRoutesSkipped.join(", ")}.`);
+    }
+
     // If deposit route chains are defined then we don't want to add a new LP token:
     if (depositRouteChains.length === 0) {
       console.log(`\nAdding calldata to enable liquidity provision on ${l1Token}`);
@@ -156,12 +182,11 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
-    let i = 0; // counter for logging.
     const skipped: { [originChainId: number]: number[] } = {};
     const routeChainIds = Object.keys(tokens).map(Number);
     routeChainIds.forEach((fromId) => {
       const formattedFromId = formatChainId(fromId);
-      const { symbol, address: inputToken } = tokens[fromId];
+      const { address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
       routeChainIds.forEach((toId) => {
         if (fromId === toId || [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)) {
@@ -190,32 +215,6 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         console.log(`\tSkipped route for ${inputToken} on chains ${srcChainId} -> ${dstChainIds.join(", ")}.`);
       }
     });
-
-    // If deposit route chains are defined then we don't want to add a new PoolRebalanceRoute
-    console.log("\nAdding calldata to set the pool rebalance route for the respective destination tokens:");
-    i = 0; // counter for logging.
-    const rebalanceRoutesSkipped: number[] = [];
-    chainIds.forEach((toId) => {
-      const destinationToken = tokens[toId].address;
-      if (destinationToken === NO_ADDRESS) {
-        return;
-      }
-
-      // If deposit route chains are defined, only add route if it involves a chain on that list
-      if (depositRouteChains.length === 0 || depositRouteChains.includes(toId)) {
-        const n = (++i).toString().padStart(2, " ");
-        console.log(
-          `\t${n} Setting rebalance route for chain ${symbol} ${hubChainId} -> ${destinationToken} on ${toId}.`
-        );
-        callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, destinationToken]));
-      } else {
-        rebalanceRoutesSkipped.push(toId);
-      }
-    });
-
-    if (rebalanceRoutesSkipped.length > 0) {
-      console.log(`\n\tSkipped pool rebalance routes ${hubChainId} -> ${rebalanceRoutesSkipped.join(", ")}.`);
-    }
 
     // We only need to whitelist an Arbitrum token on the SpokePool if we're setting up a pool rebalance route between
     // mainnet and Arbitrum, so if deposit route chains are set then no need to do this.
