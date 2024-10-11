@@ -319,7 +319,7 @@ abstract contract SpokePool is
     /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
-     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * @dev Affects `deposit()` but not `speedUpV3Deposit()`, so that existing deposits can be sped up and still
      * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
