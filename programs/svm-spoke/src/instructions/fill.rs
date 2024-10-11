@@ -106,28 +106,28 @@ pub fn fill_v3_relay(
         Clock::get()?.unix_timestamp as u32
     };
 
-    // Check the fill status
-    let fill_status_account = &mut ctx.accounts.fill_status;
-    require!(
-        fill_status_account.status != FillStatus::Filled,
-        CustomError::RelayFilled
-    );
-
-    // Check if the fill deadline has passed
-    require!(
-        current_time <= relay_data.fill_deadline,
-        CustomError::ExpiredFillDeadline
-    );
-
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if relay_data.exclusive_relayer != Pubkey::default() {
-        require!(
-            current_time > relay_data.exclusivity_deadline
-                || ctx.accounts.signer.key() == relay_data.exclusive_relayer,
-            CustomError::NotExclusiveRelayer
-        );
+    if relay_data.exclusive_relayer != Pubkey::default()
+        && relay_data.exclusive_relayer != ctx.accounts.signer.key()
+        && relay_data.exclusivity_deadline >= current_time
+    {
+        return err!(CustomError::NotExclusiveRelayer);
     }
 
+    // Check if the fill deadline has passed
+    if relay_data.fill_deadline < current_time {
+        return err!(CustomError::ExpiredFillDeadline);
+    }
+
+    // Check the fill status and set the fill type
+    let fill_status_account = &mut ctx.accounts.fill_status;
+    let fill_type = match fill_status_account.status {
+        FillStatus::Filled => return err!(CustomError::RelayFilled),
+        FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
+        _ => FillType::FastFill,
+    };
+
+    // TODO: EVM SpokePool skips the transfer if relayer and receiver are the same, should we do the same here?
     // Invoke the transfer_checked instruction on the token program
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.relayer_token_account.to_account_info(),
@@ -173,7 +173,7 @@ pub fn fill_v3_relay(
             updated_recipient: relay_data.recipient,
             updated_message: message_clone,
             updated_output_amount: relay_data.output_amount,
-            fill_type: FillType::FastFill,
+            fill_type,
         },
     });
 
@@ -217,16 +217,14 @@ pub fn close_fill_pda(
     };
 
     // Check if the fill status is filled
-    require!(
-        ctx.accounts.fill_status.status == FillStatus::Filled,
-        CustomError::NotFilled
-    );
+    if ctx.accounts.fill_status.status != FillStatus::Filled {
+        return err!(CustomError::NotFilled);
+    }
 
     // Check if the deposit has expired
-    require!(
-        current_time > relay_data.fill_deadline,
-        CustomError::FillDeadlineNotPassed
-    );
+    if current_time <= relay_data.fill_deadline {
+        return err!(CustomError::FillDeadlineNotPassed);
+    }
 
     Ok(())
 }
