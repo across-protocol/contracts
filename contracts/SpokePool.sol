@@ -1413,7 +1413,7 @@ abstract contract SpokePool is
     }
 
     // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
-    function _fillIsExclusive(address exclusiveRelayer, uint32 exclusivityDeadline) internal returns (bool) {
+    function _fillIsExclusive(address exclusiveRelayer, uint32 exclusivityDeadline) internal pure returns (bool) {
         return exclusivityDeadline >= getCurrentTime() && exclusiveRelayer != address(0);
     }
 
