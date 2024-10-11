@@ -107,9 +107,9 @@ pub fn fill_v3_relay(
     };
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if relay_data.exclusive_relayer != Pubkey::default()
-        && relay_data.exclusive_relayer != ctx.accounts.signer.key()
+    if relay_data.exclusive_relayer != ctx.accounts.signer.key()
         && relay_data.exclusivity_deadline >= current_time
+        && relay_data.exclusive_relayer != Pubkey::default()
     {
         return err!(CustomError::NotExclusiveRelayer);
     }
