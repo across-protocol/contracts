@@ -9,7 +9,7 @@ import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapt
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Solana.
+ * @notice Contract containing logic to send messages from L1 to Solana via CCTP.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore it's only necessary that the HubPool's methods
