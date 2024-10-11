@@ -24,7 +24,7 @@ This repository assumes you have [Node](https://nodejs.org/en/download/package-m
 
 ```shell
 yarn
-yarn build # Will build all code. Compile solidity & rust, generate ts outputs.
+yarn build # Will build all code. Compile solidity & rust, generate ts outputs
 ```
 
 ## Test
