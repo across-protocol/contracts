@@ -16,7 +16,8 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { CrossDomainEnabled } from "./CrossDomainEnabled.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to World Chain. This is a clone of the Base/Mode adapter
+ * @notice Contract containing logic to send messages from L1 to an OP stack chain.
+ * @notice This adapter supports the OpUSDCBridgeAdapter interface for bridging into Circle Bridged USDC.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore its only necessary that the HubPool's methods
@@ -25,7 +26,7 @@ import { CrossDomainEnabled } from "./CrossDomainEnabled.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
+contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
@@ -92,7 +93,7 @@ contract WorldChain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPA
             if (_isCCTPEnabled()) {
                 _transferUsdc(to, amount);
             } else {
-                // Use WorldChain's OP USDC bridge to received bridged USDC on L2.
+                // Use the relevant OP USDC bridge to received bridged USDC on L2.
                 IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
                 L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
             }

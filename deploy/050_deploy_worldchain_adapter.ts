@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
 
-  await hre.deployments.deploy("WorldChain_Adapter", {
+  await hre.deployments.deploy("OP_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
