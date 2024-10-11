@@ -48,6 +48,14 @@ contract WorldChain_SpokePool is Ovm_SpokePool {
         __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, Lib_PredeployAddresses.OVM_ETH);
     }
 
+    /**
+     * @notice World Chain-specific logic to bridge tokens back to the hub pool contract on L1.
+     * @param amountToReturn Amount of the token to bridge back.
+     * @param l2TokenAddress Address of the l2 Token to bridge back. This token will either be bridged back to the token defined in the mapping `remoteL1Tokens`,
+     * or via the canonical mapping defined in the bridge contract retrieved from `tokenBridges`.
+     * @dev This implementation deviates slightly from `_bridgeTokensToHubPool` in the `Ovm_SpokePool` contract since World Chain has a USDC bridge which uses
+     * a custom interface. This is because the USDC token on World Chain is meant to be upgraded to a native, CCTP supported version in the future.
+     */
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
         // Handle custom USDC bridge which doesn't conform to the standard bridge interface. In the future, CCTP may be used to bridge USDC to mainnet, in which
         // case bridging logic is handled by the Ovm_SpokePool code. In the meantime, if CCTP is not enabled, then use the USDC bridge. Once CCTP is activated on
