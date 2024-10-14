@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { BN, workspace, web3, AnchorProvider, Wallet, Program, AnchorError } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
@@ -20,8 +21,8 @@ const { provider, program, owner, initializeState, connection, remoteDomain, cha
 describe("svm_spoke.token_bridge", () => {
   anchor.setProvider(provider);
 
-  const tokenMessengerMinterProgram = anchor.workspace.TokenMessengerMinter as anchor.Program<TokenMessengerMinter>;
-  const messageTransmitterProgram = anchor.workspace.MessageTransmitter as anchor.Program<MessageTransmitter>;
+  const tokenMessengerMinterProgram = workspace.TokenMessengerMinter as Program<TokenMessengerMinter>;
+  const messageTransmitterProgram = workspace.MessageTransmitter as Program<MessageTransmitter>;
 
   let state: PublicKey,
     mint: PublicKey,
@@ -35,11 +36,11 @@ describe("svm_spoke.token_bridge", () => {
     localToken: PublicKey,
     tokenMessengerMinterSenderAuthority: PublicKey;
 
-  let messageSentEventData: anchor.web3.Keypair; // This will hold CCTP message data.
+  let messageSentEventData: web3.Keypair; // This will hold CCTP message data.
 
   let bridgeTokensToHubPoolAccounts: any;
 
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const payer = (AnchorProvider.env().wallet as Wallet).payer;
 
   const initialMintAmount = 10_000_000_000;
 
@@ -91,7 +92,7 @@ describe("svm_spoke.token_bridge", () => {
       custodyTokenAccount,
       localTokenMint: mint,
       tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       program: tokenMessengerMinterProgram.programId,
       eventAuthority,
     };
@@ -105,12 +106,12 @@ describe("svm_spoke.token_bridge", () => {
       eventAuthority,
     };
     await tokenMessengerMinterProgram.methods
-      .setMaxBurnAmountPerMessage({ burnLimitPerMessage: new anchor.BN(initialMintAmount) })
+      .setMaxBurnAmountPerMessage({ burnLimitPerMessage: new BN(initialMintAmount) })
       .accounts(setMaxBurnAmountPerMessageAccounts)
       .rpc();
 
     // Populate accounts for bridgeTokensToHubPool.
-    messageSentEventData = anchor.web3.Keypair.generate();
+    messageSentEventData = web3.Keypair.generate();
     bridgeTokensToHubPoolAccounts = {
       payer: owner,
       mint,
@@ -127,7 +128,7 @@ describe("svm_spoke.token_bridge", () => {
       messageTransmitterProgram: messageTransmitterProgram.programId,
       tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       eventAuthority,
     };
   });
@@ -137,9 +138,9 @@ describe("svm_spoke.token_bridge", () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
     relayerRefundLeaves.push({
       isSolana: true,
-      leafId: new anchor.BN(0),
+      leafId: new BN(0),
       chainId,
-      amountToReturn: new anchor.BN(amountToReturn),
+      amountToReturn: new BN(amountToReturn),
       mintPublicKey: mint,
       refundAccounts: [],
       refundAmounts: [],
@@ -176,7 +177,7 @@ describe("svm_spoke.token_bridge", () => {
       mint,
       transferLiability,
       tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
     await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
@@ -192,7 +193,7 @@ describe("svm_spoke.token_bridge", () => {
     assert.strictEqual(initialVaultBalance, initialMintAmount.toString());
 
     await program.methods
-      .bridgeTokensToHubPool(new anchor.BN(pendingToHubPool))
+      .bridgeTokensToHubPool(new BN(pendingToHubPool))
       .accounts(bridgeTokensToHubPoolAccounts)
       .signers([messageSentEventData])
       .rpc();
@@ -220,13 +221,13 @@ describe("svm_spoke.token_bridge", () => {
 
     try {
       await program.methods
-        .bridgeTokensToHubPool(new anchor.BN(bridgeAmount))
+        .bridgeTokensToHubPool(new BN(bridgeAmount))
         .accounts(bridgeTokensToHubPoolAccounts)
         .signers([messageSentEventData])
         .rpc();
       assert.fail("Should not be able to bridge above pending tokens to HubPool");
     } catch (error: any) {
-      assert.instanceOf(error, anchor.AnchorError);
+      assert.instanceOf(error, AnchorError);
       assert.strictEqual(
         error.error.errorCode.code,
         "ExceededPendingBridgeAmount",
@@ -245,10 +246,10 @@ describe("svm_spoke.token_bridge", () => {
     assert.strictEqual(initialVaultBalance, initialMintAmount.toString());
 
     for (let i = 0; i < 5; i++) {
-      const loopMessageSentEventData = anchor.web3.Keypair.generate();
+      const loopMessageSentEventData = web3.Keypair.generate();
 
       await program.methods
-        .bridgeTokensToHubPool(new anchor.BN(singleBridgeAmount))
+        .bridgeTokensToHubPool(new BN(singleBridgeAmount))
         .accounts({ ...bridgeTokensToHubPoolAccounts, messageSentEventData: loopMessageSentEventData.publicKey })
         .signers([loopMessageSentEventData])
         .rpc();
@@ -272,10 +273,10 @@ describe("svm_spoke.token_bridge", () => {
 
     // Bridge out first 4 tranches.
     for (let i = 0; i < 4; i++) {
-      const loopMessageSentEventData = anchor.web3.Keypair.generate();
+      const loopMessageSentEventData = web3.Keypair.generate();
 
       await program.methods
-        .bridgeTokensToHubPool(new anchor.BN(singleBridgeAmount))
+        .bridgeTokensToHubPool(new BN(singleBridgeAmount))
         .accounts({ ...bridgeTokensToHubPoolAccounts, messageSentEventData: loopMessageSentEventData.publicKey })
         .signers([loopMessageSentEventData])
         .rpc();
@@ -284,13 +285,13 @@ describe("svm_spoke.token_bridge", () => {
     // Try to bridge out more tokens in the final tranche.
     try {
       await program.methods
-        .bridgeTokensToHubPool(new anchor.BN(singleBridgeAmount + 1))
+        .bridgeTokensToHubPool(new BN(singleBridgeAmount + 1))
         .accounts(bridgeTokensToHubPoolAccounts)
         .signers([messageSentEventData])
         .rpc();
       assert.fail("Should not be able to bridge above pending tokens to HubPool");
     } catch (error: any) {
-      assert.instanceOf(error, anchor.AnchorError);
+      assert.instanceOf(error, AnchorError);
       assert.strictEqual(
         error.error.errorCode.code,
         "ExceededPendingBridgeAmount",

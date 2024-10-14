@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as crypto from "crypto";
-import { BN } from "@coral-xyz/anchor";
+import { BN, web3, Wallet, AnchorProvider } from "@coral-xyz/anchor";
 import {
   AddressLookupTableProgram,
   ComputeBudgetProgram,
@@ -41,7 +41,7 @@ describe("svm_spoke.bundle", () => {
     vault: PublicKey,
     transferLiability: PublicKey;
 
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const payer = (AnchorProvider.env().wallet as Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   before(async () => {
@@ -193,7 +193,7 @@ describe("svm_spoke.bundle", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
       transferLiability,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
     const proofAsNumbers = proof.map((p) => Array.from(p));
@@ -241,7 +241,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
@@ -267,10 +267,10 @@ describe("svm_spoke.bundle", () => {
         isSolana: true,
         leafId: new BN(i),
         chainId: chainId,
-        amountToReturn: new anchor.BN(randomBigInt(2).toString()),
+        amountToReturn: new BN(randomBigInt(2).toString()),
         mintPublicKey: mint,
         refundAccounts: [relayerTA, relayerTB],
-        refundAmounts: [new anchor.BN(randomBigInt(2).toString()), new anchor.BN(randomBigInt(2).toString())],
+        refundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
       });
     }
     const invalidRelayerRefundLeaf = relayerRefundLeaves.pop()!;
@@ -323,7 +323,7 @@ describe("svm_spoke.bundle", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
       transferLiability,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
     try {
@@ -352,7 +352,7 @@ describe("svm_spoke.bundle", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
       transferLiability,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
     await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
@@ -391,7 +391,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(
@@ -461,7 +461,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
@@ -523,7 +523,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
@@ -585,7 +585,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(
@@ -621,7 +621,7 @@ describe("svm_spoke.bundle", () => {
           tokenProgram: TOKEN_PROGRAM_ID,
           mint: mint,
           transferLiability,
-          systemProgram: anchor.web3.SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           program: program.programId,
         };
         await loadExecuteRelayerRefundLeafParams(
@@ -656,7 +656,7 @@ describe("svm_spoke.bundle", () => {
 
     const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
-    const refundAccounts: anchor.web3.PublicKey[] = [];
+    const refundAccounts: web3.PublicKey[] = [];
     const refundAmounts: BN[] = [];
 
     for (let i = 0; i < solanaDistributions; i++) {
@@ -726,7 +726,7 @@ describe("svm_spoke.bundle", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
       transferLiability,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
       // Appended by Acnhor `event_cpi` macro:
       eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
       program: program.programId,
@@ -745,14 +745,9 @@ describe("svm_spoke.bundle", () => {
     });
 
     // Submit the ALT creation transaction
-    await anchor.web3.sendAndConfirmTransaction(
-      connection,
-      new anchor.web3.Transaction().add(lookupTableInstruction),
-      [payer],
-      {
-        skipPreflight: true, // Avoids recent slot mismatch in simulation.
-      }
-    );
+    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [payer], {
+      skipPreflight: true, // Avoids recent slot mismatch in simulation.
+    });
 
     // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
     for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
@@ -763,14 +758,9 @@ describe("svm_spoke.bundle", () => {
         addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
       });
 
-      await anchor.web3.sendAndConfirmTransaction(
-        connection,
-        new anchor.web3.Transaction().add(extendInstruction),
-        [payer],
-        {
-          skipPreflight: true, // Avoids recent slot mismatch in simulation.
-        }
-      );
+      await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [payer], {
+        skipPreflight: true, // Avoids recent slot mismatch in simulation.
+      });
     }
 
     // Avoids invalid ALT index as ALT might not be active yet on the following tx.
@@ -852,7 +842,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
@@ -935,7 +925,7 @@ describe("svm_spoke.bundle", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
         transferLiability,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
       await loadExecuteRelayerRefundLeafParams(

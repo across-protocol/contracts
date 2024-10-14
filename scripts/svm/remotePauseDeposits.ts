@@ -4,6 +4,7 @@
 
 import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
+import { BN, Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
@@ -13,7 +14,7 @@ import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 
 // Set up Solana provider.
-const provider = anchor.AnchorProvider.env();
+const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Parse arguments
@@ -26,14 +27,14 @@ const argv = yargs(hideBin(process.argv))
       throw new Error("Options --pause and --resumeRemoteTx are mutually exclusive");
     }
     if (argv.pause === undefined && argv.resumeRemoteTx === undefined) {
-      throw new Error("One of the options --pause or --resumeRemoteTx is required");
+      throw new Error("One of the options --pause or --resumchrismaree/clean-up-imports-and-testsRemoteTx is required");
     }
     return true;
   }).argv;
 
 async function remotePauseDeposits(): Promise<void> {
   const resolvedArgv = await argv;
-  const seed = new anchor.BN(resolvedArgv.seed);
+  const seed = new BN(resolvedArgv.seed);
   const pause = resolvedArgv.pause;
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
 
@@ -53,13 +54,13 @@ async function remotePauseDeposits(): Promise<void> {
 
   // Get Solana programs and accounts.
   const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-  const svmSpokeProgram = new anchor.Program<SvmSpoke>(svmSpokeIdl, provider);
+  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
   const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new anchor.Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId
@@ -147,7 +148,7 @@ async function remotePauseDeposits(): Promise<void> {
   const nonce = decodeMessageHeader(Buffer.from(message.replace("0x", ""), "hex")).nonce;
   const usedNonces = (await messageTransmitterProgram.methods
     .getNoncePda({
-      nonce: new anchor.BN(nonce.toString()),
+      nonce: new BN(nonce.toString()),
       sourceDomain: remoteDomain,
     })
     .accounts({
@@ -161,7 +162,7 @@ async function remotePauseDeposits(): Promise<void> {
     messageTransmitter: messageTransmitterState,
     usedNonces,
     receiver: svmSpokeProgram.programId,
-    systemProgram: anchor.web3.SystemProgram.programId,
+    systemProgram: web3.SystemProgram.programId,
   };
 
   // accountMetas list to pass to remaining accounts when receiving message via CCTP.
