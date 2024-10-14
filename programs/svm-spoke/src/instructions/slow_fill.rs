@@ -53,12 +53,7 @@ pub fn request_v3_slow_fill(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = state.get_current_time()?;
 
     // Check if the fill is within the exclusivity window & fill deadline.
     //TODO: ensure the require blocks here are equivilelent to evm.

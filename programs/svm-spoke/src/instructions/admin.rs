@@ -37,7 +37,6 @@ pub fn initialize(
     chain_id: u64,                  // Across definition of chainId for Solana.
     remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
     cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
-    testable_mode: bool, // If the contract is in testable mode, enabling time manipulation.
     deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
     fill_deadline_buffer: u32, // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
@@ -48,13 +47,11 @@ pub fn initialize(
     state.chain_id = chain_id;
     state.remote_domain = remote_domain;
     state.cross_domain_admin = cross_domain_admin;
-    state.current_time = if testable_mode {
-        Clock::get()?.unix_timestamp as u32
-    } else {
-        0
-    }; // Set current_time to system time if testable_mode is true, else 0
     state.deposit_quote_time_buffer = deposit_quote_time_buffer;
     state.fill_deadline_buffer = fill_deadline_buffer;
+
+    state.initialize_current_time()?; // Stores current time in test build (no-op in production).
+
     Ok(())
 }
 

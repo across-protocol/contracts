@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{error::CustomError, state::State};
+use crate::state::State;
 
 #[derive(Accounts)]
 pub struct SetCurrentTime<'info> {
@@ -13,7 +13,5 @@ pub struct SetCurrentTime<'info> {
 
 pub fn set_current_time(ctx: Context<SetCurrentTime>, new_time: u32) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    require!(state.current_time != 0, CustomError::CannotSetCurrentTime); // Ensure current_time is not zero
-    state.current_time = new_time;
-    Ok(())
+    state.set_current_time(new_time) // Stores new time in test build (error in production).
 }

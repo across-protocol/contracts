@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::error::CustomError;
+
 #[account]
 #[derive(InitSpace)]
 pub struct State {
@@ -15,4 +17,41 @@ pub struct State {
     pub root_bundle_id: u32,
     pub deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
     pub fill_deadline_buffer: u32, // Fill deadlines can't be set more than this amount into the future.
+}
+
+impl State {
+    pub fn initialize_current_time(&mut self) -> Result<()> {
+        #[cfg(feature = "test")]
+        {
+            self.current_time = Clock::get()?.unix_timestamp as u32;
+        }
+
+        Ok(())
+    }
+
+    pub fn set_current_time(&mut self, new_time: u32) -> Result<()> {
+        #[cfg(not(feature = "test"))]
+        {
+            let _ = new_time; // Suppress warning about `new_time` being unused in non-test builds.
+            return err!(CustomError::CannotSetCurrentTime);
+        }
+
+        #[cfg(feature = "test")]
+        {
+            self.current_time = new_time;
+            Ok(())
+        }
+    }
+
+    pub fn get_current_time(&self) -> Result<u32> {
+        #[cfg(not(feature = "test"))]
+        {
+            Ok(Clock::get()?.unix_timestamp as u32)
+        }
+
+        #[cfg(feature = "test")]
+        {
+            Ok(self.current_time)
+        }
+    }
 }

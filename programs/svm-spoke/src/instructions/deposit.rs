@@ -87,11 +87,7 @@ pub fn deposit_v3(
 
     require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
 
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = state.get_current_time()?;
 
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
         return Err(CustomError::InvalidQuoteTimestamp.into());
