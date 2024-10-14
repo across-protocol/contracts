@@ -1,3 +1,5 @@
+// This script initializes a SVM spoke pool with initialization parameters.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
