@@ -7,7 +7,6 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";

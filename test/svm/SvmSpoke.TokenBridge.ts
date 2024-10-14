@@ -10,7 +10,6 @@ import {
   RelayerRefundLeafType,
   relayerRefundHashFn,
   findProgramAddress,
-  convertLeafIdToNumber,
   loadExecuteRelayerRefundLeafParams,
 } from "./utils";
 import { assert } from "chai";

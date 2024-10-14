@@ -22,7 +22,6 @@ import {
   RelayerRefundLeafSolana,
   RelayerRefundLeafType,
   readProgramEvents,
-  convertLeafIdToNumber,
 } from "./utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
