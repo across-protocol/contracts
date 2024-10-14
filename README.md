@@ -16,25 +16,34 @@ These contracts were [audited by OpenZeppelin](https://blog.openzeppelin.com/uma
 
 The latest contract deployments on Production will always be under the `deployed` tag.
 
+## Requirements
+
+This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 16.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please insure these are both installed first.
+
 ## Build
 
 ```shell
 yarn
-yarn hardhat compile
+yarn build # Will build all code. Compile solidity & rust, generate ts outputs
 ```
 
 ## Test
 
 ```shell
-yarn test # Run unit tests without gas analysis
+yarn test # Run all unit tests without gas analysis
 yarn test:gas-analytics # Run only tests that count gas costs
 yarn test:report-gas # Run unit tests with hardhat-gas-reporter enabled
+yarn test-evm # Only test EVM code
+yarn test-svm # Only test SVM code
 ```
 
 ## Lint
 
 ```shell
 yarn lint
+yarn lint-js # Only lint Javascript
+yarn lint-rust # Only lint rust
+yarn lint-solidity # Only lint solidity
 yarn lint-fix
 ```
 
