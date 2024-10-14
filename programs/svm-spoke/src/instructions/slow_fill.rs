@@ -255,13 +255,12 @@ pub fn execute_v3_slow_relay_leaf(
         input_amount: relay_data.input_amount,
         output_amount: relay_data.output_amount,
         repayment_chain_id: 0, // There is no repayment chain id for slow fills.
-        repayment_address: Pubkey::default(), // There is no repayment address for slow fills.
         origin_chain_id: relay_data.origin_chain_id,
         deposit_id: relay_data.deposit_id,
         fill_deadline: relay_data.fill_deadline,
         exclusivity_deadline: relay_data.exclusivity_deadline,
         exclusive_relayer: relay_data.exclusive_relayer,
-        relayer: *ctx.accounts.signer.key,
+        relayer: Pubkey::default(), // There is no repayment address for slow
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
         message: relay_data.message,

@@ -112,7 +112,7 @@ describe.only("svm_spoke.fill", () => {
     assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
   });
 
-  it.only("Verifies FilledV3Relay event after filling a relay", async () => {
+  it("Verifies FilledV3Relay event after filling a relay", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(420), otherRelayer.publicKey)
@@ -132,7 +132,7 @@ describe.only("svm_spoke.fill", () => {
     });
     // These props below are not part of relayData.
     assertSE(event.repaymentChainId, new BN(420), "Repayment chain id should match");
-    assertSE(event.repaymentAddress, otherRelayer.publicKey, "Repayment address should match");
+    assertSE(event.relayer, otherRelayer.publicKey, "Repayment address should match");
   });
 
   it("Fails to fill a V3 relay after the fill deadline", async () => {

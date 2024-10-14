@@ -325,7 +325,6 @@ describe("SpokePool Relayer Logic", async function () {
           consts.repaymentChainId,
           addressToBytes32(relayer.address),
         ]);
-        console.log("functionCalldata", functionCalldata);
         await expect(spokePool.connect(relayer).callback(functionCalldata)).to.be.revertedWith(
           "ReentrancyGuard: reentrant call"
         );

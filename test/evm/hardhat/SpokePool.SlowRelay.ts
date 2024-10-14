@@ -1,4 +1,13 @@
-import { expect, Contract, ethers, SignerWithAddress, toBN, seedContract, seedWallet } from "../../../utils/utils";
+import {
+  expect,
+  Contract,
+  ethers,
+  SignerWithAddress,
+  toBN,
+  seedContract,
+  seedWallet,
+  addressToBytes32,
+} from "../../../utils/utils";
 import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } from "./fixtures/SpokePool.Fixture";
 import { buildV3SlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";
@@ -73,7 +82,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       );
 
       // Can fast fill after:
-      await spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId);
+      await spokePool
+        .connect(relayer)
+        .fillV3Relay(relayData, consts.repaymentChainId, addressToBytes32(relayer.address));
     });
     it("cannot request if FillStatus is Filled", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);
@@ -155,7 +166,9 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       // Cannot fast fill after slow fill
       await expect(
-        spokePool.connect(relayer).fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId)
+        spokePool
+          .connect(relayer)
+          .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes32(relayer.address))
       ).to.be.revertedWith("RelayFilled");
     });
     it("cannot be used to double send a fill", async function () {
@@ -163,7 +176,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
 
       // Fill before executing slow fill
-      await spokePool.connect(relayer).fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId);
+      await spokePool
+        .connect(relayer)
+        .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes32(relayer.address));
       await expect(
         spokePool.connect(relayer).executeV3SlowRelayLeaf(
           slowRelayLeaf,
@@ -287,7 +302,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           relayData.exclusivityDeadline,
           relayData.exclusiveRelayer,
           // Sets relayer address to 0x0
-          consts.zeroAddress,
+          consts.zeroBytes32,
           relayData.depositor,
           relayData.recipient,
           relayData.message,
