@@ -27,7 +27,7 @@ const argv = yargs(hideBin(process.argv))
       throw new Error("Options --pause and --resumeRemoteTx are mutually exclusive");
     }
     if (argv.pause === undefined && argv.resumeRemoteTx === undefined) {
-      throw new Error("One of the options --pause or --resumchrismaree/clean-up-imports-and-testsRemoteTx is required");
+      throw new Error("One of the options --pause or --resumeRemoteTx is required");
     }
     return true;
   }).argv;
