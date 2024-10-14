@@ -5,11 +5,11 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-svm_spoke = "E5USYAs9DUzn6ykrWZXuEkbCnY3kzNMPGNFH2okvUvqe"
-test = "GZp7L6MZ93G7TpAyxmaJ3GYgXnxH8x5oxSDmnEoob1Zu"
+svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
+test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 
 [programs.devnet]
-svm_spoke = "CUnrs9pnNFDw6xAybcJfLftcutevE1f63ZJn6xt6A8f6"
+svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
 
 [registry]
 url = "https://api.apr.dev"
@@ -28,7 +28,9 @@ simpleDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleDeposit
 queryDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryDeposits.ts"
 queryFills = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryFills.ts"
 simpleFill = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFill.ts"
+simpleFakeRelayerRepayment = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFakeRelayerRepayment.ts"
 closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelayerPdas.ts"
+closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
 remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remotePauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
 
