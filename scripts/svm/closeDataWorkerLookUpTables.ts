@@ -1,18 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, SendTransactionError } from "@solana/web3.js";
 import { AddressLookupTableProgram } from "@solana/web3.js";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
 
 // Set up the provider
 const provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
 const connection = provider.connection;
 const payer = provider.wallet.publicKey;
-
-// Parse arguments
-// const argv = yargs(hideBin(process.argv))
-//   .option("payer", { type: "string", default: payer.toBase58(), describe: "Payer public key" }).argv;
 
 async function closeDataWorkerLookUpTables(): Promise<void> {
   console.log("Starting process to close dataworker lookup tables...");
