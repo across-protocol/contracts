@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ForwarderInterface } from "./interfaces/ForwarderInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
+import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 
 /**
  * @title ForwarderBase
@@ -16,6 +17,8 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
  * @custom:security-contact bugs@across.to
  */
 abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
+    // Address of the wrapped native token contract on this L2.
+    WETH9Interface public immutable WRAPPED_NATIVE_TOKEN;
     // Address that can relay messages using this contract and also upgrade this contract.
     address public crossDomainAdmin;
 
@@ -46,11 +49,22 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
 
     /**
      * @notice Constructs the Forwarder contract.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on the L2.
      * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
      * may disrupt the proxy if another EOA were to initialize it.
      */
-    constructor() {
+    constructor(WETH9Interface _wrappedNativeToken) {
+        WRAPPED_NATIVE_TOKEN = _wrappedNativeToken;
         _disableInitializers();
+    }
+
+    /**
+     * @notice Receives the native token from external sources.
+     * @dev This forwarder may receive a native token from a bridge and must be able to accept it. It must also be able to continue bridging this native token
+     * to L3. By default, we will wrap the native token. We will only not wrap the native token when this contract calls `withdraw()` on the native token contract.
+     */
+    receive() external payable {
+        if (msg.sender != address(WRAPPED_NATIVE_TOKEN)) WRAPPED_NATIVE_TOKEN.deposit{ value: msg.value }();
     }
 
     /**
