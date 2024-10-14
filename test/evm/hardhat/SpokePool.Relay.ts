@@ -10,7 +10,6 @@ import {
   BigNumber,
   hexZeroPadAddress,
   hexZeroPadAddressLowercase,
-  hexToAddress,
   bytes32ToAddress,
 } from "../../../utils/utils";
 import {
