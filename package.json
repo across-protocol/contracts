@@ -31,7 +31,7 @@
     "build-svm": "echo 'Generating IDLs...' && anchor build > /dev/null 2>&1 || true && anchor run generateExternalTypes && anchor build",
     "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "build": "yarn build-evm && yarn build-svm && yarn build-ts",
-    "test-evm": "IS_TEST=true hardhat test",
+    "test-evm": "IS_TEST=true hardhat test ",
     "test-svm": "anchor test",
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",

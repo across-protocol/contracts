@@ -130,7 +130,7 @@ abstract contract SpokePool is
 
     bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
         keccak256(
-            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
+            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
 
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
@@ -787,7 +787,7 @@ abstract contract SpokePool is
         bytes calldata depositorSignature
     ) public override nonReentrant {
         _verifyUpdateV3DepositMessage(
-            depositor,
+            depositor.toAddress(),
             depositId,
             chainId(),
             updatedOutputAmount,
@@ -924,7 +924,7 @@ abstract contract SpokePool is
         });
 
         _verifyUpdateV3DepositMessage(
-            relayData.depositor,
+            relayData.depositor.toAddress(),
             relayData.depositId,
             relayData.originChainId,
             updatedOutputAmount,
@@ -1230,7 +1230,7 @@ abstract contract SpokePool is
     }
 
     function _verifyUpdateV3DepositMessage(
-        bytes32 depositor,
+        address depositor,
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
@@ -1267,7 +1267,7 @@ abstract contract SpokePool is
     // this function for L2s where ecrecover is different from how it works on Ethereum, otherwise there is the
     // potential to forge a signature from the depositor using a different private key than the original depositor's.
     function _verifyDepositorSignature(
-        bytes32 depositor,
+        address depositor,
         bytes32 ethSignedMessageHash,
         bytes memory depositorSignature
     ) internal view virtual {
@@ -1278,11 +1278,7 @@ abstract contract SpokePool is
         // - For an EIP-1271 signature to work, the depositor contract address must map to a deployed contract on the destination
         //   chain that can validate the signature.
         // - Regular signatures from an EOA are also supported.
-        bool isValid = SignatureChecker.isValidSignatureNow(
-            depositor.toAddress(),
-            ethSignedMessageHash,
-            depositorSignature
-        );
+        bool isValid = SignatureChecker.isValidSignatureNow(depositor, ethSignedMessageHash, depositorSignature);
         if (!isValid) revert InvalidDepositorSignature();
     }
 

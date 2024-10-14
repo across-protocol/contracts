@@ -1,4 +1,15 @@
-import { expect, Contract, ethers, SignerWithAddress, toBN, seedContract, seedWallet } from "../../../utils/utils";
+import {
+  expect,
+  Contract,
+  ethers,
+  SignerWithAddress,
+  toBN,
+  seedContract,
+  seedWallet,
+  hexZeroPadAddress,
+  hexZeroPadAddressLowercase,
+  bytes32ToAddress,
+} from "../../../utils/utils";
 import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } from "./fixtures/SpokePool.Fixture";
 import { buildV3SlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";
@@ -31,11 +42,11 @@ describe("SpokePool Slow Relay Logic", async function () {
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        exclusiveRelayer: relayer.address,
-        inputToken: erc20.address,
-        outputToken: destErc20.address,
+        depositor: hexZeroPadAddress(depositor.address),
+        recipient: hexZeroPadAddress(recipient.address),
+        exclusiveRelayer: hexZeroPadAddress(relayer.address),
+        inputToken: hexZeroPadAddress(erc20.address),
+        outputToken: hexZeroPadAddress(destErc20.address),
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
@@ -101,11 +112,11 @@ describe("SpokePool Slow Relay Logic", async function () {
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        exclusiveRelayer: relayer.address,
-        inputToken: erc20.address,
-        outputToken: destErc20.address,
+        depositor: hexZeroPadAddress(depositor.address),
+        recipient: hexZeroPadAddress(recipient.address),
+        exclusiveRelayer: hexZeroPadAddress(relayer.address),
+        inputToken: hexZeroPadAddress(erc20.address),
+        outputToken: hexZeroPadAddress(destErc20.address),
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
@@ -206,7 +217,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         )
       )
         .to.emit(spokePool, "PreLeafExecuteHook")
-        .withArgs(slowRelayLeaf.relayData.outputToken);
+        .withArgs(bytes32ToAddress(slowRelayLeaf.relayData.outputToken));
     });
     it("cannot execute leaves with chain IDs not matching spoke pool's chain ID", async function () {
       // In this test, the merkle proof is valid for the tree relayed to the spoke pool, but the merkle leaf
@@ -275,8 +286,8 @@ describe("SpokePool Slow Relay Logic", async function () {
       )
         .to.emit(spokePool, "FilledV3Relay")
         .withArgs(
-          relayData.inputToken,
-          relayData.outputToken,
+          hexZeroPadAddressLowercase(relayData.inputToken),
+          hexZeroPadAddressLowercase(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           // Sets repaymentChainId to 0:
@@ -285,15 +296,15 @@ describe("SpokePool Slow Relay Logic", async function () {
           relayData.depositId,
           relayData.fillDeadline,
           relayData.exclusivityDeadline,
-          relayData.exclusiveRelayer,
+          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
           // Sets relayer address to 0x0
-          consts.zeroAddress,
-          relayData.depositor,
-          relayData.recipient,
+          hexZeroPadAddressLowercase(consts.zeroAddress),
+          hexZeroPadAddressLowercase(relayData.depositor),
+          hexZeroPadAddressLowercase(relayData.recipient),
           relayData.message,
           [
             // Uses relayData.recipient
-            relayData.recipient,
+            hexZeroPadAddressLowercase(relayData.recipient),
             // Uses relayData.message
             relayData.message,
             // Uses slow fill leaf's updatedOutputAmount

@@ -11,7 +11,6 @@ import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverte
  * @title MockSpokePool
  * @notice Implements abstract contract for testing.
  */
-
 contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressToBytes32 for address;
@@ -60,7 +59,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function _verifyUpdateDepositMessage(
-        bytes32 depositor,
+        address depositor,
         uint32 depositId,
         uint256 originChainId,
         int64 updatedRelayerFeePct,
@@ -87,7 +86,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function verifyUpdateV3DepositMessage(
-        bytes32 depositor,
+        address depositor,
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
@@ -194,7 +193,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         require(SignedMath.abs(updatedRelayerFeePct) < 0.5e18, "Invalid relayer fee");
 
         _verifyUpdateDepositMessage(
-            depositor,
+            depositor.toAddress(),
             depositId,
             chainId(),
             updatedRelayerFeePct,
@@ -333,7 +332,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         relayExecution.relayHash = _getRelayHash(relayExecution.relay);
 
         _verifyUpdateDepositMessage(
-            depositor,
+            depositor.toAddress(),
             depositId,
             originChainId,
             updatedRelayerFeePct,
