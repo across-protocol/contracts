@@ -4,61 +4,64 @@
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
-test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
-
 [programs.devnet]
 svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
+
+[programs.localnet]
+across-message-handler = "95JnB8NmS5cqxJ9TFLdZPJzPZYkrtaPYMGvEmszY1TLn"
+svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
+test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "Localnet"
 wallet = "test/svm/keys/localnet-wallet.json"
 
 [scripts]
-test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
-initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"
-queryState = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryState.ts"
+closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
+closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelayerPdas.ts"
 enableRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/enableRoute.ts"
-queryRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryRoute.ts"
-simpleDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleDeposit.ts"
+generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
+initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"
 queryDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryDeposits.ts"
 queryFills = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryFills.ts"
-simpleFill = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFill.ts"
-simpleFakeRelayerRepayment = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFakeRelayerRepayment.ts"
-closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelayerPdas.ts"
-closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
+queryRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryRoute.ts"
+queryState = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryState.ts"
 remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remotePauseDeposits.ts"
-generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
+simpleDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleDeposit.ts"
+simpleFakeRelayerRepayment = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFakeRelayerRepayment.ts"
+simpleFill = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFill.ts"
+test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
+
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false
 
 [test.validator]
+bind_address = "0.0.0.0"
 url = "https://api.devnet.solana.com"
+ledger = ".anchor/test-ledger"
+rpc_port = 8899
 
-### Forked Circle Message Transmitter Program
-[[test.validator.clone]]
-address = "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd"
-
-### Forked Circle Token Messenger Minter Program
-[[test.validator.clone]]
-address = "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3"
-
-### Circle Message Transmitter PDA -- Message Transmitter Config (Modified to have 0 attesters)
 [[test.validator.account]]
 address = "BWrwSWjbikT3H7qHAkUEbLmwDQoB4ZDJ4wcSEhSPTZCu"
 filename = "test/svm/accounts/message_transmitter.json"
 
-### Circle Token Messenger Minter PDA -- Token Minter (Modified with token_controller set to test wallet)
 [[test.validator.account]]
 address = "DBD8hAwLDRQkTsu6EqviaYNGKPnsAMmQonxf7AH8ZcFY"
 filename = "test/svm/accounts/token_minter.json"
 
-### Circle Token Messenger Minter PDA -- Token Messenger
+[[test.validator.clone]]
+address = "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd"
+
+[[test.validator.clone]]
+address = "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3"
+
 [[test.validator.clone]]
 address = "Afgq3BHEfCE7d78D2XE9Bfyu2ieDqvE24xX8KDwreBms"
 
-### Circle Token Messenger Minter PDA -- Ethereum Remote Token Messenger
 [[test.validator.clone]]
 address = "Hazwi3jFQtLKc2ughi7HFXPkpDeso7DQaMR9Ks4afh3j"
