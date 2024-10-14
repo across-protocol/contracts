@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
+import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
@@ -18,6 +19,8 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
+    // The L2 address of the wrapped native token for this L2.
+    WETH9Interface public immutable WRAPPED_NATIVE_TOKEN;
     // The L1 address which will unconditionally receive all withdrawals from this contract.
     address public immutable TOKEN_RECIPIENT;
     // The address of the primary or default token gateway/canonical bridge contract on L2.
@@ -43,6 +46,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      * @notice Constructs a new withdrawal helper.
      * @param _l2Usdc Address of native USDC on the L2.
      * @param _cctpTokenMessenger Address of the CCTP token messenger contract on L2.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on L2.
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network.
      * @param _l2TokenGateway Address of the network's l2 token gateway/bridge contract.
      * @param _tokenRecipient L1 address which will unconditionally receive all withdrawals originating from this contract.
@@ -54,21 +58,27 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
+        WETH9Interface _wrappedNativeToken,
         uint32 _destinationCircleDomainId,
         address _l2TokenGateway,
         address _tokenRecipient
     ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId) {
         L2_TOKEN_GATEWAY = _l2TokenGateway;
         TOKEN_RECIPIENT = _tokenRecipient;
+        WRAPPED_NATIVE_TOKEN = _wrappedNativeToken;
         _disableInitializers();
     }
 
     /**
      * @notice Receives the native token from bridge contracts.
      * @dev When bridging from L3 to the L2's native token, OpStack bridges will send the "unwrapped"/native token to the recipient on L2
-     * during withdrawals. This means that this contract must be able to accept value transfers.
+     * during withdrawals. This means that this contract must be able to accept value transfers. By default, we automatically wrap incoming
+     * ETH transfers, with the exception of an ETH transfer originating from the wrapped token contract. This is because this contract does
+     * want to send value transfers, but only after unwrapping WETH.
      */
-    receive() external payable {}
+    receive() external payable {
+        if (msg.sender != address(WRAPPED_NATIVE_TOKEN)) WRAPPED_NATIVE_TOKEN.deposit{ value: msg.value }();
+    }
 
     /**
      * @notice Initializes the withdrawal helper contract.

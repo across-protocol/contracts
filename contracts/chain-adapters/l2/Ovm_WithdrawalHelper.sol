@@ -25,9 +25,6 @@ interface IOvm_SpokePool {
     // Returns the address for the representation of ETH on the l2.
     function l2Eth() external view returns (address);
 
-    // Returns the address of the wrapped native token for the L2.
-    function wrappedNativeToken() external view returns (WETH9Interface);
-
     // Returns the amount of gas the contract allocates for a token withdrawal.
     function l1Gas() external view returns (uint32);
 }
@@ -43,10 +40,6 @@ interface IOvm_SpokePool {
 contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
     using SafeERC20 for IERC20;
 
-    // Address for the wrapped native token on this chain. For Ovm standard bridges, we need to unwrap
-    // this token before initiating the withdrawal. Normally, it is 0x42..006, but there are instances
-    // where this address is different.
-    WETH9Interface public immutable wrappedNativeToken;
     // Address of the corresponding spoke pool on L2. This is to piggyback off of the spoke pool's supported
     // token routes/defined token bridges.
     IOvm_SpokePool public immutable spokePool;
@@ -60,6 +53,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
      * @notice Constructs the Ovm_WithdrawalAdapter.
      * @param _l2Usdc Address of native USDC on the L2.
      * @param _cctpTokenMessenger Address of the CCTP token messenger contract on L2.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on L2.
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network. For Ethereum, this
      * is 0.
      * @param _l2Gateway Address of the Optimism ERC20 L2 standard bridge contract.
@@ -71,15 +65,24 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
+        WETH9Interface _wrappedNativeToken,
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
         address _tokenRecipient,
         IOvm_SpokePool _spokePool
-    ) WithdrawalHelperBase(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId, _l2Gateway, _tokenRecipient) {
+    )
+        WithdrawalHelperBase(
+            _l2Usdc,
+            _cctpTokenMessenger,
+            _wrappedNativeToken,
+            _destinationCircleDomainId,
+            _l2Gateway,
+            _tokenRecipient
+        )
+    {
         spokePool = _spokePool;
 
-        // These addresses should only change network-by-network, or after a bridge upgrade, so we define them once in the constructor.
-        wrappedNativeToken = spokePool.wrappedNativeToken();
+        // This address is immutable in the spoke pool so we query once and save its value locally.
         l2Eth = spokePool.l2Eth();
     }
 
@@ -111,7 +114,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
         uint32 l1Gas = spokePool.l1Gas();
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
-        if (l2Token == address(wrappedNativeToken)) {
+        if (l2Token == address(WRAPPED_NATIVE_TOKEN)) {
             WETH9Interface(l2Token).withdraw(amountToReturn); // Unwrap into ETH.
             l2Token = l2Eth; // Set the l2Token to ETH.
             IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToReturn }(

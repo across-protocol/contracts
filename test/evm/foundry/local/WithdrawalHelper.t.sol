@@ -18,26 +18,6 @@ import { WithdrawalHelperBase } from "../../../../contracts/chain-adapters/l2/Wi
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 
-contract Mock_Ovm_WithdrawalHelper is Ovm_WithdrawalHelper {
-    constructor(
-        IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger,
-        uint32 _destinationCircleDomainId,
-        address _l2Gateway,
-        address _tokenRecipient,
-        IOvm_SpokePool _spokePool
-    )
-        Ovm_WithdrawalHelper(
-            _l2Usdc,
-            _cctpTokenMessenger,
-            _destinationCircleDomainId,
-            _l2Gateway,
-            _tokenRecipient,
-            _spokePool
-        )
-    {}
-}
-
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -53,7 +33,7 @@ contract Token_ERC20 is ERC20 {
 contract WithdrawalAdapterTest is Test {
     uint32 constant fillDeadlineBuffer = type(uint32).max;
     Arbitrum_WithdrawalHelper arbitrumWithdrawalHelper;
-    Mock_Ovm_WithdrawalHelper ovmWithdrawalHelper;
+    Ovm_WithdrawalHelper ovmWithdrawalHelper;
     Base_SpokePool ovmSpokePool;
 
     L2GatewayRouter arbBridge;
@@ -136,6 +116,7 @@ contract WithdrawalAdapterTest is Test {
         arbitrumWithdrawalHelper = new Arbitrum_WithdrawalHelper(
             l2Usdc,
             tokenMessenger,
+            WETH9Interface(address(l2Weth)),
             CircleDomainIds.Ethereum,
             address(arbBridge),
             hubPool
@@ -148,9 +129,10 @@ contract WithdrawalAdapterTest is Test {
         );
         arbitrumWithdrawalHelper = Arbitrum_WithdrawalHelper(payable(proxy));
 
-        ovmWithdrawalHelper = new Mock_Ovm_WithdrawalHelper(
+        ovmWithdrawalHelper = new Ovm_WithdrawalHelper(
             l2Usdc,
             tokenMessenger,
+            WETH9Interface(address(l2Weth)),
             CircleDomainIds.Ethereum,
             address(ovmBridge),
             hubPool,
@@ -159,7 +141,7 @@ contract WithdrawalAdapterTest is Test {
         proxy = address(
             new ERC1967Proxy(address(ovmWithdrawalHelper), abi.encodeCall(Ovm_WithdrawalHelper.initialize, (hubPool)))
         );
-        ovmWithdrawalHelper = Mock_Ovm_WithdrawalHelper(payable(proxy));
+        ovmWithdrawalHelper = Ovm_WithdrawalHelper(payable(proxy));
     }
 
     // This test should call the gateway router contract.
@@ -182,10 +164,11 @@ contract WithdrawalAdapterTest is Test {
 
     // This test should call the OpStack standard bridge with l2Eth as the input token.
     function testWithdrawEthOvm(uint256 amountToReturn, address random) public {
-        // Give the withdrawal adapter some WETH.
-        vm.startPrank(address(ovmWithdrawalHelper));
-        vm.deal(address(ovmWithdrawalHelper), amountToReturn);
-        l2Weth.deposit{ value: amountToReturn }();
+        // Give the withdrawal adapter some ETH. The contract should automatically swap it into WETH.
+        vm.startPrank(random);
+        vm.deal(random, amountToReturn);
+        (bool success, ) = address(ovmWithdrawalHelper).call{ value: amountToReturn }("");
+        require(success, "Withdrawal Helper failed to receive ETH");
         vm.stopPrank();
 
         vm.expectEmit(address(ovmBridge));
@@ -226,7 +209,14 @@ contract WithdrawalAdapterTest is Test {
         l2CustomToken.mint(address(ovmWithdrawalHelper), amountToReturn);
 
         address newImplementation = address(
-            new Arbitrum_WithdrawalHelper(l2Usdc, tokenMessenger, CircleDomainIds.Ethereum, address(arbBridge), hubPool)
+            new Arbitrum_WithdrawalHelper(
+                l2Usdc,
+                tokenMessenger,
+                WETH9Interface(address(l2Weth)),
+                CircleDomainIds.Ethereum,
+                address(arbBridge),
+                hubPool
+            )
         );
 
         // Should revert if we are an unauthorized user.
