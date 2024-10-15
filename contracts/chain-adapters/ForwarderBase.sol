@@ -60,12 +60,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
 
     /**
      * @notice Receives the native token from external sources.
-     * @dev This forwarder may receive a native token from a bridge and must be able to accept it. It must also be able to continue bridging this native token
-     * to L3. By default, we will wrap the native token. We will only not wrap the native token when this contract calls `withdraw()` on the native token contract.
+     * @dev Forwarders need a receive function so that it may accept the native token incoming from L1-L2 bridges.
      */
-    receive() external payable {
-        if (msg.sender != address(WRAPPED_NATIVE_TOKEN)) WRAPPED_NATIVE_TOKEN.deposit{ value: msg.value }();
-    }
+    receive() external payable {}
 
     /**
      * @notice Initializes the forwarder contract.
@@ -139,6 +136,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
         if (adapter == address(0)) revert UninitializedChainAdapter();
+        if (baseToken == address(WRAPPED_NATIVE_TOKEN)) _wrapNativeToken();
 
         (bool success, ) = adapter.delegatecall(
             abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
@@ -159,6 +157,13 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         crossDomainAdmin = _newCrossDomainAdmin;
         emit SetXDomainAdmin(_newCrossDomainAdmin);
+    }
+
+    /*
+     * @notice Wraps the contract's entire balance of the native token.
+     */
+    function _wrapNativeToken() internal {
+        if (address(this).balance > 0) WRAPPED_NATIVE_TOKEN.deposit{ value: address(this).balance }();
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
