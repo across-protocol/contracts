@@ -193,12 +193,7 @@ pub fn execute_v3_slow_relay_leaf(
     root_bundle_id: u32,
     proof: Vec<[u8; 32]>,
 ) -> Result<()> {
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if ctx.accounts.state.current_time != 0 {
-        ctx.accounts.state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = get_current_time(&ctx.accounts.state)?;
 
     let relay_data = slow_fill_leaf.relay_data;
 
