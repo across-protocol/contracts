@@ -84,10 +84,10 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         cctpMessageTransmitter = _cctpMessageTransmitter;
 
         SOLANA_SPOKE_POOL_BYTES32 = solanaSpokePool;
-        SOLANA_SPOKE_POOL_ADDRESS = _mapSolanaAddress(solanaSpokePool);
+        SOLANA_SPOKE_POOL_ADDRESS = _trimSolanaAddress(solanaSpokePool);
 
         SOLANA_USDC_BYTES32 = solanaUsdc;
-        SOLANA_USDC_ADDRESS = _mapSolanaAddress(solanaUsdc);
+        SOLANA_USDC_ADDRESS = _trimSolanaAddress(solanaUsdc);
 
         SOLANA_SPOKE_POOL_USDC_VAULT = solanaSpokePoolUsdcVault;
     }
@@ -153,14 +153,14 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Helper to map a Solana address to an Ethereum address representation.
-     * @dev The Ethereum address is derived from the Solana address by hashing it and then truncating to its lowest 20
-     * bytes. This same conversion must be done by the HubPool owner when adding Solana spoke pool and setting the
-     * corresponding pool rebalance and deposit routes.
+     * @dev The Ethereum address is derived from the Solana address by truncating it to its lowest 20 bytes. This same
+     * conversion must be done by the HubPool owner when adding Solana spoke pool and setting the corresponding pool
+     * rebalance and deposit routes.
      * @param solanaAddress Solana address (Base58 decoded to bytes32) to map to its Ethereum address representation.
      * @return Ethereum address representation of the Solana address.
      */
-    function _mapSolanaAddress(bytes32 solanaAddress) internal pure returns (address) {
-        return address(uint160(uint256(keccak256(abi.encodePacked(solanaAddress)))));
+    function _trimSolanaAddress(bytes32 solanaAddress) internal pure returns (address) {
+        return address(uint160(uint256(solanaAddress)));
     }
 
     /**

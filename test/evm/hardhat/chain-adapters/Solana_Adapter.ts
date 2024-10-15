@@ -17,7 +17,7 @@ import {
   seedWallet,
   randomAddress,
   createRandomBytes32,
-  mapSolanaAddress,
+  trimSolanaAddress,
   toWeiWithDecimals,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
@@ -64,8 +64,8 @@ describe("Solana Chain Adapter", function () {
     solanaUsdcBytes32 = createRandomBytes32();
     solanaSpokePoolUsdcVaultBytes32 = createRandomBytes32();
 
-    solanaSpokePoolAddress = mapSolanaAddress(solanaSpokePoolBytes32);
-    solanaUsdcAddress = mapSolanaAddress(solanaUsdcBytes32);
+    solanaSpokePoolAddress = trimSolanaAddress(solanaSpokePoolBytes32);
+    solanaUsdcAddress = trimSolanaAddress(solanaUsdcBytes32);
 
     solanaAdapter = await (
       await getContractFactory("Solana_Adapter", owner)
