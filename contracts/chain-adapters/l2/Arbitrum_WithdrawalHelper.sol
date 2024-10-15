@@ -74,6 +74,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         if (l2Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(TOKEN_RECIPIENT, amountToReturn);
         } else {
+            if (l2Token == address(WRAPPED_NATIVE_TOKEN)) _depositNativeToken();
             // Otherwise, we use the Arbitrum ERC20 Gateway router.
             ArbitrumL2ERC20GatewayLike tokenBridge = ArbitrumL2ERC20GatewayLike(L2_TOKEN_GATEWAY);
             // If the gateway router's expected L2 token address does not match then revert. This check does not actually

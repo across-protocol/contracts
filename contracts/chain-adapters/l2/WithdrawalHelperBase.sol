@@ -72,13 +72,9 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     /**
      * @notice Receives the native token from bridge contracts.
      * @dev When bridging from L3 to the L2's native token, OpStack bridges will send the "unwrapped"/native token to the recipient on L2
-     * during withdrawals. This means that this contract must be able to accept value transfers. By default, we automatically wrap incoming
-     * ETH transfers, with the exception of an ETH transfer originating from the wrapped token contract. This is because this contract does
-     * want to send value transfers, but only after unwrapping WETH.
+     * during withdrawals. This means that this contract must be able to accept value transfers.
      */
-    receive() external payable {
-        if (msg.sender != address(WRAPPED_NATIVE_TOKEN)) WRAPPED_NATIVE_TOKEN.deposit{ value: msg.value }();
-    }
+    receive() external payable {}
 
     /**
      * @notice Initializes the withdrawal helper contract.
@@ -116,6 +112,13 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
         address l2Token,
         uint256 amountToReturn
     ) public virtual;
+
+    /*
+     * @notice Wraps the contract's entire balance of the native token.
+     */
+    function _depositNativeToken() internal virtual {
+        if (address(this).balance > 0) WRAPPED_NATIVE_TOKEN.deposit{ value: address(this).balance }();
+    }
 
     /*
      * @notice Checks that the L1 msg.sender is the `crossDomainAdmin` address.
