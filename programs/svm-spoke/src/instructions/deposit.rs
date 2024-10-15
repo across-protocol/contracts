@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     error::CustomError,
     event::V3FundsDeposited,
+    get_current_time,
     state::{Route, State},
 };
 
@@ -87,7 +88,7 @@ pub fn deposit_v3(
 
     require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
 
-    let current_time = state.get_current_time()?;
+    let current_time = get_current_time(state)?;
 
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
         return Err(CustomError::InvalidQuoteTimestamp.into());

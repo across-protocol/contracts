@@ -9,6 +9,7 @@ use crate::constraints::is_local_or_remote_owner;
 use crate::{
     error::CustomError,
     event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
+    initialize_current_time,
     state::{RootBundle, Route, State},
 };
 
@@ -50,7 +51,7 @@ pub fn initialize(
     state.deposit_quote_time_buffer = deposit_quote_time_buffer;
     state.fill_deadline_buffer = fill_deadline_buffer;
 
-    state.initialize_current_time()?; // Stores current time in test build (no-op in production).
+    initialize_current_time(state)?; // Stores current time in test build (no-op in production).
 
     Ok(())
 }

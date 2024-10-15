@@ -10,6 +10,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
+    get_current_time,
     state::{FillStatus, FillStatusAccount, RootBundle, State},
     utils::verify_merkle_proof,
 };
@@ -53,7 +54,7 @@ pub fn request_v3_slow_fill(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    let current_time = state.get_current_time()?;
+    let current_time = get_current_time(state)?;
 
     // Check if the fill is within the exclusivity window & fill deadline.
     //TODO: ensure the require blocks here are equivilelent to evm.

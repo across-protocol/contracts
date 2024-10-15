@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::State;
+use crate::{error::CustomError, state::State};
 
 #[derive(Accounts)]
 pub struct SetCurrentTime<'info> {
@@ -11,7 +11,38 @@ pub struct SetCurrentTime<'info> {
     pub signer: Signer<'info>,
 }
 
-pub fn set_current_time(ctx: Context<SetCurrentTime>, new_time: u32) -> Result<()> {
-    let state = &mut ctx.accounts.state;
-    state.set_current_time(new_time) // Stores new time in test build (error in production).
+pub fn set_current_time(ctx: Context<SetCurrentTime>, _new_time: u32) -> Result<()> {
+    let _state = &mut ctx.accounts.state;
+
+    #[cfg(not(feature = "test"))]
+    {
+        return err!(CustomError::CannotSetCurrentTime);
+    }
+
+    #[cfg(feature = "test")]
+    {
+        _state.current_time = _new_time;
+        Ok(())
+    }
+}
+
+pub fn initialize_current_time(_state: &mut State) -> Result<()> {
+    #[cfg(feature = "test")]
+    {
+        _state.current_time = Clock::get()?.unix_timestamp as u32;
+    }
+
+    Ok(())
+}
+
+pub fn get_current_time(_state: &State) -> Result<u32> {
+    #[cfg(not(feature = "test"))]
+    {
+        Ok(Clock::get()?.unix_timestamp as u32)
+    }
+
+    #[cfg(feature = "test")]
+    {
+        Ok(_state.current_time)
+    }
 }
