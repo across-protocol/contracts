@@ -192,4 +192,5 @@ export async function loadExecuteRelayerRefundLeafParams(
     const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
+  return instructionParams;
 }

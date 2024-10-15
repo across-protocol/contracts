@@ -10,6 +10,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
+    get_current_time,
     state::{FillStatus, FillStatusAccount, RootBundle, State},
     utils::verify_merkle_proof,
 };
@@ -53,12 +54,7 @@ pub fn request_v3_slow_fill(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = get_current_time(state)?;
 
     // Check if the fill is past the exclusivity window & within the fill deadline.
     if relay_data.exclusivity_deadline >= current_time {
