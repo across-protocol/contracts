@@ -48,6 +48,6 @@ contract WithdrawalHelperAdmin_Adapter is AdapterInterface {
         uint256,
         address
     ) external payable override {
-        revert("Cannot relay tokens to a forwarder");
+        revert("Cannot relay tokens to a withdrawal helper");
     }
 }
