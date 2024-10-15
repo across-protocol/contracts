@@ -146,8 +146,9 @@ pub fn fill_v3_relay(
     // Update the fill status to Filled and set the relayer
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
-
-    msg!("Tokens transferred successfully."); // TODO: remove msg! everywhere
+    
+    // TODO: remove msg! everywhere
+    msg!("Tokens transferred successfully.");
 
     // TODO: there might be a better way to do this
     // Emit the FilledV3Relay event
