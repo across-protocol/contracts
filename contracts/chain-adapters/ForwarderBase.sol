@@ -24,14 +24,16 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     // ID to be sent along with a message or token relay, ForwarderInterface's relay functions include an extra field, `destinationChainId`, when compared to the
     // relay functions of `AdapterInterface`.
     mapping(uint256 => address) chainAdapters;
+    // An array of which contains all token relays sent to this forwarder. A token relay is only stored here if it is received from the L1 cross domain admin.
+    // Each TokenRelay element contains a yes/no value describing whether or not the token relay has been executed. TokenRelays can only ever be executed once,
+    // but anybody can execute a stored TokenRelay in the array.
+    TokenRelay[] public tokenRelays;
 
     event ChainAdaptersUpdated(uint256 indexed destinationChainId, address l2Adapter);
     event SetXDomainAdmin(address indexed crossDomainAdmin);
 
     error InvalidCrossDomainAdmin();
     error InvalidChainAdapter();
-    error RelayMessageFailed();
-    error RelayTokensFailed(address baseToken);
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
     error UninitializedChainAdapter();
 
@@ -107,30 +109,60 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     }
 
     /**
-     * @notice Relays `amount` of a token to a contract on L3. Importantly, this contract assumes that `target` exists on L3.
-     * @param baseToken This layer's address of the token to send.
-     * @param destinationChainToken The next layer's address of the token to send.
+     * @notice Stores information about sending `amount` of a token to a target on L3. Importantly, this contract assumes that `target` exists on L3.
+     * @param l2Token This layer's address of the token to send.
+     * @param l3Token The next layer's address of the token to send.
      * @param amount The amount of the token to send.
      * @param destinationChainId The chain ID of the network which contains `target`.
-     * @param target The address of the contract that which will *ultimately* receive the tokens. For most cases, this is the spoke pool contract on L3.
+     * @param to The address of the contract that which will *ultimately* receive the tokens. For most cases, this is the spoke pool contract on L3.
      * @dev While `relayMessage` also assumes that `target` is correct, this function has the potential of deleting funds if `target` is incorrectly set.
      * This should be guarded by the logic of the Hub Pool on L1, since the Hub Pool will always set `target` to the L3 spoke pool per UMIP-157.
+     * @dev This function does not perform the bridging action. Instead, it receives information from the hub pool on L1 and saves it to state, so that it
+     * may be executed in the future by any EOA.
      */
     function relayTokens(
-        address baseToken,
-        address destinationChainToken,
+        address l2Token,
+        address l3Token,
         uint256 amount,
         uint256 destinationChainId,
-        address target
+        address to
     ) external payable override onlyAdmin {
-        address adapter = chainAdapters[destinationChainId];
+        uint32 tokenRelayId = uint32(tokenRelays.length);
+        // Create a TokenRelay struct with all the information provided.
+        TokenRelay memory tokenRelay = TokenRelay({
+            l2Token: l2Token,
+            l3Token: l3Token,
+            to: to,
+            amount: amount,
+            destinationChainId: destinationChainId,
+            executed: false
+        });
+        // Save the token relay to state.
+        tokenRelays.push(tokenRelay);
+        emit TokenRelayReceived(tokenRelayId, tokenRelay);
+    }
+
+    /**
+     * @notice Sends a stored TokenRelay to L3.
+     * @param tokenRelayId Index of the relay to send in the `tokenRelays` array.
+     */
+    function sendTokens(uint32 tokenRelayId) external payable {
+        TokenRelay storage tokenRelay = tokenRelays[tokenRelayId];
+        if (tokenRelay.executed) revert TokenRelayExecuted();
+
+        address adapter = chainAdapters[tokenRelay.destinationChainId];
         if (adapter == address(0)) revert UninitializedChainAdapter();
 
         (bool success, ) = adapter.delegatecall(
-            abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
+            abi.encodeCall(
+                AdapterInterface.relayTokens,
+                (tokenRelay.l2Token, tokenRelay.l3Token, tokenRelay.amount, tokenRelay.to)
+            )
         );
-        if (!success) revert RelayTokensFailed(baseToken);
-        emit TokensForwarded(baseToken, destinationChainToken, amount, destinationChainId, target);
+        if (!success) revert RelayTokensFailed(tokenRelay.l2Token);
+        tokenRelay.executed = true;
+
+        emit TokensForwarded(tokenRelayId);
     }
 
     // Function to be overridden in order to authenticate that messages sent to this contract originated

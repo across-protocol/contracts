@@ -7,15 +7,25 @@ pragma solidity ^0.8.0;
  */
 
 interface ForwarderInterface {
-    event MessageForwarded(address indexed target, uint256 indexed chainId, bytes message);
+    // A TokenRelay defines all the information a forwarder needs to send tokens to an L3.
+    struct TokenRelay {
+        // The address of the token on L2 to send to L3.
+        address l2Token;
+        // The address of the token on L3 to receive.
+        address l3Token;
+        // The L3 address of the recipient.
+        address to;
+        // The amount of the L2 token to send over the L2-L3 bridge.
+        uint256 amount;
+        // The chain ID of the L3 to send tokens to.
+        uint256 destinationChainId;
+        // A yes/no value for determining whether the token relay which was stored has been executed.
+        bool executed;
+    }
 
-    event TokensForwarded(
-        address baseToken,
-        address remoteToken,
-        uint256 amount,
-        uint256 indexed destinationChainId,
-        address indexed to
-    );
+    event MessageForwarded(address indexed target, uint256 indexed chainId, bytes message);
+    event TokenRelayReceived(uint32 indexed tokenRelayId, TokenRelay tokenRelay);
+    event TokensForwarded(uint32 indexed tokenRelayId);
 
     /**
      * @notice Send message to `target` on L3.
@@ -50,4 +60,8 @@ interface ForwarderInterface {
         uint256 destinationChainId,
         address to
     ) external payable;
+
+    error RelayMessageFailed();
+    error RelayTokensFailed(address l2Token);
+    error TokenRelayExecuted();
 }

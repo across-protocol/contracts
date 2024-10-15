@@ -17,6 +17,7 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitrum_Forwarder.sol";
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
+import { ForwarderInterface } from "../../../../contracts/chain-adapters/interfaces/ForwarderInterface.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -87,13 +88,26 @@ contract ForwarderTest is Test {
         vm.stopPrank();
     }
 
-    // Token relays should be routed through the Optimism Adapter's `relayTokens` function.
+    // Token relays should first be saved to state (when called by the cross domain admin).
+    // In a follow-up `sendTokens` call, tokens should then be routed through the Optimism
+    // Adapter's `relayTokens` function.
     function testForwardTokens(uint256 amountToSend, address random) public {
         l2Token.mint(address(arbitrumForwarder), amountToSend);
         vm.expectRevert();
         arbitrumForwarder.relayTokens(address(l2Token), address(l3Token), amountToSend, L3_CHAIN_ID, random);
 
+        // Save token info to state.
         vm.startPrank(aliasedOwner);
+        vm.expectEmit(address(arbitrumForwarder));
+        emit ForwarderInterface.TokenRelayReceived(
+            0,
+            ForwarderInterface.TokenRelay(address(l2Token), address(l3Token), random, amountToSend, L3_CHAIN_ID, false)
+        );
+        arbitrumForwarder.relayTokens(address(l2Token), address(l3Token), amountToSend, L3_CHAIN_ID, random);
+        vm.stopPrank();
+
+        // Execute a saved token relay.
+        vm.startPrank(random);
         vm.expectEmit(address(standardBridge));
         emit MockBedrockL1StandardBridge.ERC20DepositInitiated(
             random,
@@ -101,7 +115,11 @@ contract ForwarderTest is Test {
             address(l3Token),
             amountToSend
         );
-        arbitrumForwarder.relayTokens(address(l2Token), address(l3Token), amountToSend, L3_CHAIN_ID, random);
+        arbitrumForwarder.sendTokens(0);
+
+        // Verify a relay cannot be executed twice.
+        vm.expectRevert(ForwarderInterface.TokenRelayExecuted.selector);
+        arbitrumForwarder.sendTokens(0);
         vm.stopPrank();
     }
 
