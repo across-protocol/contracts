@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ForwarderInterface } from "./interfaces/ForwarderInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
+import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 /**
  * @title ForwarderBase
@@ -15,7 +16,7 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
  * bridge. In other words, this contract maintains a mapping of important contracts which helps transmit messages to the "next layer".
  * @custom:security-contact bugs@across.to
  */
-abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
+abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCaller {
     // Address that can relay messages using this contract and also upgrade this contract.
     address public crossDomainAdmin;
 
