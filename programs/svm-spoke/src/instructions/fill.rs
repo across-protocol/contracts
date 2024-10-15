@@ -22,7 +22,7 @@ pub struct FillV3Relay<'info> {
         mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()], // TODO: make consistent decision where to put owner constraints
         bump,
-        constraint = !state.paused_fills @ CustomError::FillsArePaused 
+        constraint = !state.paused_fills @ CustomError::FillsArePaused
     )]
     pub state: Account<'info, State>,
 
@@ -127,7 +127,8 @@ pub fn fill_v3_relay(
     }
 
     // Invoke the transfer_checked instruction on the token program
-    let transfer_accounts = TransferChecked { // TODO: check what happens if the relayer and recipient are the same
+    let transfer_accounts = TransferChecked {
+        // TODO: check what happens if the relayer and recipient are the same
         from: ctx.accounts.relayer_token_account.to_account_info(),
         mint: ctx.accounts.mint_account.to_account_info(),
         to: ctx.accounts.recipient_token_account.to_account_info(),
@@ -146,7 +147,7 @@ pub fn fill_v3_relay(
     // Update the fill status to Filled and set the relayer
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
-    
+
     // TODO: remove msg! everywhere
     msg!("Tokens transferred successfully.");
 
