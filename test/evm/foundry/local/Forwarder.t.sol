@@ -99,7 +99,7 @@ contract ForwarderTest is Test {
         // Save token info to state.
         vm.startPrank(aliasedOwner);
         vm.expectEmit(address(arbitrumForwarder));
-        emit ForwarderInterface.TokenRelayReceived(
+        emit ForwarderInterface.ReceivedTokenRelay(
             0,
             ForwarderInterface.TokenRelay(address(l2Token), address(l3Token), random, amountToSend, L3_CHAIN_ID, false)
         );
@@ -115,11 +115,11 @@ contract ForwarderTest is Test {
             address(l3Token),
             amountToSend
         );
-        arbitrumForwarder.sendTokens(0);
+        arbitrumForwarder.executeRelayTokens(0);
 
         // Verify a relay cannot be executed twice.
         vm.expectRevert(ForwarderInterface.TokenRelayExecuted.selector);
-        arbitrumForwarder.sendTokens(0);
+        arbitrumForwarder.executeRelayTokens(0);
         vm.stopPrank();
     }
 

@@ -24,8 +24,8 @@ interface ForwarderInterface {
     }
 
     event MessageForwarded(address indexed target, uint256 indexed chainId, bytes message);
-    event TokenRelayReceived(uint32 indexed tokenRelayId, TokenRelay tokenRelay);
-    event TokensForwarded(uint32 indexed tokenRelayId);
+    event ReceivedTokenRelay(uint32 indexed tokenRelayId, TokenRelay tokenRelay);
+    event ExecutedTokenRelay(uint32 indexed tokenRelayId);
 
     /**
      * @notice Send message to `target` on L3.

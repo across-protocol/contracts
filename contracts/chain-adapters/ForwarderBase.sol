@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { ForwarderInterface } from "./interfaces/ForwarderInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
@@ -16,7 +17,7 @@ import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCall
  * bridge. In other words, this contract maintains a mapping of important contracts which helps transmit messages to the "next layer".
  * @custom:security-contact bugs@across.to
  */
-abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCaller {
+abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCaller, ReentrancyGuardUpgradeable {
     // Address that can relay messages using this contract and also upgrade this contract.
     address public crossDomainAdmin;
 
@@ -140,20 +141,21 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
         });
         // Save the token relay to state.
         tokenRelays.push(tokenRelay);
-        emit TokenRelayReceived(tokenRelayId, tokenRelay);
+        emit ReceivedTokenRelay(tokenRelayId, tokenRelay);
     }
 
     /**
      * @notice Sends a stored TokenRelay to L3.
      * @param tokenRelayId Index of the relay to send in the `tokenRelays` array.
      */
-    function sendTokens(uint32 tokenRelayId) external payable {
+    function executeRelayTokens(uint32 tokenRelayId) external payable nonReentrant {
         TokenRelay storage tokenRelay = tokenRelays[tokenRelayId];
         if (tokenRelay.executed) revert TokenRelayExecuted();
 
         address adapter = chainAdapters[tokenRelay.destinationChainId];
         if (adapter == address(0)) revert UninitializedChainAdapter();
 
+        tokenRelay.executed = true;
         (bool success, ) = adapter.delegatecall(
             abi.encodeCall(
                 AdapterInterface.relayTokens,
@@ -161,9 +163,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
             )
         );
         if (!success) revert RelayTokensFailed(tokenRelay.l2Token);
-        tokenRelay.executed = true;
 
-        emit TokensForwarded(tokenRelayId);
+        emit ExecutedTokenRelay(tokenRelayId);
     }
 
     // Function to be overridden in order to authenticate that messages sent to this contract originated
