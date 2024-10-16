@@ -49,13 +49,13 @@ task("verify-spokepool", "Verify the configuration of a deployed SpokePool")
     assert(wrappedNative === expectedWrappedNative, `wrappedNativeToken: ${wrappedNative} != ${expectedWrappedNative}`);
     console.log("SpokePool.wrappedNativeToken()".padEnd(TEXT_PADDING) + ": " + wrappedNative);
 
-    const hubPool = await spokePool.hubPool();
-    console.log("SpokePool.hubPool()".padEnd(TEXT_PADDING) + ": " + hubPool);
-    assert(hubPool === hubAddress, `HubPool: ${hubPool} != ${hubAddress}`);
+    const withdrawalRecipient = await spokePool.withdrawalRecipient();
+    console.log("SpokePool.withdrawalRecipient()".padEnd(TEXT_PADDING) + ": " + withdrawalRecipient);
+    assert(withdrawalRecipient === hubAddress, `withdrawalRecipient: ${withdrawalRecipient} != ${hubAddress}`);
 
     const admin = await spokePool.crossDomainAdmin();
     console.log("SpokePool.crossDomainAdmin()".padEnd(TEXT_PADDING) + ": " + admin);
-    assert(admin === hubPool, `${admin} != ${hubPool}`);
+    assert(admin === hubAddress, `${admin} != ${hubAddress}`);
 
     // Log EnabledDepositRoute on SpokePool to test that L1 message arrived to L2:
     const filter = spokePool.filters.EnabledDepositRoute();
