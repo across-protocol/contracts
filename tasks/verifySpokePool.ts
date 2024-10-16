@@ -2,7 +2,6 @@ import assert from "assert";
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { SpokePool__factory } from "../typechain";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
 const { MAINNET, POLYGON, SEPOLIA } = CHAIN_IDs;
@@ -16,7 +15,7 @@ const formatChainId = (chainId: number): string => chainId.toString().padStart(C
 task("verify-spokepool", "Verify the configuration of a deployed SpokePool")
   .addFlag("routes", "Dump deposit route history (if any)")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
-    const { ethers, companionNetworks, getChainId, network } = hre;
+    const { deployments, ethers, companionNetworks, getChainId, network } = hre;
     const spokeChainId = parseInt(await getChainId());
     const hubChainId = Object.values(MAINNET_CHAIN_IDs).includes(spokeChainId) ? MAINNET : SEPOLIA;
 
@@ -25,8 +24,9 @@ task("verify-spokepool", "Verify the configuration of a deployed SpokePool")
 
     const provider = new ethers.providers.StaticJsonRpcProvider(network.config.url);
 
-    // Initialize contracts:
-    const spokePool = await SpokePool__factory.connect(spokeAddress, provider);
+    // Initialize contracts. Only generic SpokePool functions are used, so Ethereum_SpokePool is OK.
+    const { abi } = await deployments.get("Ethereum_SpokePool");
+    const spokePool = new ethers.Contract(spokeAddress, abi, provider);
 
     // Log state from SpokePool
     const originChainId = await spokePool.chainId();
