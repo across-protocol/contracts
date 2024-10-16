@@ -78,10 +78,9 @@ impl<'info> BridgeTokensToHubPool<'info> {
         amount: u64,
         bumps: &BridgeTokensToHubPoolBumps,
     ) -> Result<()> {
-        require!(
-            amount <= self.transfer_liability.pending_to_hub_pool,
-            CustomError::ExceededPendingBridgeAmount
-        );
+        if amount > self.transfer_liability.pending_to_hub_pool {
+            return err!(CustomError::ExceededPendingBridgeAmount);
+        }
         self.transfer_liability.pending_to_hub_pool -= amount;
 
         // Invoke CCTP to bridge vault tokens from state account.
