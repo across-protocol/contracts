@@ -3,10 +3,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "BondToken";
-  const { deployments, getChainId, getNamedAccounts, run } = hre;
-  const { deployer } = await getNamedAccounts();
-
-  const chainId = await getChainId();
+  const { deployments } = hre;
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = await hre.getChainId();
   const hubPool = await deployments.get("HubPool");
   console.log(`Using chain ${chainId} HubPool @ ${hubPool.address}.`);
 
@@ -18,7 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [hubPool.address],
   });
 
-  await run("verify:verify", { address: deployment.address, constructorArguments });
+  await hre.run("verify:verify", { address: deployment.address, constructorArguments });
 };
 module.exports = func;
 func.dependencies = ["HubPool"];

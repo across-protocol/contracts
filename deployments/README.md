@@ -1,5 +1,10 @@
 # Across Mainnet Deployment Addresses
 
+All of the SpokePool addresses listed here are [upgradeable proxy](https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/2d081f24cac1a867f6f73d512f2022e1fa987854/contracts/proxy/utils/UUPSUpgradeable.sol) contract addresses. If you want to get implementation contract information (ABI, bytecode, addresses) then go to the relevant folder in this directory for the contract and chain you are looking for. You can read more about the proxy upgradeability pattern we use [here](https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/2d081f24cac1a867f6f73d512f2022e1fa987854/contracts/proxy/README.adoc)
+
+The [`deployments.json`](./deployments.json) file also maintains the most up to date **proxy (i.e.not implementation)** addresses and you should view it as the source of truth in case it differs from this `README`.
+This is because this `deployments.json` file is used by bots in [`@across-protocol/relayer`](https://github.com/across-protocol/relayer) and [`@across-protocol/sdk`](https://github.com/across-protocol/sdk) to programmatically load the latest contract addresses. This `README` is not a dependency in those repositories so it is more likely to be out of sync with the latest addresses.
+
 ## Mainnet (1)
 
 | Contract Name       | Address                                                                                                               |
@@ -20,6 +25,9 @@
 | Lisk Adapter        | [0x8229E812f20537caA1e8Fb41749b4887B8a75C3B](https://etherscan.io/address/0x8229E812f20537caA1e8Fb41749b4887B8a75C3B) |
 | Blast Adapter       | [0xF2bEf5E905AAE0295003ab14872F811E914EdD81](https://etherscan.io/address/0xF2bEf5E905AAE0295003ab14872F811E914EdD81) |
 | Scroll Adapter      | [0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F](https://etherscan.io/address/0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F) |
+| Redstone Adapter    | [0x188F8C95B7cfB7993B53a4F643efa687916f73fA](https://etherscan.io/address/0x188F8C95B7cfB7993B53a4F643efa687916f73fA) |
+| Zora Adapter        | [0x024F2fC31CBDD8de17194b1892c834f98Ef5169b](https://etherscan.io/address/0x024F2fC31CBDD8de17194b1892c834f98Ef5169b) |
+| WorldChain Adapter  | [0x8eBebfc894047bEE213A561b8792fCa71241731f](https://etherscan.io/address/0x8eBebfc894047bEE213A561b8792fCa71241731f) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
@@ -108,3 +116,10 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## World Chain mainnet (480)
+
+| Contract Name        | Address                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| WorldChain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet.explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler     | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

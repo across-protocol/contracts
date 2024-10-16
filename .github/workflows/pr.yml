@@ -6,53 +6,105 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16]
+        node:
+          - 20
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
+      - name: "Use Node ${{ matrix.node }}"
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Setup Anchor & Build
+        uses: metadaoproject/setup-anchor@v2
+        with:
+          anchor-version: 0.30.1
+          solana-cli-version: 1.18.21
+          node-version: 20
+      - name: Create keypair
+        run: solana-keygen new --no-bip39-passphrase
+        shell: bash
+      - name: Install Cargo toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustc
       - name: Install packages
         run: yarn install --frozen-lockfile
-      - name: Lint
-        run: yarn lint
+      - name: Lint js
+        shell: bash
+        run: yarn lint-js
+      - name: Lint solidity
+        shell: bash
+        run: yarn lint-solidity
+      - name: Lint rust
+        shell: bash
+        run: yarn lint-rust
   test:
     name: Test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16]
+        node:
+          - 20
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
+      - name: "Use Node ${{ matrix.node }}"
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Setup Anchor & Build
+        uses: metadaoproject/setup-anchor@v2
+        with:
+          anchor-version: 0.30.1
+          solana-cli-version: 1.18.21
+          node-version: 20
+      - name: Create keypair
+        run: solana-keygen new --no-bip39-passphrase
+        shell: bash
+      - name: Install Cargo toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustc
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Build
         run: yarn build
-      - name: Test
-        run: yarn test
+      - name: Test evm-hardhat
+        shell: bash
+        run: yarn test-evm
+      - name: Test svm-anchor
+        shell: bash
+        run: yarn test-svm
   forge:
     name: Forge
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16]
+        node:
+          - 20
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
+      - name: "Use Node ${{ matrix.node }}"
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Setup Anchor & Build
+        uses: metadaoproject/setup-anchor@v2
+        with:
+          anchor-version: 0.30.1
+          solana-cli-version: 1.18.21
+          node-version: 20
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Install Foundry
@@ -61,23 +113,5 @@ jobs:
         run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
-      - name: Run forge test
-        run: forge test --match-path test/foundry/local/**/*.t.sol
-  solhint:
-    name: Solhint
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [16]
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
-      - name: Install packages
-        run: yarn install --frozen-lockfile
-      - name: Solhint
-        run: yarn lint-contracts
+      - name: Test evm-foundry
+        run: forge test --match-path test/evm/foundry/local/**/*.t.sol

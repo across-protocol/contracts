@@ -1,18 +1,15 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
-
 import { getDeployedAddress } from "../src/DeploymentUtils";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 import { L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { getChainId, deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { BASE } = CHAIN_IDs;
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  const chainId = parseInt(await getChainId());
-  const { deployer } = await getNamedAccounts();
-
-  await deploy("1inch_SwapAndBridge", {
+  await hre.deployments.deploy("1inch_SwapAndBridge", {
     contract: "SwapAndBridge",
     from: deployer,
     log: true,
@@ -35,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         "0xea76dddf",
         "0xf7a70056",
       ],
-      TOKEN_SYMBOLS_MAP[chainId === 8453 ? "USDbC" : "USDC.e"].addresses[chainId],
+      TOKEN_SYMBOLS_MAP[chainId === BASE ? "USDbC" : "USDC.e"].addresses[chainId],
       TOKEN_SYMBOLS_MAP.USDC.addresses[chainId],
     ],
   });

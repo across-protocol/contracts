@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
+import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
@@ -48,21 +49,22 @@ contract ZkSync_SpokePool is SpokePool {
      * relay hash collisions.
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
         l2Eth = 0x000000000000000000000000000000000000800A;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setZkBridge(_zkErc20Bridge);
     }
 
     modifier onlyFromCrossDomainAdmin() {
-        require(msg.sender == _applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
+        require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
     }
 
@@ -106,9 +108,9 @@ contract ZkSync_SpokePool is SpokePool {
         if (l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
-            IL2ETH(l2Eth).withdraw{ value: amountToReturn }(hubPool);
+            IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
         } else {
-            zkErc20Bridge.withdraw(hubPool, l2TokenAddress, amountToReturn);
+            zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
         }
     }
 
@@ -116,15 +118,6 @@ contract ZkSync_SpokePool is SpokePool {
         address oldErc20Bridge = address(zkErc20Bridge);
         zkErc20Bridge = _zkErc20Bridge;
         emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
-    }
-
-    // L1 addresses are transformed during l1->l2 calls.
-    // See https://github.com/matter-labs/era-contracts/blob/main/docs/Overview.md#mailboxfacet for more information.
-    // Another source: https://github.com/matter-labs/era-contracts/blob/41c25aa16d182f757c3fed1463c78a81896f65e6/ethereum/contracts/vendor/AddressAliasHelper.sol#L28
-    function _applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-        unchecked {
-            l2Address = address(uint160(l1Address) + uint160(0x1111000000000000000000000000000000001111));
-        }
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
