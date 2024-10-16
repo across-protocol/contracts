@@ -1,4 +1,10 @@
-use anchor_lang::prelude::*;
+use bincode;
+use serde::Deserialize;
+
+use anchor_lang::{
+    prelude::*,
+    solana_program::{instruction::Instruction, program},
+};
 
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{
@@ -92,6 +98,54 @@ pub struct V3RelayData {
     pub message: Vec<u8>,
 }
 
+#[derive(Deserialize)]
+struct Call {
+    target: Pubkey,
+    call_data: Vec<u8>,
+    value: u128,
+}
+
+#[derive(Deserialize)]
+struct Instructions {
+    calls: Vec<Call>,
+    fallback_recipient: Pubkey,
+}
+
+fn handle_v3_across_message(remaining_accounts: &[AccountInfo], message: &Vec<u8>) -> Result<()> {
+    // Decode the message into Instructions
+    let instructions: Instructions =
+        bincode::deserialize(&message).map_err(|_| CustomError::InvalidMessageFormat)?;
+
+    for call in instructions.calls {
+        // Check if the target is a valid prgram
+        let target_account_info = remaining_accounts
+            .iter()
+            .find(|account| account.key == &call.target)
+            .ok_or(CustomError::InvalidTarget)?;
+
+        // If the owner is not the system program then we know that the target is a valid program.
+        if target_account_info.owner != &solana_program::system_program::ID.to_bytes().into() {
+            return Err(CustomError::InvalidTarget.into());
+        }
+
+        // Execute the call
+        let ix = Instruction {
+            program_id: Pubkey::new_from_array(call.target.to_bytes()),
+            accounts: vec![],
+            data: call.call_data,
+        };
+
+        program::invoke(&ix, remaining_accounts)?;
+    }
+
+    // Handle fallback recipient logic if needed
+    if instructions.fallback_recipient != Pubkey::default() {
+        // Logic to handle leftover tokens or fallback actions
+    }
+
+    Ok(())
+}
+
 pub fn fill_v3_relay(
     ctx: Context<FillV3Relay>,
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
@@ -152,8 +206,6 @@ pub fn fill_v3_relay(
     msg!("Tokens transferred successfully.");
 
     // Emit the FilledV3Relay event
-    let message_clone = relay_data.message.clone(); // Clone the message before it is moved
-
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
@@ -168,14 +220,19 @@ pub fn fill_v3_relay(
         relayer: *ctx.accounts.signer.key,
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
-        message: relay_data.message,
+        message: relay_data.message.clone(),
         relay_execution_info: V3RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message: message_clone,
+            updated_message: relay_data.message.clone(),
             updated_output_amount: relay_data.output_amount,
             fill_type: FillType::FastFill,
         },
     });
+
+    // Invoke the helper function if the message field is not empty
+    if !relay_data.message.clone().is_empty() {
+        handle_v3_across_message(&ctx.remaining_accounts, &relay_data.message.clone())?;
+    }
 
     Ok(())
 }
