@@ -12,7 +12,13 @@ import {
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  createMint,
+  getAssociatedTokenAddressSync,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import {
   loadExecuteRelayerRefundLeafParams,
   relayerRefundHashFn,
@@ -644,177 +650,231 @@ describe("svm_spoke.bundle", () => {
     }
   });
 
-  it("Execute Max Refunds", async () => {
-    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
-
-    // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
-    // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
-    // protocol does not expect this to be above 25.
-    const solanaDistributions = 28;
-
-    // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
-    const evmDistributions = 100; // This would fit in 7 proof array elements.
-
-    const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
-
-    const refundAccounts: anchor.web3.PublicKey[] = [];
-    const refundAmounts: BN[] = [];
-
-    for (let i = 0; i < solanaDistributions; i++) {
-      const newRefundAccount = (
-        await getOrCreateAssociatedTokenAccount(connection, payer, mint, Keypair.generate().publicKey)
-      ).address;
-      refundAccounts.push(newRefundAccount);
-      refundAmounts.push(new BN(randomBigInt(2).toString()));
+  describe("Execute Max Refunds", () => {
+    enum TestType {
+      TokenAccounts,
+      ClaimAccounts,
+      MixedAccounts,
     }
 
-    relayerRefundLeaves.push({
-      isSolana: true,
-      leafId: new BN(0),
-      chainId: chainId,
-      amountToReturn: new BN(0),
-      mintPublicKey: mint,
-      refundAccounts: refundAccounts,
-      refundAmounts: refundAmounts,
-    });
+    const executeMaxRefunds = async (testType: TestType) => {
+      const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+      // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
+      // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
+      // protocol does not expect this to be above 25.
+      const solanaDistributions = 28;
 
-    for (let i = 0; i < evmDistributions; i++) {
-      relayerRefundLeaves.push({
-        isSolana: false,
-        leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
-        chainId: randomBigInt(2),
-        amountToReturn: randomBigInt(),
-        l2TokenAddress: randomAddress(),
-        refundAddresses: [randomAddress(), randomAddress()],
-        refundAmounts: [randomBigInt(), randomBigInt()],
-      } as RelayerRefundLeaf);
-    }
+      // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
+      const evmDistributions = 100; // This would fit in 7 proof array elements.
 
-    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+      const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
-    const root = merkleTree.getRoot();
-    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
-    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+      const refundAccounts: anchor.web3.PublicKey[] = []; // These would hold either token accounts or claim accounts.
+      const tokenAccounts: anchor.web3.PublicKey[] = []; // These are used in leaf building.
+      const refundAmounts: BN[] = [];
 
-    let stateAccountData = await program.account.state.fetch(state);
-    const rootBundleId = stateAccountData.rootBundleId;
+      for (let i = 0; i < solanaDistributions; i++) {
+        // Will create token account later if needed.
+        const tokenOwner = Keypair.generate().publicKey;
+        const tokenAccount = getAssociatedTokenAddressSync(mint, tokenOwner);
+        tokenAccounts.push(tokenAccount);
 
-    const rootBundleIdBuffer = Buffer.alloc(4);
-    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
-    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+        const [claimAccount] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), tokenAccount.toBuffer()],
+          program.programId
+        );
 
-    // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
-    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+        if (testType === TestType.TokenAccounts) {
+          await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
+          refundAccounts.push(tokenAccount);
+        } else if (testType === TestType.ClaimAccounts) {
+          await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
+          refundAccounts.push(claimAccount);
+        } else if (testType === TestType.MixedAccounts) {
+          if (i % 2 === 0) {
+            await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
+            refundAccounts.push(tokenAccount);
+          } else {
+            await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
+            refundAccounts.push(claimAccount);
+          }
+        }
 
-    // Verify valid leaf
-    const proofAsNumbers = proof.map((p) => Array.from(p));
-
-    const [instructionParams] = PublicKey.findProgramAddressSync(
-      [Buffer.from("instruction_params"), owner.toBuffer()],
-      program.programId
-    );
-
-    // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
-    // but also all static accounts.
-    const staticAccounts = {
-      instructionParams,
-      state: state,
-      rootBundle: rootBundle,
-      signer: owner,
-      vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      mint: mint,
-      transferLiability,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      // Appended by Acnhor `event_cpi` macro:
-      eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
-      program: program.programId,
-    };
-
-    const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
-
-    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
-    const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
-
-    // Create instructions for creating and extending the ALT.
-    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: owner,
-      payer: owner,
-      recentSlot: await connection.getSlot(),
-    });
-
-    // Submit the ALT creation transaction
-    await anchor.web3.sendAndConfirmTransaction(
-      connection,
-      new anchor.web3.Transaction().add(lookupTableInstruction),
-      [payer],
-      {
-        skipPreflight: true, // Avoids recent slot mismatch in simulation.
+        refundAmounts.push(new BN(randomBigInt(2).toString()));
       }
-    );
 
-    // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
-    for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
-      const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-        lookupTable: lookupTableAddress,
-        authority: owner,
-        payer: owner,
-        addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
+      relayerRefundLeaves.push({
+        isSolana: true,
+        leafId: new BN(0),
+        chainId: chainId,
+        amountToReturn: new BN(0),
+        mintPublicKey: mint,
+        refundAccounts: tokenAccounts,
+        refundAmounts: refundAmounts,
       });
 
+      for (let i = 0; i < evmDistributions; i++) {
+        relayerRefundLeaves.push({
+          isSolana: false,
+          leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
+          chainId: randomBigInt(2),
+          amountToReturn: randomBigInt(),
+          l2TokenAddress: randomAddress(),
+          refundAddresses: [randomAddress(), randomAddress()],
+          refundAmounts: [randomBigInt(), randomBigInt()],
+        } as RelayerRefundLeaf);
+      }
+
+      const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+      const root = merkleTree.getRoot();
+      const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+      const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+      const stateAccountData = await program.account.state.fetch(state);
+      const rootBundleId = stateAccountData.rootBundleId;
+
+      const rootBundleIdBuffer = Buffer.alloc(4);
+      rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+      // Relay root bundle
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+      // Verify valid leaf
+      const proofAsNumbers = proof.map((p) => Array.from(p));
+
+      const [instructionParams] = PublicKey.findProgramAddressSync(
+        [Buffer.from("instruction_params"), owner.toBuffer()],
+        program.programId
+      );
+
+      // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
+      // but also all static accounts.
+      const staticAccounts = {
+        instructionParams,
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        // Appended by Acnhor `event_cpi` macro:
+        eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
+        program: program.programId,
+      };
+
+      const remainingAccounts = refundAccounts.map((account) => ({
+        pubkey: account,
+        isWritable: true,
+        isSigner: false,
+      }));
+
+      // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
+      const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
+
+      // Create instructions for creating and extending the ALT.
+      const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
+        authority: owner,
+        payer: owner,
+        recentSlot: await connection.getSlot(),
+      });
+
+      // Submit the ALT creation transaction
       await anchor.web3.sendAndConfirmTransaction(
         connection,
-        new anchor.web3.Transaction().add(extendInstruction),
+        new anchor.web3.Transaction().add(lookupTableInstruction),
         [payer],
         {
           skipPreflight: true, // Avoids recent slot mismatch in simulation.
         }
       );
-    }
 
-    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
+      for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
+        const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+          lookupTable: lookupTableAddress,
+          authority: owner,
+          payer: owner,
+          addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
+        });
 
-    // Fetch the AddressLookupTableAccount
-    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
-    assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
+        await anchor.web3.sendAndConfirmTransaction(
+          connection,
+          new anchor.web3.Transaction().add(extendInstruction),
+          [payer],
+          {
+            skipPreflight: true, // Avoids recent slot mismatch in simulation.
+          }
+        );
+      }
 
-    // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
-    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+      // Avoids invalid ALT index as ALT might not be active yet on the following tx.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const executeInstruction = await program.methods
-      .executeRelayerRefundLeaf()
-      .accounts(staticAccounts)
-      .remainingAccounts(remainingAccounts)
-      .instruction();
+      // Fetch the AddressLookupTableAccount
+      const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
+      assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
 
-    // Build the instruction to increase the CU limit as the default 200k is not sufficient.
-    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
+      // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-    // Create the versioned transaction
-    const versionedTx = new VersionedTransaction(
-      new TransactionMessage({
-        payerKey: owner,
-        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        instructions: [computeBudgetInstruction, executeInstruction],
-      }).compileToV0Message([lookupTableAccount])
-    );
+      const executeInstruction = await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(staticAccounts)
+        .remainingAccounts(remainingAccounts)
+        .instruction();
 
-    // Sign and submit the versioned transaction.
-    versionedTx.sign([payer]);
-    await connection.sendTransaction(versionedTx);
+      // Build the instruction to increase the CU limit as the default 200k is not sufficient.
+      const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
 
-    // Verify all refund account balances.
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
-    const refundBalances = await Promise.all(
-      refundAccounts.map(async (account) => {
-        return (await connection.getTokenAccountBalance(account)).value.amount;
-      })
-    );
-    refundBalances.forEach((balance, i) => {
-      assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+      // Create the versioned transaction
+      const versionedTx = new VersionedTransaction(
+        new TransactionMessage({
+          payerKey: owner,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+          instructions: [computeBudgetInstruction, executeInstruction],
+        }).compileToV0Message([lookupTableAccount])
+      );
+
+      // Sign and submit the versioned transaction.
+      versionedTx.sign([payer]);
+      await connection.sendTransaction(versionedTx);
+
+      // Verify all refund account balances (either token or claim accounts).
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
+      const refundBalances = await Promise.all(
+        refundAccounts.map(async (account, i) => {
+          if (testType === TestType.TokenAccounts) {
+            return (await connection.getTokenAccountBalance(account)).value.amount;
+          } else if (testType === TestType.ClaimAccounts) {
+            return (await program.account.claimAccount.fetch(account)).amount.toString();
+          } else if (testType === TestType.MixedAccounts) {
+            return i % 2 === 0
+              ? (await connection.getTokenAccountBalance(account)).value.amount
+              : (await program.account.claimAccount.fetch(account)).amount.toString();
+          }
+        })
+      );
+      refundBalances.forEach((balance, i) => {
+        assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+      });
+    };
+
+    it("Execute Max Refunds to Token Accounts", async () => {
+      await executeMaxRefunds(TestType.TokenAccounts);
+    });
+
+    it("Execute Max Refunds to Claim Accounts", async () => {
+      await executeMaxRefunds(TestType.ClaimAccounts);
+    });
+
+    it("Execute Max Refunds to Mixed Accounts", async () => {
+      await executeMaxRefunds(TestType.MixedAccounts);
     });
   });
 
