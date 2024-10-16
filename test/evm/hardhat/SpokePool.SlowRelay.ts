@@ -217,7 +217,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         )
       )
         .to.emit(spokePool, "PreLeafExecuteHook")
-        .withArgs(bytes32ToAddress(slowRelayLeaf.relayData.outputToken));
+        .withArgs(slowRelayLeaf.relayData.outputToken.toLowerCase());
     });
     it("cannot execute leaves with chain IDs not matching spoke pool's chain ID", async function () {
       // In this test, the merkle proof is valid for the tree relayed to the spoke pool, but the merkle leaf

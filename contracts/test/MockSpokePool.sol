@@ -28,7 +28,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         );
 
     event BridgedToHubPool(uint256 amount, address token);
-    event PreLeafExecuteHook(address token);
+    event PreLeafExecuteHook(bytes32 token);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
@@ -129,7 +129,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         return currentTime;
     }
 
-    function _preExecuteLeafHook(address token) internal override {
+    function _preExecuteLeafHook(bytes32 token) internal override {
         emit PreLeafExecuteHook(token);
     }
 

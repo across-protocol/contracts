@@ -23,6 +23,7 @@ interface IL2ETH {
  * @custom:security-contact bugs@across.to
  */
 contract ZkSync_SpokePool is SpokePool {
+    using AddressToBytes32 for address;
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost
     // upon contract deployment. On zkSync the opposite is true: deploying the same bytecode for contracts,
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
@@ -87,8 +88,8 @@ contract ZkSync_SpokePool is SpokePool {
      * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      */
-    function _preExecuteLeafHook(address l2TokenAddress) internal override {
-        if (l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+    function _preExecuteLeafHook(bytes32 l2TokenAddress) internal override {
+        if (l2TokenAddress == address(wrappedNativeToken).toBytes32()) _depositEthToWeth();
     }
 
     // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because

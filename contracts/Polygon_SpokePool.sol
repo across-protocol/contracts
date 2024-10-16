@@ -114,9 +114,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         _setFxChild(_fxChild);
     }
 
-    /********************************************************
+    /**
+     *
      *    POLYGON-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
-     ********************************************************/
+     *
+     */
 
     /**
      * @notice Change FxChild address. Callable only by admin via processMessageFromRoot.
@@ -145,7 +147,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param data ABI encoded function call to execute on this contract.
      */
     function processMessageFromRoot(
-        uint256, /*stateId*/
+        uint256,
+        /*stateId*/
         address rootMessageSender,
         bytes calldata data
     ) public validateInternalCalls {
@@ -202,7 +205,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * whereby someone batches this call with a bunch of other calls and produces a very large L2 burn transaction.
      * This might make the L2 -> L1 message fail due to exceeding the L1 calldata limit.
      */
-
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
@@ -216,10 +218,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
-    /**************************************
+    /**
+     *
      *        INTERNAL FUNCTIONS          *
-     **************************************/
-
+     *
+     */
     function _setFxChild(address _fxChild) internal {
         //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
@@ -231,7 +234,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         emit SetPolygonTokenBridger(address(_polygonTokenBridger));
     }
 
-    function _preExecuteLeafHook(address) internal override {
+    function _preExecuteLeafHook(bytes32) internal override {
         // Wraps MATIC --> WMATIC before distributing tokens from this contract.
         _wrap();
     }

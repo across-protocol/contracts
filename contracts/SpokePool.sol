@@ -1009,7 +1009,7 @@ abstract contract SpokePool is
     ) public override nonReentrant {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
-        _preExecuteLeafHook(relayData.outputToken.toAddress());
+        _preExecuteLeafHook(relayData.outputToken);
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
@@ -1041,7 +1041,7 @@ abstract contract SpokePool is
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public payable virtual override nonReentrant {
-        _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
+        _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress.toBytes32());
 
         if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
 
@@ -1210,7 +1210,7 @@ abstract contract SpokePool is
         emit SetHubPool(newHubPool);
     }
 
-    function _preExecuteLeafHook(address) internal virtual {
+    function _preExecuteLeafHook(bytes32) internal virtual {
         // This method by default is a no-op. Different child spoke pools might want to execute functionality here
         // such as wrapping any native tokens owned by the contract into wrapped tokens before proceeding with
         // executing the leaf.
