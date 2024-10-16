@@ -1,26 +1,27 @@
 use anchor_lang::prelude::*;
 
+// TODO: standardize imports across all files
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
+// TODO: check that the discriminator size is used everywhere
 use crate::constants::DISCRIMINATOR_SIZE;
 use crate::constraints::is_local_or_remote_owner;
 
 use crate::{
     error::CustomError,
     event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
+    initialize_current_time,
     state::{RootBundle, Route, State},
 };
-
-//TODO: there is too much in this file now and it should be split up somewhat.
 
 #[derive(Accounts)]
 #[instruction(seed: u64)]
 pub struct Initialize<'info> {
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
-              space = DISCRIMINATOR_SIZE + State::INIT_SPACE,
-              seeds = [b"state", seed.to_le_bytes().as_ref()],
+              space = DISCRIMINATOR_SIZE + State::INIT_SPACE, // TODO: check that INIT_SPACE is used everywhere
+              seeds = [b"state", seed.to_le_bytes().as_ref()], // TODO: can we set a blank seed? or something better?
               bump)]
     pub state: Account<'info, State>,
 
@@ -37,7 +38,6 @@ pub fn initialize(
     chain_id: u64,                  // Across definition of chainId for Solana.
     remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
     cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
-    testable_mode: bool, // If the contract is in testable mode, enabling time manipulation.
     deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
     fill_deadline_buffer: u32, // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
@@ -48,13 +48,11 @@ pub fn initialize(
     state.chain_id = chain_id;
     state.remote_domain = remote_domain;
     state.cross_domain_admin = cross_domain_admin;
-    state.current_time = if testable_mode {
-        Clock::get()?.unix_timestamp as u32
-    } else {
-        0
-    }; // Set current_time to system time if testable_mode is true, else 0
     state.deposit_quote_time_buffer = deposit_quote_time_buffer;
     state.fill_deadline_buffer = fill_deadline_buffer;
+
+    initialize_current_time(state)?; // Stores current time in test build (no-op in production).
+
     Ok(())
 }
 
@@ -109,11 +107,12 @@ pub struct TransferOwnership<'info> {
 
     #[account(
         mut,
-        address = state.owner @ CustomError::NotOwner
+        address = state.owner @ CustomError::NotOwner // TODO: test permissioning with a multi-sig and Squads
     )]
     pub signer: Signer<'info>,
 }
 
+// TODO: check that the recovery flow is similar to the one in EVM
 pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = new_owner;
@@ -140,6 +139,7 @@ pub fn set_cross_domain_admin(
     let state = &mut ctx.accounts.state;
     state.cross_domain_admin = cross_domain_admin;
 
+    // TODO: add lint to make this a 1-liner
     emit_cpi!(SetXDomainAdmin {
         new_admin: cross_domain_admin,
     });
@@ -149,7 +149,7 @@ pub fn set_cross_domain_admin(
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(origin_token: [u8; 32], destination_chain_id: u64)]
+#[instruction(origin_token: [u8; 32], destination_chain_id: u64)] // TODO: is it possible to replace origin_token with Pubkey?
 pub struct SetEnableRoute<'info> {
     #[account(
         mut,
@@ -160,6 +160,7 @@ pub struct SetEnableRoute<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    // TODO: check if state needs to be mut here and in other places
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
@@ -218,11 +219,12 @@ pub struct RelayRootBundle<'info> {
     )]
     pub signer: Signer<'info>,
 
+    // TODO: standardize usage of state.seed vs state.key()
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
-    #[account(init,
+    #[account(init, // TODO: add comment explaining why init
         payer = signer,
         space = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE,
         seeds =[b"root_bundle", state.key().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
@@ -242,5 +244,9 @@ pub fn relay_root_bundle(
     root_bundle.relayer_refund_root = relayer_refund_root;
     root_bundle.slow_relay_root = slow_relay_root;
     state.root_bundle_id += 1;
+
+    // TODO: add event
     Ok(())
 }
+
+// TODO: add emergency_delete_root_bundle

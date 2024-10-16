@@ -10,6 +10,7 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::CustomError,
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
+    get_current_time,
     state::{FillStatus, FillStatusAccount, State},
 };
 
@@ -19,7 +20,7 @@ use crate::{
 pub struct FillV3Relay<'info> {
     #[account(
         mut,
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()], // TODO: make consistent decision where to put owner constraints
         bump,
         constraint = !state.paused_fills @ CustomError::FillsArePaused
     )]
@@ -39,14 +40,14 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mut,
-        token::token_program = token_program,
+        token::token_program = token_program, // TODO: consistent token imports
         address = relay_data.output_token @ CustomError::InvalidMint
     )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        associated_token::mint = mint_account,
+        associated_token::mint = mint_account, // TODO: consistent token imports
         associated_token::authority = relayer,
         associated_token::token_program = token_program
     )]
@@ -64,7 +65,7 @@ pub struct FillV3Relay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
@@ -76,7 +77,9 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)] // TODO: do we need all of these?
+
+// TODO: should we move this data structure to a common module?
 pub struct V3RelayData {
     pub depositor: Pubkey,
     pub recipient: Pubkey,
@@ -100,12 +103,7 @@ pub fn fill_v3_relay(
     repayment_address: Pubkey,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = get_current_time(state)?;
 
     // Check the fill status
     let fill_status_account = &mut ctx.accounts.fill_status;
@@ -131,6 +129,7 @@ pub fn fill_v3_relay(
 
     // Invoke the transfer_checked instruction on the token program
     let transfer_accounts = TransferChecked {
+        // TODO: check what happens if the relayer and recipient are the same
         from: ctx.accounts.relayer_token_account.to_account_info(),
         mint: ctx.accounts.mint_account.to_account_info(),
         to: ctx.accounts.recipient_token_account.to_account_info(),
@@ -150,8 +149,10 @@ pub fn fill_v3_relay(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
+    // TODO: remove msg! everywhere
     msg!("Tokens transferred successfully.");
 
+    // TODO: there might be a better way to do this
     // Emit the FilledV3Relay event
     let message_clone = relay_data.message.clone(); // Clone the message before it is moved
 
@@ -189,7 +190,7 @@ pub struct CloseFillPda<'info> {
 
     #[account(
         mut,
-        address = fill_status.relayer @ CustomError::NotRelayer
+        address = fill_status.relayer @ CustomError::NotRelayer // TODO: check that this doesn't break PR 653
     )]
     pub signer: Signer<'info>,
 
@@ -210,12 +211,7 @@ pub fn close_fill_pda(
     relay_data: V3RelayData,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = get_current_time(state)?;
 
     // Check if the fill status is filled
     require!(

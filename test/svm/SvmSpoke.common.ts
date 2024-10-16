@@ -36,7 +36,6 @@ const initializeState = async (
     chainId: BN;
     remoteDomain: BN;
     crossDomainAdmin: PublicKey;
-    testableMode: boolean;
     depositQuoteTimeBuffer: BN;
     fillDeadlineBuffer: BN;
   }
@@ -50,7 +49,6 @@ const initializeState = async (
       chainId,
       remoteDomain,
       crossDomainAdmin,
-      testableMode: true,
       depositQuoteTimeBuffer,
       fillDeadlineBuffer,
     };
@@ -63,7 +61,6 @@ const initializeState = async (
       initialState.chainId,
       initialState.remoteDomain.toNumber(),
       initialState.crossDomainAdmin,
-      initialState.testableMode,
       initialState.depositQuoteTimeBuffer.toNumber(),
       initialState.fillDeadlineBuffer.toNumber()
     )
