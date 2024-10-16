@@ -20,6 +20,7 @@ import {
   seedWallet,
   FakeContract,
   createFakeFromABI,
+  addressToBytes32,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -334,8 +335,16 @@ describe("Polygon Spoke Pool", function () {
       message: "0x1234",
     };
     const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, repaymentChainId]),
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, repaymentChainId]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+        relayData,
+        repaymentChainId,
+        addressToBytes32(relayer.address),
+      ]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+        { ...relayData, depositId: 1 },
+        repaymentChainId,
+        addressToBytes32(relayer.address),
+      ]),
     ];
     const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
 

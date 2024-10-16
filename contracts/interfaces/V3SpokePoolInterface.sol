@@ -23,9 +23,9 @@ interface V3SpokePoolInterface {
         // to know when to send excess funds from the SpokePool to the HubPool because they can no longer be used
         // for a slow fill execution.
         SlowFill
-        // Slow fills are requested via requestSlowFill and executed by executeSlowRelayLeaf after a bundle containing
-        // the slow fill is validated.
     }
+    // Slow fills are requested via requestSlowFill and executed by executeSlowRelayLeaf after a bundle containing
+    // the slow fill is validated.
 
     /**************************************
      *              STRUCTS               *
@@ -132,7 +132,7 @@ interface V3SpokePoolInterface {
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         address exclusiveRelayer,
-        address indexed relayer,
+        bytes32 indexed relayer,
         address depositor,
         address recipient,
         bytes message,
@@ -196,11 +196,16 @@ interface V3SpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId) external;
+    function fillV3Relay(
+        V3RelayData calldata relayData,
+        uint256 repaymentChainId,
+        bytes32 repaymentAddress
+    ) external;
 
     function fillV3RelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
+        bytes32 repaymentAddress,
         uint256 updatedOutputAmount,
         address updatedRecipient,
         bytes calldata updatedMessage,
