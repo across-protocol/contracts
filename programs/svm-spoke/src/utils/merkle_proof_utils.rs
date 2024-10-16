@@ -1,6 +1,4 @@
-use anchor_lang::prelude::*;
-
-use anchor_lang::solana_program::keccak;
+use anchor_lang::{prelude::*, solana_program::keccak};
 
 use crate::{error::CustomError, instructions::V3RelayData};
 
