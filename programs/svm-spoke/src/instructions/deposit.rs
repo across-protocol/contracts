@@ -20,7 +20,7 @@ use anchor_spl::token_interface::{
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64,
+    destination_chain_id: u64, // TODO: we can remove some of these instructions props
     exclusive_relayer: Pubkey,
     quote_timestamp: u32,
     fill_deadline: u32,
@@ -36,6 +36,7 @@ pub struct DepositV3<'info> {
     )]
     pub state: Account<'info, State>,
 
+    // TODO: linter to format this line
     #[account(mut, seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
     pub route: Account<'info, Route>,
 
@@ -58,6 +59,7 @@ pub struct DepositV3<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
+    // TODO: why are we using mint::token_program,token::token_program and associated_token::token_program?
     #[account(
         mut,
         mint::token_program = token_program,
@@ -133,3 +135,5 @@ pub fn deposit_v3(
 
     Ok(())
 }
+
+// TODO: do we need other flavours of deposit? like speed up deposit
