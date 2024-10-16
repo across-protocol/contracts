@@ -2,9 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
-import "../interfaces/V3SpokePoolInterface.sol";
+import "../SpokePool.sol";
 import "../external/interfaces/IPermit2.sol";
+import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
@@ -12,18 +14,32 @@ import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
  * that it sends to the SpokePool contract.
  * @custom:security-contact bugs@across.to
  */
-contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
+contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
     using Bytes32ToAddress for bytes32;
+    event SetDestinationSettler(
+        uint256 indexed chainId,
+        bytes32 indexed prevDestinationSettler,
+        bytes32 indexed destinationSettler
+    );
 
-    V3SpokePoolInterface public immutable SPOKE_POOL;
+    SpokePool public immutable SPOKE_POOL;
+
+    // Mapping of chainIds to destination settler addresses.
+    mapping(uint256 => bytes32) public destinationSettlers;
 
     constructor(
-        V3SpokePoolInterface _spokePool,
+        SpokePool _spokePool,
         IPermit2 _permit2,
         uint256 _quoteBeforeDeadline
     ) ERC7683OrderDepositor(_permit2, _quoteBeforeDeadline) {
         SPOKE_POOL = _spokePool;
+    }
+
+    function setDestinationSettler(uint256 chainId, bytes32 destinationSettler) external {
+        bytes32 prevDestinationSettler = destinationSettlers[chainId];
+        destinationSettlers[chainId] = destinationSettler;
+        emit SetDestinationSettler(chainId, prevDestinationSettler, destinationSettler);
     }
 
     function _callDeposit(
@@ -56,5 +72,13 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor {
             exclusivityDeadline,
             message
         );
+    }
+
+    function _currentDepositId() internal view override returns (uint32) {
+        return SPOKE_POOL.numberOfDeposits();
+    }
+
+    function _destinationSettler(uint256 chainId) internal view override returns (bytes32) {
+        return destinationSettlers[chainId];
     }
 }

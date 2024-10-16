@@ -31,48 +31,49 @@ const argv = yargs(hideBin(process.argv))
     return true;
   }).argv;
 
-const seed = new anchor.BN(argv.seed);
-const pause = argv.pause;
-const resumeRemoteTx = argv.resumeRemoteTx;
-
-// Set up Ethereum provider.
-if (!process.env.ETHERS_PROVIDER_URL) {
-  throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
-}
-const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
-if (!process.env.ETHERS_MNEMONIC) {
-  throw new Error("Environment variable ETHERS_MNEMONIC is not set");
-}
-const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
-
-// CCTP domains.
-const remoteDomain = 0; // Ethereum
-const localDomain = 5; // Solana
-
-// Get Solana programs and accounts.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new anchor.Program<SvmSpoke>(svmSpokeIdl, provider);
-const [statePda, _] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  svmSpokeProgram.programId
-);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const messageTransmitterProgram = new anchor.Program<MessageTransmitter>(messageTransmitterIdl, provider);
-const [messageTransmitterState] = PublicKey.findProgramAddressSync(
-  [Buffer.from("message_transmitter")],
-  messageTransmitterProgram.programId
-);
-const [authorityPda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("message_transmitter_authority"), svmSpokeProgram.programId.toBuffer()],
-  messageTransmitterProgram.programId
-);
-const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
-const [eventAuthority] = PublicKey.findProgramAddressSync(
-  [Buffer.from("__event_authority")],
-  svmSpokeProgram.programId
-);
-
 async function remotePauseDeposits(): Promise<void> {
+  const resolvedArgv = await argv;
+  const seed = new anchor.BN(resolvedArgv.seed);
+  const pause = resolvedArgv.pause;
+  const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
+
+  // Set up Ethereum provider.
+  if (!process.env.ETHERS_PROVIDER_URL) {
+    throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
+  }
+  const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
+  if (!process.env.ETHERS_MNEMONIC) {
+    throw new Error("Environment variable ETHERS_MNEMONIC is not set");
+  }
+  const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
+
+  // CCTP domains.
+  const remoteDomain = 0; // Ethereum
+  const localDomain = 5; // Solana
+
+  // Get Solana programs and accounts.
+  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
+  const svmSpokeProgram = new anchor.Program<SvmSpoke>(svmSpokeIdl, provider);
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+    svmSpokeProgram.programId
+  );
+  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
+  const messageTransmitterProgram = new anchor.Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const [messageTransmitterState] = PublicKey.findProgramAddressSync(
+    [Buffer.from("message_transmitter")],
+    messageTransmitterProgram.programId
+  );
+  const [authorityPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("message_transmitter_authority"), svmSpokeProgram.programId.toBuffer()],
+    messageTransmitterProgram.programId
+  );
+  const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
+  const [eventAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from("__event_authority")],
+    svmSpokeProgram.programId
+  );
+
   let cluster: "devnet" | "mainnet";
   const rpcEndpoint = provider.connection.rpcEndpoint;
   if (rpcEndpoint.includes("devnet")) cluster = "devnet";
@@ -210,7 +211,7 @@ async function remotePauseDeposits(): Promise<void> {
       message: Buffer.from(message.replace("0x", ""), "hex"),
       attestation: Buffer.from(attestation.replace("0x", ""), "hex"),
     })
-    .accounts(receiveMessageAccounts)
+    .accounts(receiveMessageAccounts as any)
     .remainingAccounts(remainingAccounts)
     .rpc();
   console.log("\nReceived remote message");

@@ -82,18 +82,19 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      * @param _l2Eth Address of L2 ETH token. Usually should be Lib_PreeployAddresses.OVM_ETH but sometimes this can
      * be different, like with Boba which flips the WETH and OVM_ETH addresses.
      */
     function __OvmSpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool,
+        address _withdrawalRecipient,
         address _l2Eth
     ) public onlyInitializing {
         l1Gas = 5_000_000;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         //slither-disable-next-line missing-zero-check
         l2Eth = _l2Eth;
     }
@@ -155,7 +156,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
             l2TokenAddress = l2Eth; // Set the l2TokenAddress to ETH.
             IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToReturn }(
                 l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                withdrawalRecipient, // _to. Withdraw, over the bridge, to the l1 pool contract.
                 amountToReturn, // _amount.
                 l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                 "" // _data. We don't need to send any data for the bridging action.
@@ -163,7 +164,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         }
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
-            _transferUsdc(hubPool, amountToReturn);
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         }
         // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
         // the l2TokenAddress. withdrawTo should be used to bridge back non-native L2 tokens
@@ -187,7 +188,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
                     // remoteL1Token on the other chain does not recognize the local token as the correct
                     // pair token, the ERC20 bridge will fail and the tokens will be returned to sender on
                     // this chain.
-                    hubPool, // _to
+                    withdrawalRecipient, // _to
                     amountToReturn, // _amount
                     l1Gas, // _l1Gas
                     "" // _data
@@ -195,7 +196,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
             } else {
                 tokenBridge.withdrawTo(
                     l2TokenAddress, // _l2Token. Address of the L2 token to bridge over.
-                    hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                    withdrawalRecipient, // _to. Withdraw, over the bridge, to the l1 pool contract.
                     amountToReturn, // _amount.
                     l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
                     "" // _data. We don't need to send any data for the bridging action.

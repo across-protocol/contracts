@@ -64,7 +64,8 @@ contract Linea_SpokePool is SpokePool {
      * @param _l2TokenBridge Address of Canonical Token Bridge. Can be reset by admin.
      * @param _l2UsdcBridge Address of USDC Bridge. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
@@ -72,9 +73,9 @@ contract Linea_SpokePool is SpokePool {
         ITokenBridge _l2TokenBridge,
         IUSDCBridge _l2UsdcBridge,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setL2TokenBridge(_l2TokenBridge);
         _setL2MessageService(_l2MessageService);
         _setL2UsdcBridge(_l2UsdcBridge);
@@ -157,17 +158,17 @@ contract Linea_SpokePool is SpokePool {
             // before the execution of any wrapped token refund leaf. So it must be unwrapped before being sent as a
             // fee to the l2MessageService.
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn + msg.value); // Unwrap into ETH.
-            l2MessageService.sendMessage{ value: amountToReturn + msg.value }(hubPool, msg.value, "");
+            l2MessageService.sendMessage{ value: amountToReturn + msg.value }(withdrawalRecipient, msg.value, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
         else if (l2TokenAddress == l2UsdcBridge.usdc()) {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2UsdcBridge), amountToReturn);
-            l2UsdcBridge.depositTo{ value: msg.value }(amountToReturn, hubPool);
+            l2UsdcBridge.depositTo{ value: msg.value }(amountToReturn, withdrawalRecipient);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
-            l2TokenBridge.bridgeToken{ value: msg.value }(l2TokenAddress, amountToReturn, hubPool);
+            l2TokenBridge.bridgeToken{ value: msg.value }(l2TokenAddress, amountToReturn, withdrawalRecipient);
         }
     }
 

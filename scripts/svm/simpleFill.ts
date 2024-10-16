@@ -30,39 +30,40 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" })
   .option("message", { type: "string", demandOption: false, describe: "Message" }).argv;
 
-const depositor = new PublicKey(argv.depositor);
-const recipient = new PublicKey(argv.recipient);
-const exclusiveRelayer = new PublicKey(argv.exclusiveRelayer || "11111111111111111111111111111111");
-const inputToken = new PublicKey(argv.inputToken);
-const outputToken = new PublicKey(argv.outputToken);
-const inputAmount = new BN(argv.inputAmount);
-const outputAmount = new BN(argv.outputAmount);
-const originChainId = new BN(argv.originChainId);
-const depositId = argv.depositId;
-const fillDeadline = argv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
-const exclusivityDeadline = argv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
-const message = Buffer.from(argv.message || "");
-const seed = new BN(argv.seed);
-
-const relayData = {
-  depositor,
-  recipient,
-  exclusiveRelayer,
-  inputToken,
-  outputToken,
-  inputAmount,
-  outputAmount,
-  originChainId,
-  depositId,
-  fillDeadline,
-  exclusivityDeadline,
-  message,
-};
-
-// Define the signer (replace with your actual signer)
-const signer = provider.wallet.publicKey;
-
 async function fillV3Relay(): Promise<void> {
+  const resolvedArgv = await argv;
+  const depositor = new PublicKey(resolvedArgv.depositor);
+  const recipient = new PublicKey(resolvedArgv.recipient);
+  const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || "11111111111111111111111111111111");
+  const inputToken = new PublicKey(resolvedArgv.inputToken);
+  const outputToken = new PublicKey(resolvedArgv.outputToken);
+  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const outputAmount = new BN(resolvedArgv.outputAmount);
+  const originChainId = new BN(resolvedArgv.originChainId);
+  const depositId = resolvedArgv.depositId;
+  const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
+  const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
+  const message = Buffer.from(resolvedArgv.message || "");
+  const seed = new BN(resolvedArgv.seed);
+
+  const relayData = {
+    depositor,
+    recipient,
+    exclusiveRelayer,
+    inputToken,
+    outputToken,
+    inputAmount,
+    outputAmount,
+    originChainId,
+    depositId,
+    fillDeadline,
+    exclusivityDeadline,
+    message,
+  };
+
+  // Define the signer (replace with your actual signer)
+  const signer = provider.wallet.publicKey;
+
   console.log("Filling V3 Relay...");
 
   // Define the state account PDA

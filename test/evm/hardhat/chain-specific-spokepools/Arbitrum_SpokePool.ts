@@ -96,9 +96,9 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Only cross domain owner can set the hub pool address", async function () {
-    await expect(arbitrumSpokePool.setHubPool(rando.address)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).setHubPool(rando.address);
-    expect(await arbitrumSpokePool.hubPool()).to.equal(rando.address);
+    await expect(arbitrumSpokePool.setWithdrawalRecipient(rando.address)).to.be.reverted;
+    await arbitrumSpokePool.connect(crossDomainAlias).setWithdrawalRecipient(rando.address);
+    expect(await arbitrumSpokePool.withdrawalRecipient()).to.equal(rando.address);
   });
 
   it("Only cross domain owner can initialize a relayer refund", async function () {

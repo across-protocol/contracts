@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("E5USYAs9DUzn6ykrWZXuEkbCnY3kzNMPGNFH2okvUvqe");
+declare_id!("Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q");
 
 // External programs from idls directory (requires `anchor run generateExternalTypes`).
 declare_program!(message_transmitter);
@@ -29,7 +29,6 @@ pub mod svm_spoke {
         chain_id: u64,
         remote_domain: u32,
         cross_domain_admin: Pubkey,
-        testable_mode: bool,
         deposit_quote_time_buffer: u32,
         fill_deadline_buffer: u32,
     ) -> Result<()> {
@@ -40,7 +39,6 @@ pub mod svm_spoke {
             chain_id,
             remote_domain,
             cross_domain_admin,
-            testable_mode,
             deposit_quote_time_buffer,
             fill_deadline_buffer,
         )

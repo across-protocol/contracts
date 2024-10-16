@@ -50,16 +50,17 @@ contract ZkSync_SpokePool is SpokePool {
      * relay hash collisions.
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
         ZkBridgeLike _zkErc20Bridge,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
         l2Eth = 0x000000000000000000000000000000000000800A;
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setZkBridge(_zkErc20Bridge);
     }
 
@@ -108,9 +109,9 @@ contract ZkSync_SpokePool is SpokePool {
         if (l2TokenAddress == address(wrappedNativeToken)) {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
-            IL2ETH(l2Eth).withdraw{ value: amountToReturn }(hubPool);
+            IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
         } else {
-            zkErc20Bridge.withdraw(hubPool, l2TokenAddress, amountToReturn);
+            zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
         }
     }
 

@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     error::CustomError,
     event::V3FundsDeposited,
+    get_current_time,
     state::{Route, State},
 };
 
@@ -87,12 +88,11 @@ pub fn deposit_v3(
 
     require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
 
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = get_current_time(state)?;
 
+    // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction
+    // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
+    // not caught via overflow.
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
         return Err(CustomError::InvalidQuoteTimestamp.into());
     }

@@ -68,7 +68,7 @@
     },
     {
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
-      "label": "hubPool",
+      "label": "withdrawalRecipient",
       "offset": 0,
       "slot": "2154"
     },

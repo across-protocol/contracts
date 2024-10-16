@@ -20,27 +20,28 @@ const argv = yargs(hideBin(process.argv))
   .option("chainId", { type: "string", demandOption: true, describe: "Chain ID" })
   .option("enabled", { type: "boolean", demandOption: true, describe: "Enable or disable the route" }).argv;
 
-const seed = new BN(argv.seed);
-const originToken = Array.from(new PublicKey(argv.originToken).toBytes()); // Convert to number[]
-const chainId = new BN(argv.chainId);
-const enabled = argv.enabled;
-
-// Define the state account PDA
-const [statePda, _] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
-// Define the route account PDA
-const [routePda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("route"), Buffer.from(originToken), chainId.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
-// Define the signer (replace with your actual signer)
-const signer = provider.wallet.publicKey;
-
 async function enableRoute(): Promise<void> {
+  const resolvedArgv = await argv;
+  const seed = new BN(resolvedArgv.seed);
+  const originToken = Array.from(new PublicKey(resolvedArgv.originToken).toBytes());
+  const chainId = new BN(resolvedArgv.chainId);
+  const enabled = resolvedArgv.enabled;
+
+  // Define the state account PDA
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
+  // Define the route account PDA
+  const [routePda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("route"), Buffer.from(originToken), statePda.toBytes(), chainId.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
+  // Define the signer (replace with your actual signer)
+  const signer = provider.wallet.publicKey;
+
   console.log("Enabling route...");
   console.table([
     { Property: "seed", Value: seed.toString() },

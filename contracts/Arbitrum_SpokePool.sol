@@ -42,15 +42,16 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
      * relay hash collisions.
      * @param _l2GatewayRouter Address of L2 token gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setL2GatewayRouter(_l2GatewayRouter);
     }
 
@@ -87,7 +88,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
-            _transferUsdc(hubPool, amountToReturn);
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
@@ -95,7 +96,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
             //slither-disable-next-line unused-return
             ArbitrumL2ERC20GatewayLike(l2GatewayRouter).outboundTransfer(
                 ethereumTokenToBridge, // _l1Token. Address of the L1 token to bridge over.
-                hubPool, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
+                withdrawalRecipient, // _to. Withdraw, over the bridge, to the l1 hub pool contract.
                 amountToReturn, // _amount.
                 "" // _data. We don't need to send any data for the bridging action.
             );

@@ -19,15 +19,17 @@ const argv = yargs(hideBin(process.argv)).option("seed", {
   describe: "Seed for the state account PDA",
 }).argv;
 
-const seed = new BN(argv.seed);
-
-// Define the state account PDA
-const [statePda, _] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-  programId
-);
-
 async function queryState(): Promise<void> {
+  const resolvedArgv = await argv;
+
+  const seed = new BN(resolvedArgv.seed);
+
+  // Define the state account PDA
+  const [statePda, _] = PublicKey.findProgramAddressSync(
+    [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+
   console.log("Querying state...");
   console.table([
     { Property: "seed", Value: seed.toString() },
@@ -40,9 +42,16 @@ async function queryState(): Promise<void> {
     console.log("State fetched successfully:");
     console.table([
       { Property: "Owner", Value: state.owner.toString() },
-      { Property: "Deposits Enabled", Value: !state.pausedDeposits },
+      { Property: "Deposits Paused", Value: state.pausedDeposits },
+      { Property: "Fills Paused", Value: state.pausedFills },
       { Property: "Number of Deposits", Value: state.numberOfDeposits.toString() },
-      { Property: "Chain ID", Value: state.chainId.toString() }, // Added chainId
+      { Property: "Chain ID", Value: state.chainId.toString() },
+      { Property: "Current Time", Value: state.currentTime.toString() },
+      { Property: "Remote Domain", Value: state.remoteDomain.toString() },
+      { Property: "Cross Domain Admin", Value: state.crossDomainAdmin.toString() },
+      { Property: "Root Bundle ID", Value: state.rootBundleId.toString() },
+      { Property: "Deposit Quote Time Buffer", Value: state.depositQuoteTimeBuffer.toString() },
+      { Property: "Fill Deadline Buffer", Value: state.fillDeadlineBuffer.toString() },
     ]);
   } catch (error) {
     console.error("An error occurred while fetching the state:", error);
