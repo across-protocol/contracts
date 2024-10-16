@@ -1,14 +1,13 @@
 use anchor_lang::prelude::*;
 
-// TODO: standardize imports across all files
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
-
-// TODO: check that the discriminator size is used everywhere
-use crate::constants::DISCRIMINATOR_SIZE;
-use crate::constraints::is_local_or_remote_owner;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 
 use crate::{
+    constants::DISCRIMINATOR_SIZE,
+    constraints::is_local_or_remote_owner,
     error::CustomError,
     event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
     initialize_current_time,
@@ -20,7 +19,7 @@ use crate::{
 pub struct Initialize<'info> {
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
-              space = DISCRIMINATOR_SIZE + State::INIT_SPACE, // TODO: check that INIT_SPACE is used everywhere
+              space = DISCRIMINATOR_SIZE + State::INIT_SPACE,
               seeds = [b"state", seed.to_le_bytes().as_ref()], // TODO: can we set a blank seed? or something better?
               bump)]
     pub state: Account<'info, State>,

@@ -1,11 +1,16 @@
-use crate::error::CustomError;
-use crate::message_transmitter::program::MessageTransmitter;
-use crate::token_messenger_minter::{
-    self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter, types::DepositForBurnParams,
-};
-use crate::{State, TransferLiability};
 use anchor_lang::prelude::*;
+
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+
+use crate::{
+    error::CustomError,
+    message_transmitter::program::MessageTransmitter,
+    token_messenger_minter::{
+        self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter,
+        types::DepositForBurnParams,
+    },
+    State, TransferLiability,
+};
 
 #[derive(Accounts)]
 pub struct BridgeTokensToHubPool<'info> {

@@ -1,4 +1,6 @@
-use anchor_lang::{prelude::*, solana_program::system_program};
+use anchor_lang::prelude::*;
+
+use anchor_lang::solana_program::system_program;
 
 use crate::error::CustomError;
 
