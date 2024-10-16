@@ -29,7 +29,7 @@ pub enum CustomError {
     ExpiredFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
-    #[msg("The Deposit is still within the exclusivity or deadline window!")]
+    #[msg("The Deposit is still within the exclusivity window!")]
     NoSlowFillsInExclusivityWindow,
     #[msg("Invalid route PDA!")]
     InvalidRoutePDA,
@@ -52,7 +52,7 @@ pub enum CustomError {
     #[msg("Invalid remote sender!")]
     InvalidRemoteSender,
     #[msg("Invalid Merkle proof!")]
-    InvalidProof,
+    InvalidMerkleProof,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
     #[msg("Invalid chain id!")]
@@ -60,7 +60,7 @@ pub enum CustomError {
     #[msg("Invalid mint!")]
     InvalidMint,
     #[msg("Leaf already claimed!")]
-    LeafAlreadyClaimed,
+    ClaimedMerkleLeaf,
     #[msg("Exceeded pending bridge amount to HubPool!")]
     ExceededPendingBridgeAmount,
     #[msg("Deposits are currently paused!")]

@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "3.0.10",
+  "version": "3.0.11",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -32,14 +32,14 @@
     "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "build": "yarn build-evm && yarn build-svm && yarn build-ts",
     "test-evm": "IS_TEST=true hardhat test",
-    "test-svm": "anchor test",
+    "test-svm": "anchor test -- --features test",
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.15",
+    "@across-protocol/constants": "^3.1.16",
     "@coral-xyz/anchor": "^0.30.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
@@ -52,6 +52,7 @@
     "@solana-developers/helpers": "^2.4.0",
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "^1.31.0",
+    "@types/yargs": "^17.0.33",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
     "@uma/core": "^2.56.0",

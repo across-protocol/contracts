@@ -7,7 +7,8 @@
     "outDir": "./dist",
     "declaration": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [
     "./scripts",
@@ -19,7 +20,5 @@
     "utils/utils.ts",
     "src/types"
   ],
-  "exclude": ["./scripts/svm"],
-  "files": ["./hardhat.config.ts"],
-  "typeRoots": ["./node_modules/@types", "./src/types"]
+  "files": ["./hardhat.config.ts"]
 }

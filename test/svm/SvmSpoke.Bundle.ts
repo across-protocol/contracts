@@ -206,7 +206,7 @@ describe("svm_spoke.bundle", () => {
       .rpc();
 
     // Verify the ExecutedRelayerRefundRoot event
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for event processing
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
     let events = await readProgramEvents(connection, program);
     let event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
 
@@ -775,7 +775,7 @@ describe("svm_spoke.bundle", () => {
     }
 
     // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Fetch the AddressLookupTableAccount
     const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
@@ -807,7 +807,7 @@ describe("svm_spoke.bundle", () => {
     await connection.sendTransaction(versionedTx);
 
     // Verify all refund account balances.
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure account balances have been synced.
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
     const refundBalances = await Promise.all(
       refundAccounts.map(async (account) => {
         return (await connection.getTokenAccountBalance(account)).value.amount;

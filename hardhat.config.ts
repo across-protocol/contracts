@@ -16,12 +16,9 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
+const tasks = ["enableL1TokenAcrossEcosystem", "finalizeScrollClaims", "rescueStuckScrollTxn", "verifySpokePool"];
 // eslint-disable-next-line node/no-missing-require
-require("./tasks/enableL1TokenAcrossEcosystem");
-// eslint-disable-next-line node/no-missing-require
-require("./tasks/finalizeScrollClaims");
-// eslint-disable-next-line node/no-missing-require
-require("./tasks/rescueStuckScrollTxn");
+tasks.forEach((task) => require(`./tasks/${task}`));
 
 dotenv.config();
 
@@ -87,6 +84,7 @@ const config: HardhatUserConfig = {
       "contracts/Mode_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -273,6 +271,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    worldchain: {
+      chainId: CHAIN_IDs.WORLD_CHAIN,
+      url: "https://worldchain-mainnet.g.alchemy.com/public",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     zora: {
       chainId: CHAIN_IDs.ZORA,
       url: "https://rpc.zora.energy",
@@ -307,6 +312,7 @@ const config: HardhatUserConfig = {
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
+      worldchain: "blockscout",
     },
     customChains: [
       {
@@ -451,6 +457,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.blastscan.io/api",
           browserURL: "https://sepolia.blastscan.io",
+        },
+      },
+      {
+        network: "worldchain",
+        chainId: CHAIN_IDs.WORLD_CHAIN,
+        urls: {
+          apiURL: "https://worldchain-mainnet.explorer.alchemy.com/api",
+          browserURL: "https://worldchain-mainnet.explorer.alchemy.com",
         },
       },
       {

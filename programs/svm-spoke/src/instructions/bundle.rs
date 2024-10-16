@@ -125,14 +125,14 @@ where
     verify_merkle_proof(root, leaf, proof)?;
 
     if relayer_refund_leaf.chain_id != state.chain_id {
-        return Err(CustomError::InvalidChainId.into());
+        return err!(CustomError::InvalidChainId);
     }
 
     if is_claimed(
         &ctx.accounts.root_bundle.claimed_bitmap,
         relayer_refund_leaf.leaf_id,
     ) {
-        return Err(CustomError::LeafAlreadyClaimed.into());
+        return err!(CustomError::ClaimedMerkleLeaf);
     }
 
     set_claimed(

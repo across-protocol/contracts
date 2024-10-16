@@ -4,7 +4,6 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
 import { readProgramEvents } from "../../src/SvmUtils";
 import { calculateRelayHashUint8Array } from "../../src/SvmUtils";
 
@@ -13,17 +12,18 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const idl = require("../../target/idl/svm_spoke.json");
 const program = new Program<SvmSpoke>(idl, provider);
-const programId = program.programId; // Use programId from the provider
+const programId = program.programId;
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
   .option("seed", { type: "string", demandOption: true, describe: "Seed for the state account PDA" })
   .option("relayer", { type: "string", demandOption: true, describe: "Relayer public key" }).argv;
 
-const relayer = new PublicKey(argv.relayer);
-const seed = new BN(argv.seed);
-
 async function closeExpiredRelays(): Promise<void> {
+  const resolvedArgv = await argv;
+  const relayer = new PublicKey(resolvedArgv.relayer);
+  const seed = new BN(resolvedArgv.seed);
+
   console.table([
     { Property: "relayer", Value: relayer.toString() },
     { Property: "seed", Value: seed.toString() },
@@ -46,7 +46,7 @@ async function closeExpiredRelays(): Promise<void> {
     for (const event of fillEvents) {
       const currentTime = Math.floor(Date.now() / 1000);
       if (currentTime > event.data.fillDeadline) {
-        await closeFillPda(event.data);
+        await closeFillPda(event.data, seed);
       } else {
         console.log(
           `Found relay with depositId: ${event.data.depositId} from source chain id: ${event.data.originChainId}, but it is not expired yet.`
@@ -58,7 +58,8 @@ async function closeExpiredRelays(): Promise<void> {
   }
 }
 
-async function closeFillPda(eventData: any): Promise<void> {
+async function closeFillPda(eventData: any, seed: BN): Promise<void> {
+  // Accept seed as a parameter
   const relayData = {
     depositor: new PublicKey(eventData.depositor),
     recipient: new PublicKey(eventData.recipient),

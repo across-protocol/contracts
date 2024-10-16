@@ -235,4 +235,6 @@ interface V3SpokePoolInterface {
     error InvalidMerkleLeaf();
     error ClaimedMerkleLeaf();
     error InvalidPayoutAdjustmentPct();
+    error WrongERC7683OrderId();
+    error LowLevelCallFailed(bytes data);
 }
