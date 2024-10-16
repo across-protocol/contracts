@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WMATIC } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -19,17 +19,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].fxChild,
   ];
 
-  // Construct this spokepool with a:
-  //    * A WETH address of the WETH address
-  //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 6 hours
-  //    * Native USDC address on L2
-  //    * CCTP token messenger address on L2
   const constructorArgs = [
-    L2_ADDRESS_MAP[spokeChainId].wMatic,
-    3600,
-    21600,
-    L2_ADDRESS_MAP[spokeChainId].l2Usdc,
+    WMATIC[spokeChainId],
+    QUOTE_TIME_BUFFER,
+    FILL_DEADLINE_BUFFER,
+    USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
   await deployNewProxy("Polygon_SpokePool", constructorArgs, initArgs);

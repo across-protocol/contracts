@@ -43,21 +43,22 @@ contract Optimism_SpokePool is Ovm_SpokePool {
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool, Lib_PredeployAddresses.OVM_ETH);
+        __OvmSpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient, Lib_PredeployAddresses.OVM_ETH);
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
         // Handle custom SNX bridge which doesn't conform to the standard bridge interface.
         if (l2TokenAddress == SNX)
             SynthetixBridgeToBase(SYNTHETIX_BRIDGE).withdrawTo(
-                hubPool, // _to. Withdraw, over the bridge, to the l1 pool contract.
+                withdrawalRecipient, // _to. Withdraw, over the bridge, to the l1 pool contract.
                 amountToReturn // _amount.
             );
         else super._bridgeTokensToHubPool(amountToReturn, l2TokenAddress);

@@ -1,12 +1,11 @@
-import { L2_ADDRESS_MAP } from "./consts";
-import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
+import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { getChainId } = hre;
   const { hubPool } = await getSpokePoolDeploymentInfo(hre);
-  const chainId = parseInt(await getChainId());
+  const chainId = parseInt(await hre.getChainId());
 
   const initArgs = [
     L2_ADDRESS_MAP[chainId].polygonZkEvmBridge,
@@ -17,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  const constructorArgs = [L2_ADDRESS_MAP[chainId].l2Weth, 3600, 21600];
+  const constructorArgs = [WETH[chainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
 
   await deployNewProxy("PolygonZkEVM_SpokePool", constructorArgs, initArgs);
 };

@@ -1,10 +1,10 @@
 import * as zk from "zksync-web3";
 import { Deployer as zkDeployer } from "@matterlabs/hardhat-zksync-deploy";
-import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { L2_ADDRESS_MAP } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "ZkSync_SpokePool";
@@ -24,11 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  // Construct this spokepool with a:
-  //    * A WETH address of the WETH address
-  //    * A depositQuoteTimeBuffer of 1 hour
-  //    * A fillDeadlineBuffer of 6 hours
-  const constructorArgs = [L2_ADDRESS_MAP[spokeChainId].l2Weth, 3600, 21600];
+  const constructorArgs = [WETH[spokeChainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
 
   let newAddress: string;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
@@ -37,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const proxy = getDeployedAddress("SpokePool", spokeChainId, false);
   const implementationOnly = proxy !== undefined;
   if (implementationOnly) {
-    console.log(`${name} deployment already detected @ ${proxy}, deploying new implementation.`);
+    console.log(`${contractName} deployment already detected @ ${proxy}, deploying new implementation.`);
     const _deployment = await deployer.deploy(artifact, constructorArgs);
     newAddress = _deployment.address;
     console.log(`New ${contractName} implementation deployed @ ${newAddress}`);

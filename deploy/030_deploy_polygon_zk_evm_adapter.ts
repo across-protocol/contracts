@@ -1,20 +1,16 @@
-import { L1_ADDRESS_MAP } from "./consts";
+import { L1_ADDRESS_MAP, WETH } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy } = deployments;
+  const { deployer } = await hre.getNamedAccounts();
+  const chainId = parseInt(await hre.getChainId());
 
-  const { deployer } = await getNamedAccounts();
-
-  const chainId = parseInt(await getChainId());
-
-  await deploy("PolygonZkEVM_Adapter", {
+  await hre.deployments.deploy("PolygonZkEVM_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [L1_ADDRESS_MAP[chainId].weth, L1_ADDRESS_MAP[chainId].polygonZkEvmBridge],
+    args: [WETH[chainId], L1_ADDRESS_MAP[chainId].polygonZkEvmBridge],
   });
 };
 

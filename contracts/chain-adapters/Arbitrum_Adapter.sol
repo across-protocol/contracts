@@ -7,130 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
-
-/**
- * @notice Interface for Arbitrum's L1 Inbox contract used to send messages to Arbitrum.
- * @custom:security-contact bugs@across.to
- */
-interface ArbitrumL1InboxLike {
-    /**
-     * @notice Put a message in the L2 inbox that can be reexecuted for some fixed amount of time if it reverts
-     * @dev Gas limit and maxFeePerGas should not be set to 1 as that is used to trigger the RetryableData error
-     * @dev Caller must set msg.value equal to at least `maxSubmissionCost + maxGas * gasPriceBid`.
-     *      all msg.value will deposited to callValueRefundAddress on L2
-     * @dev More details can be found here: https://developer.arbitrum.io/arbos/l1-to-l2-messaging
-     * @param to destination L2 contract address
-     * @param l2CallValue call value for retryable L2 message
-     * @param maxSubmissionCost Max gas deducted from user's L2 balance to cover base submission fee
-     * @param excessFeeRefundAddress gasLimit x maxFeePerGas - execution cost gets credited here on L2 balance
-     * @param callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
-     * @param gasLimit Max gas deducted from user's L2 balance to cover L2 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param maxFeePerGas price bid for L2 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param data ABI encoded data of L2 message
-     * @return unique message number of the retryable transaction
-     */
-    function createRetryableTicket(
-        address to,
-        uint256 l2CallValue,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 gasLimit,
-        uint256 maxFeePerGas,
-        bytes calldata data
-    ) external payable returns (uint256);
-
-    /**
-     * @notice Put a message in the L2 inbox that can be reexecuted for some fixed amount of time if it reverts
-     * @dev Same as createRetryableTicket, but does not guarantee that submission will succeed by requiring the needed
-     * funds come from the deposit alone, rather than falling back on the user's L2 balance
-     * @dev Advanced usage only (does not rewrite aliases for excessFeeRefundAddress and callValueRefundAddress).
-     * createRetryableTicket method is the recommended standard.
-     * @dev Gas limit and maxFeePerGas should not be set to 1 as that is used to trigger the RetryableData error
-     * @param to destination L2 contract address
-     * @param l2CallValue call value for retryable L2 message
-     * @param maxSubmissionCost Max gas deducted from user's L2 balance to cover base submission fee
-     * @param excessFeeRefundAddress gasLimit x maxFeePerGas - execution cost gets credited here on L2 balance
-     * @param callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
-     * @param gasLimit Max gas deducted from user's L2 balance to cover L2 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param maxFeePerGas price bid for L2 execution. Should not be set to 1 (magic value used to trigger the RetryableData error)
-     * @param data ABI encoded data of L2 message
-     * @return unique message number of the retryable transaction
-     */
-    function unsafeCreateRetryableTicket(
-        address to,
-        uint256 l2CallValue,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 gasLimit,
-        uint256 maxFeePerGas,
-        bytes calldata data
-    ) external payable returns (uint256);
-}
-
-/**
- * @notice Layer 1 Gateway contract for bridging standard ERC20s to Arbitrum.
- */
-interface ArbitrumL1ERC20GatewayLike {
-    /**
-     * @notice Deprecated in favor of outboundTransferCustomRefund but still used in custom bridges
-     * like the DAI bridge.
-     * @dev Refunded to aliased L2 address of sender if sender has code on L1, otherwise to to sender's EOA on L2.
-     * @param _l1Token L1 address of ERC20
-     * @param _to Account to be credited with the tokens in the L2 (can be the user's L2 account or a contract),
-     * not subject to L2 aliasing. This account, or its L2 alias if it have code in L1, will also be able to
-     * cancel the retryable ticket and receive callvalue refund
-     * @param _amount Token Amount
-     * @param _maxGas Max gas deducted from user's L2 balance to cover L2 execution
-     * @param _gasPriceBid Gas price for L2 execution
-     * @param _data encoded data from router and user
-     * @return res abi encoded inbox sequence number
-     */
-    function outboundTransfer(
-        address _l1Token,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-
-    /**
-     * @notice Deposit ERC20 token from Ethereum into Arbitrum.
-     * @dev L2 address alias will not be applied to the following types of addresses on L1:
-     *      - an externally-owned account
-     *      - a contract in construction
-     *      - an address where a contract will be created
-     *      - an address where a contract lived, but was destroyed
-     * @param _l1Token L1 address of ERC20
-     * @param _refundTo Account, or its L2 alias if it have code in L1, to be credited with excess gas refund in L2
-     * @param _to Account to be credited with the tokens in the L2 (can be the user's L2 account or a contract),
-     * not subject to L2 aliasing. This account, or its L2 alias if it have code in L1, will also be able to
-     * cancel the retryable ticket and receive callvalue refund
-     * @param _amount Token Amount
-     * @param _maxGas Max gas deducted from user's L2 balance to cover L2 execution
-     * @param _gasPriceBid Gas price for L2 execution
-     * @param _data encoded data from router and user
-     * @return res abi encoded inbox sequence number
-     */
-    function outboundTransferCustomRefund(
-        address _l1Token,
-        address _refundTo,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-
-    /**
-     * @notice get ERC20 gateway for token.
-     * @param _token ERC20 address.
-     * @return address of ERC20 gateway.
-     */
-    function getGateway(address _token) external view returns (address);
-}
+import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -154,9 +31,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public constant L2_GAS_PRICE = 5e9; // 5 gWei
 
+    // Native token expected to be sent in L2 message. Should be 0 for only use case of this constant, which
+    // includes is sending messages from L1 to L2.
     uint256 public constant L2_CALL_VALUE = 0;
 
+    // Gas limit for L2 execution of a cross chain token transfer sent via the inbox.
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
+    // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
     address public constant L1_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -164,8 +45,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
 
+    // Inbox system contract to send messages to Arbitrum. Token bridges use this to send tokens to L2.
+    // https://github.com/OffchainLabs/nitro-contracts/blob/f7894d3a6d4035ba60f51a7f1334f0f2d4f02dce/src/bridge/Inbox.sol
     ArbitrumL1InboxLike public immutable L1_INBOX;
 
+    // Router contract to send tokens to Arbitrum. Routes to correct gateway to bridge tokens. Internally this
+    // contract calls the Inbox.
+    // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     /**
@@ -280,6 +166,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Returns required amount of ETH to send a message via the Inbox.
+     * @param l2GasLimit L2 gas limit for the message.
      * @return amount of ETH that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public pure returns (uint256) {
