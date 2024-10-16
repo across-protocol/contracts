@@ -16,7 +16,13 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
-const tasks = ["enableL1TokenAcrossEcosystem", "finalizeScrollClaims", "rescueStuckScrollTxn", "verifySpokePool"];
+const tasks = [
+  "enableL1TokenAcrossEcosystem",
+  "finalizeScrollClaims",
+  "rescueStuckScrollTxn",
+  "verifySpokePool",
+  "evmRelayMessageWithdrawal",
+];
 tasks.forEach((task) => require(`./tasks/${task}`));
 
 dotenv.config();
