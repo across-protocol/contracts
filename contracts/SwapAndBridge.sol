@@ -66,11 +66,9 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 acrossOutputAmount
     );
 
-    /**
-     *
+    /****************************************
      *                ERRORS                *
-     *
-     */
+     ****************************************/
     error MinimumExpectedInputAmount();
     error LeftoverSrcTokens();
     error InvalidFunctionSelector();

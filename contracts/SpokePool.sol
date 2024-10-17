@@ -102,11 +102,9 @@ abstract contract SpokePool is
     // to eliminate any chance of collision between pre and post V3 relay hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
-    /**
-     *
+    /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
-     *
-     */
+     **************************************************************/
     // Constant and immutable variables do not take up storage slots and are instead added to the contract bytecode
     // at compile time. The difference between them is that constant variables must be declared inline, meaning
     // that they cannot be changed in production without changing the contract code, while immutable variables
@@ -148,11 +146,9 @@ abstract contract SpokePool is
     // token for the input token. By using this magic value, off-chain validators do not have to keep
     // this event in their lookback window when querying for expired deposts.
     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
-    /**
-     *
+    /****************************************
      *                EVENTS                *
-     *
-     */
+     ****************************************/
 
     event SetXDomainAdmin(address indexed newAdmin);
     event SetWithdrawalRecipient(address indexed newWithdrawalRecipient);
@@ -294,11 +290,9 @@ abstract contract SpokePool is
         _setWithdrawalRecipient(_withdrawalRecipient);
     }
 
-    /**
-     *
+    /****************************************
      *               MODIFIERS              *
-     *
-     */
+     ****************************************/
 
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
@@ -320,11 +314,9 @@ abstract contract SpokePool is
         _;
     }
 
-    /**
-     *
+    /**************************************
      *          ADMIN FUNCTIONS           *
-     *
-     */
+     **************************************/
 
     // Allows cross domain admin to upgrade UUPS proxy implementation.
     function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
@@ -416,11 +408,9 @@ abstract contract SpokePool is
         emit EmergencyDeleteRootBundle(rootBundleId);
     }
 
-    /**
-     *
+    /**************************************
      *    LEGACY DEPOSITOR FUNCTIONS      *
-     *
-     */
+     **************************************/
 
     /**
      * @notice Called by user to bridge funds from origin to destination chain. Depositor will effectively lock
@@ -507,11 +497,9 @@ abstract contract SpokePool is
         );
     }
 
-    /**
-     *
+    /********************************************
      *            DEPOSITOR FUNCTIONS           *
-     *
-     */
+     ********************************************/
 
     /**
      * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
@@ -811,11 +799,9 @@ abstract contract SpokePool is
         );
     }
 
-    /**
-     *
+    /**************************************
      *         RELAYER FUNCTIONS          *
-     *
-     */
+     **************************************/
 
     /**
      * @notice Fulfill request to bridge cross chain by sending specified output tokens to the recipient.
@@ -1009,8 +995,7 @@ abstract contract SpokePool is
 
     /**************************************
      *         DATA WORKER FUNCTIONS      *
-     *
-     */
+     **************************************/
 
     /**
      * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
@@ -1103,11 +1088,9 @@ abstract contract SpokePool is
         );
     }
 
-    /**
-     *
+    /**************************************
      *           VIEW FUNCTIONS           *
-     *
-     */
+     **************************************/
 
     /**
      * @notice Returns chain ID for this network.
@@ -1125,11 +1108,9 @@ abstract contract SpokePool is
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
-    /**
-     *
+    /**************************************
      *         INTERNAL FUNCTIONS         *
-     *
-     */
+     **************************************/
     function _deposit(
         bytes32 depositor,
         bytes32 recipient,

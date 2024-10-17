@@ -43,22 +43,18 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private adminCallValidated;
 
-    /**
-     *
+    /**************************************
      *               ERRORS               *
-     *
-     */
+     **************************************/
     error AdminCallValidatedAlreadySet();
     error CallerNotBridge();
     error OriginSenderNotCrossDomain();
     error SourceChainNotHubChain();
     error AdminCallNotValidated();
 
-    /**
-     *
+    /**************************************
      *               EVENTS               *
-     *
-     */
+     **************************************/
     event SetPolygonZkEVMBridge(address indexed newPolygonZkEVMBridge, address indexed oldPolygonZkEVMBridge);
     event ReceivedMessageFromL1(address indexed caller, address indexed originAddress);
 
@@ -154,11 +150,9 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
         emit ReceivedMessageFromL1(msg.sender, _originAddress);
     }
 
-    /**
-     *
+    /**************************************
      *        INTERNAL FUNCTIONS          *
-     *
-     */
+     **************************************/
 
     /**
      * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives

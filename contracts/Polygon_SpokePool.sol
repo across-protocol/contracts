@@ -115,11 +115,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         _setFxChild(_fxChild);
     }
 
-    /**
-     *
+    /********************************************************
      *    POLYGON-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
-     *
-     */
+     ********************************************************/
 
     /**
      * @notice Change FxChild address. Callable only by admin via processMessageFromRoot.
@@ -219,11 +217,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
-    /**
-     *
+    /**************************************
      *        INTERNAL FUNCTIONS          *
-     *
-     */
+     **************************************/
     function _setFxChild(address _fxChild) internal {
         //slither-disable-next-line missing-zero-check
         fxChild = _fxChild;
