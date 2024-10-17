@@ -1021,4 +1021,122 @@ describe("svm_spoke.bundle", () => {
     assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
     assert.strictEqual(BigInt(fRelayerABal) - BigInt(iRelayerABal), BigInt(totalRefund), "Relayer A bal");
   });
+
+  it("Refunds Relayer to Claim Account", async () => {
+    // Set up claim account for the second relayer (the first relayer will be refunded to a token account).
+    const [relayerCB] = PublicKey.findProgramAddressSync(
+      [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
+      program.programId
+    );
+    await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
+
+    // Prepare leaf using token accounts.
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerARefund = new BN(400000);
+    const relayerBRefund = new BN(100000);
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(69420),
+      mintPublicKey: mint,
+      refundAccounts: [relayerTA, relayerTB],
+      refundAmounts: [relayerARefund, relayerBRefund],
+    });
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+    const stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    // Pass token account for the first relayer and claim account for the second one.
+    const remainingAccounts = [
+      { pubkey: relayerTA, isWritable: true, isSigner: false },
+      { pubkey: relayerCB, isWritable: true, isSigner: false },
+    ];
+
+    const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const iRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
+    const iRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
+
+    // Verify valid leaf
+    let executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      program: program.programId,
+    };
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+    await program.methods
+      .executeRelayerRefundLeaf()
+      .accounts(executeRelayerRefundLeafAccounts)
+      .remainingAccounts(remainingAccounts)
+      .rpc();
+
+    // Verify the ExecutedRelayerRefundRoot event
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+
+    // Event data should match and token accounts should be emitted.
+    assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
+    assertSE(event.chainId, chainId, "chainId should match");
+    assertSE(event.refundAmounts[0], relayerARefund, "Relayer A refund amount should match");
+    assertSE(event.refundAmounts[1], relayerBRefund, "Relayer B refund amount should match");
+    assertSE(event.rootBundleId, stateAccountData.rootBundleId, "rootBundleId should match");
+    assertSE(event.leafId, leaf.leafId, "leafId should match");
+    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+    assertSE(event.refundAddresses[0], relayerTA, "Relayer A address should match");
+    assertSE(event.refundAddresses[1], relayerTB, "Relayer B address should match");
+    assertSE(event.caller, owner, "caller should match");
+
+    // Only the first relayer should have received funds from the vault.
+    let fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const fRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
+    let fRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
+    assertSE(BigInt(iVaultBal) - BigInt(fVaultBal), relayerARefund, "Vault balance");
+    assertSE(BigInt(fRelayerABal) - BigInt(iRelayerABal), relayerARefund, "Relayer A bal");
+    assertSE(iRelayerBBal, fRelayerBBal, "Relayer B bal");
+
+    // Refund liability recorded in the claim account for the second relayer.
+    const refundLiability = await program.account.claimAccount.fetch(relayerCB);
+    assertSE(refundLiability.amount, relayerBRefund, "Refund liability");
+
+    // Claim refund for the second relayer.
+    const claimRelayerRefundAccounts = {
+      signer: owner,
+      state,
+      vault,
+      mint,
+      tokenAccount: relayerTB,
+      claimAccount: relayerCB,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
+
+    // The second relayer should have received funds from the vault.
+    fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    fRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
+    assertSE(BigInt(iVaultBal) - BigInt(fVaultBal), relayerARefund.add(relayerBRefund), "Vault balance");
+    assertSE(BigInt(fRelayerBBal) - BigInt(iRelayerBBal), relayerBRefund, "Relayer B bal");
+  });
 });
