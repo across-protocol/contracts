@@ -1,5 +1,7 @@
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::keccak;
+use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_spl::token_interface::{
+    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
@@ -7,10 +9,6 @@ use crate::{
     event::ExecutedRelayerRefundRoot,
     state::{ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
-};
-
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
 
 #[event_cpi]

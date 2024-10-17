@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
-
-use svm_spoke::constants::DISCRIMINATOR_SIZE;
-use svm_spoke::error::CustomError;
-use svm_spoke::utils::{is_claimed, process_proof, set_claimed};
+use svm_spoke::{
+    constants::DISCRIMINATOR_SIZE,
+    error::CustomError,
+    utils::{is_claimed, process_proof, set_claimed},
+};
 
 declare_id!("84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4");
 

@@ -1,14 +1,13 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::{
+    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 use crate::{
     error::CustomError,
     event::V3FundsDeposited,
     get_current_time,
     state::{Route, State},
-};
-
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
 
 #[event_cpi]
