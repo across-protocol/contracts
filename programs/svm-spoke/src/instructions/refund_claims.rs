@@ -6,6 +6,7 @@ use anchor_spl::token_interface::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
+    event::ClaimedRelayerRefund,
     state::{ClaimAccount, State},
 };
 
@@ -27,10 +28,29 @@ pub struct InitializeClaimAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
+pub fn initialize_claim_account(
+    ctx: Context<InitializeClaimAccount>,
+    mint: Pubkey,
+    token_account: Pubkey,
+) -> Result<()> {
+    // Store the initializer so only it can receive lamports from closing the account upon claiming the refund.
+    ctx.accounts.claim_account.initializer = ctx.accounts.signer.key();
+
+    Ok(())
+}
+
+#[event_cpi]
 #[derive(Accounts)]
 pub struct ClaimRelayerRefund<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    /// CHECK: We don't need any additional checks as long as this is the same account that initialized the claim account.
+    #[account(
+        mut,
+        address = claim_account.initializer @ CustomError::InvalidClaimInitializer
+    )]
+    pub initializer: UncheckedAccount<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
@@ -59,6 +79,7 @@ pub struct ClaimRelayerRefund<'info> {
 
     #[account(
         mut,
+        close = initializer,
         seeds = [b"claim_account", mint.key().as_ref(), token_account.key().as_ref()],
         bump
     )]
@@ -94,5 +115,14 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         transfer_accounts,
         signer_seeds,
     );
-    transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)
+    transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
+
+    // Emit the ClaimedRelayerRefund event.
+    emit_cpi!(ClaimedRelayerRefund {
+        l2_token_address: ctx.accounts.mint.key(),
+        claim_amount,
+        refund_address: ctx.accounts.token_account.key(),
+    });
+
+    Ok(())
 }

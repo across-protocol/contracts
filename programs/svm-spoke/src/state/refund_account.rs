@@ -7,6 +7,7 @@ use crate::error::CustomError;
 #[derive(InitSpace)]
 pub struct ClaimAccount {
     pub amount: u64,
+    pub initializer: Pubkey,
 }
 
 // When executing relayer refund leaf, refund accounts are passed as remaining accounts and can hold either a regular

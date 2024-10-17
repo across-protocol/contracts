@@ -209,11 +209,11 @@ pub mod svm_spoke {
     }
 
     pub fn initialize_claim_account(
-        _ctx: Context<InitializeClaimAccount>,
+        ctx: Context<InitializeClaimAccount>,
         mint: Pubkey,
         token_account: Pubkey,
     ) -> Result<()> {
-        Ok(())
+        instructions::initialize_claim_account(ctx, mint, token_account)
     }
 
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {

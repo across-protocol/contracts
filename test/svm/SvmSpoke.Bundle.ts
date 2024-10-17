@@ -1094,20 +1094,20 @@ describe("svm_spoke.bundle", () => {
 
     // Verify the ExecutedRelayerRefundRoot event
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-    const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+    let events = await readProgramEvents(connection, program);
+    const executeEvent = events.find((event) => event.name === "executedRelayerRefundRoot").data;
 
     // Event data should match and token accounts should be emitted.
-    assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
-    assertSE(event.chainId, chainId, "chainId should match");
-    assertSE(event.refundAmounts[0], relayerARefund, "Relayer A refund amount should match");
-    assertSE(event.refundAmounts[1], relayerBRefund, "Relayer B refund amount should match");
-    assertSE(event.rootBundleId, stateAccountData.rootBundleId, "rootBundleId should match");
-    assertSE(event.leafId, leaf.leafId, "leafId should match");
-    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
-    assertSE(event.refundAddresses[0], relayerTA, "Relayer A address should match");
-    assertSE(event.refundAddresses[1], relayerTB, "Relayer B address should match");
-    assertSE(event.caller, owner, "caller should match");
+    assertSE(executeEvent.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
+    assertSE(executeEvent.chainId, chainId, "chainId should match");
+    assertSE(executeEvent.refundAmounts[0], relayerARefund, "Relayer A refund amount should match");
+    assertSE(executeEvent.refundAmounts[1], relayerBRefund, "Relayer B refund amount should match");
+    assertSE(executeEvent.rootBundleId, stateAccountData.rootBundleId, "rootBundleId should match");
+    assertSE(executeEvent.leafId, leaf.leafId, "leafId should match");
+    assertSE(executeEvent.l2TokenAddress, mint, "l2TokenAddress should match");
+    assertSE(executeEvent.refundAddresses[0], relayerTA, "Relayer A address should match");
+    assertSE(executeEvent.refundAddresses[1], relayerTB, "Relayer B address should match");
+    assertSE(executeEvent.caller, owner, "caller should match");
 
     // Only the first relayer should have received funds from the vault.
     let fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -1124,6 +1124,7 @@ describe("svm_spoke.bundle", () => {
     // Claim refund for the second relayer.
     const claimRelayerRefundAccounts = {
       signer: owner,
+      initializer: owner,
       state,
       vault,
       mint,
@@ -1138,5 +1139,38 @@ describe("svm_spoke.bundle", () => {
     fRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
     assertSE(BigInt(iVaultBal) - BigInt(fVaultBal), relayerARefund.add(relayerBRefund), "Vault balance");
     assertSE(BigInt(fRelayerBBal) - BigInt(iRelayerBBal), relayerBRefund, "Relayer B bal");
+
+    // Verify the ClaimedRelayerRefund event
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+    events = await readProgramEvents(connection, program);
+    const claimEvent = events.find((event) => event.name === "claimedRelayerRefund").data;
+
+    // Event data should match.
+    assertSE(claimEvent.l2TokenAddress, mint, "l2TokenAddress should match");
+    assertSE(claimEvent.claimAmount, relayerBRefund, "Relayer B refund amount should match");
+    assertSE(claimEvent.refundAddress, relayerTB, "Relayer B address should match");
+
+    // The claim account should have been automatically closed, so repeated claim should fail.
+    try {
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
+      assert.fail("Claiming refund from closed account should fail");
+    } catch (error: any) {
+      assert.instanceOf(error, anchor.AnchorError);
+      assert.strictEqual(
+        error.error.errorCode.code,
+        "AccountNotInitialized",
+        "Expected error code AccountNotInitialized"
+      );
+    }
+
+    // After reinitalizing the claim account, the repeated claim should still fail.
+    await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
+    try {
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
+      assert.fail("Claiming refund from reinitalized account should fail");
+    } catch (error: any) {
+      assert.instanceOf(error, anchor.AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "ZeroRefundClaim", "Expected error code ZeroRefundClaim");
+    }
   });
 });
