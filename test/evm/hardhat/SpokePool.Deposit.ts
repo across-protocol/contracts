@@ -594,7 +594,7 @@ describe("SpokePool Depositor Logic", async function () {
         updatedMessage
       );
       await spokePool.verifyUpdateV3DepositMessage(
-        depositor.address,
+        hexZeroPadAddress(depositor.address),
         depositId,
         originChainId,
         updatedOutputAmount,
@@ -606,7 +606,7 @@ describe("SpokePool Depositor Logic", async function () {
       // Reverts if passed in depositor is the signer or if signature is incorrect
       await expect(
         spokePool.verifyUpdateV3DepositMessage(
-          updatedRecipient,
+          hexZeroPadAddress(updatedRecipient),
           depositId,
           originChainId,
           updatedOutputAmount,
@@ -627,7 +627,7 @@ describe("SpokePool Depositor Logic", async function () {
       );
       await expect(
         spokePool.verifyUpdateV3DepositMessage(
-          depositor.address,
+          hexZeroPadAddress(depositor.address),
           depositId,
           originChainId,
           updatedOutputAmount,
@@ -680,7 +680,7 @@ describe("SpokePool Depositor Logic", async function () {
       );
       await expect(
         spokePool.verifyUpdateV3DepositMessage(
-          depositor.address,
+          hexZeroPadAddress(depositor.address),
           depositId,
           otherChainId,
           updatedOutputAmount,
