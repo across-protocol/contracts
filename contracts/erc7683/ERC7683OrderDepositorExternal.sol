@@ -7,6 +7,7 @@ import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
 import "../SpokePool.sol";
 import "../external/interfaces/IPermit2.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice ERC7683OrderDepositorExternal processes an external order type and translates it into an AcrossV3Deposit
@@ -15,17 +16,17 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  */
 contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
-
+    using Bytes32ToAddress for bytes32;
     event SetDestinationSettler(
         uint256 indexed chainId,
-        address indexed prevDestinationSettler,
-        address indexed destinationSettler
+        bytes32 indexed prevDestinationSettler,
+        bytes32 indexed destinationSettler
     );
 
     SpokePool public immutable SPOKE_POOL;
 
     // Mapping of chainIds to destination settler addresses.
-    mapping(uint256 => address) public destinationSettlers;
+    mapping(uint256 => bytes32) public destinationSettlers;
 
     constructor(
         SpokePool _spokePool,
@@ -35,27 +36,27 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         SPOKE_POOL = _spokePool;
     }
 
-    function setDestinationSettler(uint256 chainId, address destinationSettler) external {
-        address prevDestinationSettler = destinationSettlers[chainId];
+    function setDestinationSettler(uint256 chainId, bytes32 destinationSettler) external {
+        bytes32 prevDestinationSettler = destinationSettlers[chainId];
         destinationSettlers[chainId] = destinationSettler;
         emit SetDestinationSettler(chainId, prevDestinationSettler, destinationSettler);
     }
 
     function _callDeposit(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes memory message
     ) internal override {
-        IERC20(inputToken).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
+        IERC20(inputToken.toAddress()).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
 
         SPOKE_POOL.depositV3(
             depositor,
@@ -77,7 +78,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         return SPOKE_POOL.numberOfDeposits();
     }
 
-    function _destinationSettler(uint256 chainId) internal view override returns (address) {
+    function _destinationSettler(uint256 chainId) internal view override returns (bytes32) {
         return destinationSettlers[chainId];
     }
 }

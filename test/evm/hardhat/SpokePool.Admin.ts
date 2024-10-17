@@ -1,4 +1,11 @@
-import { expect, ethers, Contract, SignerWithAddress, getContractFactory } from "../../../utils/utils";
+import {
+  expect,
+  ethers,
+  Contract,
+  SignerWithAddress,
+  getContractFactory,
+  hexZeroPadAddress,
+} from "../../../utils/utils";
 import { hre } from "../../../utils/utils.hre";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
@@ -23,7 +30,7 @@ describe("SpokePool Admin Functions", async function () {
     await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
       .to.emit(spokePool, "EnabledDepositRoute")
       .withArgs(erc20.address, destinationChainId, true);
-    expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
+    expect(await spokePool.enabledDepositRoutes(hexZeroPadAddress(erc20.address), destinationChainId)).to.equal(true);
   });
 
   it("Pause deposits", async function () {

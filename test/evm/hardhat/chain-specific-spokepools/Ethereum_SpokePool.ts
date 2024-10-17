@@ -1,5 +1,13 @@
 import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
-import { ethers, expect, Contract, SignerWithAddress, getContractFactory, seedContract } from "../../../../utils/utils";
+import {
+  ethers,
+  expect,
+  Contract,
+  SignerWithAddress,
+  getContractFactory,
+  seedContract,
+  hexZeroPadAddress,
+} from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
@@ -47,7 +55,7 @@ describe("Ethereum Spoke Pool", function () {
   it("Only owner can enable a route", async function () {
     await expect(spokePool.connect(rando).setEnableRoute(dai.address, 1, true)).to.be.reverted;
     await spokePool.connect(owner).setEnableRoute(dai.address, 1, true);
-    expect(await spokePool.enabledDepositRoutes(dai.address, 1)).to.equal(true);
+    expect(await spokePool.enabledDepositRoutes(hexZeroPadAddress(dai.address), 1)).to.equal(true);
   });
 
   it("Only owner can set the hub pool address", async function () {
