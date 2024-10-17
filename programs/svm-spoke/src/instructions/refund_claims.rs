@@ -70,7 +70,9 @@ pub struct ClaimRelayerRefund<'info> {
 pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
     // Ensure the claim account holds a non-zero amount.
     let claim_amount = ctx.accounts.claim_account.amount;
-    require!(claim_amount > 0, CustomError::ZeroRefundClaim);
+    if claim_amount == 0 {
+        return err!(CustomError::ZeroRefundClaim);
+    }
 
     // Reset the claim amount.
     ctx.accounts.claim_account.amount = 0;
