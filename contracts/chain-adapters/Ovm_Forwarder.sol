@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { ForwarderBase } from "./ForwarderBase.sol";
 import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
+import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 
 /**
  * @title Ovm_Forwarder
@@ -22,8 +23,9 @@ contract Ovm_Forwarder is ForwarderBase {
 
     /**
      * @notice Constructs an Ovm specific forwarder contract.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on the L2.
      */
-    constructor() ForwarderBase() {}
+    constructor(WETH9Interface _wrappedNativeToken) ForwarderBase(_wrappedNativeToken) {}
 
     /**
      * @notice Initializes the forwarder contract.
