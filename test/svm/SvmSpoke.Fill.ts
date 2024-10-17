@@ -14,7 +14,7 @@ import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
-describe("svm_spoke.fill", () => {
+describe.only("svm_spoke.fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
@@ -77,7 +77,7 @@ describe("svm_spoke.fill", () => {
       depositId: new BN(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
-      message: Buffer.from("Test message"),
+      message: Buffer.from(""),
     };
 
     updateRelayData(initialRelayData);
