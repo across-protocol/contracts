@@ -8,6 +8,7 @@ export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
+export const MOCK_ADMIN = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
