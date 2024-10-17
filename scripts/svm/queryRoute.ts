@@ -1,3 +1,5 @@
+// This script fetches route information for a given spoke pool, originToken and chainId.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";

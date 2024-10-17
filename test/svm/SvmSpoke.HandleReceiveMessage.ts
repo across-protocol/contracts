@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { BN, web3, workspace, Program, AnchorProvider, AnchorError } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
@@ -12,24 +13,24 @@ import { common } from "./SvmSpoke.common";
 const { createRoutePda, getVaultAta, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
 describe("svm_spoke.handle_receive_message", () => {
-  anchor.setProvider(anchor.AnchorProvider.env());
+  anchor.setProvider(AnchorProvider.env());
 
-  const program = anchor.workspace.SvmSpoke as anchor.Program<SvmSpoke>;
-  const messageTransmitterProgram = anchor.workspace.MessageTransmitter as anchor.Program<MessageTransmitter>;
-  const provider = anchor.AnchorProvider.env();
+  const program = workspace.SvmSpoke as Program<SvmSpoke>;
+  const messageTransmitterProgram = workspace.MessageTransmitter as Program<MessageTransmitter>;
+  const provider = AnchorProvider.env();
   const owner = provider.wallet.publicKey;
-  let state: anchor.web3.PublicKey;
-  let authorityPda: anchor.web3.PublicKey;
-  let messageTransmitterState: anchor.web3.PublicKey;
-  let usedNonces: anchor.web3.PublicKey;
-  let selfAuthority: anchor.web3.PublicKey;
-  let eventAuthority: anchor.web3.PublicKey;
+  let state: web3.PublicKey;
+  let authorityPda: web3.PublicKey;
+  let messageTransmitterState: web3.PublicKey;
+  let usedNonces: web3.PublicKey;
+  let selfAuthority: web3.PublicKey;
+  let eventAuthority: web3.PublicKey;
   const firstNonce = 1;
   const attestation = Buffer.alloc(0);
   let nonce = firstNonce;
-  let remainingAccounts: anchor.web3.AccountMeta[];
+  let remainingAccounts: web3.AccountMeta[];
   const cctpMessageversion = 0;
-  let destinationCaller = new anchor.web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
+  let destinationCaller = new web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
   let receiveMessageAccounts: any;
 
   const ethereumIface = new ethers.utils.Interface([
@@ -45,23 +46,20 @@ describe("svm_spoke.handle_receive_message", () => {
     nonce += 1; // Increment CCTP nonce.
 
     // Get other required accounts.
-    [authorityPda] = anchor.web3.PublicKey.findProgramAddressSync(
+    [authorityPda] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("message_transmitter_authority"), program.programId.toBuffer()],
       messageTransmitterProgram.programId
     );
-    [messageTransmitterState] = anchor.web3.PublicKey.findProgramAddressSync(
+    [messageTransmitterState] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("message_transmitter")],
       messageTransmitterProgram.programId
     );
-    [usedNonces] = anchor.web3.PublicKey.findProgramAddressSync(
+    [usedNonces] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("used_nonces"), Buffer.from(remoteDomain.toString()), Buffer.from(firstNonce.toString())],
       messageTransmitterProgram.programId
     );
-    [selfAuthority] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("self_authority")], program.programId);
-    [eventAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("__event_authority")],
-      program.programId
-    );
+    [selfAuthority] = web3.PublicKey.findProgramAddressSync([Buffer.from("self_authority")], program.programId);
+    [eventAuthority] = web3.PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId);
 
     // Accounts in CCTP message_transmitter receive_message instruction.
     receiveMessageAccounts = {
@@ -71,7 +69,7 @@ describe("svm_spoke.handle_receive_message", () => {
       messageTransmitter: messageTransmitterState,
       usedNonces,
       receiver: program.programId,
-      systemProgram: anchor.web3.SystemProgram.programId,
+      systemProgram: web3.SystemProgram.programId,
     };
 
     remainingAccounts = [];
@@ -138,14 +136,14 @@ describe("svm_spoke.handle_receive_message", () => {
         .rpc();
       assert.fail("Should not be able to receive message from unauthorized sender");
     } catch (error: any) {
-      assert.instanceOf(error, anchor.AnchorError);
+      assert.instanceOf(error, AnchorError);
       assert.strictEqual(error.error.errorCode.code, "InvalidRemoteSender", "Expected error code InvalidRemoteSender");
     }
   });
 
   it("Block Wrong Source Domain", async () => {
     const sourceDomain = 666;
-    [receiveMessageAccounts.usedNonces] = anchor.web3.PublicKey.findProgramAddressSync(
+    [receiveMessageAccounts.usedNonces] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("used_nonces"), Buffer.from(sourceDomain.toString()), Buffer.from(firstNonce.toString())],
       messageTransmitterProgram.programId
     );
@@ -172,7 +170,7 @@ describe("svm_spoke.handle_receive_message", () => {
         .rpc();
       assert.fail("Should not be able to receive message from wrong source domain");
     } catch (error: any) {
-      assert.instanceOf(error, anchor.AnchorError);
+      assert.instanceOf(error, AnchorError);
       assert.strictEqual(error.error.errorCode.code, "InvalidRemoteDomain", "Expected error code InvalidRemoteDomain");
     }
   });
@@ -313,7 +311,7 @@ describe("svm_spoke.handle_receive_message", () => {
     });
 
     // Remaining accounts specific to SetEnableRoute.
-    const routePda = createRoutePda(originToken, state, new anchor.BN(routeChainId));
+    const routePda = createRoutePda(originToken, state, new BN(routeChainId));
     const vault = getVaultAta(originToken, state);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const enableRouteRemainingAccounts = remainingAccounts.slice(0, 3);
@@ -363,7 +361,7 @@ describe("svm_spoke.handle_receive_message", () => {
     enableRouteRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
-      pubkey: anchor.web3.SystemProgram.programId,
+      pubkey: web3.SystemProgram.programId,
     });
     // event_authority in self-invoked SetEnableRoute (appended by Anchor with event_cpi macro).
     enableRouteRemainingAccounts.push({
