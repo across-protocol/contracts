@@ -123,9 +123,9 @@ contract SpokePoolVerifierTest is Test {
         vm.expectCall(
             address(ethereumSpokePool), // callee
             depositAmount, // value
-            abi.encodeCall( // data
-                ethereumSpokePool.depositV3,
-                (
+            abi.encodeWithSignature( // data
+                "depositV3(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint256,bytes)",
+                abi.encode(
                     depositor.toBytes32(),
                     depositor.toBytes32(),
                     address(mockWETH).toBytes32(),

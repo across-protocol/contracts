@@ -623,6 +623,72 @@ abstract contract SpokePool is
     }
 
     /**
+     * @notice An overloaded version of `depositV3` that accepts `address` types for backward compatibility.
+     * This function allows bridging of input tokens cross-chain to a destination chain, receiving a specified amount of output tokens.
+     * The relayer is refunded in input tokens on a repayment chain of their choice, minus system fees, after an optimistic challenge
+     * window. The exclusivity period is specified as an offset from the current block timestamp.
+     *
+     * @dev This version mirrors the original `depositV3` function, but uses `address` types for `depositor`, `recipient`,
+     * `inputToken`, `outputToken`, and `exclusiveRelayer` for compatibility with contracts using the `address` type.
+     *
+     * The key functionality and logic remain identical, ensuring interoperability across both versions.
+     *
+     * @param depositor The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to initiate the deposit.
+     * The equivalent of this token on the relayer's repayment chain of choice will be sent as a refund. If this is equal
+     * to the wrapped native token, the caller can optionally pass in native token as msg.value, provided msg.value = inputTokenAmount.
+     * @param outputToken The token that the relayer will send to the recipient on the destination chain. Must be an ERC20.
+     * @param inputAmount The amount of input tokens pulled from the caller's account and locked into this contract. This
+     * amount will be sent to the relayer as a refund following an optimistic challenge window in the HubPool, less a system fee.
+     * @param outputAmount The amount of output tokens that the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled along with the input token as a valid
+     * deposit route from this spoke pool or this transaction will revert.
+     * @param exclusiveRelayer The relayer exclusively allowed to fill this deposit before the exclusivity deadline.
+     * @param quoteTimestamp The HubPool timestamp that determines the system fee paid by the depositor. This must be set
+     * between [currentTime - depositQuoteTimeBuffer, currentTime] where currentTime is block.timestamp on this chain.
+     * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp, the fill will
+     * revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer] where currentTime
+     * is block.timestamp on this chain.
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
+     * anyone can fill the deposit.
+     * @param message The message to send to the recipient on the destination chain if the recipient is a contract. If the
+     * message is not empty, the recipient contract must implement `handleV3AcrossMessage()` or the fill will revert.
+     */
+    function depositV3(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityPeriod,
+        bytes calldata message
+    ) public payable override {
+        depositV3(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            inputToken.toBytes32(),
+            outputToken.toBytes32(),
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer.toBytes32(),
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityPeriod,
+            message
+        );
+    }
+
+    /**
      * @notice Submits deposit and sets quoteTimestamp to current Time. Sets fill and exclusivity
      * deadlines as offsets added to the current time. This function is designed to be called by users
      * such as Multisig contracts who do not have certainty when their transaction will mine.
@@ -663,6 +729,67 @@ abstract contract SpokePool is
         uint256 outputAmount,
         uint256 destinationChainId,
         bytes32 exclusiveRelayer,
+        uint32 fillDeadlineOffset,
+        uint32 exclusivityPeriod,
+        bytes calldata message
+    ) external payable {
+        depositV3(
+            depositor,
+            recipient,
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer,
+            uint32(getCurrentTime()),
+            uint32(getCurrentTime()) + fillDeadlineOffset,
+            exclusivityPeriod,
+            message
+        );
+    }
+
+    /**
+     * @notice An overloaded version of `depositV3Now` that supports addresses as input types for backward compatibility.
+     * This function submits a deposit and sets `quoteTimestamp` to the current time. The `fill` and `exclusivity` deadlines
+     * are set as offsets added to the current time. It is designed to be called by users, including Multisig contracts, who may
+     * not have certainty when their transaction will be mined.
+     *
+     * @dev This version is identical to the original `depositV3Now` but uses `address` types for `depositor`, `recipient`,
+     * `inputToken`, `outputToken`, and `exclusiveRelayer` to support compatibility with older systems.
+     * It maintains the same logic and purpose, ensuring interoperability with both versions.
+     *
+     * @param depositor The account credited with the deposit, who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive the native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to initiate the deposit.
+     * Equivalent tokens on the relayer's repayment chain will be sent as a refund. If this is the wrapped native token,
+     * msg.value must equal inputTokenAmount when passed.
+     * @param outputToken The token the relayer will send to the recipient on the destination chain. Must be an ERC20.
+     * @param inputAmount The amount of input tokens pulled from the caller's account and locked into this contract.
+     * This amount will be sent to the relayer as a refund following an optimistic challenge window in the HubPool, plus a system fee.
+     * @param outputAmount The amount of output tokens the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled with the input token as a valid deposit route
+     * from this spoke pool, or the transaction will revert.
+     * @param exclusiveRelayer The relayer exclusively allowed to fill the deposit before the exclusivity deadline.
+     * @param fillDeadlineOffset Added to the current time to set the fill deadline. After this timestamp, fills on the
+     * destination chain will revert.
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
+     * anyone can fill the deposit until the fill deadline.
+     * @param message The message to send to the recipient on the destination chain. If the recipient is a contract, it must
+     * implement `handleV3AcrossMessage()` if the message is not empty, or the fill will revert.
+     */
+    function depositV3Now(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
         uint32 fillDeadlineOffset,
         uint32 exclusivityPeriod,
         bytes calldata message
@@ -752,6 +879,72 @@ abstract contract SpokePool is
     }
 
     /**
+     * @notice DEPRECATED. Use `depositV3()` instead for new integrations.
+     * @notice An overloaded version of `depositExclusive` using `address` types for backward compatibility.
+     * This function submits a deposit and sets the exclusivity deadline to the current time plus an offset. It allows users
+     * to specify an exclusive relayer for a period after their deposit transaction is mined.
+     *
+     * @dev This function is deprecated and maintained for backward compatibility. It mirrors the logic of `depositV3()`
+     * but uses `address` types for `depositor`, `recipient`, `inputToken`, `outputToken`, and `exclusiveRelayer`.
+     * Consider migrating to `depositV3()` for future use.
+     *
+     * @param depositor The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to initiate the deposit.
+     * Equivalent tokens on the relayer's repayment chain of choice will be sent as a refund. If this is the wrapped native token,
+     * msg.value must equal inputTokenAmount.
+     * @param outputToken The token the relayer will send to the recipient on the destination chain. Must be an ERC20.
+     * @param inputAmount The amount of input tokens pulled from the caller's account and locked into this contract. This
+     * amount will be sent to the relayer on their repayment chain of choice as a refund, following an optimistic challenge
+     * window in the HubPool, less a system fee.
+     * @param outputAmount The amount of output tokens the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled along with the input token as a valid
+     * deposit route from this spoke pool, or the transaction will revert.
+     * @param exclusiveRelayer The relayer exclusively allowed to fill this deposit before the exclusivity deadline.
+     * @param quoteTimestamp The HubPool timestamp used to determine the system fee paid by the depositor. Must be set
+     * between [currentTime - depositQuoteTimeBuffer, currentTime], where currentTime is block.timestamp on this chain.
+     * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp, the fill will
+     * revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer], where currentTime
+     * is block.timestamp on this chain.
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
+     * anyone can fill the deposit.
+     * @param message The message to send to the recipient on the destination chain. If the recipient is a contract, it must
+     * implement `handleV3AcrossMessage()` if the message is not empty, or the fill will revert.
+     */
+    function depositExclusive(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityPeriod,
+        bytes calldata message
+    ) public payable {
+        depositV3(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            inputToken.toBytes32(),
+            outputToken.toBytes32(),
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer.toBytes32(),
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityPeriod,
+            message
+        );
+    }
+
+    /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
      * and/or message.
      * @dev the depositor and depositId must match the params in a V3FundsDeposited event that the depositor
@@ -794,6 +987,47 @@ abstract contract SpokePool is
             depositId,
             depositor,
             updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+    }
+
+    /**
+     * @notice An overloaded version of `speedUpV3Deposit` using `address` types for backward compatibility.
+     * This function allows the depositor to signal to the relayer to use updated output amount, recipient, and/or message
+     * when filling a deposit. This can be useful when the deposit needs to be modified after the original transaction has
+     * been mined.
+     *
+     * @dev The `depositor` and `depositId` must match the parameters in a `V3FundsDeposited` event that the depositor wants to speed up.
+     * The relayer is not obligated but has the option to use this updated information when filling the deposit using
+     * `fillV3RelayWithUpdatedDeposit()`. This version uses `address` types for compatibility with systems relying on
+     * `address`-based implementations.
+     *
+     * @param depositor The depositor that must sign the `depositorSignature` and was the original depositor.
+     * @param depositId The deposit ID to speed up.
+     * @param updatedOutputAmount The new output amount to use for this deposit. It should be lower than the previous value,
+     * otherwise the relayer has no incentive to use this updated value.
+     * @param updatedRecipient The new recipient for this deposit. Can be modified if the original recipient is a contract that
+     * expects to receive a message from the relay and needs to be changed.
+     * @param updatedMessage The new message for this deposit. Can be modified if the recipient is a contract that expects
+     * to receive a message from the relay and needs to be updated.
+     * @param depositorSignature The signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor account.
+     * If the depositor is a contract, it should implement EIP1271 to sign as a contract. See `_verifyUpdateV3DepositMessage()`
+     * for more details on how the signature should be constructed.
+     */
+    function speedUpV3Deposit(
+        address depositor,
+        uint32 depositId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
+    ) public override {
+        speedUpV3Deposit(
+            depositor.toBytes32(),
+            depositId,
+            updatedOutputAmount,
+            updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature
         );
