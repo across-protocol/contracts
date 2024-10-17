@@ -100,6 +100,8 @@ export const l1TokenTransferThreshold = toWei(100);
 
 export const MAX_UINT32 = BigNumber.from("0xFFFFFFFF");
 
+export const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365; // 1 year
+
 // DAI's Rate model.
 export const sampleRateModel = {
   UBar: toWei(0.8).toString(),

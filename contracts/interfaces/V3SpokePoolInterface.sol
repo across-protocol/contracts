@@ -223,7 +223,6 @@ interface V3SpokePoolInterface {
     error InvalidQuoteTimestamp();
     error InvalidFillDeadline();
     error InvalidExclusiveRelayer();
-    error InvalidExclusivityDeadline();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
     error NoSlowFillsInExclusivityWindow();
