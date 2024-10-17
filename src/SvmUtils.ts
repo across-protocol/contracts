@@ -1,5 +1,4 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
-import * as anchor from "@coral-xyz/anchor";
 import { Program, BN, utils, BorshAccountsCoder, Idl } from "@coral-xyz/anchor";
 import { Layout } from "buffer-layout";
 import { ethers } from "ethers";

@@ -1,3 +1,5 @@
+// This script is used to initiate a Solana deposit. useful in testing.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
