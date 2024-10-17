@@ -1,3 +1,5 @@
+// This script is used to initiate a Solana deposit. useful in testing.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
@@ -33,7 +35,7 @@ async function depositV3(): Promise<void> {
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const destinationChainId = new BN(resolvedArgv.destinationChainId);
   const exclusiveRelayer = PublicKey.default;
-  const quoteTimestamp = Math.floor(Date.now() / 1000);
+  const quoteTimestamp = Math.floor(Date.now() / 1000) - 1;
   const fillDeadline = quoteTimestamp + 3600; // 1 hour from now
   const exclusivityDeadline = 0;
   const message = Buffer.from([]); // Convert to Buffer
@@ -53,6 +55,15 @@ async function depositV3(): Promise<void> {
   // Define the signer (replace with your actual signer)
   const signer = provider.wallet.publicKey;
 
+  // Find ATA for the input token to be stored by state (vault). This was created when the route was enabled.
+  const vault = getAssociatedTokenAddressSync(
+    inputToken,
+    statePda,
+    true,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
   console.log("Depositing V3...");
   console.table([
     { property: "seed", value: seed.toString() },
@@ -69,16 +80,8 @@ async function depositV3(): Promise<void> {
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
     { property: "routePda", value: routePda.toString() },
+    { property: "vault", value: vault.toString() },
   ]);
-
-  // Create ATA for the input token to be stored by state (vault).
-  const vault = getAssociatedTokenAddressSync(
-    inputToken,
-    statePda,
-    true,
-    TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  );
 
   const tx = await (
     program.methods.depositV3(

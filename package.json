@@ -32,7 +32,7 @@
     "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "build": "yarn build-evm && yarn build-svm && yarn build-ts",
     "test-evm": "IS_TEST=true hardhat test",
-    "test-svm": "anchor test",
+    "test-svm": "anchor test -- --features test",
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",

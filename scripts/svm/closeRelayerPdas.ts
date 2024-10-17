@@ -1,3 +1,5 @@
+// This script closes all Relayer PDAs associated with tracking fill Status. Relayers should do this periodically to
+// reclaim the lamports within these tracking accounts. Fill Status PDAs can be closed on the deposit has expired.
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";

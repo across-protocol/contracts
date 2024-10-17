@@ -10,6 +10,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
+    get_current_time,
     state::{FillStatus, FillStatusAccount, RootBundle, State},
     utils::verify_merkle_proof,
 };
@@ -53,30 +54,21 @@ pub fn request_v3_slow_fill(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+    let current_time = get_current_time(state)?;
 
-    // Check if the fill is within the exclusivity window & fill deadline.
-    //TODO: ensure the require blocks here are equivilelent to evm.
-    require!(
-        relay_data.exclusivity_deadline < current_time,
-        CustomError::NoSlowFillsInExclusivityWindow
-    );
-    require!(
-        relay_data.fill_deadline < current_time,
-        CustomError::ExpiredFillDeadline
-    );
+    // Check if the fill is past the exclusivity window & within the fill deadline.
+    if relay_data.exclusivity_deadline >= current_time {
+        return err!(CustomError::NoSlowFillsInExclusivityWindow);
+    }
+    if relay_data.fill_deadline < current_time {
+        return err!(CustomError::ExpiredFillDeadline);
+    }
 
     // Check the fill status
     let fill_status_account = &mut ctx.accounts.fill_status;
-    require!(
-        fill_status_account.status == FillStatus::Unfilled,
-        CustomError::InvalidSlowFillRequest
-    );
+    if fill_status_account.status != FillStatus::Unfilled {
+        return err!(CustomError::InvalidSlowFillRequest);
+    }
 
     // Update the fill status to RequestedSlowFill
     fill_status_account.status = FillStatus::RequestedSlowFill;
@@ -201,6 +193,8 @@ pub fn execute_v3_slow_relay_leaf(
     root_bundle_id: u32,
     proof: Vec<[u8; 32]>,
 ) -> Result<()> {
+    let current_time = get_current_time(&ctx.accounts.state)?;
+
     let relay_data = slow_fill_leaf.relay_data;
 
     let slow_fill = V3SlowFill {
@@ -213,12 +207,16 @@ pub fn execute_v3_slow_relay_leaf(
     let leaf = slow_fill.to_keccak_hash();
     verify_merkle_proof(root, leaf, proof)?;
 
-    // Check if the fill status is unfilled
+    // Check if the fill deadline has passed
+    if relay_data.fill_deadline < current_time {
+        return err!(CustomError::ExpiredFillDeadline);
+    }
+
+    // Check if the fill status is not filled
     let fill_status_account = &mut ctx.accounts.fill_status;
-    require!(
-        fill_status_account.status == FillStatus::RequestedSlowFill,
-        CustomError::InvalidSlowFillRequest
-    );
+    if fill_status_account.status == FillStatus::Filled {
+        return err!(CustomError::RelayFilled);
+    }
 
     // Derive the signer seeds for the state
     let state_seed_bytes = ctx.accounts.state.seed.to_le_bytes();
