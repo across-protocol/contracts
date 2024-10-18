@@ -154,7 +154,6 @@ abstract contract SpokePool is
     /****************************************
      *                EVENTS                *
      ****************************************/
-
     event SetXDomainAdmin(address indexed newAdmin);
     event SetWithdrawalRecipient(address indexed newWithdrawalRecipient);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
@@ -597,7 +596,7 @@ abstract contract SpokePool is
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be
         // wrapped.
-        if (inputToken.toAddress() == address(wrappedNativeToken) && msg.value > 0) {
+        if (inputToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
             if (msg.value != inputAmount) revert MsgValueDoesNotMatchInputAmount();
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
@@ -1038,7 +1037,7 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer.toAddress() != msg.sender &&
+            relayData.exclusiveRelayer != msg.sender.toBytes32() &&
             relayData.exclusivityDeadline >= getCurrentTime() &&
             relayData.exclusiveRelayer != bytes32(0)
         ) {
@@ -1084,7 +1083,7 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer.toAddress() != msg.sender) {
+        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender.toBytes32()) {
             revert NotExclusiveRelayer();
         }
 
@@ -1327,7 +1326,7 @@ abstract contract SpokePool is
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
-        if (originToken.toAddress() == address(wrappedNativeToken) && msg.value > 0) {
+        if (originToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
             if (msg.value != amount) revert MsgValueDoesNotMatchInputAmount();
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
