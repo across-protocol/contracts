@@ -15,6 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract Linea_SpokePool is SpokePool {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     /**
      * @notice Address of Linea's Canonical Message Service contract on L2.
@@ -122,8 +123,8 @@ contract Linea_SpokePool is SpokePool {
      * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      */
-    function _preExecuteLeafHook(address l2TokenAddress) internal override {
-        if (l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+    function _preExecuteLeafHook(bytes32 l2TokenAddress) internal override {
+        if (l2TokenAddress == address(wrappedNativeToken).toBytes32()) _depositEthToWeth();
     }
 
     // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because

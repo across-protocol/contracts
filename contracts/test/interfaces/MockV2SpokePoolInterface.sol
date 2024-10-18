@@ -6,9 +6,9 @@ pragma solidity ^0.8.0;
  */
 interface MockV2SpokePoolInterface {
     struct RelayData {
-        address depositor;
-        address recipient;
-        address destinationToken;
+        bytes32 depositor;
+        bytes32 recipient;
+        bytes32 destinationToken;
         uint256 amount;
         uint256 originChainId;
         uint256 destinationChainId;
@@ -22,7 +22,7 @@ interface MockV2SpokePoolInterface {
         RelayData relay;
         bytes32 relayHash;
         int64 updatedRelayerFeePct;
-        address updatedRecipient;
+        bytes32 updatedRecipient;
         bytes updatedMessage;
         uint256 repaymentChainId;
         uint256 maxTokensToSend;

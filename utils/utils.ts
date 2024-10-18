@@ -101,6 +101,19 @@ export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
+export const hexZeroPad = (input: string, length: number) => ethers.utils.hexZeroPad(input, length);
+
+export const hexZeroPadAddress = (input: string) => hexZeroPad(input, 32);
+
+export const hexZeroPadAddressLowercase = (input: string) => hexZeroPad(input.toLowerCase(), 32);
+
+export const bytes32ToAddress = (input: string) => {
+  if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
+    throw new Error("Invalid bytes32 input");
+  }
+  return ethers.utils.getAddress("0x" + input.slice(26));
+};
+
 export async function seedWallet(
   walletToFund: Signer,
   tokens: Contract[],
