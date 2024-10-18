@@ -118,7 +118,7 @@ where
             &[b"claim_account", mint.as_ref(), token_account.as_ref()],
             &crate::ID,
         );
-        if account_info.key() != pda_address {
+        if account_info.key != &pda_address {
             return None;
         }
 
