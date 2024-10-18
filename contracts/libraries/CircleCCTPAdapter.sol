@@ -10,6 +10,7 @@ library CircleDomainIds {
     uint32 public constant Ethereum = 0;
     uint32 public constant Optimism = 2;
     uint32 public constant Arbitrum = 3;
+    uint32 public constant Solana = 5;
     uint32 public constant Base = 6;
     uint32 public constant Polygon = 7;
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
@@ -80,6 +81,16 @@ abstract contract CircleCCTPAdapter {
      * @param amount Amount of USDC to transfer.
      */
     function _transferUsdc(address to, uint256 amount) internal {
+        _transferUsdc(_addressToBytes32(to), amount);
+    }
+
+    /**
+     * @notice Transfers USDC from the current domain to the given address on the new domain.
+     * @dev This function will revert if the CCTP bridge is disabled. I.e. if the zero address is passed to the constructor for the cctpTokenMessenger.
+     * @param to Address to receive USDC on the new domain represented as bytes32.
+     * @param amount Amount of USDC to transfer.
+     */
+    function _transferUsdc(bytes32 to, uint256 amount) internal {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger.
@@ -87,10 +98,9 @@ abstract contract CircleCCTPAdapter {
         ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();
         uint256 burnLimit = cctpMinter.burnLimitsPerMessage(address(usdcToken));
         uint256 remainingAmount = amount;
-        bytes32 recipient = to.toBytes32();
         while (remainingAmount > 0) {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
-            cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, recipient, address(usdcToken));
+            cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, to, address(usdcToken));
             remainingAmount -= partAmount;
         }
     }

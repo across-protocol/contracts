@@ -20,7 +20,7 @@ use crate::{
 pub struct FillV3Relay<'info> {
     #[account(
         mut,
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()], // TODO: make consistent decision where to put owner constraints
         bump,
         constraint = !state.paused_fills @ CustomError::FillsArePaused
     )]
@@ -40,14 +40,14 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mut,
-        token::token_program = token_program,
+        token::token_program = token_program, // TODO: consistent token imports
         address = relay_data.output_token @ CustomError::InvalidMint
     )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        associated_token::mint = mint_account,
+        associated_token::mint = mint_account, // TODO: consistent token imports
         associated_token::authority = relayer,
         associated_token::token_program = token_program
     )]
@@ -65,7 +65,7 @@ pub struct FillV3Relay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
@@ -77,7 +77,9 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)] // TODO: do we need all of these?
+
+// TODO: should we move this data structure to a common module?
 pub struct V3RelayData {
     pub depositor: Pubkey,
     pub recipient: Pubkey,
@@ -102,30 +104,31 @@ pub fn fill_v3_relay(
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
-    // Check the fill status
-    let fill_status_account = &mut ctx.accounts.fill_status;
-    require!(
-        fill_status_account.status != FillStatus::Filled,
-        CustomError::RelayFilled
-    );
-
-    // Check if the fill deadline has passed
-    require!(
-        current_time <= relay_data.fill_deadline,
-        CustomError::ExpiredFillDeadline
-    );
-
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if relay_data.exclusive_relayer != Pubkey::default() {
-        require!(
-            current_time > relay_data.exclusivity_deadline
-                || ctx.accounts.signer.key() == relay_data.exclusive_relayer,
-            CustomError::NotExclusiveRelayer
-        );
+    if relay_data.exclusive_relayer != ctx.accounts.signer.key()
+        && relay_data.exclusivity_deadline >= current_time
+        && relay_data.exclusive_relayer != Pubkey::default()
+    {
+        return err!(CustomError::NotExclusiveRelayer);
     }
 
+    // Check if the fill deadline has passed
+    if relay_data.fill_deadline < current_time {
+        return err!(CustomError::ExpiredFillDeadline);
+    }
+
+    // Check the fill status and set the fill type
+    let fill_status_account = &mut ctx.accounts.fill_status;
+    let fill_type = match fill_status_account.status {
+        FillStatus::Filled => return err!(CustomError::RelayFilled),
+        FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
+        _ => FillType::FastFill,
+    };
+
+    // TODO: EVM SpokePool skips the transfer if relayer and receiver are the same, should we do the same here?
     // Invoke the transfer_checked instruction on the token program
     let transfer_accounts = TransferChecked {
+        // TODO: check what happens if the relayer and recipient are the same
         from: ctx.accounts.relayer_token_account.to_account_info(),
         mint: ctx.accounts.mint_account.to_account_info(),
         to: ctx.accounts.recipient_token_account.to_account_info(),
@@ -145,8 +148,10 @@ pub fn fill_v3_relay(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
+    // TODO: remove msg! everywhere
     msg!("Tokens transferred successfully.");
 
+    // TODO: there might be a better way to do this
     // Emit the FilledV3Relay event
     let message_clone = relay_data.message.clone(); // Clone the message before it is moved
 
@@ -169,7 +174,7 @@ pub fn fill_v3_relay(
             updated_recipient: relay_data.recipient,
             updated_message: message_clone,
             updated_output_amount: relay_data.output_amount,
-            fill_type: FillType::FastFill,
+            fill_type,
         },
     });
 
@@ -184,7 +189,7 @@ pub struct CloseFillPda<'info> {
 
     #[account(
         mut,
-        address = fill_status.relayer @ CustomError::NotRelayer
+        address = fill_status.relayer @ CustomError::NotRelayer // TODO: check that this doesn't break PR 653
     )]
     pub signer: Signer<'info>,
 
@@ -208,16 +213,14 @@ pub fn close_fill_pda(
     let current_time = get_current_time(state)?;
 
     // Check if the fill status is filled
-    require!(
-        ctx.accounts.fill_status.status == FillStatus::Filled,
-        CustomError::NotFilled
-    );
+    if ctx.accounts.fill_status.status != FillStatus::Filled {
+        return err!(CustomError::NotFilled);
+    }
 
     // Check if the deposit has expired
-    require!(
-        current_time > relay_data.fill_deadline,
-        CustomError::FillDeadlineNotPassed
-    );
+    if current_time <= relay_data.fill_deadline {
+        return err!(CustomError::FillDeadlineNotPassed);
+    }
 
     Ok(())
 }

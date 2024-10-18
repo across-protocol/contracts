@@ -1,3 +1,5 @@
+// This script fetches all deposits for a given spoke pool.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
