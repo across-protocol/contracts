@@ -166,6 +166,15 @@ function avmL1ToL2Alias(l1Address: string) {
   return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
 }
 
+export function trimSolanaAddress(bytes32Address: string): string {
+  if (!ethers.utils.isHexString(bytes32Address, 32)) {
+    throw new Error("Invalid bytes32 address");
+  }
+
+  const uint160Address = ethers.BigNumber.from(bytes32Address).mask(160);
+  return ethers.utils.hexZeroPad(ethers.utils.hexlify(uint160Address), 20);
+}
+
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
 export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
