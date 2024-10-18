@@ -63,6 +63,8 @@ pub enum CustomError {
     InvalidMint,
     #[msg("Leaf already claimed!")]
     ClaimedMerkleLeaf,
+    #[msg("Invalid Merkle leaf!")]
+    InvalidMerkleLeaf,
     #[msg("Exceeded pending bridge amount to HubPool!")]
     ExceededPendingBridgeAmount,
     #[msg("Deposits are currently paused!")]

@@ -950,4 +950,70 @@ describe("svm_spoke.bundle", () => {
     assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
     assert.strictEqual(BigInt(fRelayerABal) - BigInt(iRelayerABal), BigInt(totalRefund), "Relayer A bal");
   });
+
+  it("Invalid Merkle Leaf should fail", async () => {
+    // Create invalid leaf with missing refund amount for the second relayer.
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerARefund = new BN(400000);
+
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(0),
+      mintPublicKey: mint,
+      refundAccounts: [relayerTA, relayerTB],
+      refundAmounts: [relayerARefund],
+    });
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+    const stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    const remainingAccounts = [
+      { pubkey: relayerTA, isWritable: true, isSigner: false },
+      { pubkey: relayerTB, isWritable: true, isSigner: false },
+    ];
+
+    // Verify valid leaf
+    const executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: web3.SystemProgram.programId,
+      program: program.programId,
+    };
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+    // Mismatched refund amount and account length should fail.
+    try {
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+    } catch (err: any) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assertSE(err.error.errorCode.code, "InvalidMerkleLeaf", "Expected error code InvalidMerkleLeaf");
+    }
+  });
 });
