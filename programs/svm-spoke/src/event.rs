@@ -105,3 +105,18 @@ pub struct ExecutedRelayerRefundRoot {
     pub refund_addresses: Vec<Pubkey>,
     pub caller: Pubkey,
 }
+
+#[event]
+pub struct DeferredRelayerRefunds {
+    pub chain_id: u64,
+    pub root_bundle_id: u32,
+    pub leaf_id: u32,
+    pub l2_token_address: Pubkey,
+}
+
+#[event]
+pub struct ClaimedRelayerRefund {
+    pub l2_token_address: Pubkey,
+    pub claim_amount: u64,
+    pub refund_address: Pubkey,
+}

@@ -5,13 +5,14 @@ import * as crypto from "crypto";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
 import {
+  readEvents,
   readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
 } from "../../src/SvmUtils";
 
-export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();

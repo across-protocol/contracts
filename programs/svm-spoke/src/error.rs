@@ -53,8 +53,6 @@ pub enum CustomError {
     InvalidRemoteSender,
     #[msg("Invalid Merkle proof!")]
     InvalidMerkleProof,
-    #[msg("Account not found!")]
-    AccountNotFound,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
     #[msg("Invalid chain id!")]
@@ -77,4 +75,10 @@ pub enum CustomError {
     InvalidFillDeadline,
     #[msg("Overflow writing to parameters account!")]
     ParamsWriteOverflow,
+    #[msg("Invalid refund address!")]
+    InvalidRefund,
+    #[msg("Zero relayer refund claim!")]
+    ZeroRefundClaim,
+    #[msg("Invalid claim initializer!")]
+    InvalidClaimInitializer,
 }

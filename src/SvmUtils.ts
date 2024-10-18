@@ -23,10 +23,10 @@ export function findProgramAddress(label: string, program: PublicKey, extraSeeds
   return { publicKey: res[0], bump: res[1] };
 }
 
-export async function readEvents(
+export async function readEvents<IDL extends Idl = Idl>(
   connection: Connection,
   txSignature: string,
-  programs: Program<Idl>[],
+  programs: Program<IDL>[],
   commitment: Finality = "confirmed"
 ) {
   const txResult = await connection.getTransaction(txSignature, {
