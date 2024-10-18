@@ -442,7 +442,8 @@ export async function getUpdatedV3DepositSignature(
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
-  updatedMessage: string
+  updatedMessage: string,
+  isAddressOverload: boolean = false
 ): Promise<string> {
   const typedData = {
     types: {
@@ -450,7 +451,7 @@ export async function getUpdatedV3DepositSignature(
         { name: "depositId", type: "uint32" },
         { name: "originChainId", type: "uint256" },
         { name: "updatedOutputAmount", type: "uint256" },
-        { name: "updatedRecipient", type: "bytes32" },
+        { name: "updatedRecipient", type: isAddressOverload ? "address" : "bytes32" },
         { name: "updatedMessage", type: "bytes" },
       ],
     },

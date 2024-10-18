@@ -10,6 +10,7 @@ import {
   BigNumber,
   hexZeroPadAddressLowercase,
   hexZeroPadAddress,
+  bytes32ToAddress,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -44,6 +45,11 @@ const depositV3NowAddress =
 
 const speedUpV3DepositBytes = "speedUpV3Deposit(bytes32,uint32,uint256,bytes32,bytes,bytes)";
 const speedUpV3DepositAddress = "speedUpV3Deposit(address,uint32,uint256,address,bytes,bytes)";
+
+const verifyUpdateV3DepositMessageBytes =
+  "verifyUpdateV3DepositMessage(bytes32,uint32,uint256,uint256,bytes32,bytes,bytes)";
+const verifyUpdateV3DepositMessageAddress =
+  "verifyUpdateV3DepositMessage(address,uint32,uint256,uint256,address,bytes,bytes)";
 
 describe("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
@@ -364,17 +370,20 @@ describe("SpokePool Depositor Logic", async function () {
     function getDepositArgsFromRelayData(
       _relayData: V3RelayData,
       _destinationChainId = destinationChainId,
-      _quoteTimestamp = quoteTimestamp
+      _quoteTimestamp = quoteTimestamp,
+      _isAddressOverload = false
     ) {
       return [
-        hexZeroPadAddress(_relayData.depositor),
-        hexZeroPadAddress(_relayData.recipient),
-        hexZeroPadAddress(_relayData.inputToken),
-        hexZeroPadAddress(_relayData.outputToken),
+        _isAddressOverload ? bytes32ToAddress(_relayData.depositor) : hexZeroPadAddress(_relayData.depositor),
+        _isAddressOverload ? bytes32ToAddress(_relayData.recipient) : hexZeroPadAddress(_relayData.recipient),
+        _isAddressOverload ? bytes32ToAddress(_relayData.inputToken) : hexZeroPadAddress(_relayData.inputToken),
+        _isAddressOverload ? bytes32ToAddress(_relayData.outputToken) : hexZeroPadAddress(_relayData.outputToken),
         _relayData.inputAmount,
         _relayData.outputAmount,
         _destinationChainId,
-        hexZeroPadAddress(_relayData.exclusiveRelayer),
+        _isAddressOverload
+          ? bytes32ToAddress(_relayData.exclusiveRelayer)
+          : hexZeroPadAddress(_relayData.exclusiveRelayer),
         _quoteTimestamp,
         _relayData.fillDeadline,
         _relayData.exclusivityDeadline,
@@ -400,6 +409,11 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("placeholder: gas test", async function () {
       await spokePool.connect(depositor)[depositV3Bytes](...depositArgs);
+    });
+    it("should allow depositv3 with address overload", async function () {
+      await spokePool
+        .connect(depositor)
+        [depositV3Address](...getDepositArgsFromRelayData(relayData, destinationChainId, quoteTimestamp, true));
     });
     it("route disabled", async function () {
       // Verify that routes are disabled by default for a new route
@@ -528,6 +542,45 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.message
         );
     });
+    it("should allow depositV3Now with address overload", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadlineOffset = 1000;
+      const exclusivityDeadline = 0;
+      await expect(
+        spokePool
+          .connect(depositor)
+          [depositV3NowAddress](
+            bytes32ToAddress(relayData.depositor),
+            bytes32ToAddress(relayData.recipient),
+            bytes32ToAddress(relayData.inputToken),
+            bytes32ToAddress(relayData.outputToken),
+            relayData.inputAmount,
+            relayData.outputAmount,
+            destinationChainId,
+            bytes32ToAddress(relayData.exclusiveRelayer),
+            fillDeadlineOffset,
+            exclusivityDeadline,
+            relayData.message
+          )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          hexZeroPadAddressLowercase(relayData.inputToken),
+          hexZeroPadAddressLowercase(relayData.outputToken),
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          currentTime, // quoteTimestamp should be current time
+          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+          currentTime,
+          hexZeroPadAddressLowercase(relayData.depositor),
+          hexZeroPadAddressLowercase(relayData.recipient),
+          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
+          relayData.message
+        );
+    });
     it("emits V3FundsDeposited event with correct deposit ID", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
       await expect(spokePool.connect(depositor)[depositV3Bytes](...depositArgs))
@@ -608,7 +661,7 @@ describe("SpokePool Depositor Logic", async function () {
         hexZeroPadAddress(updatedRecipient),
         updatedMessage
       );
-      await spokePool.verifyUpdateV3DepositMessage(
+      await spokePool[verifyUpdateV3DepositMessageBytes](
         hexZeroPadAddress(depositor.address),
         depositId,
         originChainId,
@@ -620,7 +673,7 @@ describe("SpokePool Depositor Logic", async function () {
 
       // Reverts if passed in depositor is the signer or if signature is incorrect
       await expect(
-        spokePool.verifyUpdateV3DepositMessage(
+        spokePool[verifyUpdateV3DepositMessageBytes](
           hexZeroPadAddress(updatedRecipient),
           depositId,
           originChainId,
@@ -641,7 +694,7 @@ describe("SpokePool Depositor Logic", async function () {
         updatedMessage
       );
       await expect(
-        spokePool.verifyUpdateV3DepositMessage(
+        spokePool[verifyUpdateV3DepositMessageBytes](
           hexZeroPadAddress(depositor.address),
           depositId,
           originChainId,
@@ -696,7 +749,7 @@ describe("SpokePool Depositor Logic", async function () {
         updatedMessage
       );
       await expect(
-        spokePool.verifyUpdateV3DepositMessage(
+        spokePool[verifyUpdateV3DepositMessageBytes](
           hexZeroPadAddress(depositor.address),
           depositId,
           otherChainId,
@@ -718,6 +771,55 @@ describe("SpokePool Depositor Logic", async function () {
             invalidSignatureForChain
           )
       ).to.be.revertedWith("InvalidDepositorSignature");
+    });
+    it("should allow speeding up V3 deposit with address overload", async function () {
+      const updatedOutputAmount = amountToDeposit.add(1);
+      const updatedRecipient = randomAddress();
+      const updatedMessage = "0x1234";
+      const depositId = 100;
+      const spokePoolChainId = await spokePool.chainId();
+
+      const signature = await getUpdatedV3DepositSignature(
+        depositor,
+        depositId,
+        spokePoolChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage,
+        true
+      );
+
+      await spokePool[verifyUpdateV3DepositMessageAddress](
+        depositor.address,
+        depositId,
+        spokePoolChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      );
+
+      await expect(
+        spokePool
+          .connect(depositor)
+          [speedUpV3DepositAddress](
+            depositor.address,
+            depositId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+          )
+      )
+        .to.emit(spokePool, "RequestedSpeedUpV3Deposit")
+        .withArgs(
+          updatedOutputAmount,
+          depositId,
+          hexZeroPadAddressLowercase(depositor.address),
+          hexZeroPadAddressLowercase(updatedRecipient),
+          updatedMessage,
+          signature
+        );
     });
   });
 });

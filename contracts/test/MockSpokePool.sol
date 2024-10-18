@@ -106,6 +106,27 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
             );
     }
 
+    function verifyUpdateV3DepositMessage(
+        address depositor,
+        uint32 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public view {
+        return
+            _verifyUpdateV3DepositMessage(
+                depositor,
+                depositId,
+                originChainId,
+                updatedOutputAmount,
+                updatedRecipient,
+                updatedMessage,
+                depositorSignature
+            );
+    }
+
     function fillRelayV3Internal(
         V3RelayExecutionParams memory relayExecution,
         bytes32 relayer,

@@ -81,7 +81,7 @@ abstract contract CircleCCTPAdapter {
      * @param amount Amount of USDC to transfer.
      */
     function _transferUsdc(address to, uint256 amount) internal {
-        _transferUsdc(_addressToBytes32(to), amount);
+        _transferUsdc(to.toBytes32(), amount);
     }
 
     /**

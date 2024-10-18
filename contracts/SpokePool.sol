@@ -133,6 +133,11 @@ abstract contract SpokePool is
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
 
+    bytes32 public constant UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH =
+        keccak256(
+            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
+        );
+
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
@@ -849,72 +854,6 @@ abstract contract SpokePool is
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
     function depositExclusive(
-        bytes32 depositor,
-        bytes32 recipient,
-        bytes32 inputToken,
-        bytes32 outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 destinationChainId,
-        bytes32 exclusiveRelayer,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 exclusivityPeriod,
-        bytes calldata message
-    ) public payable {
-        depositV3(
-            depositor,
-            recipient,
-            inputToken,
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityPeriod,
-            message
-        );
-    }
-
-    /**
-     * @notice DEPRECATED. Use `depositV3()` instead for new integrations.
-     * @notice An overloaded version of `depositExclusive` using `address` types for backward compatibility.
-     * This function submits a deposit and sets the exclusivity deadline to the current time plus an offset. It allows users
-     * to specify an exclusive relayer for a period after their deposit transaction is mined.
-     *
-     * @dev This function is deprecated and maintained for backward compatibility. It mirrors the logic of `depositV3()`
-     * but uses `address` types for `depositor`, `recipient`, `inputToken`, `outputToken`, and `exclusiveRelayer`.
-     * Consider migrating to `depositV3()` for future use.
-     *
-     * @param depositor The account credited with the deposit who can request to "speed up" this deposit by modifying
-     * the output amount, recipient, and message.
-     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
-     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
-     * an EOA or wrapped native token if a contract.
-     * @param inputToken The token pulled from the caller's account and locked into this contract to initiate the deposit.
-     * Equivalent tokens on the relayer's repayment chain of choice will be sent as a refund. If this is the wrapped native token,
-     * msg.value must equal inputTokenAmount.
-     * @param outputToken The token the relayer will send to the recipient on the destination chain. Must be an ERC20.
-     * @param inputAmount The amount of input tokens pulled from the caller's account and locked into this contract. This
-     * amount will be sent to the relayer on their repayment chain of choice as a refund, following an optimistic challenge
-     * window in the HubPool, less a system fee.
-     * @param outputAmount The amount of output tokens the relayer will send to the recipient on the destination.
-     * @param destinationChainId The destination chain identifier. Must be enabled along with the input token as a valid
-     * deposit route from this spoke pool, or the transaction will revert.
-     * @param exclusiveRelayer The relayer exclusively allowed to fill this deposit before the exclusivity deadline.
-     * @param quoteTimestamp The HubPool timestamp used to determine the system fee paid by the depositor. Must be set
-     * between [currentTime - depositQuoteTimeBuffer, currentTime], where currentTime is block.timestamp on this chain.
-     * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp, the fill will
-     * revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer], where currentTime
-     * is block.timestamp on this chain.
-     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
-     * anyone can fill the deposit.
-     * @param message The message to send to the recipient on the destination chain. If the recipient is a contract, it must
-     * implement `handleV3AcrossMessage()` if the message is not empty, or the fill will revert.
-     */
-    function depositExclusive(
         address depositor,
         address recipient,
         address inputToken,
@@ -1023,10 +962,22 @@ abstract contract SpokePool is
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) public override {
-        speedUpV3Deposit(
-            depositor.toBytes32(),
+        _verifyUpdateV3DepositMessage(
+            depositor,
             depositId,
+            chainId(),
             updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+
+        // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
+        // from the following event to submit a fill with updated relay data.
+        emit RequestedSpeedUpV3Deposit(
+            updatedOutputAmount,
+            depositId,
+            depositor.toBytes32(),
             updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature
@@ -1471,6 +1422,35 @@ abstract contract SpokePool is
         MerkleLib.setClaimed(rootBundle.claimedBitmap, leafId);
     }
 
+    function _verifyUpdateV3DepositMessageHelper(
+        bytes32 depositor,
+        uint32 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        bytes32 updatedRecipient,
+        bytes memory updatedMessage,
+        bytes32 hashType,
+        bytes memory depositorSignature
+    ) internal view {
+        // A depositor can request to modify an un-relayed deposit by signing a hash containing the updated
+        // details and information uniquely identifying the deposit to relay. This information ensures
+        // that this signature cannot be re-used for other deposits.
+        bytes32 expectedTypedDataV4Hash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    hashType,
+                    depositId,
+                    originChainId,
+                    updatedOutputAmount,
+                    updatedRecipient,
+                    keccak256(updatedMessage)
+                )
+            ),
+            originChainId
+        );
+        _verifyDepositorSignature(depositor.toAddress(), expectedTypedDataV4Hash, depositorSignature);
+    }
+
     function _verifyUpdateV3DepositMessage(
         bytes32 depositor,
         uint32 depositId,
@@ -1480,28 +1460,37 @@ abstract contract SpokePool is
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) internal view {
-        // A depositor can request to modify an un-relayed deposit by signing a hash containing the updated
-        // details and information uniquely identifying the deposit to relay. This information ensures
-        // that this signature cannot be re-used for other deposits.
-        // Note: We use the EIP-712 (https://eips.ethereum.org/EIPS/eip-712) standard for hashing and signing typed data.
-        // Specifically, we use the version of the encoding known as "v4", as implemented by the JSON RPC method
-        // `eth_signedTypedDataV4` in MetaMask (https://docs.metamask.io/guide/signing-data.html).
-        bytes32 expectedTypedDataV4Hash = _hashTypedDataV4(
-            // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
-            keccak256(
-                abi.encode(
-                    UPDATE_V3_DEPOSIT_DETAILS_HASH,
-                    depositId,
-                    originChainId,
-                    updatedOutputAmount,
-                    updatedRecipient,
-                    keccak256(updatedMessage)
-                )
-            ),
-            // By passing in the origin chain id, we enable the verification of the signature on a different chain
-            originChainId
+        _verifyUpdateV3DepositMessageHelper(
+            depositor,
+            depositId,
+            originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            UPDATE_V3_DEPOSIT_DETAILS_HASH,
+            depositorSignature
         );
-        _verifyDepositorSignature(depositor.toAddress(), expectedTypedDataV4Hash, depositorSignature);
+    }
+
+    function _verifyUpdateV3DepositMessage(
+        address depositor,
+        uint32 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) internal view {
+        _verifyUpdateV3DepositMessageHelper(
+            depositor.toBytes32(),
+            depositId,
+            originChainId,
+            updatedOutputAmount,
+            updatedRecipient.toBytes32(),
+            updatedMessage,
+            UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH,
+            depositorSignature
+        );
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
