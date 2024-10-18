@@ -126,6 +126,7 @@ describe("svm_spoke.refund_claims", () => {
       tokenAccount,
       claimAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
+      program: program.programId,
     };
     await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
   };
