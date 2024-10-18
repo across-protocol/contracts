@@ -134,7 +134,7 @@ abstract contract SpokePool is
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
     // when executing a slow fill.
-    address public constant EMPTY_RELAYER = address(0);
+    bytes32 public constant EMPTY_RELAYER = bytes32(0);
     // This is the magic value that signals to the off-chain validator
     // that this deposit can never expire. A deposit with this fill deadline should always be eligible for a
     // slow fill, meaning that its output token and input token must be "equivalent". Therefore, this value is only
@@ -830,12 +830,11 @@ abstract contract SpokePool is
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
-    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId)
-        public
-        override
-        nonReentrant
-        unpausedFills
-    {
+    function fillV3Relay(
+        V3RelayData calldata relayData,
+        uint256 repaymentChainId,
+        bytes32 repaymentAddress
+    ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
@@ -855,7 +854,7 @@ abstract contract SpokePool is
             repaymentChainId: repaymentChainId
         });
 
-        _fillRelayV3(relayExecution, msg.sender, false);
+        _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
     /**
@@ -878,6 +877,7 @@ abstract contract SpokePool is
     function fillV3RelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
+        bytes32 repaymentAddress,
         uint256 updatedOutputAmount,
         address updatedRecipient,
         bytes calldata updatedMessage,
@@ -908,7 +908,7 @@ abstract contract SpokePool is
             depositorSignature
         );
 
-        _fillRelayV3(relayExecution, msg.sender, false);
+        _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
     /**
@@ -1311,7 +1311,7 @@ abstract contract SpokePool is
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
     function _fillRelayV3(
         V3RelayExecutionParams memory relayExecution,
-        address relayer,
+        bytes32 relayer,
         bool isSlowFill
     ) internal {
         V3RelayData memory relayData = relayExecution.relay;
