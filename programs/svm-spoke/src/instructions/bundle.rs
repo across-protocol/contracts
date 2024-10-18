@@ -1,5 +1,7 @@
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::keccak;
+use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_spl::token_interface::{
+    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
@@ -7,10 +9,6 @@ use crate::{
     event::{DeferredRelayerRefunds, ExecutedRelayerRefundRoot},
     state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
-};
-
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
 
 #[event_cpi]
@@ -142,6 +140,10 @@ where
 
     // TODO: execute remaining parts of leaf structure such as amountToReturn.
     // TODO: emit events.
+
+    if relayer_refund_leaf.refund_accounts.len() != relayer_refund_leaf.refund_amounts.len() {
+        return err!(CustomError::InvalidMerkleLeaf);
+    }
 
     // Derive the signer seeds for the state. The vault owns the state PDA so we need to derive this to create the
     // signer seeds to execute the CPI transfer from the vault to the refund recipient.
