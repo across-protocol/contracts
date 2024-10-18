@@ -23,6 +23,124 @@ export const minimalSpokePoolInterface = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      {
+        internalType: "uint32",
+        name: "rootBundleId",
+        type: "uint32",
+      },
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "amountToReturn",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "chainId",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256[]",
+            name: "refundAmounts",
+            type: "uint256[]",
+          },
+          {
+            internalType: "uint32",
+            name: "leafId",
+            type: "uint32",
+          },
+          {
+            internalType: "address",
+            name: "l2TokenAddress",
+            type: "address",
+          },
+          {
+            internalType: "address[]",
+            name: "refundAddresses",
+            type: "address[]",
+          },
+        ],
+        internalType: "struct SpokePoolInterface.RelayerRefundLeaf",
+        name: "relayerRefundLeaf",
+        type: "tuple",
+      },
+      {
+        internalType: "bytes32[]",
+        name: "proof",
+        type: "bytes32[]",
+      },
+    ],
+    name: "executeRelayerRefundLeaf",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "relayerRefundRoot",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes32",
+        name: "slowRelayRoot",
+        type: "bytes32",
+      },
+    ],
+    name: "relayRootBundle",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "rootBundles",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "slowRelayRoot",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes32",
+        name: "relayerRefundRoot",
+        type: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
+
+export const minimalAdapterInterface = [
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "target",
+        type: "address",
+      },
+      {
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
+      },
+    ],
+    name: "relayMessage",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
 ];
 
 async function askQuestion(query: string) {
