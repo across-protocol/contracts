@@ -138,6 +138,10 @@ pub fn execute_relayer_refund_leaf<'info>(
     // TODO: execute remaining parts of leaf structure such as amountToReturn.
     // TODO: emit events.
 
+    if relayer_refund_leaf.refund_accounts.len() != relayer_refund_leaf.refund_amounts.len() {
+        return err!(CustomError::InvalidMerkleLeaf);
+    }
+
     // Derive the signer seeds for the state. The vault owns the state PDA so we need to derive this to create the
     // signer seeds to execute the CPI transfer from the vault to the refund recipient.
     let state_seed_bytes = state.seed.to_le_bytes();
