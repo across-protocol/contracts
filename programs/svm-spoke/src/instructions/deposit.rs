@@ -88,7 +88,9 @@ pub fn deposit_v3(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    require!(ctx.accounts.route.enabled, CustomError::DisabledRoute);
+    if !ctx.accounts.route.enabled {
+        return err!(CustomError::DisabledRoute);
+    }
 
     let current_time = get_current_time(state)?;
 
@@ -96,11 +98,11 @@ pub fn deposit_v3(
     // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
     // not caught via overflow.
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
-        return Err(CustomError::InvalidQuoteTimestamp.into());
+        return err!(CustomError::InvalidQuoteTimestamp);
     }
 
     if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
-        return Err(CustomError::InvalidFillDeadline.into());
+        return err!(CustomError::InvalidFillDeadline);
     }
 
     let transfer_accounts = TransferChecked {

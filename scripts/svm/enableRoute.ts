@@ -1,3 +1,5 @@
+// This script is used by a chain admin to enable or disable a route for a token on the Solana Spoke Pool.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";

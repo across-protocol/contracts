@@ -7,7 +7,6 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
@@ -93,8 +92,8 @@ describe("svm_spoke.slow_fill", () => {
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
         depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
-        fillDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid fill deadline.
-        exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 60),
+        fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
+        exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
         message: Buffer.from("Test message"),
       },
       chainId: slowRelayLeafChainId,
@@ -178,7 +177,7 @@ describe("svm_spoke.slow_fill", () => {
   });
 
   it("Requests a V3 slow fill, verify the event & state change", async () => {
-    // Attempt to request a slow fill before the fillDeadline
+    // Attempt to request a slow fill before the exclusivityDeadline
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     try {
@@ -187,13 +186,13 @@ describe("svm_spoke.slow_fill", () => {
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
-      assert.fail("Request should have failed due to fill deadline not passed");
+      assert.fail("Request should have failed due to exclusivity deadline not passed");
     } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     await program.methods
       .requestV3SlowFill(relayHash, formatRelayData(relayData))
@@ -238,8 +237,8 @@ describe("svm_spoke.slow_fill", () => {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
-    // Set the contract time to be after the fillDeadline.
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline.
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     // Attempt to request a slow fill after the relay has been filled.
     try {
@@ -262,8 +261,8 @@ describe("svm_spoke.slow_fill", () => {
     let fillStatusAccount = await program.account.fillStatusAccount.fetchNullable(fillStatusPDA);
     assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before requestV3SlowFill");
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     // Request a slow fill
     await program.methods
@@ -286,8 +285,8 @@ describe("svm_spoke.slow_fill", () => {
   it("Fails to request a V3 slow fill multiple times for the same fill", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     // Request a slow fill
     await program.methods
@@ -389,9 +388,6 @@ describe("svm_spoke.slow_fill", () => {
     await program.methods.pauseFills(true).accounts(pauseFillsAccounts).rpc();
     const stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedFills, "Fills should be paused");
-
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
 
     // Attempt to request a slow fill. This should fail because fills are paused.
     try {
@@ -625,7 +621,7 @@ describe("svm_spoke.slow_fill", () => {
       assert.fail("Execution should have failed for another chain");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidProof", "Expected error code InvalidProof");
+      assert.strictEqual(err.error.errorCode.code, "InvalidMerkleProof", "Expected error code InvalidMerkleProof");
     }
   });
 });

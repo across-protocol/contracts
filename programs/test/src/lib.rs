@@ -74,7 +74,7 @@ pub mod test {
         let computed_root = process_proof(&proof, &leaf);
         if computed_root != root {
             msg!("Invalid proof: computed root does not match provided root");
-            return Err(CustomError::InvalidProof.into());
+            return err!(CustomError::InvalidMerkleProof);
         }
         msg!("Merkle proof verified successfully");
         Ok(())
