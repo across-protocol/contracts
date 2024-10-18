@@ -27,10 +27,17 @@ import {
   RelayerRefundLeaf,
   RelayerRefundLeafSolana,
   RelayerRefundLeafType,
+  readEvents,
   readProgramEvents,
 } from "./utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
+
+enum RefundType {
+  TokenAccounts,
+  ClaimAccounts,
+  MixedAccounts,
+}
 
 describe("svm_spoke.bundle", () => {
   anchor.setProvider(provider);
@@ -650,13 +657,7 @@ describe("svm_spoke.bundle", () => {
   });
 
   describe("Execute Max Refunds", () => {
-    enum TestType {
-      TokenAccounts,
-      ClaimAccounts,
-      MixedAccounts,
-    }
-
-    const executeMaxRefunds = async (testType: TestType) => {
+    const executeMaxRefunds = async (refundType: RefundType) => {
       const relayerRefundLeaves: RelayerRefundLeafType[] = [];
       // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
       // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
@@ -683,13 +684,13 @@ describe("svm_spoke.bundle", () => {
           program.programId
         );
 
-        if (testType === TestType.TokenAccounts) {
+        if (refundType === RefundType.TokenAccounts) {
           await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
           refundAccounts.push(tokenAccount);
-        } else if (testType === TestType.ClaimAccounts) {
+        } else if (refundType === RefundType.ClaimAccounts) {
           await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
           refundAccounts.push(claimAccount);
-        } else if (testType === TestType.MixedAccounts) {
+        } else if (refundType === RefundType.MixedAccounts) {
           if (i % 2 === 0) {
             await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
             refundAccounts.push(tokenAccount);
@@ -838,11 +839,11 @@ describe("svm_spoke.bundle", () => {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
       const refundBalances = await Promise.all(
         refundAccounts.map(async (account, i) => {
-          if (testType === TestType.TokenAccounts) {
+          if (refundType === RefundType.TokenAccounts) {
             return (await connection.getTokenAccountBalance(account)).value.amount;
-          } else if (testType === TestType.ClaimAccounts) {
+          } else if (refundType === RefundType.ClaimAccounts) {
             return (await program.account.claimAccount.fetch(account)).amount.toString();
-          } else if (testType === TestType.MixedAccounts) {
+          } else if (refundType === RefundType.MixedAccounts) {
             return i % 2 === 0
               ? (await connection.getTokenAccountBalance(account)).value.amount
               : (await program.account.claimAccount.fetch(account)).amount.toString();
@@ -855,15 +856,15 @@ describe("svm_spoke.bundle", () => {
     };
 
     it("Execute Max Refunds to Token Accounts", async () => {
-      await executeMaxRefunds(TestType.TokenAccounts);
+      await executeMaxRefunds(RefundType.TokenAccounts);
     });
 
     it("Execute Max Refunds to Claim Accounts", async () => {
-      await executeMaxRefunds(TestType.ClaimAccounts);
+      await executeMaxRefunds(RefundType.ClaimAccounts);
     });
 
     it("Execute Max Refunds to Mixed Accounts", async () => {
-      await executeMaxRefunds(TestType.MixedAccounts);
+      await executeMaxRefunds(RefundType.MixedAccounts);
     });
   });
 
@@ -1009,5 +1010,139 @@ describe("svm_spoke.bundle", () => {
 
     assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
     assert.strictEqual(BigInt(fRelayerABal) - BigInt(iRelayerABal), BigInt(totalRefund), "Relayer A bal");
+  });
+
+  describe("DeferredRelayerRefunds events", () => {
+    const executeRelayerRefundLeaf = async (refundType: RefundType) => {
+      // Create new relayer accounts for each sub-test.
+      const relayerA = Keypair.generate();
+      const relayerB = Keypair.generate();
+      const relayerARefund = new BN(400000);
+      const relayerBRefund = new BN(100000);
+
+      let relayerTA: PublicKey, relayerTB: PublicKey, refundA: PublicKey, refundB: PublicKey;
+
+      // Create refund accounts depending on the refund type.
+      if (refundType === RefundType.TokenAccounts) {
+        relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
+        relayerTB = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerB.publicKey)).address;
+        refundA = relayerTA;
+        refundB = relayerTB;
+      } else if (refundType === RefundType.ClaimAccounts) {
+        relayerTA = getAssociatedTokenAddressSync(mint, relayerA.publicKey);
+        relayerTB = getAssociatedTokenAddressSync(mint, relayerB.publicKey);
+        [refundA] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerTA.toBuffer()],
+          program.programId
+        );
+        [refundB] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
+          program.programId
+        );
+        await program.methods.initializeClaimAccount(mint, relayerTA).rpc();
+        await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
+      } else if (refundType === RefundType.MixedAccounts) {
+        relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
+        relayerTB = getAssociatedTokenAddressSync(mint, relayerB.publicKey);
+        refundA = relayerTA;
+        [refundB] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
+          program.programId
+        );
+        await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
+      } else throw new Error("Invalid refund type"); // Required to infer all accounts have been assigned.
+
+      // Prepare leaf using token accounts.
+      const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+      relayerRefundLeaves.push({
+        isSolana: true,
+        leafId: new BN(0),
+        chainId: chainId,
+        amountToReturn: new BN(0),
+        mintPublicKey: mint,
+        refundAccounts: [relayerTA, relayerTB],
+        refundAmounts: [relayerARefund, relayerBRefund],
+      });
+
+      const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+      const root = merkleTree.getRoot();
+      const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+      const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+      const stateAccountData = await program.account.state.fetch(state);
+      const rootBundleId = stateAccountData.rootBundleId;
+
+      const rootBundleIdBuffer = Buffer.alloc(4);
+      rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+      // Relay root bundle
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+      // Pass refund addresses in remaining accounts.
+      const remainingAccounts = [
+        { pubkey: refundA, isWritable: true, isSigner: false },
+        { pubkey: refundB, isWritable: true, isSigner: false },
+      ];
+
+      // Verify valid leaf
+      const executeRelayerRefundLeafAccounts = {
+        state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
+        transferLiability,
+        systemProgram: web3.SystemProgram.programId,
+        program: program.programId,
+      };
+      const proofAsNumbers = proof.map((p) => Array.from(p));
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+      const tx = await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+
+      return { tx, rootBundleId, leafId: leaf.leafId };
+    };
+
+    it("No DeferredRelayerRefunds event in all Token Accounts", async () => {
+      const { tx } = await executeRelayerRefundLeaf(RefundType.TokenAccounts);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+      const events = await readEvents(connection, tx, [program]);
+      const event = events.find((event) => event.name === "deferredRelayerRefunds");
+      assert.isUndefined(event, "No DeferredRelayerRefunds event should be emitted");
+    });
+
+    it("DeferredRelayerRefunds event in all Claim Accounts", async () => {
+      const { tx, rootBundleId, leafId } = await executeRelayerRefundLeaf(RefundType.ClaimAccounts);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+      const events = await readEvents(connection, tx, [program]);
+      const event = events.find((event) => event.name === "deferredRelayerRefunds").data;
+      assertSE(event.chainId, chainId, "chainId should match");
+      assertSE(event.rootBundleId, rootBundleId, "rootBundleId should match");
+      assertSE(event.leafId, leafId, "leafId should match");
+      assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+    });
+
+    it("DeferredRelayerRefunds event in Mixed Accounts", async () => {
+      const { tx, rootBundleId, leafId } = await executeRelayerRefundLeaf(RefundType.MixedAccounts);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+      const events = await readEvents(connection, tx, [program]);
+      const event = events.find((event) => event.name === "deferredRelayerRefunds").data;
+      assertSE(event.chainId, chainId, "chainId should match");
+      assertSE(event.rootBundleId, rootBundleId, "rootBundleId should match");
+      assertSE(event.leafId, leafId, "leafId should match");
+      assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+    });
   });
 });

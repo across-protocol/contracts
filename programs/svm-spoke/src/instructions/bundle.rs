@@ -4,7 +4,7 @@ use anchor_lang::solana_program::keccak;
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
-    event::ExecutedRelayerRefundRoot,
+    event::{DeferredRelayerRefunds, ExecutedRelayerRefundRoot},
     state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
@@ -149,6 +149,9 @@ where
     let seeds = &[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]];
     let signer_seeds = &[&seeds[..]];
 
+    // Will emit event at the end if there are any claim accounts.
+    let mut deferred_refunds = false;
+
     for (i, amount) in relayer_refund_leaf.refund_amounts.iter().enumerate() {
         let amount = *amount as u64;
 
@@ -181,6 +184,9 @@ where
             RefundAccount::ClaimAccount(mut claim_account) => {
                 claim_account.amount += amount;
 
+                // Emit DeferredRelayerRefunds event at the end.
+                deferred_refunds = true;
+
                 // Persist the updated claim account (Anchor handles this only for static accounts).
                 claim_account.exit(ctx.program_id)?;
             }
@@ -202,6 +208,17 @@ where
         refund_addresses: relayer_refund_leaf.refund_accounts,
         caller: ctx.accounts.signer.key(),
     });
+
+    // Emit the DeferredRelayerRefunds event if any claim accounts were passed instead of token accounts. We cannot emit
+    // individual accounts and amounts as that would run out of memory for larger leaves.
+    if deferred_refunds {
+        emit_cpi!(DeferredRelayerRefunds {
+            chain_id: relayer_refund_leaf.chain_id,
+            root_bundle_id,
+            leaf_id: relayer_refund_leaf.leaf_id,
+            l2_token_address: ctx.accounts.mint.key(),
+        });
+    }
 
     Ok(())
 }
