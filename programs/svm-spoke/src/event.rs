@@ -103,6 +103,7 @@ pub struct ExecutedRelayerRefundRoot {
     pub leaf_id: u32,
     pub l2_token_address: Pubkey,
     pub refund_addresses: Vec<Pubkey>,
+    pub deferred_refunds: bool, // TODO: update EVM implementation to add this field.
     pub caller: Pubkey,
 }
 

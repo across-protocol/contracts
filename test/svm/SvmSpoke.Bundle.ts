@@ -232,6 +232,7 @@ describe("svm_spoke.bundle", () => {
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.refundAddresses[0], relayerTA, "Relayer A address should match");
     assertSE(event.refundAddresses[1], relayerTB, "Relayer B address should match");
+    assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -1078,7 +1079,7 @@ describe("svm_spoke.bundle", () => {
     }
   });
 
-  describe("DeferredRelayerRefunds events", () => {
+  describe("Deferred refunds in ExecutedRelayerRefundRoot events", () => {
     const executeRelayerRefundLeaf = async (refundType: RefundType) => {
       // Create new relayer accounts for each sub-test.
       const relayerA = Keypair.generate();
@@ -1169,46 +1170,38 @@ describe("svm_spoke.bundle", () => {
       const proofAsNumbers = proof.map((p) => Array.from(p));
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-      const tx = await program.methods
+      return await program.methods
         .executeRelayerRefundLeaf()
         .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(remainingAccounts)
         .rpc();
-
-      return { tx, rootBundleId, leafId: leaf.leafId };
     };
 
-    it("No DeferredRelayerRefunds event in all Token Accounts", async () => {
-      const { tx } = await executeRelayerRefundLeaf(RefundType.TokenAccounts);
+    it("No deferred refunds in all Token Accounts", async () => {
+      const tx = await executeRelayerRefundLeaf(RefundType.TokenAccounts);
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
-      const event = events.find((event) => event.name === "deferredRelayerRefunds");
-      assert.isUndefined(event, "No DeferredRelayerRefunds event should be emitted");
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     });
 
-    it("DeferredRelayerRefunds event in all Claim Accounts", async () => {
-      const { tx, rootBundleId, leafId } = await executeRelayerRefundLeaf(RefundType.ClaimAccounts);
+    it("Deferred refunds in all Claim Accounts", async () => {
+      const tx = await executeRelayerRefundLeaf(RefundType.ClaimAccounts);
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
-      const event = events.find((event) => event.name === "deferredRelayerRefunds").data;
-      assertSE(event.chainId, chainId, "chainId should match");
-      assertSE(event.rootBundleId, rootBundleId, "rootBundleId should match");
-      assertSE(event.leafId, leafId, "leafId should match");
-      assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
     });
 
-    it("DeferredRelayerRefunds event in Mixed Accounts", async () => {
-      const { tx, rootBundleId, leafId } = await executeRelayerRefundLeaf(RefundType.MixedAccounts);
+    it("Deferred refunds in Mixed Accounts", async () => {
+      const tx = await executeRelayerRefundLeaf(RefundType.MixedAccounts);
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
-      const event = events.find((event) => event.name === "deferredRelayerRefunds").data;
-      assertSE(event.chainId, chainId, "chainId should match");
-      assertSE(event.rootBundleId, rootBundleId, "rootBundleId should match");
-      assertSE(event.leafId, leafId, "leafId should match");
-      assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
     });
   });
 });
