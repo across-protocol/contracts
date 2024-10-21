@@ -102,7 +102,8 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 updatedOutputAmount,
                 updatedRecipient,
                 updatedMessage,
-                depositorSignature
+                depositorSignature,
+                UPDATE_V3_DEPOSIT_DETAILS_HASH
             );
     }
 
@@ -117,13 +118,14 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     ) public view {
         return
             _verifyUpdateV3DepositMessage(
-                depositor,
+                depositor.toBytes32(),
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient,
+                updatedRecipient.toBytes32(),
                 updatedMessage,
-                depositorSignature
+                depositorSignature,
+                UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
             );
     }
 

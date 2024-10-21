@@ -915,7 +915,8 @@ abstract contract SpokePool is
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
-            depositorSignature
+            depositorSignature,
+            UPDATE_V3_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -962,13 +963,14 @@ abstract contract SpokePool is
         bytes calldata depositorSignature
     ) public {
         _verifyUpdateV3DepositMessage(
-            depositor,
+            depositor.toBytes32(),
             depositId,
             chainId(),
             updatedOutputAmount,
-            updatedRecipient,
+            updatedRecipient.toBytes32(),
             updatedMessage,
-            depositorSignature
+            depositorSignature,
+            UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -1103,7 +1105,8 @@ abstract contract SpokePool is
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
-            depositorSignature
+            depositorSignature,
+            UPDATE_V3_DEPOSIT_DETAILS_HASH
         );
 
         _fillRelayV3(relayExecution, msg.sender.toBytes32(), false);
@@ -1424,15 +1427,15 @@ abstract contract SpokePool is
         MerkleLib.setClaimed(rootBundle.claimedBitmap, leafId);
     }
 
-    function _verifyUpdateV3DepositMessageHelper(
+    function _verifyUpdateV3DepositMessage(
         bytes32 depositor,
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
         bytes memory updatedMessage,
-        bytes32 hashType,
-        bytes memory depositorSignature
+        bytes memory depositorSignature,
+        bytes32 hashType
     ) internal view {
         // A depositor can request to modify an un-relayed deposit by signing a hash containing the updated
         // details and information uniquely identifying the deposit to relay. This information ensures
@@ -1451,48 +1454,6 @@ abstract contract SpokePool is
             originChainId
         );
         _verifyDepositorSignature(depositor.toAddress(), expectedTypedDataV4Hash, depositorSignature);
-    }
-
-    function _verifyUpdateV3DepositMessage(
-        bytes32 depositor,
-        uint32 depositId,
-        uint256 originChainId,
-        uint256 updatedOutputAmount,
-        bytes32 updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
-    ) internal view {
-        _verifyUpdateV3DepositMessageHelper(
-            depositor,
-            depositId,
-            originChainId,
-            updatedOutputAmount,
-            updatedRecipient,
-            updatedMessage,
-            UPDATE_V3_DEPOSIT_DETAILS_HASH,
-            depositorSignature
-        );
-    }
-
-    function _verifyUpdateV3DepositMessage(
-        address depositor,
-        uint32 depositId,
-        uint256 originChainId,
-        uint256 updatedOutputAmount,
-        address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
-    ) internal view {
-        _verifyUpdateV3DepositMessageHelper(
-            depositor.toBytes32(),
-            depositId,
-            originChainId,
-            updatedOutputAmount,
-            updatedRecipient.toBytes32(),
-            updatedMessage,
-            UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH,
-            depositorSignature
-        );
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
