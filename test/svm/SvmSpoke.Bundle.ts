@@ -12,7 +12,13 @@ import {
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  createMint,
+  getAssociatedTokenAddressSync,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import {
   loadExecuteRelayerRefundLeafParams,
   relayerRefundHashFn,
@@ -21,10 +27,17 @@ import {
   RelayerRefundLeaf,
   RelayerRefundLeafSolana,
   RelayerRefundLeafType,
+  readEvents,
   readProgramEvents,
 } from "./utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
+
+enum RefundType {
+  TokenAccounts,
+  ClaimAccounts,
+  MixedAccounts,
+}
 
 describe("svm_spoke.bundle", () => {
   anchor.setProvider(provider);
@@ -219,6 +232,7 @@ describe("svm_spoke.bundle", () => {
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.refundAddresses[0], relayerTA, "Relayer A address should match");
     assertSE(event.refundAddresses[1], relayerTB, "Relayer B address should match");
+    assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -340,7 +354,7 @@ describe("svm_spoke.bundle", () => {
         .remainingAccounts(wrongRemainingAccounts)
         .rpc();
     } catch (err: any) {
-      assert.include(err.toString(), "Account not found");
+      assert.include(err.toString(), "Invalid refund address");
     }
 
     // Verify valid leaf
@@ -643,167 +657,215 @@ describe("svm_spoke.bundle", () => {
     }
   });
 
-  it("Execute Max Refunds", async () => {
-    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+  describe("Execute Max Refunds", () => {
+    const executeMaxRefunds = async (refundType: RefundType) => {
+      const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+      // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
+      // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
+      // protocol does not expect this to be above 25.
+      const solanaDistributions = 28;
 
-    // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
-    // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
-    // protocol does not expect this to be above 25.
-    const solanaDistributions = 28;
+      // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
+      const evmDistributions = 100; // This would fit in 7 proof array elements.
 
-    // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
-    const evmDistributions = 100; // This would fit in 7 proof array elements.
+      const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
-    const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
+      const refundAccounts: web3.PublicKey[] = []; // These would hold either token accounts or claim accounts.
+      const tokenAccounts: web3.PublicKey[] = []; // These are used in leaf building.
+      const refundAmounts: BN[] = [];
 
-    const refundAccounts: web3.PublicKey[] = [];
-    const refundAmounts: BN[] = [];
+      for (let i = 0; i < solanaDistributions; i++) {
+        // Will create token account later if needed.
+        const tokenOwner = Keypair.generate().publicKey;
+        const tokenAccount = getAssociatedTokenAddressSync(mint, tokenOwner);
+        tokenAccounts.push(tokenAccount);
 
-    for (let i = 0; i < solanaDistributions; i++) {
-      const newRefundAccount = (
-        await getOrCreateAssociatedTokenAccount(connection, payer, mint, Keypair.generate().publicKey)
-      ).address;
-      refundAccounts.push(newRefundAccount);
-      refundAmounts.push(new BN(randomBigInt(2).toString()));
-    }
+        const [claimAccount] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), tokenAccount.toBuffer()],
+          program.programId
+        );
 
-    relayerRefundLeaves.push({
-      isSolana: true,
-      leafId: new BN(0),
-      chainId: chainId,
-      amountToReturn: new BN(0),
-      mintPublicKey: mint,
-      refundAccounts: refundAccounts,
-      refundAmounts: refundAmounts,
-    });
+        if (refundType === RefundType.TokenAccounts) {
+          await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
+          refundAccounts.push(tokenAccount);
+        } else if (refundType === RefundType.ClaimAccounts) {
+          await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
+          refundAccounts.push(claimAccount);
+        } else if (refundType === RefundType.MixedAccounts) {
+          if (i % 2 === 0) {
+            await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
+            refundAccounts.push(tokenAccount);
+          } else {
+            await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
+            refundAccounts.push(claimAccount);
+          }
+        }
 
-    for (let i = 0; i < evmDistributions; i++) {
+        refundAmounts.push(new BN(randomBigInt(2).toString()));
+      }
+
       relayerRefundLeaves.push({
-        isSolana: false,
-        leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
-        chainId: randomBigInt(2),
-        amountToReturn: randomBigInt(),
-        l2TokenAddress: randomAddress(),
-        refundAddresses: [randomAddress(), randomAddress()],
-        refundAmounts: [randomBigInt(), randomBigInt()],
-      } as RelayerRefundLeaf);
-    }
+        isSolana: true,
+        leafId: new BN(0),
+        chainId: chainId,
+        amountToReturn: new BN(0),
+        mintPublicKey: mint,
+        refundAccounts: tokenAccounts,
+        refundAmounts: refundAmounts,
+      });
 
-    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+      for (let i = 0; i < evmDistributions; i++) {
+        relayerRefundLeaves.push({
+          isSolana: false,
+          leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
+          chainId: randomBigInt(2),
+          amountToReturn: randomBigInt(),
+          l2TokenAddress: randomAddress(),
+          refundAddresses: [randomAddress(), randomAddress()],
+          refundAmounts: [randomBigInt(), randomBigInt()],
+        } as RelayerRefundLeaf);
+      }
 
-    const root = merkleTree.getRoot();
-    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
-    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+      const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
 
-    let stateAccountData = await program.account.state.fetch(state);
-    const rootBundleId = stateAccountData.rootBundleId;
+      const root = merkleTree.getRoot();
+      const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+      const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
 
-    const rootBundleIdBuffer = Buffer.alloc(4);
-    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
-    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+      const stateAccountData = await program.account.state.fetch(state);
+      const rootBundleId = stateAccountData.rootBundleId;
 
-    // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
-    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+      const rootBundleIdBuffer = Buffer.alloc(4);
+      rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
-    // Verify valid leaf
-    const proofAsNumbers = proof.map((p) => Array.from(p));
+      // Relay root bundle
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
-    const [instructionParams] = PublicKey.findProgramAddressSync(
-      [Buffer.from("instruction_params"), owner.toBuffer()],
-      program.programId
-    );
+      // Verify valid leaf
+      const proofAsNumbers = proof.map((p) => Array.from(p));
 
-    // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
-    // but also all static accounts.
-    const staticAccounts = {
-      instructionParams,
-      state: state,
-      rootBundle: rootBundle,
-      signer: owner,
-      vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      mint: mint,
-      transferLiability,
-      systemProgram: web3.SystemProgram.programId,
-      // Appended by Acnhor `event_cpi` macro:
-      eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
-      program: program.programId,
-    };
+      const [instructionParams] = PublicKey.findProgramAddressSync(
+        [Buffer.from("instruction_params"), owner.toBuffer()],
+        program.programId
+      );
 
-    const remainingAccounts = refundAccounts.map((account) => ({ pubkey: account, isWritable: true, isSigner: false }));
+      // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
+      // but also all static accounts.
+      const staticAccounts = {
+        instructionParams,
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: web3.SystemProgram.programId,
+        // Appended by Acnhor `event_cpi` macro:
+        eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
+        program: program.programId,
+      };
 
-    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
-    const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
+      const remainingAccounts = refundAccounts.map((account) => ({
+        pubkey: account,
+        isWritable: true,
+        isSigner: false,
+      }));
 
-    // Create instructions for creating and extending the ALT.
-    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: owner,
-      payer: owner,
-      recentSlot: await connection.getSlot(),
-    });
+      // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
+      const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
 
-    // Submit the ALT creation transaction
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [payer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
-    for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
-      const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-        lookupTable: lookupTableAddress,
+      // Create instructions for creating and extending the ALT.
+      const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
         authority: owner,
         payer: owner,
-        addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
+        recentSlot: await connection.getSlot(),
       });
 
-      await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [payer], {
+      // Submit the ALT creation transaction
+      await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [payer], {
         skipPreflight: true, // Avoids recent slot mismatch in simulation.
       });
-    }
 
-    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
+      for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
+        const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+          lookupTable: lookupTableAddress,
+          authority: owner,
+          payer: owner,
+          addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
+        });
 
-    // Fetch the AddressLookupTableAccount
-    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
-    assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
+        await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [payer], {
+          skipPreflight: true, // Avoids recent slot mismatch in simulation.
+        });
+      }
 
-    // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
-    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+      // Avoids invalid ALT index as ALT might not be active yet on the following tx.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const executeInstruction = await program.methods
-      .executeRelayerRefundLeaf()
-      .accounts(staticAccounts)
-      .remainingAccounts(remainingAccounts)
-      .instruction();
+      // Fetch the AddressLookupTableAccount
+      const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
+      assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
 
-    // Build the instruction to increase the CU limit as the default 200k is not sufficient.
-    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
+      // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-    // Create the versioned transaction
-    const versionedTx = new VersionedTransaction(
-      new TransactionMessage({
-        payerKey: owner,
-        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        instructions: [computeBudgetInstruction, executeInstruction],
-      }).compileToV0Message([lookupTableAccount])
-    );
+      const executeInstruction = await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(staticAccounts)
+        .remainingAccounts(remainingAccounts)
+        .instruction();
 
-    // Sign and submit the versioned transaction.
-    versionedTx.sign([payer]);
-    await connection.sendTransaction(versionedTx);
+      // Build the instruction to increase the CU limit as the default 200k is not sufficient.
+      const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
 
-    // Verify all refund account balances.
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
-    const refundBalances = await Promise.all(
-      refundAccounts.map(async (account) => {
-        return (await connection.getTokenAccountBalance(account)).value.amount;
-      })
-    );
-    refundBalances.forEach((balance, i) => {
-      assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+      // Create the versioned transaction
+      const versionedTx = new VersionedTransaction(
+        new TransactionMessage({
+          payerKey: owner,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+          instructions: [computeBudgetInstruction, executeInstruction],
+        }).compileToV0Message([lookupTableAccount])
+      );
+
+      // Sign and submit the versioned transaction.
+      versionedTx.sign([payer]);
+      await connection.sendTransaction(versionedTx);
+
+      // Verify all refund account balances (either token or claim accounts).
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
+      const refundBalances = await Promise.all(
+        refundAccounts.map(async (account, i) => {
+          if (refundType === RefundType.TokenAccounts) {
+            return (await connection.getTokenAccountBalance(account)).value.amount;
+          } else if (refundType === RefundType.ClaimAccounts) {
+            return (await program.account.claimAccount.fetch(account)).amount.toString();
+          } else if (refundType === RefundType.MixedAccounts) {
+            return i % 2 === 0
+              ? (await connection.getTokenAccountBalance(account)).value.amount
+              : (await program.account.claimAccount.fetch(account)).amount.toString();
+          }
+        })
+      );
+      refundBalances.forEach((balance, i) => {
+        assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+      });
+    };
+
+    it("Execute Max Refunds to Token Accounts", async () => {
+      await executeMaxRefunds(RefundType.TokenAccounts);
+    });
+
+    it("Execute Max Refunds to Claim Accounts", async () => {
+      await executeMaxRefunds(RefundType.ClaimAccounts);
+    });
+
+    it("Execute Max Refunds to Mixed Accounts", async () => {
+      await executeMaxRefunds(RefundType.MixedAccounts);
     });
   });
 
@@ -949,5 +1011,197 @@ describe("svm_spoke.bundle", () => {
 
     assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
     assert.strictEqual(BigInt(fRelayerABal) - BigInt(iRelayerABal), BigInt(totalRefund), "Relayer A bal");
+  });
+
+  it("Invalid Merkle Leaf should fail", async () => {
+    // Create invalid leaf with missing refund amount for the second relayer.
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerARefund = new BN(400000);
+
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(0),
+      mintPublicKey: mint,
+      refundAccounts: [relayerTA, relayerTB],
+      refundAmounts: [relayerARefund],
+    });
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+    const stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    const remainingAccounts = [
+      { pubkey: relayerTA, isWritable: true, isSigner: false },
+      { pubkey: relayerTB, isWritable: true, isSigner: false },
+    ];
+
+    // Verify valid leaf
+    const executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: web3.SystemProgram.programId,
+      program: program.programId,
+    };
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+    // Mismatched refund amount and account length should fail.
+    try {
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+    } catch (err: any) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assertSE(err.error.errorCode.code, "InvalidMerkleLeaf", "Expected error code InvalidMerkleLeaf");
+    }
+  });
+
+  describe("Deferred refunds in ExecutedRelayerRefundRoot events", () => {
+    const executeRelayerRefundLeaf = async (refundType: RefundType) => {
+      // Create new relayer accounts for each sub-test.
+      const relayerA = Keypair.generate();
+      const relayerB = Keypair.generate();
+      const relayerARefund = new BN(400000);
+      const relayerBRefund = new BN(100000);
+
+      let relayerTA: PublicKey, relayerTB: PublicKey, refundA: PublicKey, refundB: PublicKey;
+
+      // Create refund accounts depending on the refund type.
+      if (refundType === RefundType.TokenAccounts) {
+        relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
+        relayerTB = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerB.publicKey)).address;
+        refundA = relayerTA;
+        refundB = relayerTB;
+      } else if (refundType === RefundType.ClaimAccounts) {
+        relayerTA = getAssociatedTokenAddressSync(mint, relayerA.publicKey);
+        relayerTB = getAssociatedTokenAddressSync(mint, relayerB.publicKey);
+        [refundA] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerTA.toBuffer()],
+          program.programId
+        );
+        [refundB] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
+          program.programId
+        );
+        await program.methods.initializeClaimAccount(mint, relayerTA).rpc();
+        await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
+      } else if (refundType === RefundType.MixedAccounts) {
+        relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
+        relayerTB = getAssociatedTokenAddressSync(mint, relayerB.publicKey);
+        refundA = relayerTA;
+        [refundB] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
+          program.programId
+        );
+        await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
+      } else throw new Error("Invalid refund type"); // Required to infer all accounts have been assigned.
+
+      // Prepare leaf using token accounts.
+      const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+      relayerRefundLeaves.push({
+        isSolana: true,
+        leafId: new BN(0),
+        chainId: chainId,
+        amountToReturn: new BN(0),
+        mintPublicKey: mint,
+        refundAccounts: [relayerTA, relayerTB],
+        refundAmounts: [relayerARefund, relayerBRefund],
+      });
+
+      const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+      const root = merkleTree.getRoot();
+      const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+      const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+      const stateAccountData = await program.account.state.fetch(state);
+      const rootBundleId = stateAccountData.rootBundleId;
+
+      const rootBundleIdBuffer = Buffer.alloc(4);
+      rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+      // Relay root bundle
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+      // Pass refund addresses in remaining accounts.
+      const remainingAccounts = [
+        { pubkey: refundA, isWritable: true, isSigner: false },
+        { pubkey: refundB, isWritable: true, isSigner: false },
+      ];
+
+      // Verify valid leaf
+      const executeRelayerRefundLeafAccounts = {
+        state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
+        transferLiability,
+        systemProgram: web3.SystemProgram.programId,
+        program: program.programId,
+      };
+      const proofAsNumbers = proof.map((p) => Array.from(p));
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+      return await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+    };
+
+    it("No deferred refunds in all Token Accounts", async () => {
+      const tx = await executeRelayerRefundLeaf(RefundType.TokenAccounts);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+      const events = await readEvents(connection, tx, [program]);
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
+    });
+
+    it("Deferred refunds in all Claim Accounts", async () => {
+      const tx = await executeRelayerRefundLeaf(RefundType.ClaimAccounts);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+      const events = await readEvents(connection, tx, [program]);
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
+    });
+
+    it("Deferred refunds in Mixed Accounts", async () => {
+      const tx = await executeRelayerRefundLeaf(RefundType.MixedAccounts);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+      const events = await readEvents(connection, tx, [program]);
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
+    });
   });
 });
