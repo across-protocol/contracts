@@ -173,21 +173,6 @@ interface V3SpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function depositV3(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 destinationChainId,
-        address exclusiveRelayer,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
-        bytes calldata message
-    ) external payable;
-
     function depositV3Now(
         bytes32 depositor,
         bytes32 recipient,
@@ -202,34 +187,11 @@ interface V3SpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function depositV3Now(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 destinationChainId,
-        address exclusiveRelayer,
-        uint32 fillDeadlineOffset,
-        uint32 exclusivityDeadline,
-        bytes calldata message
-    ) external payable;
-
     function speedUpV3Deposit(
         bytes32 depositor,
         uint32 depositId,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
-        bytes calldata updatedMessage,
-        bytes calldata depositorSignature
-    ) external;
-
-    function speedUpV3Deposit(
-        address depositor,
-        uint32 depositId,
-        uint256 updatedOutputAmount,
-        address updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) external;
