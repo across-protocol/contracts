@@ -99,6 +99,8 @@ abstract contract SpokePool is
     // to eliminate any chance of collision between pre and post V3 relay hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
+    mapping(address => mapping(address => uint256)) public relayerRefund;
+
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
      **************************************************************/
@@ -141,7 +143,7 @@ abstract contract SpokePool is
     // used as a fillDeadline in deposit(), a soon to be deprecated function that also hardcodes outputToken to
     // the zero address, which forces the off-chain validator to replace the output token with the equivalent
     // token for the input token. By using this magic value, off-chain validators do not have to keep
-    // this event in their lookback window when querying for expired deposts.
+    // this event in their lookback window when querying for expired deposits.
     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
     /****************************************
      *                EVENTS                *
@@ -162,6 +164,7 @@ abstract contract SpokePool is
         uint32 indexed leafId,
         address l2TokenAddress,
         address[] refundAddresses,
+        bool deferredRefunds,
         address caller
     );
     event TokensBridged(
@@ -701,7 +704,7 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
-     * @param exclusivityPeriod Added to the current time to set the exclusive reayer deadline,
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline,
      * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
      * anyone can fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
@@ -863,7 +866,7 @@ abstract contract SpokePool is
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
      * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
      * If the signature can be verified, then this function will emit a FilledV3Event that will be used by
-     * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
+     * the system for refund verification purposes. In other words, this function is an alternative way to fill a
      * a deposit than fillV3Relay.
      * @dev Subject to same exclusivity deadline rules as fillV3Relay().
      * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
@@ -1052,7 +1055,7 @@ abstract contract SpokePool is
 
         _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
 
-        _distributeRelayerRefunds(
+        bool deferredRefunds = _distributeRelayerRefunds(
             relayerRefundLeaf.chainId,
             relayerRefundLeaf.amountToReturn,
             relayerRefundLeaf.refundAmounts,
@@ -1069,8 +1072,25 @@ abstract contract SpokePool is
             relayerRefundLeaf.leafId,
             relayerRefundLeaf.l2TokenAddress,
             relayerRefundLeaf.refundAddresses,
+            deferredRefunds,
             msg.sender
         );
+    }
+
+    /**
+     * @notice Enables a relayer to claim outstanding repayments. Should virtually never be used, unless for some reason
+     * relayer repayment transfer fails for reasons such as token transfer reverts due to blacklisting. In this case,
+     * the relayer can still call this method and claim the tokens to a new address.
+     * @param l2TokenAddress Address of the L2 token to claim refunds for.
+     * @param refundAddress Address to send the refund to.
+     */
+    function claimRelayerRefund(address l2TokenAddress, address refundAddress) public {
+        uint256 liability = relayerRefund[l2TokenAddress][msg.sender];
+        require(liability > 0, "No liability to claim");
+        relayerRefund[l2TokenAddress][msg.sender] = 0;
+        IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddress, liability);
+
+        emit ClaimedRelayerRefund(l2TokenAddress, msg.sender, refundAddress, liability);
     }
 
     /**************************************
@@ -1091,6 +1111,10 @@ abstract contract SpokePool is
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp; // solhint-disable-line not-rely-on-time
+    }
+
+    function getRelayerRefund(address l2TokenAddress, address refundAddress) public view returns (uint256) {
+        return relayerRefund[l2TokenAddress][refundAddress];
     }
 
     /**************************************
@@ -1170,17 +1194,32 @@ abstract contract SpokePool is
         uint32 leafId,
         address l2TokenAddress,
         address[] memory refundAddresses
-    ) internal {
+    ) internal returns (bool deferredRefunds) {
         if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
+
+        uint256 spokeStartBalance = IERC20Upgradeable(l2TokenAddress).balanceOf(address(this));
+        uint256 totalRefundedAmount = 0;
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        uint256 length = refundAmounts.length;
-        for (uint256 i = 0; i < length; ++i) {
-            uint256 amount = refundAmounts[i];
-            if (amount > 0) IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddresses[i], amount);
-        }
+        for (uint256 i = 0; i < refundAmounts.length; ++i) {
+            totalRefundedAmount += refundAmounts[i];
+            address refundAddress = refundAddresses[i];
+            uint256 refundAmount = refundAmounts[i];
 
+            if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
+            if (refundAmounts[i] > 0) {
+                try IERC20Upgradeable(l2TokenAddress).transfer(refundAddress, refundAmount) returns (bool success) {
+                    if (!success) {
+                        relayerRefund[l2TokenAddress][refundAddress] += refundAmount;
+                        deferredRefunds = true;
+                    }
+                } catch {
+                    relayerRefund[l2TokenAddress][refundAddress] += refundAmount;
+                    deferredRefunds = true;
+                }
+            }
+        }
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
         if (amountToReturn > 0) {
@@ -1264,7 +1303,7 @@ abstract contract SpokePool is
         bytes memory depositorSignature
     ) internal view virtual {
         // Note:
-        // - We don't need to worry about reentrancy from a contract deployed at the depositor address since the method
+        // - We don't need to worry about re-entrancy from a contract deployed at the depositor address since the method
         //   `SignatureChecker.isValidSignatureNow` is a view method. Re-entrancy can happen, but it cannot affect state.
         // - EIP-1271 signatures are supported. This means that a signature valid now, may not be valid later and vice-versa.
         // - For an EIP-1271 signature to work, the depositor contract address must map to a deployed contract on the destination

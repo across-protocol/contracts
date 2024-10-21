@@ -207,5 +207,21 @@ describe("SpokePool Root Bundle Execution", function () {
           .withArgs(toBN(1), destErc20.address);
       });
     });
+    describe("Total refundAmounts > spokePool's balance", function () {
+      it("Reverts and emits log", async function () {
+        await expect(
+          spokePool.connect(dataWorker).distributeRelayerRefunds(
+            destinationChainId,
+            toBN(1),
+            [consts.amountHeldByPool, consts.amountToRelay], // spoke has only amountHeldByPool.
+            0,
+            destErc20.address,
+            [relayer.address, rando.address]
+          )
+        ).to.be.revertedWith("InsufficientSpokePoolBalanceToExecuteLeaf");
+
+        expect((await destErc20.queryFilter(destErc20.filters.Transfer(spokePool.address))).length).to.equal(0);
+      });
+    });
   });
 });

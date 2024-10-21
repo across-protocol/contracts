@@ -33,7 +33,9 @@ export async function deploySpokePool(
 
   // Create tokens:
   const weth = await (await getContractFactory("WETH9", deployerWallet)).deploy();
-  const erc20 = await (await getContractFactory("ExpandedERC20", deployerWallet)).deploy("USD Coin", "USDC", 18);
+  const erc20 = await (
+    await getContractFactory("ExpandedERC20WithBlacklist", deployerWallet)
+  ).deploy("USD Coin", "USDC", 18);
   await erc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const unwhitelistedErc20 = await (
     await getContractFactory("ExpandedERC20", deployerWallet)
