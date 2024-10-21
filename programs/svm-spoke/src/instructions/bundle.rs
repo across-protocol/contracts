@@ -6,7 +6,7 @@ use anchor_spl::token_interface::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
-    event::{DeferredRelayerRefunds, ExecutedRelayerRefundRoot},
+    event::ExecutedRelayerRefundRoot,
     state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
