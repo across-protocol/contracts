@@ -7,7 +7,7 @@ let deployerWallet: SignerWithAddress, relayer: SignerWithAddress, rando: Signer
 
 let destinationChainId: number;
 
-describe.only("SpokePool with Blacklisted destErc20", function () {
+describe("SpokePool with Blacklisted destErc20", function () {
   beforeEach(async function () {
     [deployerWallet, relayer, rando] = await ethers.getSigners();
     ({ spokePool, destErc20, weth } = await spokePoolFixture());
