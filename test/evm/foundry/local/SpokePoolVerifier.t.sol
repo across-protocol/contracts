@@ -11,6 +11,23 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
+interface EthereumSpokePoolOnlyAddressInterface {
+    function depositV3(
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        bytes32 exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes calldata message
+    ) external payable;
+}
+
 contract SpokePoolVerifierTest is Test {
     Ethereum_SpokePool ethereumSpokePool;
     SpokePoolVerifier spokePoolVerifier;
@@ -123,9 +140,9 @@ contract SpokePoolVerifierTest is Test {
         vm.expectCall(
             address(ethereumSpokePool), // callee
             depositAmount, // value
-            abi.encodeWithSignature( // data
-                "depositV3(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint256,bytes)",
-                abi.encode(
+            abi.encodeCall( // data
+                EthereumSpokePoolOnlyAddressInterface.depositV3,
+                (
                     depositor.toBytes32(),
                     depositor.toBytes32(),
                     address(mockWETH).toBytes32(),
@@ -136,7 +153,7 @@ contract SpokePoolVerifierTest is Test {
                     bytes32(0),
                     uint32(block.timestamp),
                     uint32(block.timestamp) + fillDeadlineBuffer,
-                    0,
+                    uint32(0),
                     bytes("")
                 )
             )
