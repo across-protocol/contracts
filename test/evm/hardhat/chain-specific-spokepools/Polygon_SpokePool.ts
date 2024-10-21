@@ -261,7 +261,7 @@ describe("Polygon Spoke Pool", function () {
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [amountToReturn, ethers.constants.Zero], // amountToReturn.
-      [dai.address, dai.address], // l2Token.
+      [hexZeroPadAddress(dai.address), hexZeroPadAddress(dai.address)], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.
     );
@@ -289,7 +289,7 @@ describe("Polygon Spoke Pool", function () {
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
-      [dai.address, dai.address], // l2Token.
+      [hexZeroPadAddress(dai.address), hexZeroPadAddress(dai.address)], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.
     );

@@ -168,15 +168,15 @@ abstract contract SpokePool is
         uint256[] refundAmounts,
         uint32 indexed rootBundleId,
         uint32 indexed leafId,
-        address l2TokenAddress,
-        address[] refundAddresses,
+        bytes32 l2TokenAddress,
+        bytes32[] refundAddresses,
         address caller
     );
     event TokensBridged(
         uint256 amountToReturn,
         uint256 indexed chainId,
         uint32 indexed leafId,
-        address indexed l2TokenAddress,
+        bytes32 indexed l2TokenAddress,
         address caller
     );
     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
@@ -1237,7 +1237,7 @@ abstract contract SpokePool is
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
         bytes32[] memory proof
     ) public payable virtual override nonReentrant {
-        _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress.toBytes32());
+        _preExecuteLeafHook(relayerRefundLeaf.l2TokenAddress);
 
         if (relayerRefundLeaf.chainId != chainId()) revert InvalidChainId();
 
@@ -1368,23 +1368,26 @@ abstract contract SpokePool is
         uint256 amountToReturn,
         uint256[] memory refundAmounts,
         uint32 leafId,
-        address l2TokenAddress,
-        address[] memory refundAddresses
+        bytes32 l2TokenAddress,
+        bytes32[] memory refundAddresses
     ) internal {
         if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
+
+        address l2TokenAddressParsed = l2TokenAddress.toAddress();
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
         // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
         uint256 length = refundAmounts.length;
         for (uint256 i = 0; i < length; ++i) {
             uint256 amount = refundAmounts[i];
-            if (amount > 0) IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddresses[i], amount);
+            if (amount > 0)
+                IERC20Upgradeable(l2TokenAddressParsed).safeTransfer(refundAddresses[i].toAddress(), amount);
         }
 
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
         if (amountToReturn > 0) {
-            _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
+            _bridgeTokensToHubPool(amountToReturn, l2TokenAddressParsed);
 
             emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress, msg.sender);
         }

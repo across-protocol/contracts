@@ -147,6 +147,10 @@ export function randomAddress() {
   return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
 }
 
+export function randomBytes32() {
+  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
+}
+
 export async function getParamType(contractName: string, functionName: string, paramName: string) {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
   const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);

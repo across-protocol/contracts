@@ -52,8 +52,8 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         uint256 amountToReturn,
         uint256[] memory refundAmounts,
         uint32 leafId,
-        address l2TokenAddress,
-        address[] memory refundAddresses
+        bytes32 l2TokenAddress,
+        bytes32[] memory refundAddresses
     ) external {
         _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
     }
