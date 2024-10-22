@@ -400,7 +400,7 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillV3RelayWithUpdatedDeposit(
             {
               ...relayData,
-              exclusiveRelayer: consts.zeroAddress,
+              exclusivityDeadline: 0,
             },
             consts.repaymentChainId,
             updatedOutputAmount,
