@@ -113,3 +113,8 @@ pub struct ClaimedRelayerRefund {
     pub claim_amount: u64,
     pub refund_address: Pubkey,
 }
+
+#[event]
+pub struct EmergencyDeletedRootBundle {
+    pub root_bundle_id: u32,
+}

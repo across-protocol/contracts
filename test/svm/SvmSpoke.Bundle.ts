@@ -155,6 +155,61 @@ describe("svm_spoke.bundle", () => {
     stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.rootBundleId.toString() === "2", "Root bundle index should be 2");
   });
+
+  it("Should allow the owner to delete the root bundle", async () => {
+    const relayerRefundRootBuffer = crypto.randomBytes(32);
+    const slowRelayRootBuffer = crypto.randomBytes(32);
+    const relayerRefundRootArray = Array.from(relayerRefundRootBuffer);
+    const slowRelayRootArray = Array.from(slowRelayRootBuffer);
+
+    let stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    await program.methods
+      .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
+      .accounts(relayRootBundleAccounts)
+      .rpc();
+
+    // Ensure the root bundle exists before deletion
+    let rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+    assert.isNotNull(rootBundleData, "Root bundle should exist before deletion");
+
+    // Attempt to delete the root bundle as a non-owner
+    try {
+      const emergencyDeleteRootBundleAccounts = {
+        state,
+        rootBundle,
+        signer: nonOwner.publicKey,
+        program: program.programId,
+      };
+      await program.methods
+        .emergencyDeleteRootBundle(rootBundleId)
+        .accounts(emergencyDeleteRootBundleAccounts)
+        .signers([nonOwner])
+        .rpc();
+      assert.fail("Non-owner should not be able to delete the root bundle");
+    } catch (err: any) {
+      assert.include(err.toString(), "NotOwner", "Expected error for non-owner trying to delete root bundle");
+    }
+
+    // Execute the emergency delete
+    const emergencyDeleteRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    await program.methods.emergencyDeleteRootBundle(rootBundleId).accounts(emergencyDeleteRootBundleAccounts).rpc();
+
+    // Verify that the root bundle has been deleted
+    try {
+      rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+      assert.fail("Root bundle should have been deleted");
+    } catch (err: any) {
+      assert.include(err.toString(), "Account does not exist", "Expected error when fetching deleted root bundle");
+    }
+  });
+
   it("Simple Leaf Refunds Relayers", async () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
     const relayerARefund = new BN(400000);

@@ -8,7 +8,10 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
     error::CustomError,
-    event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
+    event::{
+        EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills,
+        SetXDomainAdmin,
+    },
     initialize_current_time,
     state::{RootBundle, Route, State},
 };
@@ -247,4 +250,39 @@ pub fn relay_root_bundle(
     Ok(())
 }
 
-// TODO: add emergency_delete_root_bundle
+#[event_cpi]
+#[derive(Accounts)]
+#[instruction(root_bundle_id: u32)]
+pub struct EmergencyDeleteRootBundle<'info> {
+    #[account(
+        mut,
+        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
+    )]
+    pub signer: Signer<'info>,
+
+    // TODO: standardize usage of state.seed vs state.key()
+    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    pub state: Account<'info, State>,
+
+    // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
+    #[account(mut,
+        seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
+        close = signer,
+        bump)]
+    pub root_bundle: Account<'info, RootBundle>,
+}
+
+pub fn emergency_delete_root_bundle(
+    ctx: Context<EmergencyDeleteRootBundle>,
+    root_bundle_id: u32,
+) -> Result<()> {
+    let root_bundle = &mut ctx.accounts.root_bundle;
+
+    root_bundle.claimed_bitmap.clear();
+    root_bundle.relayer_refund_root = [0; 32];
+    root_bundle.slow_relay_root = [0; 32];
+
+    emit_cpi!(EmergencyDeletedRootBundle { root_bundle_id });
+
+    Ok(())
+}
