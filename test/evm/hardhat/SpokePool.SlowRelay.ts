@@ -6,8 +6,7 @@ import {
   toBN,
   seedContract,
   seedWallet,
-  hexZeroPadAddress,
-  hexZeroPadAddressLowercase,
+  addressToBytes,
 } from "../../../utils/utils";
 import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } from "./fixtures/SpokePool.Fixture";
 import { buildV3SlowRelayTree } from "./MerkleLib.utils";
@@ -41,11 +40,11 @@ describe("SpokePool Slow Relay Logic", async function () {
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
-        depositor: hexZeroPadAddress(depositor.address),
-        recipient: hexZeroPadAddress(recipient.address),
-        exclusiveRelayer: hexZeroPadAddress(relayer.address),
-        inputToken: hexZeroPadAddress(erc20.address),
-        outputToken: hexZeroPadAddress(destErc20.address),
+        depositor: addressToBytes(depositor.address),
+        recipient: addressToBytes(recipient.address),
+        exclusiveRelayer: addressToBytes(relayer.address),
+        inputToken: addressToBytes(erc20.address),
+        outputToken: addressToBytes(destErc20.address),
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
@@ -83,9 +82,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       );
 
       // Can fast fill after:
-      await spokePool
-        .connect(relayer)
-        .fillV3Relay(relayData, consts.repaymentChainId, hexZeroPadAddress(relayer.address));
+      await spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address));
     });
     it("cannot request if FillStatus is Filled", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);
@@ -113,11 +110,11 @@ describe("SpokePool Slow Relay Logic", async function () {
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
-        depositor: hexZeroPadAddress(depositor.address),
-        recipient: hexZeroPadAddress(recipient.address),
-        exclusiveRelayer: hexZeroPadAddress(relayer.address),
-        inputToken: hexZeroPadAddress(erc20.address),
-        outputToken: hexZeroPadAddress(destErc20.address),
+        depositor: addressToBytes(depositor.address),
+        recipient: addressToBytes(recipient.address),
+        exclusiveRelayer: addressToBytes(relayer.address),
+        inputToken: addressToBytes(erc20.address),
+        outputToken: addressToBytes(destErc20.address),
         inputAmount: consts.amountToDeposit,
         outputAmount: fullRelayAmountPostFees,
         originChainId: consts.originChainId,
@@ -169,7 +166,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await expect(
         spokePool
           .connect(relayer)
-          .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, hexZeroPadAddress(relayer.address))
+          .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address))
       ).to.be.revertedWith("RelayFilled");
     });
     it("cannot be used to double send a fill", async function () {
@@ -179,7 +176,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       // Fill before executing slow fill
       await spokePool
         .connect(relayer)
-        .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, hexZeroPadAddress(relayer.address));
+        .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address));
       await expect(
         spokePool.connect(relayer).executeV3SlowRelayLeaf(
           slowRelayLeaf,
@@ -291,8 +288,8 @@ describe("SpokePool Slow Relay Logic", async function () {
       )
         .to.emit(spokePool, "FilledV3Relay")
         .withArgs(
-          hexZeroPadAddressLowercase(relayData.inputToken),
-          hexZeroPadAddressLowercase(relayData.outputToken),
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           0, // Sets repaymentChainId to 0.
@@ -300,14 +297,14 @@ describe("SpokePool Slow Relay Logic", async function () {
           relayData.depositId,
           relayData.fillDeadline,
           relayData.exclusivityDeadline,
-          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
-          hexZeroPadAddressLowercase(consts.zeroAddress), // Sets relayer address to 0x0
-          hexZeroPadAddressLowercase(relayData.depositor),
-          hexZeroPadAddressLowercase(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
+          addressToBytes(consts.zeroAddress), // Sets relayer address to 0x0
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
           relayData.message,
           [
             // Uses relayData.recipient
-            hexZeroPadAddressLowercase(relayData.recipient),
+            addressToBytes(relayData.recipient),
             // Uses relayData.message
             relayData.message,
             // Uses slow fill leaf's updatedOutputAmount
