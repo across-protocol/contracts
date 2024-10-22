@@ -7,6 +7,7 @@ import {
   toBNWeiWithDecimals,
   createRandomBytes32,
   Contract,
+  hexZeroPadAddress,
 } from "../../../utils/utils";
 import { amountToReturn, repaymentChainId } from "./constants";
 import { MerkleTree } from "../../../utils/MerkleTree";
@@ -109,7 +110,7 @@ export async function constructSingleRelayerRefundTree(l2Token: Contract | Strin
   const leaves = buildRelayerRefundLeaves(
     [destinationChainId], // Destination chain ID.
     [amountToReturn], // amountToReturn.
-    [l2Token as string], // l2Token.
+    [hexZeroPadAddress(l2Token as string)], // l2Token.
     [[]], // refundAddresses.
     [[]] // refundAmounts.
   );

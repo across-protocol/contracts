@@ -6,10 +6,10 @@ pragma solidity ^0.8.0;
 struct GaslessCrossChainOrder {
     /// @dev The contract address that the order is meant to be settled by.
     /// Fillers send this order to this contract address on the origin chain
-    address originSettler;
+    bytes32 originSettler;
     /// @dev The address of the user who is initiating the swap,
     /// whose input tokens will be taken and escrowed
-    address user;
+    bytes32 user;
     /// @dev Nonce to be used as replay protection for the order
     uint256 nonce;
     /// @dev The chainId of the origin chain
@@ -45,7 +45,7 @@ struct OnchainCrossChainOrder {
 /// @dev Intended to improve integration generalization by allowing fillers to compute the exact input and output information of any order
 struct ResolvedCrossChainOrder {
     /// @dev The address of the user who is initiating the transfer
-    address user;
+    bytes32 user;
     /// @dev The chainId of the origin chain
     uint64 originChainId;
     /// @dev The timestamp by which the order must be opened
