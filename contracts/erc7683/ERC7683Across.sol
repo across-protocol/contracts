@@ -6,19 +6,19 @@ import { GaslessCrossChainOrder } from "./ERC7683.sol";
 
 // Data unique to every CrossChainOrder settled on Across
 struct AcrossOrderData {
-    address inputToken;
+    bytes32 inputToken;
     uint256 inputAmount;
-    address outputToken;
+    bytes32 outputToken;
     uint256 outputAmount;
     uint32 destinationChainId;
-    address recipient;
-    address exclusiveRelayer;
+    bytes32 recipient;
+    bytes32 exclusiveRelayer;
     uint32 exclusivityPeriod;
     bytes message;
 }
 
 struct AcrossOriginFillerData {
-    address exclusiveRelayer;
+    bytes32 exclusiveRelayer;
 }
 
 struct AcrossDestinationFillerData {
@@ -27,13 +27,13 @@ struct AcrossDestinationFillerData {
 
 bytes constant ACROSS_ORDER_DATA_TYPE = abi.encodePacked(
     "AcrossOrderData(",
-    "address inputToken,",
+    "bytes32 inputToken,",
     "uint256 inputAmount,",
-    "address outputToken,",
+    "bytes32 outputToken,",
     "uint256 outputAmount,",
     "uint32 destinationChainId,",
-    "address recipient,",
-    "address exclusiveRelayer,"
+    "bytes32 recipient,",
+    "bytes32 exclusiveRelayer,"
     "uint32 exclusivityPeriod,",
     "bytes message)"
 );
@@ -49,8 +49,8 @@ library ERC7683Permit2Lib {
     bytes internal constant CROSS_CHAIN_ORDER_TYPE =
         abi.encodePacked(
             "GaslessCrossChainOrder(",
-            "address originSettler,",
-            "address user,",
+            "bytes32 originSettler,",
+            "bytes32 user,",
             "uint256 nonce,",
             "uint32 originChainId,",
             "uint32 openDeadline,",
@@ -63,7 +63,7 @@ library ERC7683Permit2Lib {
         abi.encodePacked(CROSS_CHAIN_ORDER_TYPE, ACROSS_ORDER_DATA_TYPE);
     bytes32 internal constant CROSS_CHAIN_ORDER_TYPE_HASH = keccak256(CROSS_CHAIN_ORDER_EIP712_TYPE);
 
-    string private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
+    string private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(bytes32 token,uint256 amount)";
     string internal constant PERMIT2_ORDER_TYPE =
         string(
             abi.encodePacked(

@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
-
-use svm_spoke::constants::DISCRIMINATOR_SIZE;
-use svm_spoke::error::CustomError;
-use svm_spoke::utils::{is_claimed, process_proof, set_claimed};
+use svm_spoke::{
+    constants::DISCRIMINATOR_SIZE,
+    error::CustomError,
+    utils::{is_claimed, process_proof, set_claimed},
+};
 
 declare_id!("84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4");
 
@@ -74,7 +75,7 @@ pub mod test {
         let computed_root = process_proof(&proof, &leaf);
         if computed_root != root {
             msg!("Invalid proof: computed root does not match provided root");
-            return Err(CustomError::InvalidProof.into());
+            return err!(CustomError::InvalidMerkleProof);
         }
         msg!("Merkle proof verified successfully");
         Ok(())

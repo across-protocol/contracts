@@ -5,6 +5,7 @@ import "../external/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 import { Output, GaslessCrossChainOrder, OnchainCrossChainOrder, ResolvedCrossChainOrder, IOriginSettler, FillInstruction } from "./ERC7683.sol";
 import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Across.sol";
@@ -17,6 +18,8 @@ import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDE
  */
 abstract contract ERC7683OrderDepositor is IOriginSettler {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
+    using Bytes32ToAddress for bytes32;
 
     error WrongSettlementContract();
     error WrongChainId();
@@ -89,10 +92,14 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
     function open(OnchainCrossChainOrder calldata order) external {
         (ResolvedCrossChainOrder memory resolvedOrder, AcrossOrderData memory acrossOrderData) = _resolve(order);
 
-        IERC20(acrossOrderData.inputToken).safeTransferFrom(msg.sender, address(this), acrossOrderData.inputAmount);
+        IERC20(acrossOrderData.inputToken.toAddress()).safeTransferFrom(
+            msg.sender,
+            address(this),
+            acrossOrderData.inputAmount
+        );
 
         _callDeposit(
-            msg.sender,
+            msg.sender.toBytes32(),
             acrossOrderData.recipient,
             acrossOrderData.inputToken,
             acrossOrderData.outputToken,
@@ -168,7 +175,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         )
     {
         // Ensure that order was intended to be settled by Across.
-        if (order.originSettler != address(this)) {
+        if (order.originSettler != address(this).toBytes32()) {
             revert WrongSettlementContract();
         }
 
@@ -184,7 +191,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         (acrossOrderData, acrossOriginFillerData) = decode(order.orderData, fillerData);
 
         if (
-            acrossOrderData.exclusiveRelayer != address(0) &&
+            acrossOrderData.exclusiveRelayer != address(0).toBytes32() &&
             acrossOrderData.exclusiveRelayer != acrossOriginFillerData.exclusiveRelayer
         ) {
             revert WrongExclusiveRelayer();
@@ -192,9 +199,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         Output[] memory maxSpent = new Output[](1);
         maxSpent[0] = Output({
-            token: _toBytes32(acrossOrderData.outputToken),
+            token: acrossOrderData.outputToken,
             amount: acrossOrderData.outputAmount,
-            recipient: _toBytes32(acrossOrderData.recipient),
+            recipient: acrossOrderData.recipient,
             chainId: acrossOrderData.destinationChainId
         });
 
@@ -204,16 +211,16 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         // repayment on.
         Output[] memory minReceived = new Output[](1);
         minReceived[0] = Output({
-            token: _toBytes32(acrossOrderData.inputToken),
+            token: acrossOrderData.inputToken,
             amount: acrossOrderData.inputAmount,
-            recipient: _toBytes32(acrossOriginFillerData.exclusiveRelayer),
+            recipient: acrossOriginFillerData.exclusiveRelayer,
             chainId: SafeCast.toUint32(block.chainid)
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         fillInstructions[0] = FillInstruction({
             destinationChainId: acrossOrderData.destinationChainId,
-            destinationSettler: _toBytes32(_destinationSettler(acrossOrderData.destinationChainId)),
+            destinationSettler: _destinationSettler(acrossOrderData.destinationChainId),
             originData: abi.encode(
                 order.user,
                 acrossOrderData.recipient,
@@ -255,9 +262,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         Output[] memory maxSpent = new Output[](1);
         maxSpent[0] = Output({
-            token: _toBytes32(acrossOrderData.outputToken),
+            token: acrossOrderData.outputToken,
             amount: acrossOrderData.outputAmount,
-            recipient: _toBytes32(acrossOrderData.recipient),
+            recipient: acrossOrderData.recipient,
             chainId: acrossOrderData.destinationChainId
         });
 
@@ -267,16 +274,16 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         // repayment on.
         Output[] memory minReceived = new Output[](1);
         minReceived[0] = Output({
-            token: _toBytes32(acrossOrderData.inputToken),
+            token: acrossOrderData.inputToken,
             amount: acrossOrderData.inputAmount,
-            recipient: _toBytes32(acrossOrderData.exclusiveRelayer),
+            recipient: acrossOrderData.exclusiveRelayer,
             chainId: SafeCast.toUint32(block.chainid)
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         fillInstructions[0] = FillInstruction({
             destinationChainId: acrossOrderData.destinationChainId,
-            destinationSettler: _toBytes32(_destinationSettler(acrossOrderData.destinationChainId)),
+            destinationSettler: _destinationSettler(acrossOrderData.destinationChainId),
             originData: abi.encode(
                 msg.sender,
                 acrossOrderData.recipient,
@@ -294,7 +301,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
-            user: msg.sender,
+            user: msg.sender.toBytes32(),
             originChainId: SafeCast.toUint64(block.chainid),
             openDeadline: type(uint32).max, // no deadline since the user is sending it
             fillDeadline: order.fillDeadline,
@@ -311,7 +318,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
     ) internal {
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
             permitted: IPermit2.TokenPermissions({
-                token: acrossOrderData.inputToken,
+                token: acrossOrderData.inputToken.toAddress(),
                 amount: acrossOrderData.inputAmount
             }),
             nonce: order.nonce,
@@ -327,26 +334,22 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         PERMIT2.permitWitnessTransferFrom(
             permit,
             signatureTransferDetails,
-            order.user,
+            order.user.toAddress(),
             ERC7683Permit2Lib.hashOrder(order, ERC7683Permit2Lib.hashOrderData(acrossOrderData)), // witness data hash
             ERC7683Permit2Lib.PERMIT2_ORDER_TYPE, // witness data type string
             signature
         );
     }
 
-    function _toBytes32(address input) internal pure returns (bytes32) {
-        return bytes32(uint256(uint160(input)));
-    }
-
     function _callDeposit(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -355,5 +358,5 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
     function _currentDepositId() internal view virtual returns (uint32);
 
-    function _destinationSettler(uint256 chainId) internal view virtual returns (address);
+    function _destinationSettler(uint256 chainId) internal view virtual returns (bytes32);
 }

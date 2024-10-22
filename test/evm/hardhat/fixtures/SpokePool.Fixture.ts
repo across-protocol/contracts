@@ -7,6 +7,7 @@ import {
   ethers,
   BigNumber,
   defaultAbiCoder,
+  hexZeroPadAddress,
 } from "../../../../utils/utils";
 
 import * as consts from "../constants";
@@ -281,7 +282,7 @@ export function getV3RelayHash(relayData: V3RelayData, destinationChainId: numbe
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
-        "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
         "uint256 destinationChainId",
       ],
       [relayData, destinationChainId]
@@ -441,7 +442,8 @@ export async function getUpdatedV3DepositSignature(
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
-  updatedMessage: string
+  updatedMessage: string,
+  isAddressOverload: boolean = false
 ): Promise<string> {
   const typedData = {
     types: {
@@ -449,7 +451,7 @@ export async function getUpdatedV3DepositSignature(
         { name: "depositId", type: "uint32" },
         { name: "originChainId", type: "uint256" },
         { name: "updatedOutputAmount", type: "uint256" },
-        { name: "updatedRecipient", type: "address" },
+        { name: "updatedRecipient", type: isAddressOverload ? "address" : "bytes32" },
         { name: "updatedMessage", type: "bytes" },
       ],
     },

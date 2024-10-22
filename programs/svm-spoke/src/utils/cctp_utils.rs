@@ -1,5 +1,6 @@
-use anchor_lang::prelude::*;
 use std::mem::size_of_val;
+
+use anchor_lang::prelude::*;
 
 use crate::{constants::DISCRIMINATOR_SIZE, error::CalldataError, program::SvmSpoke};
 
@@ -49,9 +50,9 @@ pub fn decode_solidity_bool(data: &[u8; 32]) -> Result<bool> {
         0 => match l_value {
             0 => Ok(false),
             1 => Ok(true),
-            _ => return Err(CalldataError::InvalidBool.into()),
+            _ => return err!(CalldataError::InvalidBool),
         },
-        _ => return Err(CalldataError::InvalidBool.into()),
+        _ => return err!(CalldataError::InvalidBool),
     }
 }
 
@@ -64,7 +65,7 @@ pub fn decode_solidity_uint64(data: &[u8; 32]) -> Result<u64> {
     let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
     let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
     if h_value > 0 || l_value > u64::MAX as u128 {
-        return Err(CalldataError::InvalidUint64.into());
+        return err!(CalldataError::InvalidUint64);
     }
     Ok(l_value as u64)
 }
@@ -72,7 +73,7 @@ pub fn decode_solidity_uint64(data: &[u8; 32]) -> Result<u64> {
 pub fn decode_solidity_address(data: &[u8; 32]) -> Result<Pubkey> {
     for i in 0..12 {
         if data[i] != 0 {
-            return Err(CalldataError::InvalidAddress.into());
+            return err!(CalldataError::InvalidAddress);
         }
     }
     Ok(Pubkey::new_from_array(*data))

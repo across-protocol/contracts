@@ -101,7 +101,18 @@ export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
-export const addressToBytes32 = (address: string) => ethers.utils.hexZeroPad(address.toLowerCase(), 32);
+export const hexZeroPad = (input: string, length: number) => ethers.utils.hexZeroPad(input, length);
+
+export const hexZeroPadAddress = (input: string) => hexZeroPad(input, 32);
+
+export const hexZeroPadAddressLowercase = (input: string) => hexZeroPad(input.toLowerCase(), 32);
+
+export const bytes32ToAddress = (input: string) => {
+  if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
+    throw new Error("Invalid bytes32 input");
+  }
+  return ethers.utils.getAddress("0x" + input.slice(26));
+};
 
 export async function seedWallet(
   walletToFund: Signer,
@@ -136,6 +147,10 @@ export function randomAddress() {
   return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
 }
 
+export function randomBytes32() {
+  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
+}
+
 export async function getParamType(contractName: string, functionName: string, paramName: string) {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
   const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
@@ -166,6 +181,15 @@ function avmL1ToL2Alias(l1Address: string) {
 
   const mask = toBN("2").pow(toBN("160"));
   return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
+}
+
+export function trimSolanaAddress(bytes32Address: string): string {
+  if (!ethers.utils.isHexString(bytes32Address, 32)) {
+    throw new Error("Invalid bytes32 address");
+  }
+
+  const uint160Address = ethers.BigNumber.from(bytes32Address).mask(160);
+  return ethers.utils.hexZeroPad(ethers.utils.hexlify(uint160Address), 20);
 }
 
 const { defaultAbiCoder, keccak256 } = ethers.utils;

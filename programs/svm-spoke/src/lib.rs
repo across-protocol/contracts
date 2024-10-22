@@ -60,9 +60,12 @@ pub mod svm_spoke {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
-    pub fn execute_relayer_refund_leaf<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    ) -> Result<()> {
+    pub fn execute_relayer_refund_leaf<'c, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    ) -> Result<()>
+    where
+        'c: 'info,
+    {
         instructions::execute_relayer_refund_leaf(ctx)
     }
 
@@ -210,5 +213,17 @@ pub mod svm_spoke {
 
     pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<()> {
         instructions::close_instruction_params(ctx)
+    }
+
+    pub fn initialize_claim_account(
+        ctx: Context<InitializeClaimAccount>,
+        mint: Pubkey,
+        token_account: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_claim_account(ctx, mint, token_account)
+    }
+
+    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
+        instructions::claim_relayer_refund(ctx)
     }
 }

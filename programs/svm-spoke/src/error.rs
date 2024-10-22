@@ -29,7 +29,7 @@ pub enum CustomError {
     ExpiredFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
-    #[msg("The Deposit is still within the exclusivity or deadline window!")]
+    #[msg("The Deposit is still within the exclusivity window!")]
     NoSlowFillsInExclusivityWindow,
     #[msg("Invalid route PDA!")]
     InvalidRoutePDA,
@@ -52,9 +52,7 @@ pub enum CustomError {
     #[msg("Invalid remote sender!")]
     InvalidRemoteSender,
     #[msg("Invalid Merkle proof!")]
-    InvalidProof,
-    #[msg("Account not found!")]
-    AccountNotFound,
+    InvalidMerkleProof,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
     #[msg("Invalid chain id!")]
@@ -62,7 +60,9 @@ pub enum CustomError {
     #[msg("Invalid mint!")]
     InvalidMint,
     #[msg("Leaf already claimed!")]
-    LeafAlreadyClaimed,
+    ClaimedMerkleLeaf,
+    #[msg("Invalid Merkle leaf!")]
+    InvalidMerkleLeaf,
     #[msg("Exceeded pending bridge amount to HubPool!")]
     ExceededPendingBridgeAmount,
     #[msg("Deposits are currently paused!")]
@@ -75,4 +75,10 @@ pub enum CustomError {
     InvalidFillDeadline,
     #[msg("Overflow writing to parameters account!")]
     ParamsWriteOverflow,
+    #[msg("Invalid refund address!")]
+    InvalidRefund,
+    #[msg("Zero relayer refund claim!")]
+    ZeroRefundClaim,
+    #[msg("Invalid claim initializer!")]
+    InvalidClaimInitializer,
 }

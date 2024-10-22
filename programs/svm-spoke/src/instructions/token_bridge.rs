@@ -1,11 +1,15 @@
-use crate::error::CustomError;
-use crate::message_transmitter::program::MessageTransmitter;
-use crate::token_messenger_minter::{
-    self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter, types::DepositForBurnParams,
-};
-use crate::{State, TransferLiability};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+
+use crate::{
+    error::CustomError,
+    message_transmitter::program::MessageTransmitter,
+    token_messenger_minter::{
+        self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter,
+        types::DepositForBurnParams,
+    },
+    State, TransferLiability,
+};
 
 #[derive(Accounts)]
 pub struct BridgeTokensToHubPool<'info> {
@@ -78,10 +82,9 @@ impl<'info> BridgeTokensToHubPool<'info> {
         amount: u64,
         bumps: &BridgeTokensToHubPoolBumps,
     ) -> Result<()> {
-        require!(
-            amount <= self.transfer_liability.pending_to_hub_pool,
-            CustomError::ExceededPendingBridgeAmount
-        );
+        if amount > self.transfer_liability.pending_to_hub_pool {
+            return err!(CustomError::ExceededPendingBridgeAmount);
+        }
         self.transfer_liability.pending_to_hub_pool -= amount;
 
         // Invoke CCTP to bridge vault tokens from state account.

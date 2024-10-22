@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/V3SpokePoolInterface.sol";
+import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
 
 /**
  * @notice SpokePoolVerifier is a contract that verifies that the SpokePool exists on this chain before sending ETH to it.
@@ -14,6 +15,7 @@ import "./interfaces/V3SpokePoolInterface.sol";
  */
 contract SpokePoolVerifier {
     using Address for address;
+    using AddressToBytes32 for address;
 
     error InvalidMsgValue();
     error InvalidSpokePool();
@@ -42,12 +44,12 @@ contract SpokePoolVerifier {
      */
     function deposit(
         V3SpokePoolInterface spokePool,
-        address recipient,
-        address inputToken,
+        bytes32 recipient,
+        bytes32 inputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -57,12 +59,12 @@ contract SpokePoolVerifier {
         if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         spokePool.depositV3{ value: msg.value }(
-            msg.sender,
+            msg.sender.toBytes32(),
             recipient,
             inputToken,
             // @dev Setting outputToken to 0x0 to instruct fillers to use the equivalent token
             // as the originToken on the destination chain.
-            address(0),
+            bytes32(0),
             inputAmount,
             outputAmount,
             destinationChainId,
