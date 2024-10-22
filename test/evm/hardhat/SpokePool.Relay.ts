@@ -318,14 +318,17 @@ describe("SpokePool Relayer Logic", async function () {
     describe("fillV3Relay", function () {
       it("fills are not paused", async function () {
         await spokePool.pauseFills(true);
-        await expect(spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId)).to.be.revertedWith(
-          "FillsArePaused"
-        );
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address))
+        ).to.be.revertedWith("FillsArePaused");
       });
       it("reentrancy protected", async function () {
         const functionCalldata = spokePool.interface.encodeFunctionData("fillV3Relay", [
           relayData,
           consts.repaymentChainId,
+          hexZeroPadAddressLowercase(relayer.address),
         ]);
         await expect(spokePool.connect(relayer).callback(functionCalldata)).to.be.revertedWith(
           "ReentrancyGuard: reentrant call"
@@ -338,19 +341,21 @@ describe("SpokePool Relayer Logic", async function () {
           exclusiveRelayer: hexZeroPadAddress(recipient.address),
           exclusivityDeadline: relayData.fillDeadline,
         };
-        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.be.revertedWith(
-          "NotExclusiveRelayer"
-        );
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(_relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address))
+        ).to.be.revertedWith("NotExclusiveRelayer");
 
         // Can send it after exclusivity deadline
         await expect(
-          spokePool.connect(relayer).fillV3Relay(
-            {
-              ..._relayData,
-              exclusivityDeadline: 0,
-            },
-            consts.repaymentChainId
-          )
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(
+              { ..._relayData, exclusivityDeadline: 0 },
+              consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address)
+            )
         ).to.not.be.reverted;
       });
       it("if no exclusive relayer is set, exclusivity deadline can be in future", async function () {
@@ -361,7 +366,11 @@ describe("SpokePool Relayer Logic", async function () {
         };
 
         // Can send it after exclusivity deadline
-        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(_relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address))
+        ).to.not.be.reverted;
       });
       it("can have empty exclusive relayer before exclusivity deadline", async function () {
         const _relayData = {
@@ -371,10 +380,18 @@ describe("SpokePool Relayer Logic", async function () {
         };
 
         // Can send it before exclusivity deadline if exclusive relayer is empty
-        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(_relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address))
+        ).to.not.be.reverted;
       });
       it("calls _fillRelayV3 with  expected params", async function () {
-        await expect(spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId))
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address))
+        )
           .to.emit(spokePool, "FilledV3Relay")
           .withArgs(
             hexZeroPadAddressLowercase(relayData.inputToken),
@@ -430,6 +447,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               _relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -445,6 +463,7 @@ describe("SpokePool Relayer Logic", async function () {
               exclusivityDeadline: 0,
             },
             consts.repaymentChainId,
+            hexZeroPadAddressLowercase(relayer.address),
             updatedOutputAmount,
             hexZeroPadAddress(updatedRecipient),
             updatedMessage,
@@ -464,6 +483,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -508,6 +528,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               { ...relayData, depositor: hexZeroPadAddress(relayer.address) },
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -530,6 +551,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -544,6 +566,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               { ...relayData, originChainId: relayData.originChainId + 1 },
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -558,6 +581,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               { ...relayData, depositId: relayData.depositId + 1 },
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -572,6 +596,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount.sub(1),
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -586,6 +611,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(randomAddress()),
               updatedMessage,
@@ -600,6 +626,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -624,6 +651,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               { ...relayData, depositor: hexZeroPadAddress(erc1271.address) },
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -636,6 +664,7 @@ describe("SpokePool Relayer Logic", async function () {
             .fillV3RelayWithUpdatedDeposit(
               { ...relayData, depositor: hexZeroPadAddress(erc1271.address) },
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -644,13 +673,16 @@ describe("SpokePool Relayer Logic", async function () {
         ).to.not.be.reverted;
       });
       it("cannot send updated fill after original fill", async function () {
-        await spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId);
+        await spokePool
+          .connect(relayer)
+          .fillV3Relay(relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address));
         await expect(
           spokePool
             .connect(relayer)
             .fillV3RelayWithUpdatedDeposit(
               relayData,
               consts.repaymentChainId,
+              hexZeroPadAddressLowercase(relayer.address),
               updatedOutputAmount,
               hexZeroPadAddress(updatedRecipient),
               updatedMessage,
@@ -664,14 +696,17 @@ describe("SpokePool Relayer Logic", async function () {
           .fillV3RelayWithUpdatedDeposit(
             relayData,
             consts.repaymentChainId,
+            hexZeroPadAddressLowercase(relayer.address),
             updatedOutputAmount,
             hexZeroPadAddress(updatedRecipient),
             updatedMessage,
             signature
           );
-        await expect(spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId)).to.be.revertedWith(
-          "RelayFilled"
-        );
+        await expect(
+          spokePool
+            .connect(relayer)
+            .fillV3Relay(relayData, consts.repaymentChainId, hexZeroPadAddressLowercase(relayer.address))
+        ).to.be.revertedWith("RelayFilled");
       });
     });
   });
