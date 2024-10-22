@@ -19,6 +19,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title SpokePool
  * @notice Base contract deployed on source and destination chains enabling depositors to transfer assets from source to
@@ -1398,29 +1400,33 @@ abstract contract SpokePool is
         bytes32 l2TokenAddress,
         bytes32[] memory refundAddresses
     ) internal returns (bool deferredRefunds) {
-        if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
+        console.log("l2TokenAddress", l2TokenAddress.toAddress());
 
-        IERC20Upgradeable l2Token = IERC20Upgradeable(l2TokenAddress.toAddress());
-        uint256 spokeStartBalance = l2Token.balanceOf(address(this));
-        uint256 totalRefundedAmount = 0;
+        uint256 numRefunds = refundAmounts.length;
+        if (refundAddresses.length != numRefunds) revert InvalidMerkleLeaf();
 
-        // Send each relayer refund address the associated refundAmount for the L2 token address.
-        // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        for (uint256 i = 0; i < refundAmounts.length; ++i) {
-            totalRefundedAmount += refundAmounts[i];
+        if (numRefunds > 0) {
+            IERC20Upgradeable l2Token = IERC20Upgradeable(l2TokenAddress.toAddress());
+            uint256 spokeStartBalance = l2Token.balanceOf(address(this));
+            uint256 totalRefundedAmount = 0;
 
-            if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
-            if (refundAmounts[i] > 0) {
-                bool success;
-                try l2Token.transfer(refundAddresses[i].toAddress(), refundAmounts[i]) returns (bool result) {
-                    success = result;
-                } catch {
-                    success = false;
-                }
+            // Send each relayer refund address the associated refundAmount for the L2 token address.
+            // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
+            for (uint256 i = 0; i < numRefunds; ++i) {
+                if (refundAmounts[i] > 0) {
+                    totalRefundedAmount += refundAmounts[i];
+                    if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
+                    bool success;
+                    try l2Token.transfer(refundAddresses[i].toAddress(), refundAmounts[i]) returns (bool result) {
+                        success = result;
+                    } catch {
+                        success = false;
+                    }
 
-                if (!success) {
-                    relayerRefund[l2TokenAddress.toAddress()][refundAddresses[i].toAddress()] += refundAmounts[i];
-                    deferredRefunds = true;
+                    if (!success) {
+                        relayerRefund[l2TokenAddress.toAddress()][refundAddresses[i].toAddress()] += refundAmounts[i];
+                        deferredRefunds = true;
+                    }
                 }
             }
         }
