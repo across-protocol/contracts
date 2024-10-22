@@ -126,3 +126,5 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
 
     Ok(())
 }
+
+// TODO: add manual instruction to close claim account in case someone else executed the relayer refund leaf with ATA. Only initializer should be able to call this.

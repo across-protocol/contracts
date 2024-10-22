@@ -20,6 +20,7 @@ pub enum CalldataError {
 
 #[error_code]
 //TODO: try make these match with the EVM codes. also, we can split them into different error types.
+// TODO: EVM compatable errors should be under the same enum. SVM specific errors should be in separate enum
 pub enum CustomError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
