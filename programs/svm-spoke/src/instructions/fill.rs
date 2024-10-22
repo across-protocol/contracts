@@ -29,13 +29,13 @@ pub struct FillV3Relay<'info> {
     pub signer: Signer<'info>,
 
     #[account(mut)]
-    pub relayer: SystemAccount<'info>,
+    pub relayer: SystemAccount<'info>, // TODO: should this be the same as signer?
 
     #[account(
         mut,
         address = relay_data.recipient @ CustomError::InvalidFillRecipient
     )]
-    pub recipient: SystemAccount<'info>,
+    pub recipient: SystemAccount<'info>, // TODO: this might be redundant.
 
     #[account(
         mut,
@@ -55,7 +55,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint_account,
-        associated_token::authority = recipient,
+        associated_token::authority = recipient, // TODO: use relay_data.recipient
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -196,7 +196,7 @@ pub struct CloseFillPda<'info> {
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        close = signer,
+        close = signer, // TODO: check if this is correct party to receive refund.
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
     )]
@@ -205,7 +205,7 @@ pub struct CloseFillPda<'info> {
 
 pub fn close_fill_pda(
     ctx: Context<CloseFillPda>,
-    relay_hash: [u8; 32],
+    _relay_hash: [u8; 32], // TODO: check if we can use underscore in functions while in context macro leave as is?
     relay_data: V3RelayData,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
@@ -213,7 +213,7 @@ pub fn close_fill_pda(
 
     // Check if the fill status is filled
     if ctx.accounts.fill_status.status != FillStatus::Filled {
-        return err!(CustomError::NotFilled);
+        return err!(CustomError::NotFilled); // TODO: more descriptive error message.
     }
 
     // Check if the deposit has expired

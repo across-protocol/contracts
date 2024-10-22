@@ -25,7 +25,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
 
     #[account(
         mut,
-        seeds =[b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        seeds = [b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
         realloc = std::cmp::max(
             DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
             root_bundle.to_account_info().data_len()
@@ -36,7 +36,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub root_bundle: Account<'info, RootBundle>,
 
     #[account(mut)]
-    pub signer: Signer<'info>,
+    pub signer: Signer<'info>, // TODO: put signers first everywhere.
 
     #[account(
         mut,
@@ -67,8 +67,11 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+// TODO: add multichain test to check if its possible to verify both EVM and SVM leaves in the same bundle.
+// TODO: update UMIP to consider different encoding for different chains.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
 pub struct RelayerRefundLeaf {
+    // TODO: at least the same ordering as in EVM.
     pub amount_to_return: u64,
     pub chain_id: u64,
     pub leaf_id: u32,
@@ -108,7 +111,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
 ) -> Result<()>
 where
-    'c: 'info,
+    'c: 'info, // TODO: add explaining comments on some of more complex syntax.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -158,6 +161,7 @@ where
         let amount = *amount as u64;
 
         // Refund account holds either a regular token account or a claim account. This checks all required constraints.
+        // TODO: test ordering of the refund accounts and remaining accounts.
         let refund_account = RefundAccount::try_from_remaining_account(
             ctx.remaining_accounts,
             i,

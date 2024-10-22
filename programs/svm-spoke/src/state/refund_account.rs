@@ -16,6 +16,7 @@ pub enum RefundAccount<'info> {
     TokenAccount(InterfaceAccount<'info, TokenAccount>),
     ClaimAccount(Account<'info, ClaimAccount>),
 }
+// TODO: consider if we can avoid this dual account and pass both ATA and claim account arrays.
 
 impl<'c, 'info> RefundAccount<'info>
 where
