@@ -103,9 +103,7 @@ export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.rando
 
 export const hexZeroPad = (input: string, length: number) => ethers.utils.hexZeroPad(input, length);
 
-export const hexZeroPadAddress = (input: string) => hexZeroPad(input, 32);
-
-export const hexZeroPadAddressLowercase = (input: string) => hexZeroPad(input.toLowerCase(), 32);
+export const addressToBytes = (input: string) => hexZeroPad(input.toLowerCase(), 32);
 
 export const bytes32ToAddress = (input: string) => {
   if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {

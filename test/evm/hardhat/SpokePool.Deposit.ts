@@ -8,8 +8,7 @@ import {
   toWei,
   randomAddress,
   BigNumber,
-  hexZeroPadAddressLowercase,
-  hexZeroPadAddress,
+  addressToBytes,
   bytes32ToAddress,
 } from "../../../utils/utils";
 import {
@@ -108,8 +107,8 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "V3FundsDeposited")
       .withArgs(
-        hexZeroPadAddressLowercase(erc20.address),
-        hexZeroPadAddressLowercase(ZERO_ADDRESS),
+        addressToBytes(erc20.address),
+        addressToBytes(ZERO_ADDRESS),
         amountToDeposit,
         amountReceived,
         destinationChainId,
@@ -117,9 +116,9 @@ describe("SpokePool Depositor Logic", async function () {
         quoteTimestamp,
         MAX_UINT32,
         0,
-        hexZeroPadAddressLowercase(depositor.address),
-        hexZeroPadAddressLowercase(recipient.address),
-        hexZeroPadAddressLowercase(ZERO_ADDRESS),
+        addressToBytes(depositor.address),
+        addressToBytes(recipient.address),
+        addressToBytes(ZERO_ADDRESS),
         "0x"
       );
 
@@ -148,8 +147,8 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "V3FundsDeposited")
       .withArgs(
-        hexZeroPadAddressLowercase(erc20.address),
-        hexZeroPadAddressLowercase(ZERO_ADDRESS),
+        addressToBytes(erc20.address),
+        addressToBytes(ZERO_ADDRESS),
         amountToDeposit,
         amountReceived,
         destinationChainId,
@@ -157,9 +156,9 @@ describe("SpokePool Depositor Logic", async function () {
         quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
         0,
-        hexZeroPadAddressLowercase(newDepositor), // Depositor is overridden.
-        hexZeroPadAddressLowercase(recipient.address),
-        hexZeroPadAddressLowercase(ZERO_ADDRESS),
+        addressToBytes(newDepositor), // Depositor is overridden.
+        addressToBytes(recipient.address),
+        addressToBytes(ZERO_ADDRESS),
         "0x"
       );
   });
@@ -374,16 +373,16 @@ describe("SpokePool Depositor Logic", async function () {
       _isAddressOverload = false
     ) {
       return [
-        _isAddressOverload ? bytes32ToAddress(_relayData.depositor) : hexZeroPadAddress(_relayData.depositor),
-        _isAddressOverload ? bytes32ToAddress(_relayData.recipient) : hexZeroPadAddress(_relayData.recipient),
-        _isAddressOverload ? bytes32ToAddress(_relayData.inputToken) : hexZeroPadAddress(_relayData.inputToken),
-        _isAddressOverload ? bytes32ToAddress(_relayData.outputToken) : hexZeroPadAddress(_relayData.outputToken),
+        _isAddressOverload ? bytes32ToAddress(_relayData.depositor) : addressToBytes(_relayData.depositor),
+        _isAddressOverload ? bytes32ToAddress(_relayData.recipient) : addressToBytes(_relayData.recipient),
+        _isAddressOverload ? bytes32ToAddress(_relayData.inputToken) : addressToBytes(_relayData.inputToken),
+        _isAddressOverload ? bytes32ToAddress(_relayData.outputToken) : addressToBytes(_relayData.outputToken),
         _relayData.inputAmount,
         _relayData.outputAmount,
         _destinationChainId,
         _isAddressOverload
           ? bytes32ToAddress(_relayData.exclusiveRelayer)
-          : hexZeroPadAddress(_relayData.exclusiveRelayer),
+          : addressToBytes(_relayData.exclusiveRelayer),
         _quoteTimestamp,
         _relayData.fillDeadline,
         _relayData.exclusivityDeadline,
@@ -392,11 +391,11 @@ describe("SpokePool Depositor Logic", async function () {
     }
     beforeEach(async function () {
       relayData = {
-        depositor: hexZeroPadAddress(depositor.address),
-        recipient: hexZeroPadAddress(recipient.address),
-        exclusiveRelayer: hexZeroPadAddress(ZERO_ADDRESS),
-        inputToken: hexZeroPadAddress(erc20.address),
-        outputToken: hexZeroPadAddress(randomAddress()),
+        depositor: addressToBytes(depositor.address),
+        recipient: addressToBytes(recipient.address),
+        exclusiveRelayer: addressToBytes(ZERO_ADDRESS),
+        inputToken: addressToBytes(erc20.address),
+        outputToken: addressToBytes(randomAddress()),
         inputAmount: amountToDeposit,
         outputAmount: amountToDeposit.sub(19),
         originChainId: originChainId,
@@ -511,14 +510,14 @@ describe("SpokePool Depositor Logic", async function () {
         spokePool
           .connect(depositor)
           [depositV3NowBytes](
-            hexZeroPadAddress(relayData.depositor),
-            hexZeroPadAddress(relayData.recipient),
-            hexZeroPadAddress(relayData.inputToken),
-            hexZeroPadAddress(relayData.outputToken),
+            addressToBytes(relayData.depositor),
+            addressToBytes(relayData.recipient),
+            addressToBytes(relayData.inputToken),
+            addressToBytes(relayData.outputToken),
             relayData.inputAmount,
             relayData.outputAmount,
             destinationChainId,
-            hexZeroPadAddress(relayData.exclusiveRelayer),
+            addressToBytes(relayData.exclusiveRelayer),
             fillDeadlineOffset,
             exclusivityDeadline,
             relayData.message
@@ -526,8 +525,8 @@ describe("SpokePool Depositor Logic", async function () {
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          hexZeroPadAddressLowercase(relayData.inputToken),
-          hexZeroPadAddressLowercase(relayData.outputToken),
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -536,9 +535,9 @@ describe("SpokePool Depositor Logic", async function () {
           currentTime, // quoteTimestamp should be current time
           currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
           currentTime,
-          hexZeroPadAddressLowercase(relayData.depositor),
-          hexZeroPadAddressLowercase(relayData.recipient),
-          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
     });
@@ -565,8 +564,8 @@ describe("SpokePool Depositor Logic", async function () {
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          hexZeroPadAddressLowercase(relayData.inputToken),
-          hexZeroPadAddressLowercase(relayData.outputToken),
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -575,9 +574,9 @@ describe("SpokePool Depositor Logic", async function () {
           currentTime, // quoteTimestamp should be current time
           currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
           currentTime,
-          hexZeroPadAddressLowercase(relayData.depositor),
-          hexZeroPadAddressLowercase(relayData.recipient),
-          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
     });
@@ -586,8 +585,8 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(spokePool.connect(depositor)[depositV3Bytes](...depositArgs))
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          hexZeroPadAddressLowercase(relayData.inputToken),
-          hexZeroPadAddressLowercase(relayData.outputToken),
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -596,9 +595,9 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
           relayData.fillDeadline,
           currentTime,
-          hexZeroPadAddressLowercase(relayData.depositor),
-          hexZeroPadAddressLowercase(relayData.recipient),
-          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
     });
@@ -617,8 +616,8 @@ describe("SpokePool Depositor Logic", async function () {
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          hexZeroPadAddressLowercase(relayData.inputToken),
-          hexZeroPadAddressLowercase(relayData.outputToken),
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -627,9 +626,9 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.fillDeadline,
           currentTime,
           // New depositor
-          hexZeroPadAddressLowercase(newDepositor),
-          hexZeroPadAddressLowercase(relayData.recipient),
-          hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
+          addressToBytes(newDepositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
       expect(await erc20.balanceOf(depositor.address)).to.equal(balanceBefore.sub(amountToDeposit));
@@ -658,15 +657,15 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         originChainId,
         updatedOutputAmount,
-        hexZeroPadAddress(updatedRecipient),
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await spokePool[verifyUpdateV3DepositMessageBytes](
-        hexZeroPadAddress(depositor.address),
+        addressToBytes(depositor.address),
         depositId,
         originChainId,
         updatedOutputAmount,
-        hexZeroPadAddress(updatedRecipient),
+        addressToBytes(updatedRecipient),
         updatedMessage,
         signature
       );
@@ -674,11 +673,11 @@ describe("SpokePool Depositor Logic", async function () {
       // Reverts if passed in depositor is the signer or if signature is incorrect
       await expect(
         spokePool[verifyUpdateV3DepositMessageBytes](
-          hexZeroPadAddress(updatedRecipient),
+          addressToBytes(updatedRecipient),
           depositId,
           originChainId,
           updatedOutputAmount,
-          hexZeroPadAddress(updatedRecipient),
+          addressToBytes(updatedRecipient),
           updatedMessage,
           signature
         )
@@ -690,16 +689,16 @@ describe("SpokePool Depositor Logic", async function () {
         depositId + 1,
         originChainId,
         updatedOutputAmount,
-        hexZeroPadAddress(updatedRecipient),
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await expect(
         spokePool[verifyUpdateV3DepositMessageBytes](
-          hexZeroPadAddress(depositor.address),
+          addressToBytes(depositor.address),
           depositId,
           originChainId,
           updatedOutputAmount,
-          hexZeroPadAddress(updatedRecipient),
+          addressToBytes(updatedRecipient),
           updatedMessage,
           invalidSignature
         )
@@ -713,17 +712,17 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         spokePoolChainId,
         updatedOutputAmount,
-        hexZeroPadAddress(updatedRecipient),
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await expect(
         spokePool
           .connect(depositor)
           [speedUpV3DepositBytes](
-            hexZeroPadAddress(depositor.address),
+            addressToBytes(depositor.address),
             depositId,
             updatedOutputAmount,
-            hexZeroPadAddress(updatedRecipient),
+            addressToBytes(updatedRecipient),
             updatedMessage,
             expectedSignature
           )
@@ -732,8 +731,8 @@ describe("SpokePool Depositor Logic", async function () {
         .withArgs(
           updatedOutputAmount,
           depositId,
-          hexZeroPadAddressLowercase(depositor.address),
-          hexZeroPadAddressLowercase(updatedRecipient),
+          addressToBytes(depositor.address),
+          addressToBytes(updatedRecipient),
           updatedMessage,
           expectedSignature
         );
@@ -745,16 +744,16 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         otherChainId,
         updatedOutputAmount,
-        hexZeroPadAddress(updatedRecipient),
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await expect(
         spokePool[verifyUpdateV3DepositMessageBytes](
-          hexZeroPadAddress(depositor.address),
+          addressToBytes(depositor.address),
           depositId,
           otherChainId,
           updatedOutputAmount,
-          hexZeroPadAddress(updatedRecipient),
+          addressToBytes(updatedRecipient),
           updatedMessage,
           invalidSignatureForChain
         )
@@ -763,10 +762,10 @@ describe("SpokePool Depositor Logic", async function () {
         spokePool
           .connect(depositor)
           [speedUpV3DepositBytes](
-            hexZeroPadAddress(depositor.address),
+            addressToBytes(depositor.address),
             depositId,
             updatedOutputAmount,
-            hexZeroPadAddress(updatedRecipient),
+            addressToBytes(updatedRecipient),
             updatedMessage,
             invalidSignatureForChain
           )
@@ -815,8 +814,8 @@ describe("SpokePool Depositor Logic", async function () {
         .withArgs(
           updatedOutputAmount,
           depositId,
-          hexZeroPadAddressLowercase(depositor.address),
-          hexZeroPadAddressLowercase(updatedRecipient),
+          addressToBytes(depositor.address),
+          addressToBytes(updatedRecipient),
           updatedMessage,
           signature
         );

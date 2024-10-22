@@ -7,7 +7,7 @@ import {
   ethers,
   BigNumber,
   defaultAbiCoder,
-  hexZeroPadAddress,
+  addressToBytes,
 } from "../../../../utils/utils";
 
 import * as consts from "../constants";
