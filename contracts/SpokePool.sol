@@ -19,8 +19,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title SpokePool
  * @notice Base contract deployed on source and destination chains enabling depositors to transfer assets from source to
@@ -1400,8 +1398,6 @@ abstract contract SpokePool is
         bytes32 l2TokenAddress,
         bytes32[] memory refundAddresses
     ) internal returns (bool deferredRefunds) {
-        console.log("l2TokenAddress", l2TokenAddress.toAddress());
-
         uint256 numRefunds = refundAmounts.length;
         if (refundAddresses.length != numRefunds) revert InvalidMerkleLeaf();
 
@@ -1416,14 +1412,8 @@ abstract contract SpokePool is
                 if (refundAmounts[i] > 0) {
                     totalRefundedAmount += refundAmounts[i];
                     if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
-                    bool success;
-                    try l2Token.transfer(refundAddresses[i].toAddress(), refundAmounts[i]) returns (bool result) {
-                        success = result;
-                    } catch {
-                        success = false;
-                    }
 
-                    if (!success) {
+                    try l2Token.transfer(refundAddresses[i].toAddress(), refundAmounts[i]) {} catch {
                         relayerRefund[l2TokenAddress.toAddress()][refundAddresses[i].toAddress()] += refundAmounts[i];
                         deferredRefunds = true;
                     }
