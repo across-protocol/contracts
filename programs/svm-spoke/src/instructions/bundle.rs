@@ -70,7 +70,8 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
 // TODO: add multichain test to check if its possible to verify both EVM and SVM leaves in the same bundle.
 // TODO: update UMIP to consider different encoding for different chains.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
-pub struct RelayerRefundLeaf { // TODO: at least the same ordering as in EVM.
+pub struct RelayerRefundLeaf {
+    // TODO: at least the same ordering as in EVM.
     pub amount_to_return: u64,
     pub chain_id: u64,
     pub leaf_id: u32,
