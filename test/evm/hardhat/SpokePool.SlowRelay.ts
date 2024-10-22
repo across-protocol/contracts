@@ -51,6 +51,13 @@ describe("SpokePool Slow Relay Logic", async function () {
       relayData.fillDeadline = (await spokePool.getCurrentTime()).sub(1);
       await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
     });
+    it("in absence of exclusivity", async function () {
+      // Clock drift between spokes can mean exclusivityDeadline is in future even when no exclusivity was applied.
+      await spokePool.setCurrentTime(relayData.exclusivityDeadline - 1);
+      await expect(
+        spokePool.connect(relayer).requestV3SlowFill({ ...relayData, exclusiveRelayer: consts.zeroAddress })
+      ).to.emit(spokePool, "RequestedV3SlowFill");
+    });
     it("during exclusivity deadline", async function () {
       await spokePool.setCurrentTime(relayData.exclusivityDeadline);
       await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith(

@@ -393,6 +393,23 @@ describe("SpokePool Relayer Logic", async function () {
           updatedMessage
         );
       });
+      it("in absence of exclusivity", async function () {
+        // Clock drift between spokes can mean exclusivityDeadline is in future even when no exclusivity was applied.
+        await spokePool.setCurrentTime(relayData.exclusivityDeadline - 1);
+        await expect(
+          spokePool.connect(relayer).fillV3RelayWithUpdatedDeposit(
+            {
+              ...relayData,
+              exclusiveRelayer: consts.zeroAddress,
+            },
+            consts.repaymentChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+          )
+        ).to.emit(spokePool, "FilledV3Relay");
+      });
       it("must be exclusive relayer before exclusivity deadline", async function () {
         const _relayData = {
           ...relayData,
