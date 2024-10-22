@@ -1,4 +1,13 @@
-import { SignerWithAddress, seedContract, seedWallet, expect, Contract, ethers, toBN } from "../../../utils/utils";
+import {
+  SignerWithAddress,
+  seedContract,
+  seedWallet,
+  expect,
+  Contract,
+  ethers,
+  toBN,
+  hexZeroPadAddress,
+} from "../../../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 
@@ -7,7 +16,7 @@ let deployerWallet: SignerWithAddress, relayer: SignerWithAddress, rando: Signer
 
 let destinationChainId: number;
 
-describe("SpokePool with Blacklisted destErc20", function () {
+describe.only("SpokePool with Blacklisted destErc20", function () {
   beforeEach(async function () {
     [deployerWallet, relayer, rando] = await ethers.getSigners();
     ({ spokePool, destErc20, weth } = await spokePoolFixture());
@@ -47,8 +56,8 @@ describe("SpokePool with Blacklisted destErc20", function () {
         consts.amountToReturn,
         [consts.amountToRelay, consts.amountToRelay],
         0,
-        destErc20.address,
-        [relayer.address, rando.address]
+        hexZeroPadAddress(destErc20.address),
+        [hexZeroPadAddress(relayer.address), hexZeroPadAddress(rando.address)]
       );
 
     // Ensure relayerRepaymentLiability is incremented
@@ -66,8 +75,8 @@ describe("SpokePool with Blacklisted destErc20", function () {
         consts.amountToReturn,
         [consts.amountToRelay],
         0,
-        destErc20.address,
-        [relayer.address]
+        hexZeroPadAddress(destErc20.address),
+        [hexZeroPadAddress(relayer.address)]
       );
 
     await expect(spokePool.connect(relayer).claimRelayerRefund(destErc20.address, relayer.address)).to.be.revertedWith(

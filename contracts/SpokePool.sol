@@ -1400,7 +1400,8 @@ abstract contract SpokePool is
     ) internal returns (bool deferredRefunds) {
         if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
 
-        uint256 spokeStartBalance = IERC20Upgradeable(l2TokenAddress.toAddress()).balanceOf(address(this));
+        IERC20Upgradeable l2Token = IERC20Upgradeable(l2TokenAddress.toAddress());
+        uint256 spokeStartBalance = l2Token.balanceOf(address(this));
         uint256 totalRefundedAmount = 0;
 
         // Send each relayer refund address the associated refundAmount for the L2 token address.
@@ -1411,12 +1412,7 @@ abstract contract SpokePool is
             if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
             if (refundAmounts[i] > 0) {
                 bool success;
-                try
-                    IERC20Upgradeable(l2TokenAddress.toAddress()).transfer(
-                        refundAddresses[i].toAddress(),
-                        refundAmounts[i]
-                    )
-                returns (bool result) {
+                try l2Token.transfer(refundAddresses[i].toAddress(), refundAmounts[i]) returns (bool result) {
                     success = result;
                 } catch {
                     success = false;
