@@ -34,7 +34,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
   return { leaves, leavesRefundAmount, tree };
 }
 
-describe.only("SpokePool Root Bundle Execution", function () {
+describe("SpokePool Root Bundle Execution", function () {
   beforeEach(async function () {
     [dataWorker, relayer, rando] = await ethers.getSigners();
     ({ destErc20, spokePool, weth } = await spokePoolFixture());
