@@ -255,7 +255,7 @@ pub fn execute_v3_slow_relay_leaf(
         fill_deadline: relay_data.fill_deadline,
         exclusivity_deadline: relay_data.exclusivity_deadline,
         exclusive_relayer: relay_data.exclusive_relayer,
-        relayer: *ctx.accounts.signer.key,
+        relayer: Pubkey::default(), // There is no repayment address for slow
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
         message: relay_data.message,

@@ -8,7 +8,6 @@ import {
   seedWallet,
   hexZeroPadAddress,
   hexZeroPadAddressLowercase,
-  bytes32ToAddress,
 } from "../../../utils/utils";
 import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } from "./fixtures/SpokePool.Fixture";
 import { buildV3SlowRelayTree } from "./MerkleLib.utils";
@@ -84,7 +83,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       );
 
       // Can fast fill after:
-      await spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId);
+      await spokePool
+        .connect(relayer)
+        .fillV3Relay(relayData, consts.repaymentChainId, hexZeroPadAddress(relayer.address));
     });
     it("cannot request if FillStatus is Filled", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);
@@ -166,7 +167,9 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       // Cannot fast fill after slow fill
       await expect(
-        spokePool.connect(relayer).fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId)
+        spokePool
+          .connect(relayer)
+          .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, hexZeroPadAddress(relayer.address))
       ).to.be.revertedWith("RelayFilled");
     });
     it("cannot be used to double send a fill", async function () {
@@ -174,7 +177,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
 
       // Fill before executing slow fill
-      await spokePool.connect(relayer).fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId);
+      await spokePool
+        .connect(relayer)
+        .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, hexZeroPadAddress(relayer.address));
       await expect(
         spokePool.connect(relayer).executeV3SlowRelayLeaf(
           slowRelayLeaf,
@@ -290,15 +295,13 @@ describe("SpokePool Slow Relay Logic", async function () {
           hexZeroPadAddressLowercase(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
-          // Sets repaymentChainId to 0:
-          0,
+          0, // Sets repaymentChainId to 0.
           relayData.originChainId,
           relayData.depositId,
           relayData.fillDeadline,
           relayData.exclusivityDeadline,
           hexZeroPadAddressLowercase(relayData.exclusiveRelayer),
-          // Sets relayer address to 0x0
-          hexZeroPadAddressLowercase(consts.zeroAddress),
+          hexZeroPadAddressLowercase(consts.zeroAddress), // Sets relayer address to 0x0
           hexZeroPadAddressLowercase(relayData.depositor),
           hexZeroPadAddressLowercase(relayData.recipient),
           relayData.message,

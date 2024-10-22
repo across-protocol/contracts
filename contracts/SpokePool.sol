@@ -1033,12 +1033,11 @@ abstract contract SpokePool is
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
-    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId)
-        public
-        override
-        nonReentrant
-        unpausedFills
-    {
+    function fillV3Relay(
+        V3RelayData calldata relayData,
+        uint256 repaymentChainId,
+        bytes32 repaymentAddress
+    ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
@@ -1058,7 +1057,7 @@ abstract contract SpokePool is
             repaymentChainId: repaymentChainId
         });
 
-        _fillRelayV3(relayExecution, msg.sender.toBytes32(), false);
+        _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
     /**
@@ -1081,6 +1080,7 @@ abstract contract SpokePool is
     function fillV3RelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
+        bytes32 repaymentAddress,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
@@ -1112,7 +1112,7 @@ abstract contract SpokePool is
             UPDATE_V3_DEPOSIT_DETAILS_HASH
         );
 
-        _fillRelayV3(relayExecution, msg.sender.toBytes32(), false);
+        _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
     /**

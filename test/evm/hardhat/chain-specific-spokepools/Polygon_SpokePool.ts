@@ -335,8 +335,16 @@ describe("Polygon Spoke Pool", function () {
       message: "0x1234",
     };
     const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, repaymentChainId]),
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, repaymentChainId]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+        relayData,
+        repaymentChainId,
+        hexZeroPadAddress(relayer.address),
+      ]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+        { ...relayData, depositId: 1 },
+        repaymentChainId,
+        hexZeroPadAddress(relayer.address),
+      ]),
     ];
     const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
 

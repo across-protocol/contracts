@@ -132,8 +132,15 @@ pub mod svm_spoke {
         relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,
+        repayment_address: Pubkey,
     ) -> Result<()> {
-        instructions::fill_v3_relay(ctx, relay_hash, relay_data, repayment_chain_id)
+        instructions::fill_v3_relay(
+            ctx,
+            relay_hash,
+            relay_data,
+            repayment_chain_id,
+            repayment_address,
+        )
     }
 
     pub fn close_fill_pda(
