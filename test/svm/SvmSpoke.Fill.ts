@@ -327,4 +327,38 @@ describe("svm_spoke.fill", () => {
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
   });
+
+  it("Self-relay does not invoke token transfer", async () => {
+    // Set recipient to be the same as relayer.
+    updateRelayData({ ...relayData, depositor: relayer.publicKey, recipient: relayer.publicKey });
+    accounts.recipient = relayer.publicKey;
+    accounts.recipientTA = relayerTA;
+
+    // Store relayer's balance before the fill
+    const iRelayerBalance = (await getAccount(connection, relayerTA)).amount;
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    const txSignature = await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1))
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
+
+    // Verify relayer's balance after the fill is unchanged
+    const fRelayerBalance = (await getAccount(connection, relayerTA)).amount;
+    assertSE(fRelayerBalance, iRelayerBalance, "Relayer's balance should not have changed");
+
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
+    const txResult = await connection.getTransaction(txSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    if (txResult === null || txResult.meta === null) throw new Error("Transaction meta not confirmed");
+    if (txResult.meta.logMessages === null || txResult.meta.logMessages === undefined)
+      throw new Error("Transaction logs not found");
+    assert.isTrue(
+      txResult.meta.logMessages.every((log) => !log.includes(`Program ${TOKEN_PROGRAM_ID} invoke`)),
+      "Token Program should not be invoked"
+    );
+  });
 });

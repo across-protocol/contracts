@@ -124,24 +124,25 @@ pub fn fill_v3_relay(
         _ => FillType::FastFill,
     };
 
-    // TODO: EVM SpokePool skips the transfer if relayer and receiver are the same, should we do the same here?
-    // Invoke the transfer_checked instruction on the token program
-    let transfer_accounts = TransferChecked {
-        // TODO: check what happens if the relayer and recipient are the same
-        from: ctx.accounts.relayer_token_account.to_account_info(),
-        mint: ctx.accounts.mint_account.to_account_info(),
-        to: ctx.accounts.recipient_token_account.to_account_info(),
-        authority: ctx.accounts.signer.to_account_info(),
-    };
-    let cpi_context = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-    );
-    transfer_checked(
-        cpi_context,
-        relay_data.output_amount,
-        ctx.accounts.mint_account.decimals,
-    )?;
+    // If relayer and receiver are the same, there is no need to do the transfer. This might be a case when relayers
+    // intentionally self-relay in a capital efficient way (no need to have funds on the destination).
+    if ctx.accounts.relayer_token_account.key() != ctx.accounts.recipient_token_account.key() {
+        let transfer_accounts = TransferChecked {
+            from: ctx.accounts.relayer_token_account.to_account_info(),
+            mint: ctx.accounts.mint_account.to_account_info(),
+            to: ctx.accounts.recipient_token_account.to_account_info(),
+            authority: ctx.accounts.signer.to_account_info(),
+        };
+        let cpi_context = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_accounts,
+        );
+        transfer_checked(
+            cpi_context,
+            relay_data.output_amount,
+            ctx.accounts.mint_account.decimals,
+        )?;
+    }
 
     // Update the fill status to Filled and set the relayer
     fill_status_account.status = FillStatus::Filled;
