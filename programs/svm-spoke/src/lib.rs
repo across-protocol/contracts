@@ -79,7 +79,7 @@ pub mod svm_spoke {
 
     pub fn set_enable_route(
         ctx: Context<SetEnableRoute>,
-        origin_token: [u8; 32],
+        origin_token: Pubkey,
         destination_chain_id: u64,
         enabled: bool,
     ) -> Result<()> {
