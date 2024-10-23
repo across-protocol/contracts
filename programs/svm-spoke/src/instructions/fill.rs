@@ -18,7 +18,6 @@ use crate::{
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct FillV3Relay<'info> {
     #[account(
-        mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()], // TODO: make consistent decision where to put owner constraints
         bump,
         constraint = !state.paused_fills @ CustomError::FillsArePaused
@@ -28,17 +27,14 @@ pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account(mut)]
     pub relayer: SystemAccount<'info>, // TODO: should this be the same as signer?
 
     #[account(
-        mut,
         address = relay_data.recipient @ CustomError::InvalidFillRecipient
     )]
     pub recipient: SystemAccount<'info>, // TODO: this might be redundant.
 
     #[account(
-        mut,
         token::token_program = token_program, // TODO: consistent token imports
         address = relay_data.output_token @ CustomError::InvalidMint
     )]
@@ -100,7 +96,7 @@ pub fn fill_v3_relay(
     relay_data: V3RelayData,
     repayment_chain_id: u64,
 ) -> Result<()> {
-    let state = &mut ctx.accounts.state;
+    let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
@@ -181,7 +177,7 @@ pub fn fill_v3_relay(
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(
@@ -206,7 +202,7 @@ pub fn close_fill_pda(
     _relay_hash: [u8; 32], // TODO: check if we can use underscore in functions while in context macro leave as is?
     relay_data: V3RelayData,
 ) -> Result<()> {
-    let state = &mut ctx.accounts.state;
+    let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the fill status is filled

@@ -24,7 +24,6 @@ pub struct InitializeInstructionParams<'info> {
 #[derive(Accounts)]
 #[instruction(offset: u32, fragment: Vec<u8>)]
 pub struct WriteInstructionParamsFragment<'info> {
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     /// CHECK: use unchecked account in order to be able writing raw data fragments.

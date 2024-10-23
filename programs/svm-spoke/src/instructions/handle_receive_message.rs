@@ -48,10 +48,7 @@ pub struct HandleReceiveMessageParams {
 }
 
 impl<'info> HandleReceiveMessage<'info> {
-    pub fn handle_receive_message(
-        &mut self,
-        params: &HandleReceiveMessageParams,
-    ) -> Result<Vec<u8>> {
+    pub fn handle_receive_message(&self, params: &HandleReceiveMessageParams) -> Result<Vec<u8>> {
         // Return instruction data for the self invoked CPI based on the received message body.
         translate_message(&params.message_body)
     }
@@ -100,9 +97,10 @@ pub fn invoke_self<'info>(
 
     let mut accounts = Vec::with_capacity(1 + ctx.remaining_accounts.len());
 
-    // Signer in self-invoked instructions is mutable when called by owner on Solana.
-    // We might need to reconsider signer to be separate from fee payer and self_authority can become read-only.
-    accounts.push(AccountMeta::new(ctx.accounts.self_authority.key(), true));
+    accounts.push(AccountMeta::new_readonly(
+        ctx.accounts.self_authority.key(),
+        true,
+    ));
 
     for acc in ctx.remaining_accounts {
         if acc.is_writable {

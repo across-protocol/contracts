@@ -82,8 +82,7 @@ describe("svm_spoke.handle_receive_message", () => {
     // self_authority in HandleReceiveMessage accounts, also signer in self-invoked CPIs.
     remainingAccounts.push({
       isSigner: false,
-      // signer in self-invoked CPIs is mutable, as Solana owner is also fee payer when not using CCTP.
-      isWritable: true,
+      isWritable: false,
       pubkey: selfAuthority,
     });
     // program in HandleReceiveMessage accounts.

@@ -58,7 +58,6 @@ pub fn initialize(
 #[derive(Accounts)]
 pub struct PauseDeposits<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
@@ -80,7 +79,6 @@ pub fn pause_deposits(ctx: Context<PauseDeposits>, pause: bool) -> Result<()> {
 #[derive(Accounts)]
 pub struct PauseFills<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
@@ -104,7 +102,6 @@ pub struct TransferOwnership<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        mut,
         address = state.owner @ CustomError::NotOwner // TODO: test permissioning with a multi-sig and Squads
     )]
     pub signer: Signer<'info>,
@@ -121,7 +118,6 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) ->
 #[derive(Accounts)]
 pub struct SetCrossDomainAdmin<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
@@ -150,7 +146,6 @@ pub fn set_cross_domain_admin(
 #[instruction(origin_token: Pubkey, destination_chain_id: u64)]
 pub struct SetEnableRoute<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
@@ -158,8 +153,7 @@ pub struct SetEnableRoute<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // TODO: check if state needs to be mut here and in other places
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(
@@ -212,7 +206,7 @@ pub fn set_enable_route(
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
     #[account(
-        mut,
+        mut, // TODO: remove this mut and have separate payer when adding support to invoke this via CCTP.
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,

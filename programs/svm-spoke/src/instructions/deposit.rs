@@ -36,10 +36,9 @@ pub struct DepositV3<'info> {
     pub state: Account<'info, State>,
 
     // TODO: linter to format this line
-    #[account(mut, seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
     pub route: Account<'info, Route>,
 
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -60,7 +59,6 @@ pub struct DepositV3<'info> {
 
     // TODO: why are we using mint::token_program,token::token_program and associated_token::token_program?
     #[account(
-        mut,
         mint::token_program = token_program,
         // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
         constraint = mint.key() == input_token @ CustomError::InvalidMint
