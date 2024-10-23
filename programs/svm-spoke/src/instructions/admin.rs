@@ -8,7 +8,9 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
     error::CustomError,
-    event::{EnabledDepositRoute, PausedDeposits, PausedFills, SetXDomainAdmin},
+    event::{
+        EnabledDepositRoute, PausedDeposits, PausedFills, RelayRootBundleEvent, SetXDomainAdmin,
+    },
     initialize_current_time,
     state::{RootBundle, Route, State},
 };
@@ -209,6 +211,7 @@ pub fn set_enable_route(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
     #[account(
@@ -241,10 +244,15 @@ pub fn relay_root_bundle(
     let root_bundle = &mut ctx.accounts.root_bundle;
     root_bundle.relayer_refund_root = relayer_refund_root;
     root_bundle.slow_relay_root = slow_relay_root;
+
+    emit_cpi!(RelayRootBundleEvent {
+        relayer_refund_root,
+        slow_relay_root,
+        root_bundle_id: state.root_bundle_id,
+    });
+
+    // Finally, increment the root bundle id
     state.root_bundle_id += 1;
 
-    // TODO: add event
     Ok(())
 }
-
-// TODO: add emergency_delete_root_bundle

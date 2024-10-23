@@ -23,6 +23,13 @@ pub struct EnabledDepositRoute {
     pub enabled: bool,
 }
 
+#[event]
+pub struct RelayRootBundleEvent {
+    pub relayer_refund_root: [u8; 32],
+    pub slow_relay_root: [u8; 32],
+    pub root_bundle_id: u32,
+}
+
 // Deposit events
 #[event]
 pub struct V3FundsDeposited {
