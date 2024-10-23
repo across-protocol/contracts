@@ -261,7 +261,7 @@ pub struct EmergencyDeleteRootBundle<'info> {
     pub signer: Signer<'info>,
 
     // TODO: standardize usage of state.seed vs state.key()
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
@@ -276,12 +276,6 @@ pub fn emergency_delete_root_bundle(
     ctx: Context<EmergencyDeleteRootBundle>,
     root_bundle_id: u32,
 ) -> Result<()> {
-    let root_bundle = &mut ctx.accounts.root_bundle;
-
-    root_bundle.claimed_bitmap.clear();
-    root_bundle.relayer_refund_root = [0; 32];
-    root_bundle.slow_relay_root = [0; 32];
-
     emit_cpi!(EmergencyDeletedRootBundle { root_bundle_id });
 
     Ok(())
