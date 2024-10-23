@@ -362,6 +362,7 @@ describe("svm_spoke.fill", () => {
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
   });
+
   it("Self-relay does not invoke token transfer", async () => {
     // Set recipient to be the same as relayer.
     updateRelayData({ ...relayData, depositor: relayer.publicKey, recipient: relayer.publicKey });
