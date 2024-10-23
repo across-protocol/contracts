@@ -150,7 +150,7 @@ pub fn set_cross_domain_admin(
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(origin_token: [u8; 32], destination_chain_id: u64)] // TODO: is it possible to replace origin_token with Pubkey?
+#[instruction(origin_token: Pubkey, destination_chain_id: u64)]
 pub struct SetEnableRoute<'info> {
     #[account(
         mut,
@@ -185,8 +185,8 @@ pub struct SetEnableRoute<'info> {
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
-        constraint = origin_token_mint.key() == origin_token.into() @ CustomError::InvalidMint
+        // IDL build fails when requiring `address = origin_token` for mint, thus using a custom constraint.
+        constraint = origin_token_mint.key() == origin_token @ CustomError::InvalidMint
     )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
 
@@ -197,14 +197,14 @@ pub struct SetEnableRoute<'info> {
 
 pub fn set_enable_route(
     ctx: Context<SetEnableRoute>,
-    origin_token: [u8; 32],
+    origin_token: Pubkey,
     destination_chain_id: u64,
     enabled: bool,
 ) -> Result<()> {
     ctx.accounts.route.enabled = enabled;
 
     emit_cpi!(EnabledDepositRoute {
-        origin_token: Pubkey::new_from_array(origin_token),
+        origin_token,
         destination_chain_id,
         enabled,
     });

@@ -148,9 +148,6 @@ pub fn fill_v3_relay(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
-    // TODO: remove msg! everywhere
-    msg!("Tokens transferred successfully.");
-
     // TODO: there might be a better way to do this
     // Emit the FilledV3Relay event
     let message_clone = relay_data.message.clone(); // Clone the message before it is moved
