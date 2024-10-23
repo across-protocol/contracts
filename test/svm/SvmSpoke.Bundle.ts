@@ -208,6 +208,38 @@ describe("svm_spoke.bundle", () => {
     } catch (err: any) {
       assert.include(err.toString(), "Account does not exist", "Expected error when fetching deleted root bundle");
     }
+
+    // Attempt to add a new root bundle after deletion
+    const newRelayerRefundRootBuffer = crypto.randomBytes(32);
+    const newSlowRelayRootBuffer = crypto.randomBytes(32);
+    const newRelayerRefundRootArray = Array.from(newRelayerRefundRootBuffer);
+    const newSlowRelayRootArray = Array.from(newSlowRelayRootBuffer);
+
+    // Create a new root bundle
+    stateAccountData = await program.account.state.fetch(state);
+    const newRootBundleIdBuffer = Buffer.alloc(4);
+    newRootBundleIdBuffer.writeUInt32LE(stateAccountData.rootBundleId);
+    const newSeeds = [Buffer.from("root_bundle"), state.toBuffer(), newRootBundleIdBuffer];
+    const [newRootBundle] = PublicKey.findProgramAddressSync(newSeeds, program.programId);
+    assert.isTrue(stateAccountData.rootBundleId.toString() === "1", "Root bundle index should be 1");
+
+    const newRelayRootBundleAccounts = { state, rootBundle: newRootBundle, signer: owner };
+    await program.methods
+      .relayRootBundle(newRelayerRefundRootArray, newSlowRelayRootArray)
+      .accounts(newRelayRootBundleAccounts)
+      .rpc();
+
+    // Verify that the new root bundle was created successfully
+    const newRootBundleData = await program.account.rootBundle.fetch(newRootBundle);
+    const newRelayerRefundRootHex = Buffer.from(newRootBundleData.relayerRefundRoot).toString("hex");
+    const newSlowRelayRootHex = Buffer.from(newRootBundleData.slowRelayRoot).toString("hex");
+    stateAccountData = await program.account.state.fetch(state);
+    assert.isTrue(stateAccountData.rootBundleId.toString() === "2", "Root bundle index should be 2");
+    assert.isTrue(
+      newRelayerRefundRootHex === newRelayerRefundRootBuffer.toString("hex"),
+      "New relayer refund root should be set"
+    );
+    assert.isTrue(newSlowRelayRootHex === newSlowRelayRootBuffer.toString("hex"), "New slow relay root should be set");
   });
 
   it("Simple Leaf Refunds Relayers", async () => {
