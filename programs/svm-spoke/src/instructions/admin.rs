@@ -260,11 +260,9 @@ pub struct EmergencyDeleteRootBundle<'info> {
     )]
     pub signer: Signer<'info>,
 
-    // TODO: standardize usage of state.seed vs state.key()
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
     #[account(mut,
         seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
         close = signer,
