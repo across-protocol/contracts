@@ -24,10 +24,10 @@ pub struct EnabledDepositRoute {
 }
 
 #[event]
-pub struct RelayRootBundleEvent {
+pub struct RelayedRootBundle {
+    pub root_bundle_id: u32,
     pub relayer_refund_root: [u8; 32],
     pub slow_relay_root: [u8; 32],
-    pub root_bundle_id: u32,
 }
 
 // Deposit events

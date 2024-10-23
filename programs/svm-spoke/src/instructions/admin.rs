@@ -8,9 +8,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
     error::CustomError,
-    event::{
-        EnabledDepositRoute, PausedDeposits, PausedFills, RelayRootBundleEvent, SetXDomainAdmin,
-    },
+    event::{EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle, SetXDomainAdmin},
     initialize_current_time,
     state::{RootBundle, Route, State},
 };
@@ -245,10 +243,10 @@ pub fn relay_root_bundle(
     root_bundle.relayer_refund_root = relayer_refund_root;
     root_bundle.slow_relay_root = slow_relay_root;
 
-    emit_cpi!(RelayRootBundleEvent {
+    emit_cpi!(RelayedRootBundle {
+        root_bundle_id: state.root_bundle_id,
         relayer_refund_root,
         slow_relay_root,
-        root_bundle_id: state.root_bundle_id,
     });
 
     // Finally, increment the root bundle id

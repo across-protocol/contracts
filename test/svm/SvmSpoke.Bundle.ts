@@ -181,7 +181,7 @@ describe("svm_spoke.bundle", () => {
 
     // Check for the emitted event
     const events = await readEvents(connection, tx, [program]);
-    const event = events.find((event) => event.name === "relayRootBundleEvent").data;
+    const event = events.find((event) => event.name === "relayedRootBundle").data;
     assert.isTrue(event.rootBundleId.toString() === rootBundleId.toString(), "Root bundle ID should match");
     assert.isTrue(
       event.relayerRefundRoot.toString() === relayerRefundRootArray.toString(),
