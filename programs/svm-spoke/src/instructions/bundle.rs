@@ -20,7 +20,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     )]
     pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
 
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(
@@ -47,7 +47,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-        mut,
         mint::token_program = token_program,
         address = instruction_params.relayer_refund_leaf.mint_public_key @ CustomError::InvalidMint
     )]
@@ -119,7 +118,7 @@ where
     let relayer_refund_leaf = instruction_params.relayer_refund_leaf.to_owned();
     let proof = instruction_params.proof.to_owned();
 
-    let state = &mut ctx.accounts.state;
+    let state = &ctx.accounts.state;
 
     let root = ctx.accounts.root_bundle.relayer_refund_root;
     let leaf = relayer_refund_leaf.to_keccak_hash();

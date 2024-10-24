@@ -7,7 +7,6 @@ pub struct SetCurrentTime<'info> {
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(mut)]
     pub signer: Signer<'info>,
 }
 
