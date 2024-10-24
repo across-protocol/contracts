@@ -38,10 +38,9 @@ describe("svm_spoke.fill", () => {
       state,
       signer: relayer.publicKey,
       relayer: relayer.publicKey,
-      recipient: recipient,
       mintAccount: mint,
-      relayerTA: relayerTA,
-      recipientTA: recipientTA,
+      relayerTokenAccount: relayerTA,
+      recipientTokenAccount: recipientTA,
       fillStatus: fillStatusPDA,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -139,7 +138,7 @@ describe("svm_spoke.fill", () => {
   it("Fails to fill a V3 relay by non-exclusive relayer before exclusivity deadline", async () => {
     accounts.signer = otherRelayer.publicKey;
     accounts.relayer = otherRelayer.publicKey;
-    accounts.relayerTA = otherRelayerTA;
+    accounts.relayerTokenAccount = otherRelayerTA;
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
@@ -159,7 +158,7 @@ describe("svm_spoke.fill", () => {
 
     accounts.signer = otherRelayer.publicKey;
     accounts.relayer = otherRelayer.publicKey;
-    accounts.relayerTA = otherRelayerTA;
+    accounts.relayerTokenAccount = otherRelayerTA;
 
     const recipientAccountBefore = await getAccount(connection, recipientTA);
     const relayerAccountBefore = await getAccount(connection, otherRelayerTA);
@@ -274,7 +273,7 @@ describe("svm_spoke.fill", () => {
     }
   });
 
-  it("Fails to fill a relay to wrong recipient", async () => {
+  it("Fails to fill a relay to wrong recipient token account", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
     // Create new accounts as derived from wrong recipient.
@@ -287,16 +286,15 @@ describe("svm_spoke.fill", () => {
         .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
         .accounts({
           ...accounts,
-          recipient: wrongRecipient,
-          recipientTA: wrongRecipientTA,
+          recipientTokenAccount: wrongRecipientTA,
           fillStatus: wrongFillStatus,
         })
         .signers([relayer])
         .rpc();
-      assert.fail("Should not be able to fill relay to wrong recipient");
+      assert.fail("Should not be able to fill relay to wrong recipient token account");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+      assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner", "Expected error code ConstraintTokenOwner");
     }
   });
 
@@ -331,8 +329,7 @@ describe("svm_spoke.fill", () => {
   it("Self-relay does not invoke token transfer", async () => {
     // Set recipient to be the same as relayer.
     updateRelayData({ ...relayData, depositor: relayer.publicKey, recipient: relayer.publicKey });
-    accounts.recipient = relayer.publicKey;
-    accounts.recipientTA = relayerTA;
+    accounts.recipientTokenAccount = relayerTA;
 
     // Store relayer's balance before the fill
     const iRelayerBalance = (await getAccount(connection, relayerTA)).amount;

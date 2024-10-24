@@ -66,10 +66,9 @@ describe("svm_spoke.slow_fill", () => {
       state,
       signer: relayer.publicKey,
       relayer: relayer.publicKey,
-      recipient: relayData.recipient, // This could be different from global recipient.
       mintAccount: mint,
-      relayerTA: relayerTA,
-      recipientTA: recipientTA,
+      relayerTokenAccount: relayerTA,
+      recipientTokenAccount: recipientTA,
       fillStatus,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,

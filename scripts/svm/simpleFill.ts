@@ -126,7 +126,6 @@ async function fillV3Relay(): Promise<void> {
       state: statePda,
       signer: signer,
       relayer: signer,
-      recipient: recipient,
       mintAccount: outputToken,
       relayerTokenAccount: relayerTokenAccount,
       recipientTokenAccount: recipientTokenAccount,
