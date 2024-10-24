@@ -444,7 +444,7 @@ describe("svm_spoke.handle_receive_message", () => {
     // state in self-invoked RelayRootBundle.
     relayRootBundleRemainingAccounts.push({
       isSigner: false,
-      isWritable: true, // TODO: set to false after merging https://github.com/across-protocol/contracts/pull/684
+      isWritable: false,
       pubkey: state,
     });
     // root_bundle in self-invoked RelayRootBundle.
