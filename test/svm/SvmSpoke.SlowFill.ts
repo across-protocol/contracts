@@ -324,7 +324,6 @@ describe("svm_spoke.slow_fill", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      recipient,
       recipientTokenAccount: recipientTA,
       program: program.programId,
     };
@@ -412,7 +411,7 @@ describe("svm_spoke.slow_fill", () => {
       .signers([relayer])
       .rpc();
 
-    // Try to execute V3 slow relay leaf with wrong recipient should fail.
+    // Try to execute V3 slow relay leaf with wrong recipient token account should fail.
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
     try {
@@ -424,7 +423,6 @@ describe("svm_spoke.slow_fill", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        recipient: wrongRecipient,
         recipientTokenAccount: wrongRecipientTA,
         program: program.programId,
       };
@@ -437,10 +435,10 @@ describe("svm_spoke.slow_fill", () => {
         )
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
-      assert.fail("Execution should have failed due to wrong recipient");
+      assert.fail("Execution should have failed due to wrong recipient token account");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+      assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner", "Expected error code ConstraintTokenOwner");
     }
   });
 
@@ -484,7 +482,6 @@ describe("svm_spoke.slow_fill", () => {
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint,
-      recipient: firstRecipient,
       recipientTokenAccount: firstRecipientTA,
       program: program.programId,
     };
@@ -515,7 +512,6 @@ describe("svm_spoke.slow_fill", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        recipient: firstRecipient,
         recipientTokenAccount: firstRecipientTA,
         program: program.programId,
       };
@@ -560,7 +556,6 @@ describe("svm_spoke.slow_fill", () => {
         vault: wrongVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: wrongMint,
-        recipient,
         recipientTokenAccount: wrongRecipientTA,
         program: program.programId,
       };
@@ -604,7 +599,6 @@ describe("svm_spoke.slow_fill", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        recipient,
         recipientTokenAccount: recipientTA,
         program: program.programId,
       };
