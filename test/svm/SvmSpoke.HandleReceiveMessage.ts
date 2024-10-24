@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import * as crypto from "crypto";
 import { BN, web3, workspace, Program, AnchorProvider, AnchorError } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
 import { Keypair } from "@solana/web3.js";
@@ -38,6 +39,7 @@ describe("svm_spoke.handle_receive_message", () => {
     "function pauseFills(bool pause)",
     "function setCrossDomainAdmin(address newCrossDomainAdmin)",
     "function setEnableRoute(bytes32 originToken, uint64 destinationChainId, bool enabled)",
+    "function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)",
   ]);
 
   beforeEach(async () => {
@@ -406,5 +408,71 @@ describe("svm_spoke.handle_receive_message", () => {
 
     routeAccount = await program.account.route.fetch(routePda);
     assert.isFalse(routeAccount.enabled, "Route should be disabled");
+  });
+
+  it("Relays root bundle remotely", async () => {
+    // Encode relayRootBundle message.
+    const relayerRefundRoot = crypto.randomBytes(32);
+    const slowRelayRoot = crypto.randomBytes(32);
+    const calldata = ethereumIface.encodeFunctionData("relayRootBundle", [relayerRefundRoot, slowRelayRoot]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody,
+    });
+
+    // Remaining accounts specific to RelayRootBundle.
+    const rootBundleId = (await program.account.state.fetch(state)).rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
+    // Same 3 remaining accounts passed for HandleReceiveMessage context.
+    const relayRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
+    // payer in self-invoked SetEnableRoute.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: true,
+      isWritable: true,
+      pubkey: provider.wallet.publicKey,
+    });
+    // state in self-invoked RelayRootBundle.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: true, // TODO: set to false after merging https://github.com/across-protocol/contracts/pull/684
+      pubkey: state,
+    });
+    // root_bundle in self-invoked RelayRootBundle.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: true,
+      pubkey: rootBundle,
+    });
+    // system_program in self-invoked RelayRootBundle.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: web3.SystemProgram.programId,
+    });
+    // TODO: append emit_cpi accounts after merging https://github.com/across-protocol/contracts/pull/683
+
+    // Invoke remote CCTP message to relay root bundle.
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(relayRootBundleRemainingAccounts)
+      .rpc();
+
+    // Fetch the relayer refund root and slow relay root
+    const rootBundleAccountData = await program.account.rootBundle.fetch(rootBundle);
+    const updatedRelayerRefundRoot = Buffer.from(rootBundleAccountData.relayerRefundRoot);
+    const updatedSlowRelayRoot = Buffer.from(rootBundleAccountData.slowRelayRoot);
+    assert.isTrue(updatedRelayerRefundRoot.equals(relayerRefundRoot), "Relayer refund root should be set");
+    assert.isTrue(updatedSlowRelayRoot.equals(slowRelayRoot), "Slow relay root should be set");
   });
 });

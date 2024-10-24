@@ -212,10 +212,12 @@ pub fn set_enable_route(
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
 
     // TODO: standardize usage of state.seed vs state.key()
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -223,7 +225,7 @@ pub struct RelayRootBundle<'info> {
 
     // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
     #[account(init, // TODO: add comment explaining why init
-        payer = signer,
+        payer = payer,
         space = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE,
         seeds =[b"root_bundle", state.key().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
         bump)]
