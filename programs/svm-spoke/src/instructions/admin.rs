@@ -8,7 +8,10 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
     error::CustomError,
-    event::{EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle, SetXDomainAdmin},
+    event::{
+        EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills,
+        RelayedRootBundle, SetXDomainAdmin,
+    },
     initialize_current_time,
     state::{RootBundle, Route, State},
 };
@@ -251,6 +254,35 @@ pub fn relay_root_bundle(
 
     // Finally, increment the root bundle id
     state.root_bundle_id += 1;
+
+    Ok(())
+}
+
+#[event_cpi]
+#[derive(Accounts)]
+#[instruction(root_bundle_id: u32)]
+pub struct EmergencyDeleteRootBundle<'info> {
+    #[account(
+        mut,
+        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
+    )]
+    pub signer: Signer<'info>,
+
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    pub state: Account<'info, State>,
+
+    #[account(mut,
+        seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
+        close = signer,
+        bump)]
+    pub root_bundle: Account<'info, RootBundle>,
+}
+
+pub fn emergency_delete_root_bundle(
+    ctx: Context<EmergencyDeleteRootBundle>,
+    root_bundle_id: u32,
+) -> Result<()> {
+    emit_cpi!(EmergencyDeletedRootBundle { root_bundle_id });
 
     Ok(())
 }
