@@ -101,7 +101,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Try to relay root bundle as non-owner
-    let relayRootBundleAccounts = { state: state, rootBundle, signer: nonOwner.publicKey };
+    let relayRootBundleAccounts = { state: state, rootBundle, signer: nonOwner.publicKey, program: program.programId };
     try {
       await program.methods
         .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
@@ -114,7 +114,7 @@ describe("svm_spoke.bundle", () => {
     }
 
     // Relay root bundle as owner
-    relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
       .accounts(relayRootBundleAccounts)
@@ -146,7 +146,7 @@ describe("svm_spoke.bundle", () => {
     const seeds2 = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer2];
     const [rootBundle2] = PublicKey.findProgramAddressSync(seeds2, program.programId);
 
-    relayRootBundleAccounts = { state, rootBundle: rootBundle2, signer: owner };
+    relayRootBundleAccounts = { state, rootBundle: rootBundle2, signer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(relayerRefundRootArray2, slowRelayRootArray2)
       .accounts(relayRootBundleAccounts)
@@ -155,6 +155,41 @@ describe("svm_spoke.bundle", () => {
     stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.rootBundleId.toString() === "2", "Root bundle index should be 2");
   });
+
+  it("Tests Event Emission in Relay Root Bundle", async () => {
+    const relayerRefundRootBuffer = crypto.randomBytes(32);
+    const relayerRefundRootArray = Array.from(relayerRefundRootBuffer);
+    const slowRelayRootBuffer = crypto.randomBytes(32);
+    const slowRelayRootArray = Array.from(slowRelayRootBuffer);
+
+    let stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle as owner
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    const tx = await program.methods
+      .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
+      .accounts(relayRootBundleAccounts)
+      .rpc();
+
+    // Wait for event processing
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Check for the emitted event
+    const events = await readEvents(connection, tx, [program]);
+    const event = events.find((event) => event.name === "relayedRootBundle").data;
+    assert.isTrue(event.rootBundleId.toString() === rootBundleId.toString(), "Root bundle ID should match");
+    assert.isTrue(
+      event.relayerRefundRoot.toString() === relayerRefundRootArray.toString(),
+      "Relayer refund root should match"
+    );
+    assert.isTrue(event.slowRelayRoot.toString() === slowRelayRootArray.toString(), "Slow relay root should match");
+  });
+
   it("Simple Leaf Refunds Relayers", async () => {
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
     const relayerARefund = new BN(400000);
@@ -185,7 +220,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -316,7 +351,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -457,7 +492,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -519,7 +554,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -581,7 +616,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
@@ -741,7 +776,7 @@ describe("svm_spoke.bundle", () => {
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
       // Relay root bundle
-      const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
       await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
       // Verify valid leaf
@@ -893,7 +928,7 @@ describe("svm_spoke.bundle", () => {
       rootBundleIdBuffer.writeUInt32LE(rootBundleId);
       const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
-      let relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
       await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
       const proofAsNumbers = proof.map((p) => Array.from(p));
       const executeRelayerRefundLeafAccounts = {
@@ -969,7 +1004,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
@@ -1043,7 +1078,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -1146,7 +1181,7 @@ describe("svm_spoke.bundle", () => {
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
       // Relay root bundle
-      const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
       await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
       // Pass refund addresses in remaining accounts.
