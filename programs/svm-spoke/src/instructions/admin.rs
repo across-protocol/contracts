@@ -259,7 +259,6 @@ pub fn relay_root_bundle(
 #[instruction(root_bundle_id: u32)]
 pub struct EmergencyDeleteRootBundle<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
