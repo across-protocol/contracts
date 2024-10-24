@@ -78,7 +78,7 @@ describe("svm_spoke.refund_claims", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     // Pass claim account as relayer refund address.
