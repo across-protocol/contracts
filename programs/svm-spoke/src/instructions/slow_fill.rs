@@ -21,7 +21,6 @@ use crate::V3RelayData; // Pulled type definition from fill.rs.
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct SlowFillV3Relay<'info> {
     #[account(
-        mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
         constraint = !state.paused_fills @ CustomError::FillsArePaused
@@ -49,7 +48,7 @@ pub fn request_v3_slow_fill(
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData,
 ) -> Result<()> {
-    let state = &mut ctx.accounts.state;
+    let state = &ctx.accounts.state;
 
     let current_time = get_current_time(state)?;
 
@@ -132,13 +131,12 @@ impl V3SlowFill {
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], slow_fill_leaf: V3SlowFill, root_bundle_id: u32)]
 pub struct ExecuteV3SlowRelayLeaf<'info> {
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(mut, seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
+    #[account(seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
     pub root_bundle: Account<'info, RootBundle>,
 
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -151,13 +149,11 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
-        mut,
         address = slow_fill_leaf.relay_data.recipient @ CustomError::InvalidFillRecipient
     )]
     pub recipient: SystemAccount<'info>,
 
     #[account(
-        mut,
         token::token_program = token_program,
         address = slow_fill_leaf.relay_data.output_token @ CustomError::InvalidMint
     )]

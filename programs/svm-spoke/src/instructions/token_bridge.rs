@@ -13,7 +13,6 @@ use crate::{
 
 #[derive(Accounts)]
 pub struct BridgeTokensToHubPool<'info> {
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -22,7 +21,7 @@ pub struct BridgeTokensToHubPool<'info> {
     #[account(mut, mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(mut, seeds = [b"transfer_liability", mint.key().as_ref()], bump)]
