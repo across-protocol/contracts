@@ -226,4 +226,12 @@ pub mod svm_spoke {
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         instructions::claim_relayer_refund(ctx)
     }
+
+    pub fn close_claim_account(
+        ctx: Context<CloseClaimAccount>,
+        _mint: Pubkey,          // Only used in account constraints.
+        _token_account: Pubkey, // Only used in account constraints.
+    ) -> Result<()> {
+        instructions::close_claim_account(ctx)
+    }
 }
