@@ -323,7 +323,7 @@ describe("svm_spoke.handle_receive_message", () => {
     // state in self-invoked SetEnableRoute.
     enableRouteRemainingAccounts.push({
       isSigner: false,
-      isWritable: true,
+      isWritable: false,
       pubkey: state,
     });
     // route in self-invoked SetEnableRoute.
