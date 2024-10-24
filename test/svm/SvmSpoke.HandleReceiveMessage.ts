@@ -459,7 +459,18 @@ describe("svm_spoke.handle_receive_message", () => {
       isWritable: false,
       pubkey: web3.SystemProgram.programId,
     });
-    // TODO: append emit_cpi accounts after merging https://github.com/across-protocol/contracts/pull/683
+    // event_authority in self-invoked RelayRootBundle (appended by Anchor with event_cpi macro).
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: eventAuthority,
+    });
+    // program in self-invoked RelayRootBundle (appended by Anchor with event_cpi macro).
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: program.programId,
+    });
 
     // Invoke remote CCTP message to relay root bundle.
     await messageTransmitterProgram.methods
@@ -468,7 +479,7 @@ describe("svm_spoke.handle_receive_message", () => {
       .remainingAccounts(relayRootBundleRemainingAccounts)
       .rpc();
 
-    // Fetch the relayer refund root and slow relay root
+    // Check the updated relayer refund and slow relay root in the root bundle account.
     const rootBundleAccountData = await program.account.rootBundle.fetch(rootBundle);
     const updatedRelayerRefundRoot = Buffer.from(rootBundleAccountData.relayerRefundRoot);
     const updatedSlowRelayRoot = Buffer.from(rootBundleAccountData.slowRelayRoot);
