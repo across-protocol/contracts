@@ -10,6 +10,8 @@ pub enum CalldataError {
     InvalidBool,
     #[msg("Invalid solidity address argument")]
     InvalidAddress,
+    #[msg("Invalid solidity uint32 argument")]
+    InvalidUint32,
     #[msg("Invalid solidity uint64 argument")]
     InvalidUint64,
     #[msg("Invalid solidity uint128 argument")]

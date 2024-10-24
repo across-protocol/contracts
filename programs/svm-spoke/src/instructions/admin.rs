@@ -210,10 +210,12 @@ pub fn set_enable_route(
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
     #[account(
-        mut, // TODO: remove this mut and have separate payer when adding support to invoke this via CCTP.
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
 
     // TODO: standardize usage of state.seed vs state.key()
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -221,7 +223,7 @@ pub struct RelayRootBundle<'info> {
 
     // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
     #[account(init, // TODO: add comment explaining why init
-        payer = signer,
+        payer = payer,
         space = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE,
         seeds =[b"root_bundle", state.key().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
         bump)]
@@ -257,17 +259,21 @@ pub fn relay_root_bundle(
 #[instruction(root_bundle_id: u32)]
 pub struct EmergencyDeleteRootBundle<'info> {
     #[account(
-        mut,
         constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
     )]
     pub signer: Signer<'info>,
+
+    #[account(mut)]
+    // We do not restrict who can receive lamports from closing root_bundle account as that would require storing the
+    // original payer when root bundle was relayed and unnecessarily make it more expensive to relay in the happy path.
+    pub closer: SystemAccount<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(mut,
         seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
-        close = signer,
+        close = closer,
         bump)]
     pub root_bundle: Account<'info, RootBundle>,
 }

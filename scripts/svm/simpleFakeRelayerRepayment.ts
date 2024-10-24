@@ -167,6 +167,7 @@ async function testBundleLogic(): Promise<void> {
       state: statePda,
       rootBundle: rootBundle,
       signer: signer,
+      payer: signer,
       systemProgram: SystemProgram.programId,
     })
     .rpc();
