@@ -33,7 +33,6 @@ task("testChainAdapter", "Verify a chain adapter")
 
     const { address: adapterAddress, abi: adapterAbi } = await deployments.get(adapterName);
     const adapter = new ethers.Contract(adapterAddress, adapterAbi, provider);
-    // const spokeAddress = getDeployedAddress("SpokePool", spokeChainId, true);
     const tokenSymbol = args.token.toUpperCase();
     const tokenAddress = TOKEN_SYMBOLS_MAP[tokenSymbol].addresses[hubChainId];
 
