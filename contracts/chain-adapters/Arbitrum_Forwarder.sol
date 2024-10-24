@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ForwarderBase } from "./ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../libraries/CrossDomainAddressUtils.sol";
+import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 
 /**
  * @title Arbitrum_Forwarder
@@ -19,10 +20,9 @@ contract Arbitrum_Forwarder is ForwarderBase {
 
     /**
      * @notice Constructs an Arbitrum-specific forwarder contract.
-     * @dev Since this is a proxy contract, we only set immutable variables in the constructor, and leave everything else to be initialized.
-     * This includes variables like the cross domain admin.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on the L2.
      */
-    constructor() ForwarderBase() {}
+    constructor(WETH9Interface _wrappedNativeToken) ForwarderBase(_wrappedNativeToken) {}
 
     /**
      * @notice Initializes the forwarder contract.
