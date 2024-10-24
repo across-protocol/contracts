@@ -706,7 +706,7 @@ describe("svm_spoke.bundle", () => {
     const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
       .accounts(relayRootBundleAccounts)
@@ -763,7 +763,7 @@ describe("svm_spoke.bundle", () => {
       `Root bundle index should be ${initialRootBundleId + 1}`
     );
 
-    const newRelayRootBundleAccounts = { state, rootBundle: newRootBundle, signer: owner };
+    const newRelayRootBundleAccounts = { state, rootBundle: newRootBundle, signer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(newRelayerRefundRootArray, newSlowRelayRootArray)
       .accounts(newRelayRootBundleAccounts)
