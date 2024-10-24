@@ -704,6 +704,99 @@ describe("svm_spoke.bundle", () => {
     }
   });
 
+  it("Should allow the owner to delete the root bundle", async () => {
+    const relayerRefundRootBuffer = crypto.randomBytes(32);
+    const slowRelayRootBuffer = crypto.randomBytes(32);
+    const relayerRefundRootArray = Array.from(relayerRefundRootBuffer);
+    const slowRelayRootArray = Array.from(slowRelayRootBuffer);
+
+    let stateAccountData = await program.account.state.fetch(state);
+    const initialRootBundleId = stateAccountData.rootBundleId;
+    const rootBundleId = stateAccountData.rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    await program.methods
+      .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
+      .accounts(relayRootBundleAccounts)
+      .rpc();
+
+    // Ensure the root bundle exists before deletion
+    let rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+    assert.isNotNull(rootBundleData, "Root bundle should exist before deletion");
+
+    // Attempt to delete the root bundle as a non-owner
+    try {
+      const emergencyDeleteRootBundleAccounts = {
+        state,
+        rootBundle,
+        signer: nonOwner.publicKey,
+        program: program.programId,
+      };
+      await program.methods
+        .emergencyDeleteRootBundle(rootBundleId)
+        .accounts(emergencyDeleteRootBundleAccounts)
+        .signers([nonOwner])
+        .rpc();
+      assert.fail("Non-owner should not be able to delete the root bundle");
+    } catch (err: any) {
+      assert.include(err.toString(), "NotOwner", "Expected error for non-owner trying to delete root bundle");
+    }
+
+    // Execute the emergency delete
+    const emergencyDeleteRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    await program.methods.emergencyDeleteRootBundle(rootBundleId).accounts(emergencyDeleteRootBundleAccounts).rpc();
+
+    // Verify that the root bundle has been deleted
+    try {
+      rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+      assert.fail("Root bundle should have been deleted");
+    } catch (err: any) {
+      assert.include(err.toString(), "Account does not exist", "Expected error when fetching deleted root bundle");
+    }
+
+    // Attempt to add a new root bundle after deletion
+    const newRelayerRefundRootBuffer = crypto.randomBytes(32);
+    const newSlowRelayRootBuffer = crypto.randomBytes(32);
+    const newRelayerRefundRootArray = Array.from(newRelayerRefundRootBuffer);
+    const newSlowRelayRootArray = Array.from(newSlowRelayRootBuffer);
+
+    // Create a new root bundle
+    stateAccountData = await program.account.state.fetch(state);
+    const newRootBundleIdBuffer = Buffer.alloc(4);
+    newRootBundleIdBuffer.writeUInt32LE(stateAccountData.rootBundleId);
+    const newSeeds = [Buffer.from("root_bundle"), state.toBuffer(), newRootBundleIdBuffer];
+    const [newRootBundle] = PublicKey.findProgramAddressSync(newSeeds, program.programId);
+    assert.isTrue(
+      stateAccountData.rootBundleId === initialRootBundleId + 1,
+      `Root bundle index should be ${initialRootBundleId + 1}`
+    );
+
+    const newRelayRootBundleAccounts = { state, rootBundle: newRootBundle, signer: owner, program: program.programId };
+    await program.methods
+      .relayRootBundle(newRelayerRefundRootArray, newSlowRelayRootArray)
+      .accounts(newRelayRootBundleAccounts)
+      .rpc();
+
+    // Verify that the new root bundle was created successfully
+    const newRootBundleData = await program.account.rootBundle.fetch(newRootBundle);
+    const newRelayerRefundRootHex = Buffer.from(newRootBundleData.relayerRefundRoot).toString("hex");
+    const newSlowRelayRootHex = Buffer.from(newRootBundleData.slowRelayRoot).toString("hex");
+    stateAccountData = await program.account.state.fetch(state);
+    assert.isTrue(
+      stateAccountData.rootBundleId === initialRootBundleId + 2,
+      `Root bundle index should be ${initialRootBundleId + 2}`
+    );
+    assert.isTrue(
+      newRelayerRefundRootHex === newRelayerRefundRootBuffer.toString("hex"),
+      "New relayer refund root should be set"
+    );
+    assert.isTrue(newSlowRelayRootHex === newSlowRelayRootBuffer.toString("hex"), "New slow relay root should be set");
+  });
+
   describe("Execute Max Refunds", () => {
     const executeMaxRefunds = async (refundType: RefundType) => {
       const relayerRefundLeaves: RelayerRefundLeafType[] = [];

@@ -95,9 +95,6 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         return err!(CustomError::ZeroRefundClaim);
     }
 
-    // Reset the claim amount.
-    ctx.accounts.claim_account.amount = 0;
-
     // Derive the signer seeds for the state required for the transfer form vault.
     let state_seed_bytes = ctx.accounts.state.seed.to_le_bytes();
     let seeds = &[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]];
@@ -124,7 +121,39 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         refund_address: ctx.accounts.token_account.key(),
     });
 
+    // There is no need to reset the claim amount as the account will be closed at the end of instruction.
+
     Ok(())
 }
 
-// TODO: add manual instruction to close claim account in case someone else executed the relayer refund leaf with ATA. Only initializer should be able to call this.
+// Though claim accounts are being closed automatically when claiming the refund, there might be a scenario where
+// relayer refunds were executed with ATA after initializing the claim account. In such cases, the initializer should be
+// able to close the claim account manually.
+#[derive(Accounts)]
+#[instruction(mint: Pubkey, token_account: Pubkey)]
+pub struct CloseClaimAccount<'info> {
+    #[account(
+        mut,
+        address = claim_account.initializer @ CustomError::InvalidClaimInitializer
+    )]
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        close = signer,
+        // TODO: We can remove mint from seed derivation as token_account itself is derived from the mint.
+        seeds = [b"claim_account", mint.key().as_ref(), token_account.key().as_ref()],
+        bump
+    )]
+    pub claim_account: Account<'info, ClaimAccount>,
+}
+
+pub fn close_claim_account(ctx: Context<CloseClaimAccount>) -> Result<()> {
+    // Ensure the account does not hold any outstanding claims.
+    let claim_amount = ctx.accounts.claim_account.amount;
+    if claim_amount > 0 {
+        return err!(CustomError::NonZeroRefundClaim);
+    }
+
+    Ok(())
+}

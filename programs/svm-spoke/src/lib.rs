@@ -60,6 +60,13 @@ pub mod svm_spoke {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
+    pub fn emergency_delete_root_bundle(
+        ctx: Context<EmergencyDeleteRootBundle>,
+        root_bundle_id: u32,
+    ) -> Result<()> {
+        instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
+    }
+
     pub fn execute_relayer_refund_leaf<'c, 'info>(
         ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
@@ -218,5 +225,13 @@ pub mod svm_spoke {
 
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         instructions::claim_relayer_refund(ctx)
+    }
+
+    pub fn close_claim_account(
+        ctx: Context<CloseClaimAccount>,
+        _mint: Pubkey,          // Only used in account constraints.
+        _token_account: Pubkey, // Only used in account constraints.
+    ) -> Result<()> {
+        instructions::close_claim_account(ctx)
     }
 }
