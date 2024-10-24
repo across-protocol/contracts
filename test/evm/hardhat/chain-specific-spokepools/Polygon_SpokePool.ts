@@ -20,6 +20,7 @@ import {
   seedWallet,
   FakeContract,
   createFakeFromABI,
+  addressToBytes,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -155,7 +156,7 @@ describe("Polygon Spoke Pool", function () {
       .reverted;
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setEnableRouteData);
-    expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
+    expect(await polygonSpokePool.enabledDepositRoutes(addressToBytes(l2Dai), 1)).to.equal(true);
   });
 
   it("Only correct caller can initialize a relayer refund", async function () {
@@ -260,7 +261,7 @@ describe("Polygon Spoke Pool", function () {
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [amountToReturn, ethers.constants.Zero], // amountToReturn.
-      [dai.address, dai.address], // l2Token.
+      [addressToBytes(dai.address), addressToBytes(dai.address)], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.
     );
@@ -288,7 +289,7 @@ describe("Polygon Spoke Pool", function () {
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
-      [dai.address, dai.address], // l2Token.
+      [addressToBytes(dai.address), addressToBytes(dai.address)], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.
     );
@@ -320,11 +321,11 @@ describe("Polygon Spoke Pool", function () {
     ];
     const currentTime = (await polygonSpokePool.getCurrentTime()).toNumber();
     const relayData: V3RelayData = {
-      depositor: owner.address,
-      recipient: acrossMessageHandler.address,
-      exclusiveRelayer: zeroAddress,
-      inputToken: dai.address,
-      outputToken: dai.address,
+      depositor: addressToBytes(owner.address),
+      recipient: addressToBytes(acrossMessageHandler.address),
+      exclusiveRelayer: addressToBytes(zeroAddress),
+      inputToken: addressToBytes(dai.address),
+      outputToken: addressToBytes(dai.address),
       inputAmount: toWei("1"),
       outputAmount: toWei("1"),
       originChainId: originChainId,
@@ -334,8 +335,16 @@ describe("Polygon Spoke Pool", function () {
       message: "0x1234",
     };
     const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [relayData, repaymentChainId]),
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [{ ...relayData, depositId: 1 }, repaymentChainId]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+        relayData,
+        repaymentChainId,
+        addressToBytes(relayer.address),
+      ]),
+      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+        { ...relayData, depositId: 1 },
+        repaymentChainId,
+        addressToBytes(relayer.address),
+      ]),
     ];
     const otherData = [polygonSpokePool.interface.encodeFunctionData("wrap", [])];
 
