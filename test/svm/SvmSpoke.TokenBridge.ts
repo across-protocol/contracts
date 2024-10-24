@@ -161,6 +161,7 @@ describe("svm_spoke.token_bridge", () => {
       state,
       rootBundle,
       signer: owner,
+      program: program.programId,
     };
     await program.methods
       .relayRootBundle(Array.from(root), Array.from(Buffer.alloc(32)))
