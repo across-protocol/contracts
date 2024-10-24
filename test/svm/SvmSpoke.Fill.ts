@@ -37,7 +37,6 @@ describe("svm_spoke.fill", () => {
     accounts = {
       state,
       signer: relayer.publicKey,
-      relayer: relayer.publicKey,
       mintAccount: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
@@ -137,7 +136,6 @@ describe("svm_spoke.fill", () => {
 
   it("Fails to fill a V3 relay by non-exclusive relayer before exclusivity deadline", async () => {
     accounts.signer = otherRelayer.publicKey;
-    accounts.relayer = otherRelayer.publicKey;
     accounts.relayerTokenAccount = otherRelayerTA;
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
@@ -157,7 +155,6 @@ describe("svm_spoke.fill", () => {
     updateRelayData({ ...relayData, exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 100) });
 
     accounts.signer = otherRelayer.publicKey;
-    accounts.relayer = otherRelayer.publicKey;
     accounts.relayerTokenAccount = otherRelayerTA;
 
     const recipientAccountBefore = await getAccount(connection, recipientTA);
