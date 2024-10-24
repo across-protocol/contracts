@@ -1402,18 +1402,31 @@ abstract contract SpokePool is
         if (refundAddresses.length != numRefunds) revert InvalidMerkleLeaf();
 
         if (numRefunds > 0) {
-            IERC20Upgradeable l2Token = IERC20Upgradeable(l2TokenAddress.toAddress());
-            uint256 spokeStartBalance = l2Token.balanceOf(address(this));
-            uint256 totalRefundedAmount = 0;
+            uint256 spokeStartBalance = IERC20Upgradeable(l2TokenAddress.toAddress()).balanceOf(address(this));
+            uint256 totalRefundedAmount = 0; // Track the total amount refunded.
 
             // Send each relayer refund address the associated refundAmount for the L2 token address.
             // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
             for (uint256 i = 0; i < numRefunds; ++i) {
                 if (refundAmounts[i] > 0) {
                     totalRefundedAmount += refundAmounts[i];
+
+                    // Only if the total refunded amount exceeds the spoke starting balance, should we revert. This
+                    // ensures that bundles are atomic, if we have sufficient balance to refund all relayers and
+                    // prevents can only re-pay some of the relayers.
                     if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
 
-                    try l2Token.transfer(refundAddresses[i].toAddress(), refundAmounts[i]) {} catch {
+                    bool success = noRevertTransfer(
+                        l2TokenAddress.toAddress(),
+                        refundAddresses[i].toAddress(),
+                        refundAmounts[i]
+                    );
+
+                    // If the transfer failed then track a deferred transfer for the relayer. Given this function would
+                    // have revered if there was insufficient balance, this will only happen if the transfer call
+                    // reverts. This will only occur if the underlying transfer method on the l2Token reverts due to
+                    // recipient blacklisting or other related modifications to the l2Token.transfer method.
+                    if (!success) {
                         relayerRefund[l2TokenAddress.toAddress()][refundAddresses[i].toAddress()] += refundAmounts[i];
                         deferredRefunds = true;
                     }
@@ -1427,6 +1440,26 @@ abstract contract SpokePool is
 
             emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress, msg.sender);
         }
+    }
+
+    // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
+    // bool indicating if the external call was successful, rather than reverting. Original method:
+    // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol#L188
+    function noRevertTransfer(
+        address token,
+        address to,
+        uint256 amount
+    ) internal returns (bool) {
+        bool success;
+        uint256 returnSize;
+        uint256 returnValue;
+        bytes memory data = abi.encodeCall(IERC20Upgradeable.transfer, (to, amount));
+        assembly {
+            success := call(gas(), token, 0, add(data, 0x20), mload(data), 0, 0x20)
+            returnSize := returndatasize()
+            returnValue := mload(0)
+        }
+        return success && (returnSize == 0 ? address(token).code.length > 0 : returnValue == 1);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
