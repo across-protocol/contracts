@@ -53,7 +53,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     worldChainStandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
-    donationBox: "0x5e40a88E302Da80089Dd13178b8DD6b15534419c",
+    donationBox: "0x90285a96F5955A7279EF0C1e89A1B4f66d8E4dA7",
   },
   [CHAIN_IDs.SEPOLIA]: {
     optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",

@@ -51,9 +51,9 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei)
     uint256 public immutable L2_GAS_PRICE;
 
-    // Native token expected to be sent in L2 message. Should be 0 for all use cases of this constant, which
-    // includes sending messages from L1 to L2 and sending Custom gas token ERC20's, which won't be the native token
-    // on the L2 by definition.
+    // Native token expected to be sent in L2 message. Should be 0 for most use cases of this constant. This
+    // constant is unused when sending the native gas token over the inbox since the inbox interprets `l2CallValue`
+    // as the amount of the L2 native token to send.
     uint256 public constant L2_CALL_VALUE = 0;
 
     // Gas limit for L2 execution of a cross chain token transfer sent via the inbox.
@@ -184,7 +184,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                 CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), amountToBridge);
                 L1_INBOX.createRetryableTicket(
                     to, // destAddr destination L2 contract address
-                    L2_CALL_VALUE, // l2CallValue call value for retryable L2 message
+                    amount, // l2CallValue call value for retryable L2 message
                     L2_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
                     L2_REFUND_L2_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
                     L2_REFUND_L2_ADDRESS, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
