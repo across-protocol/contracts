@@ -444,7 +444,7 @@ describe("svm_spoke.handle_receive_message", () => {
     // state in self-invoked RelayRootBundle.
     relayRootBundleRemainingAccounts.push({
       isSigner: false,
-      isWritable: false,
+      isWritable: true,
       pubkey: state,
     });
     // root_bundle in self-invoked RelayRootBundle.
