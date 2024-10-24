@@ -1,17 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import * as crypto from "crypto";
-import { BN, web3, Wallet, AnchorProvider } from "@coral-xyz/anchor";
-import {
-  AddressLookupTableProgram,
-  ComputeBudgetProgram,
-  Keypair,
-  PublicKey,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
-import { assert } from "chai";
-import { common } from "./SvmSpoke.common";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { AnchorProvider, BN, Wallet, web3 } from "@coral-xyz/anchor";
 import {
   createMint,
   getAssociatedTokenAddressSync,
@@ -20,15 +8,26 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
+  AddressLookupTableProgram,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { assert } from "chai";
+import * as crypto from "crypto";
+import { common } from "./SvmSpoke.common";
+import {
+  buildRelayerRefundMerkleTree,
   loadExecuteRelayerRefundLeafParams,
-  relayerRefundHashFn,
-  randomAddress,
   randomBigInt,
-  RelayerRefundLeaf,
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
   readEvents,
   readProgramEvents,
+  relayerRefundHashFn,
+  RelayerRefundLeafSolana,
+  RelayerRefundLeafType,
 } from "./utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
@@ -306,41 +305,32 @@ describe("svm_spoke.bundle", () => {
   });
 
   it("Test Merkle Proof Verification", async () => {
-    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
     const solanaDistributions = 50;
     const evmDistributions = 50;
     const solanaLeafNumber = 13;
+    const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
+      totalEvmDistributions: evmDistributions,
+      totalSolanaDistributions: solanaDistributions,
+      mixLeaves: false,
+      chainId: chainId.toNumber(),
+      mint,
+      svmRelayers: [relayerTA, relayerTB],
+      svmRefundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
+    });
 
-    for (let i = 0; i < solanaDistributions + 1; i++) {
-      relayerRefundLeaves.push({
-        isSolana: true,
-        leafId: new BN(i),
-        chainId: chainId,
-        amountToReturn: new BN(randomBigInt(2).toString()),
-        mintPublicKey: mint,
-        refundAccounts: [relayerTA, relayerTB],
-        refundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
-      });
-    }
-    const invalidRelayerRefundLeaf = relayerRefundLeaves.pop()!;
-
-    for (let i = 0; i < evmDistributions; i++) {
-      relayerRefundLeaves.push({
-        isSolana: false,
-        leafId: BigInt(i),
-        chainId: randomBigInt(2),
-        amountToReturn: randomBigInt(),
-        l2TokenAddress: randomAddress(),
-        refundAddresses: [randomAddress(), randomAddress()],
-        refundAmounts: [randomBigInt(), randomBigInt()],
-      } as RelayerRefundLeaf);
-    }
-
-    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+    const invalidRelayerRefundLeaf = {
+      isSolana: true,
+      leafId: new BN(solanaDistributions + 1),
+      chainId: chainId,
+      amountToReturn: new BN(0),
+      mintPublicKey: mint,
+      refundAccounts: [relayerTA, relayerTB],
+      refundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
+    } as RelayerRefundLeafSolana;
 
     const root = merkleTree.getRoot();
     const proof = merkleTree.getProof(relayerRefundLeaves[solanaLeafNumber]);
-    const leaf = relayerRefundLeaves[13] as RelayerRefundLeafSolana;
+    const leaf = relayerRefundLeaves[solanaLeafNumber] as RelayerRefundLeafSolana;
     const proofAsNumbers = proof.map((p) => Array.from(p));
 
     let stateAccountData = await program.account.state.fetch(state);
@@ -459,6 +449,101 @@ describe("svm_spoke.bundle", () => {
     } catch (err: any) {
       assert.include(err.toString(), "Invalid Merkle proof");
     }
+  });
+
+  it("Test Merkle Proof Verification with Mixed Solana and EVM Leaves", async () => {
+    const evmDistributions = 5;
+    const solanaDistributions = 5;
+    const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
+      totalEvmDistributions: evmDistributions,
+      totalSolanaDistributions: solanaDistributions,
+      mixLeaves: true,
+      chainId: chainId.toNumber(),
+      mint,
+      svmRelayers: [relayerTA, relayerTB],
+      svmRefundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
+    });
+
+    const root = merkleTree.getRoot();
+    let stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    const remainingAccounts = [
+      { pubkey: relayerTA, isWritable: true, isSigner: false },
+      { pubkey: relayerTB, isWritable: true, isSigner: false },
+    ];
+
+    const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const iRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
+    const iRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
+
+    // Execute each Solana leaf
+    for (let i = 0; i < relayerRefundLeaves.length; i += 1) {
+      // Only Solana leaves
+      if (!relayerRefundLeaves[i].isSolana) continue;
+
+      const leaf = relayerRefundLeaves[i] as RelayerRefundLeafSolana;
+      const proof = merkleTree.getProof(leaf);
+      const proofAsNumbers = proof.map((p) => Array.from(p));
+
+      let executeRelayerRefundLeafAccounts = {
+        state: state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault: vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint,
+        transferLiability,
+        systemProgram: web3.SystemProgram.programId,
+        program: program.programId,
+      };
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+    }
+
+    const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const fRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
+    const fRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
+
+    const totalRefund = relayerRefundLeaves
+      .filter((leaf) => leaf.isSolana)
+      .reduce((acc, leaf) => acc.add((leaf.refundAmounts[0] as BN).add(leaf.refundAmounts[1] as BN)), new BN(0))
+      .toString();
+
+    assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
+    assert.strictEqual(
+      BigInt(fRelayerABal) - BigInt(iRelayerABal),
+      BigInt(
+        relayerRefundLeaves
+          .filter((leaf) => leaf.isSolana)
+          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0] as BN), new BN(0))
+          .toString()
+      ),
+      "Relayer A bal"
+    );
+    assert.strictEqual(
+      BigInt(fRelayerBBal) - BigInt(iRelayerBBal),
+      BigInt(
+        relayerRefundLeaves
+          .filter((leaf) => leaf.isSolana)
+          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1] as BN), new BN(0))
+          .toString()
+      ),
+      "Relayer B bal"
+    );
   });
 
   it("Execute Leaf Refunds Relayers with invalid chain id", async () => {
@@ -787,7 +872,6 @@ describe("svm_spoke.bundle", () => {
 
   describe("Execute Max Refunds", () => {
     const executeMaxRefunds = async (refundType: RefundType) => {
-      const relayerRefundLeaves: RelayerRefundLeafType[] = [];
       // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
       // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
       // protocol does not expect this to be above 25.
@@ -832,29 +916,15 @@ describe("svm_spoke.bundle", () => {
         refundAmounts.push(new BN(randomBigInt(2).toString()));
       }
 
-      relayerRefundLeaves.push({
-        isSolana: true,
-        leafId: new BN(0),
-        chainId: chainId,
-        amountToReturn: new BN(0),
-        mintPublicKey: mint,
-        refundAccounts: tokenAccounts,
-        refundAmounts: refundAmounts,
+      const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
+        totalEvmDistributions: evmDistributions,
+        totalSolanaDistributions: solanaDistributions,
+        mixLeaves: false,
+        chainId: chainId.toNumber(),
+        mint,
+        svmRelayers: tokenAccounts,
+        svmRefundAmounts: refundAmounts,
       });
-
-      for (let i = 0; i < evmDistributions; i++) {
-        relayerRefundLeaves.push({
-          isSolana: false,
-          leafId: BigInt(i + 1), // The first leaf is for Solana, so we start EVM leaves at 1.
-          chainId: randomBigInt(2),
-          amountToReturn: randomBigInt(),
-          l2TokenAddress: randomAddress(),
-          refundAddresses: [randomAddress(), randomAddress()],
-          refundAmounts: [randomBigInt(), randomBigInt()],
-        } as RelayerRefundLeaf);
-      }
-
-      const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
 
       const root = merkleTree.getRoot();
       const proof = merkleTree.getProof(relayerRefundLeaves[0]);
