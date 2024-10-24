@@ -39,7 +39,14 @@ task("testChainAdapter", "Verify a chain adapter")
 
     // For USDC this will resolve to native USDC on CCTP-enabled chains.
     const l2Token = await hubPool.poolRebalanceRoute(spokeChainId, tokenAddress);
-    console.log(`Resolved ${tokenSymbol} l2 token address on chain ${spokeChainId}: ${l2Token}.`);
+    if (l2Token === ethers.constants.AddressZero) {
+      const proceed = await askYesNoQuestion(
+        `\t\nWARNING: ${tokenSymbol} maps to address ${l2Token} on chain ${spokeChainId}\n\t\nProceed ?`
+      );
+      if (!proceed) process.exit(0);
+    } else {
+      console.log(`Resolved ${tokenSymbol} l2 token address on chain ${spokeChainId}: ${l2Token}.`);
+    }
 
     const erc20 = (await ethers.getContractFactory("ExpandedERC20")).attach(tokenAddress);
     let balance = await erc20.balanceOf(adapterAddress);
@@ -49,8 +56,8 @@ task("testChainAdapter", "Verify a chain adapter")
 
     if (balance.lt(amount)) {
       const proceed = await askYesNoQuestion(
-        `\nWARNING: ${amount} ${tokenSymbol} may be lost.\n` +
-          `\nProceed to send ${amount} ${tokenSymbol} to chain adapter ${adapterAddress} ?`
+        `\t\nWARNING: ${amount} ${tokenSymbol} may be lost.\n` +
+          `\t\nProceed to send ${amount} ${tokenSymbol} to chain adapter ${adapterAddress} ?`
       );
       if (!proceed) process.exit(0);
 
