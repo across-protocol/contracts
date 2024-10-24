@@ -68,8 +68,6 @@ pub enum CustomError {
     ExceededPendingBridgeAmount,
     #[msg("Deposits are currently paused!")]
     DepositsArePaused,
-    #[msg("Invalid fill recipient!")]
-    InvalidFillRecipient,
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
     #[msg("Ivalid fill deadline!")]
