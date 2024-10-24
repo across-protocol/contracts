@@ -222,7 +222,7 @@ pub mod svm_spoke {
 
     pub fn close_claim_account(
         ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey, // Only used in account constraints.
+        _mint: Pubkey,          // Only used in account constraints.
         _token_account: Pubkey, // Only used in account constraints.
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
