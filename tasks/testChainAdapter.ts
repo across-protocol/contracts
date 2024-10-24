@@ -3,6 +3,7 @@ import { getMnemonic } from "@uma/common";
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { askYesNoQuestion } from "./utils";
 
 // Chain adapter names are not 1:1 consistent with chain names, so some overrides are needed.
 const chains = {
@@ -43,10 +44,17 @@ task("testChainAdapter", "Verify a chain adapter")
     const erc20 = (await ethers.getContractFactory("ExpandedERC20")).attach(tokenAddress);
     let balance = await erc20.balanceOf(adapterAddress);
     const decimals = await erc20.decimals();
-    const amount = ethers.utils.parseUnits(args.amount, decimals);
+    const { amount } = args;
+    const scaledAmount = ethers.utils.parseUnits(amount, decimals);
 
     if (balance.lt(amount)) {
-      const txn = await erc20.connect(signer).transfer(adapterAddress, amount);
+      const proceed = await askYesNoQuestion(
+        `\nWARNING: ${amount} ${tokenSymbol} may be lost.\n` +
+          `\nProceed to send ${amount} ${tokenSymbol} to chain adapter ${adapterAddress} ?`
+      );
+      if (!proceed) process.exit(0);
+
+      const txn = await erc20.connect(signer).transfer(adapterAddress, scaledAmount);
       console.log(`Transferring ${amount} ${tokenSymbol} -> ${adapterAddress}: ${txn.hash}`);
       await txn.wait();
     }
