@@ -5,9 +5,12 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
+export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
+export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
+export const AZERO_GAS_PRICE = "240000000000";
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
@@ -48,6 +51,9 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zoraStandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
     worldChainCrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
     worldChainStandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
+    l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
+    l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
+    donationBox: "0x5e40a88E302Da80089Dd13178b8DD6b15534419c",
   },
   [CHAIN_IDs.SEPOLIA]: {
     optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
