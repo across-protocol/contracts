@@ -80,6 +80,8 @@ pub enum CustomError {
     InvalidRefund,
     #[msg("Zero relayer refund claim!")]
     ZeroRefundClaim,
+    #[msg("Cannot close non-zero relayer refund claim!")]
+    NonZeroRefundClaim,
     #[msg("Invalid claim initializer!")]
     InvalidClaimInitializer,
 }
