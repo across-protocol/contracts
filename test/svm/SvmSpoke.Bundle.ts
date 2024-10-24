@@ -718,7 +718,7 @@ describe("svm_spoke.bundle", () => {
     const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(relayerRefundRootArray, slowRelayRootArray)
       .accounts(relayRootBundleAccounts)
@@ -734,6 +734,7 @@ describe("svm_spoke.bundle", () => {
         state,
         rootBundle,
         signer: nonOwner.publicKey,
+        closer: nonOwner.publicKey,
         program: program.programId,
       };
       await program.methods
@@ -747,7 +748,13 @@ describe("svm_spoke.bundle", () => {
     }
 
     // Execute the emergency delete
-    const emergencyDeleteRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    const emergencyDeleteRootBundleAccounts = {
+      state,
+      rootBundle,
+      signer: owner,
+      closer: owner,
+      program: program.programId,
+    };
     await program.methods.emergencyDeleteRootBundle(rootBundleId).accounts(emergencyDeleteRootBundleAccounts).rpc();
 
     // Verify that the root bundle has been deleted
@@ -775,7 +782,13 @@ describe("svm_spoke.bundle", () => {
       `Root bundle index should be ${initialRootBundleId + 1}`
     );
 
-    const newRelayRootBundleAccounts = { state, rootBundle: newRootBundle, signer: owner, program: program.programId };
+    const newRelayRootBundleAccounts = {
+      state,
+      rootBundle: newRootBundle,
+      signer: owner,
+      payer: owner,
+      program: program.programId,
+    };
     await program.methods
       .relayRootBundle(newRelayerRefundRootArray, newSlowRelayRootArray)
       .accounts(newRelayRootBundleAccounts)

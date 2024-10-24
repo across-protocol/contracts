@@ -270,12 +270,17 @@ pub struct EmergencyDeleteRootBundle<'info> {
     )]
     pub signer: Signer<'info>,
 
+    #[account(mut)]
+    // We do not restrict who can receive lamports from closing root_bundle account as that would require storing the
+    // original payer when root bundle was relayed and unnecessarily make it more expensive to relay in the happy path.
+    pub closer: SystemAccount<'info>,
+
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(mut,
         seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
-        close = signer,
+        close = closer,
         bump)]
     pub root_bundle: Account<'info, RootBundle>,
 }

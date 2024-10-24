@@ -40,6 +40,7 @@ describe("svm_spoke.handle_receive_message", () => {
     "function setCrossDomainAdmin(address newCrossDomainAdmin)",
     "function setEnableRoute(bytes32 originToken, uint64 destinationChainId, bool enabled)",
     "function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)",
+    "function emergencyDeleteRootBundle(uint256 rootBundleId)",
   ]);
 
   beforeEach(async () => {
@@ -485,5 +486,92 @@ describe("svm_spoke.handle_receive_message", () => {
     const updatedSlowRelayRoot = Buffer.from(rootBundleAccountData.slowRelayRoot);
     assert.isTrue(updatedRelayerRefundRoot.equals(relayerRefundRoot), "Relayer refund root should be set");
     assert.isTrue(updatedSlowRelayRoot.equals(slowRelayRoot), "Slow relay root should be set");
+  });
+
+  it("Emergency deletes root bundle remotely", async () => {
+    // Relay root bundle.
+    const relayerRefundRoot = crypto.randomBytes(32);
+    const slowRelayRoot = crypto.randomBytes(32);
+    const rootBundleId = (await program.account.state.fetch(state)).rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    await program.methods
+      .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
+      .accounts(relayRootBundleAccounts)
+      .rpc();
+
+    // Ensure the root bundle exists before deletion
+    let rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+    assert.isNotNull(rootBundleData, "Root bundle should exist before deletion");
+
+    // Encode emergencyDeleteRootBundle message.
+    const calldata = ethereumIface.encodeFunctionData("emergencyDeleteRootBundle", [rootBundleId]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody,
+    });
+
+    // Remaining accounts specific to EmergencyDeleteRootBundle.
+    // Same 3 remaining accounts passed for HandleReceiveMessage context.
+    const emergencyDeleteRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
+    // closer in self-invoked EmergencyDeleteRootBundle.
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: true,
+      isWritable: true,
+      pubkey: provider.wallet.publicKey,
+    });
+    // state in self-invoked EmergencyDeleteRootBundle.
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: state,
+    });
+    // root_bundle in self-invoked EmergencyDeleteRootBundle.
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: true,
+      pubkey: rootBundle,
+    });
+    // event_authority in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: eventAuthority,
+    });
+    // program in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: program.programId,
+    });
+
+    // Invoke remote CCTP message to delete the root bundle.
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(emergencyDeleteRootBundleRemainingAccounts)
+      .rpc();
+
+    // Verify that the root bundle has been deleted
+    try {
+      rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+      assert.fail("Root bundle should have been deleted");
+    } catch (err: any) {
+      assert.include(
+        err.toString(),
+        "Account does not exist or has no data",
+        "Expected error when fetching deleted root bundle"
+      );
+    }
   });
 });
