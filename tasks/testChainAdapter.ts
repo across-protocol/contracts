@@ -7,6 +7,7 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 // Chain adapter names are not 1:1 consistent with chain names, so some overrides are needed.
 const chains = {
   [CHAIN_IDs.ARBITRUM]: "Arbitrum_Adapter",
+  [CHAIN_IDs.ALEPH_ZERO]: "Arbitrum_CustomGasToken_Adapter",
   [CHAIN_IDs.WORLD_CHAIN]: "WorldChain_Adapter",
   [CHAIN_IDs.ZK_SYNC]: "ZkSync_Adapter",
 };
@@ -14,6 +15,7 @@ const chains = {
 task("testChainAdapter", "Verify a chain adapter")
   .addParam("chain", "chain ID of the adapter being tested")
   .addParam("token", "Token to bridge to the destination chain")
+  .addParam("amount", "Amount to bridge to the destination chain")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
     const { deployments, ethers, getChainId, network } = hre;
     const provider = new ethers.providers.StaticJsonRpcProvider(network.config.url);
@@ -40,19 +42,24 @@ task("testChainAdapter", "Verify a chain adapter")
     console.log(`Resolved ${tokenSymbol} l2 token address on chain ${spokeChainId}: ${l2Token}.`);
 
     const erc20 = (await ethers.getContractFactory("ExpandedERC20")).attach(tokenAddress);
-    const amount = 1_000_000;
-    let txn = await erc20.connect(signer).transfer(adapterAddress, amount);
-    console.log(`Transferring ${amount} ${tokenSymbol} -> ${adapterAddress}: ${txn.hash}`);
-    await txn.wait();
+    let balance = await erc20.balanceOf(adapterAddress);
+    const decimals = await erc20.decimals();
+    const amount = ethers.utils.parseUnits(args.amount, decimals);
 
-    const balance = await erc20.balanceOf(adapterAddress);
+    if (balance.lt(amount)) {
+      const txn = await erc20.connect(signer).transfer(adapterAddress, amount);
+      console.log(`Transferring ${amount} ${tokenSymbol} -> ${adapterAddress}: ${txn.hash}`);
+      await txn.wait();
+    }
+
+    balance = await erc20.balanceOf(adapterAddress);
     const recipient = await signer.getAddress();
 
     let populatedTxn = await adapter.populateTransaction.relayTokens(tokenAddress, l2Token, balance, recipient);
     const gasLimit = await provider.estimateGas(populatedTxn);
 
     // Any adapter requiring msg.value > 0 (i.e. Scroll) will fail here.
-    txn = await adapter.connect(signer).relayTokens(
+    const txn = await adapter.connect(signer).relayTokens(
       tokenAddress,
       l2Token,
       balance,
