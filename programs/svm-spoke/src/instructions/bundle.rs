@@ -66,7 +66,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// TODO: add multichain test to check if its possible to verify both EVM and SVM leaves in the same bundle.
 // TODO: update UMIP to consider different encoding for different chains.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
 pub struct RelayerRefundLeaf {
