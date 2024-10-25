@@ -303,7 +303,7 @@ describe("svm_spoke.token_bridge", () => {
     }
   });
 
-  it("Test simple bridge event", async () => {
+  it("Test BridgedToHubPool event", async () => {
     const simpleBridgeAmount = 500_000;
 
     // Initialize the bridge with a specific amount.
@@ -323,7 +323,7 @@ describe("svm_spoke.token_bridge", () => {
       .rpc();
 
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "filledV3Relay").data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "bridgedToHubPool").data;
+    assert.isNotNull(event, "BridgedToHubPool event should be emitted");
   });
 });
