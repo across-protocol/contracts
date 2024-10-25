@@ -1445,7 +1445,7 @@ abstract contract SpokePool is
     // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
     // bool indicating if the external call was successful, rather than reverting. Original method:
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
-    function noRevertTransfer(
+    function _noRevertTransfer(
         address token,
         address to,
         uint256 amount
