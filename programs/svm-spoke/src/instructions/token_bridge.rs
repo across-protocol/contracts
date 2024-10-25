@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[event_cpi]
-#[derive(Accounts)]
+#[derive(Accounts, Clone)]
 pub struct BridgeTokensToHubPool<'info> {
     pub signer: Signer<'info>,
 
