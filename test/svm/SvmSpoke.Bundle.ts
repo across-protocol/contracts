@@ -15,7 +15,6 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { common } from "./SvmSpoke.common";
@@ -29,6 +28,7 @@ import {
   RelayerRefundLeafSolana,
   RelayerRefundLeafType,
 } from "./utils";
+import { MerkleTree } from "../../utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
