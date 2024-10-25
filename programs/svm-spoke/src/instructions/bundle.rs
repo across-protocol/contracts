@@ -70,13 +70,12 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
 // TODO: update UMIP to consider different encoding for different chains.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
 pub struct RelayerRefundLeaf {
-    // TODO: at least the same ordering as in EVM.
     pub amount_to_return: u64,
     pub chain_id: u64,
-    pub leaf_id: u32,
-    pub mint_public_key: Pubkey,
     #[max_len(0)]
     pub refund_amounts: Vec<u64>,
+    pub leaf_id: u32,
+    pub mint_public_key: Pubkey,
     #[max_len(0)]
     pub refund_accounts: Vec<Pubkey>,
 }
@@ -87,12 +86,11 @@ impl RelayerRefundLeaf {
 
         bytes.extend_from_slice(&self.amount_to_return.to_le_bytes());
         bytes.extend_from_slice(&self.chain_id.to_le_bytes());
-        bytes.extend_from_slice(&self.leaf_id.to_le_bytes());
-        bytes.extend_from_slice(self.mint_public_key.as_ref());
-
         for amount in &self.refund_amounts {
             bytes.extend_from_slice(&amount.to_le_bytes());
         }
+        bytes.extend_from_slice(&self.leaf_id.to_le_bytes());
+        bytes.extend_from_slice(self.mint_public_key.as_ref());
         for account in &self.refund_accounts {
             bytes.extend_from_slice(account.as_ref());
         }
