@@ -27,13 +27,6 @@ pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    pub relayer: SystemAccount<'info>, // TODO: should this be the same as signer?
-
-    #[account(
-        address = relay_data.recipient @ CustomError::InvalidFillRecipient
-    )]
-    pub recipient: SystemAccount<'info>, // TODO: this might be redundant.
-
     #[account(
         token::token_program = token_program, // TODO: consistent token imports
         address = relay_data.output_token @ CustomError::InvalidMint
@@ -43,7 +36,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint_account, // TODO: consistent token imports
-        associated_token::authority = relayer,
+        associated_token::authority = signer,
         associated_token::token_program = token_program
     )]
     pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -51,7 +44,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint_account,
-        associated_token::authority = recipient, // TODO: use relay_data.recipient
+        associated_token::authority = relay_data.recipient,
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
