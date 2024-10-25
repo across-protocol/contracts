@@ -9,7 +9,7 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { common, DepositDataValues } from "./SvmSpoke.common";
+import { common, DepositDataValues } from "./SvmSpoke.Common";
 import { readProgramEvents } from "./utils";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =

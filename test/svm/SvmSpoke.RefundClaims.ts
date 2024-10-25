@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorError, AnchorProvider, BN, Wallet, web3 } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {

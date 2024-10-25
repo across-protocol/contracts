@@ -22,7 +22,7 @@ pub struct Initialize<'info> {
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
               space = DISCRIMINATOR_SIZE + State::INIT_SPACE,
-              seeds = [b"state", seed.to_le_bytes().as_ref()], // TODO: can we set a blank seed? or something better?
+              seeds = [b"state", seed.to_le_bytes().as_ref()],
               bump)]
     pub state: Account<'info, State>,
 
@@ -45,6 +45,13 @@ pub fn initialize(
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
     state.seed = seed; // Set the seed in the state
+
+    // Seed should only be used in tests to enable fresh state between deployments. In production always set to 0.
+    #[cfg(not(feature = "test"))]
+    if seed != 0 {
+        return err!(CustomError::InvalidProductionSeed);
+    }
+
     state.number_of_deposits = initial_number_of_deposits; // Set initial number of deposits
     state.chain_id = chain_id;
     state.remote_domain = remote_domain;

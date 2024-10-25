@@ -3,7 +3,7 @@ import { BN } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint, getAccount } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { assert } from "chai";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 import { readProgramEvents } from "./utils";
 
 const { provider, program, owner, initializeState, createRoutePda, getVaultAta } = common;

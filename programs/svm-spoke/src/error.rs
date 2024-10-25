@@ -84,4 +84,6 @@ pub enum CustomError {
     NonZeroRefundClaim,
     #[msg("Invalid claim initializer!")]
     InvalidClaimInitializer,
+    #[msg("Seed must be 0 in production!")]
+    InvalidProductionSeed,
 }

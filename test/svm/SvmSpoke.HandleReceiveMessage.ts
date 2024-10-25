@@ -8,7 +8,7 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { evmAddressToPublicKey } from "../../src/SvmUtils";
 import { encodeMessageHeader } from "./cctpHelpers";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 
 const { createRoutePda, getVaultAta, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 

@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as crypto from "crypto";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 
 const { provider, program, connection, assertSE, assert } = common;
 

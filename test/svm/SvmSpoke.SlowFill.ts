@@ -9,7 +9,7 @@ import {
   mintTo,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array } from "./utils";
 

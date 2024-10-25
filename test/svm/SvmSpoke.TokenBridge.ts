@@ -3,7 +3,7 @@ import { BN, workspace, web3, AnchorProvider, Wallet, Program, AnchorError } fro
 import { PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
 import {

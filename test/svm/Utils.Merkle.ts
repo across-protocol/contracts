@@ -5,7 +5,7 @@ import { assert } from "chai";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { ethers } from "ethers";
 import { BigNumberish } from "ethers";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 const { assertSE } = common;
 
 function randomAddress(): string {

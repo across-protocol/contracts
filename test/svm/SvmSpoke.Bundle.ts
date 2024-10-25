@@ -10,7 +10,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { assert } from "chai";
-import { common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.Common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import {
   createMint,
