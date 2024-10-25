@@ -219,7 +219,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Fill the relay first
     await program.methods
-      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1))
+      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
       .signers([relayer])
       .rpc();

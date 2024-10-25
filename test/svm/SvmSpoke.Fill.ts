@@ -91,7 +91,11 @@ describe("svm_spoke.fill", () => {
     assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
 
     // Verify relayer's balance after the fill
     relayerAccount = await getAccount(connection, relayerTA);
@@ -108,7 +112,11 @@ describe("svm_spoke.fill", () => {
 
   it("Verifies FilledV3Relay event after filling a relay", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(420), otherRelayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
 
     // Fetch and verify the FilledV3Relay event
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -120,6 +128,9 @@ describe("svm_spoke.fill", () => {
     Object.keys(relayData).forEach((key) => {
       assertSE(event[key], relayData[key], `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
     });
+    // These props below are not part of relayData.
+    assertSE(event.repaymentChainId, new BN(420), "Repayment chain id should match");
+    assertSE(event.relayer, otherRelayer.publicKey, "Repayment address should match");
   });
 
   it("Fails to fill a V3 relay after the fill deadline", async () => {
@@ -127,7 +138,11 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
-      await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+      await program.methods
+        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .accounts(accounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Fill should have failed due to fill deadline passed");
     } catch (err: any) {
       assert.include(err.toString(), "ExpiredFillDeadline", "Expected ExpiredFillDeadline error");
@@ -141,7 +156,7 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1))
+        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .signers([otherRelayer])
         .rpc();
@@ -161,7 +176,11 @@ describe("svm_spoke.fill", () => {
     const relayerAccountBefore = await getAccount(connection, otherRelayerTA);
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([otherRelayer]).rpc();
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([otherRelayer])
+      .rpc();
 
     // Verify relayer's balance after the fill
     const relayerAccountAfter = await getAccount(connection, otherRelayerTA);
@@ -184,11 +203,19 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // First fill attempt
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
 
     // Second fill attempt with the same data
     try {
-      await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+      await program.methods
+        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .accounts(accounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Fill should have failed due to RelayFilled error");
     } catch (err: any) {
       assert.include(err.toString(), "RelayFilled", "Expected RelayFilled error");
@@ -206,7 +233,11 @@ describe("svm_spoke.fill", () => {
     };
 
     // Execute the fill_v3_relay call
-    await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
 
     // Verify the fill PDA exists before closing
     const fillStatusAccountBefore = await connection.getAccountInfo(accounts.fillStatus);
@@ -221,7 +252,7 @@ describe("svm_spoke.fill", () => {
     }
 
     // Set the current time to past the fill deadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1), relayer.publicKey));
 
     // Close the fill PDA
     await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
@@ -241,7 +272,7 @@ describe("svm_spoke.fill", () => {
 
     // Fill the relay
     await program.methods
-      .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
+      .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -263,7 +294,11 @@ describe("svm_spoke.fill", () => {
     // Try to fill the relay. This should fail because fills are paused.
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
-      await program.methods.fillV3Relay(relayHash, relayData, new BN(1)).accounts(accounts).signers([relayer]).rpc();
+      await program.methods
+        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .accounts(accounts)
+        .signers([relayer])
+        .rpc();
       assert.fail("Should not be able to fill relay when fills are paused");
     } catch (err: any) {
       assert.include(err.toString(), "Fills are currently paused!", "Expected fills paused error");
@@ -280,7 +315,7 @@ describe("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
+        .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
         .accounts({
           ...accounts,
           recipientTokenAccount: wrongRecipientTA,
@@ -307,7 +342,7 @@ describe("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(Array.from(relayHash), relayData, new BN(1))
+        .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
         .accounts({
           ...accounts,
           mintAccount: wrongMint,
@@ -333,7 +368,7 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     const txSignature = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1))
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
