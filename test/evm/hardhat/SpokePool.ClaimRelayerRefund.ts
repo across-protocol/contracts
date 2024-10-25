@@ -6,7 +6,7 @@ import {
   Contract,
   ethers,
   toBN,
-  bytes32ToAddress,
+  addressToBytes,
 } from "../../../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
@@ -56,8 +56,8 @@ describe("SpokePool with Blacklisted destErc20", function () {
         consts.amountToReturn,
         [consts.amountToRelay, consts.amountToRelay],
         0,
-        bytes32ToAddress(destErc20.address),
-        [bytes32ToAddress(relayer.address), bytes32ToAddress(rando.address)]
+        addressToBytes(destErc20.address),
+        [addressToBytes(relayer.address), addressToBytes(rando.address)]
       );
 
     // Ensure relayerRepaymentLiability is incremented
@@ -75,8 +75,8 @@ describe("SpokePool with Blacklisted destErc20", function () {
         consts.amountToReturn,
         [consts.amountToRelay],
         0,
-        bytes32ToAddress(destErc20.address),
-        [bytes32ToAddress(relayer.address)]
+        addressToBytes(destErc20.address),
+        [addressToBytes(relayer.address)]
       );
 
     await expect(spokePool.connect(relayer).claimRelayerRefund(destErc20.address, relayer.address)).to.be.revertedWith(
