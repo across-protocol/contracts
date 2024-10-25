@@ -1,14 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
-use crate::{
-    error::CustomError,
-    event::V3FundsDeposited,
-    get_current_time,
-    state::{Route, State},
-};
+use crate::{ error::CustomError, event::V3FundsDeposited, get_current_time, state::{ Route, State } };
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -36,7 +29,10 @@ pub struct DepositV3<'info> {
     pub state: Account<'info, State>,
 
     // TODO: linter to format this line
-    #[account(seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
+    #[account(
+        seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
+        bump
+    )]
     pub route: Account<'info, Route>,
 
     pub signer: Signer<'info>,
@@ -81,7 +77,7 @@ pub fn deposit_v3(
     quote_timestamp: u32,
     fill_deadline: u32,
     exclusivity_deadline: u32,
-    message: Vec<u8>,
+    message: Vec<u8>
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
@@ -108,10 +104,7 @@ pub fn deposit_v3(
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.signer.to_account_info(),
     };
-    let cpi_context = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-    );
+    let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
     transfer_checked(cpi_context, input_amount, ctx.accounts.mint.decimals)?;
 
     state.number_of_deposits += 1; // Increment number of deposits

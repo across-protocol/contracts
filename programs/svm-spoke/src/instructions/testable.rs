@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{error::CustomError, state::State};
+use crate::{ error::CustomError, state::State };
 
 #[derive(Accounts)]
 pub struct SetCurrentTime<'info> {

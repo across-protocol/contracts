@@ -1,19 +1,17 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use anchor_lang::{ prelude::*, solana_program::keccak };
+use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
     get_current_time,
-    state::{FillStatus, FillStatusAccount, RootBundle, State},
+    state::{ FillStatus, FillStatusAccount, RootBundle, State },
     utils::verify_merkle_proof,
 };
 
 // TODO: We can likely move some of the common exports to better locations. we are pulling a lot of these from fill.rs
-use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
+use crate::event::{ FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo };
 use crate::V3RelayData; // Pulled type definition from fill.rs.
 
 #[event_cpi]
@@ -46,7 +44,7 @@ pub struct SlowFillV3Relay<'info> {
 pub fn request_v3_slow_fill(
     ctx: Context<SlowFillV3Relay>,
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
-    relay_data: V3RelayData,
+    relay_data: V3RelayData
 ) -> Result<()> {
     let state = &ctx.accounts.state;
 
@@ -134,7 +132,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
     pub root_bundle: Account<'info, RootBundle>,
 
     pub signer: Signer<'info>,
@@ -179,7 +177,7 @@ pub fn execute_v3_slow_relay_leaf(
     relay_hash: [u8; 32],
     slow_fill_leaf: V3SlowFill,
     root_bundle_id: u32,
-    proof: Vec<[u8; 32]>,
+    proof: Vec<[u8; 32]>
 ) -> Result<()> {
     let current_time = get_current_time(&ctx.accounts.state)?;
 
@@ -221,13 +219,9 @@ pub fn execute_v3_slow_relay_leaf(
     let cpi_context = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         transfer_accounts,
-        signer_seeds,
+        signer_seeds
     );
-    transfer_checked(
-        cpi_context,
-        slow_fill_leaf.updated_output_amount,
-        ctx.accounts.mint.decimals,
-    )?;
+    transfer_checked(cpi_context, slow_fill_leaf.updated_output_amount, ctx.accounts.mint.decimals)?;
 
     // Update the fill status to Filled. Note we don't set the relayer here as it is set when the slow fill was requested.
     fill_status_account.status = FillStatus::Filled;

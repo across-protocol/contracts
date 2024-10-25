@@ -1,13 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
     event::ClaimedRelayerRefund,
-    state::{ClaimAccount, State},
+    state::{ ClaimAccount, State },
 };
 
 #[derive(Accounts)]
@@ -31,7 +29,7 @@ pub struct InitializeClaimAccount<'info> {
 pub fn initialize_claim_account(
     ctx: Context<InitializeClaimAccount>,
     mint: Pubkey,
-    token_account: Pubkey,
+    token_account: Pubkey
 ) -> Result<()> {
     // Store the initializer so only it can receive lamports from closing the account upon claiming the refund.
     ctx.accounts.claim_account.initializer = ctx.accounts.signer.key();
@@ -63,9 +61,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
     // Mint address has been checked when executing the relayer refund leaf and it is part of claim account derivation.
-    #[account(
-        mint::token_program = token_program,
-    )]
+    #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
     // Token address has been checked when executing the relayer refund leaf and it is part of claim account derivation.
@@ -109,7 +105,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
     let cpi_context = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         transfer_accounts,
-        signer_seeds,
+        signer_seeds
     );
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 

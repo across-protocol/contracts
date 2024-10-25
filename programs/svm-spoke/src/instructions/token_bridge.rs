@@ -1,14 +1,17 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{ Mint, TokenAccount, TokenInterface };
 
 use crate::{
     error::CustomError,
     message_transmitter::program::MessageTransmitter,
     token_messenger_minter::{
-        self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter,
+        self,
+        cpi::accounts::DepositForBurn,
+        program::TokenMessengerMinter,
         types::DepositForBurnParams,
     },
-    State, TransferLiability,
+    State,
+    TransferLiability,
 };
 
 #[derive(Accounts)]
@@ -76,11 +79,7 @@ pub struct BridgeTokensToHubPool<'info> {
 }
 
 impl<'info> BridgeTokensToHubPool<'info> {
-    pub fn bridge_tokens_to_hub_pool(
-        &mut self,
-        amount: u64,
-        bumps: &BridgeTokensToHubPoolBumps,
-    ) -> Result<()> {
+    pub fn bridge_tokens_to_hub_pool(&mut self, amount: u64, bumps: &BridgeTokensToHubPoolBumps) -> Result<()> {
         if amount > self.transfer_liability.pending_to_hub_pool {
             return err!(CustomError::ExceededPendingBridgeAmount);
         }
@@ -91,9 +90,7 @@ impl<'info> BridgeTokensToHubPool<'info> {
         let cpi_accounts = DepositForBurn {
             owner: self.state.to_account_info(),
             event_rent_payer: self.payer.to_account_info(),
-            sender_authority_pda: self
-                .token_messenger_minter_sender_authority
-                .to_account_info(),
+            sender_authority_pda: self.token_messenger_minter_sender_authority.to_account_info(),
             burn_token_account: self.vault.to_account_info(),
             message_transmitter: self.message_transmitter.to_account_info(),
             token_messenger: self.token_messenger.to_account_info(),
