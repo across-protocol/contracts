@@ -194,11 +194,13 @@ pub mod svm_spoke {
             proof,
         )
     }
-    pub fn bridge_tokens_to_hub_pool(
-        ctx: Context<BridgeTokensToHubPool>,
+    pub fn bridge_tokens_to_hub_pool<'info>(
+        ctx: Context<'_, '_, '_, 'info, BridgeTokensToHubPool<'info>>,
         amount: u64,
     ) -> Result<()> {
-        ctx.accounts.bridge_tokens_to_hub_pool(amount, &ctx.bumps)?;
+        ctx.accounts
+            .clone()
+            .bridge_tokens_to_hub_pool(amount, ctx)?;
 
         Ok(())
     }

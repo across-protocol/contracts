@@ -12,6 +12,7 @@ import {
   relayerRefundHashFn,
   findProgramAddress,
   loadExecuteRelayerRefundLeafParams,
+  readProgramEvents,
 } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
@@ -129,7 +130,7 @@ describe("svm_spoke.token_bridge", () => {
       tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: web3.SystemProgram.programId,
-      eventAuthority,
+      cctpEventAuthority: eventAuthority,
     };
   });
 
@@ -299,5 +300,29 @@ describe("svm_spoke.token_bridge", () => {
         "Expected error code ExceededPendingBridgeAmount"
       );
     }
+  });
+
+  it("Test simple bridge event", async () => {
+    const simpleBridgeAmount = 500_000;
+
+    // Initialize the bridge with a specific amount.
+    await initializeBridgeToHubPool(simpleBridgeAmount);
+
+    const initialVaultBalance = (await connection.getTokenAccountBalance(vault)).value.amount;
+    assert.strictEqual(initialVaultBalance, initialMintAmount.toString());
+
+    // Create a new Keypair for the message event data.
+    const simpleBridgeMessageSentEventData = web3.Keypair.generate();
+
+    // Perform the bridge operation.
+    await program.methods
+      .bridgeTokensToHubPool(new BN(simpleBridgeAmount))
+      .accounts({ ...bridgeTokensToHubPoolAccounts, messageSentEventData: simpleBridgeMessageSentEventData.publicKey })
+      .signers([simpleBridgeMessageSentEventData])
+      .rpc();
+
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "filledV3Relay").data;
+    assert.isNotNull(event, "FilledV3Relay event should be emitted");
   });
 });

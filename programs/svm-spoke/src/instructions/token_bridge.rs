@@ -3,6 +3,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
     error::CustomError,
+    event::BridgedToHubPool,
     message_transmitter::program::MessageTransmitter,
     token_messenger_minter::{
         self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter,
@@ -11,7 +12,8 @@ use crate::{
     State, TransferLiability,
 };
 
-#[derive(Accounts)]
+#[event_cpi]
+#[derive(Accounts, Clone)]
 pub struct BridgeTokensToHubPool<'info> {
     pub signer: Signer<'info>,
 
@@ -61,7 +63,7 @@ pub struct BridgeTokensToHubPool<'info> {
 
     /// CHECK: EventAuthority is checked in CCTP. Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter
     /// program).
-    pub event_authority: UncheckedAccount<'info>,
+    pub cctp_event_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub message_sent_event_data: Signer<'info>,
@@ -79,7 +81,7 @@ impl<'info> BridgeTokensToHubPool<'info> {
     pub fn bridge_tokens_to_hub_pool(
         &mut self,
         amount: u64,
-        bumps: &BridgeTokensToHubPoolBumps,
+        ctx: Context<BridgeTokensToHubPool<'info>>,
     ) -> Result<()> {
         if amount > self.transfer_liability.pending_to_hub_pool {
             return err!(CustomError::ExceededPendingBridgeAmount);
@@ -106,11 +108,12 @@ impl<'info> BridgeTokensToHubPool<'info> {
             token_messenger_minter_program: self.token_messenger_minter_program.to_account_info(),
             token_program: self.token_program.to_account_info(),
             system_program: self.system_program.to_account_info(),
-            event_authority: self.event_authority.to_account_info(),
+            event_authority: self.cctp_event_authority.to_account_info(),
             program: self.token_messenger_minter_program.to_account_info(),
         };
         let state_seed_bytes = self.state.seed.to_le_bytes();
-        let state_seeds: &[&[&[u8]]] = &[&[b"state", state_seed_bytes.as_ref(), &[bumps.state]]];
+        let state_seeds: &[&[&[u8]]] =
+            &[&[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]]];
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, state_seeds);
         let params = DepositForBurnParams {
             amount,
@@ -119,7 +122,10 @@ impl<'info> BridgeTokensToHubPool<'info> {
         };
         token_messenger_minter::cpi::deposit_for_burn(cpi_ctx, params)?;
 
-        // TODO: emit event on bridged tokens.
+        emit_cpi!(BridgedToHubPool {
+            amount,
+            mint: self.mint.key()
+        });
 
         Ok(())
     }
