@@ -398,9 +398,9 @@ describe("svm_spoke.fill", () => {
     const customRelayerTA = await createAccount(connection, payer, mint, relayer.publicKey, customKeypair);
     await mintTo(connection, payer, mint, customRelayerTA, owner, seedBalance);
 
-    // Verify relayer's balance before the fill
-    let relayerAccount = await getAccount(connection, customRelayerTA);
-    assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
+    // Save balances before the the fill
+    const iRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
+    const iRecipientBal = (await getAccount(connection, recipientTA)).amount;
 
     // Fill relay from custom relayer token account
     accounts.relayerTokenAccount = customRelayerTA;
@@ -411,16 +411,14 @@ describe("svm_spoke.fill", () => {
       .signers([relayer])
       .rpc();
 
-    // Verify relayer's balance after the fill
-    relayerAccount = await getAccount(connection, customRelayerTA);
+    // Verify balances after the fill
+    const fRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
+    const fRecipientBal = (await getAccount(connection, recipientTA)).amount;
+    assertSE(fRelayerBal, iRelayerBal - BigInt(relayAmount), "Relayer's balance should be reduced by the relay amount");
     assertSE(
-      relayerAccount.amount,
-      seedBalance - relayAmount,
-      "Relayer's balance should be reduced by the relay amount"
+      fRecipientBal,
+      iRecipientBal + BigInt(relayAmount),
+      "Recipient's balance should be increased by the relay amount"
     );
-
-    // Verify recipient's balance after the fill
-    const recipientAccount = await getAccount(connection, recipientTA);
-    assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
   });
 });
