@@ -162,6 +162,7 @@ describe("svm_spoke.token_bridge", () => {
       state,
       rootBundle,
       signer: owner,
+      payer: owner,
       program: program.programId,
     };
     await program.methods

@@ -118,7 +118,7 @@ describe("svm_spoke.slow_fill", () => {
     const relayerRefundRoot = crypto.randomBytes(32);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
       .accounts(relayRootBundleAccounts)
