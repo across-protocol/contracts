@@ -66,7 +66,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// TODO: update UMIP to consider different encoding for different chains.
+// TODO: update UMIP to consider different encoding for different chains (evm and svm).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
