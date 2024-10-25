@@ -20,6 +20,9 @@ use crate::V3RelayData; // Pulled type definition from fill.rs.
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct SlowFillV3Relay<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
@@ -27,8 +30,6 @@ pub struct SlowFillV3Relay<'info> {
     )]
     pub state: Account<'info, State>,
 
-    #[account(mut)]
-    pub signer: Signer<'info>,
 
     #[account(
         init_if_needed,
@@ -131,13 +132,13 @@ impl V3SlowFill {
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], slow_fill_leaf: V3SlowFill, root_bundle_id: u32)]
 pub struct ExecuteV3SlowRelayLeaf<'info> {
+    pub signer: Signer<'info>,
+    
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
     pub root_bundle: Account<'info, RootBundle>,
-
-    pub signer: Signer<'info>,
 
     #[account(
         mut,

@@ -27,6 +27,8 @@ use crate::{
     message: Vec<u8>
 )]
 pub struct DepositV3<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
     #[account(
         mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -38,8 +40,6 @@ pub struct DepositV3<'info> {
     // TODO: linter to format this line
     #[account(seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
     pub route: Account<'info, Route>,
-
-    pub signer: Signer<'info>,
 
     #[account(
         mut,
