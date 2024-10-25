@@ -19,15 +19,15 @@ use crate::{
 #[derive(Accounts)]
 #[instruction(seed: u64)]
 pub struct Initialize<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
     #[account(init, // Use init, not init_if_needed to prevent re-initialization.
               payer = signer,
               space = DISCRIMINATOR_SIZE + State::INIT_SPACE,
               seeds = [b"state", seed.to_le_bytes().as_ref()],
               bump)]
     pub state: Account<'info, State>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
