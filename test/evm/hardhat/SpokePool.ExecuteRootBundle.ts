@@ -7,7 +7,6 @@ import {
   ethers,
   BigNumber,
   addressToBytes,
-  bytes32ToAddress,
 } from "../../../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
@@ -251,8 +250,8 @@ describe("SpokePool Root Bundle Execution", function () {
             toBN(1),
             [consts.amountHeldByPool, consts.amountToRelay], // spoke has only amountHeldByPool.
             0,
-            bytes32ToAddress(destErc20.address),
-            [bytes32ToAddress(relayer.address), bytes32ToAddress(rando.address)]
+            addressToBytes(destErc20.address),
+            [addressToBytes(relayer.address), addressToBytes(rando.address)]
           )
         ).to.be.revertedWith("InsufficientSpokePoolBalanceToExecuteLeaf");
 
