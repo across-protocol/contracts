@@ -7,6 +7,7 @@ import {
   ethers,
   BigNumber,
   addressToBytes,
+  bytes32ToAddress,
 } from "../../../utils/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
