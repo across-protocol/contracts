@@ -82,6 +82,18 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
             (origin_token, destination_chain_id, enabled)
                 .encode_instruction_data("global:set_enable_route")
         }
+        s if s == utils::encode_solidity_selector("relayRootBundle(bytes32,bytes32)") => {
+            let relayer_refund_root = utils::get_solidity_arg(data, 0)?;
+            let slow_relay_root = utils::get_solidity_arg(data, 1)?;
+
+            (relayer_refund_root, slow_relay_root)
+                .encode_instruction_data("global:relay_root_bundle")
+        }
+        s if s == utils::encode_solidity_selector("emergencyDeleteRootBundle(uint256)") => {
+            let root_id = utils::decode_solidity_uint32(&utils::get_solidity_arg(data, 0)?)?;
+
+            root_id.encode_instruction_data("global:emergency_delete_root_bundle")
+        }
         _ => Err(CalldataError::UnsupportedSelector.into()),
     }
 }
