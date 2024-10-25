@@ -250,8 +250,8 @@ describe("SpokePool Root Bundle Execution", function () {
             toBN(1),
             [consts.amountHeldByPool, consts.amountToRelay], // spoke has only amountHeldByPool.
             0,
-            hexZeroPadAddress(destErc20.address),
-            [hexZeroPadAddress(relayer.address), hexZeroPadAddress(rando.address)]
+            bytes32ToAddress(destErc20.address),
+            [bytes32ToAddress(relayer.address), bytes32ToAddress(rando.address)]
           )
         ).to.be.revertedWith("InsufficientSpokePoolBalanceToExecuteLeaf");
 

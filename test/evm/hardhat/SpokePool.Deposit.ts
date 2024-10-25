@@ -27,7 +27,6 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
-  zeroAddress,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
