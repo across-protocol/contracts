@@ -198,14 +198,14 @@ pub mod svm_spoke {
         ctx: Context<'_, '_, '_, 'info, BridgeTokensToHubPool<'info>>,
         amount: u64,
     ) -> Result<()> {
-        let cc = Context {
+        let context = Context {
             program_id: ctx.program_id,
             accounts: &mut ctx.accounts.clone(),
             remaining_accounts: ctx.remaining_accounts,
             bumps: ctx.bumps,
         };
 
-        ctx.accounts.bridge_tokens_to_hub_pool(amount, cc)?;
+        ctx.accounts.bridge_tokens_to_hub_pool(amount, context)?;
 
         Ok(())
     }
