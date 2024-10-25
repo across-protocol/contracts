@@ -27,13 +27,6 @@ pub struct FillV3Relay<'info> {
     )]
     pub state: Account<'info, State>,
 
-    pub relayer: SystemAccount<'info>, // TODO: should this be the same as signer?
-
-    #[account(
-        address = relay_data.recipient @ CustomError::InvalidFillRecipient
-    )]
-    pub recipient: SystemAccount<'info>, // TODO: this might be redundant.
-
     #[account(
         token::token_program = token_program, // TODO: consistent token imports
         address = relay_data.output_token @ CustomError::InvalidMint
@@ -43,7 +36,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint_account, // TODO: consistent token imports
-        associated_token::authority = relayer,
+        associated_token::authority = signer,
         associated_token::token_program = token_program
     )]
     pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -51,7 +44,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint_account,
-        associated_token::authority = recipient, // TODO: use relay_data.recipient
+        associated_token::authority = relay_data.recipient,
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -95,6 +88,7 @@ pub fn fill_v3_relay(
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData,
     repayment_chain_id: u64,
+    repayment_address: Pubkey,
 ) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
@@ -159,7 +153,7 @@ pub fn fill_v3_relay(
         fill_deadline: relay_data.fill_deadline,
         exclusivity_deadline: relay_data.exclusivity_deadline,
         exclusive_relayer: relay_data.exclusive_relayer,
-        relayer: *ctx.accounts.signer.key,
+        relayer: repayment_address,
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
         message: relay_data.message,
@@ -217,5 +211,3 @@ pub fn close_fill_pda(
 
     Ok(())
 }
-
-// Events.

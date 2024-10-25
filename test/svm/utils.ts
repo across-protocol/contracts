@@ -1,6 +1,6 @@
 import { BN, Program } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
-import { ethers } from "ethers";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { BigNumber, ethers } from "ethers";
 import * as crypto from "crypto";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
@@ -11,6 +11,9 @@ import {
   findProgramAddress,
   LargeAccountsCoder,
 } from "../../src/SvmUtils";
+import { MerkleTree } from "@uma/common";
+import { getParamType, keccak256 } from "../../test-utils";
+import { ParamType } from "ethers/lib/utils";
 
 export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
 
@@ -50,10 +53,10 @@ export function randomBigInt(bytes = 8, signed = false) {
 
 export interface RelayerRefundLeaf {
   isSolana: boolean;
-  amountToReturn: bigint;
-  chainId: bigint;
-  refundAmounts: bigint[];
-  leafId: bigint;
+  amountToReturn: BigNumber;
+  chainId: BigNumber;
+  refundAmounts: BigNumber[];
+  leafId: BigNumber;
   l2TokenAddress: string;
   refundAddresses: string[];
 }
@@ -74,6 +77,79 @@ export function convertLeafIdToNumber(leaf: RelayerRefundLeafSolana) {
   return { ...leaf, leafId: leaf.leafId.toNumber() };
 }
 
+export function buildRelayerRefundMerkleTree({
+  totalEvmDistributions,
+  totalSolanaDistributions,
+  mixLeaves,
+  chainId,
+  mint,
+  svmRelayers,
+  evmRelayers,
+  evmTokenAddress,
+  evmRefundAmounts,
+  svmRefundAmounts,
+}: {
+  totalEvmDistributions: number;
+  totalSolanaDistributions: number;
+  chainId: number;
+  mixLeaves?: boolean;
+  mint?: PublicKey;
+  svmRelayers?: PublicKey[];
+  evmRelayers?: string[];
+  evmTokenAddress?: string;
+  evmRefundAmounts?: BigNumber[];
+  svmRefundAmounts?: BN[];
+}): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
+  const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+
+  const createSolanaLeaf = (index: number) => ({
+    isSolana: true,
+    leafId: new BN(index),
+    chainId: new BN(chainId),
+    amountToReturn: new BN(0),
+    mintPublicKey: mint ?? Keypair.generate().publicKey,
+    refundAccounts: svmRelayers || [Keypair.generate().publicKey, Keypair.generate().publicKey],
+    refundAmounts: svmRefundAmounts || [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
+  });
+
+  const createEvmLeaf = (index: number) =>
+    ({
+      isSolana: false,
+      leafId: BigNumber.from(index),
+      chainId: BigNumber.from(chainId),
+      amountToReturn: BigNumber.from(0),
+      l2TokenAddress: evmTokenAddress ?? randomAddress(),
+      refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
+      refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
+    } as RelayerRefundLeaf);
+
+  if (mixLeaves) {
+    let solanaIndex = 0;
+    let evmIndex = 0;
+    const totalDistributions = totalSolanaDistributions + totalEvmDistributions;
+    for (let i = 0; i < totalDistributions; i++) {
+      if (solanaIndex < totalSolanaDistributions && (i % 2 === 0 || evmIndex >= totalEvmDistributions)) {
+        relayerRefundLeaves.push(createSolanaLeaf(solanaIndex));
+        solanaIndex++;
+      } else if (evmIndex < totalEvmDistributions) {
+        relayerRefundLeaves.push(createEvmLeaf(evmIndex));
+        evmIndex++;
+      }
+    }
+  } else {
+    for (let i = 0; i < totalSolanaDistributions; i++) {
+      relayerRefundLeaves.push(createSolanaLeaf(i));
+    }
+    for (let i = 0; i < totalEvmDistributions; i++) {
+      relayerRefundLeaves.push(createEvmLeaf(i + totalSolanaDistributions));
+    }
+  }
+
+  const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+  return { relayerRefundLeaves, merkleTree };
+}
+
 export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefundLeafSolana): string {
   const refundAmountsBuffer = Buffer.concat(
     relayData.refundAmounts.map((amount) => {
@@ -88,9 +164,9 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
   const contentToHash = Buffer.concat([
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
+    refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
-    refundAmountsBuffer,
     refundAccountsBuffer,
   ]);
 
@@ -103,7 +179,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
     const abiCoder = new ethers.utils.AbiCoder();
     const encodedData = abiCoder.encode(
       [
-        "tuple(uint256 leafId, uint256 chainId, uint256 amountToReturn, address l2TokenAddress, address[] refundAddresses, uint256[] refundAmounts)",
+        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
       ],
       [
         {
