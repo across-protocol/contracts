@@ -42,7 +42,6 @@ pub fn initialize_claim_account(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct ClaimRelayerRefund<'info> {
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     /// CHECK: We don't need any additional checks as long as this is the same account that initialized the claim account.
