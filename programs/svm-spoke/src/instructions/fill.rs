@@ -225,4 +225,3 @@ pub fn close_fill_pda(
 
     Ok(())
 }
-
