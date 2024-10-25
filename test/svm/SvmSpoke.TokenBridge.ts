@@ -322,8 +322,13 @@ describe("svm_spoke.token_bridge", () => {
       .signers([simpleBridgeMessageSentEventData])
       .rpc();
 
+    // Wait for the event to be emitted.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const events = await readProgramEvents(connection, program);
     const event = events.find((event) => event.name === "bridgedToHubPool").data;
     assert.isNotNull(event, "BridgedToHubPool event should be emitted");
+    assert.strictEqual(event.amount.toString(), simpleBridgeAmount.toString(), "Invalid amount");
+    assert.strictEqual(event.mint.toString(), mint.toString(), "Invalid mint");
   });
 });
