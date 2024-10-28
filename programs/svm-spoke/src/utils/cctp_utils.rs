@@ -63,6 +63,15 @@ pub fn get_self_authority_pda() -> Pubkey {
     pda_address
 }
 
+pub fn decode_solidity_uint32(data: &[u8; 32]) -> Result<u32> {
+    let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
+    let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
+    if h_value > 0 || l_value > (u32::MAX as u128) {
+        return err!(CalldataError::InvalidUint32);
+    }
+    Ok(l_value as u32)
+}
+
 pub fn decode_solidity_uint64(data: &[u8; 32]) -> Result<u64> {
     let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
     let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());

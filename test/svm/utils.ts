@@ -164,9 +164,9 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
   const contentToHash = Buffer.concat([
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
+    refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
-    refundAmountsBuffer,
     refundAccountsBuffer,
   ]);
 
