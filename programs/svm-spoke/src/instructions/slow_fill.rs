@@ -30,7 +30,6 @@ pub struct SlowFillV3Relay<'info> {
     )]
     pub state: Account<'info, State>,
 
-
     #[account(
         init_if_needed,
         payer = signer,
@@ -133,7 +132,6 @@ impl V3SlowFill {
 #[instruction(relay_hash: [u8; 32], slow_fill_leaf: V3SlowFill, root_bundle_id: u32)]
 pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub signer: Signer<'info>,
-    
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
