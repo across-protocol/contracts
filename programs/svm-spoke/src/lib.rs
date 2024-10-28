@@ -172,7 +172,7 @@ pub mod svm_spoke {
         instructions::execute_v3_slow_relay_leaf(ctx, relay_hash, slow_fill_leaf, root_bundle_id, proof)
     }
     pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
-        ctx.accounts.bridge_tokens_to_hub_pool(amount, &ctx.bumps)?;
+        instructions::bridge_tokens_to_hub_pool(ctx, amount)?;
 
         Ok(())
     }

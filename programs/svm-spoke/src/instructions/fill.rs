@@ -17,15 +17,15 @@ use crate::{
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct FillV3Relay<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
     #[account(
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()], // TODO: make consistent decision where to put owner constraints
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
         constraint = !state.paused_fills @ CustomError::FillsArePaused
     )]
     pub state: Account<'info, State>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
 
     #[account(
         token::token_program = token_program, // TODO: consistent token imports
@@ -167,14 +167,11 @@ pub fn fill_v3_relay(
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
+    #[account(mut, address = fill_status.relayer @ CustomError::NotRelayer)]
+    pub signer: Signer<'info>,
+
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
-
-    #[account(
-        mut,
-        address = fill_status.relayer @ CustomError::NotRelayer // TODO: check that this doesn't break PR 653
-    )]
-    pub signer: Signer<'info>,
 
     #[account(
         mut,

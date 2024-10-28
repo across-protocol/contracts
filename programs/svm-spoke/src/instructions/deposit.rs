@@ -20,6 +20,8 @@ use crate::{ error::CustomError, event::V3FundsDeposited, get_current_time, stat
     message: Vec<u8>
 )]
 pub struct DepositV3<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
     #[account(
         mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -34,8 +36,6 @@ pub struct DepositV3<'info> {
         bump
     )]
     pub route: Account<'info, Route>,
-
-    pub signer: Signer<'info>,
 
     #[account(
         mut,

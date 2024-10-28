@@ -12,6 +12,9 @@ use crate::{
 #[event_cpi]
 #[derive(Accounts)]
 pub struct ExecuteRelayerRefundLeaf<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
     #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
 
@@ -29,9 +32,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
         realloc::zero = false
     )]
     pub root_bundle: Account<'info, RootBundle>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>, // TODO: put signers first everywhere.
 
     #[account(
         mut,
