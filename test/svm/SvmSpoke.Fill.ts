@@ -10,7 +10,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
-import { common } from "./SvmSpoke.Common";
+import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
