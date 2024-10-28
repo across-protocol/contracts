@@ -41,7 +41,7 @@ pub enum CustomError {
     #[msg("Invalid relay hash!")]
     InvalidRelayHash,
     #[msg("The fill deadline has not passed!")]
-    FillDeadlineNotPassed,
+    CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
     #[msg("Slow fill requires status of Unfilled!")]
     InvalidSlowFillRequest,
     #[msg("The fill status is not filled!")]

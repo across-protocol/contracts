@@ -67,7 +67,7 @@ pub struct FillV3Relay<'info> {
 
 pub fn fill_v3_relay(
     ctx: Context<FillV3Relay>,
-    relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
+    _: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData,
     repayment_chain_id: u64,
     repayment_address: Pubkey
@@ -166,22 +166,13 @@ pub struct CloseFillPda<'info> {
     pub fill_status: Account<'info, FillStatusAccount>,
 }
 
-pub fn close_fill_pda(
-    ctx: Context<CloseFillPda>,
-    _relay_hash: [u8; 32], // TODO: check if we can use underscore in functions while in context macro leave as is?
-    relay_data: V3RelayData
-) -> Result<()> {
+pub fn close_fill_pda(ctx: Context<CloseFillPda>, _: [u8; 32], relay_data: V3RelayData) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
-    // Check if the fill status is filled
-    if ctx.accounts.fill_status.status != FillStatus::Filled {
-        return err!(CustomError::NotFilled); // TODO: more descriptive error message.
-    }
-
     // Check if the deposit has expired
     if current_time <= relay_data.fill_deadline {
-        return err!(CustomError::FillDeadlineNotPassed);
+        return err!(CustomError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed);
     }
 
     Ok(())

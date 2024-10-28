@@ -42,7 +42,7 @@ pub struct SlowFillV3Relay<'info> {
 
 pub fn request_v3_slow_fill(
     ctx: Context<SlowFillV3Relay>,
-    relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
+    _: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData
 ) -> Result<()> {
     let state = &ctx.accounts.state;
@@ -172,9 +172,9 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
 
 pub fn execute_v3_slow_relay_leaf(
     ctx: Context<ExecuteV3SlowRelayLeaf>,
-    relay_hash: [u8; 32],
+    _token_account: [u8; 32],
     slow_fill_leaf: V3SlowFill,
-    root_bundle_id: u32,
+    _: u32,
     proof: Vec<[u8; 32]>
 ) -> Result<()> {
     let current_time = get_current_time(&ctx.accounts.state)?;
