@@ -53,7 +53,6 @@ pub struct DepositV3<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    // TODO: why are we using mint::token_program,token::token_program and associated_token::token_program?
     #[account(
         mint::token_program = token_program,
         // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.

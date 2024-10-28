@@ -28,16 +28,16 @@ pub struct FillV3Relay<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        token::token_program = token_program, // TODO: consistent token imports
+        mint::token_program = token_program,
         address = relay_data.output_token @ CustomError::InvalidMint
     )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        associated_token::mint = mint_account, // TODO: consistent token imports
-        associated_token::authority = signer,
-        associated_token::token_program = token_program
+        token::mint = mint_account,
+        token::authority = signer,
+        token::token_program = token_program
     )]
     pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
 
