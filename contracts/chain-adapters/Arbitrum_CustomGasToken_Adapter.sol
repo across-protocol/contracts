@@ -162,15 +162,19 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei)
     uint256 public immutable L2_GAS_PRICE;
 
-    // Native token expected to be sent in L2 message. Should be 0 for all use cases of this constant, which
-    // includes sending messages from L1 to L2 and sending Custom gas token ERC20's, which won't be the native token
-    // on the L2 by definition.
+    // Native token expected to be sent in L2 message. Should be 0 for most use cases of this constant. This
+    // constant is unused when sending the native gas token over the inbox since the inbox interprets `l2CallValue`
+    // as the amount of the L2 native token to send.
     uint256 public constant L2_CALL_VALUE = 0;
 
     // Gas limit for L2 execution of a cross chain token transfer sent via the inbox.
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
     // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
+
+    // The number of decimals of precision for the custom gas token. This is defined in the constructor and not dynamically fetched since decimals are
+    // not part of the standard ERC20 interface.
+    uint8 public immutable NATIVE_TOKEN_DECIMALS;
 
     // This address on L2 receives extra gas token that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
@@ -215,10 +219,12 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ICCTPTokenMessenger _cctpTokenMessenger,
+        uint32 _circleDomainId,
         FunderInterface _customGasTokenFunder,
+        uint8 _nativeTokenDecimals,
         uint256 _l2MaxSubmissionCost,
         uint256 _l2GasPrice
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _circleDomainId) {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
@@ -227,6 +233,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         L2_GAS_PRICE = _l2GasPrice;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
+        NATIVE_TOKEN_DECIMALS = _nativeTokenDecimals;
     }
 
     /**
@@ -288,7 +295,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                 CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), amountToBridge);
                 L1_INBOX.createRetryableTicket(
                     to, // destAddr destination L2 contract address
-                    L2_CALL_VALUE, // l2CallValue call value for retryable L2 message
+                    amount, // l2CallValue call value for retryable L2 message
                     L2_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
                     L2_REFUND_L2_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
                     L2_REFUND_L2_ADDRESS, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
@@ -337,12 +344,11 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     }
 
     function _from18ToNativeDecimals(uint256 amount) internal view returns (uint256) {
-        uint8 nativeTokenDecimals = L1_INBOX.bridge().nativeTokenDecimals();
-        if (nativeTokenDecimals == 18) {
+        if (NATIVE_TOKEN_DECIMALS == 18) {
             return amount;
-        } else if (nativeTokenDecimals < 18) {
+        } else if (NATIVE_TOKEN_DECIMALS < 18) {
             // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
-            uint256 reductionFactor = 10**(18 - nativeTokenDecimals);
+            uint256 reductionFactor = 10**(18 - NATIVE_TOKEN_DECIMALS);
             uint256 divFloor = amount / reductionFactor;
             uint256 mod = amount % reductionFactor;
             if (mod != 0) {
@@ -351,7 +357,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                 return divFloor;
             }
         } else {
-            return amount * 10**(nativeTokenDecimals - 18);
+            return amount * 10**(NATIVE_TOKEN_DECIMALS - 18);
         }
     }
 }
