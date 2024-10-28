@@ -3,6 +3,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
     error::CustomError,
+    event::BridgedToHubPool,
     message_transmitter::program::MessageTransmitter,
     token_messenger_minter::{
         self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter,
@@ -11,6 +12,7 @@ use crate::{
     State, TransferLiability,
 };
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct BridgeTokensToHubPool<'info> {
     pub signer: Signer<'info>,
@@ -61,7 +63,7 @@ pub struct BridgeTokensToHubPool<'info> {
 
     /// CHECK: EventAuthority is checked in CCTP. Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter
     /// program).
-    pub event_authority: UncheckedAccount<'info>,
+    pub cctp_event_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub message_sent_event_data: Signer<'info>,
@@ -75,52 +77,59 @@ pub struct BridgeTokensToHubPool<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> BridgeTokensToHubPool<'info> {
-    pub fn bridge_tokens_to_hub_pool(
-        &mut self,
-        amount: u64,
-        bumps: &BridgeTokensToHubPoolBumps,
-    ) -> Result<()> {
-        if amount > self.transfer_liability.pending_to_hub_pool {
-            return err!(CustomError::ExceededPendingBridgeAmount);
-        }
-        self.transfer_liability.pending_to_hub_pool -= amount;
-
-        // Invoke CCTP to bridge vault tokens from state account.
-        let cpi_program = self.token_messenger_minter_program.to_account_info();
-        let cpi_accounts = DepositForBurn {
-            owner: self.state.to_account_info(),
-            event_rent_payer: self.payer.to_account_info(),
-            sender_authority_pda: self
-                .token_messenger_minter_sender_authority
-                .to_account_info(),
-            burn_token_account: self.vault.to_account_info(),
-            message_transmitter: self.message_transmitter.to_account_info(),
-            token_messenger: self.token_messenger.to_account_info(),
-            remote_token_messenger: self.remote_token_messenger.to_account_info(),
-            token_minter: self.token_minter.to_account_info(),
-            local_token: self.local_token.to_account_info(),
-            burn_token_mint: self.mint.to_account_info(),
-            message_sent_event_data: self.message_sent_event_data.to_account_info(),
-            message_transmitter_program: self.message_transmitter_program.to_account_info(),
-            token_messenger_minter_program: self.token_messenger_minter_program.to_account_info(),
-            token_program: self.token_program.to_account_info(),
-            system_program: self.system_program.to_account_info(),
-            event_authority: self.event_authority.to_account_info(),
-            program: self.token_messenger_minter_program.to_account_info(),
-        };
-        let state_seed_bytes = self.state.seed.to_le_bytes();
-        let state_seeds: &[&[&[u8]]] = &[&[b"state", state_seed_bytes.as_ref(), &[bumps.state]]];
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, state_seeds);
-        let params = DepositForBurnParams {
-            amount,
-            destination_domain: self.state.remote_domain, // CCTP domain for Mainnet Ethereum.
-            mint_recipient: self.state.cross_domain_admin, // This is same as HubPool.
-        };
-        token_messenger_minter::cpi::deposit_for_burn(cpi_ctx, params)?;
-
-        // TODO: emit event on bridged tokens.
-
-        Ok(())
+pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
+    if amount > ctx.accounts.transfer_liability.pending_to_hub_pool {
+        return err!(CustomError::ExceededPendingBridgeAmount);
     }
+    ctx.accounts.transfer_liability.pending_to_hub_pool -= amount;
+
+    // Invoke CCTP to bridge vault tokens from state account.
+    let cpi_program = ctx
+        .accounts
+        .token_messenger_minter_program
+        .to_account_info();
+    let cpi_accounts = DepositForBurn {
+        owner: ctx.accounts.state.to_account_info(),
+        event_rent_payer: ctx.accounts.payer.to_account_info(),
+        sender_authority_pda: ctx
+            .accounts
+            .token_messenger_minter_sender_authority
+            .to_account_info(),
+        burn_token_account: ctx.accounts.vault.to_account_info(),
+        message_transmitter: ctx.accounts.message_transmitter.to_account_info(),
+        token_messenger: ctx.accounts.token_messenger.to_account_info(),
+        remote_token_messenger: ctx.accounts.remote_token_messenger.to_account_info(),
+        token_minter: ctx.accounts.token_minter.to_account_info(),
+        local_token: ctx.accounts.local_token.to_account_info(),
+        burn_token_mint: ctx.accounts.mint.to_account_info(),
+        message_sent_event_data: ctx.accounts.message_sent_event_data.to_account_info(),
+        message_transmitter_program: ctx.accounts.message_transmitter_program.to_account_info(),
+        token_messenger_minter_program: ctx
+            .accounts
+            .token_messenger_minter_program
+            .to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        event_authority: ctx.accounts.cctp_event_authority.to_account_info(),
+        program: ctx
+            .accounts
+            .token_messenger_minter_program
+            .to_account_info(),
+    };
+    let state_seed_bytes = ctx.accounts.state.seed.to_le_bytes();
+    let state_seeds: &[&[&[u8]]] = &[&[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]]];
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, state_seeds);
+    let params = DepositForBurnParams {
+        amount,
+        destination_domain: ctx.accounts.state.remote_domain, // CCTP domain for Mainnet Ethereum.
+        mint_recipient: ctx.accounts.state.cross_domain_admin, // This is same as HubPool.
+    };
+    token_messenger_minter::cpi::deposit_for_burn(cpi_ctx, params)?;
+
+    emit_cpi!(BridgedToHubPool {
+        amount,
+        mint: ctx.accounts.mint.key(),
+    });
+
+    Ok(())
 }

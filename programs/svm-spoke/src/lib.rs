@@ -198,7 +198,7 @@ pub mod svm_spoke {
         ctx: Context<BridgeTokensToHubPool>,
         amount: u64,
     ) -> Result<()> {
-        ctx.accounts.bridge_tokens_to_hub_pool(amount, &ctx.bumps)?;
+        instructions::bridge_tokens_to_hub_pool(ctx, amount)?;
 
         Ok(())
     }

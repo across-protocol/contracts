@@ -126,3 +126,9 @@ pub struct ClaimedRelayerRefund {
 pub struct EmergencyDeletedRootBundle {
     pub root_bundle_id: u32,
 }
+
+#[event]
+pub struct BridgedToHubPool {
+    pub amount: u64,
+    pub mint: Pubkey,
+}
