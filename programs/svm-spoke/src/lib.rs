@@ -194,7 +194,7 @@ pub mod svm_spoke {
             proof,
         )
     }
-    pub fn bridge_tokens_to_hub_pool<'info>(
+    pub fn bridge_tokens_to_hub_pool(
         ctx: Context<BridgeTokensToHubPool>,
         amount: u64,
     ) -> Result<()> {
