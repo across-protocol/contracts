@@ -3,6 +3,7 @@ import { BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createAccount,
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
@@ -392,6 +393,36 @@ describe("svm_spoke.fill", () => {
     assert.isTrue(
       txResult.meta.logMessages.every((log) => !log.includes(`Program ${TOKEN_PROGRAM_ID} invoke`)),
       "Token Program should not be invoked"
+    );
+  });
+
+  it("Fills a V3 relay from custom relayer token account", async () => {
+    // Create and mint to custom relayer token account
+    const customKeypair = Keypair.generate();
+    const customRelayerTA = await createAccount(connection, payer, mint, relayer.publicKey, customKeypair);
+    await mintTo(connection, payer, mint, customRelayerTA, owner, seedBalance);
+
+    // Save balances before the the fill
+    const iRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
+    const iRecipientBal = (await getAccount(connection, recipientTA)).amount;
+
+    // Fill relay from custom relayer token account
+    accounts.relayerTokenAccount = customRelayerTA;
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
+
+    // Verify balances after the fill
+    const fRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
+    const fRecipientBal = (await getAccount(connection, recipientTA)).amount;
+    assertSE(fRelayerBal, iRelayerBal - BigInt(relayAmount), "Relayer's balance should be reduced by the relay amount");
+    assertSE(
+      fRecipientBal,
+      iRecipientBal + BigInt(relayAmount),
+      "Recipient's balance should be increased by the relay amount"
     );
   });
 });

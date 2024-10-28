@@ -144,7 +144,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
-        token::token_program = token_program,
+        mint::token_program = token_program,
         address = slow_fill_leaf.relay_data.output_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,

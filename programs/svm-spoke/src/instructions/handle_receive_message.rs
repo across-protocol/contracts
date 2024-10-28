@@ -65,7 +65,8 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
 
             new_cross_domain_admin.encode_instruction_data("global:set_cross_domain_admin")
         }
-        // TODO: Make sure to change EVM SpokePool interface using bytes32 for token addresses and uint64 for chain IDs.
+        // The EVM function signature is setEnableRoute(address,uint256,bool).
+        // The EVM Solana adapter translates this to the expected Solana format: setEnableRoute(bytes32,uint64,bool).
         s if s == utils::encode_solidity_selector("setEnableRoute(bytes32,uint64,bool)") => {
             let origin_token = Pubkey::new_from_array(utils::get_solidity_arg(data, 0)?);
             let destination_chain_id = utils::decode_solidity_uint64(&utils::get_solidity_arg(data, 1)?)?;
