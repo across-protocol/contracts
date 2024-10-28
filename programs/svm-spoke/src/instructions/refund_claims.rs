@@ -39,10 +39,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: We don't need any additional checks as long as this is the same account that initialized the claim account.
-    #[account(
-        mut,
-        address = claim_account.initializer @ CustomError::InvalidClaimInitializer
-    )]
+    #[account(mut, address = claim_account.initializer @ CustomError::InvalidClaimInitializer)]
     pub initializer: UncheckedAccount<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -61,11 +58,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     // Token address has been checked when executing the relayer refund leaf and it is part of claim account derivation.
-    #[account(
-        mut,
-        token::mint = mint,
-        token::token_program = token_program
-    )]
+    #[account(mut, token::mint = mint, token::token_program = token_program)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
@@ -123,10 +116,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
 #[derive(Accounts)]
 #[instruction(mint: Pubkey, token_account: Pubkey)]
 pub struct CloseClaimAccount<'info> {
-    #[account(
-        mut,
-        address = claim_account.initializer @ CustomError::InvalidClaimInitializer
-    )]
+    #[account(mut, address = claim_account.initializer @ CustomError::InvalidClaimInitializer)]
     pub signer: Signer<'info>,
 
     #[account(

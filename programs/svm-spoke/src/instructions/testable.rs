@@ -52,6 +52,6 @@ pub fn set_seed(_state: &mut State, _seed: u64) -> Result<()> {
     if _seed != 0 {
         return err!(CustomError::InvalidProductionSeed);
     }
-    _state.seed = _seed; // Set the seed in the state
+    _state.seed = _seed;
     Ok(())
 }

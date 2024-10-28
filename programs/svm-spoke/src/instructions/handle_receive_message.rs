@@ -27,6 +27,7 @@ pub struct HandleReceiveMessage<'info> {
         constraint = params.sender == state.cross_domain_admin @ CustomError::InvalidRemoteSender,
     )]
     pub state: Account<'info, State>,
+
     /// CHECK: empty PDA, used in authenticating self-CPI invoked by the received message.
     #[account(seeds = [b"self_authority"], bump)]
     pub self_authority: UncheckedAccount<'info>,
@@ -106,11 +107,7 @@ pub fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<
         }
     }
 
-    let instruction = Instruction {
-        program_id: crate::ID,
-        accounts,
-        data: data.to_owned(),
-    };
+    let instruction = Instruction { program_id: crate::ID, accounts, data: data.to_owned() };
 
     program::invoke_signed(
         &instruction,

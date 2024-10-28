@@ -33,8 +33,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     )]
     pub root_bundle: Account<'info, RootBundle>,
 
-    #[account(
-        mut,
+    #[account(mut,
         associated_token::mint = mint,
         associated_token::authority = state,
         associated_token::token_program = token_program

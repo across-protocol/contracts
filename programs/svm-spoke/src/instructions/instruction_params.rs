@@ -27,11 +27,7 @@ pub struct WriteInstructionParamsFragment<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: use unchecked account in order to be able writing raw data fragments.
-    #[account(
-        mut,
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump
-    )]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -62,11 +58,7 @@ pub struct CloseInstructionParams<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: We cannot check account type as its discriminator could have been overwritten.
-    #[account(
-        mut,
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump,
-    )]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: UncheckedAccount<'info>,
 }
 

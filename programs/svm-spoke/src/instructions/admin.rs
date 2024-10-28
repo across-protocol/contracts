@@ -65,9 +65,7 @@ pub fn initialize(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct PauseDeposits<'info> {
-    #[account(
-        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
-    )]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -86,9 +84,7 @@ pub fn pause_deposits(ctx: Context<PauseDeposits>, pause: bool) -> Result<()> {
 #[event_cpi]
 #[derive(Accounts)]
 pub struct PauseFills<'info> {
-    #[account(
-        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
-    )]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -109,9 +105,8 @@ pub struct TransferOwnership<'info> {
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(
-        address = state.owner @ CustomError::NotOwner // TODO: test permissioning with a multi-sig and Squads
-    )]
+    // TODO: test permissioning with a multi-sig and Squads
+    #[account(address = state.owner @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 }
 
@@ -125,9 +120,7 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) ->
 #[event_cpi]
 #[derive(Accounts)]
 pub struct SetCrossDomainAdmin<'info> {
-    #[account(
-        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
-    )]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -138,10 +131,7 @@ pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_ad
     let state = &mut ctx.accounts.state;
     state.cross_domain_admin = cross_domain_admin;
 
-    // TODO: add lint to make this a 1-liner
-    emit_cpi!(SetXDomainAdmin {
-        new_admin: cross_domain_admin,
-    });
+    emit_cpi!(SetXDomainAdmin { new_admin: cross_domain_admin });
 
     Ok(())
 }
@@ -150,9 +140,7 @@ pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_ad
 #[derive(Accounts)]
 #[instruction(origin_token: Pubkey, destination_chain_id: u64)]
 pub struct SetEnableRoute<'info> {
-    #[account(
-        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
-    )]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -199,11 +187,7 @@ pub fn set_enable_route(
 ) -> Result<()> {
     ctx.accounts.route.enabled = enabled;
 
-    emit_cpi!(EnabledDepositRoute {
-        origin_token,
-        destination_chain_id,
-        enabled,
-    });
+    emit_cpi!(EnabledDepositRoute { origin_token, destination_chain_id, enabled });
 
     Ok(())
 }
@@ -211,9 +195,7 @@ pub fn set_enable_route(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
-    #[account(
-        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
-    )]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -246,15 +228,9 @@ pub fn relay_root_bundle(
     root_bundle.relayer_refund_root = relayer_refund_root;
     root_bundle.slow_relay_root = slow_relay_root;
 
-    emit_cpi!(RelayedRootBundle {
-        root_bundle_id: state.root_bundle_id,
-        relayer_refund_root,
-        slow_relay_root,
-    });
+    emit_cpi!(RelayedRootBundle { root_bundle_id: state.root_bundle_id, relayer_refund_root, slow_relay_root });
 
-    // Finally, increment the root bundle id
     state.root_bundle_id += 1;
-
     Ok(())
 }
 
@@ -262,9 +238,7 @@ pub fn relay_root_bundle(
 #[derive(Accounts)]
 #[instruction(root_bundle_id: u32)]
 pub struct EmergencyDeleteRootBundle<'info> {
-    #[account(
-        constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner
-    )]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]

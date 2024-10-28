@@ -30,7 +30,6 @@ pub struct DepositV3<'info> {
     )]
     pub state: Account<'info, State>,
 
-    // TODO: linter to format this line
     #[account(
         seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
         bump
