@@ -250,4 +250,5 @@ interface V3SpokePoolInterface {
     error WrongERC7683OrderId();
     error LowLevelCallFailed(bytes data);
     error InsufficientSpokePoolBalanceToExecuteLeaf();
+    error NoRelayerRefundToClaim();
 }

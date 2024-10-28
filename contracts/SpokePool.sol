@@ -1287,12 +1287,12 @@ abstract contract SpokePool is
      * @param refundAddress Address to send the refund to.
      */
     function claimRelayerRefund(address l2TokenAddress, address refundAddress) public {
-        uint256 liability = relayerRefund[l2TokenAddress][msg.sender];
-        require(liability > 0, "No liability to claim");
+        uint256 refund = relayerRefund[l2TokenAddress][msg.sender];
+        if (refund == 0) revert NoRelayerRefundToClaim();
         relayerRefund[l2TokenAddress][msg.sender] = 0;
-        IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddress, liability);
+        IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddress, refund);
 
-        emit ClaimedRelayerRefund(l2TokenAddress, msg.sender, refundAddress, liability);
+        emit ClaimedRelayerRefund(l2TokenAddress, msg.sender, refundAddress, refund);
     }
 
     /**************************************
