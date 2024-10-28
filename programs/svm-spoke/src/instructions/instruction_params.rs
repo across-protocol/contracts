@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::system_program};
+use anchor_lang::{ prelude::*, solana_program::system_program };
 
 use crate::error::CustomError;
 
@@ -40,7 +40,7 @@ pub struct WriteInstructionParamsFragment<'info> {
 pub fn write_instruction_params_fragment<'info>(
     ctx: Context<WriteInstructionParamsFragment<'info>>,
     offset: u32,
-    fragment: Vec<u8>,
+    fragment: Vec<u8>
 ) -> Result<()> {
     let account_info = ctx.accounts.instruction_params.to_account_info();
 
@@ -77,9 +77,7 @@ pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<
 
     // Transfer tokens from the account to the sol_destination.
     let dest_starting_lamports = sol_destination.lamports();
-    **sol_destination.lamports.borrow_mut() = dest_starting_lamports
-        .checked_add(closed_account.lamports())
-        .unwrap();
+    **sol_destination.lamports.borrow_mut() = dest_starting_lamports.checked_add(closed_account.lamports()).unwrap();
     **closed_account.lamports.borrow_mut() = 0;
 
     closed_account.assign(&system_program::ID);

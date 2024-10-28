@@ -1,14 +1,12 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use anchor_lang::{ prelude::*, solana_program::keccak };
+use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::CustomError,
     event::ExecutedRelayerRefundRoot,
-    state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
-    utils::{is_claimed, set_claimed, verify_merkle_proof},
+    state::{ ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability },
+    utils::{ is_claimed, set_claimed, verify_merkle_proof },
 };
 
 #[event_cpi]
@@ -17,10 +15,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account(
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump
-    )]
+    #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -104,10 +99,10 @@ impl RelayerRefundLeaf {
 }
 
 pub fn execute_relayer_refund_leaf<'c, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>
 ) -> Result<()>
-where
-    'c: 'info, // TODO: add explaining comments on some of more complex syntax.
+    where
+        'c: 'info // TODO: add explaining comments on some of more complex syntax.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -125,17 +120,11 @@ where
         return err!(CustomError::InvalidChainId);
     }
 
-    if is_claimed(
-        &ctx.accounts.root_bundle.claimed_bitmap,
-        relayer_refund_leaf.leaf_id,
-    ) {
+    if is_claimed(&ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id) {
         return err!(CustomError::ClaimedMerkleLeaf);
     }
 
-    set_claimed(
-        &mut ctx.accounts.root_bundle.claimed_bitmap,
-        relayer_refund_leaf.leaf_id,
-    );
+    set_claimed(&mut ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id);
 
     // TODO: execute remaining parts of leaf structure such as amountToReturn.
     // TODO: emit events.
@@ -163,7 +152,7 @@ where
             i,
             &relayer_refund_leaf.refund_accounts[i],
             &ctx.accounts.mint.key(),
-            &ctx.accounts.token_program.key(),
+            &ctx.accounts.token_program.key()
         )?;
 
         match refund_account {
@@ -178,7 +167,7 @@ where
                 let cpi_context = CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
                     transfer_accounts,
-                    signer_seeds,
+                    signer_seeds
                 );
                 transfer_checked(cpi_context, amount, ctx.accounts.mint.decimals)?;
             }

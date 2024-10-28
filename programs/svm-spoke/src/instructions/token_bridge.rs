@@ -1,15 +1,18 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{ Mint, TokenAccount, TokenInterface };
 
 use crate::{
     error::CustomError,
     event::BridgedToHubPool,
     message_transmitter::program::MessageTransmitter,
     token_messenger_minter::{
-        self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter,
+        self,
+        cpi::accounts::DepositForBurn,
+        program::TokenMessengerMinter,
         types::DepositForBurnParams,
     },
-    State, TransferLiability,
+    State,
+    TransferLiability,
 };
 
 #[event_cpi]
@@ -84,17 +87,11 @@ pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u6
     ctx.accounts.transfer_liability.pending_to_hub_pool -= amount;
 
     // Invoke CCTP to bridge vault tokens from state account.
-    let cpi_program = ctx
-        .accounts
-        .token_messenger_minter_program
-        .to_account_info();
+    let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurn {
         owner: ctx.accounts.state.to_account_info(),
         event_rent_payer: ctx.accounts.payer.to_account_info(),
-        sender_authority_pda: ctx
-            .accounts
-            .token_messenger_minter_sender_authority
-            .to_account_info(),
+        sender_authority_pda: ctx.accounts.token_messenger_minter_sender_authority.to_account_info(),
         burn_token_account: ctx.accounts.vault.to_account_info(),
         message_transmitter: ctx.accounts.message_transmitter.to_account_info(),
         token_messenger: ctx.accounts.token_messenger.to_account_info(),
@@ -104,17 +101,11 @@ pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u6
         burn_token_mint: ctx.accounts.mint.to_account_info(),
         message_sent_event_data: ctx.accounts.message_sent_event_data.to_account_info(),
         message_transmitter_program: ctx.accounts.message_transmitter_program.to_account_info(),
-        token_messenger_minter_program: ctx
-            .accounts
-            .token_messenger_minter_program
-            .to_account_info(),
+        token_messenger_minter_program: ctx.accounts.token_messenger_minter_program.to_account_info(),
         token_program: ctx.accounts.token_program.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
         event_authority: ctx.accounts.cctp_event_authority.to_account_info(),
-        program: ctx
-            .accounts
-            .token_messenger_minter_program
-            .to_account_info(),
+        program: ctx.accounts.token_messenger_minter_program.to_account_info(),
     };
     let state_seed_bytes = ctx.accounts.state.seed.to_le_bytes();
     let state_seeds: &[&[&[u8]]] = &[&[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]]];

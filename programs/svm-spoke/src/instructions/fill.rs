@@ -1,16 +1,16 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
+    token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked },
 };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::CustomError,
-    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
+    event::{ FillType, FilledV3Relay, V3RelayExecutionEventInfo },
     get_current_time,
-    state::{FillStatus, FillStatusAccount, State},
+    state::{ FillStatus, FillStatusAccount, State },
 };
 
 #[event_cpi]
@@ -88,15 +88,16 @@ pub fn fill_v3_relay(
     relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData,
     repayment_chain_id: u64,
-    repayment_address: Pubkey,
+    repayment_address: Pubkey
 ) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if relay_data.exclusive_relayer != ctx.accounts.signer.key()
-        && relay_data.exclusivity_deadline >= current_time
-        && relay_data.exclusive_relayer != Pubkey::default()
+    if
+        relay_data.exclusive_relayer != ctx.accounts.signer.key() &&
+        relay_data.exclusivity_deadline >= current_time &&
+        relay_data.exclusive_relayer != Pubkey::default()
     {
         return err!(CustomError::NotExclusiveRelayer);
     }
@@ -109,7 +110,9 @@ pub fn fill_v3_relay(
     // Check the fill status and set the fill type
     let fill_status_account = &mut ctx.accounts.fill_status;
     let fill_type = match fill_status_account.status {
-        FillStatus::Filled => return err!(CustomError::RelayFilled),
+        FillStatus::Filled => {
+            return err!(CustomError::RelayFilled);
+        }
         FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
         _ => FillType::FastFill,
     };
@@ -123,15 +126,8 @@ pub fn fill_v3_relay(
             to: ctx.accounts.recipient_token_account.to_account_info(),
             authority: ctx.accounts.signer.to_account_info(),
         };
-        let cpi_context = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            transfer_accounts,
-        );
-        transfer_checked(
-            cpi_context,
-            relay_data.output_amount,
-            ctx.accounts.mint_account.decimals,
-        )?;
+        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
+        transfer_checked(cpi_context, relay_data.output_amount, ctx.accounts.mint_account.decimals)?;
     }
 
     // Update the fill status to Filled and set the relayer
@@ -191,7 +187,7 @@ pub struct CloseFillPda<'info> {
 pub fn close_fill_pda(
     ctx: Context<CloseFillPda>,
     _relay_hash: [u8; 32], // TODO: check if we can use underscore in functions while in context macro leave as is?
-    relay_data: V3RelayData,
+    relay_data: V3RelayData
 ) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
