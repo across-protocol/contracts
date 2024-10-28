@@ -7,10 +7,11 @@ use anchor_spl::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
-    error::{ SharedError, SvmError },
+    error::{ CommonError, SvmError },
     event::{ FillType, FilledV3Relay, V3RelayExecutionEventInfo },
     get_current_time,
-    state::{ FillStatus, FillStatusAccount, State, V3RelayData },
+    state::{ FillStatus, FillStatusAccount, State },
+    common::V3RelayData,
 };
 
 #[event_cpi]
@@ -23,7 +24,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
-        constraint = !state.paused_fills @ SharedError::FillsArePaused
+        constraint = !state.paused_fills @ CommonError::FillsArePaused
     )]
     pub state: Account<'info, State>,
 
@@ -67,7 +68,6 @@ pub struct FillV3Relay<'info> {
 
 pub fn fill_v3_relay(
     ctx: Context<FillV3Relay>,
-    _: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
     relay_data: V3RelayData,
     repayment_chain_id: u64,
     repayment_address: Pubkey
@@ -81,19 +81,19 @@ pub fn fill_v3_relay(
         relay_data.exclusivity_deadline >= current_time &&
         relay_data.exclusive_relayer != Pubkey::default()
     {
-        return err!(SharedError::NotExclusiveRelayer);
+        return err!(CommonError::NotExclusiveRelayer);
     }
 
     // Check if the fill deadline has passed
     if relay_data.fill_deadline < current_time {
-        return err!(SharedError::ExpiredFillDeadline);
+        return err!(CommonError::ExpiredFillDeadline);
     }
 
     // Check the fill status and set the fill type
     let fill_status_account = &mut ctx.accounts.fill_status;
     let fill_type = match fill_status_account.status {
         FillStatus::Filled => {
-            return err!(SharedError::RelayFilled);
+            return err!(CommonError::RelayFilled);
         }
         FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
         _ => FillType::FastFill,
@@ -166,7 +166,7 @@ pub struct CloseFillPda<'info> {
     pub fill_status: Account<'info, FillStatusAccount>,
 }
 
-pub fn close_fill_pda(ctx: Context<CloseFillPda>, _: [u8; 32], relay_data: V3RelayData) -> Result<()> {
+pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_data: V3RelayData) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 

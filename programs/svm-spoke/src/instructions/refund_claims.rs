@@ -26,7 +26,7 @@ pub struct InitializeClaimAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>, _: Pubkey, _: Pubkey) -> Result<()> {
+pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<()> {
     // Store the initializer so only it can receive lamports from closing the account upon claiming the refund.
     ctx.accounts.claim_account.initializer = ctx.accounts.signer.key();
 

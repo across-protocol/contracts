@@ -13,9 +13,11 @@ pub mod event;
 mod instructions;
 mod state;
 pub mod utils;
+pub mod common;
 
 use instructions::*;
 use state::*;
+use common::*;
 
 #[program]
 pub mod svm_spoke {
@@ -132,16 +134,16 @@ pub mod svm_spoke {
     // Relayer methods.
     pub fn fill_v3_relay(
         ctx: Context<FillV3Relay>,
-        relay_hash: [u8; 32],
+        _relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,
         repayment_address: Pubkey
     ) -> Result<()> {
-        instructions::fill_v3_relay(ctx, relay_hash, relay_data, repayment_chain_id, repayment_address)
+        instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
 
-    pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_hash: [u8; 32], relay_data: V3RelayData) -> Result<()> {
-        instructions::close_fill_pda(ctx, relay_hash, relay_data)
+    pub fn close_fill_pda(ctx: Context<CloseFillPda>, _relay_hash: [u8; 32], relay_data: V3RelayData) -> Result<()> {
+        instructions::close_fill_pda(ctx, relay_data)
     }
 
     // CCTP methods.
@@ -159,20 +161,20 @@ pub mod svm_spoke {
     // Slow fill methods.
     pub fn request_v3_slow_fill(
         ctx: Context<SlowFillV3Relay>,
-        relay_hash: [u8; 32],
+        _relay_hash: [u8; 32],
         relay_data: V3RelayData
     ) -> Result<()> {
-        instructions::request_v3_slow_fill(ctx, relay_hash, relay_data)
+        instructions::request_v3_slow_fill(ctx, relay_data)
     }
 
     pub fn execute_v3_slow_relay_leaf(
         ctx: Context<ExecuteV3SlowRelayLeaf>,
-        relay_hash: [u8; 32],
+        _relay_hash: [u8; 32],
         slow_fill_leaf: V3SlowFill,
-        root_bundle_id: u32,
+        _root_bundle_id: u32,
         proof: Vec<[u8; 32]>
     ) -> Result<()> {
-        instructions::execute_v3_slow_relay_leaf(ctx, relay_hash, slow_fill_leaf, root_bundle_id, proof)
+        instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
     pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
         instructions::bridge_tokens_to_hub_pool(ctx, amount)?;
@@ -198,10 +200,10 @@ pub mod svm_spoke {
 
     pub fn initialize_claim_account(
         ctx: Context<InitializeClaimAccount>,
-        mint: Pubkey,
-        token_account: Pubkey
+        _mint: Pubkey,
+        _token_account: Pubkey
     ) -> Result<()> {
-        instructions::initialize_claim_account(ctx, mint, token_account)
+        instructions::initialize_claim_account(ctx)
     }
 
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {

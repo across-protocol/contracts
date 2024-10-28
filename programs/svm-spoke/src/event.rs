@@ -121,6 +121,7 @@ pub struct ClaimedRelayerRefund {
     pub refund_address: Pubkey,
 }
 
+// TODO: update the name of this to EmergencyDeletedRootBundle and in EVM.
 #[event]
 pub struct EmergencyDeleteRootBundle {
     pub root_bundle_id: u32,

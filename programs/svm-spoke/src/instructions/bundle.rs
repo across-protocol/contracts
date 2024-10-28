@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenIn
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
-    error::{ SharedError, SvmError },
+    error::{ CommonError, SvmError },
     event::ExecutedRelayerRefundRoot,
     state::{ ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability },
     utils::{ is_claimed, set_claimed, verify_merkle_proof },
@@ -33,7 +33,8 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     )]
     pub root_bundle: Account<'info, RootBundle>,
 
-    #[account(mut,
+    #[account(
+        mut,
         associated_token::mint = mint,
         associated_token::authority = state,
         associated_token::token_program = token_program
@@ -116,11 +117,11 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     verify_merkle_proof(root, leaf, proof)?;
 
     if relayer_refund_leaf.chain_id != state.chain_id {
-        return err!(SharedError::InvalidChainId);
+        return err!(CommonError::InvalidChainId);
     }
 
     if is_claimed(&ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id) {
-        return err!(SharedError::ClaimedMerkleLeaf);
+        return err!(CommonError::ClaimedMerkleLeaf);
     }
 
     set_claimed(&mut ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id);
@@ -129,7 +130,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     // TODO: emit events.
 
     if relayer_refund_leaf.refund_accounts.len() != relayer_refund_leaf.refund_amounts.len() {
-        return err!(SharedError::InvalidMerkleLeaf);
+        return err!(CommonError::InvalidMerkleLeaf);
     }
 
     // Derive the signer seeds for the state. The vault owns the state PDA so we need to derive this to create the
