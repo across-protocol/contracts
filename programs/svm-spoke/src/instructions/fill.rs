@@ -1,291 +1,264 @@
-use bincode;
 use serde::Deserialize;
 
-use anchor_lang::{
-    prelude::*,
-    solana_program::{instruction::Instruction, program},
+use anchor_spl::{
+  associated_token::AssociatedToken,
+  token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked },
 };
 
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use anchor_lang::{ prelude::*, solana_program::{ instruction::Instruction, program, pubkey::Pubkey } };
+
+use bincode; // Import bincode for serialization/deserialization
 
 use crate::{
-    constants::DISCRIMINATOR_SIZE,
-    constraints::is_relay_hash_valid,
-    error::CustomError,
-    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
-    state::{FillStatus, FillStatusAccount, State},
+  constants::DISCRIMINATOR_SIZE,
+  constraints::is_relay_hash_valid,
+  error::CustomError,
+  event::{ FillType, FilledV3Relay, V3RelayExecutionEventInfo },
+  get_current_time,
+  state::{ FillStatus, FillStatusAccount, State },
 };
 
 #[event_cpi]
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct FillV3Relay<'info> {
-    #[account(
-        mut,
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
+  #[account(
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()], // TODO: make consistent decision where to put owner constraints
         bump,
         constraint = !state.paused_fills @ CustomError::FillsArePaused
     )]
-    pub state: Account<'info, State>,
+  pub state: Account<'info, State>,
 
-    #[account(mut)]
-    pub signer: Signer<'info>,
+  #[account(mut)]
+  pub signer: Signer<'info>,
 
-    #[account(mut)]
-    pub relayer: SystemAccount<'info>,
-
-    #[account(
-        mut,
-        address = relay_data.recipient @ CustomError::InvalidFillRecipient
-    )]
-    pub recipient: SystemAccount<'info>,
-
-    #[account(
-        mut,
-        token::token_program = token_program,
+  #[account(
+        token::token_program = token_program, // TODO: consistent token imports
         address = relay_data.output_token @ CustomError::InvalidMint
     )]
-    pub mint_account: InterfaceAccount<'info, Mint>,
+  pub mint_account: InterfaceAccount<'info, Mint>,
 
-    #[account(
+  #[account(
         mut,
-        associated_token::mint = mint_account,
-        associated_token::authority = relayer,
+        associated_token::mint = mint_account, // TODO: consistent token imports
+        associated_token::authority = signer,
         associated_token::token_program = token_program
     )]
-    pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
+  pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(
+  #[account(
         mut,
         associated_token::mint = mint_account,
-        associated_token::authority = recipient,
+        associated_token::authority = relay_data.recipient,
         associated_token::token_program = token_program
     )]
-    pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
+  pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(
+  #[account(
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
     )]
-    pub fill_status: Account<'info, FillStatusAccount>,
+  pub fill_status: Account<'info, FillStatusAccount>,
 
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
+  pub token_program: Interface<'info, TokenInterface>,
+  pub associated_token_program: Program<'info, AssociatedToken>,
+  pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)] // TODO: do we need all of these?
+
+// TODO: should we move this data structure to a common module?
 pub struct V3RelayData {
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub exclusive_relayer: Pubkey,
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub message: Vec<u8>,
+  pub depositor: Pubkey,
+  pub recipient: Pubkey,
+  pub exclusive_relayer: Pubkey,
+  pub input_token: Pubkey,
+  pub output_token: Pubkey,
+  pub input_amount: u64,
+  pub output_amount: u64,
+  pub origin_chain_id: u64,
+  pub deposit_id: u32,
+  pub fill_deadline: u32,
+  pub exclusivity_deadline: u32,
+  pub message: Vec<u8>,
 }
 
 #[derive(Deserialize)]
 struct Call {
-    target: Pubkey,
-    call_data: Vec<u8>,
-    value: u128,
+  target: Pubkey,
+  call_data: Vec<u8>,
+  value: u128,
 }
 
 #[derive(Deserialize)]
 struct Instructions {
-    calls: Vec<Call>,
-    fallback_recipient: Pubkey,
+  calls: Vec<Call>,
+  fallback_recipient: Pubkey,
 }
 
 fn handle_v3_across_message(remaining_accounts: &[AccountInfo], message: &Vec<u8>) -> Result<()> {
-    // Decode the message into Instructions
-    let instructions: Instructions =
-        bincode::deserialize(&message).map_err(|_| CustomError::InvalidMessageFormat)?;
+  // Decode the message into Instructions
+  let instructions: Instructions = bincode::deserialize(&message).map_err(|_| CustomError::InvalidMessageFormat)?;
 
-    for call in instructions.calls {
-        // Check if the target is a valid prgram
-        let target_account_info = remaining_accounts
-            .iter()
-            .find(|account| account.key == &call.target)
-            .ok_or(CustomError::InvalidTarget)?;
+  for call in instructions.calls {
+    // Check if the target is a valid prgram
+    let target_account_info = remaining_accounts
+      .iter()
+      .find(|account| account.key == &call.target)
+      .ok_or(CustomError::InvalidTarget)?;
 
-        // If the owner is not the system program then we know that the target is a valid program.
-        if target_account_info.owner != &solana_program::system_program::ID.to_bytes().into() {
-            return Err(CustomError::InvalidTarget.into());
-        }
-
-        // Execute the call
-        let ix = Instruction {
-            program_id: Pubkey::new_from_array(call.target.to_bytes()),
-            accounts: vec![],
-            data: call.call_data,
-        };
-
-        program::invoke(&ix, remaining_accounts)?;
+    // If the owner is not the system program then we know that the target is a valid program.
+    if target_account_info.owner != &solana_program::system_program::ID.to_bytes().into() {
+      return Err(CustomError::InvalidTarget.into());
     }
 
-    // Handle fallback recipient logic if needed
-    if instructions.fallback_recipient != Pubkey::default() {
-        // Logic to handle leftover tokens or fallback actions
-    }
+    // Execute the call
+    let ix = Instruction {
+      program_id: Pubkey::new_from_array(call.target.to_bytes()),
+      accounts: vec![],
+      data: call.call_data,
+    };
 
-    Ok(())
+    program::invoke(&ix, remaining_accounts)?;
+  }
+
+  // Handle fallback recipient logic if needed
+  if instructions.fallback_recipient != Pubkey::default() {
+    // Logic to handle leftover tokens or fallback actions
+  }
+
+  Ok(())
 }
 
 pub fn fill_v3_relay(
-    ctx: Context<FillV3Relay>,
-    relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
-    relay_data: V3RelayData,
-    repayment_chain_id: u64,
+  ctx: Context<FillV3Relay>,
+  relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
+  relay_data: V3RelayData,
+  repayment_chain_id: u64,
+  repayment_address: Pubkey
 ) -> Result<()> {
-    let state = &mut ctx.accounts.state;
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+  let state = &ctx.accounts.state;
+  let current_time = get_current_time(state)?;
 
-    // Check the fill status
-    let fill_status_account = &mut ctx.accounts.fill_status;
-    require!(
-        fill_status_account.status != FillStatus::Filled,
-        CustomError::RelayFilled
-    );
+  // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
+  if
+    relay_data.exclusive_relayer != ctx.accounts.signer.key() &&
+    relay_data.exclusivity_deadline >= current_time &&
+    relay_data.exclusive_relayer != Pubkey::default()
+  {
+    return err!(CustomError::NotExclusiveRelayer);
+  }
 
-    // Check if the fill deadline has passed
-    require!(
-        current_time <= relay_data.fill_deadline,
-        CustomError::ExpiredFillDeadline
-    );
+  // Check if the fill deadline has passed
+  if relay_data.fill_deadline < current_time {
+    return err!(CustomError::ExpiredFillDeadline);
+  }
 
-    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if relay_data.exclusive_relayer != Pubkey::default() {
-        require!(
-            current_time > relay_data.exclusivity_deadline
-                || ctx.accounts.signer.key() == relay_data.exclusive_relayer,
-            CustomError::NotExclusiveRelayer
-        );
+  // Check the fill status and set the fill type
+  let fill_status_account = &mut ctx.accounts.fill_status;
+  let fill_type = match fill_status_account.status {
+    FillStatus::Filled => {
+      return err!(CustomError::RelayFilled);
     }
+    FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
+    _ => FillType::FastFill,
+  };
 
-    // Invoke the transfer_checked instruction on the token program
+  // If relayer and receiver are the same, there is no need to do the transfer. This might be a case when relayers
+  // intentionally self-relay in a capital efficient way (no need to have funds on the destination).
+  if ctx.accounts.relayer_token_account.key() != ctx.accounts.recipient_token_account.key() {
     let transfer_accounts = TransferChecked {
-        from: ctx.accounts.relayer_token_account.to_account_info(),
-        mint: ctx.accounts.mint_account.to_account_info(),
-        to: ctx.accounts.recipient_token_account.to_account_info(),
-        authority: ctx.accounts.signer.to_account_info(),
+      from: ctx.accounts.relayer_token_account.to_account_info(),
+      mint: ctx.accounts.mint_account.to_account_info(),
+      to: ctx.accounts.recipient_token_account.to_account_info(),
+      authority: ctx.accounts.signer.to_account_info(),
     };
-    let cpi_context = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-    );
-    transfer_checked(
-        cpi_context,
-        relay_data.output_amount,
-        ctx.accounts.mint_account.decimals,
-    )?;
+    let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
+    transfer_checked(cpi_context, relay_data.output_amount, ctx.accounts.mint_account.decimals)?;
+  }
 
-    // Update the fill status to Filled and set the relayer
-    fill_status_account.status = FillStatus::Filled;
-    fill_status_account.relayer = *ctx.accounts.signer.key;
+  // Update the fill status to Filled and set the relayer
+  fill_status_account.status = FillStatus::Filled;
+  fill_status_account.relayer = *ctx.accounts.signer.key;
 
-    msg!("Tokens transferred successfully.");
+  // TODO: there might be a better way to do this
+  // Emit the FilledV3Relay event
+  emit_cpi!(FilledV3Relay {
+    input_token: relay_data.input_token,
+    output_token: relay_data.output_token,
+    input_amount: relay_data.input_amount,
+    output_amount: relay_data.output_amount,
+    repayment_chain_id,
+    origin_chain_id: relay_data.origin_chain_id,
+    deposit_id: relay_data.deposit_id,
+    fill_deadline: relay_data.fill_deadline,
+    exclusivity_deadline: relay_data.exclusivity_deadline,
+    exclusive_relayer: relay_data.exclusive_relayer,
+    relayer: repayment_address,
+    depositor: relay_data.depositor,
+    recipient: relay_data.recipient,
+    message: relay_data.message.clone(),
+    relay_execution_info: V3RelayExecutionEventInfo {
+      updated_recipient: relay_data.recipient,
+      updated_message: relay_data.message.clone(),
+      updated_output_amount: relay_data.output_amount,
+      fill_type,
+    },
+  });
 
-    // Emit the FilledV3Relay event
-    emit_cpi!(FilledV3Relay {
-        input_token: relay_data.input_token,
-        output_token: relay_data.output_token,
-        input_amount: relay_data.input_amount,
-        output_amount: relay_data.output_amount,
-        repayment_chain_id,
-        origin_chain_id: relay_data.origin_chain_id,
-        deposit_id: relay_data.deposit_id,
-        fill_deadline: relay_data.fill_deadline,
-        exclusivity_deadline: relay_data.exclusivity_deadline,
-        exclusive_relayer: relay_data.exclusive_relayer,
-        relayer: *ctx.accounts.signer.key,
-        depositor: relay_data.depositor,
-        recipient: relay_data.recipient,
-        message: relay_data.message.clone(),
-        relay_execution_info: V3RelayExecutionEventInfo {
-            updated_recipient: relay_data.recipient,
-            updated_message: relay_data.message.clone(),
-            updated_output_amount: relay_data.output_amount,
-            fill_type: FillType::FastFill,
-        },
-    });
+  // Invoke the helper function if the message field is not empty
+  if !relay_data.message.clone().is_empty() {
+    handle_v3_across_message(&ctx.remaining_accounts, &relay_data.message.clone())?;
+  }
 
-    // Invoke the helper function if the message field is not empty
-    if !relay_data.message.clone().is_empty() {
-        handle_v3_across_message(&ctx.remaining_accounts, &relay_data.message.clone())?;
-    }
-
-    Ok(())
+  Ok(())
 }
 
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
-    pub state: Account<'info, State>,
+  #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+  pub state: Account<'info, State>,
 
-    #[account(
+  #[account(
         mut,
-        address = fill_status.relayer @ CustomError::NotRelayer
+        address = fill_status.relayer @ CustomError::NotRelayer // TODO: check that this doesn't break PR 653
     )]
-    pub signer: Signer<'info>,
+  pub signer: Signer<'info>,
 
-    #[account(
+  #[account(
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        close = signer,
+        close = signer, // TODO: check if this is correct party to receive refund.
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
     )]
-    pub fill_status: Account<'info, FillStatusAccount>,
+  pub fill_status: Account<'info, FillStatusAccount>,
 }
 
 pub fn close_fill_pda(
-    ctx: Context<CloseFillPda>,
-    relay_hash: [u8; 32],
-    relay_data: V3RelayData,
+  ctx: Context<CloseFillPda>,
+  _relay_hash: [u8; 32], // TODO: check if we can use underscore in functions while in context macro leave as is?
+  relay_data: V3RelayData
 ) -> Result<()> {
-    let state = &mut ctx.accounts.state;
-    // TODO: Try again to pull this into a helper function. for some reason I was not able to due to passing context around of state.
-    let current_time = if state.current_time != 0 {
-        state.current_time
-    } else {
-        Clock::get()?.unix_timestamp as u32
-    };
+  let state = &ctx.accounts.state;
+  let current_time = get_current_time(state)?;
 
-    // Check if the fill status is filled
-    require!(
-        ctx.accounts.fill_status.status == FillStatus::Filled,
-        CustomError::NotFilled
-    );
+  // Check if the fill status is filled
+  if ctx.accounts.fill_status.status != FillStatus::Filled {
+    return err!(CustomError::NotFilled); // TODO: more descriptive error message.
+  }
 
-    // Check if the deposit has expired
-    require!(
-        current_time > relay_data.fill_deadline,
-        CustomError::FillDeadlineNotPassed
-    );
+  // Check if the deposit has expired
+  if current_time <= relay_data.fill_deadline {
+    return err!(CustomError::FillDeadlineNotPassed);
+  }
 
-    Ok(())
+  Ok(())
 }
-
-// Events.
