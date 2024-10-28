@@ -12,8 +12,7 @@ use crate::{
         EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills,
         RelayedRootBundle, SetXDomainAdmin,
     },
-    initialize_current_time,
-    set_seed,
+    initialize_current_time, set_seed,
     state::{RootBundle, Route, State},
 };
 
@@ -51,7 +50,7 @@ pub fn initialize(
     state.cross_domain_admin = cross_domain_admin;
     state.deposit_quote_time_buffer = deposit_quote_time_buffer;
     state.fill_deadline_buffer = fill_deadline_buffer;
-    
+
     // Set seed and initialize current time. Both enable testing functionality and are no-ops in production.
     set_seed(state, seed)?;
     initialize_current_time(state)?;
