@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 
-use crate::{error::CustomError, instructions::V3RelayData};
+use crate::{error::CustomError, V3RelayData};
 
 pub fn get_v3_relay_hash(relay_data: &V3RelayData, chain_id: u64) -> [u8; 32] {
     let mut input = relay_data.try_to_vec().unwrap();

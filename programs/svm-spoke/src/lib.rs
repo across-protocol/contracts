@@ -12,10 +12,12 @@ pub mod error;
 pub mod event;
 mod instructions;
 mod state;
+mod types;
 pub mod utils;
 
 use instructions::*;
 use state::*;
+use types::*;
 
 #[program]
 pub mod svm_spoke {

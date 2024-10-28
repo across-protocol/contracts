@@ -11,6 +11,7 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
+    V3RelayData,
 };
 
 #[event_cpi]
@@ -63,24 +64,6 @@ pub struct FillV3Relay<'info> {
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)] // TODO: do we need all of these?
-
-// TODO: should we move this data structure to a common module?
-pub struct V3RelayData {
-    pub depositor: Pubkey,
-    pub recipient: Pubkey,
-    pub exclusive_relayer: Pubkey,
-    pub input_token: Pubkey,
-    pub output_token: Pubkey,
-    pub input_amount: u64,
-    pub output_amount: u64,
-    pub origin_chain_id: u64,
-    pub deposit_id: u32,
-    pub fill_deadline: u32,
-    pub exclusivity_deadline: u32,
-    pub message: Vec<u8>,
 }
 
 pub fn fill_v3_relay(
