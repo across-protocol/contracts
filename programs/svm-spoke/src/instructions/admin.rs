@@ -4,9 +4,9 @@ use anchor_spl::{ associated_token::AssociatedToken, token_interface::{ Mint, To
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
-    error::CustomError,
+    error::SvmError,
     event::{
-        EmergencyDeletedRootBundle,
+        EmergencyDeleteRootBundle,
         EnabledDepositRoute,
         PausedDeposits,
         PausedFills,
@@ -65,7 +65,7 @@ pub fn initialize(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct PauseDeposits<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -84,7 +84,7 @@ pub fn pause_deposits(ctx: Context<PauseDeposits>, pause: bool) -> Result<()> {
 #[event_cpi]
 #[derive(Accounts)]
 pub struct PauseFills<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -106,7 +106,7 @@ pub struct TransferOwnership<'info> {
     pub state: Account<'info, State>,
 
     // TODO: test permissioning with a multi-sig and Squads
-    #[account(address = state.owner @ CustomError::NotOwner)]
+    #[account(address = state.owner @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 }
 
@@ -120,7 +120,7 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) ->
 #[event_cpi]
 #[derive(Accounts)]
 pub struct SetCrossDomainAdmin<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -140,7 +140,7 @@ pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_ad
 #[derive(Accounts)]
 #[instruction(origin_token: Pubkey, destination_chain_id: u64)]
 pub struct SetEnableRoute<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -170,7 +170,7 @@ pub struct SetEnableRoute<'info> {
     #[account(
         mint::token_program = token_program,
         // IDL build fails when requiring `address = origin_token` for mint, thus using a custom constraint.
-        constraint = origin_token_mint.key() == origin_token @ CustomError::InvalidMint
+        constraint = origin_token_mint.key() == origin_token @ SvmError::InvalidMint
     )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
 
@@ -195,7 +195,7 @@ pub fn set_enable_route(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -237,8 +237,8 @@ pub fn relay_root_bundle(
 #[event_cpi]
 #[derive(Accounts)]
 #[instruction(root_bundle_id: u32)]
-pub struct EmergencyDeleteRootBundle<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ CustomError::NotOwner)]
+pub struct EmergencyDeleteRootBundleState<'info> {
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -256,8 +256,8 @@ pub struct EmergencyDeleteRootBundle<'info> {
     pub root_bundle: Account<'info, RootBundle>,
 }
 
-pub fn emergency_delete_root_bundle(ctx: Context<EmergencyDeleteRootBundle>, root_bundle_id: u32) -> Result<()> {
-    emit_cpi!(EmergencyDeletedRootBundle { root_bundle_id });
+pub fn emergency_delete_root_bundle(ctx: Context<EmergencyDeleteRootBundleState>, root_bundle_id: u32) -> Result<()> {
+    emit_cpi!(EmergencyDeleteRootBundle { root_bundle_id });
 
     Ok(())
 }

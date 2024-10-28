@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{ Mint, TokenAccount, TokenInterface };
 
 use crate::{
-    error::CustomError,
+    error::SvmError,
     event::BridgedToHubPool,
     message_transmitter::program::MessageTransmitter,
     token_messenger_minter::{
@@ -82,7 +82,7 @@ pub struct BridgeTokensToHubPool<'info> {
 
 pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
     if amount > ctx.accounts.transfer_liability.pending_to_hub_pool {
-        return err!(CustomError::ExceededPendingBridgeAmount);
+        return err!(SvmError::ExceededPendingBridgeAmount);
     }
     ctx.accounts.transfer_liability.pending_to_hub_pool -= amount;
 

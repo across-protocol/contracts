@@ -1,6 +1,6 @@
 use anchor_lang::{ prelude::*, solana_program::system_program };
 
-use crate::error::CustomError;
+use crate::error::SvmError;
 
 #[derive(Accounts)]
 #[instruction(total_size: u32)]
@@ -45,7 +45,7 @@ pub fn write_instruction_params_fragment<'info>(
     let start = offset as usize;
     let end = start + fragment.len();
 
-    require!(end <= data.len(), CustomError::ParamsWriteOverflow);
+    require!(end <= data.len(), SvmError::ParamsWriteOverflow);
 
     data[start..end].copy_from_slice(&fragment);
 

@@ -2,8 +2,7 @@ use anchor_lang::{ prelude::*, solana_program::{ instruction::Instruction, progr
 
 use crate::{
     constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
-    error::CalldataError,
-    error::CustomError,
+    error::{ CallDataError, SvmError },
     program::SvmSpoke,
     utils::{ self, EncodeInstructionData },
     State,
@@ -23,8 +22,8 @@ pub struct HandleReceiveMessage<'info> {
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
-        constraint = params.remote_domain == state.remote_domain @ CustomError::InvalidRemoteDomain,
-        constraint = params.sender == state.cross_domain_admin @ CustomError::InvalidRemoteSender,
+        constraint = params.remote_domain == state.remote_domain @ SvmError::InvalidRemoteDomain,
+        constraint = params.sender == state.cross_domain_admin @ SvmError::InvalidRemoteSender,
     )]
     pub state: Account<'info, State>,
 
@@ -85,7 +84,7 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
 
             root_id.encode_instruction_data("global:emergency_delete_root_bundle")
         }
-        _ => Err(CalldataError::UnsupportedSelector.into()),
+        _ => Err(CallDataError::UnsupportedSelector.into()),
     }
 }
 

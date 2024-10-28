@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{ error::CustomError, state::State };
+use crate::{ error::SvmError, state::State };
 
 #[derive(Accounts)]
 pub struct SetCurrentTime<'info> {
@@ -15,7 +15,7 @@ pub fn set_current_time(ctx: Context<SetCurrentTime>, _new_time: u32) -> Result<
 
     #[cfg(not(feature = "test"))]
     {
-        return err!(CustomError::CannotSetCurrentTime);
+        return err!(SvmError::CannotSetCurrentTime);
     }
 
     #[cfg(feature = "test")]
@@ -50,7 +50,7 @@ pub fn set_seed(_state: &mut State, _seed: u64) -> Result<()> {
     // Seed should only be used in tests to enable fresh state between deployments. In production always set to 0.
     #[cfg(not(feature = "test"))]
     if _seed != 0 {
-        return err!(CustomError::InvalidProductionSeed);
+        return err!(SvmError::InvalidProductionSeed);
     }
     _state.seed = _seed;
     Ok(())

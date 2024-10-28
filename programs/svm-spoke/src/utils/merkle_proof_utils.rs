@@ -1,6 +1,6 @@
 use anchor_lang::{ prelude::*, solana_program::keccak };
 
-use crate::{ error::CustomError, state::V3RelayData };
+use crate::{ error::SharedError, state::V3RelayData };
 
 pub fn get_v3_relay_hash(relay_data: &V3RelayData, chain_id: u64) -> [u8; 32] {
     let mut input = relay_data.try_to_vec().unwrap();
@@ -11,7 +11,7 @@ pub fn get_v3_relay_hash(relay_data: &V3RelayData, chain_id: u64) -> [u8; 32] {
 pub fn verify_merkle_proof(root: [u8; 32], leaf: [u8; 32], proof: Vec<[u8; 32]>) -> Result<()> {
     let computed_root = process_proof(&proof, &leaf);
     if computed_root != root {
-        return err!(CustomError::InvalidMerkleProof);
+        return err!(SharedError::InvalidMerkleProof);
     }
 
     Ok(())

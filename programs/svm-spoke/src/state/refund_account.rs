@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::TokenAccount;
 
-use crate::error::CustomError;
+use crate::error::SvmError;
 
 #[account]
 #[derive(InitSpace)]
@@ -45,16 +45,14 @@ impl<'c, 'info> RefundAccount<'info> where 'c: 'info {
                 ).map(Self::ClaimAccount)
             })
             .ok_or_else(|| {
-                error::Error
-                    ::from(CustomError::InvalidRefund)
-                    .with_account_name(&format!("remaining_accounts[{}]", index))
+                error::Error::from(SvmError::InvalidRefund).with_account_name(&format!("remaining_accounts[{}]", index))
             })
     }
 
     // This implements the following Anchor account constraints when parsing remaining account as a token account:
     // #[account(
     //     mut,
-    //     address = expected_token_account @ CustomError::InvalidRefund,
+    //     address = expected_token_account @ SvmError::InvalidRefund,
     //     token::mint = expected_mint,
     //     token::token_program = token_program
     // )]

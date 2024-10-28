@@ -110,7 +110,7 @@ pub struct ExecutedRelayerRefundRoot {
     pub leaf_id: u32,
     pub l2_token_address: Pubkey,
     pub refund_addresses: Vec<Pubkey>,
-    pub deferred_refunds: bool, // TODO: update EVM implementation to add this field.
+    pub deferred_refunds: bool,
     pub caller: Pubkey,
 }
 
@@ -121,9 +121,8 @@ pub struct ClaimedRelayerRefund {
     pub refund_address: Pubkey,
 }
 
-// TODO: rename EVM event to match this name
 #[event]
-pub struct EmergencyDeletedRootBundle {
+pub struct EmergencyDeleteRootBundle {
     pub root_bundle_id: u32,
 }
 

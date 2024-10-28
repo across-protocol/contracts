@@ -7,7 +7,7 @@ use anchor_spl::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
-    error::CustomError,
+    error::{ SharedError, SvmError },
     event::{ FillType, FilledV3Relay, V3RelayExecutionEventInfo },
     get_current_time,
     state::{ FillStatus, FillStatusAccount, State, V3RelayData },
@@ -23,13 +23,13 @@ pub struct FillV3Relay<'info> {
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
-        constraint = !state.paused_fills @ CustomError::FillsArePaused
+        constraint = !state.paused_fills @ SharedError::FillsArePaused
     )]
     pub state: Account<'info, State>,
 
     #[account(
         token::token_program = token_program,
-        address = relay_data.output_token @ CustomError::InvalidMint
+        address = relay_data.output_token @ SvmError::InvalidMint
     )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
@@ -56,7 +56,7 @@ pub struct FillV3Relay<'info> {
         seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
@@ -81,19 +81,19 @@ pub fn fill_v3_relay(
         relay_data.exclusivity_deadline >= current_time &&
         relay_data.exclusive_relayer != Pubkey::default()
     {
-        return err!(CustomError::NotExclusiveRelayer);
+        return err!(SharedError::NotExclusiveRelayer);
     }
 
     // Check if the fill deadline has passed
     if relay_data.fill_deadline < current_time {
-        return err!(CustomError::ExpiredFillDeadline);
+        return err!(SharedError::ExpiredFillDeadline);
     }
 
     // Check the fill status and set the fill type
     let fill_status_account = &mut ctx.accounts.fill_status;
     let fill_type = match fill_status_account.status {
         FillStatus::Filled => {
-            return err!(CustomError::RelayFilled);
+            return err!(SharedError::RelayFilled);
         }
         FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
         _ => FillType::FastFill,
@@ -149,7 +149,7 @@ pub fn fill_v3_relay(
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
-    #[account(mut, address = fill_status.relayer @ CustomError::NotRelayer)]
+    #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
     pub signer: Signer<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -161,7 +161,7 @@ pub struct CloseFillPda<'info> {
         bump,
         close = signer, // TODO: check if this is correct party to receive refund.
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 }
@@ -172,7 +172,7 @@ pub fn close_fill_pda(ctx: Context<CloseFillPda>, _: [u8; 32], relay_data: V3Rel
 
     // Check if the deposit has expired
     if current_time <= relay_data.fill_deadline {
-        return err!(CustomError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed);
+        return err!(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed);
     }
 
     Ok(())
