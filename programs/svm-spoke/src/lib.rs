@@ -180,7 +180,7 @@ pub mod svm_spoke {
         Ok(())
     }
 
-    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, _: u32) -> Result<()> {
+    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, total_size: u32) -> Result<()> {
         Ok(())
     }
 
