@@ -7,7 +7,6 @@ import {
   ethers,
   BigNumber,
   defaultAbiCoder,
-  addressToBytes,
 } from "../../../../utils/utils";
 
 import * as consts from "../constants";
@@ -41,7 +40,7 @@ export async function deploySpokePool(
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
   await unwhitelistedErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const destErc20 = await (
-    await getContractFactory("ExpandedERC20", deployerWallet)
+    await getContractFactory("ExpandedERC20WithBlacklist", deployerWallet)
   ).deploy("L2 USD Coin", "L2 USDC", 18);
   await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 

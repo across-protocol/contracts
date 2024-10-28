@@ -154,6 +154,13 @@ interface V3SpokePoolInterface {
         bytes message
     );
 
+    event ClaimedRelayerRefund(
+        address indexed l2TokenAddress,
+        address indexed caller,
+        address indexed refundAddress,
+        uint256 amount
+    );
+
     /**************************************
      *              FUNCTIONS             *
      **************************************/
@@ -242,4 +249,6 @@ interface V3SpokePoolInterface {
     error InvalidPayoutAdjustmentPct();
     error WrongERC7683OrderId();
     error LowLevelCallFailed(bytes data);
+    error InsufficientSpokePoolBalanceToExecuteLeaf();
+    error NoRelayerRefundToClaim();
 }
