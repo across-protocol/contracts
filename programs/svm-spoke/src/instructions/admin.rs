@@ -13,6 +13,7 @@ use crate::{
         RelayedRootBundle, SetXDomainAdmin,
     },
     initialize_current_time,
+    set_seed,
     state::{RootBundle, Route, State},
 };
 
@@ -44,22 +45,16 @@ pub fn initialize(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
-    state.seed = seed; // Set the seed in the state
-
-    // Seed should only be used in tests to enable fresh state between deployments. In production always set to 0.
-    #[cfg(not(feature = "test"))]
-    if seed != 0 {
-        return err!(CustomError::InvalidProductionSeed);
-    }
-
-    state.number_of_deposits = initial_number_of_deposits; // Set initial number of deposits
+    state.number_of_deposits = initial_number_of_deposits;
     state.chain_id = chain_id;
     state.remote_domain = remote_domain;
     state.cross_domain_admin = cross_domain_admin;
     state.deposit_quote_time_buffer = deposit_quote_time_buffer;
     state.fill_deadline_buffer = fill_deadline_buffer;
-
-    initialize_current_time(state)?; // Stores current time in test build (no-op in production).
+    
+    // Set seed and initialize current time. Both enable testing functionality and are no-ops in production.
+    set_seed(state, seed)?;
+    initialize_current_time(state)?;
 
     Ok(())
 }
