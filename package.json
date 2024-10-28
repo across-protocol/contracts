@@ -21,7 +21,7 @@
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
-    "lint-js": "yarn prettier --list-different && yarn lint-rust",
+    "lint-js": "yarn prettier --list-different",
     "lint-rust": "cargo fmt --all -- --check && cargo clippy",
     "lint-fix": "yarn prettier --write && cargo fmt --all",
     "prettier": "prettier .",
