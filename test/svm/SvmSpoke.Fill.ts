@@ -248,7 +248,11 @@ describe("svm_spoke.fill", () => {
       await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
       assert.fail("Closing fill PDA should have failed before fill deadline");
     } catch (err: any) {
-      assert.include(err.toString(), "FillDeadlineNotPassed", "Expected FillDeadlineNotPassed error");
+      assert.include(
+        err.toString(),
+        "CanOnlyCloseFillStatusPdaIfFillDeadlinePassed",
+        "Expected CanOnlyCloseFillStatusPdaIfFillDeadlinePassed error"
+      );
     }
 
     // Set the current time to past the fill deadline
