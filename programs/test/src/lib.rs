@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use svm_spoke::{ constants::DISCRIMINATOR_SIZE, error::CustomError, utils::{ is_claimed, process_proof, set_claimed } };
+use svm_spoke::{ constants::DISCRIMINATOR_SIZE, error::CommonError, utils::{ is_claimed, process_proof, set_claimed } };
 
 declare_id!("84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4");
 
@@ -66,10 +66,10 @@ pub mod test {
     // Test Merkle.
     #[derive(Accounts)]
     pub struct Verify {}
-    pub fn verify(ctx: Context<Verify>, root: [u8; 32], leaf: [u8; 32], proof: Vec<[u8; 32]>) -> Result<()> {
+    pub fn verify(_ctx: Context<Verify>, root: [u8; 32], leaf: [u8; 32], proof: Vec<[u8; 32]>) -> Result<()> {
         let computed_root = process_proof(&proof, &leaf);
         if computed_root != root {
-            return err!(CustomError::InvalidMerkleProof);
+            return err!(CommonError::InvalidMerkleProof);
         }
 
         Ok(())

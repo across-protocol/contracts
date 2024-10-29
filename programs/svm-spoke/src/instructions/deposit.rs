@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
-use crate::{ error::CustomError, event::V3FundsDeposited, get_current_time, state::{ Route, State } };
+use crate::{ error::{ CommonError, SvmError }, event::V3FundsDeposited, get_current_time, state::{ Route, State } };
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -26,11 +26,10 @@ pub struct DepositV3<'info> {
         mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
-        constraint = !state.paused_deposits @ CustomError::DepositsArePaused
+        constraint = !state.paused_deposits @ CommonError::DepositsArePaused
     )]
     pub state: Account<'info, State>,
 
-    // TODO: linter to format this line
     #[account(
         seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
         bump
@@ -56,7 +55,7 @@ pub struct DepositV3<'info> {
     #[account(
         mint::token_program = token_program,
         // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
-        constraint = mint.key() == input_token @ CustomError::InvalidMint
+        constraint = mint.key() == input_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -81,7 +80,7 @@ pub fn deposit_v3(
     let state = &mut ctx.accounts.state;
 
     if !ctx.accounts.route.enabled {
-        return err!(CustomError::DisabledRoute);
+        return err!(CommonError::DisabledRoute);
     }
 
     let current_time = get_current_time(state)?;
@@ -90,11 +89,11 @@ pub fn deposit_v3(
     // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
     // not caught via overflow.
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
-        return err!(CustomError::InvalidQuoteTimestamp);
+        return err!(CommonError::InvalidQuoteTimestamp);
     }
 
     if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
-        return err!(CustomError::InvalidFillDeadline);
+        return err!(CommonError::InvalidFillDeadline);
     }
 
     let transfer_accounts = TransferChecked {

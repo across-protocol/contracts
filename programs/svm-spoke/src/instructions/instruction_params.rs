@@ -1,6 +1,6 @@
 use anchor_lang::{ prelude::*, solana_program::system_program };
 
-use crate::error::CustomError;
+use crate::error::SvmError;
 
 #[derive(Accounts)]
 #[instruction(total_size: u32)]
@@ -27,11 +27,7 @@ pub struct WriteInstructionParamsFragment<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: use unchecked account in order to be able writing raw data fragments.
-    #[account(
-        mut,
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump
-    )]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -49,7 +45,7 @@ pub fn write_instruction_params_fragment<'info>(
     let start = offset as usize;
     let end = start + fragment.len();
 
-    require!(end <= data.len(), CustomError::ParamsWriteOverflow);
+    require!(end <= data.len(), SvmError::ParamsWriteOverflow);
 
     data[start..end].copy_from_slice(&fragment);
 
@@ -62,11 +58,7 @@ pub struct CloseInstructionParams<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: We cannot check account type as its discriminator could have been overwritten.
-    #[account(
-        mut,
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump,
-    )]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: UncheckedAccount<'info>,
 }
 
