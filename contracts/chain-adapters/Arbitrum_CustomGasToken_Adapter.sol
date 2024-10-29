@@ -158,9 +158,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // The Arbitrum Inbox requires that this uses the same precision as the L2's native gas token.
     uint256 public immutable L2_MAX_SUBMISSION_COST;
 
-    // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei). This price will
-    // also fluctuate based on the native token of the L2.
+    // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth_gasPrice RPC)
+    // Since this price fluctuates, it should be set to a conservative value. The gas price must be specified in Wei.
     uint256 public immutable L2_GAS_PRICE;
 
     // Native token expected to be sent in L2 message. Should be 0 for most use cases of this constant. This
