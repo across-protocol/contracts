@@ -4,15 +4,14 @@ use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenIn
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
-    error::CustomError,
+    error::{ CommonError, SvmError },
     get_current_time,
     state::{ FillStatus, FillStatusAccount, RootBundle, State },
+    common::V3RelayData,
     utils::verify_merkle_proof,
 };
 
-// TODO: We can likely move some of the common exports to better locations. we are pulling a lot of these from fill.rs
 use crate::event::{ FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo };
-use crate::V3RelayData; // Pulled type definition from fill.rs.
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -24,7 +23,7 @@ pub struct SlowFillV3Relay<'info> {
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
-        constraint = !state.paused_fills @ CustomError::FillsArePaused
+        constraint = !state.paused_fills @ CommonError::FillsArePaused
     )]
     pub state: Account<'info, State>,
 
@@ -35,33 +34,29 @@ pub struct SlowFillV3Relay<'info> {
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ CustomError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn request_v3_slow_fill(
-    ctx: Context<SlowFillV3Relay>,
-    relay_hash: [u8; 32], // include in props, while not using it, to enable us to access it from the #Instruction Attribute within the accounts. This enables us to pass in the relay_hash PDA.
-    relay_data: V3RelayData
-) -> Result<()> {
+pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: V3RelayData) -> Result<()> {
     let state = &ctx.accounts.state;
 
     let current_time = get_current_time(state)?;
 
     // Check if the fill is past the exclusivity window & within the fill deadline.
     if relay_data.exclusivity_deadline >= current_time {
-        return err!(CustomError::NoSlowFillsInExclusivityWindow);
+        return err!(CommonError::NoSlowFillsInExclusivityWindow);
     }
     if relay_data.fill_deadline < current_time {
-        return err!(CustomError::ExpiredFillDeadline);
+        return err!(CommonError::ExpiredFillDeadline);
     }
 
     // Check the fill status
     let fill_status_account = &mut ctx.accounts.fill_status;
     if fill_status_account.status != FillStatus::Unfilled {
-        return err!(CustomError::InvalidSlowFillRequest);
+        return err!(CommonError::InvalidSlowFillRequest);
     }
 
     // Update the fill status to RequestedSlowFill
@@ -141,13 +136,13 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ CustomError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
         mint::token_program = token_program,
-        address = slow_fill_leaf.relay_data.output_token @ CustomError::InvalidMint
+        address = slow_fill_leaf.relay_data.output_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -173,9 +168,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
 
 pub fn execute_v3_slow_relay_leaf(
     ctx: Context<ExecuteV3SlowRelayLeaf>,
-    relay_hash: [u8; 32],
     slow_fill_leaf: V3SlowFill,
-    root_bundle_id: u32,
     proof: Vec<[u8; 32]>
 ) -> Result<()> {
     let current_time = get_current_time(&ctx.accounts.state)?;
@@ -194,13 +187,13 @@ pub fn execute_v3_slow_relay_leaf(
 
     // Check if the fill deadline has passed
     if relay_data.fill_deadline < current_time {
-        return err!(CustomError::ExpiredFillDeadline);
+        return err!(CommonError::ExpiredFillDeadline);
     }
 
     // Check if the fill status is not filled
     let fill_status_account = &mut ctx.accounts.fill_status;
     if fill_status_account.status == FillStatus::Filled {
-        return err!(CustomError::RelayFilled);
+        return err!(CommonError::RelayFilled);
     }
 
     // Derive the signer seeds for the state

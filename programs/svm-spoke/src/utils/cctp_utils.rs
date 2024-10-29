@@ -2,7 +2,7 @@ use std::mem::size_of_val;
 
 use anchor_lang::prelude::*;
 
-use crate::{ constants::DISCRIMINATOR_SIZE, error::CalldataError, program::SvmSpoke };
+use crate::{ constants::DISCRIMINATOR_SIZE, error::CallDataError, program::SvmSpoke };
 
 pub trait EncodeInstructionData {
     fn encode_instruction_data(&self, discriminator_str: &str) -> Result<Vec<u8>>;
@@ -28,14 +28,14 @@ pub fn encode_solidity_selector(signature: &str) -> [u8; 4] {
 }
 
 pub fn get_solidity_selector(data: &Vec<u8>) -> Result<[u8; 4]> {
-    let slice = data.get(..4).ok_or(CalldataError::InvalidSelector)?;
+    let slice = data.get(..4).ok_or(CallDataError::InvalidSelector)?;
     let array = <[u8; 4]>::try_from(slice).unwrap();
     Ok(array)
 }
 
 pub fn get_solidity_arg(data: &Vec<u8>, index: usize) -> Result<[u8; 32]> {
     let offset = 4 + 32 * index;
-    let slice = data.get(offset..offset + 32).ok_or(CalldataError::InvalidArgument)?;
+    let slice = data.get(offset..offset + 32).ok_or(CallDataError::InvalidArgument)?;
     let array = <[u8; 32]>::try_from(slice).unwrap();
     Ok(array)
 }
@@ -49,11 +49,11 @@ pub fn decode_solidity_bool(data: &[u8; 32]) -> Result<bool> {
                 0 => Ok(false),
                 1 => Ok(true),
                 _ => {
-                    return err!(CalldataError::InvalidBool);
+                    return err!(CallDataError::InvalidBool);
                 }
             }
         _ => {
-            return err!(CalldataError::InvalidBool);
+            return err!(CallDataError::InvalidBool);
         }
     }
 }
@@ -67,7 +67,7 @@ pub fn decode_solidity_uint32(data: &[u8; 32]) -> Result<u32> {
     let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
     let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
     if h_value > 0 || l_value > (u32::MAX as u128) {
-        return err!(CalldataError::InvalidUint32);
+        return err!(CallDataError::InvalidUint32);
     }
     Ok(l_value as u32)
 }
@@ -76,7 +76,7 @@ pub fn decode_solidity_uint64(data: &[u8; 32]) -> Result<u64> {
     let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
     let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
     if h_value > 0 || l_value > (u64::MAX as u128) {
-        return err!(CalldataError::InvalidUint64);
+        return err!(CallDataError::InvalidUint64);
     }
     Ok(l_value as u64)
 }
@@ -84,7 +84,7 @@ pub fn decode_solidity_uint64(data: &[u8; 32]) -> Result<u64> {
 pub fn decode_solidity_address(data: &[u8; 32]) -> Result<Pubkey> {
     for i in 0..12 {
         if data[i] != 0 {
-            return err!(CalldataError::InvalidAddress);
+            return err!(CallDataError::InvalidAddress);
         }
     }
     Ok(Pubkey::new_from_array(*data))

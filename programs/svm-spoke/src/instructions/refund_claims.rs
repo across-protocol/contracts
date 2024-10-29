@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenIn
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
-    error::CustomError,
+    error::SvmError,
     event::ClaimedRelayerRefund,
     state::{ ClaimAccount, State },
 };
@@ -26,11 +26,7 @@ pub struct InitializeClaimAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn initialize_claim_account(
-    ctx: Context<InitializeClaimAccount>,
-    mint: Pubkey,
-    token_account: Pubkey
-) -> Result<()> {
+pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<()> {
     // Store the initializer so only it can receive lamports from closing the account upon claiming the refund.
     ctx.accounts.claim_account.initializer = ctx.accounts.signer.key();
 
@@ -43,10 +39,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: We don't need any additional checks as long as this is the same account that initialized the claim account.
-    #[account(
-        mut,
-        address = claim_account.initializer @ CustomError::InvalidClaimInitializer
-    )]
+    #[account(mut, address = claim_account.initializer @ SvmError::InvalidClaimInitializer)]
     pub initializer: UncheckedAccount<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -65,11 +58,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     // Token address has been checked when executing the relayer refund leaf and it is part of claim account derivation.
-    #[account(
-        mut,
-        token::mint = mint,
-        token::token_program = token_program
-    )]
+    #[account(mut, token::mint = mint, token::token_program = token_program)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
@@ -87,7 +76,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
     // Ensure the claim account holds a non-zero amount.
     let claim_amount = ctx.accounts.claim_account.amount;
     if claim_amount == 0 {
-        return err!(CustomError::ZeroRefundClaim);
+        return err!(SvmError::ZeroRefundClaim);
     }
 
     // Derive the signer seeds for the state required for the transfer form vault.
@@ -127,10 +116,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
 #[derive(Accounts)]
 #[instruction(mint: Pubkey, token_account: Pubkey)]
 pub struct CloseClaimAccount<'info> {
-    #[account(
-        mut,
-        address = claim_account.initializer @ CustomError::InvalidClaimInitializer
-    )]
+    #[account(mut, address = claim_account.initializer @ SvmError::InvalidClaimInitializer)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -147,7 +133,7 @@ pub fn close_claim_account(ctx: Context<CloseClaimAccount>) -> Result<()> {
     // Ensure the account does not hold any outstanding claims.
     let claim_amount = ctx.accounts.claim_account.amount;
     if claim_amount > 0 {
-        return err!(CustomError::NonZeroRefundClaim);
+        return err!(SvmError::NonZeroRefundClaim);
     }
 
     Ok(())
