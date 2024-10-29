@@ -155,11 +155,12 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    // The Arbitrum Inbox requires that this uses 18 decimal precision.
+    // The Arbitrum Inbox requires that this uses the same precision as the L2's native gas token.
     uint256 public immutable L2_MAX_SUBMISSION_COST;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
-    // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei)
+    // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei). This price will
+    // also fluctuate based on the native token of the L2.
     uint256 public immutable L2_GAS_PRICE;
 
     // Native token expected to be sent in L2 message. Should be 0 for most use cases of this constant. This
@@ -327,7 +328,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public view virtual returns (uint256) {
-        return _from18ToNativeDecimals(L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit);
+        return L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit;
     }
 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
@@ -335,24 +336,5 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
         if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL1CallValue) revert InsufficientCustomGasToken();
         return requiredL1CallValue;
-    }
-
-    function _from18ToNativeDecimals(uint256 amount) internal view returns (uint256) {
-        uint8 nativeTokenDecimals = L1_INBOX.bridge().nativeTokenDecimals();
-        if (nativeTokenDecimals == 18) {
-            return amount;
-        } else if (nativeTokenDecimals < 18) {
-            // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
-            uint256 reductionFactor = 10**(18 - nativeTokenDecimals);
-            uint256 divFloor = amount / reductionFactor;
-            uint256 mod = amount % reductionFactor;
-            if (mod != 0) {
-                return divFloor + 1;
-            } else {
-                return divFloor;
-            }
-        } else {
-            return amount * 10**(nativeTokenDecimals - 18);
-        }
     }
 }
