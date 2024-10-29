@@ -147,7 +147,7 @@ interface ArbitrumL1ERC20GatewayLike {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
+contract Arbitrum_LegacyCustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     // Amount of gas token allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -155,22 +155,26 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    // The Arbitrum Inbox requires that this uses 18 decimal precision.
+    // The Arbitrum Inbox requires that the precision of this variable is equal to the precision of the native token on the L2.
     uint256 public immutable L2_MAX_SUBMISSION_COST;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei)
     uint256 public immutable L2_GAS_PRICE;
 
-    // Native token expected to be sent in L2 message. Should be 0 for all use cases of this constant, which
-    // includes sending messages from L1 to L2 and sending Custom gas token ERC20's, which won't be the native token
-    // on the L2 by definition.
+    // Native token expected to be sent in L2 message. Should be 0 for most use cases of this constant. This
+    // constant is unused when sending the native gas token over the inbox since the inbox interprets `l2CallValue`
+    // as the amount of the L2 native token to send.
     uint256 public constant L2_CALL_VALUE = 0;
 
     // Gas limit for L2 execution of a cross chain token transfer sent via the inbox.
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
     // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
+
+    // The number of decimals of precision for the custom gas token. This is defined in the constructor and not dynamically fetched since decimals are
+    // not part of the standard ERC20 interface.
+    uint8 public immutable NATIVE_TOKEN_DECIMALS;
 
     // This address on L2 receives extra gas token that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
@@ -215,11 +219,12 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ICCTPTokenMessenger _cctpTokenMessenger,
-        uint32 _cctpDomainId,
+        uint32 _circleDomainId,
         FunderInterface _customGasTokenFunder,
+        uint8 _nativeTokenDecimals,
         uint256 _l2MaxSubmissionCost,
         uint256 _l2GasPrice
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpDomainId) {
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _circleDomainId) {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
@@ -228,6 +233,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         L2_GAS_PRICE = _l2GasPrice;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
+        NATIVE_TOKEN_DECIMALS = _nativeTokenDecimals;
     }
 
     /**
@@ -327,7 +333,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public view returns (uint256) {
-        return _from18ToNativeDecimals(L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit);
+        return L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit;
     }
 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
@@ -335,24 +341,5 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
         if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL1CallValue) revert InsufficientCustomGasToken();
         return requiredL1CallValue;
-    }
-
-    function _from18ToNativeDecimals(uint256 amount) internal view returns (uint256) {
-        uint8 nativeTokenDecimals = L1_INBOX.bridge().nativeTokenDecimals();
-        if (nativeTokenDecimals == 18) {
-            return amount;
-        } else if (nativeTokenDecimals < 18) {
-            // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
-            uint256 reductionFactor = 10**(18 - nativeTokenDecimals);
-            uint256 divFloor = amount / reductionFactor;
-            uint256 mod = amount % reductionFactor;
-            if (mod != 0) {
-                return divFloor + 1;
-            } else {
-                return divFloor;
-            }
-        } else {
-            return amount * 10**(nativeTokenDecimals - 18);
-        }
     }
 }
