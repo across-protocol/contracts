@@ -239,7 +239,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, block.chainid))
+            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
         });
     }
 
@@ -303,7 +303,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, block.chainid))
+            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
         });
     }
 
