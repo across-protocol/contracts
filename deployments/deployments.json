@@ -152,5 +152,9 @@
     "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 },
     "Lisk_Adapter": { "address": "0x13a8B1D6443016424e2b8Bac40dD884Ee679AFc4", "blockNumber": 6226289 },
     "Blast_Adapter": { "address": "0x09500Ffd743e01B4146a4BA795231Ca7Ca37819f", "blockNumber": 6233857 }
+  },
+  "41455": {
+    "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 4112376 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 4112529 }
   }
 }
