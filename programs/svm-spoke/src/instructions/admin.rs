@@ -1,33 +1,37 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-};
+use anchor_spl::{ associated_token::AssociatedToken, token_interface::{ Mint, TokenAccount, TokenInterface } };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
     error::CustomError,
     event::{
-        EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills,
-        RelayedRootBundle, SetXDomainAdmin,
+        EmergencyDeletedRootBundle,
+        EnabledDepositRoute,
+        PausedDeposits,
+        PausedFills,
+        RelayedRootBundle,
+        SetXDomainAdmin,
     },
     initialize_current_time,
-    state::{RootBundle, Route, State},
+    set_seed,
+    state::{ RootBundle, Route, State },
 };
 
 #[derive(Accounts)]
 #[instruction(seed: u64)]
 pub struct Initialize<'info> {
-    #[account(init, // Use init, not init_if_needed to prevent re-initialization.
-              payer = signer,
-              space = DISCRIMINATOR_SIZE + State::INIT_SPACE,
-              seeds = [b"state", seed.to_le_bytes().as_ref()], // TODO: can we set a blank seed? or something better?
-              bump)]
-    pub state: Account<'info, State>,
-
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    #[account(
+        init, // Use init, not init_if_needed to prevent re-initialization.
+        payer = signer,
+        space = DISCRIMINATOR_SIZE + State::INIT_SPACE,
+        seeds = [b"state", seed.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub state: Account<'info, State>,
 
     pub system_program: Program<'info, System>,
 }
@@ -36,23 +40,24 @@ pub fn initialize(
     ctx: Context<Initialize>,
     seed: u64,
     initial_number_of_deposits: u32,
-    chain_id: u64,                  // Across definition of chainId for Solana.
-    remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
-    cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
+    chain_id: u64, // Across definition of chainId for Solana.
+    remote_domain: u32, // CCTP domain for Mainnet Ethereum.
+    cross_domain_admin: Pubkey, // HubPool on Mainnet Ethereum.
     deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
-    fill_deadline_buffer: u32, // Fill deadlines can't be set more than this amount into the future.
+    fill_deadline_buffer: u32 // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
-    state.seed = seed; // Set the seed in the state
-    state.number_of_deposits = initial_number_of_deposits; // Set initial number of deposits
+    state.number_of_deposits = initial_number_of_deposits;
     state.chain_id = chain_id;
     state.remote_domain = remote_domain;
     state.cross_domain_admin = cross_domain_admin;
     state.deposit_quote_time_buffer = deposit_quote_time_buffer;
     state.fill_deadline_buffer = fill_deadline_buffer;
 
-    initialize_current_time(state)?; // Stores current time in test build (no-op in production).
+    // Set seed and initialize current time. Both enable testing functionality and are no-ops in production.
+    set_seed(state, seed)?;
+    initialize_current_time(state)?;
 
     Ok(())
 }
@@ -129,10 +134,7 @@ pub struct SetCrossDomainAdmin<'info> {
     pub state: Account<'info, State>,
 }
 
-pub fn set_cross_domain_admin(
-    ctx: Context<SetCrossDomainAdmin>,
-    cross_domain_admin: Pubkey,
-) -> Result<()> {
+pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_admin: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.cross_domain_admin = cross_domain_admin;
 
@@ -193,7 +195,7 @@ pub fn set_enable_route(
     ctx: Context<SetEnableRoute>,
     origin_token: Pubkey,
     destination_chain_id: u64,
-    enabled: bool,
+    enabled: bool
 ) -> Result<()> {
     ctx.accounts.route.enabled = enabled;
 
@@ -222,11 +224,13 @@ pub struct RelayRootBundle<'info> {
     pub state: Account<'info, State>,
 
     // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
-    #[account(init, // TODO: add comment explaining why init
+    #[account(
+        init, // TODO: add comment explaining why init
         payer = payer,
         space = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE,
-        seeds =[b"root_bundle", state.key().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
-        bump)]
+        seeds = [b"root_bundle", state.key().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
+        bump
+    )]
     pub root_bundle: Account<'info, RootBundle>,
 
     pub system_program: Program<'info, System>,
@@ -235,7 +239,7 @@ pub struct RelayRootBundle<'info> {
 pub fn relay_root_bundle(
     ctx: Context<RelayRootBundle>,
     relayer_refund_root: [u8; 32],
-    slow_relay_root: [u8; 32],
+    slow_relay_root: [u8; 32]
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let root_bundle = &mut ctx.accounts.root_bundle;
@@ -278,10 +282,7 @@ pub struct EmergencyDeleteRootBundle<'info> {
     pub root_bundle: Account<'info, RootBundle>,
 }
 
-pub fn emergency_delete_root_bundle(
-    ctx: Context<EmergencyDeleteRootBundle>,
-    root_bundle_id: u32,
-) -> Result<()> {
+pub fn emergency_delete_root_bundle(ctx: Context<EmergencyDeleteRootBundle>, root_bundle_id: u32) -> Result<()> {
     emit_cpi!(EmergencyDeletedRootBundle { root_bundle_id });
 
     Ok(())
