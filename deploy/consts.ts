@@ -5,6 +5,7 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
+export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
 export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
 
 export const QUOTE_TIME_BUFFER = 3600;
@@ -96,6 +97,9 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
 };
 
 export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
+  [CHAIN_IDs.ALEPH_ZERO]: {
+    l2GatewayRouter: "0xD296d45171B97720D3aBdb68B0232be01F1A9216",
+  },
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: {
     l2GatewayRouter: "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",

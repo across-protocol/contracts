@@ -291,6 +291,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    alephzero: {
+      chainId: CHAIN_IDs.ALEPH_ZERO,
+      url: "https://rpc.alephzero.raas.gelato.cloud",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -319,8 +326,17 @@ const config: HardhatUserConfig = {
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
       worldchain: "blockscout",
+      alephzero: "blockscout",
     },
     customChains: [
+      {
+        network: "alephzero",
+        chainId: CHAIN_IDs.ALEPH_ZERO,
+        urls: {
+          apiURL: "https://evm-explorer.alephzero.org/api",
+          browserURL: "https://evm-explorer.alephzero.org",
+        },
+      },
       {
         network: "base",
         chainId: CHAIN_IDs.BASE,
