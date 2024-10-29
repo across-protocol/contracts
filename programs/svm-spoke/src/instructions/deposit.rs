@@ -1,7 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
+use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-use crate::{ error::{ CommonError, SvmError }, event::V3FundsDeposited, get_current_time, state::{ Route, State } };
+use crate::{
+    error::{CommonError, SvmError},
+    event::V3FundsDeposited,
+    get_current_time,
+    state::{Route, State},
+};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -75,7 +80,7 @@ pub fn deposit_v3(
     quote_timestamp: u32,
     fill_deadline: u32,
     exclusivity_deadline: u32,
-    message: Vec<u8>
+    message: Vec<u8>,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 

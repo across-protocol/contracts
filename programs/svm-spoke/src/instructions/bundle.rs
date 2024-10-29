@@ -1,12 +1,12 @@
-use anchor_lang::{ prelude::*, solana_program::keccak };
-use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
+use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
-    error::{ CommonError, SvmError },
+    error::{CommonError, SvmError},
     event::ExecutedRelayerRefundRoot,
-    state::{ ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability },
-    utils::{ is_claimed, set_claimed, verify_merkle_proof },
+    state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
+    utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
 
 #[event_cpi]
@@ -99,10 +99,10 @@ impl RelayerRefundLeaf {
 }
 
 pub fn execute_relayer_refund_leaf<'c, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>
+    ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
 ) -> Result<()>
-    where
-        'c: 'info // TODO: add explaining comments on some of more complex syntax.
+where
+    'c: 'info, // TODO: add explaining comments on some of more complex syntax.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -124,7 +124,10 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
         return err!(CommonError::ClaimedMerkleLeaf);
     }
 
-    set_claimed(&mut ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id);
+    set_claimed(
+        &mut ctx.accounts.root_bundle.claimed_bitmap,
+        relayer_refund_leaf.leaf_id,
+    );
 
     // TODO: execute remaining parts of leaf structure such as amountToReturn.
     // TODO: emit events.
@@ -152,7 +155,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
             i,
             &relayer_refund_leaf.refund_accounts[i],
             &ctx.accounts.mint.key(),
-            &ctx.accounts.token_program.key()
+            &ctx.accounts.token_program.key(),
         )?;
 
         match refund_account {
@@ -167,7 +170,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
                 let cpi_context = CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
                     transfer_accounts,
-                    signer_seeds
+                    signer_seeds,
                 );
                 transfer_checked(cpi_context, amount, ctx.accounts.mint.decimals)?;
             }
