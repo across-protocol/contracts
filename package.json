@@ -22,8 +22,8 @@
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
     "lint-js": "yarn prettier --list-different **/*.js **/*.ts",
-    "lint-rust": "yarn prettier --list-different ./programs/**/*.rs",
-    "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol",
+    "lint-rust": "cargo fmt --all -- --check && cargo clippy",
+    "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo fmt --all",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
     "build-evm": "hardhat compile",
@@ -35,7 +35,8 @@
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
-    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
+    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types",
+    "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.16",
@@ -114,7 +115,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"
+      "pre-commit": "echo '🏃‍♂️ Running pre-commit hook on staged files' && yarn pre-commit-hook"
     }
   },
   "publishConfig": {
