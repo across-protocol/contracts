@@ -172,10 +172,6 @@ contract Arbitrum_LegacyCustomGasToken_Adapter is AdapterInterface, CircleCCTPAd
     // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
 
-    // The number of decimals of precision for the custom gas token. This is defined in the constructor and not dynamically fetched since decimals are
-    // not part of the standard ERC20 interface.
-    uint8 public immutable NATIVE_TOKEN_DECIMALS;
-
     // This address on L2 receives extra gas token that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
 
@@ -221,7 +217,6 @@ contract Arbitrum_LegacyCustomGasToken_Adapter is AdapterInterface, CircleCCTPAd
         ICCTPTokenMessenger _cctpTokenMessenger,
         uint32 _circleDomainId,
         FunderInterface _customGasTokenFunder,
-        uint8 _nativeTokenDecimals,
         uint256 _l2MaxSubmissionCost,
         uint256 _l2GasPrice
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _circleDomainId) {
@@ -233,7 +228,6 @@ contract Arbitrum_LegacyCustomGasToken_Adapter is AdapterInterface, CircleCCTPAd
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         L2_GAS_PRICE = _l2GasPrice;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
-        NATIVE_TOKEN_DECIMALS = _nativeTokenDecimals;
     }
 
     /**

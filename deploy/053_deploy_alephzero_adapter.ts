@@ -18,7 +18,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ZERO_ADDRESS,
     0, // No Circle CCTP domain ID.
     L1_ADDRESS_MAP[chainId].donationBox,
-    AZERO.decimals,
     ARBITRUM_MAX_SUBMISSION_COST,
     AZERO_GAS_PRICE,
   ];
