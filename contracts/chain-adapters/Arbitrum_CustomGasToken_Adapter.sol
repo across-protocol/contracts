@@ -326,7 +326,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param l2GasLimit L2 gas limit for the message.
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
-    function getL1CallValue(uint32 l2GasLimit) public view returns (uint256) {
+    function getL1CallValue(uint32 l2GasLimit) public view virtual returns (uint256) {
         return _from18ToNativeDecimals(L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit);
     }
 
