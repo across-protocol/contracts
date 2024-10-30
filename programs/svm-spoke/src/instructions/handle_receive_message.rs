@@ -8,6 +8,9 @@ use crate::{
     State,
 };
 
+//TODO: we have inconsistent imports in this file, in some places referencing from source crates (SvmSpoke::id)
+// rather than importing at the top. fix overall and check other files.
+
 #[derive(Accounts)]
 #[instruction(params: HandleReceiveMessageParams)]
 pub struct HandleReceiveMessage<'info> {
@@ -41,13 +44,14 @@ pub struct HandleReceiveMessageParams {
     pub authority_bump: u8,
 }
 
+// TODO: consider refactoring this to be consistent with using free functions.
 impl<'info> HandleReceiveMessage<'info> {
     pub fn handle_receive_message(&self, params: &HandleReceiveMessageParams) -> Result<Vec<u8>> {
         // Return instruction data for the self invoked CPI based on the received message body.
         translate_message(&params.message_body)
     }
 }
-
+// TODO: ensure that CCTP blocks re-played messages sent over the bridge. i.e one pauseDeposit Call cant be replayed.
 fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
     match utils::get_solidity_selector(data)? {
         s if s == utils::encode_solidity_selector("pauseDeposits(bool)") => {
