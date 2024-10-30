@@ -1217,8 +1217,8 @@ abstract contract SpokePool is
         //    that the filler of this deposit will not assume re-org risk related to the block.timestamp of this
         //    event changing.
         uint32 exclusivityDeadline = exclusivityParameter;
-        if (exclusivityParameter > 0) {
-            if (exclusivityParameter <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
+        if (exclusivityDeadline > 0) {
+            if (exclusivityDeadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
                 exclusivityDeadline += uint32(currentTime);
             }
 
