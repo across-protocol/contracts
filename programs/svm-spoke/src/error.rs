@@ -71,6 +71,8 @@ pub enum SvmError {
     InvalidClaimInitializer,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
+    #[msg("Invalid remaining accounts for ATA creation!")]
+    InvalidATACreationAccounts,
 }
 
 // Errors to handle the CCTP interactions.

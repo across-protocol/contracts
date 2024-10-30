@@ -1,4 +1,5 @@
 mod admin;
+mod create_token_accounts;
 mod bundle;
 mod deposit;
 mod fill;
@@ -10,6 +11,7 @@ mod testable;
 mod token_bridge;
 
 pub use admin::*;
+pub use create_token_accounts::*;
 pub use bundle::*;
 pub use deposit::*;
 pub use fill::*;

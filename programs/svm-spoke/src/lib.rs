@@ -217,4 +217,8 @@ pub mod svm_spoke {
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
     }
+
+    pub fn create_token_accounts<'info>(ctx: Context<'_, '_, '_, 'info, CreateTokenAccounts<'info>>) -> Result<()> {
+        instructions::create_token_accounts(ctx)
+    }
 }
