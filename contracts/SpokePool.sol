@@ -571,6 +571,7 @@ abstract contract SpokePool is
             outputAmount,
             destinationChainId,
             exclusiveRelayer,
+            // Increment count of deposits so that deposit ID for this spoke pool is unique.
             numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
