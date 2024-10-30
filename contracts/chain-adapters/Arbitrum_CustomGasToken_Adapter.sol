@@ -42,13 +42,6 @@ interface ArbitrumL1ERC20Bridge {
      * @return address of the native token.
      */
     function nativeToken() external view returns (address);
-
-    /**
-     * @dev number of decimals used by the native token
-     *      This is set on bridge initialization using nativeToken.decimals()
-     *      If the token does not have decimals() method, we assume it have 0 decimals
-     */
-    function nativeTokenDecimals() external view returns (uint8);
 }
 
 /**
