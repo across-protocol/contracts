@@ -573,4 +573,75 @@ describe("svm_spoke.handle_receive_message", () => {
       );
     }
   });
+
+  it("Replaying an old message is not possible", async () => {
+    // Pause fills.
+    const calldata = ethereumIface.encodeFunctionData("pauseFills", [true]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody,
+    });
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(remainingAccounts)
+      .rpc();
+    let stateData = await program.account.state.fetch(state);
+    assert.isTrue(stateData.pausedFills, "Fills should be paused");
+
+    // Unpause fills.
+    nonce += 1;
+    const calldataUnpause = ethereumIface.encodeFunctionData("pauseFills", [false]);
+    const messageBodyUnpause = Buffer.from(calldataUnpause.slice(2), "hex");
+    const messageUnpause = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody: messageBodyUnpause,
+    });
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message: messageUnpause, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(remainingAccounts)
+      .rpc();
+    stateData = await program.account.state.fetch(state);
+    assert.isFalse(stateData.pausedFills, "Fills should not be paused");
+
+    // Replay the old unpause message.
+    try {
+      await messageTransmitterProgram.methods
+        .receiveMessage({ message: messageUnpause, attestation })
+        .accounts(receiveMessageAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Should not be able to replay unpause message");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "NonceAlreadyUsed", "Expected error code NonceAlreadyUsed");
+    }
+
+    // Replay most recent message shouldn't be possible either.
+    try {
+      await messageTransmitterProgram.methods
+        .receiveMessage({ message: messageUnpause, attestation })
+        .accounts(receiveMessageAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Should not be able to replay unpause message");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "NonceAlreadyUsed", "Expected error code NonceAlreadyUsed");
+    }
+  });
 });
