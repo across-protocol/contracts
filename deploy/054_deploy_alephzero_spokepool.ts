@@ -7,8 +7,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
-    // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
-    // with deprecated spoke pool.
     0,
     L2_ADDRESS_MAP[spokeChainId].l2GatewayRouter,
     // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
