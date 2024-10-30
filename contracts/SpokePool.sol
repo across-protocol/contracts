@@ -980,7 +980,7 @@ abstract contract SpokePool is
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, currentTime)) {
+        if (_fillIsExclusive(relayData.exclusivityDeadline, currentTime)) {
             revert NoSlowFillsInExclusivityWindow();
         }
         if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
