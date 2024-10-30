@@ -53,7 +53,7 @@ interface V3SpokePoolInterface {
         // Origin chain id.
         uint256 originChainId;
         // The id uniquely identifying this deposit on the origin chain.
-        uint256 depositId;
+        uint32 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
         uint32 fillDeadline;
         // The timestamp on the destination chain after which any relayer can fill the deposit.
@@ -102,7 +102,7 @@ interface V3SpokePoolInterface {
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 indexed destinationChainId,
-        uint256 indexed depositId,
+        uint32 indexed depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -114,7 +114,7 @@ interface V3SpokePoolInterface {
 
     event RequestedSpeedUpV3Deposit(
         uint256 updatedOutputAmount,
-        uint256 indexed depositId,
+        uint32 indexed depositId,
         address indexed depositor,
         address updatedRecipient,
         bytes updatedMessage,
@@ -128,7 +128,7 @@ interface V3SpokePoolInterface {
         uint256 outputAmount,
         uint256 repaymentChainId,
         uint256 indexed originChainId,
-        uint256 indexed depositId,
+        uint32 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         address exclusiveRelayer,
@@ -145,7 +145,7 @@ interface V3SpokePoolInterface {
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 indexed originChainId,
-        uint256 indexed depositId,
+        uint32 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         address exclusiveRelayer,
@@ -189,7 +189,7 @@ interface V3SpokePoolInterface {
 
     function speedUpV3Deposit(
         address depositor,
-        uint256 depositId,
+        uint32 depositId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
         bytes calldata updatedMessage,
@@ -222,7 +222,7 @@ interface V3SpokePoolInterface {
     error DisabledRoute();
     error InvalidQuoteTimestamp();
     error InvalidFillDeadline();
-    error InvalidExclusivityDeadline();
+    error InvalidExclusiveRelayer();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
     error NoSlowFillsInExclusivityWindow();

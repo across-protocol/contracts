@@ -13,7 +13,6 @@ struct AcrossOrderData {
     uint32 destinationChainId;
     address recipient;
     address exclusiveRelayer;
-    uint256 depositNonce;
     uint32 exclusivityPeriod;
     bytes message;
 }
@@ -35,7 +34,6 @@ bytes constant ACROSS_ORDER_DATA_TYPE = abi.encodePacked(
     "uint32 destinationChainId,",
     "address recipient,",
     "address exclusiveRelayer,"
-    "uint256 depositNonce,",
     "uint32 exclusivityPeriod,",
     "bytes message)"
 );
