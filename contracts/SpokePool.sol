@@ -1217,8 +1217,14 @@ abstract contract SpokePool is
         //    that the filler of this deposit will not assume re-org risk related to the block.timestamp of this
         //    event changing.
         uint32 exclusivityDeadline = exclusivityParameter;
-        if (exclusivityParameter > 0 && exclusivityParameter <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
+        if (exclusivityParameter > 0) {
+            if (exclusivityParameter <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
                 exclusivityDeadline += uint32(currentTime);
+            }
+
+            // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
+            //  by forcing them to specify an exclusive relayer.
+            if (exclusiveRelayer == address(0)) revert InvalidExclusiveRelayer();
         }
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
