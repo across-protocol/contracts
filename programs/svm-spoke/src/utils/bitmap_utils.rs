@@ -6,7 +6,7 @@ pub fn is_claimed(claimed_bitmap: &Vec<u8>, index: u32) -> bool {
     let bit_in_byte_index = (index % 8) as usize; // Index of the bit within the byte
     let claimed_byte = claimed_bitmap[byte_index];
     let mask = 1 << bit_in_byte_index;
-    claimed_byte & mask == mask
+    (claimed_byte & mask) == mask
 }
 
 pub fn set_claimed(claimed_bitmap: &mut Vec<u8>, index: u32) {
