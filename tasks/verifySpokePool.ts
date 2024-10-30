@@ -2,9 +2,9 @@ import assert from "assert";
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 
-const { ALEPH_ZERO, MAINNET, POLYGON, SEPOLIA } = CHAIN_IDs;
+const { MAINNET, SEPOLIA } = CHAIN_IDs;
 const TEXT_PADDING = 36;
 const CHAIN_PADDING = Object.values(MAINNET_CHAIN_IDs)
   .sort((x, y) => x - y)
@@ -64,11 +64,9 @@ task("verify-spokepool", "Verify the configuration of a deployed SpokePool")
     console.log("SpokePool.fillDeadlineBuffer()".padEnd(TEXT_PADDING) + ": " + fillDeadlineBuffer);
 
     const wrappedNative = bytes32ToAddress(results.wrappedNativeToken);
-    const customWrappedNativeSymbols = {
-      [POLYGON]: "WMATIC",
-      [ALEPH_ZERO]: "WAZERO",
-    };
-    const wrappedNativeSymbol = customWrappedNativeSymbols[spokeChainId] || "WETH";
+    const nativeTokenSymbol = PRODUCTION_NETWORKS[spokeChainId].nativeToken;
+    const wrappedPrefix = "W";
+    const wrappedNativeSymbol = `${wrappedPrefix}${nativeTokenSymbol}`;
     const expectedWrappedNative = TOKEN_SYMBOLS_MAP[wrappedNativeSymbol].addresses[spokeChainId];
     assert(wrappedNative === expectedWrappedNative, `wrappedNativeToken: ${wrappedNative} != ${expectedWrappedNative}`);
     console.log("SpokePool.wrappedNativeToken()".padEnd(TEXT_PADDING) + ": " + wrappedNative);
