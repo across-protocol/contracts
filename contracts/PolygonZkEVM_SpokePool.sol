@@ -100,15 +100,16 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
      * @param _l2PolygonZkEVMBridge Address of Polygon zkEVM's canonical bridge contract on L2.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function initialize(
         IPolygonZkEVMBridge _l2PolygonZkEVMBridge,
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _hubPool);
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setL2PolygonZkEVMBridge(_l2PolygonZkEVMBridge);
     }
 
@@ -177,7 +178,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             l2PolygonZkEVMBridge.bridgeAsset{ value: amountToReturn }(
                 POLYGON_ZKEVM_L1_NETWORK_ID,
-                hubPool,
+                withdrawalRecipient,
                 amountToReturn,
                 address(0),
                 true, // Indicates if the new global exit root is updated or not, which is true for asset bridges
@@ -187,7 +188,7 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2PolygonZkEVMBridge), amountToReturn);
             l2PolygonZkEVMBridge.bridgeAsset(
                 POLYGON_ZKEVM_L1_NETWORK_ID,
-                hubPool,
+                withdrawalRecipient,
                 amountToReturn,
                 l2TokenAddress,
                 true, // Indicates if the new global exit root is updated or not, which is true for asset bridges

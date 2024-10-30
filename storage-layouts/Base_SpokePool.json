@@ -68,7 +68,7 @@
     },
     {
       "contract": "contracts/Base_SpokePool.sol:Base_SpokePool",
-      "label": "hubPool",
+      "label": "withdrawalRecipient",
       "offset": 0,
       "slot": "2154"
     },

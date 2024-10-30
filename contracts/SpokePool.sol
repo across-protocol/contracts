@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
+import "./erc7683/ERC7683.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
@@ -33,7 +34,8 @@ abstract contract SpokePool is
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
     MultiCallerUpgradeable,
-    EIP712CrossChainUpgradeable
+    EIP712CrossChainUpgradeable,
+    IDestinationSettler
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
@@ -44,7 +46,7 @@ abstract contract SpokePool is
 
     // Address of the L1 contract that will send tokens to and receive tokens from this contract to fund relayer
     // refunds and slow relays.
-    address public hubPool;
+    address public withdrawalRecipient;
 
     // Note: The following two storage variables prefixed with DEPRECATED used to be variables that could be set by
     // the cross-domain admin. Admins ended up not changing these in production, so to reduce
@@ -145,7 +147,7 @@ abstract contract SpokePool is
      *                EVENTS                *
      ****************************************/
     event SetXDomainAdmin(address indexed newAdmin);
-    event SetHubPool(address indexed newHubPool);
+    event SetWithdrawalRecipient(address indexed newWithdrawalRecipient);
     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
     event RelayedRootBundle(
         uint32 indexed rootBundleId,
@@ -267,19 +269,20 @@ abstract contract SpokePool is
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
+     * likely be the hub pool.
      */
     function __SpokePool_init(
         uint32 _initialDepositId,
         address _crossDomainAdmin,
-        address _hubPool
+        address _withdrawalRecipient
     ) public onlyInitializing {
         numberOfDeposits = _initialDepositId;
         __EIP712_init("ACROSS-V2", "1.0.0");
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         _setCrossDomainAdmin(_crossDomainAdmin);
-        _setHubPool(_hubPool);
+        _setWithdrawalRecipient(_withdrawalRecipient);
     }
 
     /****************************************
@@ -316,7 +319,7 @@ abstract contract SpokePool is
     /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
-     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * @dev Affects `deposit()` but not `speedUpV3Deposit()`, so that existing deposits can be sped up and still
      * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
@@ -345,11 +348,11 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Change L1 hub pool address. Callable by admin only.
-     * @param newHubPool New hub pool.
+     * @notice Change L1 withdrawal recipient address. Callable by admin only.
+     * @param newWithdrawalRecipient New withdrawal recipient address.
      */
-    function setHubPool(address newHubPool) public override onlyAdmin nonReentrant {
-        _setHubPool(newHubPool);
+    function setWithdrawalRecipient(address newWithdrawalRecipient) public override onlyAdmin nonReentrant {
+        _setWithdrawalRecipient(newWithdrawalRecipient);
     }
 
     /**
@@ -836,9 +839,8 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer != msg.sender &&
-            relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer != address(0)
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -882,7 +884,10 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+        if (
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer != msg.sender
+        ) {
             revert NotExclusiveRelayer();
         }
 
@@ -924,14 +929,15 @@ abstract contract SpokePool is
      * then Across will not include a slow fill for the intended deposit.
      */
     function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+        uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
-        // this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime()) {
+        // during this exclusivity period.
+        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, currentTime)) {
             revert NoSlowFillsInExclusivityWindow();
         }
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+        if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
@@ -951,6 +957,31 @@ abstract contract SpokePool is
             relayData.recipient,
             relayData.message
         );
+    }
+
+    /**
+     * @notice Fills a single leg of a particular order on the destination chain
+     * @dev ERC-7683 fill function.
+     * @param orderId Unique order identifier for this order
+     * @param originData Data emitted on the origin to parameterize the fill
+     * @param fillerData Data provided by the filler to inform the fill or express their preferences
+     */
+    function fill(
+        bytes32 orderId,
+        bytes calldata originData,
+        bytes calldata fillerData
+    ) external {
+        if (keccak256(originData) != orderId) {
+            revert WrongERC7683OrderId();
+        }
+
+        // Must do a delegatecall because the function requires the inputs to be calldata.
+        (bool success, bytes memory data) = address(this).delegatecall(
+            abi.encodeWithSelector(this.fillV3Relay.selector, abi.encodePacked(originData, fillerData))
+        );
+        if (!success) {
+            revert LowLevelCallFailed(data);
+        }
     }
 
     /**************************************
@@ -1170,10 +1201,10 @@ abstract contract SpokePool is
         emit SetXDomainAdmin(newCrossDomainAdmin);
     }
 
-    function _setHubPool(address newHubPool) internal {
-        if (newHubPool == address(0)) revert InvalidHubPool();
-        hubPool = newHubPool;
-        emit SetHubPool(newHubPool);
+    function _setWithdrawalRecipient(address newWithdrawalRecipient) internal {
+        if (newWithdrawalRecipient == address(0)) revert InvalidWithdrawalRecipient();
+        withdrawalRecipient = newWithdrawalRecipient;
+        emit SetWithdrawalRecipient(newWithdrawalRecipient);
     }
 
     function _preExecuteLeafHook(address) internal virtual {
@@ -1380,6 +1411,15 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
+    }
+
+    // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
+    function _fillIsExclusive(
+        address exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        uint32 currentTime
+    ) internal pure returns (bool) {
+        return exclusivityDeadline >= currentTime && exclusiveRelayer != address(0);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute

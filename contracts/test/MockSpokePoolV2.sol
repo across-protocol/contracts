@@ -17,7 +17,7 @@ contract MockSpokePoolV2 is MockSpokePool {
     // Demonstrative of how we could reset state variables in a V2 contract conveniently while initializing new
     // modules. The `reinitializer` modifier is required to create new Initializable contracts.
     function reinitialize(address _hubPool) public reinitializer(2) {
-        _setHubPool(_hubPool);
+        _setWithdrawalRecipient(_hubPool);
     }
 
     // Demonstrative new function we could add in a V2 contract.

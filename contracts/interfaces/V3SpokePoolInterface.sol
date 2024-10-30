@@ -222,7 +222,6 @@ interface V3SpokePoolInterface {
     error DisabledRoute();
     error InvalidQuoteTimestamp();
     error InvalidFillDeadline();
-    error InvalidExclusiveRelayer();
     error InvalidExclusivityDeadline();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
@@ -235,4 +234,6 @@ interface V3SpokePoolInterface {
     error InvalidMerkleLeaf();
     error ClaimedMerkleLeaf();
     error InvalidPayoutAdjustmentPct();
+    error WrongERC7683OrderId();
+    error LowLevelCallFailed(bytes data);
 }

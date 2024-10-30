@@ -16,12 +16,15 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
+const tasks = [
+  "enableL1TokenAcrossEcosystem",
+  "finalizeScrollClaims",
+  "rescueStuckScrollTxn",
+  "verifySpokePool",
+  "testChainAdapter",
+];
 // eslint-disable-next-line node/no-missing-require
-require("./tasks/enableL1TokenAcrossEcosystem");
-// eslint-disable-next-line node/no-missing-require
-require("./tasks/finalizeScrollClaims");
-// eslint-disable-next-line node/no-missing-require
-require("./tasks/rescueStuckScrollTxn");
+tasks.forEach((task) => require(`./tasks/${task}`));
 
 dotenv.config();
 
@@ -484,6 +487,9 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: "./typechain",
     target: "ethers-v5",
+  },
+  paths: {
+    tests: "./test/evm/hardhat",
   },
 };
 
