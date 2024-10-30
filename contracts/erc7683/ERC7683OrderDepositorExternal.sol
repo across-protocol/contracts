@@ -50,6 +50,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
+        uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -57,24 +58,45 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
     ) internal override {
         IERC20(inputToken).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
 
-        SPOKE_POOL.depositV3(
-            depositor,
-            recipient,
-            inputToken,
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityDeadline,
-            message
-        );
+        if (depositNonce == 0) {
+            SPOKE_POOL.depositV3(
+                depositor,
+                recipient,
+                inputToken,
+                outputToken,
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayer,
+                quoteTimestamp,
+                fillDeadline,
+                exclusivityDeadline,
+                message
+            );
+        } else {
+            SPOKE_POOL.unsafeDepositV3(
+                depositor,
+                recipient,
+                inputToken,
+                outputToken,
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayer,
+                depositNonce,
+                quoteTimestamp,
+                fillDeadline,
+                exclusivityDeadline,
+                message
+            );
+        }
     }
 
-    function _currentDepositId() internal view override returns (uint32) {
-        return SPOKE_POOL.numberOfDeposits();
+    function computeDepositId(uint256 depositNonce, address depositor) public view override returns (uint256) {
+        return
+            depositNonce == 0
+                ? SPOKE_POOL.numberOfDeposits()
+                : SPOKE_POOL.getUnsafeDepositId(address(this), depositor, depositNonce);
     }
 
     function _destinationSettler(uint256 chainId) internal view override returns (address) {
