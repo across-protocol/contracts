@@ -1,15 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
-use crate::{
-    error::CustomError,
-    event::V3FundsDeposited,
-    get_current_time,
-    state::{Route, State},
-};
-
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use crate::{ error::{ CommonError, SvmError }, event::V3FundsDeposited, get_current_time, state::{ Route, State } };
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -28,20 +20,21 @@ use anchor_spl::token_interface::{
     message: Vec<u8>
 )]
 pub struct DepositV3<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
     #[account(
         mut,
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
         bump,
-        constraint = !state.paused_deposits @ CustomError::DepositsArePaused
+        constraint = !state.paused_deposits @ CommonError::DepositsArePaused
     )]
     pub state: Account<'info, State>,
 
-    // TODO: linter to format this line
-    #[account(mut, seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()], bump)]
+    #[account(
+        seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
+        bump
+    )]
     pub route: Account<'info, Route>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
 
     #[account(
         mut,
@@ -59,12 +52,10 @@ pub struct DepositV3<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    // TODO: why are we using mint::token_program,token::token_program and associated_token::token_program?
     #[account(
-        mut,
         mint::token_program = token_program,
         // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
-        constraint = mint.key() == input_token @ CustomError::InvalidMint
+        constraint = mint.key() == input_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -84,12 +75,12 @@ pub fn deposit_v3(
     quote_timestamp: u32,
     fill_deadline: u32,
     exclusivity_deadline: u32,
-    message: Vec<u8>,
+    message: Vec<u8>
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
     if !ctx.accounts.route.enabled {
-        return err!(CustomError::DisabledRoute);
+        return err!(CommonError::DisabledRoute);
     }
 
     let current_time = get_current_time(state)?;
@@ -98,11 +89,11 @@ pub fn deposit_v3(
     // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
     // not caught via overflow.
     if current_time - quote_timestamp > state.deposit_quote_time_buffer {
-        return err!(CustomError::InvalidQuoteTimestamp);
+        return err!(CommonError::InvalidQuoteTimestamp);
     }
 
     if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
-        return err!(CustomError::InvalidFillDeadline);
+        return err!(CommonError::InvalidFillDeadline);
     }
 
     let transfer_accounts = TransferChecked {
@@ -111,10 +102,7 @@ pub fn deposit_v3(
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.signer.to_account_info(),
     };
-    let cpi_context = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-    );
+    let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
     transfer_checked(cpi_context, input_amount, ctx.accounts.mint.decimals)?;
 
     state.number_of_deposits += 1; // Increment number of deposits

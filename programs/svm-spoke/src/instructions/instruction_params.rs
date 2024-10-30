@@ -1,6 +1,6 @@
-use anchor_lang::{prelude::*, solana_program::system_program};
+use anchor_lang::{ prelude::*, solana_program::system_program };
 
-use crate::error::CustomError;
+use crate::error::SvmError;
 
 #[derive(Accounts)]
 #[instruction(total_size: u32)]
@@ -24,15 +24,10 @@ pub struct InitializeInstructionParams<'info> {
 #[derive(Accounts)]
 #[instruction(offset: u32, fragment: Vec<u8>)]
 pub struct WriteInstructionParamsFragment<'info> {
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     /// CHECK: use unchecked account in order to be able writing raw data fragments.
-    #[account(
-        mut,
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump
-    )]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -41,7 +36,7 @@ pub struct WriteInstructionParamsFragment<'info> {
 pub fn write_instruction_params_fragment<'info>(
     ctx: Context<WriteInstructionParamsFragment<'info>>,
     offset: u32,
-    fragment: Vec<u8>,
+    fragment: Vec<u8>
 ) -> Result<()> {
     let account_info = ctx.accounts.instruction_params.to_account_info();
 
@@ -50,7 +45,7 @@ pub fn write_instruction_params_fragment<'info>(
     let start = offset as usize;
     let end = start + fragment.len();
 
-    require!(end <= data.len(), CustomError::ParamsWriteOverflow);
+    require!(end <= data.len(), SvmError::ParamsWriteOverflow);
 
     data[start..end].copy_from_slice(&fragment);
 
@@ -63,11 +58,7 @@ pub struct CloseInstructionParams<'info> {
     pub signer: Signer<'info>,
 
     /// CHECK: We cannot check account type as its discriminator could have been overwritten.
-    #[account(
-        mut,
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump,
-    )]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: UncheckedAccount<'info>,
 }
 
@@ -78,9 +69,7 @@ pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<
 
     // Transfer tokens from the account to the sol_destination.
     let dest_starting_lamports = sol_destination.lamports();
-    **sol_destination.lamports.borrow_mut() = dest_starting_lamports
-        .checked_add(closed_account.lamports())
-        .unwrap();
+    **sol_destination.lamports.borrow_mut() = dest_starting_lamports.checked_add(closed_account.lamports()).unwrap();
     **closed_account.lamports.borrow_mut() = 0;
 
     closed_account.assign(&system_program::ID);
