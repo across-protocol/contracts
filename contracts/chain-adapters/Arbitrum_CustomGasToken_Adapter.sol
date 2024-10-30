@@ -155,11 +155,11 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    // The Arbitrum Inbox requires that this uses the same precision as the L2's native gas token.
+    // The Arbitrum Inbox requires that this uses 18 decimal precision.
     uint256 public immutable L2_MAX_SUBMISSION_COST;
 
-    // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth_gasPrice RPC)
-    // Since this price fluctuates, it should be set to a conservative value. The gas price must be specified in Wei.
+    // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
+    // The Arbitrum Inbox requires that this is specified in gWei (e.g. 1e9 = 1 gWei)
     uint256 public immutable L2_GAS_PRICE;
 
     // Native token expected to be sent in L2 message. Should be 0 for most use cases of this constant. This
@@ -171,6 +171,10 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
     uint32 public constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
     // Gas limit for L2 execution of a message sent via the inbox.
     uint32 public constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
+
+    // The number of decimals of precision for the custom gas token. This is defined in the constructor and not dynamically fetched since decimals are
+    // not part of the standard ERC20 interface.
+    uint8 public immutable NATIVE_TOKEN_DECIMALS;
 
     // This address on L2 receives extra gas token that is left over after relaying a message via the inbox.
     address public immutable L2_REFUND_L2_ADDRESS;
@@ -216,6 +220,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         IERC20 _l1Usdc,
         ICCTPTokenMessenger _cctpTokenMessenger,
         uint32 _cctpDomainId,
+        uint8 _nativeTokenDecimals,
         FunderInterface _customGasTokenFunder,
         uint256 _l2MaxSubmissionCost,
         uint256 _l2GasPrice
@@ -228,6 +233,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         L2_GAS_PRICE = _l2GasPrice;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
+        NATIVE_TOKEN_DECIMALS = _nativeTokenDecimals;
     }
 
     /**
@@ -327,7 +333,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @return amount of gas token that this contract needs to hold in order for relayMessage to succeed.
      */
     function getL1CallValue(uint32 l2GasLimit) public view returns (uint256) {
-        return L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit;
+        return _from18ToNativeDecimals(L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * l2GasLimit);
     }
 
     function _pullCustomGas(uint32 l2GasLimit) internal returns (uint256) {
@@ -335,5 +341,23 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         CUSTOM_GAS_TOKEN_FUNDER.withdraw(CUSTOM_GAS_TOKEN, requiredL1CallValue);
         if (CUSTOM_GAS_TOKEN.balanceOf(address(this)) < requiredL1CallValue) revert InsufficientCustomGasToken();
         return requiredL1CallValue;
+    }
+
+    function _from18ToNativeDecimals(uint256 amount) internal view returns (uint256) {
+        if (NATIVE_TOKEN_DECIMALS == 18) {
+            return amount;
+        } else if (NATIVE_TOKEN_DECIMALS < 18) {
+            // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
+            uint256 reductionFactor = 10**(18 - NATIVE_TOKEN_DECIMALS);
+            uint256 divFloor = amount / reductionFactor;
+            uint256 mod = amount % reductionFactor;
+            if (mod != 0) {
+                return divFloor + 1;
+            } else {
+                return divFloor;
+            }
+        } else {
+            return amount * 10**(NATIVE_TOKEN_DECIMALS - 18);
+        }
     }
 }
