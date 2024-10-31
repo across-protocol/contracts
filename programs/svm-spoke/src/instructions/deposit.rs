@@ -124,5 +124,3 @@ pub fn deposit_v3(
 
     Ok(())
 }
-
-// TODO: do we need other flavours of deposit? like speed up deposit
