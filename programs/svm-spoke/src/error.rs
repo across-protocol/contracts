@@ -71,6 +71,8 @@ pub enum SvmError {
     InvalidClaimInitializer,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
+    #[msg("Depositor Must be signer!")]
+    DepositorMustBeSigner,
 }
 
 // Errors to handle the CCTP interactions.
