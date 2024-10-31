@@ -1,10 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Test } from "../../target/types/test";
-import { expect } from "chai";
+import { assert } from "chai";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { ethers } from "ethers";
 import { BigNumberish } from "ethers";
+import { common } from "./SvmSpoke.common";
+const { assertSE } = common;
+
 function randomAddress(): string {
   const wallet = ethers.Wallet.createRandom();
   return wallet.address;
@@ -79,7 +82,7 @@ describe("utils.merkle", () => {
     const leaf = ethers.utils.arrayify(hashFn(relayerRefundLeaves[14]));
 
     // Verify valid leaf
-    const tx = await program.methods
+    await program.methods
       .verify(
         Array.from(root),
         Array.from(leaf),
@@ -87,18 +90,9 @@ describe("utils.merkle", () => {
       )
       .rpc();
 
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    const txLogs = await provider.connection.getTransaction(tx, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0,
-    });
-
-    expect(txLogs?.meta?.logMessages?.some((log) => log.includes("Merkle proof verified successfully"))).to.be.true;
-
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     const invalidLeaf = ethers.utils.arrayify(hashFn(invalidRelayerRefundLeaf));
 
-    let error: any;
     try {
       await program.methods
         .verify(
@@ -107,12 +101,11 @@ describe("utils.merkle", () => {
           proof.map((p) => Array.from(p))
         )
         .rpc();
-    } catch (e) {
-      error = e;
+      assert.fail("Should not be able to verify invalid leaf");
+    } catch (err: any) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assertSE(err.error.errorCode.code, "InvalidMerkleProof", "Expected error code InvalidMerkleProof");
     }
-
-    expect(error).to.exist;
-    expect(error.message.includes("Invalid Merkle proof")).to.be.true;
   });
 
   it("Test merkle proof verification Across tx", async () => {
@@ -134,20 +127,12 @@ describe("utils.merkle", () => {
     const proofBuffers = proof.map((p) => Buffer.from(p.slice(2), "hex"));
 
     // Verify valid leaf
-    const tx = await program.methods
+    await program.methods
       .verify(
         Array.from(rootBuffer),
         Array.from(leafBuffer),
         proofBuffers.map((b) => Array.from(b))
       )
       .rpc();
-
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    const txLogs = await provider.connection.getTransaction(tx, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0,
-    });
-
-    expect(txLogs?.meta?.logMessages?.some((log) => log.includes("Merkle proof verified successfully"))).to.be.true;
   });
 });

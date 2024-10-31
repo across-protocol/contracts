@@ -1,3 +1,5 @@
+// This script is used by a chain admin to enable or disable a route for a token on the Solana Spoke Pool.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
@@ -23,7 +25,7 @@ const argv = yargs(hideBin(process.argv))
 async function enableRoute(): Promise<void> {
   const resolvedArgv = await argv;
   const seed = new BN(resolvedArgv.seed);
-  const originToken = Array.from(new PublicKey(resolvedArgv.originToken).toBytes());
+  const originToken = new PublicKey(resolvedArgv.originToken);
   const chainId = new BN(resolvedArgv.chainId);
   const enabled = resolvedArgv.enabled;
 
@@ -35,7 +37,7 @@ async function enableRoute(): Promise<void> {
 
   // Define the route account PDA
   const [routePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), Buffer.from(originToken), statePda.toBytes(), chainId.toArrayLike(Buffer, "le", 8)],
+    [Buffer.from("route"), originToken.toBytes(), statePda.toBytes(), chainId.toArrayLike(Buffer, "le", 8)],
     programId
   );
 
@@ -45,7 +47,7 @@ async function enableRoute(): Promise<void> {
   console.log("Enabling route...");
   console.table([
     { Property: "seed", Value: seed.toString() },
-    { Property: "originToken", Value: new PublicKey(originToken).toString() },
+    { Property: "originToken", Value: originToken.toString() },
     { Property: "chainId", Value: chainId.toString() },
     { Property: "enabled", Value: enabled },
     { Property: "programId", Value: programId.toString() },
@@ -56,7 +58,7 @@ async function enableRoute(): Promise<void> {
 
   // Create ATA for the origin token to be stored by state (vault).
   const vault = getAssociatedTokenAddressSync(
-    new PublicKey(originToken),
+    originToken,
     statePda,
     true,
     TOKEN_PROGRAM_ID,
@@ -70,7 +72,7 @@ async function enableRoute(): Promise<void> {
       state: statePda,
       route: routePda,
       vault: vault,
-      originTokenMint: new PublicKey(originToken),
+      originTokenMint: originToken,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
