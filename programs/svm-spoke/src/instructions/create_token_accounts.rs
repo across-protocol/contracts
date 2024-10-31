@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{ associated_token::{ self, AssociatedToken }, token_interface::{ Mint, TokenInterface } };
+use anchor_spl::{
+    associated_token::{self, AssociatedToken},
+    token_interface::{Mint, TokenInterface},
+};
 
 use crate::error::SvmError;
 
