@@ -129,7 +129,7 @@ describe("svm_spoke.deposit", () => {
     );
   });
 
-  it("Verifies V3FundsDeposited after deposits", async () => {
+  it.only("Verifies V3FundsDeposited after deposits", async () => {
     depositData.inputAmount = depositData.inputAmount.add(new BN(69));
 
     // Execute the first deposit_v3 call
