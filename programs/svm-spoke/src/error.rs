@@ -73,6 +73,8 @@ pub enum SvmError {
     InvalidProductionSeed,
     #[msg("Depositor Must be signer!")]
     DepositorMustBeSigner,
+    #[msg("Invalid remaining accounts for ATA creation!")]
+    InvalidATACreationAccounts,
 }
 
 // Errors to handle the CCTP interactions.

@@ -13,11 +13,6 @@ use crate::{ error::{ CommonError, SvmError }, event::V3FundsDeposited, get_curr
     input_amount: u64,
     output_amount: u64,
     destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_deadline: u32,
-    message: Vec<u8>
 )]
 pub struct DepositV3<'info> {
     #[account(

@@ -117,7 +117,10 @@ pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u6
     };
     token_messenger_minter::cpi::deposit_for_burn(cpi_ctx, params)?;
 
-    emit_cpi!(BridgedToHubPool { amount, mint: ctx.accounts.mint.key() });
+    emit_cpi!(BridgedToHubPool {
+        amount,
+        mint: ctx.accounts.mint.key(),
+    });
 
     Ok(())
 }

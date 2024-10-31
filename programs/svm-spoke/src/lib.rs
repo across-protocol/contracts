@@ -6,6 +6,7 @@ declare_id!("Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q");
 declare_program!(message_transmitter);
 declare_program!(token_messenger_minter);
 
+pub mod common;
 pub mod constants;
 mod constraints;
 pub mod error;
@@ -13,11 +14,10 @@ pub mod event;
 mod instructions;
 mod state;
 pub mod utils;
-pub mod common;
 
+use common::*;
 use instructions::*;
 use state::*;
-use common::*;
 
 #[program]
 pub mod svm_spoke {
@@ -216,5 +216,9 @@ pub mod svm_spoke {
         _token_account: Pubkey // Only used in account constraints.
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
+    }
+
+    pub fn create_token_accounts<'info>(ctx: Context<'_, '_, '_, 'info, CreateTokenAccounts<'info>>) -> Result<()> {
+        instructions::create_token_accounts(ctx)
     }
 }

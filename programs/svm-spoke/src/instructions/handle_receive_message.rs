@@ -107,7 +107,11 @@ pub fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<
         }
     }
 
-    let instruction = Instruction { program_id: crate::ID, accounts, data: data.to_owned() };
+    let instruction = Instruction {
+        program_id: crate::ID,
+        accounts,
+        data: data.to_owned(),
+    };
 
     program::invoke_signed(
         &instruction,
