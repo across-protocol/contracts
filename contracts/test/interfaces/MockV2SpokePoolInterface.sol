@@ -35,26 +35,4 @@ interface MockV2SpokePoolInterface {
         RelayData relayData;
         int256 payoutAdjustmentPct;
     }
-
-    event FundsDeposited(
-        uint256 amount,
-        uint256 originChainId,
-        uint256 indexed destinationChainId,
-        int64 relayerFeePct,
-        uint32 indexed depositId,
-        uint32 quoteTimestamp,
-        address originToken,
-        address recipient,
-        address indexed depositor,
-        bytes message
-    );
-
-    event RequestedSpeedUpDeposit(
-        int64 newRelayerFeePct,
-        uint32 indexed depositId,
-        address indexed depositor,
-        address updatedRecipient,
-        bytes updatedMessage,
-        bytes depositorSignature
-    );
 }
