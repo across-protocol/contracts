@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorError, AnchorProvider, Wallet } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -146,5 +146,39 @@ describe("svm_spoke.create_token_accounts", () => {
     assertSE(associatedTokenAccount.mint, mint, "Wrong mint");
     assertSE(associatedTokenAccount.owner, authority, "Wrong owner");
     assert.isTrue(associatedTokenAccount.isInitialized, "Account not initialized");
+  });
+
+  it("Maximum number of new accounts", async () => {
+    // Each call to create ATA invokes 4 additional inner CPIs, so above 12 we would hit Max instruction trace length
+    // limit of 64.
+    const numberOfAccounts = 12;
+    const authorities = Array.from({ length: numberOfAccounts }, () => Keypair.generate().publicKey);
+    const associatedTokens = authorities.map((authority) => getAssociatedTokenAddressSync(mint, authority));
+
+    const remainingAccounts = authorities.flatMap((authority, index) => [
+      { pubkey: authority, isWritable: false, isSigner: false },
+      { pubkey: associatedTokens[index], isWritable: true, isSigner: false },
+    ]);
+
+    // Build and send the transaction with increased CU limit as the default 200k is not sufficient.
+    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 });
+    const createTokenAccountsInstruction = await program.methods
+      .createTokenAccounts()
+      .accounts({ mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .remainingAccounts(remainingAccounts)
+      .instruction();
+    const transaction = new anchor.web3.Transaction();
+    transaction.add(computeBudgetInstruction);
+    transaction.add(createTokenAccountsInstruction);
+    await connection.sendTransaction(transaction, [payer]);
+
+    // Wait before transaction is processed
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify all accounts were created
+    for (const associatedToken of associatedTokens) {
+      const associatedTokenAccount = await getAccount(connection, associatedToken);
+      assert.isTrue(associatedTokenAccount.isInitialized, "Account not initialized");
+    }
   });
 });
