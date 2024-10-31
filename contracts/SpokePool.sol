@@ -319,7 +319,7 @@ abstract contract SpokePool is
     /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
-     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * @dev Affects `deposit()` but not `speedUpV3Deposit()`, so that existing deposits can be sped up and still
      * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
@@ -839,9 +839,8 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer != msg.sender &&
-            relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer != address(0)
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -885,7 +884,10 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+        if (
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer != msg.sender
+        ) {
             revert NotExclusiveRelayer();
         }
 
@@ -927,12 +929,15 @@ abstract contract SpokePool is
      * then Across will not include a slow fill for the intended deposit.
      */
     function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+        uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime()) revert NoSlowFillsInExclusivityWindow();
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, currentTime)) {
+            revert NoSlowFillsInExclusivityWindow();
+        }
+        if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
@@ -1406,6 +1411,15 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
+    }
+
+    // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
+    function _fillIsExclusive(
+        address exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        uint32 currentTime
+    ) internal pure returns (bool) {
+        return exclusivityDeadline >= currentTime && exclusiveRelayer != address(0);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
