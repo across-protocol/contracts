@@ -148,6 +148,7 @@ pub mod svm_spoke {
     }
 
     // CCTP methods.
+    // TODO: consider refactoring this to be consistent with using free functions.
     pub fn handle_receive_message<'info>(
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
         params: HandleReceiveMessageParams,
