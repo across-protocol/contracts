@@ -1,17 +1,17 @@
-use anchor_lang::{ prelude::*, solana_program::keccak };
-use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
+use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
     common::V3RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
-    error::{ CommonError, SvmError },
+    error::{CommonError, SvmError},
     get_current_time,
-    state::{ FillStatus, FillStatusAccount, RootBundle, State },
+    state::{FillStatus, FillStatusAccount, RootBundle, State},
     utils::verify_merkle_proof,
 };
 
-use crate::event::{ FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo };
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -169,14 +169,14 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
 pub fn execute_v3_slow_relay_leaf(
     ctx: Context<ExecuteV3SlowRelayLeaf>,
     slow_fill_leaf: V3SlowFill,
-    proof: Vec<[u8; 32]>
+    proof: Vec<[u8; 32]>,
 ) -> Result<()> {
     let current_time = get_current_time(&ctx.accounts.state)?;
 
     let relay_data = slow_fill_leaf.relay_data;
 
     let slow_fill = V3SlowFill {
-        relay_data: relay_data.clone(), // Clone relay_data to avoid move
+        relay_data: relay_data.clone(),        // Clone relay_data to avoid move
         chain_id: ctx.accounts.state.chain_id, // This overrides caller provided chain_id, same as in EVM SpokePool.
         updated_output_amount: slow_fill_leaf.updated_output_amount,
     };
@@ -206,14 +206,18 @@ pub fn execute_v3_slow_relay_leaf(
         from: ctx.accounts.vault.to_account_info(), // Pull from the vault
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.recipient_token_account.to_account_info(), // Send to the recipient
-        authority: ctx.accounts.state.to_account_info(), // Authority is the state (owner of the vault)
+        authority: ctx.accounts.state.to_account_info(),            // Authority is the state (owner of the vault)
     };
     let cpi_context = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         transfer_accounts,
-        signer_seeds
+        signer_seeds,
     );
-    transfer_checked(cpi_context, slow_fill_leaf.updated_output_amount, ctx.accounts.mint.decimals)?;
+    transfer_checked(
+        cpi_context,
+        slow_fill_leaf.updated_output_amount,
+        ctx.accounts.mint.decimals,
+    )?;
 
     // Update the fill status to Filled. Note we don't set the relayer here as it is set when the slow fill was requested.
     fill_status_account.status = FillStatus::Filled;

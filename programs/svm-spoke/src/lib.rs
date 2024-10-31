@@ -32,7 +32,7 @@ pub mod svm_spoke {
         remote_domain: u32,
         cross_domain_admin: Pubkey,
         deposit_quote_time_buffer: u32,
-        fill_deadline_buffer: u32
+        fill_deadline_buffer: u32,
     ) -> Result<()> {
         instructions::initialize(
             ctx,
@@ -42,7 +42,7 @@ pub mod svm_spoke {
             remote_domain,
             cross_domain_admin,
             deposit_quote_time_buffer,
-            fill_deadline_buffer
+            fill_deadline_buffer,
         )
     }
 
@@ -57,22 +57,23 @@ pub mod svm_spoke {
     pub fn relay_root_bundle(
         ctx: Context<RelayRootBundle>,
         relayer_refund_root: [u8; 32],
-        slow_relay_root: [u8; 32]
+        slow_relay_root: [u8; 32],
     ) -> Result<()> {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
     pub fn emergency_delete_root_bundle(
         ctx: Context<EmergencyDeleteRootBundleState>,
-        root_bundle_id: u32
+        root_bundle_id: u32,
     ) -> Result<()> {
         instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
     }
 
     pub fn execute_relayer_refund_leaf<'c, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
-        where 'c: 'info
+    where
+        'c: 'info,
     {
         instructions::execute_relayer_refund_leaf(ctx)
     }
@@ -89,7 +90,7 @@ pub mod svm_spoke {
         ctx: Context<SetEnableRoute>,
         origin_token: Pubkey,
         destination_chain_id: u64,
-        enabled: bool
+        enabled: bool,
     ) -> Result<()> {
         instructions::set_enable_route(ctx, origin_token, destination_chain_id, enabled)
     }
@@ -112,7 +113,7 @@ pub mod svm_spoke {
         quote_timestamp: u32,
         fill_deadline: u32,
         exclusivity_deadline: u32,
-        message: Vec<u8>
+        message: Vec<u8>,
     ) -> Result<()> {
         instructions::deposit_v3(
             ctx,
@@ -127,7 +128,7 @@ pub mod svm_spoke {
             quote_timestamp,
             fill_deadline,
             exclusivity_deadline,
-            message
+            message,
         )
     }
 
@@ -137,7 +138,7 @@ pub mod svm_spoke {
         _relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,
-        repayment_address: Pubkey
+        repayment_address: Pubkey,
     ) -> Result<()> {
         instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
@@ -149,7 +150,7 @@ pub mod svm_spoke {
     // CCTP methods.
     pub fn handle_receive_message<'info>(
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
-        params: HandleReceiveMessageParams
+        params: HandleReceiveMessageParams,
     ) -> Result<()> {
         let self_ix_data = ctx.accounts.handle_receive_message(&params)?;
 
@@ -162,7 +163,7 @@ pub mod svm_spoke {
     pub fn request_v3_slow_fill(
         ctx: Context<SlowFillV3Relay>,
         _relay_hash: [u8; 32],
-        relay_data: V3RelayData
+        relay_data: V3RelayData,
     ) -> Result<()> {
         instructions::request_v3_slow_fill(ctx, relay_data)
     }
@@ -172,7 +173,7 @@ pub mod svm_spoke {
         _relay_hash: [u8; 32],
         slow_fill_leaf: V3SlowFill,
         _root_bundle_id: u32,
-        proof: Vec<[u8; 32]>
+        proof: Vec<[u8; 32]>,
     ) -> Result<()> {
         instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
@@ -189,7 +190,7 @@ pub mod svm_spoke {
     pub fn write_instruction_params_fragment<'info>(
         ctx: Context<WriteInstructionParamsFragment<'info>>,
         offset: u32,
-        fragment: Vec<u8>
+        fragment: Vec<u8>,
     ) -> Result<()> {
         instructions::write_instruction_params_fragment(ctx, offset, fragment)
     }
@@ -201,7 +202,7 @@ pub mod svm_spoke {
     pub fn initialize_claim_account(
         ctx: Context<InitializeClaimAccount>,
         _mint: Pubkey,
-        _token_account: Pubkey
+        _token_account: Pubkey,
     ) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
@@ -212,8 +213,8 @@ pub mod svm_spoke {
 
     pub fn close_claim_account(
         ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey, // Only used in account constraints.
-        _token_account: Pubkey // Only used in account constraints.
+        _mint: Pubkey,          // Only used in account constraints.
+        _token_account: Pubkey, // Only used in account constraints.
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
     }

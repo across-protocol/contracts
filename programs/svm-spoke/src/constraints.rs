@@ -1,6 +1,10 @@
 use anchor_lang::prelude::*;
 
-use crate::{ state::State, utils::{ get_self_authority_pda, get_v3_relay_hash }, V3RelayData };
+use crate::{
+    state::State,
+    utils::{get_self_authority_pda, get_v3_relay_hash},
+    V3RelayData,
+};
 
 pub fn is_local_or_remote_owner(signer: &Signer, state: &Account<State>) -> bool {
     signer.key() == state.owner || signer.key() == get_self_authority_pda()

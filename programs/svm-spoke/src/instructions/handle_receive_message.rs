@@ -1,10 +1,13 @@
-use anchor_lang::{ prelude::*, solana_program::{ instruction::Instruction, program } };
+use anchor_lang::{
+    prelude::*,
+    solana_program::{instruction::Instruction, program},
+};
 
 use crate::{
     constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
-    error::{ CallDataError, SvmError },
+    error::{CallDataError, SvmError},
     program::SvmSpoke,
-    utils::{ self, EncodeInstructionData },
+    utils::{self, EncodeInstructionData},
     State,
 };
 
@@ -116,7 +119,7 @@ pub fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<
     program::invoke_signed(
         &instruction,
         &[&[ctx.accounts.self_authority.to_account_info()], ctx.remaining_accounts].concat(),
-        self_authority_seeds
+        self_authority_seeds,
     )?;
 
     Ok(())

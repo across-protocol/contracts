@@ -1,18 +1,14 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{ Mint, TokenAccount, TokenInterface };
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
     error::SvmError,
     event::BridgedToHubPool,
     message_transmitter::program::MessageTransmitter,
     token_messenger_minter::{
-        self,
-        cpi::accounts::DepositForBurn,
-        program::TokenMessengerMinter,
-        types::DepositForBurnParams,
+        self, cpi::accounts::DepositForBurn, program::TokenMessengerMinter, types::DepositForBurnParams,
     },
-    State,
-    TransferLiability,
+    State, TransferLiability,
 };
 
 #[event_cpi]
