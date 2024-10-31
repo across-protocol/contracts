@@ -20,10 +20,7 @@ use crate::{
     destination_chain_id: u64,
 )]
 pub struct DepositV3<'info> {
-    #[account(
-        mut,
-        constraint = signer.key() == depositor @ SvmError::DepositorMustBeSigner
-    )]
+    #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
         mut,
@@ -44,7 +41,7 @@ pub struct DepositV3<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = depositor,
-        token::token_program = token_program
+        associated_token::token_program = token_program
     )]
     pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
 
