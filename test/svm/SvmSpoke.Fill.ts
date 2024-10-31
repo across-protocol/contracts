@@ -433,7 +433,56 @@ describe("svm_spoke.fill", () => {
       "Recipient's balance should be increased by the relay amount"
     );
   });
+  it("Fills a deposit for a recipient without an existing ATA", async () => {
+    // Generate a new recipient account
+    const newRecipient = Keypair.generate().publicKey;
+    const newRecipientATA = getAssociatedTokenAddressSync(mint, newRecipient);
 
+    // Attempt to fill a deposit, expecting failure due to missing ATA
+    const newRelayData = {
+      ...relayData,
+      recipient: newRecipient,
+      depositId: new BN(Math.floor(Math.random() * 1000000)),
+    };
+    updateRelayData(newRelayData);
+    accounts.recipientTokenAccount = newRecipientATA;
+    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+
+    try {
+      await program.methods
+        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .accounts(accounts)
+        .signers([relayer])
+        .rpc();
+      assert.fail("Fill should have failed due to missing ATA");
+    } catch (err: any) {
+      assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
+    }
+
+    // Create the ATA using the create_token_accounts method
+    const createTokenAccountsInstruction = await program.methods
+      .createTokenAccounts()
+      .accounts({ signer: relayer.publicKey, mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .remainingAccounts([
+        { pubkey: newRecipient, isWritable: false, isSigner: false },
+        { pubkey: newRecipientATA, isWritable: true, isSigner: false },
+      ])
+      .instruction();
+
+    // Fill the deposit in the same transaction
+    const fillInstruction = await program.methods
+      .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .instruction();
+
+    // Create and send the transaction
+    const transaction = new web3.Transaction().add(createTokenAccountsInstruction, fillInstruction);
+    await web3.sendAndConfirmTransaction(connection, transaction, [relayer]);
+
+    // Verify the recipient's balance after the fill
+    const recipientAccount = await getAccount(connection, newRecipientATA);
+    assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
+  });
   it("Max fills in one transaction with account creation", async () => {
     // Save relayer balance before the the fills
     const iRelayerBal = (await getAccount(connection, relayerTA)).amount;
@@ -532,55 +581,5 @@ describe("svm_spoke.fill", () => {
       const recipientBal = (await getAccount(connection, recipientAssociatedToken)).amount;
       assertSE(recipientBal, BigInt(relayAmount), "Recipient's balance should be increased by the relay amount");
     });
-  });
-  it("Fills a deposit for a recipient without an existing ATA", async () => {
-    // Generate a new recipient account
-    const newRecipient = Keypair.generate().publicKey;
-    const newRecipientATA = getAssociatedTokenAddressSync(mint, newRecipient);
-
-    // Attempt to fill a deposit, expecting failure due to missing ATA
-    const newRelayData = {
-      ...relayData,
-      recipient: newRecipient,
-      depositId: new BN(Math.floor(Math.random() * 1000000)),
-    };
-    updateRelayData(newRelayData);
-    accounts.recipientTokenAccount = newRecipientATA;
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
-
-    try {
-      await program.methods
-        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
-        .accounts(accounts)
-        .signers([relayer])
-        .rpc();
-      assert.fail("Fill should have failed due to missing ATA");
-    } catch (err: any) {
-      assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
-    }
-
-    // Create the ATA using the create_token_accounts method
-    const createTokenAccountsInstruction = await program.methods
-      .createTokenAccounts()
-      .accounts({ signer: relayer.publicKey, mint, tokenProgram: TOKEN_PROGRAM_ID })
-      .remainingAccounts([
-        { pubkey: newRecipient, isWritable: false, isSigner: false },
-        { pubkey: newRecipientATA, isWritable: true, isSigner: false },
-      ])
-      .instruction();
-
-    // Fill the deposit in the same transaction
-    const fillInstruction = await program.methods
-      .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
-      .instruction();
-
-    // Create and send the transaction
-    const transaction = new web3.Transaction().add(createTokenAccountsInstruction, fillInstruction);
-    await web3.sendAndConfirmTransaction(connection, transaction, [relayer]);
-
-    // Verify the recipient's balance after the fill
-    const recipientAccount = await getAccount(connection, newRecipientATA);
-    assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
   });
 });
