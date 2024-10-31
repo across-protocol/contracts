@@ -22,7 +22,10 @@ const tasks = [
   "rescueStuckScrollTxn",
   "verifySpokePool",
   "evmRelayMessageWithdrawal",
+  "testChainAdapter",
 ];
+
+// eslint-disable-next-line node/no-missing-require
 tasks.forEach((task) => require(`./tasks/${task}`));
 
 dotenv.config();

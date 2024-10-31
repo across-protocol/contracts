@@ -1,25 +1,19 @@
-use crate::error::CustomError;
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::keccak;
+use anchor_lang::{prelude::*, solana_program::keccak};
 
-use crate::instructions::V3RelayData;
+use crate::{common::V3RelayData, error::CommonError};
 
 pub fn get_v3_relay_hash(relay_data: &V3RelayData, chain_id: u64) -> [u8; 32] {
     let mut input = relay_data.try_to_vec().unwrap();
     input.extend_from_slice(&chain_id.to_le_bytes());
-    // Log the input that will be hashed
-    msg!("Input to be hashed: {:?}", input);
     keccak::hash(&input).0
 }
 
 pub fn verify_merkle_proof(root: [u8; 32], leaf: [u8; 32], proof: Vec<[u8; 32]>) -> Result<()> {
-    msg!("Verifying merkle proof");
     let computed_root = process_proof(&proof, &leaf);
     if computed_root != root {
-        msg!("Invalid proof: computed root does not match provided root");
-        return err!(CustomError::InvalidMerkleProof);
+        return err!(CommonError::InvalidMerkleProof);
     }
-    msg!("Merkle proof verified successfully");
+
     Ok(())
 }
 
