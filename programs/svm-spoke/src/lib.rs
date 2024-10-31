@@ -99,7 +99,7 @@ pub mod svm_spoke {
         instructions::set_cross_domain_admin(ctx, cross_domain_admin)
     }
 
-    // User methods.
+    // Deposit methods.
     pub fn deposit_v3(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -126,6 +126,36 @@ pub mod svm_spoke {
             destination_chain_id,
             exclusive_relayer,
             quote_timestamp,
+            fill_deadline,
+            exclusivity_deadline,
+            message,
+        )
+    }
+
+    pub fn deposit_v3_now(
+        ctx: Context<DepositV3>,
+        depositor: Pubkey,
+        recipient: Pubkey,
+        input_token: Pubkey,
+        output_token: Pubkey,
+        input_amount: u64,
+        output_amount: u64,
+        destination_chain_id: u64,
+        exclusive_relayer: Pubkey,
+        fill_deadline: u32,
+        exclusivity_deadline: u32,
+        message: Vec<u8>,
+    ) -> Result<()> {
+        instructions::deposit_v3_now(
+            ctx,
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
             fill_deadline,
             exclusivity_deadline,
             message,

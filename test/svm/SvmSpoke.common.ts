@@ -24,7 +24,7 @@ const inputAmount = new BN(500000);
 const outputAmount = inputAmount;
 const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 10); // 10 seconds ago.
 const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600); // 600 seconds from now.
-const exclusivityDeadline = new BN(Math.floor(Date.now() / 1000) + 300); // 300 seconds from now.
+const exclusivityPeriod = new BN(300); // 300 seconds.
 const message = Buffer.from("Test message");
 const depositQuoteTimeBuffer = new BN(3600); // 1 hour.
 const fillDeadlineBuffer = new BN(3600 * 4); // 4 hours.
@@ -104,7 +104,7 @@ interface DepositData {
   exclusiveRelayer: PublicKey;
   quoteTimestamp: BN;
   fillDeadline: BN;
-  exclusivityDeadline: BN;
+  exclusivityPeriod: BN;
   message: Buffer;
 }
 
@@ -141,7 +141,7 @@ export const common = {
   outputAmount,
   quoteTimestamp,
   fillDeadline,
-  exclusivityDeadline,
+  exclusivityPeriod,
   message,
   depositQuoteTimeBuffer,
   fillDeadlineBuffer,
@@ -163,7 +163,7 @@ export const common = {
     exclusiveRelayer,
     quoteTimestamp,
     fillDeadline,
-    exclusivityDeadline,
+    exclusivityPeriod,
     message,
   } as DepositData,
 };

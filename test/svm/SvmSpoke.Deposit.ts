@@ -75,7 +75,7 @@ describe("svm_spoke.deposit", () => {
     await enableRoute();
   });
 
-  it("Deposits tokens via deposit_v3 function and checks balances", async () => {
+  it.only("Deposits tokens via deposit_v3 function and checks balances", async () => {
     // Verify vault balance is zero before the deposit
     let vaultAccount = await getAccount(connection, vault);
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
@@ -421,5 +421,53 @@ describe("svm_spoke.deposit", () => {
 
     const vaultAccount = await getAccount(connection, vault);
     assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
+  });
+
+  it.only("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
+    // Set up initial deposit data. Note that this method has a slightly different interface to deposit, using
+    // fillDeadlineOffset rather than fillDeadline. current chain time is added to fillDeadlineOffset to set the
+    // fillDeadline for the deposit. exclusivityPeriod operates the same as in standard deposit.
+    // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
+    const fillDeadlineOffset = new BN(60); // 60 seconds offset
+
+    // Execute the deposit_v3_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
+
+    await program.methods
+      .depositV3Now(
+        depositData.depositor,
+        depositData.recipient,
+        depositData.inputToken,
+        depositData.outputToken,
+        depositData.inputAmount,
+        depositData.outputAmount,
+        depositData.destinationChainId,
+        depositData.exclusiveRelayer,
+        fillDeadlineOffset,
+        depositData.exclusivityPeriod,
+        depositData.message
+      )
+      .accounts(depositAccounts)
+      .signers([depositor])
+      .rpc();
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Fetch and verify the depositEvent
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "v3FundsDeposited").data;
+
+    // Verify the event props emitted match the expected values
+    const currentTime = await getCurrentTime(program, state);
+    const expectedValues = {
+      ...depositData,
+      quoteTimestamp: currentTime,
+      fillDeadline: currentTime + fillDeadlineOffset.toNumber(),
+      exclusivityDeadline: currentTime + depositData.exclusivityPeriod.toNumber(),
+      depositId: "1",
+    };
+
+    for (const [key, value] of Object.entries(expectedValues)) {
+      assertSE(event[key], value, `${key} should match`);
+    }
   });
 });
