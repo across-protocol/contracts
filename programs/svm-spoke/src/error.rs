@@ -31,7 +31,6 @@ pub enum CommonError {
     DepositsArePaused,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
-    // Add any additional errors here if needed
 }
 
 // SVM specific errors.
@@ -71,8 +70,6 @@ pub enum SvmError {
     InvalidClaimInitializer,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
-    #[msg("Depositor Must be signer!")]
-    DepositorMustBeSigner,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
 }
