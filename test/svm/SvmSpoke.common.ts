@@ -91,7 +91,7 @@ async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
 
 function assertSE(a: any, b: any, errorMessage: string) {
   if (a === undefined || b === undefined) {
-    assert.strictEqual(a, b, errorMessage);
+    throw new Error("Undefined value" + errorMessage);
   } else {
     assert.strictEqual(a.toString(), b.toString(), errorMessage);
   }
