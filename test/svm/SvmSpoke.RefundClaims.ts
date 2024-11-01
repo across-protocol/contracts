@@ -34,7 +34,7 @@ describe("svm_spoke.refund_claims", () => {
 
   const initializeClaimAccount = async (initializer = claimInitializer) => {
     const initializeClaimAccountIx = await program.methods
-      .initializeClaimAccount(mint, tokenAccount)
+      .initializeClaimAccount(mint, relayer.publicKey)
       .accounts({ signer: initializer.publicKey })
       .instruction();
     await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(initializeClaimAccountIx), [
@@ -59,7 +59,7 @@ describe("svm_spoke.refund_claims", () => {
       chainId: chainId,
       amountToReturn: new BN(0),
       mintPublicKey: mint,
-      refundAccounts: [tokenAccount],
+      refundAddresses: [relayer.publicKey],
       refundAmounts: [relayerRefund],
     });
 
@@ -102,7 +102,7 @@ describe("svm_spoke.refund_claims", () => {
     const proofAsNumbers = proof.map((p) => Array.from(p));
     await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
     await program.methods
-      .executeRelayerRefundLeaf()
+      .executeRelayerRefundLeafDeferred()
       .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
@@ -128,7 +128,7 @@ describe("svm_spoke.refund_claims", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       program: program.programId,
     };
-    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
+    await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
   };
 
   beforeEach(async () => {
@@ -137,7 +137,7 @@ describe("svm_spoke.refund_claims", () => {
 
     tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     [claimAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("claim_account"), mint.toBuffer(), tokenAccount.toBuffer()],
+      [Buffer.from("claim_account"), mint.toBuffer(), relayer.publicKey.toBuffer()],
       program.programId
     );
 
@@ -178,7 +178,7 @@ describe("svm_spoke.refund_claims", () => {
     const event = events.find((event) => event.name === "claimedRelayerRefund").data;
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");
-    assertSE(event.refundAddress, tokenAccount, "Relayer refund address should match");
+    assertSE(event.refundAddress, relayer.publicKey, "Relayer refund address should match");
   });
 
   it("Cannot Double Claim Relayer Refund", async () => {
@@ -275,7 +275,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Should not be able to close the claim account from default wallet as the initializer was different.
     try {
-      await program.methods.closeClaimAccount(mint, tokenAccount).accounts({ signer: payer.publicKey }).rpc();
+      await program.methods.closeClaimAccount(mint, relayer.publicKey).accounts({ signer: payer.publicKey }).rpc();
       assert.fail("Closing claim account from different initializer should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -288,7 +288,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Close the claim account from initializer before executing relayer refunds.
     await program.methods
-      .closeClaimAccount(mint, tokenAccount)
+      .closeClaimAccount(mint, relayer.publicKey)
       .accounts({ signer: claimInitializer.publicKey })
       .signers([claimInitializer])
       .rpc();
@@ -310,7 +310,7 @@ describe("svm_spoke.refund_claims", () => {
     // It should be not possible to close the claim account with non-zero refund liability.
     try {
       await program.methods
-        .closeClaimAccount(mint, tokenAccount)
+        .closeClaimAccount(mint, relayer.publicKey)
         .accounts({ signer: claimInitializer.publicKey })
         .signers([claimInitializer])
         .rpc();

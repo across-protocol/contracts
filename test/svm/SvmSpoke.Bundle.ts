@@ -32,12 +32,6 @@ import { MerkleTree } from "../../utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
-enum RefundType {
-  TokenAccounts,
-  ClaimAccounts,
-  MixedAccounts,
-}
-
 describe("svm_spoke.bundle", () => {
   anchor.setProvider(provider);
 
@@ -212,7 +206,7 @@ describe("svm_spoke.bundle", () => {
       chainId: chainId,
       amountToReturn: new BN(69420),
       mintPublicKey: mint,
-      refundAccounts: [relayerTA, relayerTB],
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
       refundAmounts: [relayerARefund, relayerBRefund],
     });
 
@@ -276,8 +270,8 @@ describe("svm_spoke.bundle", () => {
     assertSE(event.rootBundleId, stateAccountData.rootBundleId, "rootBundleId should match");
     assertSE(event.leafId, leaf.leafId, "leafId should match");
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
-    assertSE(event.refundAddresses[0], relayerTA, "Relayer A address should match");
-    assertSE(event.refundAddresses[1], relayerTB, "Relayer B address should match");
+    assertSE(event.refundAddresses[0], relayerA.publicKey, "Relayer A address should match");
+    assertSE(event.refundAddresses[1], relayerB.publicKey, "Relayer B address should match");
     assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
@@ -326,7 +320,7 @@ describe("svm_spoke.bundle", () => {
       mixLeaves: false,
       chainId: chainId.toNumber(),
       mint,
-      svmRelayers: [relayerTA, relayerTB],
+      svmRelayers: [relayerA.publicKey, relayerB.publicKey],
       svmRefundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
     });
 
@@ -336,7 +330,7 @@ describe("svm_spoke.bundle", () => {
       chainId: chainId,
       amountToReturn: new BN(0),
       mintPublicKey: mint,
-      refundAccounts: [relayerTA, relayerTB],
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
       refundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
     } as RelayerRefundLeafSolana;
 
@@ -390,6 +384,7 @@ describe("svm_spoke.bundle", () => {
         .accounts(executeRelayerRefundLeafAccounts)
         .remainingAccounts(wrongRemainingAccounts)
         .rpc();
+      assert.fail("Should not execute to invalid refund address");
     } catch (err: any) {
       assert.include(err.toString(), "Invalid refund address");
     }
@@ -472,7 +467,7 @@ describe("svm_spoke.bundle", () => {
       mixLeaves: true,
       chainId: chainId.toNumber(),
       mint,
-      svmRelayers: [relayerTA, relayerTB],
+      svmRelayers: [relayerA.publicKey, relayerB.publicKey],
       svmRefundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
     });
 
@@ -567,7 +562,7 @@ describe("svm_spoke.bundle", () => {
       mixLeaves: false,
       chainId: chainId.toNumber(),
       mint,
-      svmRelayers: [relayerTA, relayerTB],
+      svmRelayers: [relayerA.publicKey, relayerB.publicKey],
       svmRefundAmounts: [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
     });
 
@@ -665,7 +660,7 @@ describe("svm_spoke.bundle", () => {
       chainId: new BN(1000),
       amountToReturn: new BN(0),
       mintPublicKey: mint,
-      refundAccounts: [relayerTA, relayerTB],
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
       refundAmounts: [relayerARefund, relayerBRefund],
     });
 
@@ -727,7 +722,7 @@ describe("svm_spoke.bundle", () => {
       chainId: chainId,
       amountToReturn: new BN(0),
       mintPublicKey: Keypair.generate().publicKey,
-      refundAccounts: [relayerTA, relayerTB],
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
       refundAmounts: [relayerARefund, relayerBRefund],
     });
 
@@ -790,7 +785,7 @@ describe("svm_spoke.bundle", () => {
         chainId: chainId,
         amountToReturn: new BN(0),
         mintPublicKey: mint,
-        refundAccounts: [relayerTA],
+        refundAddresses: [relayerA.publicKey],
         refundAmounts: [relayerRefundAmount],
       });
     }
@@ -991,7 +986,7 @@ describe("svm_spoke.bundle", () => {
   });
 
   describe("Execute Max Refunds", () => {
-    const executeMaxRefunds = async (refundType: RefundType) => {
+    const executeMaxRefunds = async (deferredRefunds: boolean) => {
       // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
       // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
       // protocol does not expect this to be above 25.
@@ -1003,34 +998,26 @@ describe("svm_spoke.bundle", () => {
       const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
 
       const refundAccounts: web3.PublicKey[] = []; // These would hold either token accounts or claim accounts.
-      const tokenAccounts: web3.PublicKey[] = []; // These are used in leaf building.
+      const refundAddresses: web3.PublicKey[] = []; // These are relayer authority addresses used in leaf building.
       const refundAmounts: BN[] = [];
 
       for (let i = 0; i < solanaDistributions; i++) {
         // Will create token account later if needed.
         const tokenOwner = Keypair.generate().publicKey;
         const tokenAccount = getAssociatedTokenAddressSync(mint, tokenOwner);
-        tokenAccounts.push(tokenAccount);
+        refundAddresses.push(tokenOwner);
 
         const [claimAccount] = PublicKey.findProgramAddressSync(
-          [Buffer.from("claim_account"), mint.toBuffer(), tokenAccount.toBuffer()],
+          [Buffer.from("claim_account"), mint.toBuffer(), tokenOwner.toBuffer()],
           program.programId
         );
 
-        if (refundType === RefundType.TokenAccounts) {
+        if (deferredRefunds === false) {
           await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
           refundAccounts.push(tokenAccount);
-        } else if (refundType === RefundType.ClaimAccounts) {
-          await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
+        } else {
+          await program.methods.initializeClaimAccount(mint, tokenOwner).rpc();
           refundAccounts.push(claimAccount);
-        } else if (refundType === RefundType.MixedAccounts) {
-          if (i % 2 === 0) {
-            await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
-            refundAccounts.push(tokenAccount);
-          } else {
-            await program.methods.initializeClaimAccount(mint, tokenAccount).rpc();
-            refundAccounts.push(claimAccount);
-          }
         }
 
         refundAmounts.push(new BN(randomBigInt(2).toString()));
@@ -1042,7 +1029,7 @@ describe("svm_spoke.bundle", () => {
         mixLeaves: false,
         chainId: chainId.toNumber(),
         mint,
-        svmRelayers: tokenAccounts,
+        svmRelayers: refundAddresses,
         svmRefundAmounts: refundAmounts,
       });
 
@@ -1132,11 +1119,18 @@ describe("svm_spoke.bundle", () => {
       // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-      const executeInstruction = await program.methods
-        .executeRelayerRefundLeaf()
-        .accounts(staticAccounts)
-        .remainingAccounts(remainingAccounts)
-        .instruction();
+      const executeInstruction =
+        deferredRefunds === false
+          ? await program.methods
+              .executeRelayerRefundLeaf()
+              .accounts(staticAccounts)
+              .remainingAccounts(remainingAccounts)
+              .instruction()
+          : await program.methods
+              .executeRelayerRefundLeafDeferred()
+              .accounts(staticAccounts)
+              .remainingAccounts(remainingAccounts)
+              .instruction();
 
       // Build the instruction to increase the CU limit as the default 200k is not sufficient.
       const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
@@ -1158,14 +1152,10 @@ describe("svm_spoke.bundle", () => {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
       const refundBalances = await Promise.all(
         refundAccounts.map(async (account, i) => {
-          if (refundType === RefundType.TokenAccounts) {
+          if (deferredRefunds === false) {
             return (await connection.getTokenAccountBalance(account)).value.amount;
-          } else if (refundType === RefundType.ClaimAccounts) {
+          } else {
             return (await program.account.claimAccount.fetch(account)).amount.toString();
-          } else if (refundType === RefundType.MixedAccounts) {
-            return i % 2 === 0
-              ? (await connection.getTokenAccountBalance(account)).value.amount
-              : (await program.account.claimAccount.fetch(account)).amount.toString();
           }
         })
       );
@@ -1175,15 +1165,11 @@ describe("svm_spoke.bundle", () => {
     };
 
     it("Execute Max Refunds to Token Accounts", async () => {
-      await executeMaxRefunds(RefundType.TokenAccounts);
+      await executeMaxRefunds(false);
     });
 
     it("Execute Max Refunds to Claim Accounts", async () => {
-      await executeMaxRefunds(RefundType.ClaimAccounts);
-    });
-
-    it("Execute Max Refunds to Mixed Accounts", async () => {
-      await executeMaxRefunds(RefundType.MixedAccounts);
+      await executeMaxRefunds(true);
     });
   });
 
@@ -1198,7 +1184,7 @@ describe("svm_spoke.bundle", () => {
         chainId: chainId,
         amountToReturn,
         mintPublicKey: mint,
-        refundAccounts: [],
+        refundAddresses: [],
         refundAmounts: [],
       });
       const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
@@ -1269,7 +1255,7 @@ describe("svm_spoke.bundle", () => {
         chainId: chainId,
         amountToReturn: new BN(0),
         mintPublicKey: mint,
-        refundAccounts: [relayerTA],
+        refundAddresses: [relayerA.publicKey],
         refundAmounts: [relayerRefundAmount],
       });
     }
@@ -1342,7 +1328,7 @@ describe("svm_spoke.bundle", () => {
       chainId: chainId,
       amountToReturn: new BN(0),
       mintPublicKey: mint,
-      refundAccounts: [relayerTA, relayerTB],
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
       refundAmounts: [relayerARefund],
     });
 
@@ -1398,44 +1384,31 @@ describe("svm_spoke.bundle", () => {
   });
 
   describe("Deferred refunds in ExecutedRelayerRefundRoot events", () => {
-    const executeRelayerRefundLeaf = async (refundType: RefundType) => {
+    const executeRelayerRefundLeaf = async (deferredRefunds: boolean) => {
       // Create new relayer accounts for each sub-test.
       const relayerA = Keypair.generate();
       const relayerB = Keypair.generate();
       const relayerARefund = new BN(400000);
       const relayerBRefund = new BN(100000);
 
-      let relayerTA: PublicKey, relayerTB: PublicKey, refundA: PublicKey, refundB: PublicKey;
+      let refundA: PublicKey, refundB: PublicKey;
 
       // Create refund accounts depending on the refund type.
-      if (refundType === RefundType.TokenAccounts) {
-        relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
-        relayerTB = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerB.publicKey)).address;
-        refundA = relayerTA;
-        refundB = relayerTB;
-      } else if (refundType === RefundType.ClaimAccounts) {
-        relayerTA = getAssociatedTokenAddressSync(mint, relayerA.publicKey);
-        relayerTB = getAssociatedTokenAddressSync(mint, relayerB.publicKey);
+      if (deferredRefunds === false) {
+        refundA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
+        refundB = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerB.publicKey)).address;
+      } else {
         [refundA] = PublicKey.findProgramAddressSync(
-          [Buffer.from("claim_account"), mint.toBuffer(), relayerTA.toBuffer()],
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerA.publicKey.toBuffer()],
           program.programId
         );
         [refundB] = PublicKey.findProgramAddressSync(
-          [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
+          [Buffer.from("claim_account"), mint.toBuffer(), relayerB.publicKey.toBuffer()],
           program.programId
         );
-        await program.methods.initializeClaimAccount(mint, relayerTA).rpc();
-        await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
-      } else if (refundType === RefundType.MixedAccounts) {
-        relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
-        relayerTB = getAssociatedTokenAddressSync(mint, relayerB.publicKey);
-        refundA = relayerTA;
-        [refundB] = PublicKey.findProgramAddressSync(
-          [Buffer.from("claim_account"), mint.toBuffer(), relayerTB.toBuffer()],
-          program.programId
-        );
-        await program.methods.initializeClaimAccount(mint, relayerTB).rpc();
-      } else throw new Error("Invalid refund type"); // Required to infer all accounts have been assigned.
+        await program.methods.initializeClaimAccount(mint, relayerA.publicKey).rpc();
+        await program.methods.initializeClaimAccount(mint, relayerB.publicKey).rpc();
+      }
 
       // Prepare leaf using token accounts.
       const relayerRefundLeaves: RelayerRefundLeafType[] = [];
@@ -1445,7 +1418,7 @@ describe("svm_spoke.bundle", () => {
         chainId: chainId,
         amountToReturn: new BN(0),
         mintPublicKey: mint,
-        refundAccounts: [relayerTA, relayerTB],
+        refundAddresses: [relayerA.publicKey, relayerB.publicKey],
         refundAmounts: [relayerARefund, relayerBRefund],
       });
 
@@ -1488,15 +1461,23 @@ describe("svm_spoke.bundle", () => {
       const proofAsNumbers = proof.map((p) => Array.from(p));
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-      return await program.methods
-        .executeRelayerRefundLeaf()
-        .accounts(executeRelayerRefundLeafAccounts)
-        .remainingAccounts(remainingAccounts)
-        .rpc();
+      if (deferredRefunds === false) {
+        return await program.methods
+          .executeRelayerRefundLeaf()
+          .accounts(executeRelayerRefundLeafAccounts)
+          .remainingAccounts(remainingAccounts)
+          .rpc();
+      } else {
+        return await program.methods
+          .executeRelayerRefundLeafDeferred()
+          .accounts(executeRelayerRefundLeafAccounts)
+          .remainingAccounts(remainingAccounts)
+          .rpc();
+      }
     };
 
     it("No deferred refunds in all Token Accounts", async () => {
-      const tx = await executeRelayerRefundLeaf(RefundType.TokenAccounts);
+      const tx = await executeRelayerRefundLeaf(false);
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
@@ -1505,16 +1486,7 @@ describe("svm_spoke.bundle", () => {
     });
 
     it("Deferred refunds in all Claim Accounts", async () => {
-      const tx = await executeRelayerRefundLeaf(RefundType.ClaimAccounts);
-
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-      const events = await readEvents(connection, tx, [program]);
-      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
-      assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
-    });
-
-    it("Deferred refunds in Mixed Accounts", async () => {
-      const tx = await executeRelayerRefundLeaf(RefundType.MixedAccounts);
+      const tx = await executeRelayerRefundLeaf(true);
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
