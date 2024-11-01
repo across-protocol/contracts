@@ -17,12 +17,7 @@ use crate::{
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64, // TODO: we can remove some of these instructions props
-    exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_deadline: u32,
-    message: Vec<u8>
+    destination_chain_id: u64,
 )]
 pub struct DepositV3<'info> {
     #[account(mut)]
@@ -37,17 +32,18 @@ pub struct DepositV3<'info> {
 
     #[account(
         seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
-        bump
+        bump,
+        constraint = route.enabled @ CommonError::DisabledRoute
     )]
     pub route: Account<'info, Route>,
 
     #[account(
         mut,
-        token::mint = mint,
-        token::authority = signer,
-        token::token_program = token_program
+        associated_token::mint = mint,
+        associated_token::authority = depositor,
+        associated_token::token_program = token_program
     )]
-    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -59,7 +55,6 @@ pub struct DepositV3<'info> {
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
         constraint = mint.key() == input_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
@@ -84,10 +79,6 @@ pub fn deposit_v3(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    if !ctx.accounts.route.enabled {
-        return err!(CommonError::DisabledRoute);
-    }
-
     let current_time = get_current_time(state)?;
 
     // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction
@@ -102,7 +93,7 @@ pub fn deposit_v3(
     }
 
     let transfer_accounts = TransferChecked {
-        from: ctx.accounts.user_token_account.to_account_info(),
+        from: ctx.accounts.depositor_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.signer.to_account_info(),
@@ -130,5 +121,3 @@ pub fn deposit_v3(
 
     Ok(())
 }
-
-// TODO: do we need other flavours of deposit? like speed up deposit
