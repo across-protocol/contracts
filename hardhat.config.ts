@@ -16,7 +16,15 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
-const tasks = ["enableL1TokenAcrossEcosystem", "finalizeScrollClaims", "rescueStuckScrollTxn", "verifySpokePool"];
+const tasks = [
+  "enableL1TokenAcrossEcosystem",
+  "finalizeScrollClaims",
+  "rescueStuckScrollTxn",
+  "verifySpokePool",
+  "evmRelayMessageWithdrawal",
+  "testChainAdapter",
+];
+
 // eslint-disable-next-line node/no-missing-require
 tasks.forEach((task) => require(`./tasks/${task}`));
 

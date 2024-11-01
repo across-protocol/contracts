@@ -48,10 +48,7 @@ describe("svm_spoke.deposit", () => {
       systemProgram: anchor.web3.SystemProgram.programId,
     };
 
-    await program.methods
-      .setEnableRoute(Array.from(inputToken.toBuffer()), routeChainId, true)
-      .accounts(setEnableRouteAccounts)
-      .rpc();
+    await program.methods.setEnableRoute(inputToken, routeChainId, true).accounts(setEnableRouteAccounts).rpc();
 
     // Set known fields in the depositData.
     depositData.depositor = depositor.publicKey;
@@ -61,7 +58,7 @@ describe("svm_spoke.deposit", () => {
       state,
       route,
       signer: depositor.publicKey,
-      userTokenAccount: depositorTA,
+      depositorTokenAccount: depositorTA,
       vault,
       mint: inputToken,
       tokenProgram: TOKEN_PROGRAM_ID,
@@ -197,7 +194,7 @@ describe("svm_spoke.deposit", () => {
   it("Fails to deposit tokens to a route that is explicitly disabled", async () => {
     // Disable the route
     await program.methods
-      .setEnableRoute(Array.from(depositData.inputToken!.toBuffer()), depositData.destinationChainId, false)
+      .setEnableRoute(depositData.inputToken!, depositData.destinationChainId, false)
       .accounts(setEnableRouteAccounts)
       .rpc();
 
@@ -363,10 +360,7 @@ describe("svm_spoke.deposit", () => {
       program: program.programId,
     };
 
-    await program.methods
-      .setEnableRoute(Array.from(inputToken.toBuffer()), fakeRouteChainId, true)
-      .accounts(fakeSetEnableRouteAccounts)
-      .rpc();
+    await program.methods.setEnableRoute(inputToken, fakeRouteChainId, true).accounts(fakeSetEnableRouteAccounts).rpc();
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -374,7 +368,7 @@ describe("svm_spoke.deposit", () => {
       state: fakeState,
       route: fakeRoutePda,
       signer: depositor.publicKey,
-      userTokenAccount: depositorTA,
+      depositorTokenAccount: depositorTA,
       vault: fakeVault,
       mint: inputToken,
       tokenProgram: TOKEN_PROGRAM_ID,

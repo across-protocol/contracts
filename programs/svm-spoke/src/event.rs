@@ -23,6 +23,13 @@ pub struct EnabledDepositRoute {
     pub enabled: bool,
 }
 
+#[event]
+pub struct RelayedRootBundle {
+    pub root_bundle_id: u32,
+    pub relayer_refund_root: [u8; 32],
+    pub slow_relay_root: [u8; 32],
+}
+
 // Deposit events
 #[event]
 pub struct V3FundsDeposited {
@@ -103,7 +110,7 @@ pub struct ExecutedRelayerRefundRoot {
     pub leaf_id: u32,
     pub l2_token_address: Pubkey,
     pub refund_addresses: Vec<Pubkey>,
-    pub deferred_refunds: bool, // TODO: update EVM implementation to add this field.
+    pub deferred_refunds: bool,
     pub caller: Pubkey,
 }
 
@@ -112,4 +119,16 @@ pub struct ClaimedRelayerRefund {
     pub l2_token_address: Pubkey,
     pub claim_amount: u64,
     pub refund_address: Pubkey,
+}
+
+// TODO: update the name of this to EmergencyDeletedRootBundle and in EVM.
+#[event]
+pub struct EmergencyDeleteRootBundle {
+    pub root_bundle_id: u32,
+}
+
+#[event]
+pub struct BridgedToHubPool {
+    pub amount: u64,
+    pub mint: Pubkey,
 }

@@ -186,69 +186,6 @@ abstract contract SpokePool is
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
 
-    /// EVENTS BELOW ARE DEPRECATED AND EXIST FOR BACKWARDS COMPATIBILITY ONLY.
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event FundsDeposited(
-        uint256 amount,
-        uint256 originChainId,
-        uint256 indexed destinationChainId,
-        int64 relayerFeePct,
-        uint32 indexed depositId,
-        uint32 quoteTimestamp,
-        address originToken,
-        address recipient,
-        address indexed depositor,
-        bytes message
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event RequestedSpeedUpDeposit(
-        int64 newRelayerFeePct,
-        uint32 indexed depositId,
-        bytes32 indexed depositor,
-        bytes32 updatedRecipient,
-        bytes updatedMessage,
-        bytes depositorSignature
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event FilledRelay(
-        uint256 amount,
-        uint256 totalFilledAmount,
-        uint256 fillAmount,
-        uint256 repaymentChainId,
-        uint256 indexed originChainId,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        int64 realizedLpFeePct,
-        uint32 indexed depositId,
-        bytes32 destinationToken,
-        bytes32 relayer,
-        bytes32 indexed depositor,
-        bytes32 recipient,
-        bytes message,
-        RelayExecutionInfo updatableRelayData
-    );
-    /**
-     * @notice Packs together information to include in FilledRelay event.
-     * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
-     * parameters in an event.
-     * @param recipient Recipient of the relayed funds.
-     * @param message Message included in the relay.
-     * @param relayerFeePct Relayer fee pct used for this relay.
-     * @param isSlowRelay Whether this is a slow relay.
-     * @param payoutAdjustmentPct Adjustment to the payout amount.
-     */
-    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-
-    struct RelayExecutionInfo {
-        bytes32 recipient;
-        bytes message;
-        int64 relayerFeePct;
-        bool isSlowRelay;
-        int256 payoutAdjustmentPct;
-    }
-
-    /// EVENTS ABOVE ARE DEPRECATED AND EXIST FOR BACKWARDS COMPATIBILITY ONLY.
-
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
      * have constructors since the following code will be executed within the logic contract's state, not the
@@ -331,7 +268,7 @@ abstract contract SpokePool is
     /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
-     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * @dev Affects `deposit()` but not `speedUpV3Deposit()`, so that existing deposits can be sped up and still
      * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
@@ -1041,9 +978,8 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer != msg.sender.toBytes32() &&
-            relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer != bytes32(0)
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -1088,7 +1024,10 @@ abstract contract SpokePool is
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender.toBytes32()) {
+        if (
+            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != msg.sender
+        ) {
             revert NotExclusiveRelayer();
         }
 
@@ -1131,12 +1070,15 @@ abstract contract SpokePool is
      * then Across will not include a slow fill for the intended deposit.
      */
     function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+        uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime()) revert NoSlowFillsInExclusivityWindow();
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, currentTime)) {
+            revert NoSlowFillsInExclusivityWindow();
+        }
+        if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
@@ -1592,7 +1534,7 @@ abstract contract SpokePool is
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-        // is trivially true. We'll emit this value in the FilledRelay
+        // is trivially true. We'll emit this value in the FilledV3Relay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
         FillType fillType = isSlowFill
@@ -1606,7 +1548,7 @@ abstract contract SpokePool is
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
-        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
+        // we can include a bool in the FilledV3Relay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
@@ -1674,6 +1616,15 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
+    }
+
+    // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
+    function _fillIsExclusive(
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        uint32 currentTime
+    ) internal pure returns (bool) {
+        return exclusivityDeadline >= currentTime && exclusiveRelayer != bytes32(0);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute

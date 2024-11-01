@@ -8,6 +8,7 @@ import {
   BigNumber,
   addressToBytes,
 } from "../../../utils/utils";
+import { buildRelayerRefundMerkleTree } from "../../svm/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";
@@ -87,6 +88,78 @@ describe("SpokePool Root Bundle Execution", function () {
     expect(relayTokensEvents.length).to.equal(2);
     tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
     expect(tokensBridgedEvents.length).to.equal(1);
+  });
+
+  it("Execute relayer root correctly with mixed solana and evm leaves", async function () {
+    const totalDistributions = 10;
+    const evmDistributions = totalDistributions / 2;
+    const { relayerRefundLeaves: leaves, merkleTree: tree } = buildRelayerRefundMerkleTree({
+      totalEvmDistributions: evmDistributions,
+      totalSolanaDistributions: evmDistributions,
+      mixLeaves: true,
+      chainId: destinationChainId,
+      evmTokenAddress: destErc20.address,
+      evmRelayers: [relayer.address, rando.address],
+      evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
+    });
+
+    const leavesRefundAmount = leaves
+      .filter((leaf) => !leaf.isSolana)
+      .map((leaf) => (leaf.refundAmounts as BigNumber[]).reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
+      .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
+
+    // Store new tree.
+    await spokePool.connect(dataWorker).relayRootBundle(
+      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayRoot
+    );
+
+    // Distribute all non-Solana leaves.
+    for (let i = 0; i < leaves.length; i++) {
+      if (leaves[i].isSolana) continue;
+      await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[i], tree.getHexProof(leaves[i]));
+    }
+
+    // Relayers should be refunded
+    expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(leavesRefundAmount));
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToRelay);
+    expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
+  });
+
+  it("Execute relayer root correctly with sorted solana and evm leaves", async function () {
+    const totalDistributions = 10;
+    const evmDistributions = totalDistributions / 2;
+    const { relayerRefundLeaves: leaves, merkleTree: tree } = buildRelayerRefundMerkleTree({
+      totalEvmDistributions: evmDistributions,
+      totalSolanaDistributions: evmDistributions,
+      mixLeaves: false,
+      chainId: destinationChainId,
+      evmTokenAddress: destErc20.address,
+      evmRelayers: [relayer.address, rando.address],
+      evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
+    });
+
+    const leavesRefundAmount = leaves
+      .filter((leaf) => !leaf.isSolana)
+      .map((leaf) => (leaf.refundAmounts as BigNumber[]).reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
+      .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
+
+    // Store new tree.
+    await spokePool.connect(dataWorker).relayRootBundle(
+      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayRoot
+    );
+
+    // Distribute all non-Solana leaves.
+    for (let i = 0; i < leaves.length; i++) {
+      if (leaves[i].isSolana) continue;
+      await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[i], tree.getHexProof(leaves[i]));
+    }
+
+    // Relayers should be refunded
+    expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(leavesRefundAmount));
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToRelay);
+    expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
   });
 
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {

@@ -12,6 +12,7 @@ import {
   relayerRefundHashFn,
   findProgramAddress,
   loadExecuteRelayerRefundLeafParams,
+  readProgramEvents,
 } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
@@ -129,7 +130,7 @@ describe("svm_spoke.token_bridge", () => {
       tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: web3.SystemProgram.programId,
-      eventAuthority,
+      cctpEventAuthority: eventAuthority,
     };
   });
 
@@ -161,6 +162,8 @@ describe("svm_spoke.token_bridge", () => {
       state,
       rootBundle,
       signer: owner,
+      payer: owner,
+      program: program.programId,
     };
     await program.methods
       .relayRootBundle(Array.from(root), Array.from(Buffer.alloc(32)))
@@ -298,5 +301,34 @@ describe("svm_spoke.token_bridge", () => {
         "Expected error code ExceededPendingBridgeAmount"
       );
     }
+  });
+
+  it("Test BridgedToHubPool event", async () => {
+    const simpleBridgeAmount = 500_000;
+
+    // Initialize the bridge with a specific amount.
+    await initializeBridgeToHubPool(simpleBridgeAmount);
+
+    const initialVaultBalance = (await connection.getTokenAccountBalance(vault)).value.amount;
+    assert.strictEqual(initialVaultBalance, initialMintAmount.toString());
+
+    // Create a new Keypair for the message event data.
+    const simpleBridgeMessageSentEventData = web3.Keypair.generate();
+
+    // Perform the bridge operation.
+    await program.methods
+      .bridgeTokensToHubPool(new BN(simpleBridgeAmount))
+      .accounts({ ...bridgeTokensToHubPoolAccounts, messageSentEventData: simpleBridgeMessageSentEventData.publicKey })
+      .signers([simpleBridgeMessageSentEventData])
+      .rpc();
+
+    // Wait for the event to be emitted.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "bridgedToHubPool").data;
+    assert.isNotNull(event, "BridgedToHubPool event should be emitted");
+    assert.strictEqual(event.amount.toString(), simpleBridgeAmount.toString(), "Invalid amount");
+    assert.strictEqual(event.mint.toString(), mint.toString(), "Invalid mint");
   });
 });

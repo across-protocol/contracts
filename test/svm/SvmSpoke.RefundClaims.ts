@@ -78,7 +78,7 @@ describe("svm_spoke.refund_claims", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     // Pass claim account as relayer refund address.
@@ -267,5 +267,57 @@ describe("svm_spoke.refund_claims", () => {
     const fRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
     assertSE(BigInt(iVaultBal) - BigInt(fVaultBal), relayerRefund, "Vault balance");
     assertSE(BigInt(fRelayerBal) - BigInt(iRelayerBal), relayerRefund, "Relayer balance");
+  });
+
+  it("Close empty claim account", async () => {
+    // Initialize the claim account.
+    await initializeClaimAccount(claimInitializer);
+
+    // Should not be able to close the claim account from default wallet as the initializer was different.
+    try {
+      await program.methods.closeClaimAccount(mint, tokenAccount).accounts({ signer: payer.publicKey }).rpc();
+      assert.fail("Closing claim account from different initializer should fail");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(
+        error.error.errorCode.code,
+        "InvalidClaimInitializer",
+        "Expected error code InvalidClaimInitializer"
+      );
+    }
+
+    // Close the claim account from initializer before executing relayer refunds.
+    await program.methods
+      .closeClaimAccount(mint, tokenAccount)
+      .accounts({ signer: claimInitializer.publicKey })
+      .signers([claimInitializer])
+      .rpc();
+
+    // Claim account should be closed now.
+    try {
+      await program.account.claimAccount.fetch(claimAccount);
+      assert.fail("Claim account should be closed");
+    } catch (error: any) {
+      assert.include(error.toString(), "Account does not exist or has no data", "Expected non-existent account error");
+    }
+  });
+
+  it("Cannot close non-empty claim account", async () => {
+    // Execute relayer refund using claim account.
+    const relayerRefund = new BN(500000);
+    await executeRelayerRefundToClaim(relayerRefund);
+
+    // It should be not possible to close the claim account with non-zero refund liability.
+    try {
+      await program.methods
+        .closeClaimAccount(mint, tokenAccount)
+        .accounts({ signer: claimInitializer.publicKey })
+        .signers([claimInitializer])
+        .rpc();
+      assert.fail("Closing claim account with non-zero refund liability should fail");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "NonZeroRefundClaim", "Expected error code NonZeroRefundClaim");
+    }
   });
 });

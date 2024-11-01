@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::TokenAccount;
 
-use crate::error::CustomError;
+use crate::error::SvmError;
 
 #[account]
 #[derive(InitSpace)]
@@ -16,6 +16,7 @@ pub enum RefundAccount<'info> {
     TokenAccount(InterfaceAccount<'info, TokenAccount>),
     ClaimAccount(Account<'info, ClaimAccount>),
 }
+// TODO: consider if we can avoid this dual account and pass both ATA and claim account arrays.
 
 impl<'c, 'info> RefundAccount<'info>
 where
@@ -30,9 +31,7 @@ where
         expected_mint: &Pubkey,
         token_program: &Pubkey,
     ) -> Result<Self> {
-        let refund_account_info = remaining_accounts
-            .get(index)
-            .ok_or(ErrorCode::AccountNotEnoughKeys)?;
+        let refund_account_info = remaining_accounts.get(index).ok_or(ErrorCode::AccountNotEnoughKeys)?;
 
         Self::try_token_account_from_account_info(
             refund_account_info,
@@ -42,23 +41,18 @@ where
         )
         .map(Self::TokenAccount)
         .or_else(|| {
-            Self::try_claim_account_from_account_info(
-                refund_account_info,
-                expected_mint,
-                expected_token_account,
-            )
-            .map(Self::ClaimAccount)
+            Self::try_claim_account_from_account_info(refund_account_info, expected_mint, expected_token_account)
+                .map(Self::ClaimAccount)
         })
         .ok_or_else(|| {
-            error::Error::from(CustomError::InvalidRefund)
-                .with_account_name(&format!("remaining_accounts[{}]", index))
+            error::Error::from(SvmError::InvalidRefund).with_account_name(&format!("remaining_accounts[{}]", index))
         })
     }
 
     // This implements the following Anchor account constraints when parsing remaining account as a token account:
     // #[account(
     //     mut,
-    //     address = expected_token_account @ CustomError::InvalidRefund,
+    //     address = expected_token_account @ SvmError::InvalidRefund,
     //     token::mint = expected_mint,
     //     token::token_program = token_program
     // )]
@@ -71,8 +65,7 @@ where
         token_program: &Pubkey,
     ) -> Option<InterfaceAccount<'info, TokenAccount>> {
         // Checks ownership on deserialization for the TokenAccount interface.
-        let token_account: InterfaceAccount<'info, TokenAccount> =
-            InterfaceAccount::try_from(account_info).ok()?;
+        let token_account: InterfaceAccount<'info, TokenAccount> = InterfaceAccount::try_from(account_info).ok()?;
 
         // Checks if the token account is writable.
         if !account_info.is_writable {
@@ -114,10 +107,8 @@ where
         let claim_account: Account<'info, ClaimAccount> = Account::try_from(account_info).ok()?;
 
         // Checks the PDA is derived from mint and token account keys.
-        let (pda_address, _bump) = Pubkey::find_program_address(
-            &[b"claim_account", mint.as_ref(), token_account.as_ref()],
-            &crate::ID,
-        );
+        let (pda_address, _bump) =
+            Pubkey::find_program_address(&[b"claim_account", mint.as_ref(), token_account.as_ref()], &crate::ID);
         if account_info.key != &pda_address {
             return None;
         }

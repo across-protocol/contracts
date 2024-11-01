@@ -65,11 +65,9 @@ describe("svm_spoke.slow_fill", () => {
     fillAccounts = {
       state,
       signer: relayer.publicKey,
-      relayer: relayer.publicKey,
-      recipient: relayData.recipient, // This could be different from global recipient.
       mintAccount: mint,
-      relayerTA: relayerTA,
-      recipientTA: recipientTA,
+      relayerTokenAccount: relayerTA,
+      recipientTokenAccount: recipientTA,
       fillStatus,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -120,7 +118,7 @@ describe("svm_spoke.slow_fill", () => {
     const relayerRefundRoot = crypto.randomBytes(32);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
       .accounts(relayRootBundleAccounts)
@@ -325,7 +323,6 @@ describe("svm_spoke.slow_fill", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      recipient,
       recipientTokenAccount: recipientTA,
       program: program.programId,
     };
@@ -413,7 +410,7 @@ describe("svm_spoke.slow_fill", () => {
       .signers([relayer])
       .rpc();
 
-    // Try to execute V3 slow relay leaf with wrong recipient should fail.
+    // Try to execute V3 slow relay leaf with wrong recipient token account should fail.
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
     try {
@@ -425,7 +422,6 @@ describe("svm_spoke.slow_fill", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        recipient: wrongRecipient,
         recipientTokenAccount: wrongRecipientTA,
         program: program.programId,
       };
@@ -438,10 +434,10 @@ describe("svm_spoke.slow_fill", () => {
         )
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
-      assert.fail("Execution should have failed due to wrong recipient");
+      assert.fail("Execution should have failed due to wrong recipient token account");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+      assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner", "Expected error code ConstraintTokenOwner");
     }
   });
 
@@ -485,7 +481,6 @@ describe("svm_spoke.slow_fill", () => {
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint,
-      recipient: firstRecipient,
       recipientTokenAccount: firstRecipientTA,
       program: program.programId,
     };
@@ -516,7 +511,6 @@ describe("svm_spoke.slow_fill", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        recipient: firstRecipient,
         recipientTokenAccount: firstRecipientTA,
         program: program.programId,
       };
@@ -561,7 +555,6 @@ describe("svm_spoke.slow_fill", () => {
         vault: wrongVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: wrongMint,
-        recipient,
         recipientTokenAccount: wrongRecipientTA,
         program: program.programId,
       };
@@ -605,7 +598,6 @@ describe("svm_spoke.slow_fill", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        recipient,
         recipientTokenAccount: recipientTA,
         program: program.programId,
       };

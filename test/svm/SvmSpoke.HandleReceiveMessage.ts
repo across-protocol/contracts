@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import * as crypto from "crypto";
 import { BN, web3, workspace, Program, AnchorProvider, AnchorError } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
 import { Keypair } from "@solana/web3.js";
@@ -38,6 +39,8 @@ describe("svm_spoke.handle_receive_message", () => {
     "function pauseFills(bool pause)",
     "function setCrossDomainAdmin(address newCrossDomainAdmin)",
     "function setEnableRoute(bytes32 originToken, uint64 destinationChainId, bool enabled)",
+    "function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)",
+    "function emergencyDeleteRootBundle(uint256 rootBundleId)",
   ]);
 
   beforeEach(async () => {
@@ -82,8 +85,7 @@ describe("svm_spoke.handle_receive_message", () => {
     // self_authority in HandleReceiveMessage accounts, also signer in self-invoked CPIs.
     remainingAccounts.push({
       isSigner: false,
-      // signer in self-invoked CPIs is mutable, as Solana owner is also fee payer when not using CCTP.
-      isWritable: true,
+      isWritable: false,
       pubkey: selfAuthority,
     });
     // program in HandleReceiveMessage accounts.
@@ -324,7 +326,7 @@ describe("svm_spoke.handle_receive_message", () => {
     // state in self-invoked SetEnableRoute.
     enableRouteRemainingAccounts.push({
       isSigner: false,
-      isWritable: true,
+      isWritable: false,
       pubkey: state,
     });
     // route in self-invoked SetEnableRoute.
@@ -406,5 +408,240 @@ describe("svm_spoke.handle_receive_message", () => {
 
     routeAccount = await program.account.route.fetch(routePda);
     assert.isFalse(routeAccount.enabled, "Route should be disabled");
+  });
+
+  it("Relays root bundle remotely", async () => {
+    // Encode relayRootBundle message.
+    const relayerRefundRoot = crypto.randomBytes(32);
+    const slowRelayRoot = crypto.randomBytes(32);
+    const calldata = ethereumIface.encodeFunctionData("relayRootBundle", [relayerRefundRoot, slowRelayRoot]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody,
+    });
+
+    // Remaining accounts specific to RelayRootBundle.
+    const rootBundleId = (await program.account.state.fetch(state)).rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
+    // Same 3 remaining accounts passed for HandleReceiveMessage context.
+    const relayRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
+    // payer in self-invoked SetEnableRoute.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: true,
+      isWritable: true,
+      pubkey: provider.wallet.publicKey,
+    });
+    // state in self-invoked RelayRootBundle.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: true,
+      pubkey: state,
+    });
+    // root_bundle in self-invoked RelayRootBundle.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: true,
+      pubkey: rootBundle,
+    });
+    // system_program in self-invoked RelayRootBundle.
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: web3.SystemProgram.programId,
+    });
+    // event_authority in self-invoked RelayRootBundle (appended by Anchor with event_cpi macro).
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: eventAuthority,
+    });
+    // program in self-invoked RelayRootBundle (appended by Anchor with event_cpi macro).
+    relayRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: program.programId,
+    });
+
+    // Invoke remote CCTP message to relay root bundle.
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(relayRootBundleRemainingAccounts)
+      .rpc();
+
+    // Check the updated relayer refund and slow relay root in the root bundle account.
+    const rootBundleAccountData = await program.account.rootBundle.fetch(rootBundle);
+    const updatedRelayerRefundRoot = Buffer.from(rootBundleAccountData.relayerRefundRoot);
+    const updatedSlowRelayRoot = Buffer.from(rootBundleAccountData.slowRelayRoot);
+    assert.isTrue(updatedRelayerRefundRoot.equals(relayerRefundRoot), "Relayer refund root should be set");
+    assert.isTrue(updatedSlowRelayRoot.equals(slowRelayRoot), "Slow relay root should be set");
+  });
+
+  it("Emergency deletes root bundle remotely", async () => {
+    // Relay root bundle.
+    const relayerRefundRoot = crypto.randomBytes(32);
+    const slowRelayRoot = crypto.randomBytes(32);
+    const rootBundleId = (await program.account.state.fetch(state)).rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    await program.methods
+      .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
+      .accounts(relayRootBundleAccounts)
+      .rpc();
+
+    // Ensure the root bundle exists before deletion
+    let rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+    assert.isNotNull(rootBundleData, "Root bundle should exist before deletion");
+
+    // Encode emergencyDeleteRootBundle message.
+    const calldata = ethereumIface.encodeFunctionData("emergencyDeleteRootBundle", [rootBundleId]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody,
+    });
+
+    // Remaining accounts specific to EmergencyDeleteRootBundle.
+    // Same 3 remaining accounts passed for HandleReceiveMessage context.
+    const emergencyDeleteRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
+    // closer in self-invoked EmergencyDeleteRootBundle.
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: true,
+      isWritable: true,
+      pubkey: provider.wallet.publicKey,
+    });
+    // state in self-invoked EmergencyDeleteRootBundle.
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: state,
+    });
+    // root_bundle in self-invoked EmergencyDeleteRootBundle.
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: true,
+      pubkey: rootBundle,
+    });
+    // event_authority in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: eventAuthority,
+    });
+    // program in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    emergencyDeleteRootBundleRemainingAccounts.push({
+      isSigner: false,
+      isWritable: false,
+      pubkey: program.programId,
+    });
+
+    // Invoke remote CCTP message to delete the root bundle.
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(emergencyDeleteRootBundleRemainingAccounts)
+      .rpc();
+
+    // Verify that the root bundle has been deleted
+    try {
+      rootBundleData = await program.account.rootBundle.fetch(rootBundle);
+      assert.fail("Root bundle should have been deleted");
+    } catch (err: any) {
+      assert.include(
+        err.toString(),
+        "Account does not exist or has no data",
+        "Expected error when fetching deleted root bundle"
+      );
+    }
+  });
+
+  it("Replaying an old message is not possible", async () => {
+    // Pause fills.
+    const calldata = ethereumIface.encodeFunctionData("pauseFills", [true]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody,
+    });
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(remainingAccounts)
+      .rpc();
+    let stateData = await program.account.state.fetch(state);
+    assert.isTrue(stateData.pausedFills, "Fills should be paused");
+
+    // Unpause fills.
+    nonce += 1;
+    const calldataUnpause = ethereumIface.encodeFunctionData("pauseFills", [false]);
+    const messageBodyUnpause = Buffer.from(calldataUnpause.slice(2), "hex");
+    const messageUnpause = encodeMessageHeader({
+      version: cctpMessageversion,
+      sourceDomain: remoteDomain.toNumber(),
+      destinationDomain: localDomain,
+      nonce: BigInt(nonce),
+      sender: crossDomainAdmin,
+      recipient: program.programId,
+      destinationCaller,
+      messageBody: messageBodyUnpause,
+    });
+    await messageTransmitterProgram.methods
+      .receiveMessage({ message: messageUnpause, attestation })
+      .accounts(receiveMessageAccounts)
+      .remainingAccounts(remainingAccounts)
+      .rpc();
+    stateData = await program.account.state.fetch(state);
+    assert.isFalse(stateData.pausedFills, "Fills should not be paused");
+
+    // Replay the old unpause message.
+    try {
+      await messageTransmitterProgram.methods
+        .receiveMessage({ message: messageUnpause, attestation })
+        .accounts(receiveMessageAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Should not be able to replay unpause message");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "NonceAlreadyUsed", "Expected error code NonceAlreadyUsed");
+    }
+
+    // Replay most recent message shouldn't be possible either.
+    try {
+      await messageTransmitterProgram.methods
+        .receiveMessage({ message: messageUnpause, attestation })
+        .accounts(receiveMessageAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Should not be able to replay unpause message");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "NonceAlreadyUsed", "Expected error code NonceAlreadyUsed");
+    }
   });
 });

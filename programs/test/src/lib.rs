@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use svm_spoke::{
     constants::DISCRIMINATOR_SIZE,
-    error::CustomError,
+    error::CommonError,
     utils::{is_claimed, process_proof, set_claimed},
 };
 
@@ -17,9 +17,13 @@ pub mod test {
     // Test Bitmap.
     #[derive(Accounts)]
     pub struct InitializeBitmap<'info> {
-        #[account(init, payer = signer, space = DISCRIMINATOR_SIZE + BitmapAccount::INIT_SPACE,
-              seeds = [b"bitmap_account"],
-              bump)]
+        #[account(
+            init,
+            payer = signer,
+            space = DISCRIMINATOR_SIZE + BitmapAccount::INIT_SPACE,
+            seeds = [b"bitmap_account"],
+            bump
+        )]
         pub bitmap_account: Account<'info, BitmapAccount>,
         #[account(mut)]
         pub signer: Signer<'info>,
@@ -66,18 +70,12 @@ pub mod test {
     // Test Merkle.
     #[derive(Accounts)]
     pub struct Verify {}
-    pub fn verify(
-        ctx: Context<Verify>,
-        root: [u8; 32],
-        leaf: [u8; 32],
-        proof: Vec<[u8; 32]>,
-    ) -> Result<()> {
+    pub fn verify(_ctx: Context<Verify>, root: [u8; 32], leaf: [u8; 32], proof: Vec<[u8; 32]>) -> Result<()> {
         let computed_root = process_proof(&proof, &leaf);
         if computed_root != root {
-            msg!("Invalid proof: computed root does not match provided root");
-            return err!(CustomError::InvalidMerkleProof);
+            return err!(CommonError::InvalidMerkleProof);
         }
-        msg!("Merkle proof verified successfully");
+
         Ok(())
     }
 
@@ -90,7 +88,7 @@ pub mod test {
     pub fn test_emit_large_log(_ctx: Context<EmitLargeLog>, length: u32) -> Result<()> {
         let large_message = "LOG_TO_TEST_LARGE_MESSAGE".repeat(length as usize);
         emit!(TestEvent {
-            message: large_message.into()
+            message: large_message.into(),
         });
         Ok(())
     }

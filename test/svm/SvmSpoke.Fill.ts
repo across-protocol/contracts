@@ -1,14 +1,23 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN } from "@coral-xyz/anchor";
+import { BN, web3 } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createAccount,
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
   getAccount,
+  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import {
+  PublicKey,
+  Keypair,
+  TransactionInstruction,
+  AddressLookupTableProgram,
+  VersionedTransaction,
+  TransactionMessage,
+} from "@solana/web3.js";
 import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
@@ -37,11 +46,9 @@ describe("svm_spoke.fill", () => {
     accounts = {
       state,
       signer: relayer.publicKey,
-      relayer: relayer.publicKey,
-      recipient: recipient,
       mintAccount: mint,
-      relayerTA: relayerTA,
-      recipientTA: recipientTA,
+      relayerTokenAccount: relayerTA,
+      recipientTokenAccount: recipientTA,
       fillStatus: fillStatusPDA,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -153,8 +160,7 @@ describe("svm_spoke.fill", () => {
 
   it("Fails to fill a V3 relay by non-exclusive relayer before exclusivity deadline", async () => {
     accounts.signer = otherRelayer.publicKey;
-    accounts.relayer = otherRelayer.publicKey;
-    accounts.relayerTA = otherRelayerTA;
+    accounts.relayerTokenAccount = otherRelayerTA;
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
@@ -173,8 +179,7 @@ describe("svm_spoke.fill", () => {
     updateRelayData({ ...relayData, exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 100) });
 
     accounts.signer = otherRelayer.publicKey;
-    accounts.relayer = otherRelayer.publicKey;
-    accounts.relayerTA = otherRelayerTA;
+    accounts.relayerTokenAccount = otherRelayerTA;
 
     const recipientAccountBefore = await getAccount(connection, recipientTA);
     const relayerAccountBefore = await getAccount(connection, otherRelayerTA);
@@ -252,7 +257,11 @@ describe("svm_spoke.fill", () => {
       await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
       assert.fail("Closing fill PDA should have failed before fill deadline");
     } catch (err: any) {
-      assert.include(err.toString(), "FillDeadlineNotPassed", "Expected FillDeadlineNotPassed error");
+      assert.include(
+        err.toString(),
+        "CanOnlyCloseFillStatusPdaIfFillDeadlinePassed",
+        "Expected CanOnlyCloseFillStatusPdaIfFillDeadlinePassed error"
+      );
     }
 
     // Set the current time to past the fill deadline
@@ -309,7 +318,7 @@ describe("svm_spoke.fill", () => {
     }
   });
 
-  it("Fails to fill a relay to wrong recipient", async () => {
+  it("Fails to fill a relay to wrong recipient token account", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
     // Create new accounts as derived from wrong recipient.
@@ -322,16 +331,15 @@ describe("svm_spoke.fill", () => {
         .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
         .accounts({
           ...accounts,
-          recipient: wrongRecipient,
-          recipientTA: wrongRecipientTA,
+          recipientTokenAccount: wrongRecipientTA,
           fillStatus: wrongFillStatus,
         })
         .signers([relayer])
         .rpc();
-      assert.fail("Should not be able to fill relay to wrong recipient");
+      assert.fail("Should not be able to fill relay to wrong recipient token account");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+      assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner", "Expected error code ConstraintTokenOwner");
     }
   });
 
@@ -361,5 +369,217 @@ describe("svm_spoke.fill", () => {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
+  });
+
+  it("Self-relay does not invoke token transfer", async () => {
+    // Set recipient to be the same as relayer.
+    updateRelayData({ ...relayData, depositor: relayer.publicKey, recipient: relayer.publicKey });
+    accounts.recipientTokenAccount = relayerTA;
+
+    // Store relayer's balance before the fill
+    const iRelayerBalance = (await getAccount(connection, relayerTA)).amount;
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    const txSignature = await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
+
+    // Verify relayer's balance after the fill is unchanged
+    const fRelayerBalance = (await getAccount(connection, relayerTA)).amount;
+    assertSE(fRelayerBalance, iRelayerBalance, "Relayer's balance should not have changed");
+
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
+    const txResult = await connection.getTransaction(txSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    if (txResult === null || txResult.meta === null) throw new Error("Transaction meta not confirmed");
+    if (txResult.meta.logMessages === null || txResult.meta.logMessages === undefined)
+      throw new Error("Transaction logs not found");
+    assert.isTrue(
+      txResult.meta.logMessages.every((log) => !log.includes(`Program ${TOKEN_PROGRAM_ID} invoke`)),
+      "Token Program should not be invoked"
+    );
+  });
+
+  it("Fills a V3 relay from custom relayer token account", async () => {
+    // Create and mint to custom relayer token account
+    const customKeypair = Keypair.generate();
+    const customRelayerTA = await createAccount(connection, payer, mint, relayer.publicKey, customKeypair);
+    await mintTo(connection, payer, mint, customRelayerTA, owner, seedBalance);
+
+    // Save balances before the the fill
+    const iRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
+    const iRecipientBal = (await getAccount(connection, recipientTA)).amount;
+
+    // Fill relay from custom relayer token account
+    accounts.relayerTokenAccount = customRelayerTA;
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .signers([relayer])
+      .rpc();
+
+    // Verify balances after the fill
+    const fRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
+    const fRecipientBal = (await getAccount(connection, recipientTA)).amount;
+    assertSE(fRelayerBal, iRelayerBal - BigInt(relayAmount), "Relayer's balance should be reduced by the relay amount");
+    assertSE(
+      fRecipientBal,
+      iRecipientBal + BigInt(relayAmount),
+      "Recipient's balance should be increased by the relay amount"
+    );
+  });
+  it("Fills a deposit for a recipient without an existing ATA", async () => {
+    // Generate a new recipient account
+    const newRecipient = Keypair.generate().publicKey;
+    const newRecipientATA = getAssociatedTokenAddressSync(mint, newRecipient);
+
+    // Attempt to fill a deposit, expecting failure due to missing ATA
+    const newRelayData = {
+      ...relayData,
+      recipient: newRecipient,
+      depositId: new BN(Math.floor(Math.random() * 1000000)),
+    };
+    updateRelayData(newRelayData);
+    accounts.recipientTokenAccount = newRecipientATA;
+    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+
+    try {
+      await program.methods
+        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .accounts(accounts)
+        .signers([relayer])
+        .rpc();
+      assert.fail("Fill should have failed due to missing ATA");
+    } catch (err: any) {
+      assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
+    }
+
+    // Create the ATA using the create_token_accounts method
+    const createTokenAccountsInstruction = await program.methods
+      .createTokenAccounts()
+      .accounts({ signer: relayer.publicKey, mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .remainingAccounts([
+        { pubkey: newRecipient, isWritable: false, isSigner: false },
+        { pubkey: newRecipientATA, isWritable: true, isSigner: false },
+      ])
+      .instruction();
+
+    // Fill the deposit in the same transaction
+    const fillInstruction = await program.methods
+      .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .instruction();
+
+    // Create and send the transaction
+    const transaction = new web3.Transaction().add(createTokenAccountsInstruction, fillInstruction);
+    await web3.sendAndConfirmTransaction(connection, transaction, [relayer]);
+
+    // Verify the recipient's balance after the fill
+    const recipientAccount = await getAccount(connection, newRecipientATA);
+    assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
+  });
+  it("Max fills in one transaction with account creation", async () => {
+    // Save relayer balance before the the fills
+    const iRelayerBal = (await getAccount(connection, relayerTA)).amount;
+
+    // Larger number of fills would exceed the transaction size limit.
+    const numberOfFills = 2;
+
+    // Build instruction for all recipient ATA creation
+    const recipientAuthorities = Array.from({ length: numberOfFills }, () => Keypair.generate().publicKey);
+    const recipientAssociatedTokens = recipientAuthorities.map((authority) =>
+      getAssociatedTokenAddressSync(mint, authority)
+    );
+    const remainingAccounts = recipientAuthorities.flatMap((authority, index) => [
+      { pubkey: authority, isWritable: false, isSigner: false },
+      { pubkey: recipientAssociatedTokens[index], isWritable: true, isSigner: false },
+    ]);
+    const createTokenAccountsInstruction = await program.methods
+      .createTokenAccounts()
+      .accounts({ signer: relayer.publicKey, mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .remainingAccounts(remainingAccounts)
+      .instruction();
+
+    // Build instructions for all fills
+    const fillInstructions: TransactionInstruction[] = [];
+    for (let i = 0; i < numberOfFills; i++) {
+      const newRelayData = {
+        ...relayData,
+        recipient: recipientAuthorities[i],
+        depositId: new BN(Math.floor(Math.random() * 1000000)),
+      };
+      updateRelayData(newRelayData);
+      accounts.recipientTokenAccount = recipientAssociatedTokens[i];
+      const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+      const fillInstruction = await program.methods
+        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .accounts(accounts)
+        .instruction();
+      fillInstructions.push(fillInstruction);
+    }
+
+    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
+    const lookupAddresses = [...Object.values(accounts), ...recipientAuthorities, ...recipientAssociatedTokens];
+
+    // Create instructions for creating and extending the ALT.
+    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
+      authority: relayer.publicKey,
+      payer: relayer.publicKey,
+      recentSlot: await connection.getSlot(),
+    });
+
+    // Submit the ALT creation transaction
+    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [relayer], {
+      skipPreflight: true, // Avoids recent slot mismatch in simulation.
+    });
+
+    // Extend the ALT with all accounts
+    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+      lookupTable: lookupTableAddress,
+      authority: relayer.publicKey,
+      payer: relayer.publicKey,
+      addresses: lookupAddresses as PublicKey[],
+    });
+    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [relayer], {
+      skipPreflight: true, // Avoids recent slot mismatch in simulation.
+    });
+
+    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Fetch the AddressLookupTableAccount
+    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
+    if (lookupTableAccount === null) throw new Error("AddressLookupTableAccount not fetched");
+
+    // Create the versioned transaction
+    const versionedTx = new VersionedTransaction(
+      new TransactionMessage({
+        payerKey: relayer.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [createTokenAccountsInstruction, ...fillInstructions],
+      }).compileToV0Message([lookupTableAccount])
+    );
+
+    // Sign and submit the versioned transaction.
+    versionedTx.sign([relayer]);
+    await connection.sendTransaction(versionedTx);
+
+    // Verify balances after the fill
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
+    const fRelayerBal = (await getAccount(connection, relayerTA)).amount;
+    assertSE(
+      fRelayerBal,
+      iRelayerBal - BigInt(relayAmount * numberOfFills),
+      "Relayer's balance should be reduced by total relay amount"
+    );
+    recipientAssociatedTokens.forEach(async (recipientAssociatedToken) => {
+      const recipientBal = (await getAccount(connection, recipientAssociatedToken)).amount;
+      assertSE(recipientBal, BigInt(relayAmount), "Recipient's balance should be increased by the relay amount");
+    });
   });
 });

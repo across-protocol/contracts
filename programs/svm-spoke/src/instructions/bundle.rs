@@ -1,11 +1,9 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
-use anchor_spl::token_interface::{
-    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
-};
+use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
-    error::CustomError,
+    error::{CommonError, SvmError},
     event::ExecutedRelayerRefundRoot,
     state::{ExecuteRelayerRefundLeafParams, RefundAccount, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
@@ -14,18 +12,18 @@ use crate::{
 #[event_cpi]
 #[derive(Accounts)]
 pub struct ExecuteRelayerRefundLeaf<'info> {
-    #[account(
-        seeds = [b"instruction_params", signer.key().as_ref()],
-        bump
-    )]
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
     pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
 
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(
         mut,
-        seeds =[b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        seeds = [b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
         realloc = std::cmp::max(
             DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
             root_bundle.to_account_info().data_len()
@@ -34,9 +32,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
         realloc::zero = false
     )]
     pub root_bundle: Account<'info, RootBundle>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
 
     #[account(
         mut,
@@ -47,9 +42,8 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-        mut,
         mint::token_program = token_program,
-        address = instruction_params.relayer_refund_leaf.mint_public_key @ CustomError::InvalidMint
+        address = instruction_params.relayer_refund_leaf.mint_public_key @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -67,14 +61,15 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+// TODO: update UMIP to consider different encoding for different chains (evm and svm).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
     pub chain_id: u64,
-    pub leaf_id: u32,
-    pub mint_public_key: Pubkey,
     #[max_len(0)]
     pub refund_amounts: Vec<u64>,
+    pub leaf_id: u32,
+    pub mint_public_key: Pubkey,
     #[max_len(0)]
     pub refund_accounts: Vec<Pubkey>,
 }
@@ -85,12 +80,11 @@ impl RelayerRefundLeaf {
 
         bytes.extend_from_slice(&self.amount_to_return.to_le_bytes());
         bytes.extend_from_slice(&self.chain_id.to_le_bytes());
-        bytes.extend_from_slice(&self.leaf_id.to_le_bytes());
-        bytes.extend_from_slice(self.mint_public_key.as_ref());
-
         for amount in &self.refund_amounts {
             bytes.extend_from_slice(&amount.to_le_bytes());
         }
+        bytes.extend_from_slice(&self.leaf_id.to_le_bytes());
+        bytes.extend_from_slice(self.mint_public_key.as_ref());
         for account in &self.refund_accounts {
             bytes.extend_from_slice(account.as_ref());
         }
@@ -108,7 +102,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
 ) -> Result<()>
 where
-    'c: 'info,
+    'c: 'info, // TODO: add explaining comments on some of more complex syntax.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -116,21 +110,18 @@ where
     let relayer_refund_leaf = instruction_params.relayer_refund_leaf.to_owned();
     let proof = instruction_params.proof.to_owned();
 
-    let state = &mut ctx.accounts.state;
+    let state = &ctx.accounts.state;
 
     let root = ctx.accounts.root_bundle.relayer_refund_root;
     let leaf = relayer_refund_leaf.to_keccak_hash();
     verify_merkle_proof(root, leaf, proof)?;
 
     if relayer_refund_leaf.chain_id != state.chain_id {
-        return err!(CustomError::InvalidChainId);
+        return err!(CommonError::InvalidChainId);
     }
 
-    if is_claimed(
-        &ctx.accounts.root_bundle.claimed_bitmap,
-        relayer_refund_leaf.leaf_id,
-    ) {
-        return err!(CustomError::ClaimedMerkleLeaf);
+    if is_claimed(&ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id) {
+        return err!(CommonError::ClaimedMerkleLeaf);
     }
 
     set_claimed(
@@ -142,7 +133,7 @@ where
     // TODO: emit events.
 
     if relayer_refund_leaf.refund_accounts.len() != relayer_refund_leaf.refund_amounts.len() {
-        return err!(CustomError::InvalidMerkleLeaf);
+        return err!(CommonError::InvalidMerkleLeaf);
     }
 
     // Derive the signer seeds for the state. The vault owns the state PDA so we need to derive this to create the
@@ -158,6 +149,7 @@ where
         let amount = *amount as u64;
 
         // Refund account holds either a regular token account or a claim account. This checks all required constraints.
+        // TODO: test ordering of the refund accounts and remaining accounts.
         let refund_account = RefundAccount::try_from_remaining_account(
             ctx.remaining_accounts,
             i,
