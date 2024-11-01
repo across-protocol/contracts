@@ -986,12 +986,15 @@ describe("svm_spoke.bundle", () => {
   });
 
   describe("Execute Max Refunds", () => {
-    const executeMaxRefunds = async (deferredRefunds: boolean) => {
-      // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
-      // not an issue, but we hit out of memory panic above 32 refunds. This should not be an issue as currently Across
-      // protocol does not expect this to be above 25.
-      const solanaDistributions = 28;
-
+    const executeMaxRefunds = async (testConfig: {
+      solanaDistributions: number;
+      deferredRefunds: boolean;
+      atomicAccountCreation: boolean;
+    }) => {
+      assert.isTrue(
+        !(testConfig.deferredRefunds && testConfig.atomicAccountCreation),
+        "Incompatible test configuration"
+      );
       // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
       const evmDistributions = 100; // This would fit in 7 proof array elements.
 
@@ -1001,7 +1004,7 @@ describe("svm_spoke.bundle", () => {
       const refundAddresses: web3.PublicKey[] = []; // These are relayer authority addresses used in leaf building.
       const refundAmounts: BN[] = [];
 
-      for (let i = 0; i < solanaDistributions; i++) {
+      for (let i = 0; i < testConfig.solanaDistributions; i++) {
         // Will create token account later if needed.
         const tokenOwner = Keypair.generate().publicKey;
         const tokenAccount = getAssociatedTokenAddressSync(mint, tokenOwner);
@@ -1012,8 +1015,10 @@ describe("svm_spoke.bundle", () => {
           program.programId
         );
 
-        if (deferredRefunds === false) {
+        if (!testConfig.deferredRefunds && !testConfig.atomicAccountCreation) {
           await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner);
+          refundAccounts.push(tokenAccount);
+        } else if (!testConfig.deferredRefunds && testConfig.atomicAccountCreation) {
           refundAccounts.push(tokenAccount);
         } else {
           await program.methods.initializeClaimAccount(mint, tokenOwner).rpc();
@@ -1025,7 +1030,7 @@ describe("svm_spoke.bundle", () => {
 
       const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
         totalEvmDistributions: evmDistributions,
-        totalSolanaDistributions: solanaDistributions,
+        totalSolanaDistributions: testConfig.solanaDistributions,
         mixLeaves: false,
         chainId: chainId.toNumber(),
         mint,
@@ -1074,14 +1079,21 @@ describe("svm_spoke.bundle", () => {
         program: program.programId,
       };
 
-      const remainingAccounts = refundAccounts.map((account) => ({
+      const executeRemainingAccounts = refundAccounts.map((account) => ({
         pubkey: account,
         isWritable: true,
         isSigner: false,
       }));
 
+      const createTokenAccountsRemainingAccounts = testConfig.atomicAccountCreation
+        ? refundAddresses.flatMap((authority, index) => [
+            { pubkey: authority, isWritable: false, isSigner: false },
+            { pubkey: refundAccounts[index], isWritable: true, isSigner: false },
+          ])
+        : [];
+
       // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
-      const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
+      const lookupAddresses = [...Object.values(staticAccounts), ...refundAddresses, ...refundAccounts];
 
       // Create instructions for creating and extending the ALT.
       const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
@@ -1119,28 +1131,41 @@ describe("svm_spoke.bundle", () => {
       // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-      const executeInstruction =
-        deferredRefunds === false
-          ? await program.methods
-              .executeRelayerRefundLeaf()
-              .accounts(staticAccounts)
-              .remainingAccounts(remainingAccounts)
-              .instruction()
-          : await program.methods
-              .executeRelayerRefundLeafDeferred()
-              .accounts(staticAccounts)
-              .remainingAccounts(remainingAccounts)
-              .instruction();
+      const executeInstruction = !testConfig.deferredRefunds
+        ? await program.methods
+            .executeRelayerRefundLeaf()
+            .accounts(staticAccounts)
+            .remainingAccounts(executeRemainingAccounts)
+            .instruction()
+        : await program.methods
+            .executeRelayerRefundLeafDeferred()
+            .accounts(staticAccounts)
+            .remainingAccounts(executeRemainingAccounts)
+            .instruction();
 
       // Build the instruction to increase the CU limit as the default 200k is not sufficient.
       const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
+
+      // Insert atomic ATA creation if needed.
+      const instructions = [computeBudgetInstruction];
+      if (testConfig.atomicAccountCreation)
+        instructions.push(
+          await program.methods
+            .createTokenAccounts()
+            .accounts({ mint, tokenProgram: TOKEN_PROGRAM_ID })
+            .remainingAccounts(createTokenAccountsRemainingAccounts)
+            .instruction()
+        );
+
+      // Add relay refund leaf execution instruction.
+      instructions.push(executeInstruction);
 
       // Create the versioned transaction
       const versionedTx = new VersionedTransaction(
         new TransactionMessage({
           payerKey: owner,
           recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-          instructions: [computeBudgetInstruction, executeInstruction],
+          instructions,
         }).compileToV0Message([lookupTableAccount])
       );
 
@@ -1151,8 +1176,8 @@ describe("svm_spoke.bundle", () => {
       // Verify all refund account balances (either token or claim accounts).
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
       const refundBalances = await Promise.all(
-        refundAccounts.map(async (account, i) => {
-          if (deferredRefunds === false) {
+        refundAccounts.map(async (account) => {
+          if (!testConfig.deferredRefunds) {
             return (await connection.getTokenAccountBalance(account)).value.amount;
           } else {
             return (await program.account.claimAccount.fetch(account)).amount.toString();
@@ -1165,11 +1190,25 @@ describe("svm_spoke.bundle", () => {
     };
 
     it("Execute Max Refunds to Token Accounts", async () => {
-      await executeMaxRefunds(false);
+      // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
+      // not an issue, but we hit out of memory panic above 32 refunds. This should not be an issue as currently Across
+      // protocol does not expect this to be above 25.
+      const solanaDistributions = 28;
+
+      await executeMaxRefunds({ solanaDistributions, deferredRefunds: false, atomicAccountCreation: false });
+    });
+
+    it("Execute Max Refunds to Token Accounts with atomic ATA creation", async () => {
+      // Higher refund count hits maximum instruction trace length limit.
+      const solanaDistributions = 9;
+
+      await executeMaxRefunds({ solanaDistributions, deferredRefunds: false, atomicAccountCreation: true });
     });
 
     it("Execute Max Refunds to Claim Accounts", async () => {
-      await executeMaxRefunds(true);
+      const solanaDistributions = 28;
+
+      await executeMaxRefunds({ solanaDistributions, deferredRefunds: true, atomicAccountCreation: false });
     });
   });
 
@@ -1384,7 +1423,7 @@ describe("svm_spoke.bundle", () => {
   });
 
   describe("Deferred refunds in ExecutedRelayerRefundRoot events", () => {
-    const executeRelayerRefundLeaf = async (deferredRefunds: boolean) => {
+    const executeRelayerRefundLeaf = async (testConfig: { deferredRefunds: boolean }) => {
       // Create new relayer accounts for each sub-test.
       const relayerA = Keypair.generate();
       const relayerB = Keypair.generate();
@@ -1394,7 +1433,7 @@ describe("svm_spoke.bundle", () => {
       let refundA: PublicKey, refundB: PublicKey;
 
       // Create refund accounts depending on the refund type.
-      if (deferredRefunds === false) {
+      if (!testConfig.deferredRefunds) {
         refundA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
         refundB = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerB.publicKey)).address;
       } else {
@@ -1461,7 +1500,7 @@ describe("svm_spoke.bundle", () => {
       const proofAsNumbers = proof.map((p) => Array.from(p));
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-      if (deferredRefunds === false) {
+      if (!testConfig.deferredRefunds) {
         return await program.methods
           .executeRelayerRefundLeaf()
           .accounts(executeRelayerRefundLeafAccounts)
@@ -1477,7 +1516,7 @@ describe("svm_spoke.bundle", () => {
     };
 
     it("No deferred refunds in all Token Accounts", async () => {
-      const tx = await executeRelayerRefundLeaf(false);
+      const tx = await executeRelayerRefundLeaf({ deferredRefunds: false });
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
@@ -1486,7 +1525,7 @@ describe("svm_spoke.bundle", () => {
     });
 
     it("Deferred refunds in all Claim Accounts", async () => {
-      const tx = await executeRelayerRefundLeaf(true);
+      const tx = await executeRelayerRefundLeaf({ deferredRefunds: true });
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
