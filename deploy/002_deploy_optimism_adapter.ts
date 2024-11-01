@@ -1,6 +1,7 @@
-import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { CHAIN_IDs } from "../utils";
+import { L1_ADDRESS_MAP, OP_STACK_ADDRESS_MAP, USDC, WETH } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -8,8 +9,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const args = [
     WETH[chainId],
-    L1_ADDRESS_MAP[chainId].optimismCrossDomainMessenger,
-    L1_ADDRESS_MAP[chainId].optimismStandardBridge,
+    OP_STACK_ADDRESS_MAP[chainId][CHAIN_IDs.OPTIMISM].L1CrossDomainMessenger,
+    OP_STACK_ADDRESS_MAP[chainId][CHAIN_IDs.OPTIMISM].L1StandardBridge,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];

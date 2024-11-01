@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { TOKEN_SYMBOLS_MAP } from "../utils";
-import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+import { OP_STACK_ADDRESS_MAP, USDC, WETH } from "./consts";
 
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
@@ -15,10 +15,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     skipIfAlreadyDeployed: true,
     args: [
       WETH[chainId],
-      L1_ADDRESS_MAP[chainId].blastCrossDomainMessenger,
-      L1_ADDRESS_MAP[chainId].blastStandardBridge,
+      OP_STACK_ADDRESS_MAP[chainId][CHAIN_IDs.BLAST].L1CrossDomainMessenger,
+      OP_STACK_ADDRESS_MAP[chainId][CHAIN_IDs.BLAST].L1StandardBridge,
       USDC[chainId],
-      L1_ADDRESS_MAP[chainId].l1BlastBridge,
+      OP_STACK_ADDRESS_MAP[chainId][CHAIN_IDs.BLAST].L1BlastBridge,
       USDB[chainId],
       "200_000",
     ],
