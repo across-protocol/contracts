@@ -75,7 +75,16 @@ pub mod svm_spoke {
     where
         'c: 'info,
     {
-        instructions::execute_relayer_refund_leaf(ctx)
+        instructions::execute_relayer_refund_leaf(ctx, false)
+    }
+
+    pub fn execute_relayer_refund_leaf_deferred<'c, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    ) -> Result<()>
+    where
+        'c: 'info,
+    {
+        instructions::execute_relayer_refund_leaf(ctx, true)
     }
 
     pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
@@ -183,7 +192,7 @@ pub mod svm_spoke {
         Ok(())
     }
 
-    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, total_size: u32) -> Result<()> {
+    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, _total_size: u32) -> Result<()> {
         Ok(())
     }
 
@@ -202,19 +211,19 @@ pub mod svm_spoke {
     pub fn initialize_claim_account(
         ctx: Context<InitializeClaimAccount>,
         _mint: Pubkey,
-        _token_account: Pubkey,
+        _refund_address: Pubkey,
     ) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
 
-    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
-        instructions::claim_relayer_refund(ctx)
+    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>, refund_address: Pubkey) -> Result<()> {
+        instructions::claim_relayer_refund(ctx, refund_address)
     }
 
     pub fn close_claim_account(
         ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey,          // Only used in account constraints.
-        _token_account: Pubkey, // Only used in account constraints.
+        _mint: Pubkey,           // Only used in account constraints.
+        _refund_address: Pubkey, // Only used in account constraints.
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
     }

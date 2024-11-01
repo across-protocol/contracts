@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Accounts)]
-#[instruction(mint: Pubkey, token_account: Pubkey)]
+#[instruction(mint: Pubkey, refund_address: Pubkey)]
 pub struct InitializeClaimAccount<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -18,7 +18,7 @@ pub struct InitializeClaimAccount<'info> {
         init,
         payer = signer,
         space = DISCRIMINATOR_SIZE + ClaimAccount::INIT_SPACE,
-        seeds = [b"claim_account", mint.as_ref(), token_account.as_ref()],
+        seeds = [b"claim_account", mint.as_ref(), refund_address.as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -35,6 +35,7 @@ pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<
 
 #[event_cpi]
 #[derive(Accounts)]
+#[instruction(refund_address: Pubkey)]
 pub struct ClaimRelayerRefund<'info> {
     pub signer: Signer<'info>,
 
@@ -57,14 +58,18 @@ pub struct ClaimRelayerRefund<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    // Token address has been checked when executing the relayer refund leaf and it is part of claim account derivation.
-    #[account(mut, token::mint = mint, token::token_program = token_program)]
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = refund_address,
+        associated_token::token_program = token_program
+    )]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         close = initializer,
-        seeds = [b"claim_account", mint.key().as_ref(), token_account.key().as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -72,7 +77,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
+pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>, refund_address: Pubkey) -> Result<()> {
     // Ensure the claim account holds a non-zero amount.
     let claim_amount = ctx.accounts.claim_account.amount;
     if claim_amount == 0 {
@@ -102,7 +107,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
     emit_cpi!(ClaimedRelayerRefund {
         l2_token_address: ctx.accounts.mint.key(),
         claim_amount,
-        refund_address: ctx.accounts.token_account.key(),
+        refund_address,
     });
 
     // There is no need to reset the claim amount as the account will be closed at the end of instruction.
@@ -114,7 +119,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
 // relayer refunds were executed with ATA after initializing the claim account. In such cases, the initializer should be
 // able to close the claim account manually.
 #[derive(Accounts)]
-#[instruction(mint: Pubkey, token_account: Pubkey)]
+#[instruction(mint: Pubkey, refund_address: Pubkey)]
 pub struct CloseClaimAccount<'info> {
     #[account(mut, address = claim_account.initializer @ SvmError::InvalidClaimInitializer)]
     pub signer: Signer<'info>,
@@ -122,8 +127,7 @@ pub struct CloseClaimAccount<'info> {
     #[account(
         mut,
         close = signer,
-        // TODO: We can remove mint from seed derivation as token_account itself is derived from the mint.
-        seeds = [b"claim_account", mint.key().as_ref(), token_account.key().as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.key().as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
