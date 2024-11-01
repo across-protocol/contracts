@@ -32,17 +32,18 @@ pub struct DepositV3<'info> {
 
     #[account(
         seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
-        bump
+        bump,
+        constraint = route.enabled @ CommonError::DisabledRoute
     )]
     pub route: Account<'info, Route>,
 
     #[account(
         mut,
-        token::mint = mint,
-        token::authority = signer,
-        token::token_program = token_program
+        associated_token::mint = mint,
+        associated_token::authority = depositor,
+        associated_token::token_program = token_program
     )]
-    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -54,7 +55,6 @@ pub struct DepositV3<'info> {
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
         constraint = mint.key() == input_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
@@ -79,10 +79,6 @@ pub fn deposit_v3(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    if !ctx.accounts.route.enabled {
-        return err!(CommonError::DisabledRoute);
-    }
-
     let current_time = get_current_time(state)?;
 
     if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
@@ -94,7 +90,7 @@ pub fn deposit_v3(
     }
 
     let transfer_accounts = TransferChecked {
-        from: ctx.accounts.user_token_account.to_account_info(),
+        from: ctx.accounts.depositor_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.signer.to_account_info(),
@@ -152,7 +148,7 @@ pub fn deposit_v3_now(
     }
 
     let transfer_accounts = TransferChecked {
-        from: ctx.accounts.user_token_account.to_account_info(),
+        from: ctx.accounts.depositor_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.signer.to_account_info(),

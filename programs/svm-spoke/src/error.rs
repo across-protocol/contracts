@@ -31,7 +31,6 @@ pub enum CommonError {
     DepositsArePaused,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
-    // Add any additional errors here if needed
 }
 
 // SVM specific errors.
