@@ -988,7 +988,7 @@ describe("svm_spoke.bundle", () => {
   describe("Execute Max Refunds", () => {
     const executeMaxRefunds = async (deferredRefunds: boolean) => {
       // Higher refund count hits inner instruction size limit when doing `emit_cpi` on public devnet. On localnet this is
-      // not an issue, but we hit out of memory panic above 31 refunds. This should not be an issue as currently Across
+      // not an issue, but we hit out of memory panic above 32 refunds. This should not be an issue as currently Across
       // protocol does not expect this to be above 25.
       const solanaDistributions = 28;
 
