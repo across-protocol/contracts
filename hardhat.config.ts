@@ -91,6 +91,7 @@ const config: HardhatUserConfig = {
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Superseed_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -277,6 +278,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    superseed: {
+      chainId: CHAIN_IDs.SUPERSEED,
+      url: process.env.NODE_URL_5330,
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     worldchain: {
       chainId: CHAIN_IDs.WORLD_CHAIN,
       url: "https://worldchain-mainnet.g.alchemy.com/public",
@@ -318,6 +326,7 @@ const config: HardhatUserConfig = {
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
+      superseed: "blockscout",
       worldchain: "blockscout",
     },
     customChains: [
@@ -463,6 +472,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.blastscan.io/api",
           browserURL: "https://sepolia.blastscan.io",
+        },
+      },
+      {
+        network: "superseed",
+        chainId: CHAIN_IDs.SUPERSEED,
+        urls: {
+          apiURL: "https://explorer-superseed-mainnet-0.t.conduit.xyz/api",
+          browserURL: "https://explorer-superseed-mainnet-0.t.conduit.xyz",
         },
       },
       {
