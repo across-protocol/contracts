@@ -58,6 +58,7 @@ pub struct ClaimRelayerRefund<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
+    // TODO: In EVM we currently allow claiming refunds to any address, but probably should restrict it there as well.
     #[account(
         mut,
         associated_token::mint = mint,
