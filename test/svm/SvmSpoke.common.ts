@@ -22,7 +22,7 @@ const exclusiveRelayer = Keypair.generate().publicKey;
 const outputToken = new PublicKey("1111111111113EsMD5n1VA94D2fALdb1SAKLam8j"); // TODO: this is lazy. this is cast USDC from Eth mainnet.
 const inputAmount = new BN(500000);
 const outputAmount = inputAmount;
-const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 10); // 10 seconds ago.
+const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 50); // 10 seconds ago.
 const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600); // 600 seconds from now.
 const exclusivityPeriod = new BN(300); // 300 seconds.
 const message = Buffer.from("Test message");
@@ -90,7 +90,11 @@ async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
 }
 
 function assertSE(a: any, b: any, errorMessage: string) {
-  assert.strictEqual(a.toString(), b.toString(), errorMessage);
+  if (a === undefined || b === undefined) {
+    assert.strictEqual(a, b, errorMessage);
+  } else {
+    assert.strictEqual(a.toString(), b.toString(), errorMessage);
+  }
 }
 
 interface DepositData {

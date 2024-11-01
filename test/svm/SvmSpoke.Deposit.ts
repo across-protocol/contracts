@@ -75,7 +75,38 @@ describe("svm_spoke.deposit", () => {
     await enableRoute();
   });
 
-  it.only("Deposits tokens via deposit_v3 function and checks balances", async () => {
+  it("Invalid input prop sanitization", async () => {
+    try {
+      depositData.quoteTimestamp = new BN(10);
+      // Execute the deposit_v3 call
+      let depositDataValues = Object.values(depositData) as DepositDataValues;
+      await program.methods
+        .depositV3(...depositDataValues)
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Expected InvalidQuoteTimestamp error was not thrown");
+    } catch (err: any) {
+      assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
+    }
+
+    try {
+      const currentTime = await getCurrentTime(program, state);
+      depositData.quoteTimestamp = new BN(currentTime + 10000);
+      // Execute the deposit_v3 call
+      let depositDataValues = Object.values(depositData) as DepositDataValues;
+      await program.methods
+        .depositV3(...depositDataValues)
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Expected InvalidQuoteTimestamp error was not thrown");
+    } catch (err: any) {
+      console.log(err);
+      assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
+    }
+  });
+  it("Deposits tokens via deposit_v3 function and checks balances", async () => {
     // Verify vault balance is zero before the deposit
     let vaultAccount = await getAccount(connection, vault);
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
@@ -129,7 +160,7 @@ describe("svm_spoke.deposit", () => {
     );
   });
 
-  it.only("Verifies V3FundsDeposited after deposits", async () => {
+  it("Verifies V3FundsDeposited after deposits", async () => {
     depositData.inputAmount = depositData.inputAmount.add(new BN(69));
 
     // Execute the first deposit_v3 call
@@ -144,7 +175,13 @@ describe("svm_spoke.deposit", () => {
     // Fetch and verify the depositEvent
     let events = await readProgramEvents(connection, program);
     let event = events.find((event) => event.name === "v3FundsDeposited").data;
-    const expectedValues1 = { ...depositData, depositId: "1" }; // Verify the event props emitted match the depositData.
+    const currentTime = await getCurrentTime(program, state);
+    const { exclusivityPeriod, ...restOfDepositData } = depositData; // Strip exclusivityPeriod from depositData
+    const expectedValues1 = {
+      ...restOfDepositData,
+      depositId: "1",
+      exclusivityDeadline: currentTime + exclusivityPeriod.toNumber(),
+    }; // Verify the event props emitted match the depositData.
     for (const [key, value] of Object.entries(expectedValues1)) {
       assertSE(event[key], value, `${key} should match`);
     }
@@ -161,7 +198,7 @@ describe("svm_spoke.deposit", () => {
     events = await readProgramEvents(connection, program);
     event = events.find((event) => event.name === "v3FundsDeposited" && event.data.depositId.toString() === "2").data;
 
-    const expectedValues2 = { ...depositData, depositId: "2" }; // Verify the event props emitted match the depositData.
+    const expectedValues2 = { ...expectedValues1, depositId: "2" }; // Verify the event props emitted match the depositData.
     for (const [key, value] of Object.entries(expectedValues2)) {
       assertSE(event[key], value, `${key} should match`);
     }
@@ -391,8 +428,9 @@ describe("svm_spoke.deposit", () => {
     // Fetch and verify the depositEvent
     let events = await readProgramEvents(connection, program);
     let event = events.find((event) => event.name === "v3FundsDeposited").data;
-    const expectedValues1 = { ...{ ...depositData, destinationChainId: fakeRouteChainId }, depositId: "1" }; // Verify the event props emitted match the depositData.
-    for (const [key, value] of Object.entries(expectedValues1)) {
+    const { exclusivityPeriod, ...restOfDepositData } = depositData; // Strip exclusivityPeriod from depositData
+    const expectedValues = { ...{ ...restOfDepositData, destinationChainId: fakeRouteChainId }, depositId: "1" }; // Verify the event props emitted match the depositData.
+    for (const [key, value] of Object.entries(expectedValues)) {
       assertSE(event[key], value, `${key} should match`);
     }
 
@@ -423,27 +461,27 @@ describe("svm_spoke.deposit", () => {
     assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
   });
 
-  it.only("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
+  it("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
     // Set up initial deposit data. Note that this method has a slightly different interface to deposit, using
     // fillDeadlineOffset rather than fillDeadline. current chain time is added to fillDeadlineOffset to set the
     // fillDeadline for the deposit. exclusivityPeriod operates the same as in standard deposit.
     // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
-    const fillDeadlineOffset = new BN(60); // 60 seconds offset
+    const fillDeadlineOffset = 60; // 60 seconds offset
 
     // Execute the deposit_v3_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
 
     await program.methods
       .depositV3Now(
-        depositData.depositor,
-        depositData.recipient,
-        depositData.inputToken,
-        depositData.outputToken,
+        depositData.depositor!,
+        depositData.recipient!,
+        depositData.inputToken!,
+        depositData.outputToken!,
         depositData.inputAmount,
         depositData.outputAmount,
         depositData.destinationChainId,
-        depositData.exclusiveRelayer,
+        depositData.exclusiveRelayer!,
         fillDeadlineOffset,
-        depositData.exclusivityPeriod,
+        depositData.exclusivityPeriod.toNumber(),
         depositData.message
       )
       .accounts(depositAccounts)
@@ -458,11 +496,12 @@ describe("svm_spoke.deposit", () => {
 
     // Verify the event props emitted match the expected values
     const currentTime = await getCurrentTime(program, state);
+    const { exclusivityPeriod, ...restOfDepositData } = depositData; // Strip exclusivityPeriod from depositData
     const expectedValues = {
-      ...depositData,
+      ...restOfDepositData,
       quoteTimestamp: currentTime,
-      fillDeadline: currentTime + fillDeadlineOffset.toNumber(),
-      exclusivityDeadline: currentTime + depositData.exclusivityPeriod.toNumber(),
+      fillDeadline: currentTime + fillDeadlineOffset,
+      exclusivityDeadline: currentTime + exclusivityPeriod.toNumber(),
       depositId: "1",
     };
 

@@ -17,12 +17,7 @@ use crate::{
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64, // TODO: we can remove some of these instructions props
-    exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_deadline: u32,
-    message: Vec<u8>
+    destination_chain_id: u64,
 )]
 pub struct DepositV3<'info> {
     #[account(mut)]
@@ -90,10 +85,7 @@ pub fn deposit_v3(
 
     let current_time = get_current_time(state)?;
 
-    // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction
-    // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
-    // not caught via overflow.
-    if current_time - quote_timestamp > state.deposit_quote_time_buffer {
+    if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
     }
 
@@ -154,10 +146,6 @@ pub fn deposit_v3_now(
     let current_time = get_current_time(state)?;
 
     let fill_deadline = current_time + fill_deadline_offset;
-
-    // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction
-    // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
-    // not caught via overflow.
 
     if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
         return err!(CommonError::InvalidFillDeadline);
