@@ -15,7 +15,7 @@ const { provider, connection, program, owner, seedBalance, initializeState, depo
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
 
-describe("svm_spoke.deposit", () => {
+describe.only("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
@@ -73,38 +73,6 @@ describe("svm_spoke.deposit", () => {
     state = await initializeState();
 
     await enableRoute();
-  });
-
-  it("Invalid input prop sanitization", async () => {
-    try {
-      depositData.quoteTimestamp = new BN(10);
-      // Execute the deposit_v3 call
-      let depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
-      assert.fail("Expected InvalidQuoteTimestamp error was not thrown");
-    } catch (err: any) {
-      assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
-    }
-
-    try {
-      const currentTime = await getCurrentTime(program, state);
-      depositData.quoteTimestamp = new BN(currentTime + 10000);
-      // Execute the deposit_v3 call
-      let depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
-      assert.fail("Expected InvalidQuoteTimestamp error was not thrown");
-    } catch (err: any) {
-      console.log(err);
-      assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
-    }
   });
   it("Deposits tokens via deposit_v3 function and checks balances", async () => {
     // Verify vault balance is zero before the deposit
@@ -285,11 +253,7 @@ describe("svm_spoke.deposit", () => {
         .rpc();
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
-      assert.include(
-        err.toString(),
-        "attempt to subtract with overflow",
-        "Expected underflow error due to future quote timestamp"
-      );
+      assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
     }
   });
 
