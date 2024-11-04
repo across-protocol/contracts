@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.12;
+pragma solidity ^0.8.0; // Bumped version
 
 /**
  * This contract has been copied from the MD1/Multicall repository.
  * @dev https://github.com/mds1/multicall/blob/ebd8b64457454fc10037b3a3ea858f9c08dad4d3/src/Multicall3.sol
+ * @dev changelog: pragma solidity ^0.8.12 -> pragma solidity ^0.8.0
  **/
 
 /// @title Multicall3

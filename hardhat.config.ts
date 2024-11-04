@@ -83,11 +83,6 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
-      "contracts/external/Multicall3.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // Needed for the Multicall3.sol official contract
-        version: "0.8.12",
-      },
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
