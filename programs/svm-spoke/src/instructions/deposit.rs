@@ -133,7 +133,8 @@ pub fn deposit_v3_now(
     exclusivity_period: u32,
     message: Vec<u8>,
 ) -> Result<()> {
-    let current_time = get_current_time(ctx.accounts.state)?;
+    let state = &mut ctx.accounts.state;
+    let current_time = get_current_time(state)?;
     deposit_v3(
         ctx,
         depositor,
