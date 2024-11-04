@@ -280,7 +280,7 @@ const config: HardhatUserConfig = {
     },
     superseed: {
       chainId: CHAIN_IDs.SUPERSEED,
-      url: process.env.NODE_URL_5330,
+      url: "https://rpc-superseed-mainnet-0.t.conduit.xyz",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
