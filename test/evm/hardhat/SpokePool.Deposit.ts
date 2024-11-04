@@ -539,10 +539,7 @@ describe.only("SpokePool Depositor Logic", async function () {
         );
     });
     it("deposit ID state variable incremented", async function () {
-      const tx = await spokePool.connect(depositor).depositV3(...depositArgs);
-
-      const final = await tx.wait();
-      console.log("final", final.gasUsed);
+      await spokePool.connect(depositor).depositV3(...depositArgs);
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
