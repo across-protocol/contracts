@@ -178,16 +178,11 @@ pub mod svm_spoke {
     }
 
     // CCTP methods.
-    // TODO: consider refactoring this to be consistent with using free functions.
     pub fn handle_receive_message<'info>(
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
         params: HandleReceiveMessageParams,
     ) -> Result<()> {
-        let self_ix_data = ctx.accounts.handle_receive_message(&params)?;
-
-        invoke_self(&ctx, &self_ix_data)?;
-
-        Ok(())
+        instructions::handle_receive_message(ctx, params)
     }
 
     // Slow fill methods.
