@@ -188,7 +188,7 @@ fn distribute_relayer_refunds<'info>(
             &ctx.accounts.mint.key(),
             &ctx.accounts.token_program.key(),
         );
-        if refund_token_account.key != &associated_token_address {
+        if refund_token_account.key() != associated_token_address {
             return Err(Error::from(SvmError::InvalidRefund).with_account_name(&format!("remaining_accounts[{}]", i)));
         }
 
