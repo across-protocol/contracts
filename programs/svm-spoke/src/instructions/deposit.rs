@@ -134,45 +134,22 @@ pub fn deposit_v3_now(
     message: Vec<u8>,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
-
-    if !ctx.accounts.route.enabled {
-        return err!(CommonError::DisabledRoute);
-    }
-
     let current_time = get_current_time(state)?;
-
-    let fill_deadline = current_time + fill_deadline_offset;
-
-    if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
-        return err!(CommonError::InvalidFillDeadline);
-    }
-
-    let transfer_accounts = TransferChecked {
-        from: ctx.accounts.depositor_token_account.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        to: ctx.accounts.vault.to_account_info(),
-        authority: ctx.accounts.signer.to_account_info(),
-    };
-    let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
-    transfer_checked(cpi_context, input_amount, ctx.accounts.mint.decimals)?;
-
-    state.number_of_deposits += 1; // Increment number of deposits
-
-    emit_cpi!(V3FundsDeposited {
+    deposit_v3(
+        ctx,
+        depositor,
+        recipient,
         input_token,
         output_token,
         input_amount,
         output_amount,
         destination_chain_id,
-        deposit_id: state.number_of_deposits,
-        quote_timestamp: current_time,
-        fill_deadline,
-        exclusivity_deadline: current_time + exclusivity_period,
-        depositor,
-        recipient,
         exclusive_relayer,
+        current_time,
+        current_time + fill_deadline_offset,
+        exclusivity_period,
         message,
-    });
+    )?;
 
     Ok(())
 }
