@@ -30,7 +30,7 @@ import {
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 
-describe.only("SpokePool Depositor Logic", async function () {
+describe("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
   let depositor: SignerWithAddress, recipient: SignerWithAddress;
   let quoteTimestamp: number;
