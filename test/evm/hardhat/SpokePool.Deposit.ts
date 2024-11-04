@@ -30,7 +30,7 @@ import {
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 
-describe("SpokePool Depositor Logic", async function () {
+describe.only("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
   let depositor: SignerWithAddress, recipient: SignerWithAddress;
   let quoteTimestamp: number;
@@ -407,6 +407,12 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.be.revertedWith("InvalidQuoteTimestamp");
       await expect(
         spokePool.connect(depositor).depositV3(
+          // quoteTimestamp in the future should also revert with InvalidQuoteTimestamp
+          ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.add(500))
+        )
+      ).to.be.revertedWith("InvalidQuoteTimestamp");
+      await expect(
+        spokePool.connect(depositor).depositV3(
           // quoteTimestamp right at the buffer is OK
           ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer))
         )
@@ -535,7 +541,10 @@ describe("SpokePool Depositor Logic", async function () {
         );
     });
     it("deposit ID state variable incremented", async function () {
-      await spokePool.connect(depositor).depositV3(...depositArgs);
+      const tx = await spokePool.connect(depositor).depositV3(...depositArgs);
+
+      const final = await tx.wait();
+      console.log("final", final.gasUsed);
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {

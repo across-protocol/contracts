@@ -502,7 +502,9 @@ abstract contract SpokePool is
 
         // slither-disable-next-line timestamp
         uint256 currentTime = getCurrentTime();
-        if (currentTime - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
+        if (quoteTimestamp > currentTime || currentTime - quoteTimestamp > depositQuoteTimeBuffer) {
+            revert InvalidQuoteTimestamp();
+        }
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
