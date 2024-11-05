@@ -1,17 +1,17 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked },
+    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 use crate::{
+    common::V3RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
-    error::{ CommonError, SvmError },
-    event::{ FillType, FilledV3Relay, V3RelayExecutionEventInfo },
+    error::{CommonError, SvmError},
+    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
-    state::{ FillStatus, FillStatusAccount, State },
-    common::V3RelayData,
+    state::{FillStatus, FillStatusAccount, State},
 };
 
 #[event_cpi]
@@ -70,16 +70,15 @@ pub fn fill_v3_relay(
     ctx: Context<FillV3Relay>,
     relay_data: V3RelayData,
     repayment_chain_id: u64,
-    repayment_address: Pubkey
+    repayment_address: Pubkey,
 ) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if
-        relay_data.exclusive_relayer != ctx.accounts.signer.key() &&
-        relay_data.exclusivity_deadline >= current_time &&
-        relay_data.exclusive_relayer != Pubkey::default()
+    if relay_data.exclusive_relayer != ctx.accounts.signer.key()
+        && relay_data.exclusivity_deadline >= current_time
+        && relay_data.exclusive_relayer != Pubkey::default()
     {
         return err!(CommonError::NotExclusiveRelayer);
     }
@@ -109,7 +108,11 @@ pub fn fill_v3_relay(
             authority: ctx.accounts.signer.to_account_info(),
         };
         let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
-        transfer_checked(cpi_context, relay_data.output_amount, ctx.accounts.mint_account.decimals)?;
+        transfer_checked(
+            cpi_context,
+            relay_data.output_amount,
+            ctx.accounts.mint_account.decimals,
+        )?;
     }
 
     // Update the fill status to Filled and set the relayer
