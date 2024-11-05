@@ -70,6 +70,12 @@ const config: HardhatUserConfig = {
         // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
         version: "0.8.19",
       },
+      "contracts/AlephZero_SpokePool.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        // NOTE: Arbitrum, only supports 0.8.19.
+        // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
+        version: "0.8.19",
+      },
       // "contracts/Polygon_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
       "contracts/Linea_SpokePool.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
