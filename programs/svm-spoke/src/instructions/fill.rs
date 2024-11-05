@@ -12,7 +12,6 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
-    utils::get_v3_relay_hash,
 };
 
 #[event_cpi]
@@ -51,7 +50,7 @@ pub struct FillV3Relay<'info> {
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    /// CHECK: This is not dangerous because we don't read or write from this account. Passed in as a prop for the constraint.
+    /// CHECK: This is not dangerous as we don't read or write from this account. Passed in as a prop for the constraint.
     pub relay_hash: UncheckedAccount<'info>,
 
     #[account(
@@ -153,7 +152,7 @@ pub fn fill_v3_relay(
 }
 
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
+#[instruction(relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
     #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
     pub signer: Signer<'info>,
@@ -161,13 +160,15 @@ pub struct CloseFillPda<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
+    /// CHECK: This is not dangerous as we don't read or write from this account. Passed in as a prop for the constraint.
+    pub relay_hash: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.key().as_ref()],
         bump,
         close = signer, // TODO: check if this is correct party to receive refund.
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash.key().as_ref().try_into().unwrap(), &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 }

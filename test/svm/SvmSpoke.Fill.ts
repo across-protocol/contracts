@@ -23,7 +23,7 @@ import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
-describe.only("svm_spoke.fill", () => {
+describe("svm_spoke.fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
@@ -49,6 +49,7 @@ describe.only("svm_spoke.fill", () => {
       mintAccount: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
+      relayHash: new PublicKey(relayHashUint8Array),
       fillStatus: fillStatusPDA,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -90,7 +91,7 @@ describe.only("svm_spoke.fill", () => {
     updateRelayData(initialRelayData);
   });
 
-  it.only("Fills a V3 relay and verifies balances", async () => {
+  it("Fills a V3 relay and verifies balances", async () => {
     // Verify recipient's balance before the fill
     let recipientAccount = await getAccount(connection, recipientTA);
     assertSE(recipientAccount.amount, "0", "Recipient's balance should be 0 before the fill");
@@ -99,10 +100,9 @@ describe.only("svm_spoke.fill", () => {
     let relayerAccount = await getAccount(connection, relayerTA);
     assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
       .fillV3Relay(relayData, new BN(1), relayer.publicKey)
-      .accounts({ ...accounts, relayHash: new PublicKey(relayHash) })
+      .accounts(accounts)
       .signers([relayer])
       .rpc();
 
@@ -120,7 +120,6 @@ describe.only("svm_spoke.fill", () => {
   });
 
   it("Verifies FilledV3Relay event after filling a relay", async () => {
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
       .fillV3Relay(relayData, new BN(420), otherRelayer.publicKey)
       .accounts(accounts)
@@ -145,7 +144,6 @@ describe.only("svm_spoke.fill", () => {
   it("Fails to fill a V3 relay after the fill deadline", async () => {
     updateRelayData({ ...relayData, fillDeadline: new BN(Math.floor(Date.now() / 1000) - 69) }); // 69 seconds ago
 
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
         .fillV3Relay(relayData, new BN(1), relayer.publicKey)
@@ -162,7 +160,6 @@ describe.only("svm_spoke.fill", () => {
     accounts.signer = otherRelayer.publicKey;
     accounts.relayerTokenAccount = otherRelayerTA;
 
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
         .fillV3Relay(relayData, new BN(1), relayer.publicKey)
@@ -184,7 +181,6 @@ describe.only("svm_spoke.fill", () => {
     const recipientAccountBefore = await getAccount(connection, recipientTA);
     const relayerAccountBefore = await getAccount(connection, otherRelayerTA);
 
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
       .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
@@ -209,8 +205,6 @@ describe.only("svm_spoke.fill", () => {
   });
 
   it("Fails to fill a V3 relay with the same deposit data multiple times", async () => {
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-
     // First fill attempt
     await program.methods
       .fillV3Relay(relayData, new BN(1), relayer.publicKey)
@@ -232,11 +226,10 @@ describe.only("svm_spoke.fill", () => {
   });
 
   it("Closes the fill PDA after the fill", async () => {
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-
     const closeFillPdaAccounts = {
       state,
       signer: relayer.publicKey,
+      relayHash: accounts.relayHash,
       fillStatus: accounts.fillStatus,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
@@ -254,7 +247,7 @@ describe.only("svm_spoke.fill", () => {
 
     // Attempt to close the fill PDA before the fill deadline should fail.
     try {
-      await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+      await program.methods.closeFillPda(relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
       assert.fail("Closing fill PDA should have failed before fill deadline");
     } catch (err: any) {
       assert.include(
@@ -268,7 +261,7 @@ describe.only("svm_spoke.fill", () => {
     await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1), relayer.publicKey));
 
     // Close the fill PDA
-    await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+    await program.methods.closeFillPda(relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
 
     // Verify the fill PDA is closed
     const fillStatusAccountAfter = await connection.getAccountInfo(accounts.fillStatus);
@@ -285,7 +278,7 @@ describe.only("svm_spoke.fill", () => {
 
     // Fill the relay
     await program.methods
-      .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -305,7 +298,6 @@ describe.only("svm_spoke.fill", () => {
     assert.isTrue(stateAccountData.pausedFills, "Fills should be paused");
 
     // Try to fill the relay. This should fail because fills are paused.
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
         .fillV3Relay(relayData, new BN(1), relayer.publicKey)
@@ -320,7 +312,6 @@ describe.only("svm_spoke.fill", () => {
 
   it("Fails to fill a relay to wrong recipient token account", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
-
     // Create new accounts as derived from wrong recipient.
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
@@ -328,7 +319,7 @@ describe.only("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(relayData, new BN(1), relayer.publicKey)
         .accounts({
           ...accounts,
           recipientTokenAccount: wrongRecipientTA,
@@ -344,8 +335,6 @@ describe.only("svm_spoke.fill", () => {
   });
 
   it("Fails to fill a relay for mint inconsistent output_token", async () => {
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
-
     // Create and fund new accounts as derived from wrong mint account.
     const wrongMint = await createMint(connection, payer, owner, owner, 6);
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, recipient)).address;
@@ -355,7 +344,7 @@ describe.only("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(relayData, new BN(1), relayer.publicKey)
         .accounts({
           ...accounts,
           mintAccount: wrongMint,
@@ -379,7 +368,6 @@ describe.only("svm_spoke.fill", () => {
     // Store relayer's balance before the fill
     const iRelayerBalance = (await getAccount(connection, relayerTA)).amount;
 
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     const txSignature = await program.methods
       .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
@@ -416,7 +404,6 @@ describe.only("svm_spoke.fill", () => {
 
     // Fill relay from custom relayer token account
     accounts.relayerTokenAccount = customRelayerTA;
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
       .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
@@ -446,7 +433,6 @@ describe.only("svm_spoke.fill", () => {
     };
     updateRelayData(newRelayData);
     accounts.recipientTokenAccount = newRecipientATA;
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
 
     try {
       await program.methods
@@ -515,7 +501,7 @@ describe.only("svm_spoke.fill", () => {
       };
       updateRelayData(newRelayData);
       accounts.recipientTokenAccount = recipientAssociatedTokens[i];
-      const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+
       const fillInstruction = await program.methods
         .fillV3Relay(newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)

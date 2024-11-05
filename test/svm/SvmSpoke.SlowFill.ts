@@ -59,6 +59,7 @@ describe("svm_spoke.slow_fill", () => {
       state,
       signer: relayer.publicKey,
       recipient: relayData.recipient, // This could be different from global recipient.
+      relayHash: new PublicKey(relayHashUint8Array),
       fillStatus,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
@@ -68,6 +69,7 @@ describe("svm_spoke.slow_fill", () => {
       mintAccount: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
+      relayHash: new PublicKey(relayHashUint8Array),
       fillStatus,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -180,7 +182,7 @@ describe("svm_spoke.slow_fill", () => {
 
     try {
       await program.methods
-        .requestV3SlowFill(relayHash, formatRelayData(relayData))
+        .requestV3SlowFill(formatRelayData(relayData))
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -193,7 +195,7 @@ describe("svm_spoke.slow_fill", () => {
     await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     await program.methods
-      .requestV3SlowFill(relayHash, formatRelayData(relayData))
+      .requestV3SlowFill(formatRelayData(relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -219,14 +221,14 @@ describe("svm_spoke.slow_fill", () => {
 
     // Fill the relay first
     await program.methods
-      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
+      .fillV3Relay(formatRelayData(relayData), new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
       .signers([relayer])
       .rpc();
 
     try {
       await program.methods
-        .requestV3SlowFill(relayHash, formatRelayData(relayData))
+        .requestV3SlowFill(formatRelayData(relayData))
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -241,7 +243,7 @@ describe("svm_spoke.slow_fill", () => {
     // Attempt to request a slow fill after the relay has been filled.
     try {
       await program.methods
-        .requestV3SlowFill(relayHash, formatRelayData(relayData))
+        .requestV3SlowFill(formatRelayData(relayData))
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -264,7 +266,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Request a slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+      .requestV3SlowFill(formatRelayData(relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -288,7 +290,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Request a slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+      .requestV3SlowFill(formatRelayData(relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -296,7 +298,7 @@ describe("svm_spoke.slow_fill", () => {
     // Attempt to request a slow fill again for the same relay
     try {
       await program.methods
-        .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+        .requestV3SlowFill(formatRelayData(relayData))
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -319,6 +321,7 @@ describe("svm_spoke.slow_fill", () => {
       state: state,
       rootBundle: rootBundle,
       signer: owner,
+      relayHash: new PublicKey(relayHash),
       fillStatus: requestAccounts.fillStatus,
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
@@ -328,12 +331,7 @@ describe("svm_spoke.slow_fill", () => {
     };
     try {
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf({ ...leaf, relayData: formatRelayData(relayData) }, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed due to fill status account not being initialized");
@@ -343,19 +341,14 @@ describe("svm_spoke.slow_fill", () => {
 
     // Request V3 slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
     // Execute V3 slow relay leaf after requesting slow fill
     await program.methods
-      .executeV3SlowRelayLeaf(
-        Array.from(relayHash),
-        { ...leaf, relayData: formatRelayData(relayData) },
-        rootBundleId,
-        proofAsNumbers
-      )
+      .executeV3SlowRelayLeaf({ ...leaf, relayData: formatRelayData(relayData) }, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .rpc();
 
@@ -390,7 +383,7 @@ describe("svm_spoke.slow_fill", () => {
     try {
       const relayHash = calculateRelayHashUint8Array(relayData, chainId);
       await program.methods
-        .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+        .requestV3SlowFill(formatRelayData(relayData))
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -405,7 +398,7 @@ describe("svm_spoke.slow_fill", () => {
     // Request V3 slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -418,6 +411,7 @@ describe("svm_spoke.slow_fill", () => {
         state: state,
         rootBundle,
         signer: owner,
+        relayHash: new PublicKey(relayHash),
         fillStatus: requestAccounts.fillStatus,
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -426,12 +420,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf({ ...leaf, relayData: formatRelayData(relayData) }, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong recipient token account");
@@ -452,8 +441,8 @@ describe("svm_spoke.slow_fill", () => {
       rootBundle: firstRootBundle,
     } = await relaySlowFillRootBundle(firstRecipient);
     await program.methods
-      .requestV3SlowFill(Array.from(firstRelayHash), formatRelayData(firstLeaf.relayData))
-      .accounts(requestAccounts)
+      .requestV3SlowFill(formatRelayData(firstLeaf.relayData))
+      .accounts({ ...requestAccounts, relayHash: new PublicKey(firstRelayHash) })
       .signers([relayer])
       .rpc();
     const firstRecipientTA = recipientTA; // Global recipientTA will get updated when passing the second relayData.
@@ -465,8 +454,8 @@ describe("svm_spoke.slow_fill", () => {
     const secondRecipient = Keypair.generate().publicKey;
     const { relayHash: secondRelayHash, leaf: secondLeaf } = await relaySlowFillRootBundle(secondRecipient);
     await program.methods
-      .requestV3SlowFill(Array.from(secondRelayHash), formatRelayData(secondLeaf.relayData))
-      .accounts(requestAccounts)
+      .requestV3SlowFill(formatRelayData(secondLeaf.relayData))
+      .accounts({ ...requestAccounts, relayHash: new PublicKey(secondRelayHash) })
       .signers([relayer])
       .rpc();
     const secondFillStatus = fillStatus; // Global fillStatus got updated with the second relayData.
@@ -477,6 +466,7 @@ describe("svm_spoke.slow_fill", () => {
       state,
       firstRootBundle,
       signer: owner,
+      relayHash: new PublicKey(firstRelayHash),
       fillStatus: firstFillStatus,
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
@@ -486,7 +476,6 @@ describe("svm_spoke.slow_fill", () => {
     };
     await program.methods
       .executeV3SlowRelayLeaf(
-        Array.from(firstRelayHash),
         { ...firstLeaf, relayData: formatRelayData(firstLeaf.relayData) },
         firstRootBundleId,
         firstProofAsNumbers
@@ -507,6 +496,7 @@ describe("svm_spoke.slow_fill", () => {
         state,
         firstRootBundle,
         signer: owner,
+        relayHash: new PublicKey(secondRelayHash),
         fillStatus: secondFillStatus,
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -516,7 +506,6 @@ describe("svm_spoke.slow_fill", () => {
       };
       await program.methods
         .executeV3SlowRelayLeaf(
-          Array.from(secondRelayHash),
           { ...firstLeaf, relayData: formatRelayData(firstLeaf.relayData) },
           firstRootBundleId,
           firstProofAsNumbers
@@ -534,7 +523,7 @@ describe("svm_spoke.slow_fill", () => {
     // Request V3 slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -551,6 +540,7 @@ describe("svm_spoke.slow_fill", () => {
         state,
         rootBundle,
         signer: owner,
+        relayHash: new PublicKey(relayHash),
         fillStatus: requestAccounts.fillStatus,
         vault: wrongVault,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -559,12 +549,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf({ ...leaf, relayData: formatRelayData(relayData) }, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed for inconsistent mint");
@@ -582,7 +567,7 @@ describe("svm_spoke.slow_fill", () => {
       anotherChainId
     );
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(formatRelayData(leaf.relayData))
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -594,6 +579,7 @@ describe("svm_spoke.slow_fill", () => {
         state,
         rootBundle,
         signer: owner,
+        relayHash: new PublicKey(relayHash),
         fillStatus: requestAccounts.fillStatus,
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -602,12 +588,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf({ ...leaf, relayData: formatRelayData(relayData) }, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
       assert.fail("Execution should have failed for another chain");

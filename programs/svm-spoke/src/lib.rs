@@ -172,7 +172,7 @@ pub mod svm_spoke {
         instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
 
-    pub fn close_fill_pda(ctx: Context<CloseFillPda>, _relay_hash: [u8; 32], relay_data: V3RelayData) -> Result<()> {
+    pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_data: V3RelayData) -> Result<()> {
         instructions::close_fill_pda(ctx, relay_data)
     }
 
@@ -185,17 +185,12 @@ pub mod svm_spoke {
     }
 
     // Slow fill methods.
-    pub fn request_v3_slow_fill(
-        ctx: Context<SlowFillV3Relay>,
-        _relay_hash: [u8; 32],
-        relay_data: V3RelayData,
-    ) -> Result<()> {
+    pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: V3RelayData) -> Result<()> {
         instructions::request_v3_slow_fill(ctx, relay_data)
     }
 
     pub fn execute_v3_slow_relay_leaf(
         ctx: Context<ExecuteV3SlowRelayLeaf>,
-        _relay_hash: [u8; 32],
         slow_fill_leaf: V3SlowFill,
         _root_bundle_id: u32,
         proof: Vec<[u8; 32]>,
@@ -208,7 +203,7 @@ pub mod svm_spoke {
         Ok(())
     }
 
-    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, total_size: u32) -> Result<()> {
+    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, _total_size: u32) -> Result<()> {
         Ok(())
     }
 

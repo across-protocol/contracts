@@ -15,7 +15,7 @@ use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutio
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
+#[instruction(relay_data: V3RelayData)]
 pub struct SlowFillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -27,14 +27,17 @@ pub struct SlowFillV3Relay<'info> {
     )]
     pub state: Account<'info, State>,
 
+    /// CHECK: This is not dangerous as we don't read or write from this account. Passed in as a prop for the constraint.
+    pub relay_hash: UncheckedAccount<'info>,
+
     #[account(
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.key().as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash.key().as_ref().try_into().unwrap(), &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
     pub system_program: Program<'info, System>,
@@ -122,7 +125,7 @@ impl V3SlowFill {
 // Define the V3SlowFill struct
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], slow_fill_leaf: V3SlowFill, root_bundle_id: u32)]
+#[instruction(slow_fill_leaf: V3SlowFill, root_bundle_id: u32)]
 pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub signer: Signer<'info>,
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -131,12 +134,15 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(seeds = [b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
     pub root_bundle: Account<'info, RootBundle>,
 
+    /// CHECK: This is not dangerous as we don't read or write from this account. Passed in as a prop for the constraint.
+    pub relay_hash: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.key().as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash.key().as_ref().try_into().unwrap(), &slow_fill_leaf.relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
