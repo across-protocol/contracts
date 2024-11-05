@@ -108,7 +108,7 @@ pub mod svm_spoke {
         instructions::set_cross_domain_admin(ctx, cross_domain_admin)
     }
 
-    // User methods.
+    // Deposit methods.
     pub fn deposit_v3(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -141,6 +141,36 @@ pub mod svm_spoke {
         )
     }
 
+    pub fn deposit_v3_now(
+        ctx: Context<DepositV3>,
+        depositor: Pubkey,
+        recipient: Pubkey,
+        input_token: Pubkey,
+        output_token: Pubkey,
+        input_amount: u64,
+        output_amount: u64,
+        destination_chain_id: u64,
+        exclusive_relayer: Pubkey,
+        fill_deadline: u32,
+        exclusivity_deadline: u32,
+        message: Vec<u8>,
+    ) -> Result<()> {
+        instructions::deposit_v3_now(
+            ctx,
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            fill_deadline,
+            exclusivity_deadline,
+            message,
+        )
+    }
+
     // Relayer methods.
     pub fn fill_v3_relay(
         ctx: Context<FillV3Relay>,
@@ -161,11 +191,7 @@ pub mod svm_spoke {
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
         params: HandleReceiveMessageParams,
     ) -> Result<()> {
-        let self_ix_data = ctx.accounts.handle_receive_message(&params)?;
-
-        invoke_self(&ctx, &self_ix_data)?;
-
-        Ok(())
+        instructions::handle_receive_message(ctx, params)
     }
 
     // Slow fill methods.

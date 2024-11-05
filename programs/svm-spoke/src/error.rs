@@ -33,7 +33,6 @@ pub enum CommonError {
     FillsArePaused,
     #[msg("Insufficient spoke pool balance to execute leaf")]
     InsufficientSpokePoolBalanceToExecuteLeaf,
-    // Add any additional errors here if needed
 }
 
 // SVM specific errors.

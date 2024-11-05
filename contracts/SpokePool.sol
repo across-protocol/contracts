@@ -175,68 +175,6 @@ abstract contract SpokePool is
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
 
-    /// EVENTS BELOW ARE DEPRECATED AND EXIST FOR BACKWARDS COMPATIBILITY ONLY.
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event FundsDeposited(
-        uint256 amount,
-        uint256 originChainId,
-        uint256 indexed destinationChainId,
-        int64 relayerFeePct,
-        uint32 indexed depositId,
-        uint32 quoteTimestamp,
-        address originToken,
-        address recipient,
-        address indexed depositor,
-        bytes message
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event RequestedSpeedUpDeposit(
-        int64 newRelayerFeePct,
-        uint32 indexed depositId,
-        address indexed depositor,
-        address updatedRecipient,
-        bytes updatedMessage,
-        bytes depositorSignature
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event FilledRelay(
-        uint256 amount,
-        uint256 totalFilledAmount,
-        uint256 fillAmount,
-        uint256 repaymentChainId,
-        uint256 indexed originChainId,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        int64 realizedLpFeePct,
-        uint32 indexed depositId,
-        address destinationToken,
-        address relayer,
-        address indexed depositor,
-        address recipient,
-        bytes message,
-        RelayExecutionInfo updatableRelayData
-    );
-    /**
-     * @notice Packs together information to include in FilledRelay event.
-     * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
-     * parameters in an event.
-     * @param recipient Recipient of the relayed funds.
-     * @param message Message included in the relay.
-     * @param relayerFeePct Relayer fee pct used for this relay.
-     * @param isSlowRelay Whether this is a slow relay.
-     * @param payoutAdjustmentPct Adjustment to the payout amount.
-     */
-    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-    struct RelayExecutionInfo {
-        address recipient;
-        bytes message;
-        int64 relayerFeePct;
-        bool isSlowRelay;
-        int256 payoutAdjustmentPct;
-    }
-
-    /// EVENTS ABOVE ARE DEPRECATED AND EXIST FOR BACKWARDS COMPATIBILITY ONLY.
-
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
      * have constructors since the following code will be executed within the logic contract's state, not the
@@ -1328,7 +1266,7 @@ abstract contract SpokePool is
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-        // is trivially true. We'll emit this value in the FilledRelay
+        // is trivially true. We'll emit this value in the FilledV3Relay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
         FillType fillType = isSlowFill
@@ -1343,7 +1281,7 @@ abstract contract SpokePool is
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
-        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
+        // we can include a bool in the FilledV3Relay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
