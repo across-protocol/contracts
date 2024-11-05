@@ -216,8 +216,12 @@ pub mod svm_spoke {
         instructions::initialize_claim_account(ctx)
     }
 
-    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>, refund_address: Pubkey) -> Result<()> {
-        instructions::claim_relayer_refund(ctx, refund_address)
+    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
+        instructions::claim_relayer_refund(ctx)
+    }
+
+    pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_address: Pubkey) -> Result<()> {
+        instructions::claim_relayer_refund_for(ctx, refund_address)
     }
 
     pub fn close_claim_account(
