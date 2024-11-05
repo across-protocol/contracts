@@ -141,6 +141,13 @@ where
         return err!(ErrorCode::AccountNotEnoughKeys);
     }
 
+    // Check if vault has sufficient balance for all the refunds and the amount to return to HubPool.
+    // TODO: EVM implementation in dev branch does not account for the amount to return to HubPool.
+    let total_refund_amount: u64 = relayer_refund_leaf.refund_amounts.iter().sum();
+    if ctx.accounts.vault.amount < total_refund_amount + relayer_refund_leaf.amount_to_return {
+        return err!(CommonError::InsufficientSpokePoolBalanceToExecuteLeaf);
+    }
+
     // Depending on the called instruction flavor, we either accrue the refunds to claim accounts or transfer them.
     match deferred_refunds {
         true => accrue_relayer_refunds(&ctx, &relayer_refund_leaf)?,
@@ -179,7 +186,8 @@ fn distribute_relayer_refunds<'info>(
 
     for (i, amount) in relayer_refund_leaf.refund_amounts.iter().enumerate() {
         // We only need to check the refund account matches the associated token address for the relayer.
-        // All other required checks are performed within the transfer CPI.
+        // All other required checks are performed within the transfer CPI. We do not check the token account authority
+        // as the relayer might have transferred it to a multisig or any other wallet.
         // It should be safe to access elements of refund_addresses and remaining_accounts as their lengths are checked
         // before calling this internal function.
         let refund_token_account = &ctx.remaining_accounts[i];

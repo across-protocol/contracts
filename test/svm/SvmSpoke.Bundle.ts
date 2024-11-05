@@ -1533,4 +1533,73 @@ describe("svm_spoke.bundle", () => {
       assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
     });
   });
+
+  it("Cannot execute relayer refund leaf with insufficient pool balance", async () => {
+    const vaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+
+    // Create a leaf with relayer refund amount same as vault balance, but insufficient funds to repay HubPool.
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerARefund = new BN(vaultBal);
+
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(1), // This should block leaf execution due to insufficient funds.
+      mintPublicKey: mint,
+      refundAddresses: [relayerA.publicKey],
+      refundAmounts: [relayerARefund],
+    });
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+    const stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
+
+    const executeRelayerRefundLeafAccounts = {
+      state,
+      rootBundle,
+      signer: owner,
+      vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint,
+      transferLiability,
+      systemProgram: web3.SystemProgram.programId,
+      program: program.programId,
+    };
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+    // Leaf execution should fail due to insufficient balance.
+    try {
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Leaf execution should fail due to insufficient pool balance");
+    } catch (err: any) {
+      assert.instanceOf(err, anchor.AnchorError);
+      assert.strictEqual(
+        err.error.errorCode.code,
+        "InsufficientSpokePoolBalanceToExecuteLeaf",
+        "Expected error code InsufficientSpokePoolBalanceToExecuteLeaf"
+      );
+    }
+  });
 });
