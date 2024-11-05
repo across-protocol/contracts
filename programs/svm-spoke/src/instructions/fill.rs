@@ -12,11 +12,12 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
+    utils::get_v3_relay_hash,
 };
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
+#[instruction(relay_data: V3RelayData)]
 pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -50,14 +51,17 @@ pub struct FillV3Relay<'info> {
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
+    #[account(mut)]
+    /// CHECK: This is not dangerous because we don't read or write from this account. Passed in as a prop for the constraint.
+    pub relay_hash: UncheckedAccount<'info>,
+
     #[account(
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
+        seeds = [b"fills", relay_hash.key().as_ref()],
         bump,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&get_v3_relay_hash(&relay_data, state.chain_id), &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 

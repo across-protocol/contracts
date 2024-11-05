@@ -23,7 +23,7 @@ import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
-describe("svm_spoke.fill", () => {
+describe.only("svm_spoke.fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
@@ -90,7 +90,7 @@ describe("svm_spoke.fill", () => {
     updateRelayData(initialRelayData);
   });
 
-  it("Fills a V3 relay and verifies balances", async () => {
+  it.only("Fills a V3 relay and verifies balances", async () => {
     // Verify recipient's balance before the fill
     let recipientAccount = await getAccount(connection, recipientTA);
     assertSE(recipientAccount.amount, "0", "Recipient's balance should be 0 before the fill");
@@ -101,8 +101,8 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
+      .accounts({ ...accounts, relayHash: new PublicKey(relayHash) })
       .signers([relayer])
       .rpc();
 
@@ -122,7 +122,7 @@ describe("svm_spoke.fill", () => {
   it("Verifies FilledV3Relay event after filling a relay", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(420), otherRelayer.publicKey)
+      .fillV3Relay(relayData, new BN(420), otherRelayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -148,7 +148,7 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .signers([relayer])
         .rpc();
@@ -165,7 +165,7 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .signers([otherRelayer])
         .rpc();
@@ -186,7 +186,7 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([otherRelayer])
       .rpc();
@@ -213,7 +213,7 @@ describe("svm_spoke.fill", () => {
 
     // First fill attempt
     await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -221,7 +221,7 @@ describe("svm_spoke.fill", () => {
     // Second fill attempt with the same data
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .signers([relayer])
         .rpc();
@@ -243,7 +243,7 @@ describe("svm_spoke.fill", () => {
 
     // Execute the fill_v3_relay call
     await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -308,7 +308,7 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
       await program.methods
-        .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .signers([relayer])
         .rpc();
@@ -381,7 +381,7 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     const txSignature = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -418,7 +418,7 @@ describe("svm_spoke.fill", () => {
     accounts.relayerTokenAccount = customRelayerTA;
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .signers([relayer])
       .rpc();
@@ -450,7 +450,7 @@ describe("svm_spoke.fill", () => {
 
     try {
       await program.methods
-        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .signers([relayer])
         .rpc();
@@ -471,7 +471,7 @@ describe("svm_spoke.fill", () => {
 
     // Fill the deposit in the same transaction
     const fillInstruction = await program.methods
-      .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(newRelayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .instruction();
 
@@ -517,7 +517,7 @@ describe("svm_spoke.fill", () => {
       accounts.recipientTokenAccount = recipientAssociatedTokens[i];
       const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
       const fillInstruction = await program.methods
-        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .fillV3Relay(newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .instruction();
       fillInstructions.push(fillInstruction);

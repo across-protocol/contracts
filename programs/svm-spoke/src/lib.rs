@@ -165,7 +165,6 @@ pub mod svm_spoke {
     // Relayer methods.
     pub fn fill_v3_relay(
         ctx: Context<FillV3Relay>,
-        _relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,
         repayment_address: Pubkey,
@@ -173,7 +172,7 @@ pub mod svm_spoke {
         instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
 
-    pub fn close_fill_pda(ctx: Context<CloseFillPda>, _relay_hash: [u8; 32], relay_data: V3RelayData) -> Result<()> {
+    pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_data: V3RelayData) -> Result<()> {
         instructions::close_fill_pda(ctx, relay_data)
     }
 
