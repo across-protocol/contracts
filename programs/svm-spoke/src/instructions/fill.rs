@@ -61,7 +61,7 @@ pub struct FillV3Relay<'info> {
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", relay_hash.key().as_ref()],
         bump,
-        constraint = is_relay_hash_valid(&get_v3_relay_hash(&relay_data, state.chain_id), &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&relay_hash.key().as_ref().try_into().unwrap(), &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
