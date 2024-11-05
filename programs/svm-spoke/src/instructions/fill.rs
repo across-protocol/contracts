@@ -51,7 +51,6 @@ pub struct FillV3Relay<'info> {
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut)]
     /// CHECK: This is not dangerous because we don't read or write from this account. Passed in as a prop for the constraint.
     pub relay_hash: UncheckedAccount<'info>,
 
