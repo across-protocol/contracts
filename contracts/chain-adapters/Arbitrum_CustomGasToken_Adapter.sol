@@ -87,6 +87,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
 
     error InvalidCustomGasToken();
     error InsufficientCustomGasToken();
+    error InvalidNativeTokenDecimals();
 
     /**
      * @notice Constructs new Adapter.
@@ -97,6 +98,8 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
      * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _cctpDomainId Circle CCTP domain identifier for the destination chain.
+     * @param _nativeTokenDecimals Number of decimals corresponding to the L2's gas/fee token.
      * @param _customGasTokenFunder Contract that funds the custom gas token.
      * @param _l2MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
      * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
@@ -122,6 +125,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         L2_MAX_SUBMISSION_COST = _l2MaxSubmissionCost;
         L2_GAS_PRICE = _l2GasPrice;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
+        if (_nativeTokenDecimals == 0) revert InvalidNativeTokenDecimals();
         NATIVE_TOKEN_DECIMALS = _nativeTokenDecimals;
     }
 
@@ -184,7 +188,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                 CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), amountToBridge);
                 L1_INBOX.createRetryableTicket(
                     to, // destAddr destination L2 contract address
-                    amount, // l2CallValue call value for retryable L2 message
+                    _fromNativeTo18Decimals(amount), // l2CallValue call value for retryable L2 message
                     L2_MAX_SUBMISSION_COST, // maxSubmissionCost Max gas deducted from user's L2 balance to cover base fee
                     L2_REFUND_L2_ADDRESS, // excessFeeRefundAddress maxgas * gasprice - execution cost gets credited here on L2
                     L2_REFUND_L2_ADDRESS, // callValueRefundAddress l2Callvalue gets credited here on L2 if retryable txn times out or gets cancelled
@@ -247,6 +251,16 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
             }
         } else {
             return amount * 10**(NATIVE_TOKEN_DECIMALS - 18);
+        }
+    }
+
+    function _fromNativeTo18Decimals(uint256 amount) internal view returns (uint256) {
+        if (NATIVE_TOKEN_DECIMALS == 18) {
+            return amount;
+        } else if (NATIVE_TOKEN_DECIMALS < 18) {
+            return amount * 10**(18 - NATIVE_TOKEN_DECIMALS);
+        } else {
+            return amount / 10**(NATIVE_TOKEN_DECIMALS - 18);
         }
     }
 }
