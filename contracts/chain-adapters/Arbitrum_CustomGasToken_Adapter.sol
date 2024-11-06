@@ -95,8 +95,6 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l1ERC20GatewayRouter ERC20 gateway router contract to send tokens to Arbitrum.
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
-     * @param _l2MaxSubmissionCost Max gas deducted from user's L2 balance to cover base fee.
-     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _cctpDomainId Circle CCTP domain identifier for the destination chain.
      * @param _nativeTokenDecimals Number of decimals corresponding to the L2's gas/fee token.
@@ -104,6 +102,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
      * @param _l2MaxSubmissionCost Amount of gas token allocated to pay for the base submission fee. The base
      * submission fee is a parameter unique to Arbitrum retryable transactions. This value is hardcoded
      * and used for all messages sent by this adapter.
+     * @param _l2GasPrice Gas price bid for L2 execution. Should be set conservatively high to avoid stuck messages.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
