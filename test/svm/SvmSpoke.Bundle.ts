@@ -1537,15 +1537,15 @@ describe("svm_spoke.bundle", () => {
   it("Cannot execute relayer refund leaf with insufficient pool balance", async () => {
     const vaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
 
-    // Create a leaf with relayer refund amount same as vault balance, but insufficient funds to repay HubPool.
+    // Create a leaf with relayer refund amount larger than as vault balance.
     const relayerRefundLeaves: RelayerRefundLeafType[] = [];
-    const relayerARefund = new BN(vaultBal);
+    const relayerARefund = new BN(vaultBal).add(new BN(1));
 
     relayerRefundLeaves.push({
       isSolana: true,
       leafId: new BN(0),
       chainId: chainId,
-      amountToReturn: new BN(1), // This should block leaf execution due to insufficient funds.
+      amountToReturn: new BN(0),
       mintPublicKey: mint,
       refundAddresses: [relayerA.publicKey],
       refundAmounts: [relayerARefund],

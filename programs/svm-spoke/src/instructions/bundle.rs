@@ -141,10 +141,9 @@ where
         return err!(ErrorCode::AccountNotEnoughKeys);
     }
 
-    // Check if vault has sufficient balance for all the refunds and the amount to return to HubPool.
-    // TODO: EVM implementation in dev branch does not account for the amount to return to HubPool.
+    // Check if vault has sufficient balance for all the refunds.
     let total_refund_amount: u64 = relayer_refund_leaf.refund_amounts.iter().sum();
-    if ctx.accounts.vault.amount < total_refund_amount + relayer_refund_leaf.amount_to_return {
+    if ctx.accounts.vault.amount < total_refund_amount {
         return err!(CommonError::InsufficientSpokePoolBalanceToExecuteLeaf);
     }
 
