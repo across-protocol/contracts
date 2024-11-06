@@ -185,6 +185,9 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                 // amount and requiredL1TokenTotalFeeAmount are in the precision of the custom gas token.
                 uint256 amountToBridge = amount + requiredL1TokenTotalFeeAmount;
                 CUSTOM_GAS_TOKEN.safeIncreaseAllowance(address(L1_INBOX), amountToBridge);
+                // Both `l2CallValue` and `tokenTotalFeeAmount` are rounded in the conversion to/from native/18 decimals. `l2CallValue` is rounded down by the call to _fromNativeTo18Decimals()
+                // in cases where the token's decimals exceeds 18, since we would rather round down and be forced to donate a small amount of the l2 token to the spoke pool to cover the roundoff
+                // error than overshoot a transfer amount. `amountToBridge` is rounded up since we would rather overpay for gas and be refunded on l2 than underpay and risk stuck cross-chain messages.
                 L1_INBOX.createRetryableTicket(
                     to, // destAddr destination L2 contract address
                     _fromNativeTo18Decimals(amount), // l2CallValue call value for retryable L2 message
