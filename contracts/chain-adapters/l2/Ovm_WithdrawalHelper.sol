@@ -118,7 +118,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
             // Wrap the contract's balance of the native token if we are withdrawing the L2's native token. We need wrap the contract's balance
             // and then unwrap the amount to send to account for cases where `amountToReturn` is greater than the contract's native token balance
             // and wrapped native token balance, but less than their sum.
-            _depositNativeToken();
+            _wrapNativeToken();
             WETH9Interface(l2Token).withdraw(amountToReturn); // Unwrap into ETH.
             l2Token = l2Eth; // Set the l2Token to ETH.
             IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo{ value: amountToReturn }(

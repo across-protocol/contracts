@@ -116,7 +116,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     /*
      * @notice Wraps the contract's entire balance of the native token.
      */
-    function _depositNativeToken() internal virtual {
+    function _wrapNativeToken() internal virtual {
         if (address(this).balance > 0) WRAPPED_NATIVE_TOKEN.deposit{ value: address(this).balance }();
     }
 
