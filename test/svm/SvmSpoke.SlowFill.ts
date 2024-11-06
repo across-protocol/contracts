@@ -7,7 +7,6 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  getAccount,
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
@@ -66,11 +65,9 @@ describe("svm_spoke.slow_fill", () => {
     fillAccounts = {
       state,
       signer: relayer.publicKey,
-      relayer: relayer.publicKey,
-      recipient: relayData.recipient, // This could be different from global recipient.
       mintAccount: mint,
-      relayerTA: relayerTA,
-      recipientTA: recipientTA,
+      relayerTokenAccount: relayerTA,
+      recipientTokenAccount: recipientTA,
       fillStatus,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -93,8 +90,8 @@ describe("svm_spoke.slow_fill", () => {
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
         depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
-        fillDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid fill deadline.
-        exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 60),
+        fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
+        exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
         message: Buffer.from("Test message"),
       },
       chainId: slowRelayLeafChainId,
@@ -121,7 +118,7 @@ describe("svm_spoke.slow_fill", () => {
     const relayerRefundRoot = crypto.randomBytes(32);
 
     // Relay root bundle
-    const relayRootBundleAccounts = { state, rootBundle, signer: owner };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods
       .relayRootBundle(Array.from(relayerRefundRoot), Array.from(slowRelayRoot))
       .accounts(relayRootBundleAccounts)
@@ -178,7 +175,7 @@ describe("svm_spoke.slow_fill", () => {
   });
 
   it("Requests a V3 slow fill, verify the event & state change", async () => {
-    // Attempt to request a slow fill before the fillDeadline
+    // Attempt to request a slow fill before the exclusivityDeadline
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     try {
@@ -187,13 +184,13 @@ describe("svm_spoke.slow_fill", () => {
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
-      assert.fail("Request should have failed due to fill deadline not passed");
+      assert.fail("Request should have failed due to exclusivity deadline not passed");
     } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     await program.methods
       .requestV3SlowFill(relayHash, formatRelayData(relayData))
@@ -222,7 +219,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Fill the relay first
     await program.methods
-      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1))
+      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
       .signers([relayer])
       .rpc();
@@ -238,8 +235,8 @@ describe("svm_spoke.slow_fill", () => {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
-    // Set the contract time to be after the fillDeadline.
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline.
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     // Attempt to request a slow fill after the relay has been filled.
     try {
@@ -262,8 +259,8 @@ describe("svm_spoke.slow_fill", () => {
     let fillStatusAccount = await program.account.fillStatusAccount.fetchNullable(fillStatusPDA);
     assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before requestV3SlowFill");
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     // Request a slow fill
     await program.methods
@@ -286,8 +283,8 @@ describe("svm_spoke.slow_fill", () => {
   it("Fails to request a V3 slow fill multiple times for the same fill", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
+    // Set the contract time to be after the exclusivityDeadline
+    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
 
     // Request a slow fill
     await program.methods
@@ -326,7 +323,6 @@ describe("svm_spoke.slow_fill", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      recipient,
       recipientTokenAccount: recipientTA,
       program: program.programId,
     };
@@ -390,9 +386,6 @@ describe("svm_spoke.slow_fill", () => {
     const stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedFills, "Fills should be paused");
 
-    // Set the contract time to be after the fillDeadline
-    await setCurrentTime(program, state, relayer, relayData.fillDeadline.add(new BN(1)));
-
     // Attempt to request a slow fill. This should fail because fills are paused.
     try {
       const relayHash = calculateRelayHashUint8Array(relayData, chainId);
@@ -417,7 +410,7 @@ describe("svm_spoke.slow_fill", () => {
       .signers([relayer])
       .rpc();
 
-    // Try to execute V3 slow relay leaf with wrong recipient should fail.
+    // Try to execute V3 slow relay leaf with wrong recipient token account should fail.
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
     try {
@@ -429,7 +422,6 @@ describe("svm_spoke.slow_fill", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        recipient: wrongRecipient,
         recipientTokenAccount: wrongRecipientTA,
         program: program.programId,
       };
@@ -442,10 +434,10 @@ describe("svm_spoke.slow_fill", () => {
         )
         .accounts(executeSlowRelayLeafAccounts)
         .rpc();
-      assert.fail("Execution should have failed due to wrong recipient");
+      assert.fail("Execution should have failed due to wrong recipient token account");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidFillRecipient", "Expected error code InvalidFillRecipient");
+      assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner", "Expected error code ConstraintTokenOwner");
     }
   });
 
@@ -489,7 +481,6 @@ describe("svm_spoke.slow_fill", () => {
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint,
-      recipient: firstRecipient,
       recipientTokenAccount: firstRecipientTA,
       program: program.programId,
     };
@@ -520,7 +511,6 @@ describe("svm_spoke.slow_fill", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        recipient: firstRecipient,
         recipientTokenAccount: firstRecipientTA,
         program: program.programId,
       };
@@ -565,7 +555,6 @@ describe("svm_spoke.slow_fill", () => {
         vault: wrongVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: wrongMint,
-        recipient,
         recipientTokenAccount: wrongRecipientTA,
         program: program.programId,
       };
@@ -609,7 +598,6 @@ describe("svm_spoke.slow_fill", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        recipient,
         recipientTokenAccount: recipientTA,
         program: program.programId,
       };
@@ -625,7 +613,7 @@ describe("svm_spoke.slow_fill", () => {
       assert.fail("Execution should have failed for another chain");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidProof", "Expected error code InvalidProof");
+      assert.strictEqual(err.error.errorCode.code, "InvalidMerkleProof", "Expected error code InvalidMerkleProof");
     }
   });
 });

@@ -6,6 +6,7 @@ declare_id!("Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q");
 declare_program!(message_transmitter);
 declare_program!(token_messenger_minter);
 
+pub mod common;
 pub mod constants;
 mod constraints;
 pub mod error;
@@ -14,6 +15,7 @@ mod instructions;
 mod state;
 pub mod utils;
 
+use common::*;
 use instructions::*;
 use state::*;
 
@@ -29,7 +31,6 @@ pub mod svm_spoke {
         chain_id: u64,
         remote_domain: u32,
         cross_domain_admin: Pubkey,
-        testable_mode: bool,
         deposit_quote_time_buffer: u32,
         fill_deadline_buffer: u32,
     ) -> Result<()> {
@@ -40,7 +41,6 @@ pub mod svm_spoke {
             chain_id,
             remote_domain,
             cross_domain_admin,
-            testable_mode,
             deposit_quote_time_buffer,
             fill_deadline_buffer,
         )
@@ -62,9 +62,19 @@ pub mod svm_spoke {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
-    pub fn execute_relayer_refund_leaf<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    pub fn emergency_delete_root_bundle(
+        ctx: Context<EmergencyDeleteRootBundleState>,
+        root_bundle_id: u32,
     ) -> Result<()> {
+        instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
+    }
+
+    pub fn execute_relayer_refund_leaf<'c, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    ) -> Result<()>
+    where
+        'c: 'info,
+    {
         instructions::execute_relayer_refund_leaf(ctx)
     }
 
@@ -78,21 +88,18 @@ pub mod svm_spoke {
 
     pub fn set_enable_route(
         ctx: Context<SetEnableRoute>,
-        origin_token: [u8; 32],
+        origin_token: Pubkey,
         destination_chain_id: u64,
         enabled: bool,
     ) -> Result<()> {
         instructions::set_enable_route(ctx, origin_token, destination_chain_id, enabled)
     }
 
-    pub fn set_cross_domain_admin(
-        ctx: Context<SetCrossDomainAdmin>,
-        cross_domain_admin: Pubkey,
-    ) -> Result<()> {
+    pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_admin: Pubkey) -> Result<()> {
         instructions::set_cross_domain_admin(ctx, cross_domain_admin)
     }
 
-    // User methods.
+    // Deposit methods.
     pub fn deposit_v3(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -125,22 +132,49 @@ pub mod svm_spoke {
         )
     }
 
+    pub fn deposit_v3_now(
+        ctx: Context<DepositV3>,
+        depositor: Pubkey,
+        recipient: Pubkey,
+        input_token: Pubkey,
+        output_token: Pubkey,
+        input_amount: u64,
+        output_amount: u64,
+        destination_chain_id: u64,
+        exclusive_relayer: Pubkey,
+        fill_deadline: u32,
+        exclusivity_deadline: u32,
+        message: Vec<u8>,
+    ) -> Result<()> {
+        instructions::deposit_v3_now(
+            ctx,
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            fill_deadline,
+            exclusivity_deadline,
+            message,
+        )
+    }
+
     // Relayer methods.
     pub fn fill_v3_relay(
         ctx: Context<FillV3Relay>,
-        relay_hash: [u8; 32],
+        _relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,
+        repayment_address: Pubkey,
     ) -> Result<()> {
-        instructions::fill_v3_relay(ctx, relay_hash, relay_data, repayment_chain_id)
+        instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
 
-    pub fn close_fill_pda(
-        ctx: Context<CloseFillPda>,
-        relay_hash: [u8; 32],
-        relay_data: V3RelayData,
-    ) -> Result<()> {
-        instructions::close_fill_pda(ctx, relay_hash, relay_data)
+    pub fn close_fill_pda(ctx: Context<CloseFillPda>, _relay_hash: [u8; 32], relay_data: V3RelayData) -> Result<()> {
+        instructions::close_fill_pda(ctx, relay_data)
     }
 
     // CCTP methods.
@@ -148,50 +182,34 @@ pub mod svm_spoke {
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
         params: HandleReceiveMessageParams,
     ) -> Result<()> {
-        let self_ix_data = ctx.accounts.handle_receive_message(&params)?;
-
-        invoke_self(&ctx, &self_ix_data)?;
-
-        Ok(())
+        instructions::handle_receive_message(ctx, params)
     }
 
     // Slow fill methods.
     pub fn request_v3_slow_fill(
         ctx: Context<SlowFillV3Relay>,
-        relay_hash: [u8; 32],
+        _relay_hash: [u8; 32],
         relay_data: V3RelayData,
     ) -> Result<()> {
-        instructions::request_v3_slow_fill(ctx, relay_hash, relay_data)
+        instructions::request_v3_slow_fill(ctx, relay_data)
     }
 
     pub fn execute_v3_slow_relay_leaf(
         ctx: Context<ExecuteV3SlowRelayLeaf>,
-        relay_hash: [u8; 32],
+        _relay_hash: [u8; 32],
         slow_fill_leaf: V3SlowFill,
-        root_bundle_id: u32,
+        _root_bundle_id: u32,
         proof: Vec<[u8; 32]>,
     ) -> Result<()> {
-        instructions::execute_v3_slow_relay_leaf(
-            ctx,
-            relay_hash,
-            slow_fill_leaf,
-            root_bundle_id,
-            proof,
-        )
+        instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
-    pub fn bridge_tokens_to_hub_pool(
-        ctx: Context<BridgeTokensToHubPool>,
-        amount: u64,
-    ) -> Result<()> {
-        ctx.accounts.bridge_tokens_to_hub_pool(amount, &ctx.bumps)?;
+    pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
+        instructions::bridge_tokens_to_hub_pool(ctx, amount)?;
 
         Ok(())
     }
 
-    pub fn initialize_instruction_params(
-        _ctx: Context<InitializeInstructionParams>,
-        total_size: u32,
-    ) -> Result<()> {
+    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, total_size: u32) -> Result<()> {
         Ok(())
     }
 
@@ -205,5 +223,29 @@ pub mod svm_spoke {
 
     pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<()> {
         instructions::close_instruction_params(ctx)
+    }
+
+    pub fn initialize_claim_account(
+        ctx: Context<InitializeClaimAccount>,
+        _mint: Pubkey,
+        _token_account: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_claim_account(ctx)
+    }
+
+    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
+        instructions::claim_relayer_refund(ctx)
+    }
+
+    pub fn close_claim_account(
+        ctx: Context<CloseClaimAccount>,
+        _mint: Pubkey,          // Only used in account constraints.
+        _token_account: Pubkey, // Only used in account constraints.
+    ) -> Result<()> {
+        instructions::close_claim_account(ctx)
+    }
+
+    pub fn create_token_accounts<'info>(ctx: Context<'_, '_, '_, 'info, CreateTokenAccounts<'info>>) -> Result<()> {
+        instructions::create_token_accounts(ctx)
     }
 }

@@ -1,3 +1,5 @@
+// This script executes a fake relayer repayment with a generated leaf. Useful for testing.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import {
@@ -165,6 +167,7 @@ async function testBundleLogic(): Promise<void> {
       state: statePda,
       rootBundle: rootBundle,
       signer: signer,
+      payer: signer,
       systemProgram: SystemProgram.programId,
     })
     .rpc();

@@ -1,3 +1,6 @@
+// This script attempts to close all Data worker Look up tables. It can be run periodically after executing relayer
+// repayments on Solana to claim back the lamports in the lookup table accounts.
+
 import * as anchor from "@coral-xyz/anchor";
 import { AddressLookupTableProgram } from "@solana/web3.js";
 
