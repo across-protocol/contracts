@@ -63,8 +63,8 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Send cross-chain message to target on Superseed.
-     * @param target Contract on Superseed that will receive message.
+     * @notice Send cross-chain message to target on the configured OpStack network.
+     * @param target Contract on the OpStack network that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -73,7 +73,7 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Bridge tokens to Superseed.
+     * @notice Bridge tokens to a configured OpStack network.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
