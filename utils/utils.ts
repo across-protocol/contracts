@@ -112,6 +112,8 @@ export const bytes32ToAddress = (input: string) => {
   return ethers.utils.getAddress("0x" + input.slice(26));
 };
 
+export const isBytes32 = (input: string) => /^0x[0-9a-fA-F]{64}$/.test(input);
+
 export async function seedWallet(
   walletToFund: Signer,
   tokens: Contract[],

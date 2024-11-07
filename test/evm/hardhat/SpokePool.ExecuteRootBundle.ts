@@ -98,8 +98,8 @@ describe("SpokePool Root Bundle Execution", function () {
       totalSolanaDistributions: evmDistributions,
       mixLeaves: true,
       chainId: destinationChainId,
-      evmTokenAddress: destErc20.address,
-      evmRelayers: [relayer.address, rando.address],
+      evmTokenAddress: addressToBytes(destErc20.address),
+      evmRelayers: [addressToBytes(relayer.address), addressToBytes(rando.address)],
       evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
     });
 
@@ -134,8 +134,8 @@ describe("SpokePool Root Bundle Execution", function () {
       totalSolanaDistributions: evmDistributions,
       mixLeaves: false,
       chainId: destinationChainId,
-      evmTokenAddress: destErc20.address,
-      evmRelayers: [relayer.address, rando.address],
+      evmTokenAddress: addressToBytes(destErc20.address),
+      evmRelayers: [addressToBytes(relayer.address), addressToBytes(rando.address)],
       evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
     });
 
