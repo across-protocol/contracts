@@ -1,7 +1,4 @@
 // SPDX-License-Identifier: BUSL-1.1
-
-// Arbitrum only supports v0.8.19
-// See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
 pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
