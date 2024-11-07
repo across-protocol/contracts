@@ -12,7 +12,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
  * @notice This contract contains general configurations for bridging tokens from an L2 to a single recipient on L1.
  * @dev This contract should be deployed on L2. It provides an interface to withdraw tokens to some address on L1. The only
  * function which must be implemented in contracts which inherit this contract is `withdrawToken`. It is up to that function
- * to determine which bridges to use for an input L2 token. Importantly, that function must also verify that the l2 to l1
+ * to determine which bridges to use for an input L2 token. Importantly, that function must also verify that the L2 to L1
  * token mapping is correct so that the bridge call itself can succeed.
  */
 abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUpgradeable {
