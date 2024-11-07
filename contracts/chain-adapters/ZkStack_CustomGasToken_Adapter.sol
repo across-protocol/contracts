@@ -37,7 +37,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
     // We need to pay a base fee to the operator to include our L1 --> L2 transaction.
-    // https://era.zksync.io/docs/dev/developer-guides/bridging/l1-l2.html#getting-the-base-cost
+    // https://docs.zksync.io/build/developer-reference/l1-l2-interoperability#l1-to-l2-gas-estimation-for-transactions
 
     // Limit on L2 gas to spend.
     uint256 public immutable L2_GAS_LIMIT; // typically 2_000_000
