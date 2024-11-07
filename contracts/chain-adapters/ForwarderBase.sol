@@ -67,9 +67,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
      * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
      */
     function setCrossDomainAdmin(address _newCrossDomainAdmin) external onlyAdmin {
-        if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         _setCrossDomainAdmin(_newCrossDomainAdmin);
-        emit SetXDomainAdmin(_newCrossDomainAdmin);
     }
 
     /**
