@@ -52,7 +52,7 @@ library ERC7683Permit2Lib {
             "bytes32 originSettler,",
             "bytes32 user,",
             "uint256 nonce,",
-            "uint32 originChainId,",
+            "uint256 originChainId,",
             "uint32 openDeadline,",
             "uint32 fillDeadline,",
             "bytes32 orderDataType,",

@@ -75,7 +75,16 @@ pub mod svm_spoke {
     where
         'c: 'info,
     {
-        instructions::execute_relayer_refund_leaf(ctx)
+        instructions::execute_relayer_refund_leaf(ctx, false)
+    }
+
+    pub fn execute_relayer_refund_leaf_deferred<'c, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    ) -> Result<()>
+    where
+        'c: 'info,
+    {
+        instructions::execute_relayer_refund_leaf(ctx, true)
     }
 
     pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
@@ -99,7 +108,7 @@ pub mod svm_spoke {
         instructions::set_cross_domain_admin(ctx, cross_domain_admin)
     }
 
-    // User methods.
+    // Deposit methods.
     pub fn deposit_v3(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -132,6 +141,36 @@ pub mod svm_spoke {
         )
     }
 
+    pub fn deposit_v3_now(
+        ctx: Context<DepositV3>,
+        depositor: Pubkey,
+        recipient: Pubkey,
+        input_token: Pubkey,
+        output_token: Pubkey,
+        input_amount: u64,
+        output_amount: u64,
+        destination_chain_id: u64,
+        exclusive_relayer: Pubkey,
+        fill_deadline: u32,
+        exclusivity_deadline: u32,
+        message: Vec<u8>,
+    ) -> Result<()> {
+        instructions::deposit_v3_now(
+            ctx,
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            fill_deadline,
+            exclusivity_deadline,
+            message,
+        )
+    }
+
     // Relayer methods.
     pub fn fill_v3_relay(
         ctx: Context<FillV3Relay>,
@@ -148,16 +187,11 @@ pub mod svm_spoke {
     }
 
     // CCTP methods.
-    // TODO: consider refactoring this to be consistent with using free functions.
     pub fn handle_receive_message<'info>(
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
         params: HandleReceiveMessageParams,
     ) -> Result<()> {
-        let self_ix_data = ctx.accounts.handle_receive_message(&params)?;
-
-        invoke_self(&ctx, &self_ix_data)?;
-
-        Ok(())
+        instructions::handle_receive_message(ctx, params)
     }
 
     // Slow fill methods.
@@ -184,7 +218,7 @@ pub mod svm_spoke {
         Ok(())
     }
 
-    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, total_size: u32) -> Result<()> {
+    pub fn initialize_instruction_params(_ctx: Context<InitializeInstructionParams>, _total_size: u32) -> Result<()> {
         Ok(())
     }
 
@@ -203,7 +237,7 @@ pub mod svm_spoke {
     pub fn initialize_claim_account(
         ctx: Context<InitializeClaimAccount>,
         _mint: Pubkey,
-        _token_account: Pubkey,
+        _refund_address: Pubkey,
     ) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
@@ -212,10 +246,14 @@ pub mod svm_spoke {
         instructions::claim_relayer_refund(ctx)
     }
 
+    pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_address: Pubkey) -> Result<()> {
+        instructions::claim_relayer_refund_for(ctx, refund_address)
+    }
+
     pub fn close_claim_account(
         ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey,          // Only used in account constraints.
-        _token_account: Pubkey, // Only used in account constraints.
+        _mint: Pubkey,           // Only used in account constraints.
+        _refund_address: Pubkey, // Only used in account constraints.
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
     }
