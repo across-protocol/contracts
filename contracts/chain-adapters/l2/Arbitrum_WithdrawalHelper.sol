@@ -49,7 +49,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
 
     /**
      * @notice Initializes the withdrawal helper contract.
-     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
+     * @param _crossDomainAdmin L1 address of the contract which may execute admin functions on this contract.
      */
     function initialize(address _crossDomainAdmin) public initializer {
         __WithdrawalHelper_init(_crossDomainAdmin);

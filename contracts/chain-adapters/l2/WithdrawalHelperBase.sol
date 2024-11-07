@@ -46,8 +46,6 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network.
      * @param _l2TokenGateway Address of the network's l2 token gateway/bridge contract.
      * @param _tokenRecipient L1 address which will unconditionally receive all withdrawals originating from this contract.
-     * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
-     * L2 address.
      * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
      * may disrupt the proxy if another EOA were to initialize it.
      */
