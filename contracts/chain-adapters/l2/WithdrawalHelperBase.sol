@@ -26,7 +26,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     // on this withdrawal helper contract, similar to how it may send admin functions to spoke pools.
     address public crossDomainAdmin;
 
-    event SetXDomainAdmin(address _crossDomainAdmin);
+    event SetXDomainAdmin(address indexed _crossDomainAdmin);
 
     // Error which triggers when the cross domain admin was attempted to be set to the zero address.
     error InvalidCrossDomainAdmin();

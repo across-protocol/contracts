@@ -49,7 +49,7 @@ contract ZkStack_Adapter is AdapterInterface {
     // SharedBridge address, which is read from the BridgeHub at construction.
     address public immutable SHARED_BRIDGE;
 
-    event ZkStackMessageRelayed(bytes32 canonicalTxHash);
+    event ZkStackMessageRelayed(bytes32 indexed canonicalTxHash);
     error ETHGasTokenRequired();
 
     /**
