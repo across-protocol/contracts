@@ -112,7 +112,8 @@ async function testBundleLogic(): Promise<void> {
     .rpc();
   console.log(`Deposit transaction sent: ${depositTx}`);
 
-  // Create a single repayment leaf with the array of amounts and corresponding refund accounts
+  // Create a single repayment leaf with the array of amounts and corresponding refund addresses
+  const refundAddresses: PublicKey[] = [];
   const refundAccounts: PublicKey[] = [];
   for (let i = 0; i < amounts.length; i++) {
     const recipient = Keypair.generate();
@@ -122,6 +123,7 @@ async function testBundleLogic(): Promise<void> {
       inputToken,
       recipient.publicKey
     );
+    refundAddresses.push(recipient.publicKey);
     refundAccounts.push(refundAccount);
     console.log(
       `Created refund account for recipient ${
@@ -138,7 +140,7 @@ async function testBundleLogic(): Promise<void> {
     chainId: new BN((await program.account.state.fetch(statePda)).chainId), // set chainId to svm spoke chainId.
     amountToReturn: new BN(0),
     mintPublicKey: inputToken,
-    refundAccounts: refundAccounts, // Array of refund accounts
+    refundAddresses, // Array of refund authority addresses
     refundAmounts: amounts, // Array of amounts
   };
 
