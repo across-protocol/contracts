@@ -23,7 +23,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     // the network ID of an L3. These chain IDs are used as the key in this mapping because network IDs are enforced to be unique. Since we require the chain
     // ID to be sent along with a message or token relay, ForwarderInterface's relay functions include an extra field, `destinationChainId`, when compared to the
     // relay functions of `AdapterInterface`.
-    mapping(uint256 => address) chainAdapters;
+    mapping(uint256 => address) public chainAdapters;
 
     event ChainAdaptersUpdated(uint256 indexed destinationChainId, address l2Adapter);
     event SetXDomainAdmin(address indexed crossDomainAdmin);
