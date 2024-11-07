@@ -81,8 +81,15 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
      */
     function updateAdapter(uint256 _destinationChainId, address _l2Adapter) external onlyAdmin {
         if (_l2Adapter == address(0)) revert InvalidChainAdapter();
-        chainAdapters[_destinationChainId] = _l2Adapter;
-        emit ChainAdaptersUpdated(_destinationChainId, _l2Adapter);
+        _updateAdapter(_destinationChainId, _l2Adapter);
+    }
+
+    /**
+     * @notice Removes this contract's set adapter for the specified chain ID.
+     * @param _destinationChainId The chain ID of the target network.
+     */
+    function removeAdapter(uint256 _destinationChainId) external onlyAdmin {
+        _updateAdapter(_destinationChainId, address(0));
     }
 
     /**
@@ -145,6 +152,11 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         crossDomainAdmin = _newCrossDomainAdmin;
         emit SetXDomainAdmin(_newCrossDomainAdmin);
+    }
+
+    function _updateAdapter(uint256 _destinationChainId, address _l2Adapter) internal {
+        chainAdapters[_destinationChainId] = _l2Adapter;
+        emit ChainAdaptersUpdated(_destinationChainId, _l2Adapter);
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
