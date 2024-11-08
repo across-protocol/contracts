@@ -46,18 +46,18 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
      * @dev This will pull in the user's funds and make the order available to be filled.
      * @param order the ERC7683 compliant order.
      * @param signature signature for the EIP-712 compliant order type.
-     * @param fillerData Across-specific fillerData.
+     * @param originFillerData Across-specific fillerData.
      */
     function openFor(
         GaslessCrossChainOrder calldata order,
         bytes calldata signature,
-        bytes calldata fillerData
+        bytes calldata originFillerData
     ) external {
         (
             ResolvedCrossChainOrder memory resolvedOrder,
             AcrossOrderData memory acrossOrderData,
             AcrossOriginFillerData memory acrossOriginFillerData
-        ) = _resolveFor(order, fillerData);
+        ) = _resolveFor(order, originFillerData);
 
         // Verify Permit2 signature and pull user funds into this contract
         _processPermit2Order(order, acrossOrderData, signature);
