@@ -28,6 +28,7 @@
     "Redstone_Adapter": { "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA", "blockNumber": 20432774 },
     "Zora_Adapter": { "address": "0x024f2fc31cbdd8de17194b1892c834f98ef5169b", "blockNumber": 20512287 },
     "WorldChain_Adapter": { "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32", "blockNumber": 20963234 }
+    "AlephZero_Adapter": { "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af", "blockNumber": 21131132 }
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
@@ -152,5 +153,9 @@
     "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 },
     "Lisk_Adapter": { "address": "0x13a8B1D6443016424e2b8Bac40dD884Ee679AFc4", "blockNumber": 6226289 },
     "Blast_Adapter": { "address": "0x09500Ffd743e01B4146a4BA795231Ca7Ca37819f", "blockNumber": 6233857 }
+  },
+  "41455": {
+    "SpokePool": { "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97", "blockNumber": 4240318 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 4112529 }
   }
 }
