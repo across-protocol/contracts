@@ -24,18 +24,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
 
-  await hre.deployments.deploy("OP_Adapter", {
+  const constructorArguments = [
+    WETH[chainId],
+    USDC[chainId],
+    OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID].L1CrossDomainMessenger,
+    OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID].L1StandardBridge,
+    OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID].L1OpUSDCBridgeAdapter,
+  ];
+
+  const { address: deployment } = await hre.deployments.deploy("OP_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [
-      WETH[chainId],
-      USDC[chainId],
-      OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID].L1CrossDomainMessenger,
-      OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID].L1StandardBridge,
-      OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID].L1OpUSDCBridgeAdapter,
-    ],
+    constructorArguments,
   });
+
+  await hre.run("verify:verify", { address: deployment, constructorArguments });
 };
 
 module.exports = func;
