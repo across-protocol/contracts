@@ -28,6 +28,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | Redstone Adapter    | [0x188F8C95B7cfB7993B53a4F643efa687916f73fA](https://etherscan.io/address/0x188F8C95B7cfB7993B53a4F643efa687916f73fA) |
 | Zora Adapter        | [0x024F2fC31CBDD8de17194b1892c834f98Ef5169b](https://etherscan.io/address/0x024F2fC31CBDD8de17194b1892c834f98Ef5169b) |
 | WorldChain Adapter  | [0x8eBebfc894047bEE213A561b8792fCa71241731f](https://etherscan.io/address/0x8eBebfc894047bEE213A561b8792fCa71241731f) |
+| Superseed Adapter   | [0xAca1Ca87872276E01CBB1ecb3488561402795F01](https://etherscan.io/address/0xAca1Ca87872276E01CBB1ecb3488561402795F01) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
@@ -123,3 +124,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | WorldChain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet.explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | MulticallHandler     | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Superseed mainnet (5330)
+
+| Contract Name       | Address                                                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Superseed_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://explorer-superseed-mainnet-0.t.conduit.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer-superseed-mainnet-0.t.conduit.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

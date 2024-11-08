@@ -38,7 +38,7 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
-     * @param _crossDomainMessenger XDomainMessenger World Chain system contract.
+     * @param _crossDomainMessenger XDomainMessenger OpStack system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      */
@@ -63,8 +63,8 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Send cross-chain message to target on World Chain.
-     * @param target Contract on World Chain that will receive message.
+     * @notice Send cross-chain message to target on the configured OpStack network.
+     * @param target Contract on the OpStack network that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -73,7 +73,7 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Bridge tokens to World Chain.
+     * @notice Bridge tokens to a configured OpStack network.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
