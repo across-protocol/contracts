@@ -21,10 +21,6 @@ struct AcrossOriginFillerData {
     address exclusiveRelayer;
 }
 
-struct AcrossDestinationFillerData {
-    uint256 repaymentChainId;
-}
-
 bytes constant ACROSS_ORDER_DATA_TYPE = abi.encodePacked(
     "AcrossOrderData(",
     "address inputToken,",
