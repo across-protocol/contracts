@@ -55,7 +55,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         uint32 exclusivityDeadline,
         bytes memory message
     ) internal override {
-        IERC20(inputToken).safeIncreaseAllowance(address(SPOKE_POOL), inputAmount);
+        IERC20(inputToken).forceApprove(address(SPOKE_POOL), inputAmount);
 
         SPOKE_POOL.depositV3(
             depositor,
