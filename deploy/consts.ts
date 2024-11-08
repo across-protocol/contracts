@@ -55,6 +55,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
+    uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
   },
   [CHAIN_IDs.SEPOLIA]: {
     optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
@@ -110,6 +111,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x19330d10D9Cc8751218eaf51E8885D058642E08A",
     cctpMessageTransmitter: "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   [CHAIN_IDs.POLYGON]: {
@@ -117,6 +119,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",
     cctpMessageTransmitter: "0xF3be9355363857F3e001be68856A2f96b4C39Ba9",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   [CHAIN_IDs.POLYGON_AMOY]: {
@@ -126,12 +129,14 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.ZK_SYNC]: {
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    uniswapV3SwapRouter02: "0x99c56385daBCE3E81d8499d0b8d0257aBC07E8A3",
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
   },
   [CHAIN_IDs.OPTIMISM]: {
     cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",
     cctpMessageTransmitter: "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
@@ -142,7 +147,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.BASE]: {
     cctpTokenMessenger: "0x1682Ae6375C4E4A97e4B583BC394c861A46D8962",
     cctpMessageTransmitter: "0xAD09780d193884d503182aD4588450C416D6F9D4",
-    uniswapV3SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
+    uniswapV3SwapRouter02: "0x2626664c2603336E57B271c5C0b26F421741e481",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   [CHAIN_IDs.BASE_SEPOLIA]: {
@@ -164,6 +169,15 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
+  },
+  [CHAIN_IDs.WORLD_CHAIN]: {
+    uniswapV3SwapRouter02: "0x091AD9e2e6e5eD44c1c66dB50e49A601F9f36cF6",
+  },
+  [CHAIN_IDs.ZORA]: {
+    uniswapV3SwapRouter02: "0x7De04c96BE5159c3b5CeffC82aa176dc81281557",
+  },
+  [CHAIN_IDs.BLAST]: {
+    uniswapV3SwapRouter02: "0x549FEB8c9bd4c12Ad2AB27022dA12492aC452B66",
   },
   1442: {
     // Custom WETH for testing because there is no "official" WETH
