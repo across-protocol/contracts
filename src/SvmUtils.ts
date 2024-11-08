@@ -1,5 +1,9 @@
 //TODO: we will need to move this to a better location and integrate it more directly with other utils & files in time.
+// eslint-disable-next-line node/no-extraneous-import
+import * as borsh from "@coral-xyz/borsh";
 import { Program, BN, utils, BorshAccountsCoder, Idl } from "@coral-xyz/anchor";
+import { IdlCoder } from "@coral-xyz/anchor/dist/cjs/coder/borsh/idl";
+import { IdlTypeDef } from "@coral-xyz/anchor/dist/cjs/idl";
 import { Layout } from "buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
@@ -173,5 +177,58 @@ export class LargeAccountsCoder<A extends string = string> extends BorshAccounts
     const accountData = buffer.slice(0, len);
     const discriminator = this.accountDiscriminator(accountName);
     return Buffer.concat([discriminator, accountData]);
+  }
+}
+
+type MulticallHandlerCall = { programIndex: number; accountIndexes: Buffer; data: Buffer };
+
+// Helper to encode multicall handler calls
+export class MulticallHandlerCalls {
+  private calls: MulticallHandlerCall[];
+
+  constructor(calls: MulticallHandlerCall[]) {
+    this.calls = calls;
+  }
+
+  private static coderArg = {
+    name: "calls",
+    type: {
+      vec: {
+        defined: {
+          name: "call",
+        },
+      },
+    },
+  };
+
+  private static coderTypes: IdlTypeDef[] = [
+    {
+      name: "call",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "programIndex",
+            type: "u8",
+          },
+          {
+            name: "accountIndexes",
+            type: "bytes",
+          },
+          {
+            name: "data",
+            type: "bytes",
+          },
+        ],
+      },
+    },
+  ];
+
+  encode() {
+    const fieldLayouts = [IdlCoder.fieldLayout(MulticallHandlerCalls.coderArg, MulticallHandlerCalls.coderTypes)];
+    const layout = borsh.struct(fieldLayouts);
+    const buffer = Buffer.alloc(1280);
+    const len = layout.encode({ calls: this.calls }, buffer);
+    return buffer.slice(0, len);
   }
 }
