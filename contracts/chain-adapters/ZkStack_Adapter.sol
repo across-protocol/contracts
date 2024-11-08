@@ -132,7 +132,7 @@ contract ZkStack_Adapter is AdapterInterface {
             txHash = BRIDGE_HUB.requestL2TransactionDirect{ value: amount + txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: CHAIN_ID,
-                    mintValue: txBaseCost + txBaseCost,
+                    mintValue: txBaseCost + amount,
                     l2Contract: to,
                     l2Value: amount,
                     l2Calldata: "",
