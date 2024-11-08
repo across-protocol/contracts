@@ -93,10 +93,10 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         cctpMessageTransmitter = _cctpMessageTransmitter;
 
         SOLANA_SPOKE_POOL_BYTES32 = solanaSpokePool;
-        SOLANA_SPOKE_POOL_ADDRESS = solanaSpokePool.toAddress();
+        SOLANA_SPOKE_POOL_ADDRESS = solanaSpokePool.toAddressUnchecked();
 
         SOLANA_USDC_BYTES32 = solanaUsdc;
-        SOLANA_USDC_ADDRESS = solanaUsdc.toAddress();
+        SOLANA_USDC_ADDRESS = solanaUsdc.toAddressUnchecked();
 
         SOLANA_SPOKE_POOL_USDC_VAULT = solanaSpokePoolUsdcVault;
     }

@@ -13,6 +13,10 @@ library Bytes32ToAddress {
         }
         return address(uint160(uint256(_bytes32)));
     }
+
+    function toAddressUnchecked(bytes32 _bytes32) internal pure returns (address) {
+        return address(uint160(uint256(_bytes32)));
+    }
 }
 
 library AddressToBytes32 {
