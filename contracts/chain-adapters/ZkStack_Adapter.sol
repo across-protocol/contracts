@@ -21,6 +21,9 @@ import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
 contract ZkStack_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
+    // The ZkSync bridgehub contract treats address(1) to represent ETH.
+    address private constant ETH_TOKEN_ADDRESS = address(1);
+
     // We need to pay a base fee to the operator to include our L1 --> L2 transaction.
     // https://docs.zksync.io/build/developer-reference/l1-l2-interoperability#l1-to-l2-gas-estimation-for-transactions
 
@@ -73,7 +76,7 @@ contract ZkStack_Adapter is AdapterInterface {
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address gasToken = BRIDGE_HUB.baseToken(CHAIN_ID);
-        if (gasToken != address(1)) {
+        if (gasToken != ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenRequired();
         }
     }

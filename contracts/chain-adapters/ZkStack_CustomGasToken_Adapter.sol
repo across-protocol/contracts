@@ -36,6 +36,9 @@ interface FunderInterface {
 contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
+    // The ZkSync bridgehub contract treats address(1) to represent ETH.
+    address private constant ETH_TOKEN_ADDRESS = address(1);
+
     // We need to pay a base fee to the operator to include our L1 --> L2 transaction.
     // https://docs.zksync.io/build/developer-reference/l1-l2-interoperability#l1-to-l2-gas-estimation-for-transactions
 
@@ -96,7 +99,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         CUSTOM_GAS_TOKEN = BRIDGE_HUB.baseToken(CHAIN_ID);
-        if (CUSTOM_GAS_TOKEN == address(1)) {
+        if (CUSTOM_GAS_TOKEN == ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenNotAllowed();
         }
     }
@@ -164,7 +167,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     refundRecipient: L2_REFUND_ADDRESS,
                     secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
                     secondBridgeValue: amount,
-                    secondBridgeCalldata: _secondBridgeCalldata(to, address(1), amount)
+                    secondBridgeCalldata: _secondBridgeCalldata(to, ETH_TOKEN_ADDRESS, amount)
                 })
             );
         } else if (l1Token == CUSTOM_GAS_TOKEN) {
