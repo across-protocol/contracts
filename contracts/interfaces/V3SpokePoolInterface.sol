@@ -155,10 +155,10 @@ interface V3SpokePoolInterface {
     );
 
     event ClaimedRelayerRefund(
-        address indexed l2TokenAddress,
-        address indexed caller,
-        address indexed refundAddress,
-        uint256 amount
+        bytes32 indexed l2TokenAddress,
+        bytes32 indexed refundAddress,
+        uint256 amount,
+        address indexed caller
     );
 
     /**************************************

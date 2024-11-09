@@ -102,7 +102,9 @@ abstract contract SpokePool is
     // to eliminate any chance of collision between pre and post V3 relay hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
-    mapping(address => mapping(address => uint256)) public relayerRefund;
+    // Mapping of L2TokenAddress to relayer to outstanding refund amount. Used when a relayer repayment fails for some
+    // reason (eg blacklist) to track their outstanding liability, thereby letting them claim it later.
+    mapping(bytes32 => mapping(bytes32 => uint256)) public relayerRefund;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
@@ -1228,13 +1230,13 @@ abstract contract SpokePool is
      * @param l2TokenAddress Address of the L2 token to claim refunds for.
      * @param refundAddress Address to send the refund to.
      */
-    function claimRelayerRefund(address l2TokenAddress, address refundAddress) public {
-        uint256 refund = relayerRefund[l2TokenAddress][msg.sender];
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public {
+        uint256 refund = relayerRefund[l2TokenAddress][msg.sender.toBytes32()];
         if (refund == 0) revert NoRelayerRefundToClaim();
-        relayerRefund[l2TokenAddress][msg.sender] = 0;
-        IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddress, refund);
+        relayerRefund[l2TokenAddress][msg.sender.toBytes32()] = 0;
+        IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
 
-        emit ClaimedRelayerRefund(l2TokenAddress, msg.sender, refundAddress, refund);
+        emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
     }
 
     /**************************************
@@ -1257,7 +1259,7 @@ abstract contract SpokePool is
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
-    function getRelayerRefund(address l2TokenAddress, address refundAddress) public view returns (uint256) {
+    function getRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public view returns (uint256) {
         return relayerRefund[l2TokenAddress][refundAddress];
     }
 
@@ -1369,7 +1371,7 @@ abstract contract SpokePool is
                     // reverts. This will only occur if the underlying transfer method on the l2Token reverts due to
                     // recipient blacklisting or other related modifications to the l2Token.transfer method.
                     if (!success) {
-                        relayerRefund[l2TokenAddress.toAddress()][refundAddresses[i].toAddress()] += refundAmounts[i];
+                        relayerRefund[l2TokenAddress][refundAddresses[i]] += refundAmounts[i];
                         deferredRefunds = true;
                     }
                 }
