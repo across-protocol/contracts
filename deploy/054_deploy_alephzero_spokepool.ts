@@ -1,31 +1,30 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, WETH, QUOTE_TIME_BUFFER, ZERO_ADDRESS, USDCe } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WAZERO, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
-    1,
+    0,
+    L2_ADDRESS_MAP[spokeChainId].l2GatewayRouter,
     // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
     hubPool.address,
     hubPool.address,
   ];
+
   const constructorArgs = [
-    WETH[spokeChainId],
+    WAZERO[spokeChainId],
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
-    // World Chain's bridged USDC is upgradeable to native. There are not two different
-    // addresses for bridges/native USDC. This address is also used in the spoke pool
-    // to determine whether to use CCTP (in the future) or the custom USDC bridge.
-    USDCe[spokeChainId],
+    ZERO_ADDRESS,
     // L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
   ];
-  await deployNewProxy("WorldChain_SpokePool", constructorArgs, initArgs);
+  await deployNewProxy("AlephZero_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
-func.tags = ["WorldChainSpokePool", "worldchain"];
+func.tags = ["AlephZeroSpokePool", "alephzero"];

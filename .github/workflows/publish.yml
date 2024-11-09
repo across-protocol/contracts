@@ -24,16 +24,16 @@ jobs:
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
       # Setup Anchor to enable compilation and export of Solana programs
       - name: Setup Anchor & Build
-      - uses: metadaoproject/setup-anchor@v2
+        uses: metadaoproject/setup-anchor@v2
         with:
           anchor-version: "0.30.1"
           solana-cli-version: "1.18.21"
           node-version: "20.17.0"
-      - run: anchor build
+      # - run: anchor build
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v3
         with:
-          node-version: "16.x"
+          node-version: "18.x"
           always-auth: true
           registry-url: "https://registry.npmjs.org"
 
