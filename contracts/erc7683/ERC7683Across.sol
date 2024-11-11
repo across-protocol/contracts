@@ -10,8 +10,8 @@ struct AcrossOrderData {
     uint256 inputAmount;
     address outputToken;
     uint256 outputAmount;
-    uint32 destinationChainId;
-    address recipient;
+    uint256 destinationChainId;
+    bytes32 recipient;
     address exclusiveRelayer;
     uint32 exclusivityPeriod;
     bytes message;
