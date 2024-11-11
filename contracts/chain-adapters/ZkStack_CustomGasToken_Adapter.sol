@@ -154,6 +154,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             // cost of custom gas tokens.
             L1_WETH.withdraw(amount);
             IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
+            // Note: When bridging ETH with `L2TransactionRequestTwoBridgesOuter`, the second bridge must be 0 for the shared bridge call to not revert.
+            // https://github.com/matter-labs/era-contracts/blob/aafee035db892689df3f7afe4b89fd6467a39313/l1-contracts/contracts/bridge/L1SharedBridge.sol#L328
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: amount }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -164,7 +166,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     refundRecipient: L2_REFUND_ADDRESS,
                     secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
                     secondBridgeValue: amount,
-                    secondBridgeCalldata: _secondBridgeCalldata(to, address(1), amount)
+                    secondBridgeCalldata: _secondBridgeCalldata(to, address(1), 0)
                 })
             );
         } else if (l1Token == CUSTOM_GAS_TOKEN) {
