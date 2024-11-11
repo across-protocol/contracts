@@ -913,9 +913,13 @@ abstract contract SpokePool is
             revert WrongERC7683OrderId();
         }
 
+        // Ensure that the call is not malformed. If the call is malformed, abi.decode will fail.
+        V3SpokePoolInterface.V3RelayData memory relayData = abi.decode(originData, (V3SpokePoolInterface.V3RelayData));
+        uint256 repaymentChainId = abi.decode(fillerData, (uint256));
+
         // Must do a delegatecall because the function requires the inputs to be calldata.
         (bool success, bytes memory data) = address(this).delegatecall(
-            abi.encodeWithSelector(this.fillV3Relay.selector, abi.encodePacked(originData, fillerData))
+            abi.encodeCall(V3SpokePoolInterface.fillV3Relay, (relayData, repaymentChainId))
         );
         if (!success) {
             revert LowLevelCallFailed(data);
