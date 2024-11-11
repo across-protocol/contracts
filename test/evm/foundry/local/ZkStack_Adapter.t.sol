@@ -264,7 +264,7 @@ contract ZkStackAdapterTest is Test {
                     refundRecipient: owner,
                     secondBridgeAddress: sharedBridge,
                     secondBridgeValue: amountToSend,
-                    secondBridgeCalldata: abi.encode(address(1), amountToSend, random)
+                    secondBridgeCalldata: abi.encode(address(1), 0, random)
                 })
             )
         );
