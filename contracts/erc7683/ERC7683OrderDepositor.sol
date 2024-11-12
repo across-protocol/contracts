@@ -352,7 +352,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityPeriod,
         bytes memory message
     ) internal virtual;
 
