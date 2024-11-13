@@ -109,7 +109,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
      */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
-        IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
+        IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
 
         // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
         bytes32 canonicalTxHash = BRIDGE_HUB.requestL2TransactionDirect(
@@ -153,7 +153,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
             // cost of custom gas tokens.
             L1_WETH.withdraw(amount);
-            IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: amount }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -169,7 +169,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             );
         } else if (l1Token == CUSTOM_GAS_TOKEN) {
             // The chain's custom gas token.
-            IERC20(l1Token).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost + amount);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, txBaseCost + amount);
             txHash = BRIDGE_HUB.requestL2TransactionDirect(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: CHAIN_ID,
@@ -185,8 +185,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH and not the custom gas token.
-            IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
-            IERC20(l1Token).safeIncreaseAllowance(SHARED_BRIDGE, amount);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
