@@ -37,6 +37,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     error RelayTokensFailed(address baseToken);
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
     error UninitializedChainAdapter();
+    // Error which is triggered when the contract attempts to wrap a native token for an amount greater than
+    // its balance.
+    error InsufficientNativeTokenBalance();
 
     /*
      * @dev Cross domain admin permissioning is implemented specifically for each L2 that this contract is deployed on, so this base contract
@@ -136,7 +139,11 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     ) external payable override onlyAdmin {
         address adapter = chainAdapters[destinationChainId];
         if (adapter == address(0)) revert UninitializedChainAdapter();
-        if (baseToken == address(WRAPPED_NATIVE_TOKEN)) _wrapNativeToken();
+        if (baseToken == address(WRAPPED_NATIVE_TOKEN)) {
+            // Only wrap the minimum required amount of the native token.
+            uint256 nativeTokenBalance = WRAPPED_NATIVE_TOKEN.balanceOf(address(this));
+            if (nativeTokenBalance < amount) _wrapNativeToken(amount - nativeTokenBalance);
+        }
 
         (bool success, ) = adapter.delegatecall(
             abi.encodeCall(AdapterInterface.relayTokens, (baseToken, destinationChainToken, amount, target))
@@ -160,10 +167,11 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     }
 
     /*
-     * @notice Wraps the contract's entire balance of the native token.
+     * @notice Wraps the specified amount of the network's native token.
      */
-    function _wrapNativeToken() internal {
-        if (address(this).balance > 0) WRAPPED_NATIVE_TOKEN.deposit{ value: address(this).balance }();
+    function _wrapNativeToken(uint256 wrapAmount) internal {
+        if (address(this).balance < wrapAmount) revert InsufficientNativeTokenBalance();
+        WRAPPED_NATIVE_TOKEN.deposit{ value: wrapAmount }();
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
