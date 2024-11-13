@@ -29,7 +29,7 @@ describe("svm_spoke.fill", () => {
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
-  const { encodedMessage, remainingAccounts } = testAcrossPlusMessage();
+  const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
 
   let state: PublicKey, mint: PublicKey, relayerTA: PublicKey, recipientTA: PublicKey, otherRelayerTA: PublicKey;
 
@@ -105,7 +105,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -127,7 +127,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(420), otherRelayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -154,7 +154,7 @@ describe("svm_spoke.fill", () => {
       await program.methods
         .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([relayer])
         .rpc();
       assert.fail("Fill should have failed due to fill deadline passed");
@@ -172,7 +172,7 @@ describe("svm_spoke.fill", () => {
       await program.methods
         .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([otherRelayer])
         .rpc();
       assert.fail("Fill should have failed due to non-exclusive relayer before exclusivity deadline");
@@ -194,7 +194,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([otherRelayer])
       .rpc();
 
@@ -222,7 +222,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -231,7 +231,7 @@ describe("svm_spoke.fill", () => {
       await program.methods
         .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([relayer])
         .rpc();
       assert.fail("Fill should have failed due to RelayFilled error");
@@ -254,7 +254,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -297,7 +297,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(Array.from(relayHash), relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -321,7 +321,7 @@ describe("svm_spoke.fill", () => {
       await program.methods
         .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([relayer])
         .rpc();
       assert.fail("Should not be able to fill relay when fills are paused");
@@ -346,7 +346,7 @@ describe("svm_spoke.fill", () => {
           recipientTokenAccount: wrongRecipientTA,
           fillStatus: wrongFillStatus,
         })
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([relayer])
         .rpc();
       assert.fail("Should not be able to fill relay to wrong recipient token account");
@@ -375,7 +375,7 @@ describe("svm_spoke.fill", () => {
           relayerTokenAccount: wrongRelayerTA,
           recipientTokenAccount: wrongRecipientTA,
         })
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([relayer])
         .rpc();
       assert.fail("Should not be able to process fill for inconsistent mint");
@@ -397,7 +397,7 @@ describe("svm_spoke.fill", () => {
     const txSignature = await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -435,7 +435,7 @@ describe("svm_spoke.fill", () => {
     await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -468,7 +468,7 @@ describe("svm_spoke.fill", () => {
       await program.methods
         .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .signers([relayer])
         .rpc();
       assert.fail("Fill should have failed due to missing ATA");
@@ -490,7 +490,7 @@ describe("svm_spoke.fill", () => {
     const fillInstruction = await program.methods
       .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .instruction();
 
     // Create and send the transaction
@@ -537,7 +537,7 @@ describe("svm_spoke.fill", () => {
       const fillInstruction = await program.methods
         .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .instruction();
       fillInstructions.push(fillInstruction);
     }

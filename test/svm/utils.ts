@@ -275,7 +275,7 @@ export async function loadExecuteRelayerRefundLeafParams(
   return instructionParams;
 }
 
-// Encodes empty list of multicall handler instructions to be used as a test message field.
+// Encodes empty list of multicall handler instructions to be used as a test message field for fills.
 export function testAcrossPlusMessage() {
   const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
   const multicallHandlerCoder = new MulticallHandlerCoder([]);
@@ -288,9 +288,9 @@ export function testAcrossPlusMessage() {
     handlerMessage,
   });
   const encodedMessage = message.encode();
-  const remainingAccounts: AccountMeta[] = [
+  const fillRemainingAccounts: AccountMeta[] = [
     { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
     ...multicallHandlerCoder.compiledKeyMetas,
   ];
-  return { encodedMessage, remainingAccounts };
+  return { encodedMessage, fillRemainingAccounts };
 }
