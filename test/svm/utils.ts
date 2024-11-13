@@ -1,8 +1,9 @@
-import { BN, Program } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { BN, Program, workspace } from "@coral-xyz/anchor";
+import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
 import * as crypto from "crypto";
 import { SvmSpoke } from "../../target/types/svm_spoke";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import {
   readEvents,
@@ -10,6 +11,8 @@ import {
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
+  MulticallHandlerCoder,
+  AcrossPlusMessageCoder,
 } from "../../src/SvmUtils";
 import { MerkleTree } from "@uma/common";
 import { getParamType, keccak256 } from "../../test-utils";
@@ -270,4 +273,24 @@ export async function loadExecuteRelayerRefundLeafParams(
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
   return instructionParams;
+}
+
+// Encodes empty list of multicall handler instructions to be used as a test message field.
+export function testAcrossPlusMessage() {
+  const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
+  const multicallHandlerCoder = new MulticallHandlerCoder([]);
+  const handlerMessage = multicallHandlerCoder.encode();
+  const message = new AcrossPlusMessageCoder({
+    handler: handlerProgram.programId,
+    readOnlyLen: multicallHandlerCoder.readOnlyLen,
+    valueAmount: new BN(0),
+    accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+    handlerMessage,
+  });
+  const encodedMessage = message.encode();
+  const remainingAccounts: AccountMeta[] = [
+    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+    ...multicallHandlerCoder.compiledKeyMetas,
+  ];
+  return { encodedMessage, remainingAccounts };
 }
