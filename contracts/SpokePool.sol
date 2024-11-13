@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
+import "./erc7683/ERC7683Across.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
@@ -915,11 +916,14 @@ abstract contract SpokePool is
 
         // Ensure that the call is not malformed. If the call is malformed, abi.decode will fail.
         V3SpokePoolInterface.V3RelayData memory relayData = abi.decode(originData, (V3SpokePoolInterface.V3RelayData));
-        uint256 repaymentChainId = abi.decode(fillerData, (uint256));
+        AcrossDestinationFillerData memory destinationFillerData = abi.decode(
+            fillerData,
+            (AcrossDestinationFillerData)
+        );
 
         // Must do a delegatecall because the function requires the inputs to be calldata.
         (bool success, bytes memory data) = address(this).delegatecall(
-            abi.encodeCall(V3SpokePoolInterface.fillV3Relay, (relayData, repaymentChainId))
+            abi.encodeCall(V3SpokePoolInterface.fillV3Relay, (relayData, destinationFillerData.repaymentChainId))
         );
         if (!success) {
             revert LowLevelCallFailed(data);
