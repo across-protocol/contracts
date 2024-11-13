@@ -32,7 +32,6 @@ describe("svm_spoke.fill", () => {
   let state: PublicKey, mint: PublicKey, relayerTA: PublicKey, recipientTA: PublicKey, otherRelayerTA: PublicKey;
 
   const relayAmount = 500000;
-  const mintDecimals = 6;
   let relayData: any; // reused relay data for all tests.
   let accounts: any; // Store accounts to simplify contract interactions.
 
@@ -58,7 +57,7 @@ describe("svm_spoke.fill", () => {
   }
 
   before("Creates token mint and associated token accounts", async () => {
-    mint = await createMint(connection, payer, owner, owner, mintDecimals);
+    mint = await createMint(connection, payer, owner, owner, 6);
     recipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
     relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     otherRelayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, otherRelayer.publicKey)).address;
