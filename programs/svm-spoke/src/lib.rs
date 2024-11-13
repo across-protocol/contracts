@@ -172,8 +172,8 @@ pub mod svm_spoke {
     }
 
     // Relayer methods.
-    pub fn fill_v3_relay(
-        ctx: Context<FillV3Relay>,
+    pub fn fill_v3_relay<'info>(
+        ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
         _relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,

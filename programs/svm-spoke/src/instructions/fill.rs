@@ -12,6 +12,7 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
+    utils::invoke_handler,
 };
 
 #[event_cpi]
@@ -66,8 +67,8 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn fill_v3_relay(
-    ctx: Context<FillV3Relay>,
+pub fn fill_v3_relay<'info>(
+    ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
     relay_data: V3RelayData,
     repayment_chain_id: u64,
     repayment_address: Pubkey,
@@ -122,6 +123,10 @@ pub fn fill_v3_relay(
     // TODO: there might be a better way to do this
     // Emit the FilledV3Relay event
     let message_clone = relay_data.message.clone(); // Clone the message before it is moved
+
+    if message_clone.len() > 0 {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &message_clone)?;
+    }
 
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,

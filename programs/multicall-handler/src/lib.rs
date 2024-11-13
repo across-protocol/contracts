@@ -12,50 +12,49 @@ declare_id!("6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG");
 pub mod multicall_handler {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
-        Ok(())
-    }
-
+    // Handler to receive AcrossV3 message formatted as serialized message compiled instructions. When deserialized,
+    // these are matched with the passed accounts and executed as CPIs.
     pub fn handle_v3_across_message(ctx: Context<HandleV3AcrossMessage>, message: Vec<u8>) -> Result<()> {
-        let (pda_signer, bump) = Pubkey::find_program_address(&[b"pda_signer"], &crate::ID);
-        let mut use_pda_signer = false;
+        // Some instructions might require being signed by handler PDA.
+        let (handler_signer, bump) = Pubkey::find_program_address(&[b"handler_signer"], &crate::ID);
+        let mut use_handler_signer = false;
 
-        let calls: Vec<Call> = AnchorDeserialize::deserialize(&mut &message[..])?;
+        let compiled_ixs: Vec<CompiledIx> = AnchorDeserialize::deserialize(&mut &message[..])?;
 
-        for call in calls {
-            let mut accounts = Vec::with_capacity(call.account_indexes.len());
-            let mut account_infos = Vec::with_capacity(call.account_indexes.len());
+        for compiled_ix in compiled_ixs {
+            let mut accounts = Vec::with_capacity(compiled_ix.account_key_indexes.len());
+            let mut account_infos = Vec::with_capacity(compiled_ix.account_key_indexes.len());
 
             let target_program = ctx
                 .remaining_accounts
-                .get(call.program_index as usize)
+                .get(compiled_ix.program_id_index as usize)
                 .ok_or(ErrorCode::AccountNotEnoughKeys)?;
 
-            for i in call.account_indexes {
-                let acc = ctx
+            // Resolve CPI accounts from indexed references to the remaining accounts.
+            for index in compiled_ix.account_key_indexes {
+                let account_info = ctx
                     .remaining_accounts
-                    .get(i as usize)
+                    .get(index as usize)
                     .ok_or(ErrorCode::AccountNotEnoughKeys)?;
-                let is_pda_signer = acc.key() == pda_signer;
-                use_pda_signer |= is_pda_signer;
-                if acc.is_writable {
-                    accounts.push(AccountMeta::new(acc.key(), acc.is_signer || is_pda_signer));
-                } else {
-                    accounts.push(AccountMeta::new_readonly(acc.key(), acc.is_signer || is_pda_signer));
+                let is_handler_signer = account_info.key() == handler_signer;
+                use_handler_signer |= is_handler_signer;
+
+                match account_info.is_writable {
+                    true => accounts.push(AccountMeta::new(account_info.key(), is_handler_signer)),
+                    false => accounts.push(AccountMeta::new_readonly(account_info.key(), is_handler_signer)),
                 }
-                account_infos.push(acc.to_owned());
+                account_infos.push(account_info.to_owned());
             }
 
-            let instruction = Instruction {
+            let cpi_instruction = Instruction {
                 program_id: target_program.key(),
                 accounts,
-                data: call.data,
+                data: compiled_ix.data,
             };
 
-            match use_pda_signer {
-                true => invoke_signed(&instruction, &account_infos, &[&[b"pda_signer", &[bump]]])?,
-                false => invoke(&instruction, &account_infos)?,
+            match use_handler_signer {
+                true => invoke_signed(&cpi_instruction, &account_infos, &[&[b"handler_signer", &[bump]]])?,
+                false => invoke(&cpi_instruction, &account_infos)?,
             }
         }
 
@@ -63,13 +62,10 @@ pub mod multicall_handler {
     }
 }
 
-#[derive(Accounts)]
-pub struct Initialize {}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct Call {
-    pub program_index: u8,
-    pub account_indexes: Vec<u8>,
+#[derive(AnchorDeserialize)]
+pub struct CompiledIx {
+    pub program_id_index: u8,
+    pub account_key_indexes: Vec<u8>,
     pub data: Vec<u8>,
 }
 

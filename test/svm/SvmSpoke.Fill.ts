@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN, web3 } from "@coral-xyz/anchor";
+import { BN, Program, web3 } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -9,6 +9,7 @@ import {
   mintTo,
   getAccount,
   getAssociatedTokenAddressSync,
+  createTransferCheckedInstruction,
 } from "@solana/spl-token";
 import {
   PublicKey,
@@ -17,8 +18,15 @@ import {
   AddressLookupTableProgram,
   VersionedTransaction,
   TransactionMessage,
+  AccountMeta,
 } from "@solana/web3.js";
-import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
+import {
+  readProgramEvents,
+  calculateRelayHashUint8Array,
+  MulticallHandlerCalls,
+  AcrossPlusMessageCoder,
+} from "../../src/SvmUtils";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
@@ -32,6 +40,7 @@ describe("svm_spoke.fill", () => {
   let state: PublicKey, mint: PublicKey, relayerTA: PublicKey, recipientTA: PublicKey, otherRelayerTA: PublicKey;
 
   const relayAmount = 500000;
+  const mintDecimals = 6;
   let relayData: any; // reused relay data for all tests.
   let accounts: any; // Store accounts to simplify contract interactions.
 
@@ -57,7 +66,7 @@ describe("svm_spoke.fill", () => {
   }
 
   before("Creates token mint and associated token accounts", async () => {
-    mint = await createMint(connection, payer, owner, owner, 6);
+    mint = await createMint(connection, payer, owner, owner, mintDecimals);
     recipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
     relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     otherRelayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, otherRelayer.publicKey)).address;
@@ -581,5 +590,114 @@ describe("svm_spoke.fill", () => {
       const recipientBal = (await getAccount(connection, recipientAssociatedToken)).amount;
       assertSE(recipientBal, BigInt(relayAmount), "Recipient's balance should be increased by the relay amount");
     });
+  });
+
+  it("Fills a V3 relay and handles message call", async () => {
+    const handlerProgram = anchor.workspace.MulticallHandler as Program<MulticallHandler>;
+
+    const [pdaSigner] = PublicKey.findProgramAddressSync([Buffer.from("pda_signer")], handlerProgram.programId);
+    const handlerATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, pdaSigner, true)).address;
+
+    // Verify relayer's balance before the fill
+    let relayerAccount = await getAccount(connection, relayerTA);
+    assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
+
+    const finalRecipient = Keypair.generate().publicKey;
+    const finalRecipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, finalRecipient))
+      .address;
+
+    const transferIx = createTransferCheckedInstruction(
+      handlerATA,
+      mint,
+      finalRecipientATA,
+      pdaSigner,
+      relayData.outputAmount,
+      mintDecimals
+    );
+    console.log("transferIx.keys:", transferIx.keys);
+    transferIx.keys[3].isWritable = true;
+    transferIx.keys[3].isSigner = true;
+
+    const handlerRemainingAccounts: AccountMeta[] = [
+      ...transferIx.keys
+        .filter((key) => key.isWritable)
+        .map((key) => ({ pubkey: key.pubkey, isSigner: false, isWritable: true })),
+      ...transferIx.keys
+        .filter((key) => !key.isWritable)
+        .map((key) => ({ pubkey: key.pubkey, isSigner: false, isWritable: false })),
+      { pubkey: transferIx.programId, isSigner: false, isWritable: false },
+    ];
+
+    const accountIndexes = Buffer.from(
+      transferIx.keys.map((key) => handlerRemainingAccounts.findIndex((account) => account.pubkey === key.pubkey))
+    );
+
+    const calls = new MulticallHandlerCalls([
+      {
+        programIndex: accountIndexes.length,
+        accountIndexes,
+        data: transferIx.data,
+      },
+    ]);
+
+    const encodedCalls = calls.encode();
+
+    const message = new AcrossPlusMessageCoder({
+      handler: handlerProgram.programId,
+      readOnlyLen: handlerRemainingAccounts.filter((account) => !account.isWritable).length,
+      accounts: handlerRemainingAccounts.map((account) => account.pubkey),
+      calls: encodedCalls,
+    });
+
+    const encodedMessage = message.encode();
+    console.log({ encodedMessage: encodedMessage.toString("hex") });
+
+    const newRelayData = { ...relayData, recipient: pdaSigner, message: encodedMessage };
+    updateRelayData(newRelayData);
+    accounts.recipientTokenAccount = handlerATA;
+
+    const remainingAccounts: AccountMeta[] = [
+      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+      ...handlerRemainingAccounts,
+    ];
+    console.log({ remainingAccounts });
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+
+    const tx = await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .remainingAccounts(remainingAccounts)
+      .signers([relayer])
+      .transaction();
+    console.log("tx.instructions[0].keys:", tx.instructions[0].keys);
+    const { blockhash } = await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = owner;
+    await tx.sign(relayer);
+    console.log(await connection.simulateTransaction(tx));
+
+    await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .remainingAccounts(remainingAccounts)
+      .signers([relayer])
+      .rpc();
+
+    // Verify relayer's balance after the fill
+    relayerAccount = await getAccount(connection, relayerTA);
+    assertSE(
+      relayerAccount.amount,
+      seedBalance - relayAmount,
+      "Relayer's balance should be reduced by the relay amount"
+    );
+
+    // Verify final recipient's balance after the fill
+    const finalRecipientAccount = await getAccount(connection, finalRecipientATA);
+    assertSE(
+      finalRecipientAccount.amount,
+      relayAmount,
+      "Final recipient's balance should be increased by the relay amount"
+    );
   });
 });
