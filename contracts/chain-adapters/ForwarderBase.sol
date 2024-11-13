@@ -36,6 +36,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
 
     error InvalidCrossDomainAdmin();
     error InvalidChainAdapter();
+    error InvalidTokenRelayId();
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
     error UninitializedChainAdapter();
 
@@ -63,6 +64,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
      */
     function __Forwarder_init(address _crossDomainAdmin) public onlyInitializing {
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
 
@@ -149,6 +151,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
      * @param tokenRelayId Index of the relay to send in the `tokenRelays` array.
      */
     function executeRelayTokens(uint32 tokenRelayId) external payable nonReentrant {
+        if (tokenRelayId > tokenRelays.length) revert InvalidTokenRelayId();
         TokenRelay storage tokenRelay = tokenRelays[tokenRelayId];
         if (tokenRelay.executed) revert TokenRelayExecuted();
 
