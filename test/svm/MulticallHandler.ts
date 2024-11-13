@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Wallet, Program } from "@coral-xyz/anchor";
-import { Keypair, PublicKey, AccountMeta } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -8,7 +8,7 @@ import {
   createTransferCheckedInstruction,
 } from "@solana/spl-token";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { MulticallHandlerCalls } from "../../src/SvmUtils";
+import { MulticallHandlerCoder } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
 
 const { provider, owner, connection, assertSE } = common;
@@ -18,23 +18,23 @@ describe("multicall_handler", () => {
 
   const program = anchor.workspace.MulticallHandler as Program<MulticallHandler>;
 
-  let pdaSigner: PublicKey, mint: PublicKey, handlerATA: PublicKey;
+  let handlerSigner: PublicKey, mint: PublicKey, handlerATA: PublicKey;
 
   const payer = (AnchorProvider.env().wallet as Wallet).payer;
   const mintDecimals = 6;
   const tokenAmount = 10_000_000_000;
 
   beforeEach(async () => {
-    [pdaSigner] = PublicKey.findProgramAddressSync([Buffer.from("pda_signer")], program.programId);
+    [handlerSigner] = PublicKey.findProgramAddressSync([Buffer.from("handler_signer")], program.programId);
 
     mint = await createMint(connection, payer, owner, owner, mintDecimals);
 
-    handlerATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, pdaSigner, true)).address;
+    handlerATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, handlerSigner, true)).address;
 
     await mintTo(connection, payer, mint, handlerATA, provider.publicKey, tokenAmount);
   });
 
-  it("handle_v3_across_message", async () => {
+  it("Sends out tokens from the handler", async () => {
     const recipient = Keypair.generate().publicKey;
     const recipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
 
@@ -42,29 +42,19 @@ describe("multicall_handler", () => {
       handlerATA,
       mint,
       recipientATA,
-      pdaSigner,
+      handlerSigner,
       tokenAmount,
       mintDecimals
     );
 
-    const remainingAccounts: AccountMeta[] = [
-      ...transferIx.keys.map((key) => ({ pubkey: key.pubkey, isSigner: false, isWritable: key.isWritable })),
-      { pubkey: transferIx.programId, isSigner: false, isWritable: false },
-    ];
+    const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
 
-    const accountIndexes = Buffer.from(transferIx.keys.map((_, i) => i));
+    const handlerMessage = multicallHandlerCoder.encode();
 
-    const calls = new MulticallHandlerCalls([
-      {
-        programIndex: accountIndexes.length,
-        accountIndexes,
-        data: transferIx.data,
-      },
-    ]);
-
-    const encodedCalls = calls.encode();
-
-    await program.methods.handleV3AcrossMessage(encodedCalls).remainingAccounts(remainingAccounts).rpc();
+    await program.methods
+      .handleV3AcrossMessage(handlerMessage)
+      .remainingAccounts(multicallHandlerCoder.compiledKeyMetas)
+      .rpc();
 
     const recipientBal = await provider.connection.getTokenAccountBalance(recipientATA);
     assertSE(recipientBal.value.amount, tokenAmount, "Wrong recipient balance");
