@@ -342,7 +342,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
     }
 
     function _toAddress(bytes32 _bytes32) internal pure returns (address) {
-        require(uint256(_bytes32) >> 192 == 0, "Invalid bytes32: highest 12 bytes must be 0");
+        require(uint256(_bytes32) >> 160 == 0, "Invalid bytes32: highest 12 bytes must be 0");
         return address(uint160(uint256(_bytes32)));
     }
 
