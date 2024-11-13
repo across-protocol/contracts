@@ -8,7 +8,7 @@ use crate::{
     error::{CommonError, SvmError},
     get_current_time,
     state::{FillStatus, FillStatusAccount, RootBundle, State},
-    utils::verify_merkle_proof,
+    utils::{invoke_handler, verify_merkle_proof},
 };
 
 use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
@@ -166,8 +166,8 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn execute_v3_slow_relay_leaf(
-    ctx: Context<ExecuteV3SlowRelayLeaf>,
+pub fn execute_v3_slow_relay_leaf<'info>(
+    ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
     slow_fill_leaf: V3SlowFill,
     proof: Vec<[u8; 32]>,
 ) -> Result<()> {
@@ -224,6 +224,10 @@ pub fn execute_v3_slow_relay_leaf(
 
     // Emit the FilledV3Relay event
     let message_clone = relay_data.message.clone(); // Clone the message before it is moved
+
+    if message_clone.len() > 0 {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &message_clone)?;
+    }
 
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,

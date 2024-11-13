@@ -11,7 +11,13 @@ import {
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array } from "./utils";
+import {
+  slowFillHashFn,
+  SlowFillLeaf,
+  readProgramEvents,
+  calculateRelayHashUint8Array,
+  testAcrossPlusMessage,
+} from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
@@ -30,6 +36,7 @@ describe("svm_spoke.slow_fill", () => {
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
+  const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
 
   let state: PublicKey,
     mint: PublicKey,
@@ -92,7 +99,7 @@ describe("svm_spoke.slow_fill", () => {
         depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
         fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
         exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
-        message: Buffer.from("Test message"),
+        message: encodedMessage,
       },
       chainId: slowRelayLeafChainId,
       updatedOutputAmount: new BN(relayAmount),
@@ -168,7 +175,7 @@ describe("svm_spoke.slow_fill", () => {
       depositId: new BN(1),
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
-      message: Buffer.from("Test message"),
+      message: encodedMessage,
     };
 
     await updateRelayData(initialRelayData);
@@ -222,6 +229,7 @@ describe("svm_spoke.slow_fill", () => {
       .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
       .signers([relayer])
+      .remainingAccounts(fillRemainingAccounts)
       .rpc();
 
     try {
@@ -335,6 +343,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed due to fill status account not being initialized");
     } catch (err: any) {
@@ -357,6 +366,7 @@ describe("svm_spoke.slow_fill", () => {
         proofAsNumbers
       )
       .accounts(executeSlowRelayLeafAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .rpc();
 
     // Verify the results
@@ -433,6 +443,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong recipient token account");
     } catch (err: any) {
@@ -492,6 +503,7 @@ describe("svm_spoke.slow_fill", () => {
         firstProofAsNumbers
       )
       .accounts(executeSlowRelayLeafAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .rpc();
     const fFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
     assert.strictEqual(
@@ -522,6 +534,7 @@ describe("svm_spoke.slow_fill", () => {
           firstProofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong fill status account");
     } catch (err: any) {
@@ -566,6 +579,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed for inconsistent mint");
     } catch (err: any) {
@@ -609,6 +623,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed for another chain");
     } catch (err: any) {
