@@ -71,7 +71,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
     // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
-    // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
+    // when calling a hub pool message relay, which would otherwise cause a large amount of the custom gas token to be sent to L2.
     uint256 private immutable MAX_TX_GASPRICE;
 
     event ZkStackMessageRelayed(bytes32 canonicalTxHash);
