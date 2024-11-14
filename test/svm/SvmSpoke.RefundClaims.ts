@@ -29,12 +29,24 @@ describe("svm_spoke.refund_claims", () => {
     vault: PublicKey,
     transferLiability: PublicKey;
 
+  let claimRelayerRefundAccounts: {
+    signer: PublicKey;
+    initializer: PublicKey;
+    state: PublicKey;
+    vault: PublicKey;
+    mint: PublicKey;
+    tokenAccount: PublicKey;
+    claimAccount: PublicKey;
+    tokenProgram: PublicKey;
+    program: PublicKey;
+  };
+
   const payer = (AnchorProvider.env().wallet as Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   const initializeClaimAccount = async (initializer = claimInitializer) => {
     const initializeClaimAccountIx = await program.methods
-      .initializeClaimAccount(mint, tokenAccount)
+      .initializeClaimAccount(mint, relayer.publicKey)
       .accounts({ signer: initializer.publicKey })
       .instruction();
     await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(initializeClaimAccountIx), [
@@ -59,7 +71,7 @@ describe("svm_spoke.refund_claims", () => {
       chainId: chainId,
       amountToReturn: new BN(0),
       mintPublicKey: mint,
-      refundAccounts: [tokenAccount],
+      refundAddresses: [relayer.publicKey],
       refundAmounts: [relayerRefund],
     });
 
@@ -102,7 +114,7 @@ describe("svm_spoke.refund_claims", () => {
     const proofAsNumbers = proof.map((p) => Array.from(p));
     await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
     await program.methods
-      .executeRelayerRefundLeaf()
+      .executeRelayerRefundLeafDeferred()
       .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
@@ -116,10 +128,21 @@ describe("svm_spoke.refund_claims", () => {
     assertSE(BigInt(fRefundLiability) - BigInt(iRefundLiability), relayerRefund, "Refund liability");
   };
 
-  const claimRelayerRefund = async (initializer = claimInitializer.publicKey) => {
-    const claimRelayerRefundAccounts = {
+  beforeEach(async () => {
+    state = await initializeState();
+    mint = await createMint(connection, payer, owner, owner, 6);
+
+    tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
+    [claimAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("claim_account"), mint.toBuffer(), relayer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address;
+
+    claimRelayerRefundAccounts = {
       signer: owner,
-      initializer,
+      initializer: claimInitializer.publicKey,
       state,
       vault,
       mint,
@@ -128,20 +151,6 @@ describe("svm_spoke.refund_claims", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
       program: program.programId,
     };
-    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
-  };
-
-  beforeEach(async () => {
-    state = await initializeState();
-    mint = await createMint(connection, payer, owner, owner, 6);
-
-    tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
-    [claimAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("claim_account"), mint.toBuffer(), tokenAccount.toBuffer()],
-      program.programId
-    );
-
-    vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address;
 
     const sig = await connection.requestAirdrop(claimInitializer.publicKey, 10_000_000_000);
     await provider.connection.confirmTransaction(sig);
@@ -155,7 +164,7 @@ describe("svm_spoke.refund_claims", () => {
     );
   });
 
-  it("Claim Single Relayer Refund", async () => {
+  it("Claim on behalf of single relayer", async () => {
     // Execute relayer refund using claim account.
     const relayerRefund = new BN(500000);
     await executeRelayerRefundToClaim(relayerRefund);
@@ -164,7 +173,7 @@ describe("svm_spoke.refund_claims", () => {
     const iRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
 
     // Claim refund for the relayer.
-    await claimRelayerRefund();
+    await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -178,7 +187,7 @@ describe("svm_spoke.refund_claims", () => {
     const event = events.find((event) => event.name === "claimedRelayerRefund").data;
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");
-    assertSE(event.refundAddress, tokenAccount, "Relayer refund address should match");
+    assertSE(event.refundAddress, relayer.publicKey, "Relayer refund address should match");
   });
 
   it("Cannot Double Claim Relayer Refund", async () => {
@@ -187,11 +196,11 @@ describe("svm_spoke.refund_claims", () => {
     await executeRelayerRefundToClaim(relayerRefund);
 
     // Claim refund for the relayer.
-    await claimRelayerRefund();
+    await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
 
     // The claim account should have been automatically closed, so repeated claim should fail.
     try {
-      await claimRelayerRefund();
+      await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund from closed account should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -205,7 +214,7 @@ describe("svm_spoke.refund_claims", () => {
     // After reinitalizing the claim account, the repeated claim should still fail.
     await initializeClaimAccount();
     try {
-      await claimRelayerRefund();
+      await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund from reinitalized account should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -224,7 +233,7 @@ describe("svm_spoke.refund_claims", () => {
     const iRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
 
     // Claim refund for the relayer.
-    await claimRelayerRefund();
+    await await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
 
     // The relayer should have received both refunds.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -249,7 +258,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Claiming with default initializer should fail.
     try {
-      await claimRelayerRefund();
+      await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
       assert.strictEqual(
@@ -260,7 +269,8 @@ describe("svm_spoke.refund_claims", () => {
     }
 
     // Claim refund for the relayer passing the correct initializer account.
-    await claimRelayerRefund(anotherInitializer.publicKey);
+    claimRelayerRefundAccounts.initializer = anotherInitializer.publicKey;
+    await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -275,7 +285,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Should not be able to close the claim account from default wallet as the initializer was different.
     try {
-      await program.methods.closeClaimAccount(mint, tokenAccount).accounts({ signer: payer.publicKey }).rpc();
+      await program.methods.closeClaimAccount(mint, relayer.publicKey).accounts({ signer: payer.publicKey }).rpc();
       assert.fail("Closing claim account from different initializer should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -288,7 +298,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Close the claim account from initializer before executing relayer refunds.
     await program.methods
-      .closeClaimAccount(mint, tokenAccount)
+      .closeClaimAccount(mint, relayer.publicKey)
       .accounts({ signer: claimInitializer.publicKey })
       .signers([claimInitializer])
       .rpc();
@@ -310,7 +320,7 @@ describe("svm_spoke.refund_claims", () => {
     // It should be not possible to close the claim account with non-zero refund liability.
     try {
       await program.methods
-        .closeClaimAccount(mint, tokenAccount)
+        .closeClaimAccount(mint, relayer.publicKey)
         .accounts({ signer: claimInitializer.publicKey })
         .signers([claimInitializer])
         .rpc();
@@ -318,6 +328,77 @@ describe("svm_spoke.refund_claims", () => {
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
       assert.strictEqual(error.error.errorCode.code, "NonZeroRefundClaim", "Expected error code NonZeroRefundClaim");
+    }
+  });
+
+  it("Cannot claim refund on behalf of relayer to wrong token account", async () => {
+    // Execute relayer refund using claim account.
+    const relayerRefund = new BN(500000);
+    await executeRelayerRefundToClaim(relayerRefund);
+
+    // Claim refund for the relayer to a custom token account.
+    const wrongOwner = Keypair.generate().publicKey;
+    const wrongTokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongOwner)).address;
+    claimRelayerRefundAccounts.tokenAccount = wrongTokenAccount;
+
+    try {
+      await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+      assert.fail("Claiming refund to custom token account should fail");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(
+        error.error.errorCode.code,
+        "ConstraintTokenOwner",
+        "Expected error code ConstraintTokenOwner"
+      );
+    }
+  });
+
+  it("Relayer can claim refunds to custom token account", async () => {
+    // Execute relayer refund using claim account.
+    const relayerRefund = new BN(500000);
+    await executeRelayerRefundToClaim(relayerRefund);
+
+    const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const iRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
+
+    // Create custom token account for the relayer (no need to be controlled by the relayer)
+    const anotherOwner = Keypair.generate().publicKey;
+    const customTokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, anotherOwner)).address;
+    claimRelayerRefundAccounts.tokenAccount = customTokenAccount;
+    claimRelayerRefundAccounts.signer = relayer.publicKey; // Only relayer itself should be able to do this.
+
+    // Relayer can claim refund to custom token account.
+    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).signers([relayer]).rpc();
+
+    // The relayer should have received funds from the vault.
+    const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    const fRelayerBal = (await connection.getTokenAccountBalance(customTokenAccount)).value.amount;
+    assertSE(BigInt(iVaultBal) - BigInt(fVaultBal), relayerRefund, "Vault balance");
+    assertSE(BigInt(fRelayerBal) - BigInt(iRelayerBal), relayerRefund, "Relayer balance");
+
+    // Verify the ClaimedRelayerRefund event
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "claimedRelayerRefund").data;
+    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+    assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");
+    assertSE(event.refundAddress, relayer.publicKey, "Relayer refund address should match");
+  });
+
+  it("Cannot claim relayer refunds with the wrong signer", async () => {
+    // Execute relayer refund using claim account.
+    const relayerRefund = new BN(500000);
+    await executeRelayerRefundToClaim(relayerRefund);
+
+    // Claim refund for the relayer with the default signer should fail as relayer address is part of claim account derivation.
+    try {
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
+      assert.fail("Claiming refund with wrong signer should fail");
+    } catch (error: any) {
+      assert.instanceOf(error, AnchorError);
+      assert.strictEqual(error.error.errorCode.code, "ConstraintSeeds", "Expected error code ConstraintSeeds");
+      assert.strictEqual(error.error.origin, "claim_account", "Expected error on claim_account");
     }
   });
 });

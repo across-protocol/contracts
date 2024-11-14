@@ -3,15 +3,16 @@ export { ZERO_ADDRESS } from "@uma/common";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
+export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
+export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
 export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
 export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
 export const AZERO_GAS_PRICE = "240000000000";
-export const MOCK_ADMIN = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
@@ -52,9 +53,10 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zoraStandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
     worldChainCrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
     worldChainStandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
+    worldChainOpUSDCBridge: "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB",
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
-    donationBox: "0x90285a96F5955A7279EF0C1e89A1B4f66d8E4dA7",
+    donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
   },
   [CHAIN_IDs.SEPOLIA]: {
     optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
@@ -97,6 +99,9 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
 };
 
 export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
+  [CHAIN_IDs.ALEPH_ZERO]: {
+    l2GatewayRouter: "0xD296d45171B97720D3aBdb68B0232be01F1A9216",
+  },
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: {
     l2GatewayRouter: "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",

@@ -68,7 +68,7 @@ export interface RelayerRefundLeafSolana {
   refundAmounts: BN[];
   leafId: BN;
   mintPublicKey: PublicKey;
-  refundAccounts: PublicKey[];
+  refundAddresses: PublicKey[];
 }
 
 export type RelayerRefundLeafType = RelayerRefundLeaf | RelayerRefundLeafSolana;
@@ -108,7 +108,7 @@ export function buildRelayerRefundMerkleTree({
     chainId: new BN(chainId),
     amountToReturn: new BN(0),
     mintPublicKey: mint ?? Keypair.generate().publicKey,
-    refundAccounts: svmRelayers || [Keypair.generate().publicKey, Keypair.generate().publicKey],
+    refundAddresses: svmRelayers || [Keypair.generate().publicKey, Keypair.generate().publicKey],
     refundAmounts: svmRefundAmounts || [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
   });
 
@@ -159,7 +159,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
     })
   );
 
-  const refundAccountsBuffer = Buffer.concat(relayData.refundAccounts.map((account) => account.toBuffer()));
+  const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
   const contentToHash = Buffer.concat([
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
@@ -167,7 +167,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
     refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
-    refundAccountsBuffer,
+    refundAddressesBuffer,
   ]);
 
   const relayHash = ethers.utils.keccak256(contentToHash);
