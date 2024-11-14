@@ -8,13 +8,12 @@ const SPOKE_CHAIN_ID = CHAIN_IDs.BASE;
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
-
-  const addresses = OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID];
+  const opStack = OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID];
 
   const args = [
     WETH[chainId],
-    addresses.L1CrossDomainMessenger,
-    addresses.L1StandardBridge,
+    opStack.L1CrossDomainMessenger,
+    opStack.L1StandardBridge,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
