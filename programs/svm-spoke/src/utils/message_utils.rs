@@ -73,6 +73,8 @@ pub fn invoke_handler<'info>(
     }
 
     // Transfer value amount from the relayer to the first account in the message accounts.
+    // Note that the depositor is responsible to make sure that after invoking the handler the recipient account will
+    // not hold any balance that is below its rent-exempt threshold, otherwise the fill would fail.
     if message.value_amount > 0 {
         let recipient_account = account_infos.get(0).ok_or(AcrossPlusError::MissingValueRecipientKey)?;
         let transfer_ix = system_instruction::transfer(&relayer.key(), &recipient_account.key(), message.value_amount);
