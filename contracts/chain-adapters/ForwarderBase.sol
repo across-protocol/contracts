@@ -151,7 +151,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
      * @param tokenRelayId Index of the relay to send in the `tokenRelays` array.
      */
     function executeRelayTokens(uint32 tokenRelayId) external payable nonReentrant {
-        if (tokenRelayId > tokenRelays.length) revert InvalidTokenRelayId();
+        if (tokenRelayId >= tokenRelays.length) revert InvalidTokenRelayId();
         TokenRelay storage tokenRelay = tokenRelays[tokenRelayId];
         if (tokenRelay.executed) revert TokenRelayExecuted();
 
