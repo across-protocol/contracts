@@ -3,6 +3,7 @@ export { ZERO_ADDRESS } from "@uma/common";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
+export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
@@ -52,6 +53,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zoraStandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
     worldChainCrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
     worldChainStandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
+    worldChainOpUSDCBridge: "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB",
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",

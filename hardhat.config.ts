@@ -23,6 +23,7 @@ const tasks = [
   "verifySpokePool",
   "evmRelayMessageWithdrawal",
   "testChainAdapter",
+  "upgradeSpokePool",
 ];
 
 // eslint-disable-next-line node/no-missing-require
