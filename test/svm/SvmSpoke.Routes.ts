@@ -43,10 +43,7 @@ describe("svm_spoke.routes", () => {
 
   it("Sets, retrieves, and controls access to route enablement", async () => {
     // Enable the route as owner
-    await program.methods
-      .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, true)
-      .accounts(setEnableRouteAccounts)
-      .rpc();
+    await program.methods.setEnableRoute(tokenMint, routeChainId, true).accounts(setEnableRouteAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Retrieve and verify the route is enabled
@@ -63,10 +60,7 @@ describe("svm_spoke.routes", () => {
     assert.isTrue(event.enabled, "enabledDepositRoute enabled");
 
     // Disable the route as owner
-    await program.methods
-      .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, false)
-      .accounts(setEnableRouteAccounts)
-      .rpc();
+    await program.methods.setEnableRoute(tokenMint, routeChainId, false).accounts(setEnableRouteAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Retrieve and verify the route is disabled
@@ -85,7 +79,7 @@ describe("svm_spoke.routes", () => {
     // Try to enable the route as non-owner
     try {
       await program.methods
-        .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, true)
+        .setEnableRoute(tokenMint, routeChainId, true)
         .accounts({ ...setEnableRouteAccounts, signer: nonOwner.publicKey })
         .signers([nonOwner])
         .rpc();
@@ -113,7 +107,7 @@ describe("svm_spoke.routes", () => {
 
     try {
       await program.methods
-        .setEnableRoute(Array.from(wrongOriginToken.toBytes()), routeChainId, true)
+        .setEnableRoute(wrongOriginToken, routeChainId, true)
         .accounts({ ...setEnableRouteAccounts, route: wrongRoutePda })
         .rpc();
       assert.fail("Setting route with wrong origin token should fail");
