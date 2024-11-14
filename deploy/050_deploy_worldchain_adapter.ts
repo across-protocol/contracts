@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { CHAIN_IDs } from "../utils";
-import { OP_STACK_ADDRESS_MAP, WETH, ZERO_ADDRESS } from "./consts";
+import { OP_STACK_ADDRESS_MAP, USDC, WETH } from "./consts";
 
 const SPOKE_CHAIN_ID = CHAIN_IDs.WORLD_CHAIN;
 
@@ -20,7 +20,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       opStack.L1CrossDomainMessenger,
       opStack.L1StandardBridge,
       opStack.L1OpUSDCBridge,
-      ZERO_ADDRESS,
     ],
   });
 };
