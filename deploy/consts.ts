@@ -24,7 +24,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
     polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
-    l1BlastBridge: "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -113,6 +112,7 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0xfd0Bf71F60660E2f608ed56e1659C450eB113120",
     },
     [CHAIN_IDs.BLAST_SEPOLIA]: {
+      L1BlastBridge: "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
       L1CrossDomainMessenger: "0x9338F298F29D3918D5D1Feb209aeB9915CC96333",
       L1StandardBridge: "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f",
     },
