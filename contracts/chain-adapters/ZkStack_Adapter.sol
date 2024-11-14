@@ -144,7 +144,7 @@ contract ZkStack_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH.
-            IERC20(l1Token).safeIncreaseAllowance(SHARED_BRIDGE, amount);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
