@@ -20,7 +20,12 @@ import {
   AddressLookupTableProgram,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { calculateRelayHashUint8Array, MulticallHandlerCoder, AcrossPlusMessageCoder } from "../../src/SvmUtils";
+import {
+  calculateRelayHashUint8Array,
+  MulticallHandlerCoder,
+  AcrossPlusMessageCoder,
+  sendTransactionWithLookupTable,
+} from "../../src/SvmUtils";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
@@ -214,13 +219,13 @@ describe("svm_spoke.fill.across_plus", () => {
   });
 
   it("Creates new ATA when forwarding tokens within invoked message call", async () => {
-    // We need precise estimate of the minimum balance for ATA creation.
+    // We need precise estimate of required funding for ATA creation.
     const valueAmount = await getMinimumBalanceForRentExemptAccount(connection);
 
     const anotherRecipient = Keypair.generate().publicKey;
     const anotherRecipientATA = getAssociatedTokenAddressSync(mint, anotherRecipient);
 
-    // Construct ix to create recipient ATA.
+    // Construct ix to create recipient ATA funded via handler PDA.
     const createTokenAccountInstruction = createAssociatedTokenAccountInstruction(
       handlerSigner,
       anotherRecipientATA,
@@ -247,7 +252,7 @@ describe("svm_spoke.fill.across_plus", () => {
     const message = new AcrossPlusMessageCoder({
       handler: handlerProgram.programId,
       readOnlyLen: multicallHandlerCoder.readOnlyLen,
-      valueAmount: new BN(valueAmount), // Should exactly cover ATA creation.
+      valueAmount: new BN(valueAmount), // Must exactly cover ATA creation.
       accounts: multicallHandlerCoder.compiledMessage.accountKeys,
       handlerMessage,
     });
@@ -272,51 +277,8 @@ describe("svm_spoke.fill.across_plus", () => {
       .signers([relayer])
       .instruction();
 
-    // Consolidate all above addresses into a single array for the  ALT.
-    const lookupAddresses = [...Object.values(accounts), ...remainingAccounts.map((acc) => acc.pubkey)];
-
-    // Create instructions for creating and extending the ALT.
-    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: relayer.publicKey,
-      payer: relayer.publicKey,
-      recentSlot: await connection.getSlot(),
-    });
-
-    // Submit the ALT creation transaction
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [relayer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Extend the ALT with all accounts
-    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-      lookupTable: lookupTableAddress,
-      authority: relayer.publicKey,
-      payer: relayer.publicKey,
-      addresses: lookupAddresses as PublicKey[],
-    });
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [relayer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Fetch the AddressLookupTableAccount
-    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
-    if (lookupTableAccount === null) throw new Error("AddressLookupTableAccount not fetched");
-
-    // Create the versioned transaction
-    const versionedTx = new VersionedTransaction(
-      new TransactionMessage({
-        payerKey: relayer.publicKey,
-        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        instructions: [fillInstruction],
-      }).compileToV0Message([lookupTableAccount])
-    );
-
-    // Sign and submit the versioned transaction.
-    versionedTx.sign([relayer]);
-    await connection.sendTransaction(versionedTx);
+    // Fill using the ALT.
+    await sendTransactionWithLookupTable(connection, [fillInstruction], relayer);
 
     // Verify recipient's balance after the fill
     await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfer gets processed.

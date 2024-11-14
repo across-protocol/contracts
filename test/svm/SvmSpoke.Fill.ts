@@ -18,7 +18,7 @@ import {
   VersionedTransaction,
   TransactionMessage,
 } from "@solana/web3.js";
-import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
+import { readProgramEvents, calculateRelayHashUint8Array, sendTransactionWithLookupTable } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
 import { testAcrossPlusMessage } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
@@ -542,51 +542,8 @@ describe("svm_spoke.fill", () => {
       fillInstructions.push(fillInstruction);
     }
 
-    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
-    const lookupAddresses = [...Object.values(accounts), ...recipientAuthorities, ...recipientAssociatedTokens];
-
-    // Create instructions for creating and extending the ALT.
-    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: relayer.publicKey,
-      payer: relayer.publicKey,
-      recentSlot: await connection.getSlot(),
-    });
-
-    // Submit the ALT creation transaction
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [relayer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Extend the ALT with all accounts
-    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-      lookupTable: lookupTableAddress,
-      authority: relayer.publicKey,
-      payer: relayer.publicKey,
-      addresses: lookupAddresses as PublicKey[],
-    });
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [relayer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Fetch the AddressLookupTableAccount
-    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
-    if (lookupTableAccount === null) throw new Error("AddressLookupTableAccount not fetched");
-
-    // Create the versioned transaction
-    const versionedTx = new VersionedTransaction(
-      new TransactionMessage({
-        payerKey: relayer.publicKey,
-        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        instructions: [createTokenAccountsInstruction, ...fillInstructions],
-      }).compileToV0Message([lookupTableAccount])
-    );
-
-    // Sign and submit the versioned transaction.
-    versionedTx.sign([relayer]);
-    await connection.sendTransaction(versionedTx);
+    // Fill using the ALT.
+    await sendTransactionWithLookupTable(connection, [createTokenAccountsInstruction, ...fillInstructions], relayer);
 
     // Verify balances after the fill
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
