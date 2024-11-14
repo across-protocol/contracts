@@ -173,9 +173,9 @@ contract ZkStackAdapterTest is Test {
             abi.encode(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: ZK_CHAIN_ID,
-                    mintValue: baseCost,
+                    mintValue: baseCost + amountToSend,
                     l2Contract: random,
-                    l2Value: 0,
+                    l2Value: amountToSend,
                     l2Calldata: "",
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L2_GAS_PER_PUBDATA_LIMIT,
@@ -264,7 +264,7 @@ contract ZkStackAdapterTest is Test {
                     refundRecipient: owner,
                     secondBridgeAddress: sharedBridge,
                     secondBridgeValue: amountToSend,
-                    secondBridgeCalldata: abi.encode(address(1), amountToSend, random)
+                    secondBridgeCalldata: abi.encode(address(1), 0, random)
                 })
             )
         );
@@ -311,9 +311,9 @@ contract ZkStackAdapterTest is Test {
             abi.encode(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: ZK_ALT_CHAIN_ID,
-                    mintValue: baseCost,
+                    mintValue: baseCost + amountToSend,
                     l2Contract: random,
-                    l2Value: 0,
+                    l2Value: amountToSend,
                     l2Calldata: "",
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L2_GAS_PER_PUBDATA_LIMIT,
