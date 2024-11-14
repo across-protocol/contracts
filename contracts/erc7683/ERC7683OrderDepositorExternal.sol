@@ -35,7 +35,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         SPOKE_POOL = _spokePool;
     }
 
-    function setDestinationSettler(uint256 chainId, address destinationSettler) external {
+    function setDestinationSettler(uint256 chainId, address destinationSettler) external onlyOwner {
         address prevDestinationSettler = destinationSettlers[chainId];
         destinationSettlers[chainId] = destinationSettler;
         emit SetDestinationSettler(chainId, prevDestinationSettler, destinationSettler);
