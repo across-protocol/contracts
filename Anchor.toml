@@ -35,7 +35,7 @@ remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteP
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
 
 [test.validator]
-url = "https://api.devnet.solana.com"
+url = "https://api.mainnet-beta.solana.com"
 
 ### Forked Circle Message Transmitter Program
 [[test.validator.clone]]
