@@ -142,7 +142,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
         if (baseToken == address(WRAPPED_NATIVE_TOKEN)) {
             // Only wrap the minimum required amount of the native token.
             uint256 wrappedNativeTokenBalance = WRAPPED_NATIVE_TOKEN.balanceOf(address(this));
-            if (nativeTokenBalance < amount) _wrapNativeToken(amount - nativeTokenBalance);
+            if (wrappedNativeTokenBalance < amount) _wrapNativeToken(amount - wrappedNativeTokenBalance);
         }
 
         (bool success, ) = adapter.delegatecall(
