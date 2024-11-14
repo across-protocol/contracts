@@ -910,7 +910,7 @@ abstract contract SpokePool is
         bytes calldata originData,
         bytes calldata fillerData
     ) external {
-        if (keccak256(originData) != orderId) {
+        if (keccak256(abi.encode(originData, chainId())) != orderId) {
             revert WrongERC7683OrderId();
         }
 
