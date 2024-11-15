@@ -208,7 +208,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             token: _toBytes32(acrossOrderData.inputToken),
             amount: acrossOrderData.inputAmount,
             recipient: _toBytes32(acrossOriginFillerData.exclusiveRelayer),
-            chainId: SafeCast.toUint32(block.chainid)
+            chainId: block.chainid
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
@@ -272,7 +272,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             token: _toBytes32(acrossOrderData.inputToken),
             amount: acrossOrderData.inputAmount,
             recipient: _toBytes32(acrossOrderData.exclusiveRelayer),
-            chainId: SafeCast.toUint32(block.chainid)
+            chainId: block.chainid
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
