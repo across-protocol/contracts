@@ -1,3 +1,6 @@
+// This script implements a simple relayer fill against known deposit props. Note that if the deposit data is done wrong
+// this script can easily create invalid fills.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
@@ -118,12 +121,10 @@ async function fillV3Relay(): Promise<void> {
     }))
   );
 
-  const tx = await (program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId) as any)
+  const tx = await (program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId, signer) as any)
     .accounts({
       state: statePda,
       signer: signer,
-      relayer: signer,
-      recipient: recipient,
       mintAccount: outputToken,
       relayerTokenAccount: relayerTokenAccount,
       recipientTokenAccount: recipientTokenAccount,

@@ -18,6 +18,19 @@
       "options": {
         "semi": false
       }
+    },
+    {
+      "files": "*.rs",
+      "options": {
+        "useTabs": false,
+        "tabWidth": 4,
+        "printWidth": 120,
+        "endOfLine": "lf"
+      }
     }
+  ],
+  "plugins": [
+    "prettier-plugin-rust",
+    "prettier-plugin-solidity"
   ]
 }

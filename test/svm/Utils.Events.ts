@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import { BorshCoder, EventParser, Program } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import { Test } from "../../target/types/test";
-import { ParsedInstruction } from "@solana/web3.js";
 
 describe("utils.events", () => {
   const provider = anchor.AnchorProvider.env();
