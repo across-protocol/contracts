@@ -65,6 +65,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface {
     /**
      * @notice Sets a new cross domain admin for this contract.
      * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
+     * @dev Before calling this function, you must ensure that there are no message or token relays currently being sent over the L1-L2
+     * bridge. This is to prevent these messages from getting permanently stuck, since otherwise receipt of these messages will always revert,
+     * as the L1 sender is the old cross-domain admin.
      */
     function setCrossDomainAdmin(address _newCrossDomainAdmin) external onlyAdmin {
         if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
