@@ -19,6 +19,7 @@ import {
   TransactionMessage,
   AddressLookupTableProgram,
   VersionedTransaction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import {
   calculateRelayHashUint8Array,
@@ -109,9 +110,7 @@ describe("svm_spoke.fill.across_plus", () => {
   });
 
   it("Forwards tokens to the final recipient within invoked message call", async () => {
-    // Verify relayer's balance before the fill
-    let relayerAccount = await getAccount(connection, relayerATA);
-    assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
+    const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
 
     // Construct ix to transfer all tokens from handler to the final recipient.
     const transferIx = createTransferCheckedInstruction(
@@ -156,12 +155,8 @@ describe("svm_spoke.fill.across_plus", () => {
       .rpc();
 
     // Verify relayer's balance after the fill
-    relayerAccount = await getAccount(connection, relayerATA);
-    assertSE(
-      relayerAccount.amount,
-      seedBalance - relayAmount,
-      "Relayer's balance should be reduced by the relay amount"
-    );
+    const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
+    assertSE(fRelayerBal, iRelayerBal - BigInt(relayAmount), "Relayer's balance should be reduced by the relay amount");
 
     // Verify final recipient's balance after the fill
     const finalRecipientAccount = await getAccount(connection, finalRecipientATA);
@@ -170,6 +165,91 @@ describe("svm_spoke.fill.across_plus", () => {
       relayAmount,
       "Final recipient's balance should be increased by the relay amount"
     );
+  });
+
+  it("Max token distributions within invoked message call", async () => {
+    const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
+
+    // Larger distribution would exceed fill instruction data size. Though on public networks we are also limited by
+    // CPI instruction size in `emit_cpi`, so currently this would be smaller in practice.
+    const numberOfDistributions = 9;
+    const distributionAmount = Math.floor(relayAmount / numberOfDistributions);
+
+    const recipientAccounts: PublicKey[] = [];
+    const transferInstructions: TransactionInstruction[] = [];
+    for (let i = 0; i < numberOfDistributions; i++) {
+      const recipient = Keypair.generate().publicKey;
+      const recipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
+      recipientAccounts.push(recipientATA);
+
+      // Construct ix to transfer tokens from handler to the recipient.
+      const transferInstruction = createTransferCheckedInstruction(
+        handlerATA,
+        mint,
+        recipientATA,
+        handlerSigner,
+        distributionAmount,
+        mintDecimals
+      );
+      transferInstructions.push(transferInstruction);
+    }
+
+    const multicallHandlerCoder = new MulticallHandlerCoder(transferInstructions);
+
+    const handlerMessage = multicallHandlerCoder.encode();
+
+    const message = new AcrossPlusMessageCoder({
+      handler: handlerProgram.programId,
+      readOnlyLen: multicallHandlerCoder.readOnlyLen,
+      valueAmount: new BN(0),
+      accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+      handlerMessage,
+    });
+
+    const encodedMessage = message.encode();
+
+    // Update relay data with the encoded message and total relay amount.
+    const newRelayData = {
+      ...relayData,
+      message: encodedMessage,
+      outputAmount: new BN(distributionAmount * numberOfDistributions),
+    };
+    updateRelayData(newRelayData);
+
+    const remainingAccounts: AccountMeta[] = [
+      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+      ...multicallHandlerCoder.compiledKeyMetas,
+    ];
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+
+    // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
+    const fillInstruction = await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .remainingAccounts(remainingAccounts)
+      .signers([relayer])
+      .instruction();
+
+    // Fill using the ALT.
+    await sendTransactionWithLookupTable(connection, [fillInstruction], relayer);
+
+    // Verify relayer's balance after the fill
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
+    const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
+    assertSE(
+      fRelayerBal,
+      iRelayerBal - BigInt(distributionAmount * numberOfDistributions),
+      "Relayer's balance should be reduced by the relay amount"
+    );
+
+    // Verify all recipient account balances after the fill.
+    const recipientBalances = await Promise.all(
+      recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount)
+    );
+    recipientBalances.forEach((balance, i) => {
+      assertSE(balance, distributionAmount, `Recipient account ${i} balance should match distribution amount`);
+    });
   });
 
   it("Sends lamports from the relayer to value recipient", async () => {
