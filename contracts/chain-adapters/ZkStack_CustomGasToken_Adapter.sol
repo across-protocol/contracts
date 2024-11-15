@@ -70,13 +70,24 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     // Custom gas token funder
     FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
+    // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
+    // when calling a hub pool message relay, which would otherwise cause a large amount of the custom gas token to be sent to L2.
+    uint256 private immutable MAX_TX_GASPRICE;
+
     event ZkStackMessageRelayed(bytes32 canonicalTxHash);
     error ETHGasTokenNotAllowed();
+    error TransactionFeeTooHigh();
 
     /**
      * @notice Constructs new Adapter.
+     * @param _chainId The target ZkStack network's chain ID.
+     * @param _bridgeHub The bridge hub contract address for the ZkStack network.
      * @param _l1Weth WETH address on L1.
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
+     * @param _customGasTokenFunder Contract on L1 which funds bridge fees with amounts in the custom gas token.
+     * @param _l2GasLimit The maximum amount of gas this contract is willing to pay to execute a transaction on L2.
+     * @param _l1GasToL2GasPerPubDataLimit The exchange rate of l1 gas to l2 gas.
+     * @param _maxTxGasprice The maximum effective gas price any transaction sent to this adapter may have.
      */
     constructor(
         uint256 _chainId,
@@ -85,7 +96,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         address _l2RefundAddress,
         FunderInterface _customGasTokenFunder,
         uint256 _l2GasLimit,
-        uint256 _l1GasToL2GasPerPubDataLimit
+        uint256 _l1GasToL2GasPerPubDataLimit,
+        uint256 _maxTxGasprice
     ) {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
@@ -93,6 +105,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         L2_REFUND_ADDRESS = _l2RefundAddress;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
         L2_GAS_LIMIT = _l2GasLimit;
+        MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         CUSTOM_GAS_TOKEN = BRIDGE_HUB.baseToken(CHAIN_ID);
@@ -231,6 +244,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
      * @return amount of gas token that this contract needs to provide in order for the l2 transaction to succeed.
      */
     function _pullCustomGas(uint256 l2GasLimit) internal returns (uint256) {
+        if (tx.gasprice > MAX_TX_GASPRICE) revert TransactionFeeTooHigh();
         uint256 cost = BRIDGE_HUB.l2TransactionBaseCost(
             CHAIN_ID,
             tx.gasprice,
