@@ -170,9 +170,9 @@ describe("svm_spoke.fill.across_plus", () => {
   it("Max token distributions within invoked message call", async () => {
     const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
 
-    // Larger distribution would exceed fill instruction data size. Though on public networks we are also limited by
-    // CPI instruction size in `emit_cpi`, so currently this would be smaller in practice.
-    const numberOfDistributions = 9;
+    // Larger distribution would exceed inner CPI instruction size limit in `emit_cpi` on public networks, while for
+    // localnet this can be increased up to 9 before hitting message size limits.
+    const numberOfDistributions = 5;
     const distributionAmount = Math.floor(relayAmount / numberOfDistributions);
 
     const recipientAccounts: PublicKey[] = [];
