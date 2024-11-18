@@ -25,7 +25,17 @@ contract MockZkStack_Adapter is ZkStack_Adapter {
         address _l2RefundAddress,
         uint256 _l2GasLimit,
         uint256 _l1GasToL2GasPerPubDataLimit
-    ) ZkStack_Adapter(_chainId, _bridgeHub, _l1Weth, _l2RefundAddress, _l2GasLimit, _l1GasToL2GasPerPubDataLimit) {}
+    )
+        ZkStack_Adapter(
+            _chainId,
+            _bridgeHub,
+            _l1Weth,
+            _l2RefundAddress,
+            _l2GasLimit,
+            _l1GasToL2GasPerPubDataLimit,
+            type(uint256).max
+        )
+    {}
 
     receive() external payable {}
 }
@@ -47,7 +57,8 @@ contract MockZkStack_CustomGasToken_Adapter is ZkStack_CustomGasToken_Adapter {
             _l2RefundAddress,
             _customGasTokenFunder,
             _l2GasLimit,
-            _l1GasToL2GasPerPubDataLimit
+            _l1GasToL2GasPerPubDataLimit,
+            type(uint256).max
         )
     {}
 

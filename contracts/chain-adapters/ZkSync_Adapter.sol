@@ -158,16 +158,27 @@ contract ZkSync_Adapter is AdapterInterface {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable l1Weth;
 
+    // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
+    // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
+    uint256 private immutable MAX_TX_GASPRICE;
+
     event ZkSyncMessageRelayed(bytes32 canonicalTxHash);
+    error TransactionFeeTooHigh();
 
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
+     * @param _maxTxGasPrice The maximum effective gas price any transaction sent to this adapter may have.
      */
-    constructor(WETH9Interface _l1Weth, address _l2RefundAddress) {
+    constructor(
+        WETH9Interface _l1Weth,
+        address _l2RefundAddress,
+        uint256 _maxTxGasPrice
+    ) {
         l1Weth = _l1Weth;
         l2RefundAddress = _l2RefundAddress;
+        MAX_TX_GASPRICE = _maxTxGasPrice;
     }
 
     /**
@@ -263,6 +274,7 @@ contract ZkSync_Adapter is AdapterInterface {
         // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/ethereum/contracts/zksync/facets/Mailbox.sol#L273
         // - priority_fee_per_gas = min(transaction.max_priority_fee_per_gas, transaction.max_fee_per_gas - block.base_fee_per_gas)
         // - effective_gas_price = priority_fee_per_gas + block.base_fee_per_gas
+        if (tx.gasprice > MAX_TX_GASPRICE) revert TransactionFeeTooHigh();
         return
             zkSyncMessageBridge.l2TransactionBaseCost(tx.gasprice, L2_GAS_LIMIT, L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT);
     }
