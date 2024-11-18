@@ -49,13 +49,23 @@ contract ZkStack_Adapter is AdapterInterface {
     // SharedBridge address, which is read from the BridgeHub at construction.
     address public immutable SHARED_BRIDGE;
 
+    // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
+    // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
+    uint256 private immutable MAX_TX_GASPRICE;
+
     event ZkStackMessageRelayed(bytes32 canonicalTxHash);
     error ETHGasTokenRequired();
+    error TransactionFeeTooHigh();
 
     /**
      * @notice Constructs new Adapter.
+     * @param _chainId The target ZkStack network's chain ID.
+     * @param _bridgeHub The bridge hub contract address for the ZkStack network.
      * @param _l1Weth WETH address on L1.
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
+     * @param _l2GasLimit The maximum amount of gas this contract is willing to pay to execute a transaction on L2.
+     * @param _l1GasToL2GasPerPubDataLimit The exchange rate of l1 gas to l2 gas.
+     * @param _maxTxGasprice The maximum effective gas price any transaction sent to this adapter may have.
      */
     constructor(
         uint256 _chainId,
@@ -63,13 +73,15 @@ contract ZkStack_Adapter is AdapterInterface {
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         uint256 _l2GasLimit,
-        uint256 _l1GasToL2GasPerPubDataLimit
+        uint256 _l1GasToL2GasPerPubDataLimit,
+        uint256 _maxTxGasprice
     ) {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
         L1_WETH = _l1Weth;
         L2_REFUND_ADDRESS = _l2RefundAddress;
         L2_GAS_LIMIT = _l2GasLimit;
+        MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address gasToken = BRIDGE_HUB.baseToken(CHAIN_ID);
@@ -132,9 +144,9 @@ contract ZkStack_Adapter is AdapterInterface {
             txHash = BRIDGE_HUB.requestL2TransactionDirect{ value: amount + txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: CHAIN_ID,
-                    mintValue: txBaseCost,
+                    mintValue: txBaseCost + amount,
                     l2Contract: to,
-                    l2Value: 0,
+                    l2Value: amount,
                     l2Calldata: "",
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
@@ -144,7 +156,7 @@ contract ZkStack_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH.
-            IERC20(l1Token).safeIncreaseAllowance(SHARED_BRIDGE, amount);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -153,7 +165,7 @@ contract ZkStack_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
+                    secondBridgeAddress: SHARED_BRIDGE,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
@@ -186,6 +198,7 @@ contract ZkStack_Adapter is AdapterInterface {
      * @return amount of ETH that this contract needs to provide in order for the l2 transaction to succeed.
      */
     function _computeETHTxCost(uint256 l2GasLimit) internal view returns (uint256) {
+        if (tx.gasprice > MAX_TX_GASPRICE) revert TransactionFeeTooHigh();
         return BRIDGE_HUB.l2TransactionBaseCost(CHAIN_ID, tx.gasprice, l2GasLimit, L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT);
     }
 }

@@ -9,6 +9,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ArbitrumL2ERC20GatewayLike } from "../../interfaces/ArbitrumBridge.sol";
 import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
 import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
+import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { CrossDomainAddressUtils } from "../../libraries/CrossDomainAddressUtils.sol";
 
 /**
@@ -27,6 +28,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
      * @notice Constructs the Arbitrum_WithdrawalHelper.
      * @param _l2Usdc Address of native USDC on the L2.
      * @param _cctpTokenMessenger Address of the CCTP token messenger contract on L2.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on L2.
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network. For Ethereum, this is 0.
      * @param _l2GatewayRouter Address of the Arbitrum l2 gateway router contract.
      * @param _tokenRecipient L1 Address which will unconditionally receive tokens withdrawn from this contract.
@@ -34,6 +36,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
     constructor(
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
+        WETH9Interface _wrappedNativeToken,
         uint32 _destinationCircleDomainId,
         address _l2GatewayRouter,
         address _tokenRecipient
@@ -41,6 +44,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         WithdrawalHelperBase(
             _l2Usdc,
             _cctpTokenMessenger,
+            _wrappedNativeToken,
             _destinationCircleDomainId,
             _l2GatewayRouter,
             _tokenRecipient
@@ -70,6 +74,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
         if (l2Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(TOKEN_RECIPIENT, amountToReturn);
         } else {
+            if (l2Token == address(WRAPPED_NATIVE_TOKEN)) _wrapNativeToken();
             // Otherwise, we use the Arbitrum ERC20 Gateway router.
             ArbitrumL2ERC20GatewayLike tokenBridge = ArbitrumL2ERC20GatewayLike(L2_TOKEN_GATEWAY);
             // If the gateway router's expected L2 token address does not match then revert. This check does not actually

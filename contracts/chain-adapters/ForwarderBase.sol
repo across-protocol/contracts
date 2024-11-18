@@ -6,6 +6,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { ForwarderInterface } from "./interfaces/ForwarderInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 
 /**
  * @title ForwarderBase
@@ -18,6 +19,8 @@ import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCall
  * @custom:security-contact bugs@across.to
  */
 abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCaller, ReentrancyGuardUpgradeable {
+    // Address of the wrapped native token contract on this L2.
+    WETH9Interface public immutable WRAPPED_NATIVE_TOKEN;
     // Address that can relay messages using this contract and also upgrade this contract.
     address public crossDomainAdmin;
 
@@ -39,6 +42,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
     error InvalidTokenRelayId();
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
     error UninitializedChainAdapter();
+    // Error which is triggered when the contract attempts to wrap a native token for an amount greater than
+    // its balance.
+    error InsufficientNativeTokenBalance();
 
     /*
      * @dev Cross domain admin permissioning is implemented specifically for each L2 that this contract is deployed on, so this base contract
@@ -51,12 +57,20 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
 
     /**
      * @notice Constructs the Forwarder contract.
+     * @param _wrappedNativeToken Address of the wrapped native token contract on the L2.
      * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
      * may disrupt the proxy if another EOA were to initialize it.
      */
-    constructor() {
+    constructor(WETH9Interface _wrappedNativeToken) {
+        WRAPPED_NATIVE_TOKEN = _wrappedNativeToken;
         _disableInitializers();
     }
+
+    /**
+     * @notice Receives the native token from external sources.
+     * @dev Forwarders need a receive function so that it may accept the native token incoming from L1-L2 bridges.
+     */
+    receive() external payable {}
 
     /**
      * @notice Initializes the forwarder contract.
@@ -71,6 +85,9 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
     /**
      * @notice Sets a new cross domain admin for this contract.
      * @param _newCrossDomainAdmin L1 address of the new cross domain admin.
+     * @dev Before calling this function, you must ensure that there are no message or token relays currently being sent over the L1-L2
+     * bridge. This is to prevent these messages from getting permanently stuck, since otherwise receipt of these messages will always revert,
+     * as the L1 sender is the old cross-domain admin.
      */
     function setCrossDomainAdmin(address _newCrossDomainAdmin) external onlyAdmin {
         if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
@@ -157,6 +174,12 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
 
         address adapter = chainAdapters[tokenRelay.destinationChainId];
         if (adapter == address(0)) revert UninitializedChainAdapter();
+        if (tokenRelay.l2Token == address(WRAPPED_NATIVE_TOKEN)) {
+            // Only wrap the minimum required amount of the native token.
+            uint256 wrappedNativeTokenBalance = WRAPPED_NATIVE_TOKEN.balanceOf(address(this));
+            if (wrappedNativeTokenBalance < tokenRelay.amount)
+                _wrapNativeToken(tokenRelay.amount - wrappedNativeTokenBalance);
+        }
 
         tokenRelay.executed = true;
         (bool success, ) = adapter.delegatecall(
@@ -182,6 +205,14 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
         if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         crossDomainAdmin = _newCrossDomainAdmin;
         emit SetXDomainAdmin(_newCrossDomainAdmin);
+    }
+
+    /*
+     * @notice Wraps the specified amount of the network's native token.
+     */
+    function _wrapNativeToken(uint256 wrapAmount) internal {
+        if (address(this).balance < wrapAmount) revert InsufficientNativeTokenBalance();
+        WRAPPED_NATIVE_TOKEN.deposit{ value: wrapAmount }();
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
