@@ -123,3 +123,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | WorldChain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet.explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | MulticallHandler     | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## AlephZero mainnet (41455)
+
+| Contract Name       | Address                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| AlephZero_SpokePool | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://evm-explorer.alephzero.org/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
+| MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://evm-explorer.alephzero.org/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

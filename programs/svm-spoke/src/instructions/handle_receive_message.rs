@@ -1,12 +1,18 @@
-use anchor_lang::{ prelude::*, solana_program::{ instruction::Instruction, program } };
+use anchor_lang::{
+    prelude::*,
+    solana_program::{instruction::Instruction, program},
+};
 
 use crate::{
     constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
-    error::{ CallDataError, SvmError },
+    error::{CallDataError, SvmError},
     program::SvmSpoke,
-    utils::{ self, EncodeInstructionData },
+    utils::{self, EncodeInstructionData},
     State,
 };
+
+//TODO: we have inconsistent imports in this file, in some places referencing from source crates (SvmSpoke::id)
+// rather than importing at the top. fix overall and check other files.
 
 #[derive(Accounts)]
 #[instruction(params: HandleReceiveMessageParams)]
@@ -41,13 +47,16 @@ pub struct HandleReceiveMessageParams {
     pub authority_bump: u8,
 }
 
-impl<'info> HandleReceiveMessage<'info> {
-    pub fn handle_receive_message(&self, params: &HandleReceiveMessageParams) -> Result<Vec<u8>> {
-        // Return instruction data for the self invoked CPI based on the received message body.
-        translate_message(&params.message_body)
-    }
+pub fn handle_receive_message<'info>(
+    ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
+    params: HandleReceiveMessageParams,
+) -> Result<()> {
+    let self_ix_data = translate_message(&params.message_body)?;
+
+    invoke_self(&ctx, &self_ix_data)
 }
 
+// TODO: ensure that CCTP blocks re-played messages sent over the bridge. i.e one pauseDeposit Call cant be replayed.
 fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
     match utils::get_solidity_selector(data)? {
         s if s == utils::encode_solidity_selector("pauseDeposits(bool)") => {
@@ -92,7 +101,7 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
 // Invokes self CPI for remote domain invoked message calls. We use low level invoke_signed with seeds corresponding to
 // the self_authority account and passing all remaining accounts from the context. Instruction data is obtained within
 // handle_receive_message by translating the received message body into a valid instruction data for the invoked CPI.
-pub fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>, data: &Vec<u8>) -> Result<()> {
+fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>, data: &Vec<u8>) -> Result<()> {
     let self_authority_seeds: &[&[&[u8]]] = &[&[b"self_authority", &[ctx.bumps.self_authority]]];
 
     let mut accounts = Vec::with_capacity(1 + ctx.remaining_accounts.len());
@@ -107,12 +116,16 @@ pub fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<
         }
     }
 
-    let instruction = Instruction { program_id: crate::ID, accounts, data: data.to_owned() };
+    let instruction = Instruction {
+        program_id: crate::ID,
+        accounts,
+        data: data.to_owned(),
+    };
 
     program::invoke_signed(
         &instruction,
         &[&[ctx.accounts.self_authority.to_account_info()], ctx.remaining_accounts].concat(),
-        self_authority_seeds
+        self_authority_seeds,
     )?;
 
     Ok(())

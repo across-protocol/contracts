@@ -22,9 +22,9 @@ const exclusiveRelayer = Keypair.generate().publicKey;
 const outputToken = new PublicKey("1111111111113EsMD5n1VA94D2fALdb1SAKLam8j"); // TODO: this is lazy. this is cast USDC from Eth mainnet.
 const inputAmount = new BN(500000);
 const outputAmount = inputAmount;
-const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 10); // 10 seconds ago.
+const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 60); // 60 seconds ago.
 const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600); // 600 seconds from now.
-const exclusivityDeadline = new BN(Math.floor(Date.now() / 1000) + 300); // 300 seconds from now.
+const exclusivityPeriod = new BN(300); // 300 seconds.
 const message = Buffer.from("Test message");
 const depositQuoteTimeBuffer = new BN(3600); // 1 hour.
 const fillDeadlineBuffer = new BN(3600 * 4); // 4 hours.
@@ -90,7 +90,11 @@ async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
 }
 
 function assertSE(a: any, b: any, errorMessage: string) {
-  assert.strictEqual(a.toString(), b.toString(), errorMessage);
+  if (a === undefined || b === undefined) {
+    throw new Error("Undefined value" + errorMessage);
+  } else {
+    assert.strictEqual(a.toString(), b.toString(), errorMessage);
+  }
 }
 
 interface DepositData {
@@ -104,7 +108,7 @@ interface DepositData {
   exclusiveRelayer: PublicKey;
   quoteTimestamp: BN;
   fillDeadline: BN;
-  exclusivityDeadline: BN;
+  exclusivityPeriod: BN;
   message: Buffer;
 }
 
@@ -141,7 +145,7 @@ export const common = {
   outputAmount,
   quoteTimestamp,
   fillDeadline,
-  exclusivityDeadline,
+  exclusivityPeriod,
   message,
   depositQuoteTimeBuffer,
   fillDeadlineBuffer,
@@ -163,7 +167,7 @@ export const common = {
     exclusiveRelayer,
     quoteTimestamp,
     fillDeadline,
-    exclusivityDeadline,
+    exclusivityPeriod,
     message,
   } as DepositData,
 };

@@ -64,7 +64,7 @@ contract ForwarderTest is Test {
             ITokenMessenger(address(0))
         );
 
-        arbitrumForwarder = new Arbitrum_Forwarder();
+        arbitrumForwarder = new Arbitrum_Forwarder(WETH9Interface(address(l2Weth)));
         address proxy = address(
             new ERC1967Proxy(address(arbitrumForwarder), abi.encodeCall(Arbitrum_Forwarder.initialize, (owner)))
         );
@@ -121,7 +121,7 @@ contract ForwarderTest is Test {
     // Test access control on proxy upgrades.
     function testUpgrade(address random) public {
         vm.assume(random != aliasedOwner);
-        address newImplementation = address(new Arbitrum_Forwarder());
+        address newImplementation = address(new Arbitrum_Forwarder(WETH9Interface(address(l2Weth))));
         vm.startPrank(random);
         vm.expectRevert();
         arbitrumForwarder.upgradeTo(newImplementation);
