@@ -166,13 +166,27 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
             depositData.outputAmount
         );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
+        _depositV3(_acrossInputToken, returnAmount, depositData);
+    }
+
+    /**
+     * @notice Approves the spoke pool and calls `depositV3` function with the specified input parameters.
+     * @param _acrossInputToken Token to deposit into the spoke pool.
+     * @param _acrossInputAmount Amount of the input token to deposit into the spoke pool.
+     * @param depositData Specifies the Across deposit params to use.
+     */
+    function _depositV3(
+        IERC20 _acrossInputToken,
+        uint256 _acrossInputAmount,
+        DepositData calldata depositData
+    ) internal {
+        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), _acrossInputAmount);
         SPOKE_POOL.depositV3(
             depositData.depositor,
             depositData.recipient,
             address(_acrossInputToken), // input token
             depositData.outputToken, // output token
-            returnAmount, // input amount.
+            _acrossInputAmount, // input amount.
             depositData.outputAmount, // output amount
             depositData.destinationChainid,
             depositData.exclusiveRelayer,
@@ -255,6 +269,9 @@ contract SwapAndBridge is SwapAndBridgeBase {
  * bridging the received token via Across atomically. Provides safety checks post-swap and before-deposit.
  */
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
+    using SafeERC20 for IERC20;
+    error ReceiveWithAuthorizationFailed();
+
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -311,6 +328,10 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
      * deposit with.
      * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param deadline Deadline before which the permit signature is valid.
+     * @param v v of the permit signature.
+     * @param r r of the permit signature.
+     * @param s s of the permit signature.
      */
     function swapAndBridgeWithPermit(
         IERC20Permit swapToken,
@@ -347,6 +368,12 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
      * deposit with.
      * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
+     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
+     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
+     * @param v v of the EIP-3009 signature.
+     * @param r r of the EIP-3009 signature.
+     * @param s s of the EIP-3009 signature.
      */
     function swapAndBridgeWithAuthorization(
         IERC20Auth swapToken,
@@ -383,5 +410,72 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
             IERC20(address(swapToken)), // Cast IERC20Auth to IERC20
             acrossInputToken
         );
+    }
+
+    /**
+     * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
+     * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @param acrossInputToken EIP-2612 compliant token to deposit.
+     * @param acrossInputAmount Amount of the input token to deposit.
+     * @param depositData Specifies the Across deposit params to send.
+     * @param deadline Deadline before which the permit signature is valid.
+     * @param v v of the permit signature.
+     * @param r r of the permit signature.
+     * @param s s of the permit signature.
+     */
+    function depositWithPermit(
+        IERC20Permit acrossInputToken,
+        uint256 acrossInputAmount,
+        DepositData calldata depositData,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
+        acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s);
+        IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast IERC20Permit to an IERC20 type.
+
+        _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
+        _depositV3(_acrossInputToken, acrossInputAmount, depositData);
+    }
+
+    /**
+     * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
+     * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @param acrossInputToken EIP-3009 compliant token to deposit.
+     * @param acrossInputAmount Amount of the input token to deposit.
+     * @param depositData Specifies the Across deposit params to send.
+     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
+     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
+     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
+     * @param v v of the EIP-3009 signature.
+     * @param r r of the EIP-3009 signature.
+     * @param s s of the EIP-3009 signature.
+     */
+    function depositWithAuthorization(
+        IERC20Auth acrossInputToken,
+        uint256 acrossInputAmount,
+        DepositData calldata depositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
+        acrossInputToken.receiveWithAuthorization(
+            msg.sender,
+            address(this),
+            acrossInputAmount,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+        IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast the input token to an IERC20.
+        if (_acrossInputToken.balanceOf(address(this)) < acrossInputAmount) revert ReceiveWithAuthorizationFailed();
+        _depositV3(_acrossInputToken, acrossInputAmount, depositData);
     }
 }
