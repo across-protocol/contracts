@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/V3SpokePoolInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "./Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
@@ -103,8 +104,13 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         // user on this contract, a malicious actor could call transferFrom to steal the user's tokens.
         if (!allowedSelectors[bytes4(routerCalldata)]) revert InvalidFunctionSelector();
 
-        // Pull tokens from caller into this contract.
-        _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
+        // Pull tokens from caller into this contract. This contract may already have tokens if, for example,
+        // a user sent the contract tokens and subsequently called `swapAndBridge`, so only pull funds if
+        // the contract needs to.
+        uint256 swapTokenBalance = _swapToken.balanceOf(address(this));
+        if (swapTokenBalance < swapTokenAmount) {
+            _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount - swapTokenBalance);
+        }
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
@@ -248,6 +254,9 @@ contract SwapAndBridge is SwapAndBridgeBase {
  * bridging the received token via Across atomically. Provides safety checks post-swap and before-deposit.
  */
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
+    // keccak256("receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)")[0:4]
+    bytes4 private constant _RECEIVE_WITH_AUTHORIZATION_SELECTOR = 0xef55bec6;
+
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -282,6 +291,80 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData
     ) external nonReentrant {
+        _swapAndBridge(
+            routerCalldata,
+            swapTokenAmount,
+            minExpectedInputTokenAmount,
+            depositData,
+            swapToken,
+            acrossInputToken
+        );
+    }
+
+    /**
+     * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @param swapToken Address of the token that will be swapped for acrossInputToken.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
+     * enough of acrossInputToken, otherwise this function will revert.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     */
+    function swapAndBridgeWithPermit(
+        IERC20Permit swapToken,
+        IERC20 acrossInputToken,
+        bytes calldata routerCalldata,
+        uint256 swapTokenAmount,
+        uint256 minExpectedInputTokenAmount,
+        DepositData calldata depositData,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
+        swapToken.permit(msg.sender, address(this), swapTokenAmount, deadline, v, r, s);
+        _swapAndBridge(
+            routerCalldata,
+            swapTokenAmount,
+            minExpectedInputTokenAmount,
+            depositData,
+            IERC20(address(swapToken)), // Cast IERC20Permit to IERC20
+            acrossInputToken
+        );
+    }
+
+    /**
+     * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     // * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail. 
+     * @param swapToken Address of the token that will be swapped for acrossInputToken.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
+     * enough of acrossInputToken, otherwise this function will revert.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     */
+    function swapAndBridgeWithAuthorization(
+        IERC20 swapToken,
+        IERC20 acrossInputToken,
+        bytes calldata routerCalldata,
+        uint256 swapTokenAmount,
+        uint256 minExpectedInputTokenAmount,
+        DepositData calldata depositData,
+        bytes calldata receiveAuthorization
+    ) external nonReentrant {
+        (bool success, ) = address(swapToken).call(
+            abi.encodePacked(_RECEIVE_WITH_AUTHORIZATION_SELECTOR, receiveAuthorization)
+        );
+        // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
+        // If tokens were not sent to this contract, the call to `transferFrom` in _swapAndBridge will revert.
+        require(success, "TransferWithAuthorization: Failed to receive tokens");
         _swapAndBridge(
             routerCalldata,
             swapTokenAmount,
