@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
-import "./erc7683/ERC7683Across.sol";
+import "./erc7683/ERC7683Permit2Lib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
