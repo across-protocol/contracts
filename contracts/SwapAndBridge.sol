@@ -108,10 +108,8 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         // Pull tokens from caller into this contract. This contract may already have tokens if, for example,
         // a user sent the contract tokens and subsequently called `swapAndBridge`, so only pull funds if
         // the contract needs to.
-        uint256 swapTokenBalance = _swapToken.balanceOf(address(this));
-        if (swapTokenBalance < swapTokenAmount) {
-            _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount - swapTokenBalance);
-        }
+        _pullTokens(_swapToken, swapTokenAmount);
+
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
@@ -196,6 +194,20 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
             depositData.message
         );
     }
+
+    /**
+     * @notice Pulls the specified amount of tokens from the msg.sender address.
+     * @param _token IERC20 contract address of the token to pull.
+     * @param _amount Amount of the token this contract must own. This is NOT necessarily the amount of tokens the contract will pull from `msg.sender`.
+     * @dev This call will revert if it cannot pull `_amount` of `_token`. If the contract already has `_amount` of `_token`, then this
+     * function is a no-op
+     */
+    function _pullTokens(IERC20 _token, uint256 _amount) internal {
+        uint256 tokenBalance = _token.balanceOf(address(this));
+        if (tokenBalance < _amount) {
+            _token.safeTransferFrom(msg.sender, address(this), _amount - tokenBalance);
+        }
+    }
 }
 
 /**
@@ -269,9 +281,6 @@ contract SwapAndBridge is SwapAndBridgeBase {
  * bridging the received token via Across atomically. Provides safety checks post-swap and before-deposit.
  */
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
-    using SafeERC20 for IERC20;
-    error ReceiveWithAuthorizationFailed();
-
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -435,7 +444,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s);
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast IERC20Permit to an IERC20 type.
 
-        _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
+        _pullTokens(_acrossInputToken, acrossInputAmount);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
     }
 
@@ -475,7 +484,8 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
             s
         );
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast the input token to an IERC20.
-        if (_acrossInputToken.balanceOf(address(this)) < acrossInputAmount) revert ReceiveWithAuthorizationFailed();
+
+        _pullTokens(_acrossInputToken, acrossInputAmount);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
     }
 }
