@@ -1,7 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
+use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-use crate::{ error::{ CommonError, SvmError }, event::V3FundsDeposited, get_current_time, state::{ Route, State } };
+use crate::{
+    error::{CommonError, SvmError},
+    event::V3FundsDeposited,
+    get_current_time,
+    state::{Route, State},
+};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -12,12 +17,7 @@ use crate::{ error::{ CommonError, SvmError }, event::V3FundsDeposited, get_curr
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64, // TODO: we can remove some of these instructions props
-    exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_deadline: u32,
-    message: Vec<u8>
+    destination_chain_id: u64,
 )]
 pub struct DepositV3<'info> {
     #[account(mut)]
@@ -32,17 +32,18 @@ pub struct DepositV3<'info> {
 
     #[account(
         seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
-        bump
+        bump,
+        constraint = route.enabled @ CommonError::DisabledRoute
     )]
     pub route: Account<'info, Route>,
 
     #[account(
         mut,
-        token::mint = mint,
-        token::authority = signer,
-        token::token_program = token_program
+        associated_token::mint = mint,
+        associated_token::authority = depositor,
+        associated_token::token_program = token_program
     )]
-    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -54,7 +55,6 @@ pub struct DepositV3<'info> {
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring `address = input_token` for mint, thus using a custom constraint.
         constraint = mint.key() == input_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
@@ -74,21 +74,14 @@ pub fn deposit_v3(
     exclusive_relayer: Pubkey,
     quote_timestamp: u32,
     fill_deadline: u32,
-    exclusivity_deadline: u32,
-    message: Vec<u8>
+    exclusivity_period: u32,
+    message: Vec<u8>,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    if !ctx.accounts.route.enabled {
-        return err!(CommonError::DisabledRoute);
-    }
-
     let current_time = get_current_time(state)?;
 
-    // TODO: if the deposit quote timestamp is bad it is possible to make this error with a subtraction
-    // overflow (from devnet testing). add a test to re-create this and fix it such that the error is thrown,
-    // not caught via overflow.
-    if current_time - quote_timestamp > state.deposit_quote_time_buffer {
+    if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
     }
 
@@ -97,7 +90,7 @@ pub fn deposit_v3(
     }
 
     let transfer_accounts = TransferChecked {
-        from: ctx.accounts.user_token_account.to_account_info(),
+        from: ctx.accounts.depositor_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.signer.to_account_info(),
@@ -116,7 +109,7 @@ pub fn deposit_v3(
         deposit_id: state.number_of_deposits,
         quote_timestamp,
         fill_deadline,
-        exclusivity_deadline,
+        exclusivity_deadline: current_time + exclusivity_period,
         depositor,
         recipient,
         exclusive_relayer,
@@ -126,4 +119,37 @@ pub fn deposit_v3(
     Ok(())
 }
 
-// TODO: do we need other flavours of deposit? like speed up deposit
+pub fn deposit_v3_now(
+    ctx: Context<DepositV3>,
+    depositor: Pubkey,
+    recipient: Pubkey,
+    input_token: Pubkey,
+    output_token: Pubkey,
+    input_amount: u64,
+    output_amount: u64,
+    destination_chain_id: u64,
+    exclusive_relayer: Pubkey,
+    fill_deadline_offset: u32,
+    exclusivity_period: u32,
+    message: Vec<u8>,
+) -> Result<()> {
+    let state = &mut ctx.accounts.state;
+    let current_time = get_current_time(state)?;
+    deposit_v3(
+        ctx,
+        depositor,
+        recipient,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+        exclusive_relayer,
+        current_time,
+        current_time + fill_deadline_offset,
+        exclusivity_period,
+        message,
+    )?;
+
+    Ok(())
+}

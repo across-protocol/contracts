@@ -97,7 +97,7 @@ describe("ZkSync Chain Adapter", function () {
 
     zkSyncAdapter = await (
       await getContractFactory("ZkSync_Adapter", owner)
-    ).deploy(weth.address, refundAddress.address);
+    ).deploy(weth.address, refundAddress.address, toWei(1));
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("100000") });

@@ -143,7 +143,7 @@ describe("svm_spoke.token_bridge", () => {
       chainId,
       amountToReturn: new BN(amountToReturn),
       mintPublicKey: mint,
-      refundAccounts: [],
+      refundAddresses: [],
       refundAmounts: [],
     });
     const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);

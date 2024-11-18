@@ -31,7 +31,8 @@ pub enum CommonError {
     DepositsArePaused,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
-    // Add any additional errors here if needed
+    #[msg("Insufficient spoke pool balance to execute leaf")]
+    InsufficientSpokePoolBalanceToExecuteLeaf,
 }
 
 // SVM specific errors.
@@ -71,6 +72,8 @@ pub enum SvmError {
     InvalidClaimInitializer,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
+    #[msg("Invalid remaining accounts for ATA creation!")]
+    InvalidATACreationAccounts,
 }
 
 // Errors to handle the CCTP interactions.
