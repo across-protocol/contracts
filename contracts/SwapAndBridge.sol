@@ -264,7 +264,7 @@ contract SwapAndBridge is SwapAndBridgeBase {
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
     using SafeERC20 for IERC20;
 
-    error InsufficientTokenBalance(address token, uint256 balance, uint256 balanceRequired);
+    error InsufficientTokenBalance(address token, uint256 balanceRequired, uint256 balanceOwned);
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
