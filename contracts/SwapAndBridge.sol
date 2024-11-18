@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/V3SpokePoolInterface.sol";
+import "./external/interfaces/IERC20Auth.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
@@ -254,9 +255,6 @@ contract SwapAndBridge is SwapAndBridgeBase {
  * bridging the received token via Across atomically. Provides safety checks post-swap and before-deposit.
  */
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
-    // keccak256("receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)")[0:4]
-    bytes4 private constant _RECEIVE_WITH_AUTHORIZATION_SELECTOR = 0xef55bec6;
-
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -340,7 +338,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
     /**
      * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     // * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail. 
+     * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
      * @param swapToken Address of the token that will be swapped for acrossInputToken.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
@@ -351,26 +349,38 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @param depositData Specifies the Across deposit params we'll send after the swap.
      */
     function swapAndBridgeWithAuthorization(
-        IERC20 swapToken,
+        IERC20Auth swapToken,
         IERC20 acrossInputToken,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData,
-        bytes calldata receiveAuthorization
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external nonReentrant {
-        (bool success, ) = address(swapToken).call(
-            abi.encodePacked(_RECEIVE_WITH_AUTHORIZATION_SELECTOR, receiveAuthorization)
-        );
         // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
         // If tokens were not sent to this contract, the call to `transferFrom` in _swapAndBridge will revert.
-        require(success, "TransferWithAuthorization: Failed to receive tokens");
+        swapToken.receiveWithAuthorization(
+            msg.sender,
+            address(this),
+            swapTokenAmount,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
         _swapAndBridge(
             routerCalldata,
             swapTokenAmount,
             minExpectedInputTokenAmount,
             depositData,
-            swapToken,
+            IERC20(address(swapToken)), // Cast IERC20Auth to IERC20
             acrossInputToken
         );
     }
