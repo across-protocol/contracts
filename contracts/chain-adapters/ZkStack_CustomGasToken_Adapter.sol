@@ -177,7 +177,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
+                    secondBridgeAddress: SHARED_BRIDGE,
                     secondBridgeValue: amount,
                     secondBridgeCalldata: _secondBridgeCalldata(to, address(1), 0)
                 })
@@ -210,7 +210,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
+                    secondBridgeAddress: SHARED_BRIDGE,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
