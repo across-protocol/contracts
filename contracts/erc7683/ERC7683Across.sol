@@ -67,7 +67,7 @@ library ERC7683Permit2Lib {
     string internal constant PERMIT2_ORDER_TYPE =
         string(
             abi.encodePacked(
-                "CrossChainOrder witness)",
+                "GaslessCrossChainOrder witness)",
                 ACROSS_ORDER_DATA_TYPE,
                 CROSS_CHAIN_ORDER_TYPE,
                 TOKEN_PERMISSIONS_TYPE
@@ -86,6 +86,7 @@ library ERC7683Permit2Lib {
                     order.originChainId,
                     order.openDeadline,
                     order.fillDeadline,
+                    order.orderDataType,
                     orderDataHash
                 )
             );
@@ -102,6 +103,7 @@ library ERC7683Permit2Lib {
                     orderData.outputAmount,
                     orderData.destinationChainId,
                     orderData.recipient,
+                    orderData.exclusiveRelayer,
                     orderData.exclusivityPeriod,
                     keccak256(orderData.message)
                 )
