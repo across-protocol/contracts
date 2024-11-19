@@ -604,35 +604,35 @@ abstract contract SpokePool is
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract. If the
      * message is not empty, the recipient contract must implement `handleV3AcrossMessage()` or the fill will revert.
      */
-    function depositV3(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 destinationChainId,
-        address exclusiveRelayer,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 exclusivityPeriod,
-        bytes calldata message
-    ) public payable {
-        depositV3(
-            depositor.toBytes32(),
-            recipient.toBytes32(),
-            inputToken.toBytes32(),
-            outputToken.toBytes32(),
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer.toBytes32(),
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityPeriod,
-            message
-        );
-    }
+    // function depositV3(
+    //     address depositor,
+    //     address recipient,
+    //     address inputToken,
+    //     address outputToken,
+    //     uint256 inputAmount,
+    //     uint256 outputAmount,
+    //     uint256 destinationChainId,
+    //     address exclusiveRelayer,
+    //     uint32 quoteTimestamp,
+    //     uint32 fillDeadline,
+    //     uint32 exclusivityPeriod,
+    //     bytes calldata message
+    // ) public payable {
+    //     depositV3(
+    //         depositor.toBytes32(),
+    //         recipient.toBytes32(),
+    //         inputToken.toBytes32(),
+    //         outputToken.toBytes32(),
+    //         inputAmount,
+    //         outputAmount,
+    //         destinationChainId,
+    //         exclusiveRelayer.toBytes32(),
+    //         quoteTimestamp,
+    //         fillDeadline,
+    //         exclusivityPeriod,
+    //         message
+    //     );
+    // }
 
     /**
      * @notice Submits deposit and sets quoteTimestamp to current Time. Sets fill and exclusivity
@@ -727,34 +727,34 @@ abstract contract SpokePool is
      * @param message The message to send to the recipient on the destination chain. If the recipient is a contract, it must
      * implement `handleV3AcrossMessage()` if the message is not empty, or the fill will revert.
      */
-    function depositV3Now(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 destinationChainId,
-        address exclusiveRelayer,
-        uint32 fillDeadlineOffset,
-        uint32 exclusivityPeriod,
-        bytes calldata message
-    ) external payable {
-        depositV3(
-            depositor,
-            recipient,
-            inputToken,
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            uint32(getCurrentTime()),
-            uint32(getCurrentTime()) + fillDeadlineOffset,
-            exclusivityPeriod,
-            message
-        );
-    }
+    // function depositV3Now(
+    //     address depositor,
+    //     address recipient,
+    //     address inputToken,
+    //     address outputToken,
+    //     uint256 inputAmount,
+    //     uint256 outputAmount,
+    //     uint256 destinationChainId,
+    //     address exclusiveRelayer,
+    //     uint32 fillDeadlineOffset,
+    //     uint32 exclusivityPeriod,
+    //     bytes calldata message
+    // ) external payable {
+    //     depositV3(
+    //         depositor,
+    //         recipient,
+    //         inputToken,
+    //         outputToken,
+    //         inputAmount,
+    //         outputAmount,
+    //         destinationChainId,
+    //         exclusiveRelayer,
+    //         uint32(getCurrentTime()),
+    //         uint32(getCurrentTime()) + fillDeadlineOffset,
+    //         exclusivityPeriod,
+    //         message
+    //     );
+    // }
 
     /**
      * @notice DEPRECATED. Use depositV3() instead.
@@ -1641,4 +1641,109 @@ abstract contract SpokePool is
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure it's always at the end of storage.
     uint256[998] private __gap;
+
+    // Fallback function for `depositV3(address, address, address, address, uint256, uint256, uint256, address, uint32, uint32, uint32, bytes)`
+    fallback() external payable {
+        // Extract the function selector
+        bytes4 selector;
+        assembly {
+            selector := calldataload(0)
+        }
+
+        // Check if selector matches `depositV3(address, address, address, address, uint256, uint256, uint256, address, uint32, uint32, uint32, bytes)`
+        if (
+            selector ==
+            bytes4(
+                keccak256(
+                    "depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)"
+                )
+            )
+        ) {
+            // Extract each address parameter and cast to bytes32
+            bytes32 depositor;
+            bytes32 recipient;
+            bytes32 inputToken;
+            bytes32 outputToken;
+            bytes32 exclusiveRelayer;
+
+            // Using assembly for efficient calldata extraction and casting
+            // Using assembly for efficient calldata extraction and conversion
+            assembly {
+                depositor := shl(96, calldataload(4)) // address -> bytes32
+                recipient := shl(96, calldataload(36)) // address -> bytes32
+                inputToken := shl(96, calldataload(68)) // address -> bytes32
+                outputToken := shl(96, calldataload(100)) // address -> bytes32
+                exclusiveRelayer := shl(96, calldataload(228)) // address -> bytes32
+            }
+
+            // Load other uint256 and uint32 values from calldata directly
+            uint256 inputAmount;
+            uint256 outputAmount;
+            uint256 destinationChainId;
+            uint32 quoteTimestamp;
+            uint32 fillDeadline;
+            uint32 exclusivityPeriod;
+            bytes memory message;
+
+            // Directly load the rest of the parameters from calldata
+            assembly {
+                inputAmount := calldataload(132)
+                outputAmount := calldataload(164)
+                destinationChainId := calldataload(196)
+                quoteTimestamp := calldataload(260)
+                fillDeadline := calldataload(292)
+                exclusivityPeriod := calldataload(324)
+            }
+
+            // uint256 messageStart = 356; // Correct starting position for message
+            // uint256 messageLength = msg.data.length > messageStart ? msg.data.length - messageStart : 0;
+
+            // Copy `message` data directly
+            // message = new bytes(messageLength);
+            // if (messageLength > 0) {
+            //     for (uint i = 0; i < messageLength; i++) {
+            //         message[i] = msg.data[messageStart + i];
+            //     }
+            // }
+            message = new bytes(0);
+
+            // Forward the call to `depositV3(bytes32, bytes32, bytes32, bytes32, uint256, uint256, uint256, bytes32, uint32, uint32, uint32, bytes)
+            (bool success, ) = address(this).delegatecall(
+                abi.encodeWithSelector(
+                    this.depositV3.selector,
+                    depositor,
+                    recipient,
+                    inputToken,
+                    outputToken,
+                    inputAmount,
+                    outputAmount,
+                    destinationChainId,
+                    exclusiveRelayer,
+                    quoteTimestamp,
+                    fillDeadline,
+                    exclusivityPeriod,
+                    message
+                )
+            );
+            require(success, "Delegatecall to depositV3 failed");
+        } else {
+            // Handle unexpected calls
+            revert("Function selector not supported");
+        }
+    }
+
+    event DepositV3Called(
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        bytes32 exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityPeriod,
+        bytes message
+    );
 }

@@ -49,7 +49,7 @@ const verifyUpdateV3DepositMessageBytes =
 const verifyUpdateV3DepositMessageAddress =
   "verifyUpdateV3DepositMessage(address,uint32,uint256,uint256,address,bytes,bytes)";
 
-describe("SpokePool Depositor Logic", async function () {
+describe.only("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
   let depositor: SignerWithAddress, recipient: SignerWithAddress;
   let quoteTimestamp: number;
@@ -407,10 +407,44 @@ describe("SpokePool Depositor Logic", async function () {
     it("placeholder: gas test", async function () {
       await spokePool.connect(depositor)[depositV3Bytes](...depositArgs);
     });
-    it("should allow depositv3 with address overload", async function () {
-      await spokePool
-        .connect(depositor)
-        [depositV3Address](...getDepositArgsFromRelayData(relayData, destinationChainId, quoteTimestamp, true));
+    it.only("should allow depositv3 with address overload", async function () {
+      // Define the contract ABI including the depositV3 function
+      const contractABI = [
+        "function depositV3(address depositor, address recipient, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, address exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "event DepositV3Called(bytes32 depositor, bytes32 recipient, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, bytes32 exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityPeriod, bytes message)",
+        "event V3FundsDeposited(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed destinationChainId, uint32 indexed depositId, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 indexed depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes message)",
+      ];
+
+      // Create a contract instance
+      const spokePoolContract = new ethers.Contract(spokePool.address, contractABI, depositor);
+
+      // Prepare the arguments for the depositV3 function
+      const depositArgs = getDepositArgsFromRelayData(relayData, destinationChainId, quoteTimestamp, true);
+
+      console.log("depositArgs", depositArgs);
+
+      // Call the depositV3 method
+      const tx = await spokePoolContract.depositV3(
+        depositArgs[0], // depositor
+        depositArgs[1], // recipient
+        depositArgs[2], // inputToken
+        depositArgs[3], // outputToken
+        depositArgs[4], // inputAmount
+        depositArgs[5], // outputAmount
+        depositArgs[6], // destinationChainId
+        depositArgs[7], // exclusiveRelayer
+        depositArgs[8], // quoteTimestamp
+        depositArgs[9], // fillDeadline
+        depositArgs[10], // exclusivityDeadline
+        depositArgs[11], // message
+        { gasLimit: ethers.utils.hexlify(5000000) }
+      );
+
+      // Wait for the transaction to be mined
+      const receipt = await tx.wait();
+      // console.log("receipt", receipt);
+
+      console.log("receipt event", receipt.events[0].args);
     });
     it("route disabled", async function () {
       // Verify that routes are disabled by default for a new route
