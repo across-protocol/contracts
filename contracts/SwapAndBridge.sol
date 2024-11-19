@@ -357,8 +357,9 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         bytes32 r,
         bytes32 s
     ) external nonReentrant {
-        swapToken.permit(msg.sender, address(this), swapTokenAmount, deadline, v, r, s);
-        IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Permit to IERC20
+        IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Permit to IERC20.
+        if (_swapToken.allowance(msg.sender, address(this)) < swapTokenAmount)
+            swapToken.permit(msg.sender, address(this), swapTokenAmount, deadline, v, r, s);
 
         _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         _swapAndBridge(
@@ -418,7 +419,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
             r,
             s
         );
-        IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Auth to IERC20
+        IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Auth to IERC20.
 
         _swapAndBridge(
             routerCalldata,
@@ -450,8 +451,9 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         bytes32 r,
         bytes32 s
     ) external nonReentrant {
-        acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s);
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast IERC20Permit to an IERC20 type.
+        if (_acrossInputToken.allowance(msg.sender, address(this)) < acrossInputAmount)
+            acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s);
 
         _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
