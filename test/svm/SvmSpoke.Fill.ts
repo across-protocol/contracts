@@ -70,7 +70,7 @@ describe("svm_spoke.fill", () => {
   });
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state } = await initializeState());
 
     const initialRelayData = {
       depositor: recipient,

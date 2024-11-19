@@ -32,6 +32,7 @@ describe("svm_spoke.slow_fill", () => {
   const otherRelayer = Keypair.generate();
 
   let state: PublicKey,
+    seed: BN,
     mint: PublicKey,
     relayerTA: PublicKey,
     recipientTA: PublicKey,
@@ -112,7 +113,7 @@ describe("svm_spoke.slow_fill", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     const relayerRefundRoot = crypto.randomBytes(32);
@@ -143,7 +144,7 @@ describe("svm_spoke.slow_fill", () => {
   });
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address; // Initialize vault
 
     // mint mint to vault

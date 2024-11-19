@@ -31,7 +31,7 @@ pub struct DepositV3<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        seeds = [b"route", input_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
+        seeds = [b"route", input_token.as_ref(), state.seed.to_le_bytes().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
         bump,
         constraint = route.enabled @ CommonError::DisabledRoute
     )]

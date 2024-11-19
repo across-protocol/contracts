@@ -21,6 +21,7 @@ describe("svm_spoke.handle_receive_message", () => {
   const provider = AnchorProvider.env();
   const owner = provider.wallet.publicKey;
   let state: web3.PublicKey;
+  let seed: BN;
   let authorityPda: web3.PublicKey;
   let messageTransmitterState: web3.PublicKey;
   let usedNonces: web3.PublicKey;
@@ -44,7 +45,7 @@ describe("svm_spoke.handle_receive_message", () => {
   ]);
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
 
     nonce += 1; // Increment CCTP nonce.
 
@@ -431,7 +432,7 @@ describe("svm_spoke.handle_receive_message", () => {
     const rootBundleId = (await program.account.state.fetch(state)).rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const relayRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
@@ -494,7 +495,7 @@ describe("svm_spoke.handle_receive_message", () => {
     const rootBundleId = (await program.account.state.fetch(state)).rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
     const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods

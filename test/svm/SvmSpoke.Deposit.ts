@@ -15,12 +15,13 @@ const { provider, connection, program, owner, seedBalance, initializeState, depo
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
 
-describe("svm_spoke.deposit", () => {
+describe.only("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey;
+  let seed: BN;
   let depositAccounts: any; // Re-used between tests to simplify props.
   let setEnableRouteAccounts: any; // Common variable for setEnableRoute accounts
 
@@ -33,7 +34,7 @@ describe("svm_spoke.deposit", () => {
 
   const enableRoute = async () => {
     const routeChainId = new BN(1);
-    const route = createRoutePda(inputToken, state, routeChainId);
+    const route = createRoutePda(inputToken, seed, routeChainId);
     vault = getVaultAta(inputToken, state);
 
     setEnableRouteAccounts = {
@@ -70,7 +71,7 @@ describe("svm_spoke.deposit", () => {
   });
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
 
     await enableRoute();
   });
@@ -177,7 +178,7 @@ describe("svm_spoke.deposit", () => {
     if (!depositData.inputToken) {
       throw new Error("Input token is null");
     }
-    const differentRoutePda = createRoutePda(depositData.inputToken, state, differentChainId);
+    const differentRoutePda = createRoutePda(depositData.inputToken, seed, differentChainId);
     depositAccounts.route = differentRoutePda;
 
     try {
@@ -345,7 +346,7 @@ describe("svm_spoke.deposit", () => {
     const fakeVault = getVaultAta(inputToken, fakeState);
 
     const fakeRouteChainId = new BN(3);
-    const fakeRoutePda = createRoutePda(inputToken, fakeState, fakeRouteChainId);
+    const fakeRoutePda = createRoutePda(inputToken, seed, fakeRouteChainId);
 
     // A seeds constraint was violated.
     const fakeSetEnableRouteAccounts = {

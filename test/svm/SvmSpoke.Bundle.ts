@@ -41,6 +41,7 @@ describe("svm_spoke.bundle", () => {
   const relayerB = Keypair.generate();
 
   let state: PublicKey,
+    seed: BN,
     mint: PublicKey,
     relayerTA: PublicKey,
     relayerTB: PublicKey,
@@ -53,7 +54,8 @@ describe("svm_spoke.bundle", () => {
   before(async () => {
     // This test differs by having state within before, not before each block so we can have incrementing rootBundleId
     // values to test against on sequential tests.
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
+
     mint = await createMint(connection, payer, owner, owner, 6);
     relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerA.publicKey)).address;
     relayerTB = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayerB.publicKey)).address;
@@ -90,12 +92,13 @@ describe("svm_spoke.bundle", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Try to relay root bundle as non-owner
     let relayRootBundleAccounts = {
-      state: state,
+      state,
       rootBundle,
       signer: nonOwner.publicKey,
       payer: nonOwner.publicKey,
@@ -142,7 +145,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer2 = Buffer.alloc(4);
     rootBundleIdBuffer2.writeUInt32LE(stateAccountData.rootBundleId);
-    const seeds2 = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer2];
+    const seeds2 = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer2];
     const [rootBundle2] = PublicKey.findProgramAddressSync(seeds2, program.programId);
 
     relayRootBundleAccounts = {
@@ -171,7 +174,7 @@ describe("svm_spoke.bundle", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle as owner
@@ -221,13 +224,12 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
     let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
-
     const remainingAccounts = [
       { pubkey: relayerTA, isWritable: true, isSigner: false },
       { pubkey: relayerTB, isWritable: true, isSigner: false },
@@ -239,13 +241,13 @@ describe("svm_spoke.bundle", () => {
 
     // Verify valid leaf
     let executeRelayerRefundLeafAccounts = {
+      signer: owner,
       state: state,
       rootBundle: rootBundle,
-      signer: owner,
       vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
       transferLiability,
+      tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -343,7 +345,7 @@ describe("svm_spoke.bundle", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -476,7 +478,7 @@ describe("svm_spoke.bundle", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -571,7 +573,7 @@ describe("svm_spoke.bundle", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -675,7 +677,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -737,7 +739,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -799,7 +801,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -890,7 +892,7 @@ describe("svm_spoke.bundle", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
@@ -950,7 +952,7 @@ describe("svm_spoke.bundle", () => {
     stateAccountData = await program.account.state.fetch(state);
     const newRootBundleIdBuffer = Buffer.alloc(4);
     newRootBundleIdBuffer.writeUInt32LE(stateAccountData.rootBundleId);
-    const newSeeds = [Buffer.from("root_bundle"), state.toBuffer(), newRootBundleIdBuffer];
+    const newSeeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), newRootBundleIdBuffer];
     const [newRootBundle] = PublicKey.findProgramAddressSync(newSeeds, program.programId);
     assert.isTrue(
       stateAccountData.rootBundleId === initialRootBundleId + 1,
@@ -1047,7 +1049,7 @@ describe("svm_spoke.bundle", () => {
 
       const rootBundleIdBuffer = Buffer.alloc(4);
       rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
       // Relay root bundle
@@ -1234,7 +1236,7 @@ describe("svm_spoke.bundle", () => {
       const rootBundleId = stateAccountData.rootBundleId;
       const rootBundleIdBuffer = Buffer.alloc(4);
       rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
       let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
       await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
@@ -1308,7 +1310,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -1382,7 +1384,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -1472,7 +1474,7 @@ describe("svm_spoke.bundle", () => {
 
       const rootBundleIdBuffer = Buffer.alloc(4);
       rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-      const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+      const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
       // Relay root bundle
@@ -1562,7 +1564,7 @@ describe("svm_spoke.bundle", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
