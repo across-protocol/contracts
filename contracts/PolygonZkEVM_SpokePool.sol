@@ -31,8 +31,9 @@ interface IBridgeMessageReceiver {
  */
 contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
     using SafeERC20 for IERC20;
-
+    using AddressToBytes32 for address;
     // Address of Polygon zkEVM's Canonical Bridge on L2.
+
     IPolygonZkEVMBridge public l2PolygonZkEVMBridge;
 
     // Polygon zkEVM's internal network id for L1.
@@ -157,8 +158,8 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
      * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      */
-    function _preExecuteLeafHook(address l2TokenAddress) internal override {
-        if (l2TokenAddress == address(wrappedNativeToken)) _depositEthToWeth();
+    function _preExecuteLeafHook(bytes32 l2TokenAddress) internal override {
+        if (l2TokenAddress == address(wrappedNativeToken).toBytes32()) _depositEthToWeth();
     }
 
     // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because

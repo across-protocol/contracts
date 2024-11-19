@@ -48,7 +48,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000 },
     viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -57,7 +57,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 
@@ -67,6 +67,12 @@ const config: HardhatUserConfig = {
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        // NOTE: Arbitrum, only supports 0.8.19.
+        // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
+        version: "0.8.19",
+      },
+      "contracts/AlephZero_SpokePool.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Arbitrum, only supports 0.8.19.
         // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
@@ -293,6 +299,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    alephzero: {
+      chainId: CHAIN_IDs.ALEPH_ZERO,
+      url: "https://rpc.alephzero.raas.gelato.cloud",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -321,8 +334,17 @@ const config: HardhatUserConfig = {
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
       worldchain: "blockscout",
+      alephzero: "blockscout",
     },
     customChains: [
+      {
+        network: "alephzero",
+        chainId: CHAIN_IDs.ALEPH_ZERO,
+        urls: {
+          apiURL: "https://evm-explorer.alephzero.org/api",
+          browserURL: "https://evm-explorer.alephzero.org",
+        },
+      },
       {
         network: "base",
         chainId: CHAIN_IDs.BASE,

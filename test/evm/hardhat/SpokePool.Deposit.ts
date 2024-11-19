@@ -8,6 +8,8 @@ import {
   toWei,
   randomAddress,
   BigNumber,
+  addressToBytes,
+  bytes32ToAddress,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -25,10 +27,27 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
-  zeroAddress,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
+
+const depositV3Bytes =
+  "depositV3(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint32,bytes)";
+const depositV3Address =
+  "depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)";
+
+const depositV3NowBytes =
+  "depositV3Now(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,bytes)";
+const depositV3NowAddress =
+  "depositV3Now(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,bytes)";
+
+const speedUpV3DepositBytes = "speedUpV3Deposit(bytes32,uint32,uint256,bytes32,bytes,bytes)";
+const speedUpV3DepositAddress = "speedUpV3Deposit(address,uint32,uint256,address,bytes,bytes)";
+
+const verifyUpdateV3DepositMessageBytes =
+  "verifyUpdateV3DepositMessage(bytes32,uint32,uint256,uint256,bytes32,bytes,bytes)";
+const verifyUpdateV3DepositMessageAddress =
+  "verifyUpdateV3DepositMessage(address,uint32,uint256,uint256,address,bytes,bytes)";
 
 describe("SpokePool Depositor Logic", async function () {
   let spokePool: Contract, weth: Contract, erc20: Contract, unwhitelistedErc20: Contract;
@@ -87,8 +106,8 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "V3FundsDeposited")
       .withArgs(
-        erc20.address,
-        ZERO_ADDRESS,
+        addressToBytes(erc20.address),
+        addressToBytes(ZERO_ADDRESS),
         amountToDeposit,
         amountReceived,
         destinationChainId,
@@ -96,9 +115,9 @@ describe("SpokePool Depositor Logic", async function () {
         quoteTimestamp,
         MAX_UINT32,
         0,
-        depositor.address,
-        recipient.address,
-        ZERO_ADDRESS,
+        addressToBytes(depositor.address),
+        addressToBytes(recipient.address),
+        addressToBytes(ZERO_ADDRESS),
         "0x"
       );
 
@@ -127,8 +146,8 @@ describe("SpokePool Depositor Logic", async function () {
     )
       .to.emit(spokePool, "V3FundsDeposited")
       .withArgs(
-        erc20.address,
-        ZERO_ADDRESS,
+        addressToBytes(erc20.address),
+        addressToBytes(ZERO_ADDRESS),
         amountToDeposit,
         amountReceived,
         destinationChainId,
@@ -136,9 +155,9 @@ describe("SpokePool Depositor Logic", async function () {
         quoteTimestamp,
         BigNumber.from("0xFFFFFFFF"),
         0,
-        newDepositor, // Depositor is overridden.
-        recipient.address,
-        ZERO_ADDRESS,
+        addressToBytes(newDepositor), // Depositor is overridden.
+        addressToBytes(recipient.address),
+        addressToBytes(ZERO_ADDRESS),
         "0x"
       );
   });
@@ -348,17 +367,20 @@ describe("SpokePool Depositor Logic", async function () {
     function getDepositArgsFromRelayData(
       _relayData: V3RelayData,
       _destinationChainId = destinationChainId,
-      _quoteTimestamp = quoteTimestamp
+      _quoteTimestamp = quoteTimestamp,
+      _isAddressOverload = false
     ) {
       return [
-        _relayData.depositor,
-        _relayData.recipient,
-        _relayData.inputToken,
-        _relayData.outputToken,
+        _isAddressOverload ? bytes32ToAddress(_relayData.depositor) : addressToBytes(_relayData.depositor),
+        _isAddressOverload ? bytes32ToAddress(_relayData.recipient) : addressToBytes(_relayData.recipient),
+        _isAddressOverload ? bytes32ToAddress(_relayData.inputToken) : addressToBytes(_relayData.inputToken),
+        _isAddressOverload ? bytes32ToAddress(_relayData.outputToken) : addressToBytes(_relayData.outputToken),
         _relayData.inputAmount,
         _relayData.outputAmount,
         _destinationChainId,
-        _relayData.exclusiveRelayer,
+        _isAddressOverload
+          ? bytes32ToAddress(_relayData.exclusiveRelayer)
+          : addressToBytes(_relayData.exclusiveRelayer),
         _quoteTimestamp,
         _relayData.fillDeadline,
         _relayData.exclusivityDeadline,
@@ -367,11 +389,11 @@ describe("SpokePool Depositor Logic", async function () {
     }
     beforeEach(async function () {
       relayData = {
-        depositor: depositor.address,
-        recipient: recipient.address,
-        exclusiveRelayer: ZERO_ADDRESS,
-        inputToken: erc20.address,
-        outputToken: randomAddress(),
+        depositor: addressToBytes(depositor.address),
+        recipient: addressToBytes(recipient.address),
+        exclusiveRelayer: addressToBytes(ZERO_ADDRESS),
+        inputToken: addressToBytes(erc20.address),
+        outputToken: addressToBytes(randomAddress()),
         inputAmount: amountToDeposit,
         outputAmount: amountToDeposit.sub(19),
         originChainId: originChainId,
@@ -383,23 +405,28 @@ describe("SpokePool Depositor Logic", async function () {
       depositArgs = getDepositArgsFromRelayData(relayData);
     });
     it("placeholder: gas test", async function () {
-      await spokePool.connect(depositor).depositV3(...depositArgs);
+      await spokePool.connect(depositor)[depositV3Bytes](...depositArgs);
+    });
+    it("should allow depositv3 with address overload", async function () {
+      await spokePool
+        .connect(depositor)
+        [depositV3Address](...getDepositArgsFromRelayData(relayData, destinationChainId, quoteTimestamp, true));
     });
     it("route disabled", async function () {
       // Verify that routes are disabled by default for a new route
       const _depositArgs = getDepositArgsFromRelayData(relayData, 999);
-      await expect(spokePool.connect(depositor).depositV3(..._depositArgs)).to.be.revertedWith("DisabledRoute");
+      await expect(spokePool.connect(depositor)[depositV3Bytes](..._depositArgs)).to.be.revertedWith("DisabledRoute");
 
       // Enable the route:
       await spokePool.connect(depositor).setEnableRoute(erc20.address, 999, true);
-      await expect(spokePool.connect(depositor).depositV3(..._depositArgs)).to.not.be.reverted;
+      await expect(spokePool.connect(depositor)[depositV3Bytes](..._depositArgs)).to.not.be.reverted;
     });
     it("invalid quoteTimestamp", async function () {
       const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
       const currentTime = await spokePool.getCurrentTime();
 
       await expect(
-        spokePool.connect(depositor).depositV3(
+        spokePool.connect(depositor)[depositV3Bytes](
           // quoteTimestamp too far into past (i.e. beyond the buffer)
           ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer).sub(1))
         )
@@ -422,19 +449,19 @@ describe("SpokePool Depositor Logic", async function () {
       const currentTime = await spokePool.getCurrentTime();
 
       await expect(
-        spokePool.connect(depositor).depositV3(
+        spokePool.connect(depositor)[depositV3Bytes](
           // fillDeadline too far into future (i.e. beyond the buffer)
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer).add(1) })
         )
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
-        spokePool.connect(depositor).depositV3(
+        spokePool.connect(depositor)[depositV3Bytes](
           // fillDeadline in past
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.sub(1) })
         )
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
-        spokePool.connect(depositor).depositV3(
+        spokePool.connect(depositor)[depositV3Bytes](
           // fillDeadline right at the buffer is OK
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
         )
@@ -444,14 +471,14 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool
           .connect(depositor)
-          .depositV3(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 1 })
+          [depositV3Bytes](...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 1 })
       ).to.be.revertedWith("MsgValueDoesNotMatchInputAmount");
 
       // Pulls ETH from depositor and deposits it into WETH via the wrapped contract.
       await expect(() =>
         spokePool
           .connect(depositor)
-          .depositV3(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), {
+          [depositV3Bytes](...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), {
             value: amountToDeposit,
           })
       ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]); // ETH should transfer from depositor to WETH contract.
@@ -461,18 +488,18 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("if input token is not WETH then msg.value must be 0", async function () {
       await expect(
-        spokePool.connect(depositor).depositV3(...getDepositArgsFromRelayData(relayData), { value: 1 })
+        spokePool.connect(depositor)[depositV3Bytes](...getDepositArgsFromRelayData(relayData), { value: 1 })
       ).to.be.revertedWith("MsgValueDoesNotMatchInputAmount");
     });
     it("if input token is WETH and msg.value = 0, pulls ERC20 from depositor", async function () {
       await expect(() =>
         spokePool
           .connect(depositor)
-          .depositV3(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 0 })
+          [depositV3Bytes](...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 0 })
       ).to.changeTokenBalances(weth, [depositor, spokePool], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
     });
     it("pulls input token from caller", async function () {
-      await expect(() => spokePool.connect(depositor).depositV3(...depositArgs)).to.changeTokenBalances(
+      await expect(() => spokePool.connect(depositor)[depositV3Bytes](...depositArgs)).to.changeTokenBalances(
         erc20,
         [depositor, spokePool],
         [amountToDeposit.mul(toBN("-1")), amountToDeposit]
@@ -485,15 +512,15 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool
           .connect(depositor)
-          .depositV3Now(
-            relayData.depositor,
-            relayData.recipient,
-            relayData.inputToken,
-            relayData.outputToken,
+          [depositV3NowBytes](
+            addressToBytes(relayData.depositor),
+            addressToBytes(relayData.recipient),
+            addressToBytes(relayData.inputToken),
+            addressToBytes(relayData.outputToken),
             relayData.inputAmount,
             relayData.outputAmount,
             destinationChainId,
-            relayData.exclusiveRelayer,
+            addressToBytes(relayData.exclusiveRelayer),
             fillDeadlineOffset,
             exclusivityDeadline,
             relayData.message
@@ -501,8 +528,8 @@ describe("SpokePool Depositor Logic", async function () {
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          relayData.inputToken,
-          relayData.outputToken,
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -511,19 +538,58 @@ describe("SpokePool Depositor Logic", async function () {
           currentTime, // quoteTimestamp should be current time
           currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
           currentTime,
-          relayData.depositor,
-          relayData.recipient,
-          relayData.exclusiveRelayer,
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
+          relayData.message
+        );
+    });
+    it("should allow depositV3Now with address overload", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadlineOffset = 1000;
+      const exclusivityDeadline = 0;
+      await expect(
+        spokePool
+          .connect(depositor)
+          [depositV3NowAddress](
+            bytes32ToAddress(relayData.depositor),
+            bytes32ToAddress(relayData.recipient),
+            bytes32ToAddress(relayData.inputToken),
+            bytes32ToAddress(relayData.outputToken),
+            relayData.inputAmount,
+            relayData.outputAmount,
+            destinationChainId,
+            bytes32ToAddress(relayData.exclusiveRelayer),
+            fillDeadlineOffset,
+            exclusivityDeadline,
+            relayData.message
+          )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          currentTime, // quoteTimestamp should be current time
+          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+          currentTime,
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
     });
     it("emits V3FundsDeposited event with correct deposit ID", async function () {
       const currentTime = (await spokePool.getCurrentTime()).toNumber();
-      await expect(spokePool.connect(depositor).depositV3(...depositArgs))
+      await expect(spokePool.connect(depositor)[depositV3Bytes](...depositArgs))
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          relayData.inputToken,
-          relayData.outputToken,
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -532,14 +598,14 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
           relayData.fillDeadline,
           currentTime,
-          relayData.depositor,
-          relayData.recipient,
-          relayData.exclusiveRelayer,
+          addressToBytes(relayData.depositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
     });
     it("deposit ID state variable incremented", async function () {
-      await spokePool.connect(depositor).depositV3(...depositArgs);
+      await spokePool.connect(depositor)[depositV3Bytes](...depositArgs);
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
@@ -549,12 +615,12 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool
           .connect(depositor)
-          .depositV3(...getDepositArgsFromRelayData({ ...relayData, depositor: newDepositor }))
+          [depositV3Bytes](...getDepositArgsFromRelayData({ ...relayData, depositor: newDepositor }))
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
-          relayData.inputToken,
-          relayData.outputToken,
+          addressToBytes(relayData.inputToken),
+          addressToBytes(relayData.outputToken),
           relayData.inputAmount,
           relayData.outputAmount,
           destinationChainId,
@@ -563,19 +629,21 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.fillDeadline,
           currentTime,
           // New depositor
-          newDepositor,
-          relayData.recipient,
-          relayData.exclusiveRelayer,
+          addressToBytes(newDepositor),
+          addressToBytes(relayData.recipient),
+          addressToBytes(relayData.exclusiveRelayer),
           relayData.message
         );
       expect(await erc20.balanceOf(depositor.address)).to.equal(balanceBefore.sub(amountToDeposit));
     });
     it("deposits are not paused", async function () {
       await spokePool.pauseDeposits(true);
-      await expect(spokePool.connect(depositor).depositV3(...depositArgs)).to.be.revertedWith("DepositsArePaused");
+      await expect(spokePool.connect(depositor)[depositV3Bytes](...depositArgs)).to.be.revertedWith(
+        "DepositsArePaused"
+      );
     });
     it("reentrancy protected", async function () {
-      const functionCalldata = spokePool.interface.encodeFunctionData("depositV3", [...depositArgs]);
+      const functionCalldata = spokePool.interface.encodeFunctionData(depositV3Bytes, [...depositArgs]);
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
       );
@@ -592,27 +660,27 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         originChainId,
         updatedOutputAmount,
-        updatedRecipient,
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
-      await spokePool.verifyUpdateV3DepositMessage(
-        depositor.address,
+      await spokePool[verifyUpdateV3DepositMessageBytes](
+        addressToBytes(depositor.address),
         depositId,
         originChainId,
         updatedOutputAmount,
-        updatedRecipient,
+        addressToBytes(updatedRecipient),
         updatedMessage,
         signature
       );
 
       // Reverts if passed in depositor is the signer or if signature is incorrect
       await expect(
-        spokePool.verifyUpdateV3DepositMessage(
-          updatedRecipient,
+        spokePool[verifyUpdateV3DepositMessageBytes](
+          addressToBytes(updatedRecipient),
           depositId,
           originChainId,
           updatedOutputAmount,
-          updatedRecipient,
+          addressToBytes(updatedRecipient),
           updatedMessage,
           signature
         )
@@ -624,16 +692,16 @@ describe("SpokePool Depositor Logic", async function () {
         depositId + 1,
         originChainId,
         updatedOutputAmount,
-        updatedRecipient,
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await expect(
-        spokePool.verifyUpdateV3DepositMessage(
-          depositor.address,
+        spokePool[verifyUpdateV3DepositMessageBytes](
+          addressToBytes(depositor.address),
           depositId,
           originChainId,
           updatedOutputAmount,
-          updatedRecipient,
+          addressToBytes(updatedRecipient),
           updatedMessage,
           invalidSignature
         )
@@ -647,25 +715,27 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         spokePoolChainId,
         updatedOutputAmount,
-        updatedRecipient,
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await expect(
-        spokePool.speedUpV3Deposit(
-          depositor.address,
-          depositId,
-          updatedOutputAmount,
-          updatedRecipient,
-          updatedMessage,
-          expectedSignature
-        )
+        spokePool
+          .connect(depositor)
+          [speedUpV3DepositBytes](
+            addressToBytes(depositor.address),
+            depositId,
+            updatedOutputAmount,
+            addressToBytes(updatedRecipient),
+            updatedMessage,
+            expectedSignature
+          )
       )
         .to.emit(spokePool, "RequestedSpeedUpV3Deposit")
         .withArgs(
           updatedOutputAmount,
           depositId,
-          depositor.address,
-          updatedRecipient,
+          addressToBytes(depositor.address),
+          addressToBytes(updatedRecipient),
           updatedMessage,
           expectedSignature
         );
@@ -677,30 +747,81 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         otherChainId,
         updatedOutputAmount,
-        updatedRecipient,
+        addressToBytes(updatedRecipient),
         updatedMessage
       );
       await expect(
-        spokePool.verifyUpdateV3DepositMessage(
-          depositor.address,
+        spokePool[verifyUpdateV3DepositMessageBytes](
+          addressToBytes(depositor.address),
           depositId,
           otherChainId,
           updatedOutputAmount,
-          updatedRecipient,
+          addressToBytes(updatedRecipient),
           updatedMessage,
           invalidSignatureForChain
         )
       ).to.not.be.reverted;
       await expect(
-        spokePool.speedUpV3Deposit(
-          depositor.address,
-          depositId,
-          updatedOutputAmount,
-          updatedRecipient,
-          updatedMessage,
-          invalidSignatureForChain
-        )
+        spokePool
+          .connect(depositor)
+          [speedUpV3DepositBytes](
+            addressToBytes(depositor.address),
+            depositId,
+            updatedOutputAmount,
+            addressToBytes(updatedRecipient),
+            updatedMessage,
+            invalidSignatureForChain
+          )
       ).to.be.revertedWith("InvalidDepositorSignature");
+    });
+    it("should allow speeding up V3 deposit with address overload", async function () {
+      const updatedOutputAmount = amountToDeposit.add(1);
+      const updatedRecipient = randomAddress();
+      const updatedMessage = "0x1234";
+      const depositId = 100;
+      const spokePoolChainId = await spokePool.chainId();
+
+      const signature = await getUpdatedV3DepositSignature(
+        depositor,
+        depositId,
+        spokePoolChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage,
+        true
+      );
+
+      await spokePool[verifyUpdateV3DepositMessageAddress](
+        depositor.address,
+        depositId,
+        spokePoolChainId,
+        updatedOutputAmount,
+        updatedRecipient,
+        updatedMessage,
+        signature
+      );
+
+      await expect(
+        spokePool
+          .connect(depositor)
+          [speedUpV3DepositAddress](
+            depositor.address,
+            depositId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+          )
+      )
+        .to.emit(spokePool, "RequestedSpeedUpV3Deposit")
+        .withArgs(
+          updatedOutputAmount,
+          depositId,
+          addressToBytes(depositor.address),
+          addressToBytes(updatedRecipient),
+          updatedMessage,
+          signature
+        );
     });
   });
 });

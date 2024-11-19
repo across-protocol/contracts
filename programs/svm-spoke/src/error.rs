@@ -31,6 +31,8 @@ pub enum CommonError {
     DepositsArePaused,
     #[msg("Fills are currently paused!")]
     FillsArePaused,
+    #[msg("Insufficient spoke pool balance to execute leaf")]
+    InsufficientSpokePoolBalanceToExecuteLeaf,
 }
 
 // SVM specific errors.

@@ -1,21 +1,20 @@
 import { BN, Program } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
 import * as crypto from "crypto";
+import { BigNumber, ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
+import { MerkleTree } from "@uma/common";
 import {
-  readEvents,
-  readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
+  readEvents,
+  readProgramEvents,
 } from "../../src/SvmUtils";
-import { MerkleTree } from "@uma/common";
-import { getParamType, keccak256 } from "../../test-utils";
-import { ParamType } from "ethers/lib/utils";
+import { addressToBytes, isBytes32 } from "../../test-utils";
 
-export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();
@@ -68,7 +67,7 @@ export interface RelayerRefundLeafSolana {
   refundAmounts: BN[];
   leafId: BN;
   mintPublicKey: PublicKey;
-  refundAccounts: PublicKey[];
+  refundAddresses: PublicKey[];
 }
 
 export type RelayerRefundLeafType = RelayerRefundLeaf | RelayerRefundLeafSolana;
@@ -102,13 +101,21 @@ export function buildRelayerRefundMerkleTree({
 }): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
   const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
+  if (evmTokenAddress && !isBytes32(evmTokenAddress)) {
+    throw new Error("EVM token address must be a bytes32 address");
+  }
+
+  if (evmRelayers && evmRelayers.some((address) => !isBytes32(address))) {
+    throw new Error("EVM relayers must be bytes32 addresses");
+  }
+
   const createSolanaLeaf = (index: number) => ({
     isSolana: true,
     leafId: new BN(index),
     chainId: new BN(chainId),
     amountToReturn: new BN(0),
     mintPublicKey: mint ?? Keypair.generate().publicKey,
-    refundAccounts: svmRelayers || [Keypair.generate().publicKey, Keypair.generate().publicKey],
+    refundAddresses: svmRelayers || [Keypair.generate().publicKey, Keypair.generate().publicKey],
     refundAmounts: svmRefundAmounts || [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
   });
 
@@ -118,8 +125,8 @@ export function buildRelayerRefundMerkleTree({
       leafId: BigNumber.from(index),
       chainId: BigNumber.from(chainId),
       amountToReturn: BigNumber.from(0),
-      l2TokenAddress: evmTokenAddress ?? randomAddress(),
-      refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
+      l2TokenAddress: evmTokenAddress ?? addressToBytes(randomAddress()),
+      refundAddresses: evmRelayers || [addressToBytes(randomAddress()), addressToBytes(randomAddress())],
       refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
     } as RelayerRefundLeaf);
 
@@ -159,7 +166,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
     })
   );
 
-  const refundAccountsBuffer = Buffer.concat(relayData.refundAccounts.map((account) => account.toBuffer()));
+  const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
   const contentToHash = Buffer.concat([
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
@@ -167,7 +174,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
     refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
-    refundAccountsBuffer,
+    refundAddressesBuffer,
   ]);
 
   const relayHash = ethers.utils.keccak256(contentToHash);
@@ -179,7 +186,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
     const abiCoder = new ethers.utils.AbiCoder();
     const encodedData = abiCoder.encode(
       [
-        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
+        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, bytes32 l2TokenAddress, bytes32[] refundAddresses)",
       ],
       [
         {
