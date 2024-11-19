@@ -25,7 +25,7 @@ describe("svm_spoke.routes", () => {
     routePda = createRoutePda(tokenMint, state, routeChainId);
 
     // Create ATA for the origin token to be stored by state (vault).
-    vault = getVaultAta(tokenMint, state);
+    vault = await getVaultAta(tokenMint, state);
 
     // Common accounts object
     setEnableRouteAccounts = {
