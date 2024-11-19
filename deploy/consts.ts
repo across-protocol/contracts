@@ -3,6 +3,7 @@ export { ZERO_ADDRESS } from "@uma/common";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
+export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
@@ -15,10 +16,6 @@ export const AZERO_GAS_PRICE = "240000000000";
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
-    optimismCrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments
-    optimismStandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
-    bobaCrossDomainMessenger: "0x6D4528d192dB72E282265D6092F4B872f9Dff69e",
-    bobaStandardBridge: "0xdc1664458d2f0B6090bEa60A8793A4E66c2F1c00",
     finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
     l1ArbitrumInbox: "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",
     l1ERC20GatewayRouter: "0x72Ce9c846789fdB6fC1f34aC4AD25Dd9ef7031ef",
@@ -27,11 +24,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonERC20Predicate: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf",
     polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
-    baseCrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
-    baseStandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
-    l1BlastBridge: "0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115",
-    blastCrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
-    blastStandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -40,33 +32,17 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
     scrollGasPriceOracle: "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
-    modeCrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
-    modeStandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
-    liskCrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
-    liskStandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
     blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
     blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
-    redstoneCrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
-    redstoneStandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
-    zoraCrossDomainMessenger: "0xdC40a14d9abd6F410226f1E6de71aE03441ca506",
-    zoraStandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
-    worldChainCrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
-    worldChainStandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
   },
   [CHAIN_IDs.SEPOLIA]: {
-    optimismCrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
-    optimismStandardBridge: "0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1",
-    bobaCrossDomainMessenger: "0x6D4528d192dB72E282265D6092F4B872f9Dff69e", // No sepolia deploy address
-    bobaStandardBridge: "0xdc1664458d2f0B6090bEa60A8793A4E66c2F1c00", // No sepolia deploy address
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
     l1ArbitrumInbox: "0xaAe29B0366299461418F5324a79Afc425BE5ae21",
     l1ERC20GatewayRouter: "0xcE18836b233C83325Cc8848CA4487e94C6288264",
-    baseCrossDomainMessenger: "0xC34855F4De64F1840e5686e64278da901e261f20",
-    baseStandardBridge: "0xfd0Bf71F60660E2f608ed56e1659C450eB113120",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
@@ -76,8 +52,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
-    modeCrossDomainMessenger: "0xc19a60d9E8C27B9A43527c3283B4dd8eDC8bE15C",
-    modeStandardBridge: "0xbC5C679879B2965296756CD959C3C739769995E2",
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
     polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
@@ -85,15 +59,76 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
     polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
+  },
+};
 
-    // https://docs.lisk.com/contracts
-    liskCrossDomainMessenger: "0x857824E6234f7733ecA4e9A76804fd1afa1A3A2C",
-    liskStandardBridge: "0x1Fb30e446eA791cd1f011675E5F3f5311b70faF5",
-
-    // https://docs.blast.io/building/contracts
-    l1BlastBridge: "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
-    blastCrossDomainMessenger: "0x9338F298F29D3918D5D1Feb209aeB9915CC96333",
-    blastStandardBridge: "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f",
+export const OP_STACK_ADDRESS_MAP: {
+  [hubChainId: number]: {
+    [spokeChainId: number]: { [contract: string]: string };
+  };
+} = {
+  [CHAIN_IDs.MAINNET]: {
+    [CHAIN_IDs.BASE]: {
+      L1CrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
+      L1StandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    },
+    [CHAIN_IDs.BOBA]: {
+      L1CrossDomainMessenger: "0x6D4528d192dB72E282265D6092F4B872f9Dff69e",
+      L1StandardBridge: "0xdc1664458d2f0B6090bEa60A8793A4E66c2F1c00",
+    },
+    [CHAIN_IDs.BLAST]: {
+      L1BlastBridge: "0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115",
+      L1CrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
+      L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
+    },
+    [CHAIN_IDs.LISK]: {
+      L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
+      L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
+    },
+    [CHAIN_IDs.MODE]: {
+      L1CrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
+      L1StandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
+    },
+    [CHAIN_IDs.OPTIMISM]: {
+      L1CrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments
+      L1StandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
+    },
+    [CHAIN_IDs.REDSTONE]: {
+      L1CrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
+      L1StandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
+    },
+    [CHAIN_IDs.WORLD_CHAIN]: {
+      L1CrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
+      L1StandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
+      L1OpUSDCBridgeAdapter: "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB",
+    },
+    [CHAIN_IDs.ZORA]: {
+      L1CrossDomainMessenger: "0xdC40a14d9abd6F410226f1E6de71aE03441ca506",
+      L1StandardBridge: "0x3e2Ea9B92B7E48A52296fD261dc26fd995284631",
+    },
+  },
+  [CHAIN_IDs.SEPOLIA]: {
+    [CHAIN_IDs.BASE_SEPOLIA]: {
+      L1CrossDomainMessenger: "0xC34855F4De64F1840e5686e64278da901e261f20",
+      L1StandardBridge: "0xfd0Bf71F60660E2f608ed56e1659C450eB113120",
+    },
+    [CHAIN_IDs.BLAST_SEPOLIA]: {
+      L1BlastBridge: "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
+      L1CrossDomainMessenger: "0x9338F298F29D3918D5D1Feb209aeB9915CC96333",
+      L1StandardBridge: "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f",
+    },
+    [CHAIN_IDs.LISK_SEPOLIA]: {
+      L1CrossDomainMessenger: "0x857824E6234f7733ecA4e9A76804fd1afa1A3A2C",
+      L1StandardBridge: "0x1Fb30e446eA791cd1f011675E5F3f5311b70faF5",
+    },
+    [CHAIN_IDs.MODE_SEPOLIA]: {
+      L1CrossDomainMessenger: "0xc19a60d9E8C27B9A43527c3283B4dd8eDC8bE15C",
+      L1StandardBridge: "0xbC5C679879B2965296756CD959C3C739769995E2",
+    },
+    [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
+      L1CrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
+      L1StandardBridge: "0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1",
+    },
   },
 };
 

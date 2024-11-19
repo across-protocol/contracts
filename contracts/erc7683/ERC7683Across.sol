@@ -10,8 +10,8 @@ struct AcrossOrderData {
     uint256 inputAmount;
     address outputToken;
     uint256 outputAmount;
-    uint32 destinationChainId;
-    address recipient;
+    uint256 destinationChainId;
+    bytes32 recipient;
     address exclusiveRelayer;
     uint32 exclusivityPeriod;
     bytes message;
@@ -31,8 +31,8 @@ bytes constant ACROSS_ORDER_DATA_TYPE = abi.encodePacked(
     "uint256 inputAmount,",
     "address outputToken,",
     "uint256 outputAmount,",
-    "uint32 destinationChainId,",
-    "address recipient,",
+    "uint256 destinationChainId,",
+    "bytes32 recipient,",
     "address exclusiveRelayer,"
     "uint32 exclusivityPeriod,",
     "bytes message)"
@@ -67,7 +67,7 @@ library ERC7683Permit2Lib {
     string internal constant PERMIT2_ORDER_TYPE =
         string(
             abi.encodePacked(
-                "CrossChainOrder witness)",
+                "GaslessCrossChainOrder witness)",
                 ACROSS_ORDER_DATA_TYPE,
                 CROSS_CHAIN_ORDER_TYPE,
                 TOKEN_PERMISSIONS_TYPE
@@ -86,6 +86,7 @@ library ERC7683Permit2Lib {
                     order.originChainId,
                     order.openDeadline,
                     order.fillDeadline,
+                    order.orderDataType,
                     orderDataHash
                 )
             );
@@ -102,6 +103,7 @@ library ERC7683Permit2Lib {
                     orderData.outputAmount,
                     orderData.destinationChainId,
                     orderData.recipient,
+                    orderData.exclusiveRelayer,
                     orderData.exclusivityPeriod,
                     keccak256(orderData.message)
                 )
