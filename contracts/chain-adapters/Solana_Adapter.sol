@@ -5,6 +5,7 @@ import { IMessageTransmitter, ITokenMessenger } from "../external/interfaces/CCT
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
+import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -19,6 +20,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // solhint-disable-next-line contract-name-camelcase
 contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
+    /**
+     * @notice We use Bytes32ToAddress library to map a Solana address to an Ethereum address representation.
+     * @dev The Ethereum address is derived from the Solana address by truncating it to its lowest 20 bytes. This same
+     * conversion must be done by the HubPool owner when adding Solana spoke pool and setting the corresponding pool
+     * rebalance and deposit routes.
+     */
+    using Bytes32ToAddress for bytes32;
+
     /**
      * @notice The official Circle CCTP MessageTransmitter contract endpoint.
      * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
@@ -84,10 +93,10 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         cctpMessageTransmitter = _cctpMessageTransmitter;
 
         SOLANA_SPOKE_POOL_BYTES32 = solanaSpokePool;
-        SOLANA_SPOKE_POOL_ADDRESS = _trimSolanaAddress(solanaSpokePool);
+        SOLANA_SPOKE_POOL_ADDRESS = solanaSpokePool.toAddressUnchecked();
 
         SOLANA_USDC_BYTES32 = solanaUsdc;
-        SOLANA_USDC_ADDRESS = _trimSolanaAddress(solanaUsdc);
+        SOLANA_USDC_ADDRESS = solanaUsdc.toAddressUnchecked();
 
         SOLANA_SPOKE_POOL_USDC_VAULT = solanaSpokePoolUsdcVault;
     }
@@ -149,18 +158,6 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
 
         // TODO: consider if we need also to emit the translated addresses.
         emit TokensRelayed(l1Token, l2Token, amount, to);
-    }
-
-    /**
-     * @notice Helper to map a Solana address to an Ethereum address representation.
-     * @dev The Ethereum address is derived from the Solana address by truncating it to its lowest 20 bytes. This same
-     * conversion must be done by the HubPool owner when adding Solana spoke pool and setting the corresponding pool
-     * rebalance and deposit routes.
-     * @param solanaAddress Solana address (Base58 decoded to bytes32) to map to its Ethereum address representation.
-     * @return Ethereum address representation of the Solana address.
-     */
-    function _trimSolanaAddress(bytes32 solanaAddress) internal pure returns (address) {
-        return address(uint160(uint256(solanaAddress)));
     }
 
     /**

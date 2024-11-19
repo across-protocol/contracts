@@ -87,7 +87,7 @@ describe("Solana Chain Adapter", function () {
     const functionCallData = mockSpoke.interface.encodeFunctionData("setCrossDomainAdmin", [newAdmin]);
     expect(await hubPool.relaySpokePoolAdminFunction(solanaChainId, functionCallData))
       .to.emit(solanaAdapter.attach(hubPool.address), "MessageRelayed")
-      .withArgs(solanaSpokePoolAddress, functionCallData);
+      .withArgs(solanaSpokePoolAddress.toLowerCase(), functionCallData);
     expect(cctpMessageTransmitter.sendMessage).to.have.been.calledWith(
       solanaDomainId,
       solanaSpokePoolBytes32,
