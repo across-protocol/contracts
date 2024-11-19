@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/V3SpokePoolInterface.sol";
 import "./external/interfaces/IERC20Auth.sol";
+import "./external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
@@ -26,6 +27,9 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
 
     // Exchange address or router where the swapping will happen.
     address public immutable EXCHANGE;
+
+    // Wrapped native token contract address.
+    WETH9Interface internal immutable WRAPPED_NATIVE_TOKEN;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -81,11 +85,13 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
      */
     constructor(
         V3SpokePoolInterface _spokePool,
+        WETH9Interface _wrappedNativeToken,
         address _exchange,
         bytes4[] memory _allowedSelectors
     ) {
         SPOKE_POOL = _spokePool;
         EXCHANGE = _exchange;
+        WRAPPED_NATIVE_TOKEN = _wrappedNativeToken;
         for (uint256 i = 0; i < _allowedSelectors.length; i++) {
             allowedSelectors[_allowedSelectors[i]] = true;
         }
@@ -218,11 +224,12 @@ contract SwapAndBridge is SwapAndBridgeBase {
      */
     constructor(
         V3SpokePoolInterface _spokePool,
+        WETH9Interface _wrappedNativeToken,
         address _exchange,
         bytes4[] memory _allowedSelectors,
         IERC20 _swapToken,
         IERC20 _acrossInputToken
-    ) SwapAndBridgeBase(_spokePool, _exchange, _allowedSelectors) {
+    ) SwapAndBridgeBase(_spokePool, _wrappedNativeToken, _exchange, _allowedSelectors) {
         SWAP_TOKEN = _swapToken;
         ACROSS_INPUT_TOKEN = _acrossInputToken;
     }
@@ -264,6 +271,9 @@ contract SwapAndBridge is SwapAndBridgeBase {
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
     using SafeERC20 for IERC20;
 
+    error InsufficientSwapValue();
+    error InvalidSwapToken();
+
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -272,9 +282,10 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      */
     constructor(
         V3SpokePoolInterface _spokePool,
+        WETH9Interface _wrappedNativeToken,
         address _exchange,
         bytes4[] memory _allowedSelectors
-    ) SwapAndBridgeBase(_spokePool, _exchange, _allowedSelectors) {}
+    ) SwapAndBridgeBase(_spokePool, _wrappedNativeToken, _exchange, _allowedSelectors) {}
 
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
@@ -297,8 +308,16 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData
-    ) external nonReentrant {
-        swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
+    ) external payable nonReentrant {
+        // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
+        // as though the user deposited a wrapped native token.
+        if (msg.value != 0) {
+            if (msg.value != swapTokenAmount) revert InsufficientSwapValue();
+            if (address(swapToken) != address(WRAPPED_NATIVE_TOKEN)) revert InvalidSwapToken();
+            WRAPPED_NATIVE_TOKEN.deposit{ value: msg.value }();
+        } else {
+            swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
+        }
         _swapAndBridge(
             routerCalldata,
             swapTokenAmount,
