@@ -21,8 +21,11 @@ import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
 contract ZkStack_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
+    // The ZkSync bridgehub contract treats address(1) to represent ETH.
+    address private constant ETH_TOKEN_ADDRESS = address(1);
+
     // We need to pay a base fee to the operator to include our L1 --> L2 transaction.
-    // https://era.zksync.io/docs/dev/developer-guides/bridging/l1-l2.html#getting-the-base-cost
+    // https://docs.zksync.io/build/developer-reference/l1-l2-interoperability#l1-to-l2-gas-estimation-for-transactions
 
     // Limit on L2 gas to spend.
     uint256 public immutable L2_GAS_LIMIT; // typically 2_000_000
@@ -53,7 +56,8 @@ contract ZkStack_Adapter is AdapterInterface {
     // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
     uint256 private immutable MAX_TX_GASPRICE;
 
-    event ZkStackMessageRelayed(bytes32 canonicalTxHash);
+    event ZkStackMessageRelayed(bytes32 indexed canonicalTxHash);
+
     error ETHGasTokenRequired();
     error TransactionFeeTooHigh();
 
@@ -85,7 +89,7 @@ contract ZkStack_Adapter is AdapterInterface {
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address gasToken = BRIDGE_HUB.baseToken(CHAIN_ID);
-        if (gasToken != address(1)) {
+        if (gasToken != ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenRequired();
         }
     }

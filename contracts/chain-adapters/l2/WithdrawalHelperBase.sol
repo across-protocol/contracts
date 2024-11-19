@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
@@ -13,12 +12,10 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
  * @notice This contract contains general configurations for bridging tokens from an L2 to a single recipient on L1.
  * @dev This contract should be deployed on L2. It provides an interface to withdraw tokens to some address on L1. The only
  * function which must be implemented in contracts which inherit this contract is `withdrawToken`. It is up to that function
- * to determine which bridges to use for an input L2 token. Importantly, that function must also verify that the l2 to l1
+ * to determine which bridges to use for an input L2 token. Importantly, that function must also verify that the L2 to L1
  * token mapping is correct so that the bridge call itself can succeed.
  */
 abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUpgradeable {
-    using SafeERC20 for IERC20;
-
     // The L2 address of the wrapped native token for this L2.
     WETH9Interface public immutable WRAPPED_NATIVE_TOKEN;
     // The L1 address which will unconditionally receive all withdrawals from this contract.
@@ -29,7 +26,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
     // on this withdrawal helper contract, similar to how it may send admin functions to spoke pools.
     address public crossDomainAdmin;
 
-    event SetXDomainAdmin(address _crossDomainAdmin);
+    event SetXDomainAdmin(address indexed _crossDomainAdmin);
 
     // Error which triggers when the cross domain admin was attempted to be set to the zero address.
     error InvalidCrossDomainAdmin();
@@ -50,8 +47,6 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      * @param _destinationCircleDomainId Circle's assigned CCTP domain ID for the destination network.
      * @param _l2TokenGateway Address of the network's l2 token gateway/bridge contract.
      * @param _tokenRecipient L1 address which will unconditionally receive all withdrawals originating from this contract.
-     * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
-     * L2 address.
      * @dev _disableInitializers() restricts anybody from initializing the implementation contract, which if not done,
      * may disrupt the proxy if another EOA were to initialize it.
      */

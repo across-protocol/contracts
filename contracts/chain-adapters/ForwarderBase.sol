@@ -28,7 +28,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
     // the network ID of an L3. These chain IDs are used as the key in this mapping because network IDs are enforced to be unique. Since we require the chain
     // ID to be sent along with a message or token relay, ForwarderInterface's relay functions include an extra field, `destinationChainId`, when compared to the
     // relay functions of `AdapterInterface`.
-    mapping(uint256 => address) chainAdapters;
+    mapping(uint256 => address) public chainAdapters;
+
     // An array of which contains all token relays sent to this forwarder. A token relay is only stored here if it is received from the L1 cross domain admin.
     // Each TokenRelay element contains a yes/no value describing whether or not the token relay has been executed. TokenRelays can only ever be executed once,
     // but anybody can execute a stored TokenRelay in the array.
@@ -38,7 +39,6 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
     event SetXDomainAdmin(address indexed crossDomainAdmin);
 
     error InvalidCrossDomainAdmin();
-    error InvalidChainAdapter();
     error InvalidTokenRelayId();
     // Error which is triggered when there is no adapter set in the `chainAdapters` mapping.
     error UninitializedChainAdapter();
@@ -90,9 +90,7 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
      * as the L1 sender is the old cross-domain admin.
      */
     function setCrossDomainAdmin(address _newCrossDomainAdmin) external onlyAdmin {
-        if (_newCrossDomainAdmin == address(0)) revert InvalidCrossDomainAdmin();
         _setCrossDomainAdmin(_newCrossDomainAdmin);
-        emit SetXDomainAdmin(_newCrossDomainAdmin);
     }
 
     /**
@@ -103,7 +101,6 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
      * L3 (e.g. ArbitrumOrbit, OpStack, etc.).
      */
     function updateAdapter(uint256 _destinationChainId, address _l2Adapter) external onlyAdmin {
-        if (_l2Adapter == address(0)) revert InvalidChainAdapter();
         chainAdapters[_destinationChainId] = _l2Adapter;
         emit ChainAdaptersUpdated(_destinationChainId, _l2Adapter);
     }

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: BUSL-1.1
-
 pragma solidity ^0.8.0;
 
 import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
@@ -58,8 +57,6 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
      * is 0.
      * @param _l2Gateway Address of the Optimism ERC20 L2 standard bridge contract.
      * @param _tokenRecipient The L1 address which will unconditionally receive tokens from withdrawals by this contract.
-     * @param _crossDomainAdmin Address of the admin on L1. This address is the only one which may tell this contract to send tokens to an
-     * L2 address.
      * @param _spokePool The contract address of the Ovm_SpokePool which is deployed on this L2 network.
      */
     constructor(
