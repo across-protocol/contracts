@@ -129,6 +129,23 @@ export type DepositDataValues = [
   Buffer
 ];
 
+export type RelayData = {
+  depositor: PublicKey;
+  recipient: PublicKey;
+  exclusiveRelayer: PublicKey;
+  inputToken: PublicKey;
+  outputToken: PublicKey;
+  inputAmount: BN;
+  outputAmount: BN;
+  originChainId: BN;
+  depositId: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  message: Buffer;
+};
+
+export type FillDataValues = [number[], RelayData, BN, PublicKey];
+
 export const common = {
   provider,
   connection: provider.connection,
