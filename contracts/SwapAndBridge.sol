@@ -405,7 +405,8 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         bytes32 s
     ) external nonReentrant {
         // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
-        // If tokens were not sent to this contract, the call to `transferFrom` in _swapAndBridge will revert.
+        // if tokens were not sent to this contract, by this call to the swapToken, the call to `transferFrom`
+        // in _swapAndBridge will revert.
         swapToken.receiveWithAuthorization(
             msg.sender,
             address(this),
