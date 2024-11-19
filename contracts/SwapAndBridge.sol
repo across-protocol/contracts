@@ -264,8 +264,6 @@ contract SwapAndBridge is SwapAndBridgeBase {
 contract UniversalSwapAndBridge is SwapAndBridgeBase {
     using SafeERC20 for IERC20;
 
-    error InsufficientTokenBalance(address token, uint256 balanceRequired, uint256 balanceOwned);
-
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
@@ -402,9 +400,6 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         );
         IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Auth to IERC20
 
-        uint256 tokenBalance = _swapToken.balanceOf(address(this));
-        if (tokenBalance < swapTokenAmount)
-            revert InsufficientTokenBalance(address(swapToken), swapTokenAmount, tokenBalance);
         _swapAndBridge(
             routerCalldata,
             swapTokenAmount,
@@ -478,10 +473,6 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
             s
         );
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast the input token to an IERC20.
-
-        uint256 tokenBalance = _acrossInputToken.balanceOf(address(this));
-        if (tokenBalance < acrossInputAmount)
-            revert InsufficientTokenBalance(address(acrossInputToken), acrossInputAmount, tokenBalance);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
     }
 }
