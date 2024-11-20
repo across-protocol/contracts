@@ -515,4 +515,19 @@ describe("svm_spoke.deposit", () => {
     vaultAccount = await getAccount(connection, vault, undefined, tokenProgram);
     assertSE(vaultAccount.amount, depositData.inputAmount, "Vault balance should be increased by the deposited amount");
   });
+
+  it("Deposit without approval fails", async () => {
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+
+    try {
+      await program.methods
+        .depositV3(...depositDataValues)
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed due to missing approval");
+    } catch (err: any) {
+      assert.include(err.toString(), "owner does not match");
+    }
+  });
 });
