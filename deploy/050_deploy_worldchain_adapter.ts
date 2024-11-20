@@ -1,10 +1,14 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
+import { CHAIN_IDs } from "../utils";
+import { OP_STACK_ADDRESS_MAP, USDC, WETH } from "./consts";
+
+const SPOKE_CHAIN_ID = CHAIN_IDs.WORLD_CHAIN;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
+  const opStack = OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID];
 
   await hre.deployments.deploy("OP_Adapter", {
     from: deployer,
@@ -13,9 +17,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       WETH[chainId],
       USDC[chainId],
-      L1_ADDRESS_MAP[chainId].worldChainCrossDomainMessenger,
-      L1_ADDRESS_MAP[chainId].worldChainStandardBridge,
-      L1_ADDRESS_MAP[chainId].worldChainOpUSDCBridge,
+      opStack.L1CrossDomainMessenger,
+      opStack.L1StandardBridge,
+      opStack.L1OpUSDCBridge,
     ],
   });
 };
