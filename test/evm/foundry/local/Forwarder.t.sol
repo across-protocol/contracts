@@ -17,6 +17,7 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitrum_Forwarder.sol";
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
+import { ForwarderInterface } from "../../../../contracts/chain-adapters/interfaces/ForwarderInterface.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -64,7 +65,7 @@ contract ForwarderTest is Test {
             ITokenMessenger(address(0))
         );
 
-        arbitrumForwarder = new Arbitrum_Forwarder();
+        arbitrumForwarder = new Arbitrum_Forwarder(WETH9Interface(address(l2Weth)));
         address proxy = address(
             new ERC1967Proxy(address(arbitrumForwarder), abi.encodeCall(Arbitrum_Forwarder.initialize, (owner)))
         );
@@ -87,13 +88,26 @@ contract ForwarderTest is Test {
         vm.stopPrank();
     }
 
-    // Token relays should be routed through the Optimism Adapter's `relayTokens` function.
+    // Token relays should first be saved to state (when called by the cross domain admin).
+    // In a follow-up `sendTokens` call, tokens should then be routed through the Optimism
+    // Adapter's `relayTokens` function.
     function testForwardTokens(uint256 amountToSend, address random) public {
         l2Token.mint(address(arbitrumForwarder), amountToSend);
         vm.expectRevert();
         arbitrumForwarder.relayTokens(address(l2Token), address(l3Token), amountToSend, L3_CHAIN_ID, random);
 
+        // Save token info to state.
         vm.startPrank(aliasedOwner);
+        vm.expectEmit(address(arbitrumForwarder));
+        emit ForwarderInterface.ReceivedTokenRelay(
+            0,
+            ForwarderInterface.TokenRelay(address(l2Token), address(l3Token), random, amountToSend, L3_CHAIN_ID, false)
+        );
+        arbitrumForwarder.relayTokens(address(l2Token), address(l3Token), amountToSend, L3_CHAIN_ID, random);
+        vm.stopPrank();
+
+        // Execute a saved token relay.
+        vm.startPrank(random);
         vm.expectEmit(address(standardBridge));
         emit MockBedrockL1StandardBridge.ERC20DepositInitiated(
             random,
@@ -101,7 +115,11 @@ contract ForwarderTest is Test {
             address(l3Token),
             amountToSend
         );
-        arbitrumForwarder.relayTokens(address(l2Token), address(l3Token), amountToSend, L3_CHAIN_ID, random);
+        arbitrumForwarder.executeRelayTokens(0);
+
+        // Verify a relay cannot be executed twice.
+        vm.expectRevert(ForwarderInterface.TokenRelayExecuted.selector);
+        arbitrumForwarder.executeRelayTokens(0);
         vm.stopPrank();
     }
 
@@ -121,7 +139,7 @@ contract ForwarderTest is Test {
     // Test access control on proxy upgrades.
     function testUpgrade(address random) public {
         vm.assume(random != aliasedOwner);
-        address newImplementation = address(new Arbitrum_Forwarder());
+        address newImplementation = address(new Arbitrum_Forwarder(WETH9Interface(address(l2Weth))));
         vm.startPrank(random);
         vm.expectRevert();
         arbitrumForwarder.upgradeTo(newImplementation);

@@ -25,7 +25,17 @@ contract MockZkStack_Adapter is ZkStack_Adapter {
         address _l2RefundAddress,
         uint256 _l2GasLimit,
         uint256 _l1GasToL2GasPerPubDataLimit
-    ) ZkStack_Adapter(_chainId, _bridgeHub, _l1Weth, _l2RefundAddress, _l2GasLimit, _l1GasToL2GasPerPubDataLimit) {}
+    )
+        ZkStack_Adapter(
+            _chainId,
+            _bridgeHub,
+            _l1Weth,
+            _l2RefundAddress,
+            _l2GasLimit,
+            _l1GasToL2GasPerPubDataLimit,
+            type(uint256).max
+        )
+    {}
 
     receive() external payable {}
 }
@@ -47,7 +57,8 @@ contract MockZkStack_CustomGasToken_Adapter is ZkStack_CustomGasToken_Adapter {
             _l2RefundAddress,
             _customGasTokenFunder,
             _l2GasLimit,
-            _l1GasToL2GasPerPubDataLimit
+            _l1GasToL2GasPerPubDataLimit,
+            type(uint256).max
         )
     {}
 
@@ -173,9 +184,9 @@ contract ZkStackAdapterTest is Test {
             abi.encode(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: ZK_CHAIN_ID,
-                    mintValue: baseCost,
+                    mintValue: baseCost + amountToSend,
                     l2Contract: random,
-                    l2Value: 0,
+                    l2Value: amountToSend,
                     l2Calldata: "",
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L2_GAS_PER_PUBDATA_LIMIT,
@@ -264,7 +275,7 @@ contract ZkStackAdapterTest is Test {
                     refundRecipient: owner,
                     secondBridgeAddress: sharedBridge,
                     secondBridgeValue: amountToSend,
-                    secondBridgeCalldata: abi.encode(address(1), amountToSend, random)
+                    secondBridgeCalldata: abi.encode(address(1), 0, random)
                 })
             )
         );
@@ -311,9 +322,9 @@ contract ZkStackAdapterTest is Test {
             abi.encode(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: ZK_ALT_CHAIN_ID,
-                    mintValue: baseCost,
+                    mintValue: baseCost + amountToSend,
                     l2Contract: random,
-                    l2Value: 0,
+                    l2Value: amountToSend,
                     l2Calldata: "",
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L2_GAS_PER_PUBDATA_LIMIT,
