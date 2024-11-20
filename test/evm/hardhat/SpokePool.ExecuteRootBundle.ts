@@ -22,8 +22,8 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
   const leaves = buildRelayerRefundLeaves(
     [destinationChainId, destinationChainId], // Destination chain ID.
     [consts.amountToReturn, toBN(0)], // amountToReturn.
-    [addressToBytes(l2Token.address), addressToBytes(l2Token.address)], // l2Token.
-    [[addressToBytes(relayer.address), addressToBytes(rando.address)], []], // refundAddresses.
+    [l2Token.address, l2Token.address], // l2Token.
+    [[relayer.address, rando.address], []], // refundAddresses.
     [[consts.amountToRelay, consts.amountToRelay], []] // refundAmounts.
   );
   const leavesRefundAmount = leaves
@@ -63,18 +63,14 @@ describe("SpokePool Root Bundle Execution", function () {
 
     // Check events.
     let relayTokensEvents = await spokePool.queryFilter(spokePool.filters.ExecutedRelayerRefundRoot());
-    expect(relayTokensEvents[0].args?.l2TokenAddress).to.equal(addressToBytes(destErc20.address));
+    expect(relayTokensEvents[0].args?.l2TokenAddress).to.equal(destErc20.address);
     expect(relayTokensEvents[0].args?.leafId).to.equal(0);
     expect(relayTokensEvents[0].args?.chainId).to.equal(destinationChainId);
     expect(relayTokensEvents[0].args?.amountToReturn).to.equal(consts.amountToReturn);
     expect((relayTokensEvents[0].args?.refundAmounts as BigNumber[]).map((v) => v.toString())).to.deep.equal(
       [consts.amountToRelay, consts.amountToRelay].map((v) => v.toString())
     );
-    expect(relayTokensEvents[0].args?.refundAddresses).to.deep.equal([
-      addressToBytes(relayer.address),
-      addressToBytes(rando.address),
-    ]);
-    expect(relayTokensEvents[0].args?.deferredRefunds).to.equal(false);
+    expect(relayTokensEvents[0].args?.refundAddresses).to.deep.equal([relayer.address, rando.address]);
 
     // Should emit TokensBridged event if amountToReturn is positive.
     let tokensBridgedEvents = await spokePool.queryFilter(spokePool.filters.TokensBridged());
@@ -98,8 +94,8 @@ describe("SpokePool Root Bundle Execution", function () {
       totalSolanaDistributions: evmDistributions,
       mixLeaves: true,
       chainId: destinationChainId,
-      evmTokenAddress: addressToBytes(destErc20.address),
-      evmRelayers: [addressToBytes(relayer.address), addressToBytes(rando.address)],
+      evmTokenAddress: destErc20.address,
+      evmRelayers: [relayer.address, rando.address],
       evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
     });
 
@@ -134,8 +130,8 @@ describe("SpokePool Root Bundle Execution", function () {
       totalSolanaDistributions: evmDistributions,
       mixLeaves: false,
       chainId: destinationChainId,
-      evmTokenAddress: addressToBytes(destErc20.address),
-      evmRelayers: [addressToBytes(relayer.address), addressToBytes(rando.address)],
+      evmTokenAddress: destErc20.address,
+      evmRelayers: [relayer.address, rando.address],
       evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
     });
 
@@ -236,8 +232,8 @@ describe("SpokePool Root Bundle Execution", function () {
             toBN(1),
             [consts.amountToRelay, consts.amountToRelay, toBN(0)],
             0,
-            addressToBytes(destErc20.address),
-            [addressToBytes(relayer.address), addressToBytes(rando.address)]
+            destErc20.address,
+            [relayer.address, rando.address]
           )
       ).to.be.revertedWith("InvalidMerkleLeaf");
     });
@@ -246,7 +242,7 @@ describe("SpokePool Root Bundle Execution", function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, addressToBytes(destErc20.address), [])
+            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
         )
           .to.emit(spokePool, "BridgedToHubPool")
           .withArgs(toBN(1), destErc20.address);
@@ -255,7 +251,7 @@ describe("SpokePool Root Bundle Execution", function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, addressToBytes(destErc20.address), [])
+            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
         )
           .to.emit(spokePool, "TokensBridged")
           .withArgs(toBN(1), destinationChainId, 0, addressToBytes(destErc20.address), dataWorker.address);
@@ -266,14 +262,14 @@ describe("SpokePool Root Bundle Execution", function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, addressToBytes(destErc20.address), [])
+            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, [])
         ).to.not.emit(spokePool, "BridgedToHubPool");
       });
       it("does not emit TokensBridged", async function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, addressToBytes(destErc20.address), [])
+            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, [])
         ).to.not.emit(spokePool, "TokensBridged");
       });
     });
@@ -287,8 +283,8 @@ describe("SpokePool Root Bundle Execution", function () {
               toBN(1),
               [consts.amountToRelay, consts.amountToRelay, toBN(0)],
               0,
-              addressToBytes(destErc20.address),
-              [addressToBytes(relayer.address), addressToBytes(rando.address), addressToBytes(rando.address)]
+              destErc20.address,
+              [relayer.address, rando.address, rando.address]
             )
         ).to.changeTokenBalances(
           destErc20,
@@ -307,8 +303,8 @@ describe("SpokePool Root Bundle Execution", function () {
               toBN(1),
               [consts.amountToRelay, consts.amountToRelay, toBN(0)],
               0,
-              addressToBytes(destErc20.address),
-              [addressToBytes(relayer.address), addressToBytes(rando.address), addressToBytes(rando.address)]
+              destErc20.address,
+              [relayer.address, rando.address, rando.address]
             )
         )
           .to.emit(spokePool, "BridgedToHubPool")
@@ -323,8 +319,8 @@ describe("SpokePool Root Bundle Execution", function () {
             toBN(1),
             [consts.amountHeldByPool, consts.amountToRelay], // spoke has only amountHeldByPool.
             0,
-            addressToBytes(destErc20.address),
-            [addressToBytes(relayer.address), addressToBytes(rando.address)]
+            destErc20.address,
+            [relayer.address, rando.address]
           )
         ).to.be.revertedWith("InsufficientSpokePoolBalanceToExecuteLeaf");
 

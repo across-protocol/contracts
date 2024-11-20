@@ -23,7 +23,7 @@ describe("SpokePool Admin Functions", async function () {
     await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
       .to.emit(spokePool, "EnabledDepositRoute")
       .withArgs(erc20.address, destinationChainId, true);
-    expect(await spokePool.enabledDepositRoutes(addressToBytes(erc20.address), destinationChainId)).to.equal(true);
+    expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
   });
 
   it("Pause deposits", async function () {

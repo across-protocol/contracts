@@ -52,8 +52,8 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         uint256 amountToReturn,
         uint256[] memory refundAmounts,
         uint32 leafId,
-        bytes32 l2TokenAddress,
-        bytes32[] memory refundAddresses
+        address l2TokenAddress,
+        address[] memory refundAddresses
     ) external {
         _distributeRelayerRefunds(_chainId, amountToReturn, refundAmounts, leafId, l2TokenAddress, refundAddresses);
     }
@@ -96,11 +96,11 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     ) public view {
         return
             _verifyUpdateV3DepositMessage(
-                depositor,
+                depositor.toAddress(),
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient,
+                updatedRecipient.toAddress(),
                 updatedMessage,
                 depositorSignature,
                 UPDATE_V3_DEPOSIT_DETAILS_HASH
@@ -118,11 +118,11 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     ) public view {
         return
             _verifyUpdateV3DepositMessage(
-                depositor.toBytes32(),
+                depositor,
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient.toBytes32(),
+                updatedRecipient,
                 updatedMessage,
                 depositorSignature,
                 UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
@@ -134,7 +134,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         bytes32 relayer,
         bool isSlowFill
     ) external {
-        _fillRelayV3(relayExecution, relayer, isSlowFill);
+        _fillRelayV3(relayExecution, relayer.toAddress(), isSlowFill);
     }
 
     // This function is nonReentrant in order to allow caller to test whether a different function
@@ -152,8 +152,8 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         return currentTime;
     }
 
-    function _preExecuteLeafHook(bytes32 token) internal override {
-        emit PreLeafExecuteHook(token);
+    function _preExecuteLeafHook(address token) internal override {
+        emit PreLeafExecuteHook(token.toBytes32());
     }
 
     function _bridgeTokensToHubPool(uint256 amount, address token) internal override {

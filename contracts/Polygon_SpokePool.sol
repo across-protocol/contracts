@@ -231,7 +231,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         emit SetPolygonTokenBridger(address(_polygonTokenBridger));
     }
 
-    function _preExecuteLeafHook(bytes32) internal override {
+    function _preExecuteLeafHook(address) internal override {
         // Wraps MATIC --> WMATIC before distributing tokens from this contract.
         _wrap();
     }

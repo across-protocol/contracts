@@ -156,7 +156,7 @@ describe("Polygon Spoke Pool", function () {
       .reverted;
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setEnableRouteData);
-    expect(await polygonSpokePool.enabledDepositRoutes(addressToBytes(l2Dai), 1)).to.equal(true);
+    expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only correct caller can initialize a relayer refund", async function () {
@@ -261,7 +261,7 @@ describe("Polygon Spoke Pool", function () {
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [amountToReturn, ethers.constants.Zero], // amountToReturn.
-      [addressToBytes(dai.address), addressToBytes(dai.address)], // l2Token.
+      [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.
     );
@@ -289,7 +289,7 @@ describe("Polygon Spoke Pool", function () {
     const leaves = buildRelayerRefundLeaves(
       [l2ChainId, l2ChainId], // Destination chain ID.
       [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
-      [addressToBytes(dai.address), addressToBytes(dai.address)], // l2Token.
+      [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
       [[], []] // refundAmounts.
     );

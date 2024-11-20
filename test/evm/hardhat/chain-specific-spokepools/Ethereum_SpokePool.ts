@@ -55,7 +55,7 @@ describe("Ethereum Spoke Pool", function () {
   it("Only owner can enable a route", async function () {
     await expect(spokePool.connect(rando).setEnableRoute(dai.address, 1, true)).to.be.reverted;
     await spokePool.connect(owner).setEnableRoute(dai.address, 1, true);
-    expect(await spokePool.enabledDepositRoutes(addressToBytes(dai.address), 1)).to.equal(true);
+    expect(await spokePool.enabledDepositRoutes(dai.address, 1)).to.equal(true);
   });
 
   it("Only owner can set the hub pool address", async function () {

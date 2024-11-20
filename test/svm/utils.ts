@@ -101,14 +101,6 @@ export function buildRelayerRefundMerkleTree({
 }): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
   const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
-  if (evmTokenAddress && !isBytes32(evmTokenAddress)) {
-    throw new Error("EVM token address must be a bytes32 address");
-  }
-
-  if (evmRelayers && evmRelayers.some((address) => !isBytes32(address))) {
-    throw new Error("EVM relayers must be bytes32 addresses");
-  }
-
   const createSolanaLeaf = (index: number) => ({
     isSolana: true,
     leafId: new BN(index),
@@ -125,8 +117,8 @@ export function buildRelayerRefundMerkleTree({
       leafId: BigNumber.from(index),
       chainId: BigNumber.from(chainId),
       amountToReturn: BigNumber.from(0),
-      l2TokenAddress: evmTokenAddress ?? addressToBytes(randomAddress()),
-      refundAddresses: evmRelayers || [addressToBytes(randomAddress()), addressToBytes(randomAddress())],
+      l2TokenAddress: evmTokenAddress ?? randomAddress(),
+      refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
       refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
     } as RelayerRefundLeaf);
 
@@ -186,7 +178,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
     const abiCoder = new ethers.utils.AbiCoder();
     const encodedData = abiCoder.encode(
       [
-        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, bytes32 l2TokenAddress, bytes32[] refundAddresses)",
+        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
       ],
       [
         {
