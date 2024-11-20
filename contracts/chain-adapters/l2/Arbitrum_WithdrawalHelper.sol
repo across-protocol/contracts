@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-
-// Arbitrum only supports v0.8.19
-// See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -53,7 +50,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
 
     /**
      * @notice Initializes the withdrawal helper contract.
-     * @param _crossDomainAdmin L1 address of the contract which can send root bundles/messages to this forwarder contract.
+     * @param _crossDomainAdmin L1 address of the contract which may execute admin functions on this contract.
      */
     function initialize(address _crossDomainAdmin) public initializer {
         __WithdrawalHelper_init(_crossDomainAdmin);
