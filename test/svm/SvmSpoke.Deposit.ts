@@ -343,7 +343,7 @@ describe.only("svm_spoke.deposit", () => {
   it("Tests deposit with a fake route PDA", async () => {
     // Create fake program state
     const fakeState = await initializeState();
-    const fakeVault = getVaultAta(inputToken, fakeState);
+    const fakeVault = getVaultAta(inputToken, fakeState.state);
 
     const fakeRouteChainId = new BN(3);
     const fakeRoutePda = createRoutePda(inputToken, seed, fakeRouteChainId);

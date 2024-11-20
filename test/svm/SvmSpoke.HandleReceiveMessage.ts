@@ -314,7 +314,7 @@ describe("svm_spoke.handle_receive_message", () => {
     });
 
     // Remaining accounts specific to SetEnableRoute.
-    const routePda = createRoutePda(originToken, state, new BN(routeChainId));
+    const routePda = createRoutePda(originToken, seed, new BN(routeChainId));
     const vault = getVaultAta(originToken, state);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const enableRouteRemainingAccounts = remainingAccounts.slice(0, 3);
