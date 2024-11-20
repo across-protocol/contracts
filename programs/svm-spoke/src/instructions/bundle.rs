@@ -81,6 +81,11 @@ impl RelayerRefundLeaf {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
+        // This requires the first 64 bytes to be 0 within the encoded leaf data. This protects any kind of EVM leaf
+        // from ever being used on SVM. Note that the chain_id field in theory should protect this but this 64 blank
+        // slot protects it under all cases.
+        bytes.extend_from_slice(&[0u8; 64]);
+
         bytes.extend_from_slice(&self.amount_to_return.to_le_bytes());
         bytes.extend_from_slice(&self.chain_id.to_le_bytes());
         for amount in &self.refund_amounts {
