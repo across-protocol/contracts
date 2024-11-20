@@ -121,13 +121,14 @@ async function fillV3Relay(): Promise<void> {
     }))
   );
 
-  const tx = await (program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId, signer) as any)
+  const tx = await (program.methods.fillV3Relay(relayData, chainId, signer) as any)
     .accounts({
       state: statePda,
       signer: signer,
       mintAccount: outputToken,
       relayerTokenAccount: relayerTokenAccount,
       recipientTokenAccount: recipientTokenAccount,
+      relayHash: new PublicKey(relayHashUint8Array),
       fillStatus: fillStatusPda,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,

@@ -113,9 +113,10 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
       { Property: "Relay Hash", Value: Buffer.from(relayHashUint8Array).toString("hex") },
     ]);
 
-    const tx = await (program.methods.closeFillPda(Array.from(relayHashUint8Array), relayData) as any)
+    const tx = await (program.methods.closeFillPda(relayData) as any)
       .accounts({
         state: statePda,
+        relayHash: new PublicKey(relayHashUint8Array),
         signer: provider.wallet.publicKey,
         fillStatus: fillStatusPda,
         systemProgram: SystemProgram.programId,
