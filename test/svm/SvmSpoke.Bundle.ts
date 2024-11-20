@@ -460,8 +460,8 @@ describe("svm_spoke.bundle", () => {
   });
 
   it("Test Merkle Proof Verification with Mixed Solana and EVM Leaves", async () => {
-    const evmDistributions = 1;
-    const solanaDistributions = 1;
+    const evmDistributions = 5;
+    const solanaDistributions = 5;
     const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
       totalEvmDistributions: evmDistributions,
       totalSolanaDistributions: solanaDistributions,
