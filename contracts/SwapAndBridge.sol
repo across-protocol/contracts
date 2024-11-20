@@ -13,6 +13,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 /**
  * @title SwapAndBridgeBase
  * @notice Base contract for both variants of SwapAndBridge.
+ * @dev Variables which may be immutable are not marked as immutable so that this contract may be deployed deterministically.
  * @custom:security-contact bugs@across.to
  */
 abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
@@ -23,13 +24,13 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     mapping(bytes4 => bool) public allowedSelectors;
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
-    V3SpokePoolInterface public immutable SPOKE_POOL;
+    V3SpokePoolInterface public spokePool;
 
     // Exchange address or router where the swapping will happen.
-    address public immutable EXCHANGE;
+    address public exchange;
 
     // Wrapped native token contract address.
-    WETH9Interface internal immutable WRAPPED_NATIVE_TOKEN;
+    WETH9Interface internal wrappedNativeToken;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -89,9 +90,9 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         address _exchange,
         bytes4[] memory _allowedSelectors
     ) {
-        SPOKE_POOL = _spokePool;
-        EXCHANGE = _exchange;
-        WRAPPED_NATIVE_TOKEN = _wrappedNativeToken;
+        spokePool = _spokePool;
+        exchange = _exchange;
+        wrappedNativeToken = _wrappedNativeToken;
         for (uint256 i = 0; i < _allowedSelectors.length; i++) {
             allowedSelectors[_allowedSelectors[i]] = true;
         }
@@ -115,9 +116,9 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        _swapToken.safeIncreaseAllowance(EXCHANGE, swapTokenAmount);
+        _swapToken.safeIncreaseAllowance(exchange, swapTokenAmount);
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = EXCHANGE.call(routerCalldata);
+        (bool success, bytes memory result) = exchange.call(routerCalldata);
         require(success, string(result));
 
         _checkSwapOutputAndDeposit(
@@ -156,7 +157,7 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
 
         emit SwapBeforeBridge(
-            EXCHANGE,
+            exchange,
             address(_swapToken),
             address(_acrossInputToken),
             swapTokenAmount,
@@ -179,8 +180,8 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 _acrossInputAmount,
         DepositData calldata depositData
     ) internal {
-        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), _acrossInputAmount);
-        SPOKE_POOL.depositV3(
+        _acrossInputToken.safeIncreaseAllowance(address(spokePool), _acrossInputAmount);
+        spokePool.depositV3(
             depositData.depositor,
             depositData.recipient,
             address(_acrossInputToken), // input token
@@ -313,8 +314,8 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         // as though the user deposited a wrapped native token.
         if (msg.value != 0) {
             if (msg.value != swapTokenAmount) revert InsufficientSwapValue();
-            if (address(swapToken) != address(WRAPPED_NATIVE_TOKEN)) revert InvalidSwapToken();
-            WRAPPED_NATIVE_TOKEN.deposit{ value: msg.value }();
+            if (address(swapToken) != address(wrappedNativeToken)) revert InvalidSwapToken();
+            wrappedNativeToken.deposit{ value: msg.value }();
         } else {
             swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         }
