@@ -3,8 +3,15 @@
 
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  createApproveCheckedInstruction,
+  getAssociatedTokenAddressSync,
+  getMint,
+  getOrCreateAssociatedTokenAccount,
+} from "@solana/spl-token";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -64,7 +71,7 @@ async function fillV3Relay(): Promise<void> {
   };
 
   // Define the signer (replace with your actual signer)
-  const signer = provider.wallet.publicKey;
+  const signer = (provider.wallet as anchor.Wallet).payer;
 
   console.log("Filling V3 Relay...");
 
@@ -86,19 +93,25 @@ async function fillV3Relay(): Promise<void> {
   // Create ATA for the relayer and recipient token accounts
   const relayerTokenAccount = getAssociatedTokenAddressSync(
     outputToken,
-    signer,
+    signer.publicKey,
     true,
     TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  const recipientTokenAccount = getAssociatedTokenAddressSync(
-    outputToken,
-    recipient,
-    true,
-    TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  );
+  const recipientTokenAccount = (
+    await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      signer,
+      outputToken,
+      recipient,
+      true,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    )
+  ).address;
 
   console.table([
     { property: "relayHash", value: Buffer.from(relayHashUint8Array).toString("hex") },
@@ -120,10 +133,26 @@ async function fillV3Relay(): Promise<void> {
     }))
   );
 
-  const tx = await (program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId, signer) as any)
+  const tokenDecimals = (await getMint(provider.connection, outputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
+
+  // Delegate state PDA to pull relayer tokens.
+  const approveIx = await createApproveCheckedInstruction(
+    relayerTokenAccount,
+    outputToken,
+    statePda,
+    signer.publicKey,
+    BigInt(relayData.outputAmount.toString()),
+    tokenDecimals,
+    undefined,
+    TOKEN_PROGRAM_ID
+  );
+
+  const fillIx = await (
+    program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey) as any
+  )
     .accounts({
       state: statePda,
-      signer: signer,
+      signer: signer.publicKey,
       mintAccount: outputToken,
       relayerTokenAccount: relayerTokenAccount,
       recipientTokenAccount: recipientTokenAccount,
@@ -133,7 +162,9 @@ async function fillV3Relay(): Promise<void> {
       systemProgram: SystemProgram.programId,
       programId: programId,
     })
-    .rpc();
+    .instruction();
+  const fillTx = new Transaction().add(approveIx, fillIx);
+  const tx = await sendAndConfirmTransaction(provider.connection, fillTx, [signer]);
 
   console.log("Transaction signature:", tx);
 }

@@ -7,8 +7,9 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
+  createApproveCheckedInstruction,
 } from "@solana/spl-token";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import {
@@ -37,6 +38,7 @@ describe("svm_spoke.slow_fill", () => {
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
   const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
+  const tokenDecimals = 6;
 
   let state: PublicKey,
     mint: PublicKey,
@@ -138,7 +140,7 @@ describe("svm_spoke.slow_fill", () => {
   };
 
   before("Creates token mint and associated token accounts", async () => {
-    mint = await createMint(connection, payer, owner, owner, 6);
+    mint = await createMint(connection, payer, owner, owner, tokenDecimals);
     relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     otherRelayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, otherRelayer.publicKey)).address;
 
@@ -225,12 +227,21 @@ describe("svm_spoke.slow_fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Fill the relay first
-    await program.methods
+    const approveIx = await createApproveCheckedInstruction(
+      fillAccounts.relayerTokenAccount,
+      fillAccounts.mintAccount,
+      fillAccounts.state,
+      fillAccounts.signer,
+      BigInt(relayData.outputAmount.toString()),
+      tokenDecimals
+    );
+    const fillIx = await program.methods
       .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
-      .signers([relayer])
       .remainingAccounts(fillRemainingAccounts)
-      .rpc();
+      .instruction();
+    const fillTx = new Transaction().add(approveIx, fillIx);
+    await sendAndConfirmTransaction(connection, fillTx, [relayer]);
 
     try {
       await program.methods
@@ -553,7 +564,7 @@ describe("svm_spoke.slow_fill", () => {
       .rpc();
 
     // Create and fund new accounts as derived from wrong mint account.
-    const wrongMint = await createMint(connection, payer, owner, owner, 6);
+    const wrongMint = await createMint(connection, payer, owner, owner, tokenDecimals);
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, recipient)).address;
     const wrongVault = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, state, true)).address;
     await mintTo(connection, payer, wrongMint, wrongVault, provider.publicKey, initialMintAmount);
