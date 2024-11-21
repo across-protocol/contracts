@@ -360,7 +360,8 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
     ) external nonReentrant {
         IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Permit to IERC20.
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
-        // permit fails. For example, this may be useful if the permit signature is front-run.
+        // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
+        // other than this contract.
         try swapToken.permit(msg.sender, address(this), swapTokenAmount, deadline, v, r, s) {} catch {}
 
         _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
@@ -455,7 +456,8 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
     ) external nonReentrant {
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast IERC20Permit to an IERC20 type.
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
-        // permit fails. For example, this may be useful if the permit signature is front-run.
+        // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
+        // other than this contract.
         try acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s) {} catch {}
 
         _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
