@@ -2,8 +2,19 @@
 pragma solidity ^0.8.0;
 
 library Bytes32ToAddress {
+    /**************************************
+     *              ERRORS                *
+     **************************************/
+    error InvalidBytes32();
+
     function toAddress(bytes32 _bytes32) internal pure returns (address) {
-        require(uint256(_bytes32) >> 192 == 0, "Invalid bytes32: highest 12 bytes must be 0");
+        if (uint256(_bytes32) >> 192 != 0) {
+            revert InvalidBytes32();
+        }
+        return address(uint160(uint256(_bytes32)));
+    }
+
+    function toAddressUnchecked(bytes32 _bytes32) internal pure returns (address) {
         return address(uint160(uint256(_bytes32)));
     }
 }

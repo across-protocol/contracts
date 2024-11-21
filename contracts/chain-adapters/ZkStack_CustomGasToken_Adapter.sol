@@ -36,8 +36,11 @@ interface FunderInterface {
 contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
+    // The ZkSync bridgehub contract treats address(1) to represent ETH.
+    address private constant ETH_TOKEN_ADDRESS = address(1);
+
     // We need to pay a base fee to the operator to include our L1 --> L2 transaction.
-    // https://era.zksync.io/docs/dev/developer-guides/bridging/l1-l2.html#getting-the-base-cost
+    // https://docs.zksync.io/build/developer-reference/l1-l2-interoperability#l1-to-l2-gas-estimation-for-transactions
 
     // Limit on L2 gas to spend.
     uint256 public immutable L2_GAS_LIMIT; // typically 2_000_000
@@ -70,13 +73,24 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     // Custom gas token funder
     FunderInterface public immutable CUSTOM_GAS_TOKEN_FUNDER;
 
-    event ZkStackMessageRelayed(bytes32 canonicalTxHash);
+    // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
+    // when calling a hub pool message relay, which would otherwise cause a large amount of the custom gas token to be sent to L2.
+    uint256 private immutable MAX_TX_GASPRICE;
+
+    event ZkStackMessageRelayed(bytes32 indexed canonicalTxHash);
     error ETHGasTokenNotAllowed();
+    error TransactionFeeTooHigh();
 
     /**
      * @notice Constructs new Adapter.
+     * @param _chainId The target ZkStack network's chain ID.
+     * @param _bridgeHub The bridge hub contract address for the ZkStack network.
      * @param _l1Weth WETH address on L1.
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
+     * @param _customGasTokenFunder Contract on L1 which funds bridge fees with amounts in the custom gas token.
+     * @param _l2GasLimit The maximum amount of gas this contract is willing to pay to execute a transaction on L2.
+     * @param _l1GasToL2GasPerPubDataLimit The exchange rate of l1 gas to l2 gas.
+     * @param _maxTxGasprice The maximum effective gas price any transaction sent to this adapter may have.
      */
     constructor(
         uint256 _chainId,
@@ -85,7 +99,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         address _l2RefundAddress,
         FunderInterface _customGasTokenFunder,
         uint256 _l2GasLimit,
-        uint256 _l1GasToL2GasPerPubDataLimit
+        uint256 _l1GasToL2GasPerPubDataLimit,
+        uint256 _maxTxGasprice
     ) {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
@@ -93,10 +108,11 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         L2_REFUND_ADDRESS = _l2RefundAddress;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
         L2_GAS_LIMIT = _l2GasLimit;
+        MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         CUSTOM_GAS_TOKEN = BRIDGE_HUB.baseToken(CHAIN_ID);
-        if (CUSTOM_GAS_TOKEN == address(1)) {
+        if (CUSTOM_GAS_TOKEN == ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenNotAllowed();
         }
     }
@@ -109,7 +125,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
      */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
-        IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
+        IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
 
         // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
         bytes32 canonicalTxHash = BRIDGE_HUB.requestL2TransactionDirect(
@@ -153,7 +169,9 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
             // cost of custom gas tokens.
             L1_WETH.withdraw(amount);
-            IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
+            // Note: When bridging ETH with `L2TransactionRequestTwoBridgesOuter`, the second bridge must be 0 for the shared bridge call to not revert.
+            // https://github.com/matter-labs/era-contracts/blob/aafee035db892689df3f7afe4b89fd6467a39313/l1-contracts/contracts/bridge/L1SharedBridge.sol#L328
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: amount }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -162,20 +180,20 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
+                    secondBridgeAddress: SHARED_BRIDGE,
                     secondBridgeValue: amount,
-                    secondBridgeCalldata: _secondBridgeCalldata(to, address(1), amount)
+                    secondBridgeCalldata: _secondBridgeCalldata(to, ETH_TOKEN_ADDRESS, 0)
                 })
             );
         } else if (l1Token == CUSTOM_GAS_TOKEN) {
             // The chain's custom gas token.
-            IERC20(l1Token).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost + amount);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, txBaseCost + amount);
             txHash = BRIDGE_HUB.requestL2TransactionDirect(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: CHAIN_ID,
-                    mintValue: txBaseCost,
+                    mintValue: txBaseCost + amount,
                     l2Contract: to,
-                    l2Value: 0,
+                    l2Value: amount,
                     l2Calldata: "",
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
@@ -185,8 +203,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH and not the custom gas token.
-            IERC20(CUSTOM_GAS_TOKEN).safeIncreaseAllowance(SHARED_BRIDGE, txBaseCost);
-            IERC20(l1Token).safeIncreaseAllowance(SHARED_BRIDGE, amount);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -195,7 +213,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: BRIDGE_HUB.sharedBridge(),
+                    secondBridgeAddress: SHARED_BRIDGE,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
@@ -229,6 +247,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
      * @return amount of gas token that this contract needs to provide in order for the l2 transaction to succeed.
      */
     function _pullCustomGas(uint256 l2GasLimit) internal returns (uint256) {
+        if (tx.gasprice > MAX_TX_GASPRICE) revert TransactionFeeTooHigh();
         uint256 cost = BRIDGE_HUB.l2TransactionBaseCost(
             CHAIN_ID,
             tx.gasprice,

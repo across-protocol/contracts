@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 // Define a minimal interface for USDT. Note USDT does NOT return anything after a transfer.
@@ -44,6 +44,7 @@ contract MockSpokePoolTest is Test {
     MockSpokePool spokePool;
     IUSDT usdt;
     IUSDC usdc;
+    using AddressToBytes32 for address;
 
     address largeUSDTAccount = 0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1;
     address largeUSDCAccount = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
@@ -120,8 +121,8 @@ contract MockSpokePoolTest is Test {
         assertEq(usdt.balanceOf(recipient1), refundAmounts[0], "Recipient1 should have received their refund");
         assertEq(usdt.balanceOf(recipient2), refundAmounts[1], "Recipient2 should have received their refund");
 
-        assertEq(spokePool.getRelayerRefund(address(usdt), recipient1), 0);
-        assertEq(spokePool.getRelayerRefund(address(usdt), recipient2), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdt).toBytes32(), recipient1.toBytes32()), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdt).toBytes32(), recipient2.toBytes32()), 0);
     }
 
     function testSomeRecipientsBlacklistedDoesNotBlockTheWholeRefundUsdc() public {
@@ -147,15 +148,15 @@ contract MockSpokePoolTest is Test {
         assertEq(usdc.balanceOf(recipient1), 0, "Recipient1 should have 0 refund as blacklisted");
         assertEq(usdc.balanceOf(recipient2), refundAmounts[1], "Recipient2 should have received their refund");
 
-        assertEq(spokePool.getRelayerRefund(address(usdc), recipient1), refundAmounts[0]);
-        assertEq(spokePool.getRelayerRefund(address(usdc), recipient2), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdc).toBytes32(), recipient1.toBytes32()), refundAmounts[0]);
+        assertEq(spokePool.getRelayerRefund(address(usdc).toBytes32(), recipient2.toBytes32()), 0);
 
         // Now, blacklisted recipient should be able to claim refund to a new address.
         address newRecipient = address(0x6969693333333420);
         vm.prank(recipient1);
-        spokePool.claimRelayerRefund(address(usdc), newRecipient);
+        spokePool.claimRelayerRefund(address(usdc).toBytes32(), newRecipient.toBytes32());
         assertEq(usdc.balanceOf(newRecipient), refundAmounts[0], "New recipient should have received relayer2 refund");
-        assertEq(spokePool.getRelayerRefund(address(usdt), recipient1), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdt).toBytes32(), recipient1.toBytes32()), 0);
     }
 
     function toBytes32(address _address) internal pure returns (bytes32) {

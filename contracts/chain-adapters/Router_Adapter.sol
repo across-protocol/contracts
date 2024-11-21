@@ -72,7 +72,7 @@ contract Router_Adapter is AdapterInterface {
      * contracts.
      * @param message Data to send to `target`.
      * @dev The message passed into this function is wrapped into a `relayMessage` function call, which is then passed
-     * to L2. The `L2_TARGET` contract implements AdapterInterface, so upon arrival on L2, the arguments to the L2 contract's
+     * to L2. The `L2_TARGET` contract implements ForwarderInterface, so upon arrival on L2, the arguments to the L2 contract's
      * `relayMessage` call will be these `target` and `message` values. From there, the forwarder derives the next appropriate
      * method to send `message` to the following layers and ultimately to the target on L3.
      */
