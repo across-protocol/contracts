@@ -100,7 +100,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient.toAddress(),
+                updatedRecipient,
                 updatedMessage,
                 depositorSignature,
                 UPDATE_V3_DEPOSIT_DETAILS_HASH
@@ -122,7 +122,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient,
+                updatedRecipient.toBytes32(),
                 updatedMessage,
                 depositorSignature,
                 UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
@@ -134,7 +134,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         bytes32 relayer,
         bool isSlowFill
     ) external {
-        _fillRelayV3(relayExecution, relayer.toAddress(), isSlowFill);
+        _fillRelayV3(relayExecution, relayer, isSlowFill);
     }
 
     // This function is nonReentrant in order to allow caller to test whether a different function
