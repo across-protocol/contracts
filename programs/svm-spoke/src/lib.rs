@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q");
+declare_id!("87FbS6hcHxp7U8HuxYVNhsWQZVHwmRVKYr2PWFdMM9BT");
 
 // External programs from idls directory (requires `anchor run generateExternalTypes`).
 declare_program!(message_transmitter);
@@ -205,18 +205,14 @@ pub mod svm_spoke {
         )
     }
 
-    pub fn get_unsafe_deposit_id(
-        _ctx: Context<Null>,
-        msg_sender: Pubkey,
-        depositor: Pubkey,
-        deposit_nonce: u64,
-    ) -> Result<Pubkey> {
-        Ok(instructions::get_unsafe_deposit_id(
-            msg_sender,
-            depositor,
-            deposit_nonce,
-        ))
-    }
+    // pub fn get_unsafe_deposit_id(
+    //     _ctx: Context<Null>,
+    //     msg_sender: Pubkey,
+    //     depositor: Pubkey,
+    //     deposit_nonce: u64
+    // ) -> Result<U256> {
+    //     Ok(instructions::get_unsafe_deposit_id(msg_sender, depositor, deposit_nonce))
+    // }
 
     // Relayer methods.
     pub fn fill_v3_relay(

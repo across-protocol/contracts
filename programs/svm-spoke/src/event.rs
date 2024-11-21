@@ -1,5 +1,76 @@
 use anchor_lang::prelude::*;
 
+// use ethereum_types::U256;
+// // Wrapper struct for U256
+// pub struct U256Wrapper(pub U256);
+
+// impl anchor_lang::AnchorSerialize for U256Wrapper {
+//     fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+//         let bytes = U256::to_little_endian(&self.0); // Get the little-endian byte array
+//         writer.write_all(&bytes) // Write the byte array to the writer
+//     }
+// }
+
+// impl anchor_lang::AnchorDeserialize for U256Wrapper {
+//     fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
+//         let mut bytes = [0u8; 32];
+//         bytes.copy_from_slice(&buf[..32]); // Copy the first 32 bytes
+//         let u256 = U256::from_big_endian(&bytes); // Convert from big-endian byte array
+//         Ok(U256Wrapper(u256))
+//     }
+
+//     fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+//         let mut bytes = [0u8; 32];
+//         reader.read_exact(&mut bytes)?;
+//         let u256 = U256::from_big_endian(&bytes); // Convert from big-endian byte array
+//         Ok(U256Wrapper(u256))
+//     }
+// }
+
+// #[cfg(feature = "idl-build")]
+// impl anchor_lang::IdlBuild for U256Wrapper {
+//     fn create_type() -> Option<IdlTypeDef> {
+//         Some(IdlTypeDef {
+//             name: "U256Wrapper".into(),
+//             ty: IdlTypeDefTy::Struct {
+//                 fields: Some(IdlDefinedFields::Named(vec![IdlField {
+//                     name: "value".into(),
+//                     ty: IdlType::Array(Box::new(IdlType::U8), 32),
+//                     docs: Default::default(),
+//                 }])),
+//             },
+//             docs: Default::default(),
+//             generics: Default::default(),
+//             serialization: Default::default(),
+//             repr: Default::default(),
+//         })
+//     }
+
+//     fn get_full_path() -> String {
+//         "U256Wrapper".to_string()
+//     }
+
+//     fn insert_types(types: &mut std::collections::HashMap<String, IdlTypeDef>) {
+//         types.insert(
+//             "U256Wrapper".to_string(),
+//             IdlTypeDef {
+//                 name: "U256Wrapper".into(),
+//                 ty: IdlTypeDefTy::Struct {
+//                     fields: Some(IdlDefinedFields::Named(vec![IdlField {
+//                         name: "value".into(),
+//                         ty: IdlType::Array(Box::new(IdlType::U8), 32),
+//                         docs: Default::default(),
+//                     }])),
+//                 },
+//                 docs: Default::default(),
+//                 generics: Default::default(),
+//                 serialization: Default::default(),
+//                 repr: Default::default(),
+//             },
+//         );
+//     }
+// }
+
 // Admin events
 #[event]
 pub struct SetXDomainAdmin {
@@ -38,7 +109,7 @@ pub struct V3FundsDeposited {
     pub input_amount: u64,
     pub output_amount: u64,
     pub destination_chain_id: u64,
-    pub deposit_id: Pubkey,
+    pub deposit_id: String,
     pub quote_timestamp: u32,
     pub fill_deadline: u32,
     pub exclusivity_deadline: u32,
