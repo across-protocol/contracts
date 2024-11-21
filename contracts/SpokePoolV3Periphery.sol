@@ -53,15 +53,16 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         address recipient;
         // The destination chain identifier.
         uint256 destinationChainid;
-        // The account that can exclusively fill the deposit before the exclusivity deadline.
+        // The account that can exclusively fill the deposit before the  deadline.
         address exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
         // relative to this chain's current time or deposit will revert.
         uint32 quoteTimestamp;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
         uint32 fillDeadline;
-        // The timestamp on the destination chain after which anyone can fill the deposit.
-        uint32 exclusivityDeadline;
+        // The timestamp or offset on the destination chain after which anyone can fill the deposit. A detailed description on
+        // how the parameter is interpreted by the V3 spoke pool can be found at https://github.com/across-protocol/contracts/blob/fa67f5e97eabade68c67127f2261c2d44d9b007e/contracts/SpokePool.sol#L476
+        uint32 exclusivityParameter;
         // Data that is forwarded to the recipient if the recipient is a contract.
         bytes message;
     }
@@ -138,8 +139,8 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      * @param exclusiveRelayer Address of the relayer who has exclusive rights to fill this deposit. Can be set to
-     * 0x0 if no exclusivity period is desired. If so, then must set exclusivityDeadline to 0.
-     * @param exclusivityDeadline Timestamp after which any relayer can fill this deposit. Must set
+     * 0x0 if no period is desired. If so, then must set exclusivityParameter to 0.
+     * @param exclusivityParameter Timestamp or offset, after which any relayer can fill this deposit. Must set
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
      * @param fillDeadline Timestamp after which this deposit can no longer be filled.
      */
@@ -152,7 +153,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityParameter,
         bytes memory message
     ) external payable nonReentrant {
         if (msg.value != inputAmount) revert InvalidMsgValue();
@@ -171,7 +172,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
-            exclusivityDeadline,
+            exclusivityParameter,
             message
         );
     }
@@ -414,7 +415,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             depositData.exclusiveRelayer,
             depositData.quoteTimestamp,
             depositData.fillDeadline,
-            depositData.exclusivityDeadline,
+            depositData.exclusivityParameter,
             depositData.message
         );
     }
