@@ -32,8 +32,7 @@ task("testChainAdapter", "Verify a chain adapter")
     const adapterName =
       chains[spokeChainId] ?? `${spokeName[0].toUpperCase()}${spokeName.slice(1).toLowerCase()}_Adapter`;
 
-    let { address: adapterAddress, abi: adapterAbi } = await deployments.get(adapterName);
-    adapterAddress = "0x370B162f1e8335B368C77a3004F8c2C7BA18d451";
+    const { address: adapterAddress, abi: adapterAbi } = await deployments.get(adapterName);
     const adapter = new ethers.Contract(adapterAddress, adapterAbi, provider);
     const tokenSymbol = args.token.toUpperCase();
     const tokenAddress = TOKEN_SYMBOLS_MAP[tokenSymbol].addresses[hubChainId];
