@@ -17,7 +17,7 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
  * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this contract may be deployed deterministically.
  * @custom:security-contact bugs@across.to
  */
-abstract contract SpokePoolV3Periphery is Lockable, MultiCaller {
+contract SpokePoolV3Periphery is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
