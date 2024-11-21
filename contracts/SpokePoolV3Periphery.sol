@@ -53,7 +53,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         address recipient;
         // The destination chain identifier.
         uint256 destinationChainid;
-        // The account that can exclusively fill the deposit before the  deadline.
+        // The account that can exclusively fill the deposit before the exclusivity parameter.
         address exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
         // relative to this chain's current time or deposit will revert.
