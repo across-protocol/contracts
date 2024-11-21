@@ -1,6 +1,6 @@
 use anchor_lang::{
     prelude::*,
-    solana_program::{instruction::Instruction, program::invoke, system_instruction},
+    solana_program::{instruction::Instruction, keccak, program::invoke, system_instruction},
 };
 
 use crate::{constants::DISCRIMINATOR_SIZE, error::AcrossPlusError};
@@ -99,4 +99,11 @@ pub fn invoke_handler<'info>(
     invoke(&instruction, account_infos)?;
 
     Ok(())
+}
+
+pub fn hash_non_empty_message(message: &Vec<u8>) -> [u8; 32] {
+    match message.len() {
+        0 => [0u8; 32],
+        _ => keccak::hash(message).to_bytes(),
+    }
 }

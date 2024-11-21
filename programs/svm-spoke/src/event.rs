@@ -59,7 +59,7 @@ pub enum FillType {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V3RelayExecutionEventInfo {
     pub updated_recipient: Pubkey,
-    pub updated_message: Vec<u8>,
+    pub updated_message_hash: [u8; 32],
     pub updated_output_amount: u64,
     pub fill_type: FillType,
 }
@@ -79,7 +79,8 @@ pub struct FilledV3Relay {
     pub relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    pub message: Vec<u8>,
+    // TODO: update EVM implementation to use message_hash in all fill related events.
+    pub message_hash: [u8; 32],
     pub relay_execution_info: V3RelayExecutionEventInfo,
 }
 
@@ -97,7 +98,7 @@ pub struct RequestedV3SlowFill {
     pub exclusive_relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    pub message: Vec<u8>,
+    pub message_hash: [u8; 32],
 }
 
 // Relayer refund events

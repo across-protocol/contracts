@@ -12,7 +12,7 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
-    utils::{invoke_handler, transfer_from},
+    utils::{hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -118,13 +118,17 @@ pub fn fill_v3_relay<'info>(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
-    // TODO: there might be a better way to do this
-    // Emit the FilledV3Relay event
-    let message_clone = relay_data.message.clone(); // Clone the message before it is moved
-
-    if message_clone.len() > 0 {
-        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &message_clone)?;
+    if relay_data.message.len() > 0 {
+        invoke_handler(
+            ctx.accounts.signer.as_ref(),
+            ctx.remaining_accounts,
+            &relay_data.message,
+        )?;
     }
+
+    // Emit the FilledV3Relay event
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
 
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
@@ -140,10 +144,10 @@ pub fn fill_v3_relay<'info>(
         relayer: repayment_address,
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
-        message: relay_data.message,
+        message_hash,
         relay_execution_info: V3RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message: message_clone,
+            updated_message_hash: message_hash,
             updated_output_amount: relay_data.output_amount,
             fill_type,
         },

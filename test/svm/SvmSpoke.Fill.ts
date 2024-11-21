@@ -18,7 +18,7 @@ import {
 import { PublicKey, Keypair, TransactionInstruction, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import { readProgramEvents, calculateRelayHashUint8Array, sendTransactionWithLookupTable } from "../../src/SvmUtils";
 import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
-import { testAcrossPlusMessage } from "./utils";
+import { testAcrossPlusMessage, hashNonEmptyMessage } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
@@ -175,8 +175,19 @@ describe("svm_spoke.fill", () => {
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
-      assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      if (key === "message") {
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
+      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
     });
+    // RelayExecutionInfo should match.
+    assertSE(event.relayExecutionInfo.updatedRecipient, relayData.recipient, "UpdatedRecipient should match");
+    assertSE(
+      event.relayExecutionInfo.updatedMessageHash,
+      hashNonEmptyMessage(relayData.message),
+      "UpdatedMessageHash should match"
+    );
+    assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
+    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"fastFill":{}}`, "FillType should be FastFill");
     // These props below are not part of relayData.
     assertSE(event.repaymentChainId, new BN(420), "Repayment chain id should match");
     assertSE(event.relayer, otherRelayer.publicKey, "Repayment address should match");
@@ -627,5 +638,21 @@ describe("svm_spoke.fill", () => {
     // Verify recipient's balance after the fill
     recipientAccount = await getAccount(connection, recipientTA, undefined, tokenProgram);
     assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
+  });
+
+  it("Emits zeroed hash for empty message", async () => {
+    updateRelayData({ ...relayData, message: Buffer.alloc(0) });
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
+
+    // Fetch and verify the FilledV3Relay event
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "filledV3Relay").data;
+    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+
+    // Verify that the event data has zeroed message hash.
+    assertSE(event.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
+    assertSE(event.relayExecutionInfo.updatedMessageHash, new Uint8Array(32), `UpdatedMessageHash should be zeroed`);
   });
 });
