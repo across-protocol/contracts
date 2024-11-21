@@ -1,12 +1,17 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
+use ethereum_types::U256;
+
 use crate::{
+    constants::MAX_EXCLUSIVITY_PERIOD_SECONDS,
     error::{CommonError, SvmError},
     event::V3FundsDeposited,
     get_current_time,
     state::{Route, State},
 };
+
+use crate::utils::merkle_proof_utils::efficient_keccak256;
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -62,7 +67,7 @@ pub struct DepositV3<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn deposit_v3(
+pub fn _deposit_v3(
     ctx: Context<DepositV3>,
     depositor: Pubkey,
     recipient: Pubkey,
@@ -72,9 +77,10 @@ pub fn deposit_v3(
     output_amount: u64,
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
+    deposit_id: Pubkey,
     quote_timestamp: u32,
     fill_deadline: u32,
-    exclusivity_period: u32,
+    exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
@@ -89,6 +95,17 @@ pub fn deposit_v3(
         return err!(CommonError::InvalidFillDeadline);
     }
 
+    let mut exclusivity_deadline = exclusivity_parameter;
+    if exclusivity_deadline > 0 {
+        if exclusivity_deadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS {
+            exclusivity_deadline += current_time;
+        }
+
+        if exclusive_relayer == Pubkey::default() {
+            return err!(CommonError::InvalidExclusiveRelayer);
+        }
+    }
+
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.depositor_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
@@ -98,7 +115,15 @@ pub fn deposit_v3(
     let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
     transfer_checked(cpi_context, input_amount, ctx.accounts.mint.decimals)?;
 
-    state.number_of_deposits += 1; // Increment number of deposits
+    // If the caller set this to 0 then set the applied_deposit_id to the auto incremented number_of_deposits to give
+    // the deposit a unique incrementing ID. Else, use the provided deposit_id.
+    let mut applied_deposit_id = deposit_id;
+    if deposit_id == Pubkey::default() {
+        state.number_of_deposits += 1;
+        let mut padded_bytes = [0u8; 32];
+        padded_bytes[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
+        applied_deposit_id = Pubkey::from(padded_bytes);
+    }
 
     emit_cpi!(V3FundsDeposited {
         input_token,
@@ -106,15 +131,50 @@ pub fn deposit_v3(
         input_amount,
         output_amount,
         destination_chain_id,
-        deposit_id: state.number_of_deposits,
+        deposit_id: applied_deposit_id,
         quote_timestamp,
         fill_deadline,
-        exclusivity_deadline: current_time + exclusivity_period,
+        exclusivity_deadline,
         depositor,
         recipient,
         exclusive_relayer,
         message,
     });
+
+    Ok(())
+}
+
+pub fn deposit_v3(
+    ctx: Context<DepositV3>,
+    depositor: Pubkey,
+    recipient: Pubkey,
+    input_token: Pubkey,
+    output_token: Pubkey,
+    input_amount: u64,
+    output_amount: u64,
+    destination_chain_id: u64,
+    exclusive_relayer: Pubkey,
+    quote_timestamp: u32,
+    fill_deadline: u32,
+    exclusivity_parameter: u32,
+    message: Vec<u8>,
+) -> Result<()> {
+    _deposit_v3(
+        ctx,
+        depositor,
+        recipient,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+        exclusive_relayer,
+        Pubkey::default(), // deposit_id set to 0 to indicate a new deposit that will use the auto incremented deposit id from state.
+        quote_timestamp,
+        fill_deadline,
+        exclusivity_parameter,
+        message,
+    )?;
 
     Ok(())
 }
@@ -152,4 +212,55 @@ pub fn deposit_v3_now(
     )?;
 
     Ok(())
+}
+
+pub fn unsafe_deposit_v3(
+    ctx: Context<DepositV3>,
+    depositor: Pubkey,
+    recipient: Pubkey,
+    input_token: Pubkey,
+    output_token: Pubkey,
+    input_amount: u64,
+    output_amount: u64,
+    destination_chain_id: u64,
+    exclusive_relayer: Pubkey,
+    deposit_nonce: u64,
+    quote_timestamp: u32,
+    fill_deadline: u32,
+    exclusivity_parameter: u32,
+    message: Vec<u8>,
+) -> Result<()> {
+    // Calculate the unsafe deposit ID
+    let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
+
+    // Call the existing _deposit_v3 function
+    _deposit_v3(
+        ctx,
+        depositor,
+        recipient,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+        exclusive_relayer,
+        deposit_id,
+        quote_timestamp,
+        fill_deadline,
+        exclusivity_parameter,
+        message,
+    )?;
+
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct Null {}
+pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonce: u64) -> Pubkey {
+    let hash = efficient_keccak256(&msg_sender.to_bytes(), &depositor.to_bytes());
+
+    let mut nonce_padded = [0u8; 32];
+    nonce_padded[..8].copy_from_slice(&deposit_nonce.to_le_bytes());
+
+    Pubkey::from(efficient_keccak256(&hash, &nonce_padded))
 }

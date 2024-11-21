@@ -36,7 +36,7 @@ fn commutative_keccak256(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {
     }
 }
 
-fn efficient_keccak256(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {
+pub fn efficient_keccak256(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {
     let mut input = [0u8; 64];
     input[..32].copy_from_slice(a);
     input[32..].copy_from_slice(b);

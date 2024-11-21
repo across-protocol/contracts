@@ -38,7 +38,7 @@ pub struct V3FundsDeposited {
     pub input_amount: u64,
     pub output_amount: u64,
     pub destination_chain_id: u64,
-    pub deposit_id: u32,
+    pub deposit_id: Pubkey,
     pub quote_timestamp: u32,
     pub fill_deadline: u32,
     pub exclusivity_deadline: u32,
