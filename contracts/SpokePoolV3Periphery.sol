@@ -1,23 +1,25 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "./interfaces/V3SpokePoolInterface.sol";
-import "./external/interfaces/IERC20Auth.sol";
-import "./external/interfaces/WETH9Interface.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import "./Lockable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { Lockable } from "./Lockable.sol";
+import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
+import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
+import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 
 /**
- * @title SwapAndBridgeBase
- * @notice Base contract for both variants of SwapAndBridge.
- * @dev Variables which may be immutable are not marked as immutable so that this contract may be deployed deterministically.
+ * @title SpokePoolV3Periphery
+ * @notice Contract for performing more complex interactions with an AcrossV3 spoke pool deployment.
+ * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this contract may be deployed deterministically.
  * @custom:security-contact bugs@across.to
  */
-abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
+abstract contract SpokePoolV3Periphery is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
     // surface and we should whitelist which function selectors are allowed to be called on the exchange.
@@ -31,6 +33,9 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
 
     // Wrapped native token contract address.
     WETH9Interface internal wrappedNativeToken;
+
+    // Boolean indicating whether the contract is initialized.
+    bool private initialized;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -77,216 +82,99 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     error MinimumExpectedInputAmount();
     error LeftoverSrcTokens();
     error InvalidFunctionSelector();
+    error ContractInitialized();
+    error InvalidMsgValue();
+    error InvalidSpokePool();
+    error InvalidSwapToken();
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
-     * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
-     * @param _exchange Address of the exchange where tokens will be swapped.
      * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
      */
-    constructor(
-        V3SpokePoolInterface _spokePool,
-        WETH9Interface _wrappedNativeToken,
-        address _exchange,
-        bytes4[] memory _allowedSelectors
-    ) {
-        spokePool = _spokePool;
-        exchange = _exchange;
-        wrappedNativeToken = _wrappedNativeToken;
+    constructor(bytes4[] memory _allowedSelectors) {
         for (uint256 i = 0; i < _allowedSelectors.length; i++) {
             allowedSelectors[_allowedSelectors[i]] = true;
         }
     }
 
-    // This contract supports two variants of swap and bridge, one that allows one token and another that allows the caller to pass them in.
-    function _swapAndBridge(
-        bytes calldata routerCalldata,
-        uint256 swapTokenAmount,
-        uint256 minExpectedInputTokenAmount,
-        DepositData calldata depositData,
-        IERC20 _swapToken,
-        IERC20 _acrossInputToken
-    ) internal {
-        // Note: this check should never be impactful, but is here out of an abundance of caution.
-        // For example, if the exchange address in the contract is also an ERC20 token that is approved by some
-        // user on this contract, a malicious actor could call transferFrom to steal the user's tokens.
-        if (!allowedSelectors[bytes4(routerCalldata)]) revert InvalidFunctionSelector();
-
-        // Swap and run safety checks.
-        uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
-        uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
-
-        _swapToken.safeIncreaseAllowance(exchange, swapTokenAmount);
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = exchange.call(routerCalldata);
-        require(success, string(result));
-
-        _checkSwapOutputAndDeposit(
-            swapTokenAmount,
-            srcBalanceBefore,
-            dstBalanceBefore,
-            minExpectedInputTokenAmount,
-            depositData,
-            _swapToken,
-            _acrossInputToken
-        );
-    }
-
     /**
-     * @notice Check that the swap returned enough tokens to submit an Across deposit with and then submit the deposit.
-     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of acrossInputToken.
-     * @param swapTokenBalanceBefore Balance of swapToken before swap.
-     * @param inputTokenBalanceBefore Amount of Across input token we held before swap
-     * @param minExpectedInputTokenAmount Minimum amount of received acrossInputToken that we'll bridge
-     **/
-    function _checkSwapOutputAndDeposit(
-        uint256 swapTokenAmount,
-        uint256 swapTokenBalanceBefore,
-        uint256 inputTokenBalanceBefore,
-        uint256 minExpectedInputTokenAmount,
-        DepositData calldata depositData,
-        IERC20 _swapToken,
-        IERC20 _acrossInputToken
-    ) internal {
-        // Sanity check that we received as many tokens as we require:
-        uint256 returnAmount = _acrossInputToken.balanceOf(address(this)) - inputTokenBalanceBefore;
-        // Sanity check that received amount from swap is enough to submit Across deposit with.
-        if (returnAmount < minExpectedInputTokenAmount) revert MinimumExpectedInputAmount();
-        // Sanity check that we don't have any leftover swap tokens that would be locked in this contract (i.e. check
-        // that we weren't partial filled).
-        if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
-
-        emit SwapBeforeBridge(
-            exchange,
-            address(_swapToken),
-            address(_acrossInputToken),
-            swapTokenAmount,
-            returnAmount,
-            depositData.outputToken,
-            depositData.outputAmount
-        );
-        // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _depositV3(_acrossInputToken, returnAmount, depositData);
-    }
-
-    /**
-     * @notice Approves the spoke pool and calls `depositV3` function with the specified input parameters.
-     * @param _acrossInputToken Token to deposit into the spoke pool.
-     * @param _acrossInputAmount Amount of the input token to deposit into the spoke pool.
-     * @param depositData Specifies the Across deposit params to use.
-     */
-    function _depositV3(
-        IERC20 _acrossInputToken,
-        uint256 _acrossInputAmount,
-        DepositData calldata depositData
-    ) internal {
-        _acrossInputToken.safeIncreaseAllowance(address(spokePool), _acrossInputAmount);
-        spokePool.depositV3(
-            depositData.depositor,
-            depositData.recipient,
-            address(_acrossInputToken), // input token
-            depositData.outputToken, // output token
-            _acrossInputAmount, // input amount.
-            depositData.outputAmount, // output amount
-            depositData.destinationChainid,
-            depositData.exclusiveRelayer,
-            depositData.quoteTimestamp,
-            depositData.fillDeadline,
-            depositData.exclusivityDeadline,
-            depositData.message
-        );
-    }
-}
-
-/**
- * @title SwapAndBridge
- * @notice Allows caller to swap between two pre-specified tokens on a chain before bridging the received token
- * via Across atomically. Provides safety checks post-swap and before-deposit.
- * @dev This variant primarily exists
- */
-contract SwapAndBridge is SwapAndBridgeBase {
-    using SafeERC20 for IERC20;
-
-    // This contract simply enables the caller to swap a token on this chain for another specified one
-    // and bridge it as the input token via Across. This simplification is made to make the code
-    // easier to reason about and solve a specific use case for Across.
-    IERC20 public immutable SWAP_TOKEN;
-
-    // The token that will be bridged via Across as the inputToken.
-    IERC20 public immutable ACROSS_INPUT_TOKEN;
-
-    /**
-     * @notice Construct a new SwapAndBridge contract.
+     * @notice Initializes the SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
+     * @param _wrappedNativeToken Address of the wrapped native token for the network this contract is deployed to.
      * @param _exchange Address of the exchange where tokens will be swapped.
-     * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
-     * @param _swapToken Address of the token that will be swapped for acrossInputToken. Cannot be 0x0
-     * @param _acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @dev These values are initialized in a function and not in the constructor so that the creation code of this contract
+     * is the same across networks with different addresses for the wrapped native token, the exchange this contract uses to
+     * swap and bridge, and this network's corresponding spoke pool contract. This is to allow this contract to be deterministically
+     * deployed with CREATE2.
+     * @dev This function can be front-run by anybody, so it is critical to check that the `spokePool`, `wrappedNativeToken`, and `exchange`
+     * values used in the single call to this function were passed in correctly before enabling the usage of this contract.
      */
-    constructor(
+    function initialize(
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
-        address _exchange,
-        bytes4[] memory _allowedSelectors,
-        IERC20 _swapToken,
-        IERC20 _acrossInputToken
-    ) SwapAndBridgeBase(_spokePool, _wrappedNativeToken, _exchange, _allowedSelectors) {
-        SWAP_TOKEN = _swapToken;
-        ACROSS_INPUT_TOKEN = _acrossInputToken;
+        address _exchange
+    ) external {
+        if (initialized) revert ContractInitialized();
+        initialized = true;
+
+        spokePool = _spokePool;
+        wrappedNativeToken = _wrappedNativeToken;
+        exchange = _exchange;
     }
 
     /**
-     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
-     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
-     * enough of acrossInputToken, otherwise this function will revert.
-     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
-     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
-     * deposit with.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @notice Passthrough function to `depositV3()` on the SpokePool contract.
+     * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
+     * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
+     * everywhere callers should be protected even if the transaction is submitted to an unintended network.
+     * This contract should only be used for native token deposits, as this problem only exists for native tokens.
+     * @param recipient Address to receive funds at on destination chain.
+     * @param inputToken Token to lock into this contract to initiate deposit.
+     * @param inputAmount Amount of tokens to deposit.
+     * @param outputAmount Amount of tokens to receive on destination chain.
+     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
+     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
+     * to LP pool on HubPool.
+     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
+     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
+     * @param exclusiveRelayer Address of the relayer who has exclusive rights to fill this deposit. Can be set to
+     * 0x0 if no exclusivity period is desired. If so, then must set exclusivityDeadline to 0.
+     * @param exclusivityDeadline Timestamp after which any relayer can fill this deposit. Must set
+     * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
+     * @param fillDeadline Timestamp after which this deposit can no longer be filled.
      */
-    function swapAndBridge(
-        bytes calldata routerCalldata,
-        uint256 swapTokenAmount,
-        uint256 minExpectedInputTokenAmount,
-        DepositData calldata depositData
-    ) external nonReentrant {
-        _swapAndBridge(
-            routerCalldata,
-            swapTokenAmount,
-            minExpectedInputTokenAmount,
-            depositData,
-            SWAP_TOKEN,
-            ACROSS_INPUT_TOKEN
+    function deposit(
+        address recipient,
+        address inputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes memory message
+    ) external payable nonReentrant {
+        if (msg.value != inputAmount) revert InvalidMsgValue();
+        if (!address(spokePool).isContract()) revert InvalidSpokePool();
+        // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
+        spokePool.depositV3{ value: msg.value }(
+            msg.sender,
+            recipient,
+            inputToken,
+            // @dev Setting outputToken to 0x0 to instruct fillers to use the equivalent token
+            // as the originToken on the destination chain.
+            address(0),
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer,
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityDeadline,
+            message
         );
     }
-}
-
-/**
- * @title UniversalSwapAndBridge
- * @notice Allows caller to swap between any two tokens specified at runtime on a chain before
- * bridging the received token via Across atomically. Provides safety checks post-swap and before-deposit.
- */
-contract UniversalSwapAndBridge is SwapAndBridgeBase {
-    using SafeERC20 for IERC20;
-
-    error InsufficientSwapValue();
-    error InvalidSwapToken();
-
-    /**
-     * @notice Construct a new SwapAndBridgeBase contract.
-     * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
-     * @param _exchange Address of the exchange where tokens will be swapped.
-     * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
-     */
-    constructor(
-        V3SpokePoolInterface _spokePool,
-        WETH9Interface _wrappedNativeToken,
-        address _exchange,
-        bytes4[] memory _allowedSelectors
-    ) SwapAndBridgeBase(_spokePool, _wrappedNativeToken, _exchange, _allowedSelectors) {}
 
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
@@ -313,7 +201,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
         // as though the user deposited a wrapped native token.
         if (msg.value != 0) {
-            if (msg.value != swapTokenAmount) revert InsufficientSwapValue();
+            if (msg.value != swapTokenAmount) revert InvalidMsgValue();
             if (address(swapToken) != address(wrappedNativeToken)) revert InvalidSwapToken();
             wrappedNativeToken.deposit{ value: msg.value }();
         } else {
@@ -501,5 +389,104 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
         );
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast the input token to an IERC20.
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
+    }
+
+    /**
+     * @notice Approves the spoke pool and calls `depositV3` function with the specified input parameters.
+     * @param _acrossInputToken Token to deposit into the spoke pool.
+     * @param _acrossInputAmount Amount of the input token to deposit into the spoke pool.
+     * @param depositData Specifies the Across deposit params to use.
+     */
+    function _depositV3(
+        IERC20 _acrossInputToken,
+        uint256 _acrossInputAmount,
+        DepositData calldata depositData
+    ) private {
+        _acrossInputToken.safeIncreaseAllowance(address(spokePool), _acrossInputAmount);
+        spokePool.depositV3(
+            depositData.depositor,
+            depositData.recipient,
+            address(_acrossInputToken), // input token
+            depositData.outputToken, // output token
+            _acrossInputAmount, // input amount.
+            depositData.outputAmount, // output amount
+            depositData.destinationChainid,
+            depositData.exclusiveRelayer,
+            depositData.quoteTimestamp,
+            depositData.fillDeadline,
+            depositData.exclusivityDeadline,
+            depositData.message
+        );
+    }
+
+    // This contract supports two variants of swap and bridge, one that allows one token and another that allows the caller to pass them in.
+    function _swapAndBridge(
+        bytes calldata routerCalldata,
+        uint256 swapTokenAmount,
+        uint256 minExpectedInputTokenAmount,
+        DepositData calldata depositData,
+        IERC20 _swapToken,
+        IERC20 _acrossInputToken
+    ) private {
+        // Note: this check should never be impactful, but is here out of an abundance of caution.
+        // For example, if the exchange address in the contract is also an ERC20 token that is approved by some
+        // user on this contract, a malicious actor could call transferFrom to steal the user's tokens.
+        if (!allowedSelectors[bytes4(routerCalldata)]) revert InvalidFunctionSelector();
+
+        // Swap and run safety checks.
+        uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
+        uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
+
+        _swapToken.safeIncreaseAllowance(exchange, swapTokenAmount);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory result) = exchange.call(routerCalldata);
+        require(success, string(result));
+
+        _checkSwapOutputAndDeposit(
+            swapTokenAmount,
+            srcBalanceBefore,
+            dstBalanceBefore,
+            minExpectedInputTokenAmount,
+            depositData,
+            _swapToken,
+            _acrossInputToken
+        );
+    }
+
+    /**
+     * @notice Check that the swap returned enough tokens to submit an Across deposit with and then submit the deposit.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of acrossInputToken.
+     * @param swapTokenBalanceBefore Balance of swapToken before swap.
+     * @param inputTokenBalanceBefore Amount of Across input token we held before swap
+     * @param minExpectedInputTokenAmount Minimum amount of received acrossInputToken that we'll bridge
+     **/
+    function _checkSwapOutputAndDeposit(
+        uint256 swapTokenAmount,
+        uint256 swapTokenBalanceBefore,
+        uint256 inputTokenBalanceBefore,
+        uint256 minExpectedInputTokenAmount,
+        DepositData calldata depositData,
+        IERC20 _swapToken,
+        IERC20 _acrossInputToken
+    ) private {
+        // Sanity check that we received as many tokens as we require:
+        uint256 returnAmount = _acrossInputToken.balanceOf(address(this)) - inputTokenBalanceBefore;
+        // Sanity check that received amount from swap is enough to submit Across deposit with.
+        if (returnAmount < minExpectedInputTokenAmount) revert MinimumExpectedInputAmount();
+        // Sanity check that we don't have any leftover swap tokens that would be locked in this contract (i.e. check
+        // that we weren't partial filled).
+        if (swapTokenBalanceBefore - _swapToken.balanceOf(address(this)) != swapTokenAmount) revert LeftoverSrcTokens();
+
+        emit SwapBeforeBridge(
+            exchange,
+            address(_swapToken),
+            address(_acrossInputToken),
+            swapTokenAmount,
+            returnAmount,
+            depositData.outputToken,
+            depositData.outputAmount
+        );
+        // Deposit the swapped tokens into Across and bridge them using remainder of input params.
+        _depositV3(_acrossInputToken, returnAmount, depositData);
     }
 }
