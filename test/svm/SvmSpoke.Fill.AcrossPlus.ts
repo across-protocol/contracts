@@ -11,15 +11,15 @@ import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   getMinimumBalanceForRentExemptAccount,
+  createApproveCheckedInstruction,
 } from "@solana/spl-token";
 import {
   PublicKey,
   Keypair,
   AccountMeta,
-  TransactionMessage,
-  AddressLookupTableProgram,
-  VersionedTransaction,
   TransactionInstruction,
+  sendAndConfirmTransaction,
+  Transaction,
 } from "@solana/web3.js";
 import {
   calculateRelayHashUint8Array,
@@ -71,6 +71,34 @@ describe("svm_spoke.fill.across_plus", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
+  }
+
+  async function createApproveAndFillIx(multicallHandlerCoder: MulticallHandlerCoder) {
+    // Delegate state PDA to pull relayer tokens.
+    const approveIx = await createApproveCheckedInstruction(
+      accounts.relayerTokenAccount,
+      accounts.mintAccount,
+      accounts.state,
+      accounts.signer,
+      BigInt(relayAmount),
+      mintDecimals
+    );
+
+    const remainingAccounts: AccountMeta[] = [
+      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+      ...multicallHandlerCoder.compiledKeyMetas,
+    ];
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+
+    // Prepare fill instruction.
+    const fillIx = await program.methods
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .accounts(accounts)
+      .remainingAccounts(remainingAccounts)
+      .instruction();
+
+    return { approveIx, fillIx };
   }
 
   before("Creates token mint and associated token accounts", async () => {
@@ -140,19 +168,9 @@ describe("svm_spoke.fill.across_plus", () => {
     const newRelayData = { ...relayData, message: encodedMessage };
     updateRelayData(newRelayData);
 
-    const remainingAccounts: AccountMeta[] = [
-      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-      ...multicallHandlerCoder.compiledKeyMetas,
-    ];
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
-
-    await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
-      .signers([relayer])
-      .rpc();
+    // Send approval and fill in one transaction.
+    const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
+    await sendAndConfirmTransaction(connection, new Transaction().add(approveIx, fillIx), [relayer]);
 
     // Verify relayer's balance after the fill
     const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
@@ -170,9 +188,8 @@ describe("svm_spoke.fill.across_plus", () => {
   it("Max token distributions within invoked message call", async () => {
     const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
 
-    // Larger distribution would exceed inner CPI instruction size limit in `emit_cpi` on public networks, while for
-    // localnet this can be increased up to 9 before hitting message size limits.
-    const numberOfDistributions = 5;
+    // Larger distribution would exceed message size limits.
+    const numberOfDistributions = 8;
     const distributionAmount = Math.floor(relayAmount / numberOfDistributions);
 
     const recipientAccounts: PublicKey[] = [];
@@ -216,23 +233,11 @@ describe("svm_spoke.fill.across_plus", () => {
     };
     updateRelayData(newRelayData);
 
-    const remainingAccounts: AccountMeta[] = [
-      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-      ...multicallHandlerCoder.compiledKeyMetas,
-    ];
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
-
-    // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
-    const fillInstruction = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
-      .signers([relayer])
-      .instruction();
+    // Prepare approval and fill instructions as we will need to use Address Lookup Table (ALT).
+    const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
 
     // Fill using the ALT.
-    await sendTransactionWithLookupTable(connection, [fillInstruction], relayer);
+    await sendTransactionWithLookupTable(connection, [approveIx, fillIx], relayer);
 
     // Verify relayer's balance after the fill
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
@@ -274,19 +279,9 @@ describe("svm_spoke.fill.across_plus", () => {
     const newRelayData = { ...relayData, message: encodedMessage };
     updateRelayData(newRelayData);
 
-    const remainingAccounts: AccountMeta[] = [
-      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-      ...multicallHandlerCoder.compiledKeyMetas,
-    ];
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
-
-    await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
-      .signers([relayer])
-      .rpc();
+    // Send approval and fill in one transaction.
+    const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
+    await sendAndConfirmTransaction(connection, new Transaction().add(approveIx, fillIx), [relayer]);
 
     // Verify value recipient balance.
     const valueRecipientAccount = await connection.getAccountInfo(valueRecipient);
@@ -342,23 +337,11 @@ describe("svm_spoke.fill.across_plus", () => {
     const newRelayData = { ...relayData, message: encodedMessage };
     updateRelayData(newRelayData);
 
-    const remainingAccounts: AccountMeta[] = [
-      { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-      ...multicallHandlerCoder.compiledKeyMetas,
-    ];
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
-
-    // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
-    const fillInstruction = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
-      .signers([relayer])
-      .instruction();
+    // Prepare approval and fill instructions as we will need to use Address Lookup Table (ALT).
+    const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
 
     // Fill using the ALT.
-    await sendTransactionWithLookupTable(connection, [fillInstruction], relayer);
+    await sendTransactionWithLookupTable(connection, [approveIx, fillIx], relayer);
 
     // Verify recipient's balance after the fill
     await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfer gets processed.

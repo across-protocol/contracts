@@ -82,7 +82,7 @@ describe("svm_spoke.fill", () => {
     calledFillAccounts: FillAccounts = accounts,
     callingRelayer: Keypair = relayer
   ) => {
-    // Delegate state PDA to pull depositor tokens.
+    // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
       calledFillAccounts.mintAccount,

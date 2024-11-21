@@ -10,6 +10,7 @@ import {
   getAssociatedTokenAddressSync,
   getOrCreateAssociatedTokenAccount,
   getMint,
+  createApproveCheckedInstruction,
 } from "@solana/spl-token";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
@@ -166,6 +167,18 @@ async function fillV3RelayToRandom(): Promise<void> {
     }))
   );
 
+  // Delegate state PDA to pull relayer tokens.
+  const approveInstruction = await createApproveCheckedInstruction(
+    relayerTokenAccount,
+    outputToken,
+    statePda,
+    signer.publicKey,
+    BigInt(relayData.outputAmount.toString()),
+    tokenDecimals,
+    undefined,
+    TOKEN_PROGRAM_ID
+  );
+
   // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
   const fillAccounts = {
     state: statePda,
@@ -190,7 +203,11 @@ async function fillV3RelayToRandom(): Promise<void> {
     .instruction();
 
   // Fill using the ALT.
-  const { txSignature } = await sendTransactionWithLookupTable(provider.connection, [fillInstruction], signer);
+  const { txSignature } = await sendTransactionWithLookupTable(
+    provider.connection,
+    [approveInstruction, fillInstruction],
+    signer
+  );
 
   console.log("Transaction signature:", txSignature);
 }
