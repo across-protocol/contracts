@@ -7,14 +7,7 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import {
-  AddressLookupTableProgram,
-  ComputeBudgetProgram,
-  Keypair,
-  PublicKey,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { common } from "./SvmSpoke.common";

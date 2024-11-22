@@ -18,7 +18,13 @@ import {
 import { PublicKey, Keypair, TransactionInstruction, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import { readProgramEvents, calculateRelayHashUint8Array, sendTransactionWithLookupTable } from "../../src/SvmUtils";
 import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
-import { testAcrossPlusMessage, hashNonEmptyMessage } from "./utils";
+import {
+  testAcrossPlusMessage,
+  hashNonEmptyMessage,
+  loadFillV3RelayParams,
+  createFillV3RelayParamsInstructions,
+  closeInstructionParams,
+} from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
@@ -93,8 +99,11 @@ describe("svm_spoke.fill", () => {
       undefined,
       tokenProgram
     );
+
+    await loadFillV3RelayParams(program, callingRelayer, ...fillDataValues);
+
     const fillIx = await program.methods
-      .fillV3Relay(...fillDataValues)
+      .fillV3Relay()
       .accounts(calledFillAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -391,8 +400,9 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // No need for approval in self-relay.
+    await loadFillV3RelayParams(program, relayer, relayHash, relayData, new BN(1), relayer.publicKey);
     const txSignature = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay()
       .accounts(accounts)
       .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
@@ -463,6 +473,8 @@ describe("svm_spoke.fill", () => {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
     }
 
+    await loadFillV3RelayParams(program, relayer, relayHash, relayData, new BN(1), relayer.publicKey);
+
     // Create the ATA using the create_token_accounts method
     const createTokenAccountsInstruction = await program.methods
       .createTokenAccounts()
@@ -485,7 +497,7 @@ describe("svm_spoke.fill", () => {
       tokenProgram
     );
     const fillInstruction = await program.methods
-      .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+      .fillV3Relay()
       .accounts(accounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -504,6 +516,9 @@ describe("svm_spoke.fill", () => {
 
     // Larger number of fills would exceed the transaction size limit.
     const numberOfFills = 2;
+
+    // Close instruction_params from prior tests.
+    await closeInstructionParams(program, relayer);
 
     // Build instruction for all recipient ATA creation
     const recipientAuthorities = Array.from({ length: numberOfFills }, () => Keypair.generate().publicKey);
@@ -533,12 +548,20 @@ describe("svm_spoke.fill", () => {
       updateRelayData(newRelayData);
       accounts.recipientTokenAccount = recipientAssociatedTokens[i];
       const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+      const { loadInstructions, closeInstruction } = await createFillV3RelayParamsInstructions(
+        program,
+        relayer.publicKey,
+        relayHash,
+        newRelayData,
+        new BN(1),
+        relayer.publicKey
+      );
       const fillInstruction = await program.methods
-        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .fillV3Relay()
         .accounts(accounts)
         .remainingAccounts(fillRemainingAccounts)
         .instruction();
-      fillInstructions.push(fillInstruction);
+      fillInstructions.push(...loadInstructions, fillInstruction, closeInstruction);
     }
 
     const approveInstruction = await createApproveCheckedInstruction(

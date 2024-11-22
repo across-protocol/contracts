@@ -11,16 +11,19 @@ use crate::{
     error::{CommonError, SvmError},
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
-    state::{FillStatus, FillStatusAccount, State},
+    state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
     utils::{hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    // TODO: consider if it is acceptable to share the same seed for all instructions.
+    #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
+    pub instruction_params: Account<'info, FillV3RelayParams>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -31,7 +34,7 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mint::token_program = token_program,
-        address = relay_data.output_token @ SvmError::InvalidMint
+        address = instruction_params.relay_data.output_token @ SvmError::InvalidMint
     )]
     pub mint_account: InterfaceAccount<'info, Mint>,
 
@@ -46,7 +49,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint_account,
-        associated_token::authority = relay_data.recipient,
+        associated_token::authority = instruction_params.relay_data.recipient,
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -55,10 +58,10 @@ pub struct FillV3Relay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
+        seeds = [b"fills", instruction_params.relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(&instruction_params.relay_hash, &instruction_params.relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
@@ -67,12 +70,13 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn fill_v3_relay<'info>(
-    ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
-    relay_data: V3RelayData,
-    repayment_chain_id: u64,
-    repayment_address: Pubkey,
-) -> Result<()> {
+pub fn fill_v3_relay<'info>(ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>) -> Result<()> {
+    // Get pre-loaded instruction parameters.
+    let instruction_params = &ctx.accounts.instruction_params;
+    let relay_data = instruction_params.relay_data.to_owned();
+    let repayment_chain_id = instruction_params.repayment_chain_id;
+    let repayment_address = instruction_params.repayment_address;
+
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
