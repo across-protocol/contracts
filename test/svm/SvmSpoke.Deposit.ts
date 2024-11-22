@@ -483,16 +483,12 @@ describe.only("svm_spoke.deposit", () => {
   it("Fails with invalid exclusivity params", async () => {
     const currentTime = new BN(await getCurrentTime(program, state));
     depositData.quoteTimestamp = currentTime;
-    // If exclusivityDeadline is not zero, then exclusiveRelayer must be set.
+    // If exclusivityParameter is not zero, then exclusiveRelayer must be set.
     depositData.exclusiveRelayer = new PublicKey("11111111111111111111111111111111");
     depositData.exclusivityParameter = new BN(1);
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Should have failed due to InvalidExclusiveRelayer");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidExclusiveRelayer");
@@ -510,11 +506,7 @@ describe.only("svm_spoke.deposit", () => {
       depositData.exclusivityParameter = exclusivityDeadline;
       try {
         const depositDataValues = Object.values(depositData) as DepositDataValues;
-        await program.methods
-          .depositV3(...depositDataValues)
-          .accounts(depositAccounts)
-          .signers([depositor])
-          .rpc();
+        await approvedDepositV3(depositDataValues);
         assert.fail("Should have failed due to InvalidExclusiveRelayer");
       } catch (err: any) {
         assert.include(err.toString(), "InvalidExclusiveRelayer");
@@ -524,11 +516,7 @@ describe.only("svm_spoke.deposit", () => {
     // Test with exclusivityDeadline set to 0
     depositData.exclusivityParameter = new BN(0);
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+    await approvedDepositV3(depositDataValues);
   });
 
   it("Exclusivity param is used as an offset", async () => {
@@ -539,11 +527,7 @@ describe.only("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = maxExclusivityOffsetSeconds;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+    await approvedDepositV3(depositDataValues);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
@@ -564,11 +548,7 @@ describe.only("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = exclusivityDeadlineTimestamp;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+    await approvedDepositV3(depositDataValues);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
@@ -586,11 +566,7 @@ describe.only("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = zeroExclusivity;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+    await approvedDepositV3(depositDataValues);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
@@ -621,7 +597,20 @@ describe.only("svm_spoke.deposit", () => {
       "Deposit ID should match the expected hash"
     );
 
-    await program.methods
+    // Delegate state PDA to pull depositor tokens.
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(depositData.inputAmount.toString()),
+      tokenDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    // Create the transaction for unsafeDepositV3
+    const unsafeDepositIx = await program.methods
       .unsafeDepositV3(
         depositData.depositor!,
         depositData.recipient!,
@@ -638,8 +627,10 @@ describe.only("svm_spoke.deposit", () => {
         depositData.message!
       )
       .accounts(depositAccounts) // Assuming depositAccounts is already set up correctly
-      .signers([depositor])
-      .rpc();
+      .instruction();
+
+    const unsafeDepositTx = new Transaction().add(approveIx, unsafeDepositIx);
+    await sendAndConfirmTransaction(connection, unsafeDepositTx, [payer, depositor]);
 
     // Wait for a short period to ensure the event is emitted
     await new Promise((resolve) => setTimeout(resolve, 500));

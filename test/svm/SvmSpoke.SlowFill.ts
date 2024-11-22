@@ -26,7 +26,7 @@ const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
   };
 };
 
-describe.only("svm_spoke.slow_fill", () => {
+describe("svm_spoke.slow_fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
