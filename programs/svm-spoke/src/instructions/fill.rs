@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
 use crate::{
@@ -12,6 +12,7 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
+    utils::transfer_from,
 };
 
 #[event_cpi]
@@ -101,17 +102,15 @@ pub fn fill_v3_relay(
     // If relayer and receiver are the same, there is no need to do the transfer. This might be a case when relayers
     // intentionally self-relay in a capital efficient way (no need to have funds on the destination).
     if ctx.accounts.relayer_token_account.key() != ctx.accounts.recipient_token_account.key() {
-        let transfer_accounts = TransferChecked {
-            from: ctx.accounts.relayer_token_account.to_account_info(),
-            mint: ctx.accounts.mint_account.to_account_info(),
-            to: ctx.accounts.recipient_token_account.to_account_info(),
-            authority: ctx.accounts.signer.to_account_info(),
-        };
-        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
-        transfer_checked(
-            cpi_context,
+        // Relayer must have delegated output_amount to the state PDA (but only if not self-relaying)
+        transfer_from(
+            &ctx.accounts.relayer_token_account,
+            &ctx.accounts.recipient_token_account,
             relay_data.output_amount,
-            ctx.accounts.mint_account.decimals,
+            state,
+            ctx.bumps.state,
+            &ctx.accounts.mint_account,
+            &ctx.accounts.token_program,
         )?;
     }
 

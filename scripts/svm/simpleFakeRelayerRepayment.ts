@@ -10,12 +10,16 @@ import {
   AddressLookupTableProgram,
   VersionedTransaction,
   TransactionMessage,
+  sendAndConfirmTransaction,
+  Transaction,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccount,
+  getMint,
+  createApproveCheckedInstruction,
 } from "@solana/spl-token";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
@@ -49,8 +53,8 @@ async function testBundleLogic(): Promise<void> {
   const amounts = Array.from({ length: numberOfRelayersToRepay }, (_, i) => new BN(i + 1));
   const inputToken = new PublicKey(resolvedArgv.inputToken);
 
-  const signer = provider.wallet.publicKey;
-  console.log("Running from signer: ", signer.toString());
+  const signer = (provider.wallet as anchor.Wallet).payer;
+  console.log("Running from signer: ", signer.publicKey.toString());
 
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
@@ -76,21 +80,38 @@ async function testBundleLogic(): Promise<void> {
     { property: "seed", value: seed.toString() },
     { property: "numberOfRelayersToRepay", value: numberOfRelayersToRepay },
     { property: "inputToken", value: inputToken.toString() },
-    { property: "signer", value: signer.toString() },
+    { property: "signer", value: signer.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
     { property: "routePda", value: routePda.toString() },
     { property: "vault", value: vault.toString() },
   ]);
 
+  const userTokenAccount = getAssociatedTokenAddressSync(inputToken, signer.publicKey);
+
+  const tokenDecimals = (await getMint(provider.connection, inputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
+
   // Use program.methods.depositV3 to send tokens to the spoke. note this is NOT a valid deposit, we just want to
   // seed tokens into the spoke to test repayment.
-  const depositTx = await (
+
+  // Delegate state PDA to pull depositor tokens.
+  const inputAmount = amounts.reduce((acc, amount) => acc.add(amount), new BN(0));
+  const approveIx = await createApproveCheckedInstruction(
+    userTokenAccount,
+    inputToken,
+    statePda,
+    signer.publicKey,
+    BigInt(inputAmount.toString()),
+    tokenDecimals,
+    undefined,
+    TOKEN_PROGRAM_ID
+  );
+  const depositIx = await (
     program.methods.depositV3(
-      signer,
-      signer, // recipient is the signer for this example
+      signer.publicKey,
+      signer.publicKey, // recipient is the signer for this example
       inputToken,
       inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
-      amounts.reduce((acc, amount) => acc.add(amount), new BN(0)),
+      inputAmount,
       new BN(0),
       new BN(11155111), // destinationChainId. assumed to be enabled, as with routePDA
       PublicKey.default, // exclusiveRelayer
@@ -103,13 +124,17 @@ async function testBundleLogic(): Promise<void> {
     .accounts({
       state: statePda,
       route: routePda,
-      signer: signer,
-      userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer),
+      signer: signer.publicKey,
+      userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer.publicKey),
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: inputToken,
     })
-    .rpc();
+    .instruction();
+  const depositTx = await sendAndConfirmTransaction(provider.connection, new Transaction().add(approveIx, depositIx), [
+    signer,
+  ]);
+
   console.log(`Deposit transaction sent: ${depositTx}`);
 
   // Create a single repayment leaf with the array of amounts and corresponding refund addresses
@@ -161,15 +186,15 @@ async function testBundleLogic(): Promise<void> {
     { property: "State PDA", value: statePda.toString() },
     { property: "Route PDA", value: routePda.toString() },
     { property: "Root Bundle PDA", value: rootBundle.toString() },
-    { property: "Signer", value: signer.toString() },
+    { property: "Signer", value: signer.publicKey.toString() },
   ]);
 
   const relayRootBundleTx = await (program.methods.relayRootBundle(Array.from(root), Array.from(root)) as any)
     .accounts({
       state: statePda,
       rootBundle: rootBundle,
-      signer: signer,
-      payer: signer,
+      signer: signer.publicKey,
+      payer: signer.publicKey,
       systemProgram: SystemProgram.programId,
     })
     .rpc();
@@ -190,7 +215,7 @@ async function testBundleLogic(): Promise<void> {
   console.log("loading execute relayer refund leaf params...");
 
   const [instructionParams] = PublicKey.findProgramAddressSync(
-    [Buffer.from("instruction_params"), signer.toBuffer()],
+    [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
     program.programId
   );
 
@@ -198,7 +223,7 @@ async function testBundleLogic(): Promise<void> {
     instructionParams,
     state: statePda,
     rootBundle: rootBundle,
-    signer: signer,
+    signer: signer.publicKey,
     vault: vault,
     tokenProgram: TOKEN_PROGRAM_ID,
     mint: inputToken,
@@ -213,8 +238,8 @@ async function testBundleLogic(): Promise<void> {
 
   // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
   const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-    authority: signer,
-    payer: signer,
+    authority: signer.publicKey,
+    payer: signer.publicKey,
     recentSlot: await provider.connection.getSlot(),
   });
 
@@ -235,8 +260,8 @@ async function testBundleLogic(): Promise<void> {
   for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
     const extendInstruction = AddressLookupTableProgram.extendLookupTable({
       lookupTable: lookupTableAddress,
-      authority: signer,
-      payer: signer,
+      authority: signer.publicKey,
+      payer: signer.publicKey,
       addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
     });
 
@@ -253,7 +278,7 @@ async function testBundleLogic(): Promise<void> {
     throw new Error("AddressLookupTableAccount not fetched");
   }
 
-  await loadExecuteRelayerRefundLeafParams(program, signer, rootBundleId, leaf, proofAsNumbers);
+  await loadExecuteRelayerRefundLeafParams(program, signer.publicKey, rootBundleId, leaf, proofAsNumbers);
 
   console.log(`loaded execute relayer refund leaf params ${instructionParams}. \nExecuting relayer refund leaf...`);
 
@@ -267,7 +292,7 @@ async function testBundleLogic(): Promise<void> {
   const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
   const versionedTx = new VersionedTransaction(
     new TransactionMessage({
-      payerKey: signer,
+      payerKey: signer.publicKey,
       recentBlockhash: (await provider.connection.getLatestBlockhash()).blockhash,
       instructions: [computeBudgetInstruction, executeInstruction],
     }).compileToV0Message([lookupTableAccount])
@@ -280,8 +305,9 @@ async function testBundleLogic(): Promise<void> {
 
   // Close the instruction parameters account
   console.log("Closing instruction params...");
+  await new Promise((resolve) => setTimeout(resolve, 15000)); // Wait for the previous transaction to be processed.
   const closeInstructionParamsTx = await (program.methods.closeInstructionParams() as any)
-    .accounts({ signer: signer, instructionParams: instructionParams })
+    .accounts({ signer: signer.publicKey, instructionParams: instructionParams })
     .rpc();
   console.log(`Close instruction params transaction sent: ${closeInstructionParamsTx}`);
   // Note we cant close the lookup table account as it needs to be both deactivated and expired at to do this.
