@@ -433,6 +433,12 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.be.revertedWith("InvalidQuoteTimestamp");
       await expect(
         spokePool.connect(depositor)[depositV3Bytes](
+          // quoteTimestamp in the future should also revert with InvalidQuoteTimestamp
+          ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.add(500))
+        )
+      ).to.be.revertedWith("InvalidQuoteTimestamp");
+      await expect(
+        spokePool.connect(depositor)[depositV3Bytes](
           // quoteTimestamp right at the buffer is OK
           ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer))
         )
