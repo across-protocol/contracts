@@ -115,6 +115,7 @@ pub fn _deposit_v3(
     )?;
 
     let mut applied_deposit_id = deposit_id;
+    // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
     if deposit_id.iter().all(|&x| x == 0) {
         state.number_of_deposits += 1;
         let mut deposit_id_bytes = [0u8; 32];
@@ -229,7 +230,6 @@ pub fn unsafe_deposit_v3(
 ) -> Result<()> {
     // Calculate the unsafe deposit ID as a [u8; 32]
     let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
-    // Call the existing _deposit_v3 function
     _deposit_v3(
         ctx,
         depositor,
