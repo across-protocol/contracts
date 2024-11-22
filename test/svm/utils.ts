@@ -221,6 +221,8 @@ export interface SlowFillLeaf {
 
 export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     slowFillLeaf.relayData.depositor.toBuffer(),
     slowFillLeaf.relayData.recipient.toBuffer(),
     slowFillLeaf.relayData.exclusiveRelayer.toBuffer(),
