@@ -81,8 +81,10 @@ const createRoutePda = (originToken: PublicKey, seed: BN, routeChainId: BN) => {
   )[0];
 };
 
-const getVaultAta = (tokenMint: PublicKey, state: PublicKey) => {
-  return getAssociatedTokenAddressSync(tokenMint, state, true, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+const getVaultAta = async (tokenMint: PublicKey, state: PublicKey) => {
+  const tokenMintAccount = await provider.connection.getAccountInfo(tokenMint);
+  if (tokenMintAccount === null) throw new Error("Token Mint account not found");
+  return getAssociatedTokenAddressSync(tokenMint, state, true, tokenMintAccount.owner, ASSOCIATED_TOKEN_PROGRAM_ID);
 };
 
 async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: anchor.web3.Keypair, newTime: BN) {
@@ -131,6 +133,23 @@ export type DepositDataValues = [
   number,
   Buffer
 ];
+
+export type RelayData = {
+  depositor: PublicKey;
+  recipient: PublicKey;
+  exclusiveRelayer: PublicKey;
+  inputToken: PublicKey;
+  outputToken: PublicKey;
+  inputAmount: BN;
+  outputAmount: BN;
+  originChainId: BN;
+  depositId: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  message: Buffer;
+};
+
+export type FillDataValues = [number[], RelayData, BN, PublicKey];
 
 export const common = {
   provider,
