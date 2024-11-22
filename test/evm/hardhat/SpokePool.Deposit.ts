@@ -27,6 +27,8 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
+  MAX_EXCLUSIVITY_OFFSET_SECONDS,
+  zeroAddress,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -467,6 +469,170 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.not.be.reverted;
     });
+    it("invalid exclusivity params", async function () {
+      const currentTime = await spokePool.getCurrentTime();
+
+      // If exclusive deadline is not zero, then exclusive relayer must be set.
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: 1,
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusiveRelayer");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: MAX_EXCLUSIVITY_OFFSET_SECONDS,
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusiveRelayer");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: MAX_EXCLUSIVITY_OFFSET_SECONDS + 1,
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusiveRelayer");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: currentTime.sub(1),
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusiveRelayer");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: currentTime.add(1),
+          })
+        )
+      ).to.be.revertedWith("InvalidExclusiveRelayer");
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData({
+            ...relayData,
+            exclusiveRelayer: zeroAddress,
+            exclusivityDeadline: 0,
+          })
+        )
+      ).to.not.be.reverted;
+    });
+    it("exclusivity param is used as an offset", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadlineOffset = 1000;
+      const exclusivityDeadlineOffset = MAX_EXCLUSIVITY_OFFSET_SECONDS;
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData(
+            {
+              ...relayData,
+              exclusiveRelayer: depositor.address,
+              exclusivityDeadline: exclusivityDeadlineOffset,
+            },
+            undefined,
+            currentTime
+          )
+        )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          currentTime, // quoteTimestamp should be current time
+          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+          currentTime + exclusivityDeadlineOffset, // exclusivityDeadline should be current time + offset
+          relayData.depositor,
+          relayData.recipient,
+          depositor.address,
+          relayData.message
+        );
+    });
+    it("exclusivity param is used as a timestamp", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadlineOffset = 1000;
+      const exclusivityDeadlineTimestamp = MAX_EXCLUSIVITY_OFFSET_SECONDS + 1;
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData(
+            {
+              ...relayData,
+              exclusiveRelayer: depositor.address,
+              exclusivityDeadline: exclusivityDeadlineTimestamp,
+            },
+            undefined,
+            currentTime
+          )
+        )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          currentTime, // quoteTimestamp should be current time
+          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+          exclusivityDeadlineTimestamp, // exclusivityDeadline should be passed in time
+          relayData.depositor,
+          relayData.recipient,
+          depositor.address,
+          relayData.message
+        );
+    });
+    it("exclusivity param is set to 0", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
+      const fillDeadlineOffset = 1000;
+      const zeroExclusivity = 0;
+      await expect(
+        spokePool.connect(depositor).depositV3(
+          ...getDepositArgsFromRelayData(
+            {
+              ...relayData,
+              exclusiveRelayer: depositor.address,
+              exclusivityDeadline: zeroExclusivity,
+            },
+            undefined,
+            currentTime
+          )
+        )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          // deposit ID is 0 for first deposit
+          0,
+          currentTime, // quoteTimestamp should be current time
+          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+          0, // Exclusivity deadline should always be 0
+          relayData.depositor,
+          relayData.recipient,
+          depositor.address,
+          relayData.message
+        );
+    });
     it("if input token is WETH and msg.value > 0, msg.value must match inputAmount", async function () {
       await expect(
         spokePool
@@ -537,55 +703,15 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           currentTime, // quoteTimestamp should be current time
           currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
-          currentTime,
-          addressToBytes(relayData.depositor),
-          addressToBytes(relayData.recipient),
-          addressToBytes(relayData.exclusiveRelayer),
-          relayData.message
-        );
-    });
-    it("should allow depositV3Now with address overload", async function () {
-      const currentTime = (await spokePool.getCurrentTime()).toNumber();
-      const fillDeadlineOffset = 1000;
-      const exclusivityDeadline = 0;
-      await expect(
-        spokePool
-          .connect(depositor)
-          [depositV3NowAddress](
-            bytes32ToAddress(relayData.depositor),
-            bytes32ToAddress(relayData.recipient),
-            bytes32ToAddress(relayData.inputToken),
-            bytes32ToAddress(relayData.outputToken),
-            relayData.inputAmount,
-            relayData.outputAmount,
-            destinationChainId,
-            bytes32ToAddress(relayData.exclusiveRelayer),
-            fillDeadlineOffset,
-            exclusivityDeadline,
-            relayData.message
-          )
-      )
-        .to.emit(spokePool, "V3FundsDeposited")
-        .withArgs(
-          addressToBytes(relayData.inputToken),
-          addressToBytes(relayData.outputToken),
-          relayData.inputAmount,
-          relayData.outputAmount,
-          destinationChainId,
-          // deposit ID is 0 for first deposit
           0,
-          currentTime, // quoteTimestamp should be current time
-          currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
-          currentTime,
-          addressToBytes(relayData.depositor),
-          addressToBytes(relayData.recipient),
-          addressToBytes(relayData.exclusiveRelayer),
+          relayData.depositor,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
           relayData.message
         );
     });
     it("emits V3FundsDeposited event with correct deposit ID", async function () {
-      const currentTime = (await spokePool.getCurrentTime()).toNumber();
-      await expect(spokePool.connect(depositor)[depositV3Bytes](...depositArgs))
+      await expect(spokePool.connect(depositor).depositV3(...depositArgs))
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
           addressToBytes(relayData.inputToken),
@@ -597,10 +723,10 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          currentTime,
-          addressToBytes(relayData.depositor),
-          addressToBytes(relayData.recipient),
-          addressToBytes(relayData.exclusiveRelayer),
+          0,
+          relayData.depositor,
+          relayData.recipient,
+          relayData.exclusiveRelayer,
           relayData.message
         );
     });
@@ -609,7 +735,6 @@ describe("SpokePool Depositor Logic", async function () {
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
-      const currentTime = (await spokePool.getCurrentTime()).toNumber();
       const balanceBefore = await erc20.balanceOf(depositor.address);
       const newDepositor = randomAddress();
       await expect(
@@ -627,7 +752,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          currentTime,
+          0,
           // New depositor
           addressToBytes(newDepositor),
           addressToBytes(relayData.recipient),
