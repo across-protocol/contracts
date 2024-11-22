@@ -49,7 +49,7 @@ describe("SpokePool Admin Functions", async function () {
     expect(await spokePool.rootBundles(0)).has.property("relayerRefundRoot", mockRelayerRefundRoot);
 
     await expect(spokePool.connect(owner).emergencyDeleteRootBundle(0))
-      .to.emit(spokePool, "EmergencyDeleteRootBundle")
+      .to.emit(spokePool, "EmergencyDeletedRootBundle")
       .withArgs(0);
 
     expect(await spokePool.rootBundles(0)).has.property("slowRelayRoot", ethers.utils.hexZeroPad("0x0", 32));

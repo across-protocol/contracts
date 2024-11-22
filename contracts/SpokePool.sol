@@ -185,7 +185,7 @@ abstract contract SpokePool is
         bytes32 indexed l2TokenAddress,
         address caller
     );
-    event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
+    event EmergencyDeletedRootBundle(uint256 indexed rootBundleId);
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
 
@@ -352,7 +352,7 @@ abstract contract SpokePool is
         // would require a new list in storage to keep track of keys.
         //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
-        emit EmergencyDeleteRootBundle(rootBundleId);
+        emit EmergencyDeletedRootBundle(rootBundleId);
     }
 
     /**************************************
