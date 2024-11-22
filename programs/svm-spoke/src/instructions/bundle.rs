@@ -78,7 +78,7 @@ pub struct RelayerRefundLeaf {
 }
 
 impl RelayerRefundLeaf {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::new();
 
         // This requires the first 64 bytes to be 0 within the encoded leaf data. This protects any kind of EVM leaf
@@ -88,23 +88,14 @@ impl RelayerRefundLeaf {
         // in interpreted by SVM, to be zero always blocking this leaf type on EVM.
         bytes.extend_from_slice(&[0u8; 64]);
 
-        bytes.extend_from_slice(&self.amount_to_return.to_le_bytes());
-        bytes.extend_from_slice(&self.chain_id.to_le_bytes());
-        for amount in &self.refund_amounts {
-            bytes.extend_from_slice(&amount.to_le_bytes());
-        }
-        bytes.extend_from_slice(&self.leaf_id.to_le_bytes());
-        bytes.extend_from_slice(self.mint_public_key.as_ref());
-        for address in &self.refund_addresses {
-            bytes.extend_from_slice(address.as_ref());
-        }
+        AnchorSerialize::serialize(&self, &mut bytes)?;
 
-        bytes
+        Ok(bytes)
     }
 
-    pub fn to_keccak_hash(&self) -> [u8; 32] {
-        let input = self.to_bytes();
-        keccak::hash(&input).0
+    pub fn to_keccak_hash(&self) -> Result<[u8; 32]> {
+        let input = self.to_bytes()?;
+        Ok(keccak::hash(&input).to_bytes())
     }
 }
 
@@ -124,7 +115,7 @@ where
     let state = &ctx.accounts.state;
 
     let root = ctx.accounts.root_bundle.relayer_refund_root;
-    let leaf = relayer_refund_leaf.to_keccak_hash();
+    let leaf = relayer_refund_leaf.to_keccak_hash()?;
     verify_merkle_proof(root, leaf, proof)?;
 
     if relayer_refund_leaf.chain_id != state.chain_id {
