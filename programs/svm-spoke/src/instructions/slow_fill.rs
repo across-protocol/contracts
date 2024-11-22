@@ -8,7 +8,7 @@ use crate::{
     error::{CommonError, SvmError},
     get_current_time,
     state::{FillStatus, FillStatusAccount, RootBundle, State},
-    utils::verify_merkle_proof,
+    utils::{hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
 
 use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
@@ -64,6 +64,9 @@ pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: V3RelayDa
     fill_status_account.relayer = ctx.accounts.signer.key();
 
     // Emit the RequestedV3SlowFill event
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
+
     emit_cpi!(RequestedV3SlowFill {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
@@ -76,7 +79,7 @@ pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: V3RelayDa
         exclusive_relayer: relay_data.exclusive_relayer,
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
-        message: relay_data.message,
+        message_hash,
     });
 
     Ok(())
@@ -94,6 +97,9 @@ impl V3SlowFill {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
+        // This requires the first 64 bytes to be 0 within the encoded leaf data. This protects any kind of EVM leaf
+        // from ever being used on SVM (and vice versa). This covers the deposit and recipient fields.
+        bytes.extend_from_slice(&[0u8; 64]);
         // Order should match the Solidity struct field order
         bytes.extend_from_slice(&self.relay_data.depositor.to_bytes());
         bytes.extend_from_slice(&self.relay_data.recipient.to_bytes());
@@ -166,8 +172,8 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn execute_v3_slow_relay_leaf(
-    ctx: Context<ExecuteV3SlowRelayLeaf>,
+pub fn execute_v3_slow_relay_leaf<'info>(
+    ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
     slow_fill_leaf: V3SlowFill,
     proof: Vec<[u8; 32]>,
 ) -> Result<()> {
@@ -222,8 +228,17 @@ pub fn execute_v3_slow_relay_leaf(
     // Update the fill status to Filled. Note we don't set the relayer here as it is set when the slow fill was requested.
     fill_status_account.status = FillStatus::Filled;
 
+    if relay_data.message.len() > 0 {
+        invoke_handler(
+            ctx.accounts.signer.as_ref(),
+            ctx.remaining_accounts,
+            &relay_data.message,
+        )?;
+    }
+
     // Emit the FilledV3Relay event
-    let message_clone = relay_data.message.clone(); // Clone the message before it is moved
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
 
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
@@ -239,10 +254,10 @@ pub fn execute_v3_slow_relay_leaf(
         relayer: Pubkey::default(), // There is no repayment address for slow
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
-        message: relay_data.message,
+        message_hash,
         relay_execution_info: V3RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message: message_clone,
+            updated_message_hash: message_hash,
             updated_output_amount: slow_fill_leaf.updated_output_amount,
             fill_type: FillType::SlowFill,
         },
