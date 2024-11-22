@@ -5,10 +5,12 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+multicall_handler = "6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG"
 svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
 test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 
 [programs.devnet]
+multicall_handler = "6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG"
 svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
 
 [registry]
@@ -33,6 +35,7 @@ closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelay
 closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
 remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remotePauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
+fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
