@@ -97,6 +97,9 @@ impl V3SlowFill {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
+        // This requires the first 64 bytes to be 0 within the encoded leaf data. This protects any kind of EVM leaf
+        // from ever being used on SVM (and vice versa). This covers the deposit and recipient fields.
+        bytes.extend_from_slice(&[0u8; 64]);
         // Order should match the Solidity struct field order
         bytes.extend_from_slice(&self.relay_data.depositor.to_bytes());
         bytes.extend_from_slice(&self.relay_data.recipient.to_bytes());

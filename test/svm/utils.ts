@@ -165,6 +165,8 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
   const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
     refundAmountsBuffer,
@@ -222,6 +224,8 @@ export interface SlowFillLeaf {
 
 export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     slowFillLeaf.relayData.depositor.toBuffer(),
     slowFillLeaf.relayData.recipient.toBuffer(),
     slowFillLeaf.relayData.exclusiveRelayer.toBuffer(),
