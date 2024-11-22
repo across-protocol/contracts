@@ -3,6 +3,7 @@ import { Program, BN, utils, BorshAccountsCoder, Idl } from "@coral-xyz/anchor";
 import { Layout } from "buffer-layout";
 import { ethers } from "ethers";
 import { PublicKey, Connection, Finality, SignaturesForAddressOptions, Logs } from "@solana/web3.js";
+import { intToU8Array32 } from "../test/svm/utils";
 
 export function findProgramAddress(label: string, program: PublicKey, extraSeeds?: string[]) {
   const seeds: Buffer[] = [Buffer.from(utils.bytes.utf8.encode(label))];
@@ -134,7 +135,7 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8
     relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    new BN(relayData.depositId).toArrayLike(Buffer, "le", 4),
+    relayData.depositId,
     new BN(relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
     new BN(relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
     messageBuffer,

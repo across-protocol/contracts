@@ -205,14 +205,18 @@ pub mod svm_spoke {
         )
     }
 
-    // pub fn get_unsafe_deposit_id(
-    //     _ctx: Context<Null>,
-    //     msg_sender: Pubkey,
-    //     depositor: Pubkey,
-    //     deposit_nonce: u64
-    // ) -> Result<U256> {
-    //     Ok(instructions::get_unsafe_deposit_id(msg_sender, depositor, deposit_nonce))
-    // }
+    pub fn get_unsafe_deposit_id(
+        _ctx: Context<Null>,
+        msg_sender: Pubkey,
+        depositor: Pubkey,
+        deposit_nonce: u64,
+    ) -> Result<[u8; 32]> {
+        Ok(instructions::get_unsafe_deposit_id(
+            msg_sender,
+            depositor,
+            deposit_nonce,
+        ))
+    }
 
     // Relayer methods.
     pub fn fill_v3_relay(

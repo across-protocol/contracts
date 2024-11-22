@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { BigNumber } from "ethers";
+import { ethers } from "ethers";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -12,7 +12,8 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { common, DepositDataValues } from "./SvmSpoke.common";
-import { readProgramEvents } from "./utils";
+import { readProgramEvents, intToU8Array32, u8Array32ToInt } from "./utils";
+import bs58 from "bs58";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
@@ -32,7 +33,7 @@ function numberToPublicKey(number: number): PublicKey {
   return new PublicKey(paddedBytes);
 }
 
-describe.only("svm_spoke.deposit", () => {
+describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
@@ -158,9 +159,8 @@ describe.only("svm_spoke.deposit", () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     let events = await readProgramEvents(connection, program);
-    let event = events[0].data; // 0th event is the latest event.
-    console.log(event);
-    const expectedValues1 = { ...depositData, depositId: "1" }; // Verify the event props emitted match the depositData.
+    let event = events[0].data; // 0th event is the latest event
+    const expectedValues1 = { ...depositData, depositId: intToU8Array32(1) }; // Verify the event props emitted match the depositData.
     for (let [key, value] of Object.entries(expectedValues1)) {
       if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
@@ -176,7 +176,7 @@ describe.only("svm_spoke.deposit", () => {
     events = await readProgramEvents(connection, program);
     event = events[0].data; // 0th event is the latest event.
 
-    const expectedValues2 = { ...expectedValues1, depositId: "2" }; // Verify the event props emitted match the depositData.
+    const expectedValues2 = { ...expectedValues1, depositId: intToU8Array32(2) }; // Verify the event props emitted match the depositData.
     for (let [key, value] of Object.entries(expectedValues2)) {
       if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
@@ -404,7 +404,7 @@ describe.only("svm_spoke.deposit", () => {
     let event = events[0].data; // 0th event is the latest event.
     const expectedValues = {
       ...{ ...depositData, destinationChainId: fakeRouteChainId },
-      depositId: "1",
+      depositId: intToU8Array32(1),
     }; // Verify the event props emitted match the depositData.
     for (let [key, value] of Object.entries(expectedValues)) {
       if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
@@ -438,7 +438,7 @@ describe.only("svm_spoke.deposit", () => {
     assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
   });
 
-  it.only("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
+  it("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
     // Set up initial deposit data. Note that this method has a slightly different interface to deposit, using
     // fillDeadlineOffset rather than fillDeadline. current chain time is added to fillDeadlineOffset to set the
     // fillDeadline for the deposit. exclusivityPeriod operates the same as in standard deposit.
@@ -469,14 +469,14 @@ describe.only("svm_spoke.deposit", () => {
 
     const events = await readProgramEvents(connection, program);
     const event = events[0].data; // 0th event is the latest event.
-    console.log(event);
+
     // Verify the event props emitted match the expected values
     const currentTime = await getCurrentTime(program, state);
     const expectedValues = {
       ...depositData,
       quoteTimestamp: currentTime,
       fillDeadline: currentTime + fillDeadlineOffset,
-      depositId: "1",
+      depositId: intToU8Array32(1),
     };
 
     for (let [key, value] of Object.entries(expectedValues)) {
@@ -603,33 +603,28 @@ describe.only("svm_spoke.deposit", () => {
 
     assertSE(event.exclusivityDeadline, zeroExclusivity, "Exclusivity deadline should always be 0");
   });
-  it.only("unsafe deposit ID", async () => {
+  it("unsafe deposit ID", async () => {
     const forcedDepositId = new BN(99);
 
-    // Calculate the expected deposit ID using a similar hashing mechanism
-    const expectedDepositId = BigNumber.from(
-      createHash("sha256")
-        .update(
-          Buffer.concat([
-            depositAccounts.signer.toBuffer(),
-            depositData.depositor!.toBuffer(),
-            forcedDepositId.toArrayLike(Buffer, "le", 8),
-          ])
-        )
-        .digest()
-    ).toString();
-    console.log("expectedDepositId", expectedDepositId);
+    // Convert the inputs to byte arrays
+    const msgSenderBytes = ethers.utils.arrayify(depositAccounts.signer.toBytes());
+    const depositorBytes = ethers.utils.arrayify(depositData.depositor!.toBytes());
+    const depositNonceBytes = ethers.utils.zeroPad(forcedDepositId.toArrayLike(Buffer, "le", 8), 8);
+
+    const data = ethers.utils.concat([msgSenderBytes, depositorBytes, depositNonceBytes]); // Concatenate the byte arrays
+    const expectedDepositId = ethers.utils.keccak256(data); // Hash the concatenated data using keccak256
+    const expectedDepositIdArray = ethers.utils.arrayify(expectedDepositId);
 
     // Call the method to get the unsafe deposit ID
-    // const unsafeDepositId = await program.methods
-    //   .getUnsafeDepositId(depositor.publicKey, depositData.recipient!, forcedDepositId)
-    //   .rpc();
+    const unsafeDepositIdTx = await program.methods
+      .getUnsafeDepositId(depositAccounts.signer, depositData.depositor!, forcedDepositId)
+      .view();
 
-    // assert.strictEqual(
-    //   unsafeDepositId.toString("hex"),
-    //   expectedDepositId.toString("hex"),
-    //   "Deposit ID should match the expected hash"
-    // );
+    assert.strictEqual(
+      expectedDepositIdArray.toString(),
+      unsafeDepositIdTx.toString(),
+      "Deposit ID should match the expected hash"
+    );
 
     await program.methods
       .unsafeDepositV3(
@@ -657,9 +652,8 @@ describe.only("svm_spoke.deposit", () => {
     // Read and verify the event
     const events = await readProgramEvents(connection, program);
     const event = events[0].data; // Assuming the latest event is the one we want
-    console.log(event);
 
-    const expectedValues = { ...depositData, depositId: expectedDepositId };
+    const expectedValues = { ...depositData, depositId: expectedDepositIdArray };
 
     for (let [key, value] of Object.entries(expectedValues)) {
       if (key === "exclusivityParameter") key = "exclusivityDeadline"; // Adjust for any key differences

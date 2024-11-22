@@ -20,6 +20,7 @@ import {
 } from "@solana/web3.js";
 import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
 import { common } from "./SvmSpoke.common";
+import { intToU8Array32 } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
@@ -81,7 +82,7 @@ describe("svm_spoke.fill", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: new BN(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
+      depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
       message: Buffer.from("Test message"),
@@ -442,7 +443,7 @@ describe("svm_spoke.fill", () => {
     const newRelayData = {
       ...relayData,
       recipient: newRecipient,
-      depositId: new BN(Math.floor(Math.random() * 1000000)),
+      depositId: intToU8Array32(Math.floor(Math.random() * 1000000)),
     };
     updateRelayData(newRelayData);
     accounts.recipientTokenAccount = newRecipientATA;
@@ -511,7 +512,7 @@ describe("svm_spoke.fill", () => {
       const newRelayData = {
         ...relayData,
         recipient: recipientAuthorities[i],
-        depositId: new BN(Math.floor(Math.random() * 1000000)),
+        depositId: intToU8Array32(Math.floor(Math.random() * 1000000)),
       };
       updateRelayData(newRelayData);
       accounts.recipientTokenAccount = recipientAssociatedTokens[i];

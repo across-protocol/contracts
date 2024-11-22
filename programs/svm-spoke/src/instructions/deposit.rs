@@ -1,8 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-use ethereum_types::U256;
-
 use crate::{
     constants::MAX_EXCLUSIVITY_PERIOD_SECONDS,
     error::{CommonError, SvmError},
@@ -75,7 +73,7 @@ pub fn _deposit_v3(
     output_amount: u64,
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
-    deposit_id: U256,
+    deposit_id: [u8; 32],
     quote_timestamp: u32,
     fill_deadline: u32,
     exclusivity_parameter: u32,
@@ -114,9 +112,11 @@ pub fn _deposit_v3(
     transfer_checked(cpi_context, input_amount, ctx.accounts.mint.decimals)?;
 
     let mut applied_deposit_id = deposit_id;
-    if deposit_id.is_zero() {
+    if deposit_id.iter().all(|&x| x == 0) {
         state.number_of_deposits += 1;
-        applied_deposit_id = U256::from(state.number_of_deposits);
+        let mut deposit_id_bytes = [0u8; 32];
+        deposit_id_bytes[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
+        applied_deposit_id = deposit_id_bytes;
     }
 
     emit_cpi!(V3FundsDeposited {
@@ -125,7 +125,7 @@ pub fn _deposit_v3(
         input_amount,
         output_amount,
         destination_chain_id,
-        deposit_id: applied_deposit_id.to_string(),
+        deposit_id: applied_deposit_id,
         quote_timestamp,
         fill_deadline,
         exclusivity_deadline,
@@ -163,7 +163,7 @@ pub fn deposit_v3(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
-        U256::default(),
+        [0u8; 32], // deposit_id of informs internal function to use state.number_of_deposits as id.
         quote_timestamp,
         fill_deadline,
         exclusivity_parameter,
@@ -224,7 +224,7 @@ pub fn unsafe_deposit_v3(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> Result<()> {
-    // Calculate the unsafe deposit ID as a U256
+    // Calculate the unsafe deposit ID as a [u8; 32]
     let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
     // Call the existing _deposit_v3 function
     _deposit_v3(
@@ -247,16 +247,14 @@ pub fn unsafe_deposit_v3(
     Ok(())
 }
 
-pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonce: u64) -> U256 {
-    // Concatenate the fields
+// Define a dummy context struct so we can export this as a view function in lib.
+#[derive(Accounts)]
+pub struct Null {}
+pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonce: u64) -> [u8; 32] {
     let mut data = Vec::new();
     data.extend_from_slice(&msg_sender.to_bytes());
     data.extend_from_slice(&depositor.to_bytes());
     data.extend_from_slice(&deposit_nonce.to_le_bytes());
 
-    // Hash the concatenated data using keccak::hash
-    let hash = keccak::hash(&data).0;
-
-    // Convert the hash to U256
-    U256::from_big_endian(&hash)
+    keccak::hash(&data).0
 }
