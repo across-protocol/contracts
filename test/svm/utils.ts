@@ -1,21 +1,20 @@
 import { BN, Program } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
 import * as crypto from "crypto";
+import { BigNumber, ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
+import { MerkleTree } from "@uma/common";
 import {
-  readEvents,
-  readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
+  readEvents,
+  readProgramEvents,
 } from "../../src/SvmUtils";
-import { MerkleTree } from "@uma/common";
-import { getParamType, keccak256 } from "../../test-utils";
-import { ParamType } from "ethers/lib/utils";
+import { addressToBytes, isBytes32 } from "../../test-utils";
 
-export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();
@@ -102,6 +101,14 @@ export function buildRelayerRefundMerkleTree({
 }): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
   const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
+  if (evmTokenAddress && !isBytes32(evmTokenAddress)) {
+    throw new Error("EVM token address must be a bytes32 address");
+  }
+
+  if (evmRelayers && evmRelayers.some((address) => !isBytes32(address))) {
+    throw new Error("EVM relayers must be bytes32 addresses");
+  }
+
   const createSolanaLeaf = (index: number) => ({
     isSolana: true,
     leafId: new BN(index),
@@ -118,8 +125,8 @@ export function buildRelayerRefundMerkleTree({
       leafId: BigNumber.from(index),
       chainId: BigNumber.from(chainId),
       amountToReturn: BigNumber.from(0),
-      l2TokenAddress: evmTokenAddress ?? randomAddress(),
-      refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
+      l2TokenAddress: evmTokenAddress ?? addressToBytes(randomAddress()),
+      refundAddresses: evmRelayers || [addressToBytes(randomAddress()), addressToBytes(randomAddress())],
       refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
     } as RelayerRefundLeaf);
 
@@ -179,7 +186,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
     const abiCoder = new ethers.utils.AbiCoder();
     const encodedData = abiCoder.encode(
       [
-        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
+        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, bytes32 l2TokenAddress, bytes32[] refundAddresses)",
       ],
       [
         {
@@ -208,7 +215,7 @@ export interface SlowFillLeaf {
     inputAmount: BN;
     outputAmount: BN;
     originChainId: BN;
-    depositId: BN;
+    depositId: Uint8Array;
     fillDeadline: BN;
     exclusivityDeadline: BN;
     message: Buffer;
@@ -227,7 +234,7 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.depositId.toArrayLike(Buffer, "le", 4),
+    slowFillLeaf.relayData.depositId,
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
@@ -270,4 +277,27 @@ export async function loadExecuteRelayerRefundLeafParams(
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
   return instructionParams;
+}
+
+export function intToU8Array32(num: number): Uint8Array {
+  if (!Number.isInteger(num) || num < 0) {
+    throw new Error("Input must be a non-negative integer");
+  }
+
+  const u8Array = new Uint8Array(32);
+  let i = 0;
+  while (num > 0 && i < 32) {
+    u8Array[i++] = num & 0xff; // Get least significant byte
+    num >>= 8; // Shift right by 8 bits
+  }
+
+  return u8Array;
+}
+
+export function u8Array32ToInt(u8Array: Uint8Array): bigint {
+  if (!(u8Array instanceof Uint8Array) || u8Array.length !== 32) {
+    throw new Error("Input must be a Uint8Array of length 32");
+  }
+
+  return u8Array.reduce((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
 }

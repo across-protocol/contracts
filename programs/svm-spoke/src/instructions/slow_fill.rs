@@ -103,7 +103,7 @@ impl V3SlowFill {
         bytes.extend_from_slice(&self.relay_data.input_amount.to_le_bytes());
         bytes.extend_from_slice(&self.relay_data.output_amount.to_le_bytes());
         bytes.extend_from_slice(&self.relay_data.origin_chain_id.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.deposit_id.to_le_bytes());
+        bytes.extend_from_slice(&self.relay_data.deposit_id);
         bytes.extend_from_slice(&self.relay_data.fill_deadline.to_le_bytes());
         bytes.extend_from_slice(&self.relay_data.exclusivity_deadline.to_le_bytes());
         bytes.extend_from_slice(&self.relay_data.message);

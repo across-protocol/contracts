@@ -12,7 +12,7 @@ import {
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array } from "./utils";
+import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array, intToU8Array32 } from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
@@ -20,13 +20,13 @@ const { recipient, setCurrentTime, assertSE, assert } = common;
 const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
   return {
     ...relayData,
-    depositId: relayData.depositId.toNumber(),
+    depositId: relayData.depositId,
     fillDeadline: relayData.fillDeadline.toNumber(),
     exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
   };
 };
 
-describe("svm_spoke.slow_fill", () => {
+describe.only("svm_spoke.slow_fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
@@ -91,7 +91,7 @@ describe("svm_spoke.slow_fill", () => {
         inputAmount: new BN(relayAmount),
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
-        depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
+        depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
         fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
         exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
         message: Buffer.from("Test message"),
@@ -167,7 +167,7 @@ describe("svm_spoke.slow_fill", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: new BN(1),
+      depositId: intToU8Array32(1),
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
       message: Buffer.from("Test message"),
