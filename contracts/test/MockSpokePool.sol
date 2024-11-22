@@ -96,7 +96,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     ) public view {
         return
             _verifyUpdateV3DepositMessage(
-                depositor,
+                depositor.toAddress(),
                 depositId,
                 originChainId,
                 updatedOutputAmount,
@@ -118,7 +118,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     ) public view {
         return
             _verifyUpdateV3DepositMessage(
-                depositor.toBytes32(),
+                depositor,
                 depositId,
                 originChainId,
                 updatedOutputAmount,
