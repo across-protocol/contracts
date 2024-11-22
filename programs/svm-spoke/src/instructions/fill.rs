@@ -61,7 +61,11 @@ pub struct FillV3Relay<'info> {
         seeds = [b"fills", instruction_params.relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&instruction_params.relay_hash, &instruction_params.relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(
+            &instruction_params.relay_hash,
+            &instruction_params.relay_data,
+            &state
+        ) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
