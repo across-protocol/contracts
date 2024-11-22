@@ -272,12 +272,12 @@ export async function loadExecuteRelayerRefundLeafParams(
   return instructionParams;
 }
 
-export function intToU8Array32(num: number): Uint8Array {
+export function intToU8Array32(num: number): number[] {
   if (!Number.isInteger(num) || num < 0) {
     throw new Error("Input must be a non-negative integer");
   }
 
-  const u8Array = new Uint8Array(32);
+  const u8Array = new Array(32).fill(0);
   let i = 0;
   while (num > 0 && i < 32) {
     u8Array[i++] = num & 0xff; // Get least significant byte

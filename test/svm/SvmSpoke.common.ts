@@ -138,7 +138,7 @@ export type RelayData = {
   inputAmount: BN;
   outputAmount: BN;
   originChainId: BN;
-  depositId: Uint8Array;
+  depositId: number[];
   fillDeadline: number;
   exclusivityDeadline: number;
   message: Buffer;
