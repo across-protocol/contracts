@@ -110,7 +110,7 @@ export async function constructSingleRelayerRefundTree(l2Token: Contract | Strin
   const leaves = buildRelayerRefundLeaves(
     [destinationChainId], // Destination chain ID.
     [amountToReturn], // amountToReturn.
-    [addressToBytes(l2Token as string)], // l2Token.
+    [l2Token as string], // l2Token.
     [[]], // refundAddresses.
     [[]] // refundAmounts.
   );

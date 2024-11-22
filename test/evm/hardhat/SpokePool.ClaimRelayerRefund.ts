@@ -41,9 +41,7 @@ describe("SpokePool with Blacklisted destErc20", function () {
 
   it("Executes repayments and handles blacklisted addresses", async function () {
     // No starting relayer liability.
-    expect(
-      await spokePool.getRelayerRefund(addressToBytes(destErc20.address), addressToBytes(relayer.address))
-    ).to.equal(toBN(0));
+    expect(await spokePool.getRelayerRefund(destErc20.address, relayer.address)).to.equal(toBN(0));
     expect(await destErc20.balanceOf(rando.address)).to.equal(toBN(0));
     expect(await destErc20.balanceOf(relayer.address)).to.equal(toBN(0));
     // Blacklist the relayer
@@ -58,14 +56,12 @@ describe("SpokePool with Blacklisted destErc20", function () {
         consts.amountToReturn,
         [consts.amountToRelay, consts.amountToRelay],
         0,
-        addressToBytes(destErc20.address),
-        [addressToBytes(relayer.address), addressToBytes(rando.address)]
+        destErc20.address,
+        [relayer.address, rando.address]
       );
 
     // Ensure relayerRepaymentLiability is incremented
-    expect(
-      await spokePool.getRelayerRefund(addressToBytes(destErc20.address), addressToBytes(relayer.address))
-    ).to.equal(consts.amountToRelay);
+    expect(await spokePool.getRelayerRefund(destErc20.address, relayer.address)).to.equal(consts.amountToRelay);
     expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
     expect(await destErc20.balanceOf(relayer.address)).to.equal(toBN(0));
   });
@@ -79,8 +75,8 @@ describe("SpokePool with Blacklisted destErc20", function () {
         consts.amountToReturn,
         [consts.amountToRelay],
         0,
-        addressToBytes(destErc20.address),
-        [addressToBytes(relayer.address)]
+        destErc20.address,
+        [relayer.address]
       );
 
     await expect(

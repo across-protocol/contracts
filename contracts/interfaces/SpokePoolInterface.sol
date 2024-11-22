@@ -17,9 +17,9 @@ interface SpokePoolInterface {
         // Used as the index in the bitmap to track whether this leaf has been executed or not.
         uint32 leafId;
         // The associated L2TokenAddress that these claims apply to.
-        bytes32 l2TokenAddress;
+        address l2TokenAddress;
         // Must be same length as refundAmounts and designates each address that must be refunded.
-        bytes32[] refundAddresses;
+        address[] refundAddresses;
     }
 
     // Stores collection of merkle roots that can be published to this contract from the HubPool, which are referenced

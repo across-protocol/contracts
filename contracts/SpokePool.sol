@@ -71,7 +71,7 @@ abstract contract SpokePool is
     RootBundle[] public rootBundles;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    mapping(bytes32 => mapping(uint256 => bool)) public enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -105,7 +105,7 @@ abstract contract SpokePool is
 
     // Mapping of L2TokenAddress to relayer to outstanding refund amount. Used when a relayer repayment fails for some
     // reason (eg blacklist) to track their outstanding liability, thereby letting them claim it later.
-    mapping(bytes32 => mapping(bytes32 => uint256)) public relayerRefund;
+    mapping(address => mapping(address => uint256)) public relayerRefund;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
@@ -173,8 +173,8 @@ abstract contract SpokePool is
         uint256[] refundAmounts,
         uint32 indexed rootBundleId,
         uint32 indexed leafId,
-        bytes32 l2TokenAddress,
-        bytes32[] refundAddresses,
+        address l2TokenAddress,
+        address[] refundAddresses,
         bool deferredRefunds,
         address caller
     );
@@ -318,7 +318,7 @@ abstract contract SpokePool is
         uint256 destinationChainId,
         bool enabled
     ) public override onlyAdmin nonReentrant {
-        enabledDepositRoutes[originToken.toBytes32()][destinationChainId] = enabled;
+        enabledDepositRoutes[originToken][destinationChainId] = enabled;
         emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
@@ -390,9 +390,9 @@ abstract contract SpokePool is
         uint256 // maxCount. Deprecated.
     ) public payable override nonReentrant unpausedDeposits {
         _deposit(
-            msg.sender.toBytes32(),
-            recipient.toBytes32(),
-            originToken.toBytes32(),
+            msg.sender,
+            recipient,
+            originToken,
             amount,
             destinationChainId,
             relayerFeePct,
@@ -432,16 +432,7 @@ abstract contract SpokePool is
         bytes memory message,
         uint256 // maxCount. Deprecated.
     ) public payable nonReentrant unpausedDeposits {
-        _deposit(
-            depositor.toBytes32(),
-            recipient.toBytes32(),
-            originToken.toBytes32(),
-            amount,
-            destinationChainId,
-            relayerFeePct,
-            quoteTimestamp,
-            message
-        );
+        _deposit(depositor, recipient, originToken, amount, destinationChainId, relayerFeePct, quoteTimestamp, message);
     }
 
     /********************************************
@@ -514,7 +505,7 @@ abstract contract SpokePool is
     ) public payable override nonReentrant unpausedDeposits {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
+        if (!enabledDepositRoutes[inputToken.toAddress()][destinationChainId]) revert DisabledRoute();
 
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
@@ -980,8 +971,11 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
+            _fillIsExclusive(
+                relayData.exclusiveRelayer.toAddress(),
+                relayData.exclusivityDeadline,
+                uint32(getCurrentTime())
+            ) && relayData.exclusiveRelayer.toAddress() != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -1027,8 +1021,11 @@ abstract contract SpokePool is
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            _fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
+            _fillIsExclusive(
+                relayData.exclusiveRelayer.toAddress(),
+                relayData.exclusivityDeadline,
+                uint32(getCurrentTime())
+            ) && relayData.exclusiveRelayer.toAddress() != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -1077,7 +1074,7 @@ abstract contract SpokePool is
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, currentTime)) {
+        if (_fillIsExclusive(relayData.exclusiveRelayer.toAddress(), relayData.exclusivityDeadline, currentTime)) {
             revert NoSlowFillsInExclusivityWindow();
         }
         if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
@@ -1165,7 +1162,7 @@ abstract contract SpokePool is
     ) public override nonReentrant {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
-        _preExecuteLeafHook(relayData.outputToken);
+        _preExecuteLeafHook(relayData.outputToken.toAddress());
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
@@ -1241,9 +1238,9 @@ abstract contract SpokePool is
      * @param refundAddress Address to send the refund to.
      */
     function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public {
-        uint256 refund = relayerRefund[l2TokenAddress][msg.sender.toBytes32()];
+        uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
-        relayerRefund[l2TokenAddress][msg.sender.toBytes32()] = 0;
+        relayerRefund[l2TokenAddress.toAddress()][refundAddress.toAddress()] = 0;
         IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
 
         emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
@@ -1269,7 +1266,7 @@ abstract contract SpokePool is
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
-    function getRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public view returns (uint256) {
+    function getRelayerRefund(address l2TokenAddress, address refundAddress) public view returns (uint256) {
         return relayerRefund[l2TokenAddress][refundAddress];
     }
 
@@ -1277,9 +1274,9 @@ abstract contract SpokePool is
      *         INTERNAL FUNCTIONS         *
      **************************************/
     function _deposit(
-        bytes32 depositor,
-        bytes32 recipient,
-        bytes32 originToken,
+        address depositor,
+        address recipient,
+        address originToken,
         uint256 amount,
         uint256 destinationChainId,
         int64 relayerFeePct,
@@ -1307,18 +1304,18 @@ abstract contract SpokePool is
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending ETH. In this case, the ETH should be deposited to wrappedNativeToken.
-        if (originToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
+        if (originToken == address(wrappedNativeToken) && msg.value > 0) {
             if (msg.value != amount) revert MsgValueDoesNotMatchInputAmount();
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
         } else {
-            IERC20Upgradeable(originToken.toAddress()).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
         }
 
         emit V3FundsDeposited(
-            originToken, // inputToken
+            originToken.toBytes32(), // inputToken
             bytes32(0), // outputToken. Setting this to 0x0 means that the outputToken should be assumed to be the
             // canonical token for the destination chain matching the inputToken. Therefore, this deposit
             // can always be slow filled.
@@ -1336,8 +1333,8 @@ abstract contract SpokePool is
             // expired deposits refunds could be a breaking change for existing users of this function.
             0, // exclusivityDeadline. Setting this to 0 along with the exclusiveRelayer to 0x0 means that there
             // is no exclusive deadline
-            depositor,
-            recipient,
+            depositor.toBytes32(),
+            recipient.toBytes32(),
             bytes32(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
             // is no exclusive relayer.
             message
@@ -1349,14 +1346,14 @@ abstract contract SpokePool is
         uint256 amountToReturn,
         uint256[] memory refundAmounts,
         uint32 leafId,
-        bytes32 l2TokenAddress,
-        bytes32[] memory refundAddresses
+        address l2TokenAddress,
+        address[] memory refundAddresses
     ) internal returns (bool deferredRefunds) {
         uint256 numRefunds = refundAmounts.length;
         if (refundAddresses.length != numRefunds) revert InvalidMerkleLeaf();
 
         if (numRefunds > 0) {
-            uint256 spokeStartBalance = IERC20Upgradeable(l2TokenAddress.toAddress()).balanceOf(address(this));
+            uint256 spokeStartBalance = IERC20Upgradeable(l2TokenAddress).balanceOf(address(this));
             uint256 totalRefundedAmount = 0; // Track the total amount refunded.
 
             // Send each relayer refund address the associated refundAmount for the L2 token address.
@@ -1370,11 +1367,7 @@ abstract contract SpokePool is
                     // prevents can only re-pay some of the relayers.
                     if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
 
-                    bool success = _noRevertTransfer(
-                        l2TokenAddress.toAddress(),
-                        refundAddresses[i].toAddress(),
-                        refundAmounts[i]
-                    );
+                    bool success = _noRevertTransfer(l2TokenAddress, refundAddresses[i], refundAmounts[i]);
 
                     // If the transfer failed then track a deferred transfer for the relayer. Given this function would
                     // have revered if there was insufficient balance, this will only happen if the transfer call
@@ -1390,9 +1383,9 @@ abstract contract SpokePool is
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
         if (amountToReturn > 0) {
-            _bridgeTokensToHubPool(amountToReturn, l2TokenAddress.toAddress());
+            _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
 
-            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress, msg.sender);
+            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress.toBytes32(), msg.sender);
         }
     }
 
@@ -1428,7 +1421,7 @@ abstract contract SpokePool is
         emit SetWithdrawalRecipient(newWithdrawalRecipient);
     }
 
-    function _preExecuteLeafHook(bytes32) internal virtual {
+    function _preExecuteLeafHook(address) internal virtual {
         // This method by default is a no-op. Different child spoke pools might want to execute functionality here
         // such as wrapping any native tokens owned by the contract into wrapped tokens before proceeding with
         // executing the leaf.
@@ -1632,11 +1625,11 @@ abstract contract SpokePool is
 
     // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
     function _fillIsExclusive(
-        bytes32 exclusiveRelayer,
+        address exclusiveRelayer,
         uint32 exclusivityDeadline,
         uint32 currentTime
     ) internal pure returns (bool) {
-        return exclusivityDeadline >= currentTime && exclusiveRelayer != bytes32(0);
+        return exclusivityDeadline >= currentTime && exclusiveRelayer != address(0);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute

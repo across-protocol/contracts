@@ -80,9 +80,9 @@ contract MockSpokePoolTest is Test {
         uint256[] memory refundAmounts = new uint256[](1);
         refundAmounts[0] = 420 * 10**6;
 
-        bytes32[] memory refundAddresses = new bytes32[](1);
-        refundAddresses[0] = toBytes32(recipient1);
-        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, toBytes32(address(usdt)), refundAddresses);
+        address[] memory refundAddresses = new address[](1);
+        refundAddresses[0] = recipient1;
+        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, address(usdt), refundAddresses);
 
         assertEq(usdt.balanceOf(recipient1), refundAmounts[0], "Recipient should have received refund");
         assertEq(usdt.balanceOf(address(spokePool)), seedAmount - refundAmounts[0], "SpokePool bal should drop");
@@ -91,7 +91,7 @@ contract MockSpokePoolTest is Test {
         assertEq(usdc.balanceOf(recipient1), 0, "Recipient should start with 0 USDC balance");
         assertEq(usdc.balanceOf(address(spokePool)), seedAmount, "SpokePool should have seed USDC balance");
 
-        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, toBytes32(address(usdc)), refundAddresses);
+        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, address(usdc), refundAddresses);
 
         assertEq(usdc.balanceOf(recipient1), refundAmounts[0], "Recipient should have received refund");
         assertEq(usdc.balanceOf(address(spokePool)), seedAmount - refundAmounts[0], "SpokePool bal should drop");
@@ -113,16 +113,16 @@ contract MockSpokePoolTest is Test {
         refundAmounts[0] = 420 * 10**6;
         refundAmounts[1] = 69 * 10**6;
 
-        bytes32[] memory refundAddresses = new bytes32[](2);
-        refundAddresses[0] = toBytes32(recipient1);
-        refundAddresses[1] = toBytes32(recipient2);
-        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, toBytes32(address(usdt)), refundAddresses);
+        address[] memory refundAddresses = new address[](2);
+        refundAddresses[0] = recipient1;
+        refundAddresses[1] = recipient2;
+        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, address(usdt), refundAddresses);
 
         assertEq(usdt.balanceOf(recipient1), refundAmounts[0], "Recipient1 should have received their refund");
         assertEq(usdt.balanceOf(recipient2), refundAmounts[1], "Recipient2 should have received their refund");
 
-        assertEq(spokePool.getRelayerRefund(address(usdt).toBytes32(), recipient1.toBytes32()), 0);
-        assertEq(spokePool.getRelayerRefund(address(usdt).toBytes32(), recipient2.toBytes32()), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdt), recipient1), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdt), recipient2), 0);
     }
 
     function testSomeRecipientsBlacklistedDoesNotBlockTheWholeRefundUsdc() public {
@@ -140,23 +140,23 @@ contract MockSpokePoolTest is Test {
         refundAmounts[0] = 420 * 10**6;
         refundAmounts[1] = 69 * 10**6;
 
-        bytes32[] memory refundAddresses = new bytes32[](2);
-        refundAddresses[0] = toBytes32(recipient1);
-        refundAddresses[1] = toBytes32(recipient2);
-        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, toBytes32(address(usdc)), refundAddresses);
+        address[] memory refundAddresses = new address[](2);
+        refundAddresses[0] = recipient1;
+        refundAddresses[1] = recipient2;
+        spokePool.distributeRelayerRefunds(1, 0, refundAmounts, 0, address(usdc), refundAddresses);
 
         assertEq(usdc.balanceOf(recipient1), 0, "Recipient1 should have 0 refund as blacklisted");
         assertEq(usdc.balanceOf(recipient2), refundAmounts[1], "Recipient2 should have received their refund");
 
-        assertEq(spokePool.getRelayerRefund(address(usdc).toBytes32(), recipient1.toBytes32()), refundAmounts[0]);
-        assertEq(spokePool.getRelayerRefund(address(usdc).toBytes32(), recipient2.toBytes32()), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdc), recipient1), refundAmounts[0]);
+        assertEq(spokePool.getRelayerRefund(address(usdc), recipient2), 0);
 
         // Now, blacklisted recipient should be able to claim refund to a new address.
         address newRecipient = address(0x6969693333333420);
         vm.prank(recipient1);
         spokePool.claimRelayerRefund(address(usdc).toBytes32(), newRecipient.toBytes32());
         assertEq(usdc.balanceOf(newRecipient), refundAmounts[0], "New recipient should have received relayer2 refund");
-        assertEq(spokePool.getRelayerRefund(address(usdt).toBytes32(), recipient1.toBytes32()), 0);
+        assertEq(spokePool.getRelayerRefund(address(usdt), recipient1), 0);
     }
 
     function toBytes32(address _address) internal pure returns (bytes32) {

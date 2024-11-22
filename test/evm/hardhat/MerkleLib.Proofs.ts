@@ -4,6 +4,7 @@ import { MerkleTree, EMPTY_MERKLE_ROOT } from "../../../utils/MerkleTree";
 import {
   expect,
   randomBigNumber,
+  randomAddress,
   getParamType,
   defaultAbiCoder,
   keccak256,
@@ -11,7 +12,6 @@ import {
   BigNumber,
   ethers,
   randomBytes32,
-  randomAddress,
 } from "../../../utils/utils";
 import { V3RelayData, V3SlowFill } from "../../../test-utils";
 
@@ -81,14 +81,14 @@ describe("MerkleLib Proofs", async function () {
       const refundAddresses: string[] = [];
       const refundAmounts: BigNumber[] = [];
       for (let j = 0; j < numAddresses; j++) {
-        refundAddresses.push(randomBytes32());
+        refundAddresses.push(randomAddress());
         refundAmounts.push(randomBigNumber());
       }
       relayerRefundLeaves.push({
         leafId: BigNumber.from(i),
         chainId: randomBigNumber(2),
         amountToReturn: randomBigNumber(),
-        l2TokenAddress: randomBytes32(),
+        l2TokenAddress: randomAddress(),
         refundAddresses,
         refundAmounts,
       });
