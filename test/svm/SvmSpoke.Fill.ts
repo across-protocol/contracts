@@ -137,8 +137,8 @@ describe("svm_spoke.fill", () => {
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
-      fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
-      exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
+      fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
+      exclusivityDeadline: Math.floor(Date.now() / 1000) + 30, // 30 seconds from now
       message: Buffer.from("Test message"),
     };
 
