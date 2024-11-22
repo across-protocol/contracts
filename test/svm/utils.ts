@@ -208,7 +208,7 @@ export interface SlowFillLeaf {
     inputAmount: BN;
     outputAmount: BN;
     originChainId: BN;
-    depositId: Uint8Array;
+    depositId: number[];
     fillDeadline: BN;
     exclusivityDeadline: BN;
     message: Buffer;
