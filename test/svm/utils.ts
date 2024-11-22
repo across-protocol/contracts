@@ -227,7 +227,7 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.depositId,
+    Buffer.from(slowFillLeaf.relayData.depositId),
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,

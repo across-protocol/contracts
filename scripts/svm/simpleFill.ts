@@ -35,7 +35,7 @@ const argv = yargs(hideBin(process.argv))
   .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
-  .option("depositId", { type: "number", demandOption: true, describe: "Deposit ID" })
+  .option("depositId", { type: "array", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" })
   .option("message", { type: "string", demandOption: false, describe: "Message" }).argv;
@@ -65,7 +65,7 @@ async function fillV3Relay(): Promise<void> {
     inputAmount,
     outputAmount,
     originChainId,
-    depositId,
+    depositId: depositId.map((id) => Number(id)),
     fillDeadline,
     exclusivityDeadline,
     message,
