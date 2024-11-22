@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
     error::{CommonError, SvmError},
     event::V3FundsDeposited,
     get_current_time,
     state::{Route, State},
+    utils::transfer_from,
 };
 
 #[event_cpi]
@@ -89,14 +90,16 @@ pub fn deposit_v3(
         return err!(CommonError::InvalidFillDeadline);
     }
 
-    let transfer_accounts = TransferChecked {
-        from: ctx.accounts.depositor_token_account.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        to: ctx.accounts.vault.to_account_info(),
-        authority: ctx.accounts.signer.to_account_info(),
-    };
-    let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
-    transfer_checked(cpi_context, input_amount, ctx.accounts.mint.decimals)?;
+    // Depositor must have delegated input_amount to the state PDA.
+    transfer_from(
+        &ctx.accounts.depositor_token_account,
+        &ctx.accounts.vault,
+        input_amount,
+        state,
+        ctx.bumps.state,
+        &ctx.accounts.mint,
+        &ctx.accounts.token_program,
+    )?;
 
     state.number_of_deposits += 1; // Increment number of deposits
 

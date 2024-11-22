@@ -353,30 +353,6 @@ describe("SpokePool Relayer Logic", async function () {
             )
         ).to.not.be.reverted;
       });
-      it("if no exclusive relayer is set, exclusivity deadline can be in future", async function () {
-        const _relayData = {
-          ...relayData,
-          // Overwrite exclusivity deadline
-          exclusivityDeadline: relayData.fillDeadline,
-        };
-
-        // Can send it after exclusivity deadline
-        await expect(
-          spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId, addressToBytes(relayer.address))
-        ).to.not.be.reverted;
-      });
-      it("can have empty exclusive relayer before exclusivity deadline", async function () {
-        const _relayData = {
-          ...relayData,
-          // Overwrite exclusivity deadline
-          exclusivityDeadline: relayData.fillDeadline,
-        };
-
-        // Can send it before exclusivity deadline if exclusive relayer is empty
-        await expect(
-          spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId, addressToBytes(relayer.address))
-        ).to.not.be.reverted;
-      });
       it("calls _fillRelayV3 with  expected params", async function () {
         await expect(
           spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address))
@@ -430,7 +406,7 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool
             .connect(relayer)
             .fillV3RelayWithUpdatedDeposit(
-              { ...relayData, exclusiveRelayer: addressToBytes(consts.zeroAddress) },
+              { ...relayData, exclusivityDeadline: 0 },
               consts.repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,

@@ -29,6 +29,7 @@ import {
   RelayerRefundLeafType,
 } from "./utils";
 import { MerkleTree } from "../../utils";
+import { ethers } from "ethers";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
@@ -1600,6 +1601,189 @@ describe("svm_spoke.bundle", () => {
         "InsufficientSpokePoolBalanceToExecuteLeaf",
         "Expected error code InsufficientSpokePoolBalanceToExecuteLeaf"
       );
+    }
+  });
+  it("Fails Leaf Verification Without Leading 64 Bytes", async () => {
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerARefund = new BN(400000);
+    const relayerBRefund = new BN(100000);
+
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(69420),
+      mintPublicKey: mint,
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
+      refundAmounts: [relayerARefund, relayerBRefund],
+    });
+
+    // Custom hash function without leading 64 bytes
+    const customRelayerRefundHashFn = (input: RelayerRefundLeafType): string => {
+      input = input as RelayerRefundLeafSolana;
+      const refundAmountsBuffer = Buffer.concat(
+        input.refundAmounts.map((amount) => {
+          const buf = Buffer.alloc(8);
+          amount.toArrayLike(Buffer, "le", 8).copy(buf);
+          return buf;
+        })
+      );
+
+      const refundAddressesBuffer = Buffer.concat(input.refundAddresses.map((address) => address.toBuffer()));
+
+      // construct a leaf missing the leading blank 64 bytes.
+      const contentToHash = Buffer.concat([
+        input.amountToReturn.toArrayLike(Buffer, "le", 8),
+        input.chainId.toArrayLike(Buffer, "le", 8),
+        refundAmountsBuffer,
+        input.leafId.toArrayLike(Buffer, "le", 4),
+        input.mintPublicKey.toBuffer(),
+        refundAddressesBuffer,
+      ]);
+
+      return ethers.utils.keccak256(contentToHash);
+    };
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, customRelayerRefundHashFn);
+
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+    let stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    const remainingAccounts = [
+      { pubkey: relayerTA, isWritable: true, isSigner: false },
+      { pubkey: relayerTB, isWritable: true, isSigner: false },
+    ];
+
+    // Attempt to verify the leaf, expecting failure
+    let executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: web3.SystemProgram.programId,
+      program: program.programId,
+    };
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+    try {
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Leaf verification should fail without leading 64 bytes");
+    } catch (err: any) {
+      console.log("err", err);
+      assert.include(err.toString(), "Invalid Merkle proof", "Expected merkle verification to fail");
+    }
+  });
+  it("Fails Leaf Verification with wrong number of Leading 0 bytes", async () => {
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    const relayerARefund = new BN(400000);
+    const relayerBRefund = new BN(100000);
+
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(69420),
+      mintPublicKey: mint,
+      refundAddresses: [relayerA.publicKey, relayerB.publicKey],
+      refundAmounts: [relayerARefund, relayerBRefund],
+    });
+
+    // Custom hash function without leading 64 bytes
+    const customRelayerRefundHashFn = (input: RelayerRefundLeafType): string => {
+      input = input as RelayerRefundLeafSolana;
+      const refundAmountsBuffer = Buffer.concat(
+        input.refundAmounts.map((amount) => {
+          const buf = Buffer.alloc(8);
+          amount.toArrayLike(Buffer, "le", 8).copy(buf);
+          return buf;
+        })
+      );
+
+      const refundAddressesBuffer = Buffer.concat(input.refundAddresses.map((address) => address.toBuffer()));
+
+      // construct a leaf missing the leading blank 64 bytes.
+      const contentToHash = Buffer.concat([
+        Buffer.alloc(5, 0),
+        input.amountToReturn.toArrayLike(Buffer, "le", 8),
+        input.chainId.toArrayLike(Buffer, "le", 8),
+        refundAmountsBuffer,
+        input.leafId.toArrayLike(Buffer, "le", 4),
+        input.mintPublicKey.toBuffer(),
+        refundAddressesBuffer,
+      ]);
+
+      return ethers.utils.keccak256(contentToHash);
+    };
+
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, customRelayerRefundHashFn);
+
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+    let stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+    // Relay root bundle
+    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+    const remainingAccounts = [
+      { pubkey: relayerTA, isWritable: true, isSigner: false },
+      { pubkey: relayerTB, isWritable: true, isSigner: false },
+    ];
+
+    // Attempt to verify the leaf, expecting failure
+    let executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      transferLiability,
+      systemProgram: web3.SystemProgram.programId,
+      program: program.programId,
+    };
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+    try {
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      assert.fail("Leaf verification should fail without leading 64 bytes");
+    } catch (err: any) {
+      console.log("err", err);
+      assert.include(err.toString(), "Invalid Merkle proof", "Expected merkle verification to fail");
     }
   });
 });
