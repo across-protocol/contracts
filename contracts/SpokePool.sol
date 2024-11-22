@@ -514,21 +514,22 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
-        _depositV3(
-            depositor,
-            recipient,
-            inputToken.toAddress(), // Input token will always be an address when deposits originate from EVM.
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            numberOfDeposits++, // Increment count of deposits so that deposit ID for this spoke pool is unique.
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityParameter,
-            message
-        );
+        DepositV3Params memory params = DepositV3Params({
+            depositor: depositor,
+            recipient: recipient,
+            inputToken: inputToken,
+            outputToken: outputToken,
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            destinationChainId: destinationChainId,
+            exclusiveRelayer: exclusiveRelayer,
+            depositId: numberOfDeposits++, // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            quoteTimestamp: quoteTimestamp,
+            fillDeadline: fillDeadline,
+            exclusivityParameter: exclusivityParameter,
+            message: message
+        });
+        _depositV3(params);
     }
 
     /**
@@ -1242,24 +1243,10 @@ abstract contract SpokePool is
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _depositV3(
-        bytes32 depositor,
-        bytes32 recipient,
-        address inputToken,
-        bytes32 outputToken,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        uint256 destinationChainId,
-        bytes32 exclusiveRelayer,
-        uint32 depositId,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 exclusivityParameter,
-        bytes calldata message
-    ) internal {
+    function _depositV3(DepositV3Params memory params) internal {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
+        if (!enabledDepositRoutes[params.inputToken.toAddress()][params.destinationChainId]) revert DisabledRoute();
 
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
@@ -1270,7 +1257,7 @@ abstract contract SpokePool is
 
         // slither-disable-next-line timestamp
         uint256 currentTime = getCurrentTime();
-        if (currentTime - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
+        if (currentTime - params.quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -1279,7 +1266,8 @@ abstract contract SpokePool is
         // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
         // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
         // situation won't be a problem for honest users.
-        if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
+        if (params.fillDeadline < currentTime || params.fillDeadline > currentTime + fillDeadlineBuffer)
+            revert InvalidFillDeadline();
 
         // There are three cases for setting the exclusivity deadline using the exclusivity parameter:
         // 1. If this parameter is 0, then there is no exclusivity period and emit 0 for the deadline. This
@@ -1292,7 +1280,7 @@ abstract contract SpokePool is
         // 3. Otherwise, interpret this parameter as a timestamp and emit it as the exclusivity deadline. This means
         //    that the filler of this deposit will not assume re-org risk related to the block.timestamp of this
         //    event changing.
-        uint32 exclusivityDeadline = exclusivityParameter;
+        uint32 exclusivityDeadline = params.exclusivityParameter;
         if (exclusivityDeadline > 0) {
             if (exclusivityDeadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
                 exclusivityDeadline += uint32(currentTime);
@@ -1300,14 +1288,14 @@ abstract contract SpokePool is
 
             // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
             //  by forcing them to specify an exclusive relayer.
-            if (exclusiveRelayer == bytes32(0)) revert InvalidExclusiveRelayer();
+            if (params.exclusiveRelayer == bytes32(0)) revert InvalidExclusiveRelayer();
         }
 
         // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
         // transaction then the user is sending the native token. In this case, the native token should be
         // wrapped.
-        if (inputToken == address(wrappedNativeToken) && msg.value > 0) {
-            if (msg.value != inputAmount) revert MsgValueDoesNotMatchInputAmount();
+        if (params.inputToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
+            if (msg.value != params.inputAmount) revert MsgValueDoesNotMatchInputAmount();
             wrappedNativeToken.deposit{ value: msg.value }();
             // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
             // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
@@ -1315,23 +1303,27 @@ abstract contract SpokePool is
         } else {
             // msg.value should be 0 if input token isn't the wrapped native token.
             if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
-            IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+            IERC20Upgradeable(params.inputToken.toAddress()).safeTransferFrom(
+                msg.sender,
+                address(this),
+                params.inputAmount
+            );
         }
 
         emit V3FundsDeposited(
-            inputToken.toBytes32(),
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            depositId,
-            quoteTimestamp,
-            fillDeadline,
+            params.inputToken,
+            params.outputToken,
+            params.inputAmount,
+            params.outputAmount,
+            params.destinationChainId,
+            params.depositId,
+            params.quoteTimestamp,
+            params.fillDeadline,
             exclusivityDeadline,
-            depositor,
-            recipient,
-            exclusiveRelayer,
-            message
+            params.depositor,
+            params.recipient,
+            params.exclusiveRelayer,
+            params.message
         );
     }
 
