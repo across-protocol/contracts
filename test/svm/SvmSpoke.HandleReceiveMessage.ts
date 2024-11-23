@@ -522,33 +522,33 @@ describe("svm_spoke.handle_receive_message", () => {
 
     // Remaining accounts specific to EmergencyDeletedRootBundle.
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
-    const emergencyDeletedRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
+    const emergencyDeleteRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
     // closer in self-invoked EmergencyDeletedRootBundle.
-    emergencyDeletedRootBundleRemainingAccounts.push({
+    emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: true,
       isWritable: true,
       pubkey: provider.wallet.publicKey,
     });
     // state in self-invoked EmergencyDeletedRootBundle.
-    emergencyDeletedRootBundleRemainingAccounts.push({
+    emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: state,
     });
     // root_bundle in self-invoked EmergencyDeletedRootBundle.
-    emergencyDeletedRootBundleRemainingAccounts.push({
+    emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: true,
       pubkey: rootBundle,
     });
     // event_authority in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
-    emergencyDeletedRootBundleRemainingAccounts.push({
+    emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: eventAuthority,
     });
     // program in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
-    emergencyDeletedRootBundleRemainingAccounts.push({
+    emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: program.programId,
@@ -558,7 +558,7 @@ describe("svm_spoke.handle_receive_message", () => {
     await messageTransmitterProgram.methods
       .receiveMessage({ message, attestation })
       .accounts(receiveMessageAccounts)
-      .remainingAccounts(emergencyDeletedRootBundleRemainingAccounts)
+      .remainingAccounts(emergencyDeleteRootBundleRemainingAccounts)
       .rpc();
 
     // Verify that the root bundle has been deleted
