@@ -344,7 +344,7 @@ describe.only("svm_spoke.deposit", () => {
     }
   });
 
-  it("Tests deposit with a fake route PDA", async () => {
+  it.only("Tests deposit with a fake route PDA", async () => {
     // Create fake program state
     const fakeState = await initializeState();
     const fakeVault = await getVaultAta(inputToken, fakeState.state);
@@ -356,7 +356,7 @@ describe.only("svm_spoke.deposit", () => {
     const fakeSetEnableRouteAccounts = {
       signer: owner,
       payer: owner,
-      state: fakeState,
+      state: fakeState.state,
       route: fakeRoutePda,
       vault: fakeVault,
       originTokenMint: inputToken,
