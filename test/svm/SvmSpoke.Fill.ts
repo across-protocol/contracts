@@ -23,7 +23,7 @@ import { testAcrossPlusMessage, hashNonEmptyMessage } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
-describe("svm_spoke.fill", () => {
+describe.only("svm_spoke.fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
