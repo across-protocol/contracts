@@ -529,7 +529,7 @@ abstract contract SpokePool is
             inputAmount,
             outputAmount,
             destinationChainId,
-            numberOfDeposits++,
+            numberOfDeposits++, // Increment count of deposits so that deposit ID for this spoke pool is unique.
             quoteTimestamp,
             fillDeadline,
             exclusivityDeadline,
