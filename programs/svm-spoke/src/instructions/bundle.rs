@@ -26,7 +26,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
 
     #[account(
         mut,
-        seeds = [b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
         realloc = std::cmp::max(
             DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
             root_bundle.to_account_info().data_len()
@@ -65,7 +65,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
 }
 
 // TODO: update UMIP to consider different encoding for different chains (evm and svm).
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
     pub chain_id: u64,
@@ -113,7 +113,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     deferred_refunds: bool,
 ) -> Result<()>
 where
-    'c: 'info, // TODO: add explaining comments on some of more complex syntax.
+    'c: 'info, // The lifetime constraint `'c: 'info` ensures that the lifetime `'c` is at least as long as `'info`.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;

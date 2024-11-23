@@ -66,12 +66,17 @@ const initializeState = async (
     )
     .accounts(initializeAccounts)
     .rpc();
-  return state;
+  return { state, seed: actualSeed };
 };
 
-const createRoutePda = (originToken: PublicKey, state: PublicKey, routeChainId: BN) => {
+const createRoutePda = (originToken: PublicKey, seed: BN, routeChainId: BN) => {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), originToken.toBytes(), state.toBytes(), routeChainId.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from("route"),
+      originToken.toBytes(),
+      seed.toArrayLike(Buffer, "le", 8),
+      routeChainId.toArrayLike(Buffer, "le", 8),
+    ],
     program.programId
   )[0];
 };

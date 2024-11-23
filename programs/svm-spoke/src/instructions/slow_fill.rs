@@ -134,7 +134,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(seeds = [b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
+    #[account(seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
     pub root_bundle: Account<'info, RootBundle>,
 
     #[account(

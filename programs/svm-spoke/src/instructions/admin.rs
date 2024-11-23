@@ -102,12 +102,10 @@ pub struct TransferOwnership<'info> {
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    // TODO: test permissioning with a multi-sig and Squads
     #[account(address = state.owner @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 }
 
-// TODO: check that the recovery flow is similar to the one in EVM
 pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = new_owner;
@@ -152,7 +150,12 @@ pub struct SetEnableRoute<'info> {
         init_if_needed,
         payer = payer,
         space = DISCRIMINATOR_SIZE + Route::INIT_SPACE,
-        seeds = [b"route", origin_token.as_ref(), state.key().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
+        seeds = [
+            b"route",
+            origin_token.as_ref(),
+            state.seed.to_le_bytes().as_ref(),
+            destination_chain_id.to_le_bytes().as_ref(),
+        ],
         bump
     )]
     pub route: Account<'info, Route>,
@@ -204,16 +207,14 @@ pub struct RelayRootBundle<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // TODO: standardize usage of state.seed vs state.key()
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    // TODO: consider deriving seed from state.seed instead of state.key() as this could be cheaper (need to verify).
     #[account(
-        init, // TODO: add comment explaining why init
+        init, // Init to create root bundle account. Prevents re-initialization.
         payer = payer,
         space = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE,
-        seeds = [b"root_bundle", state.key().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
+        seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],
         bump
     )]
     pub root_bundle: Account<'info, RootBundle>,
@@ -257,7 +258,7 @@ pub struct EmergencyDeleteRootBundleState<'info> {
     pub state: Account<'info, State>,
 
     #[account(mut,
-        seeds =[b"root_bundle", state.key().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
+        seeds =[b"root_bundle", state.seed.to_le_bytes().as_ref(), root_bundle_id.to_le_bytes().as_ref()],
         close = closer,
         bump)]
     pub root_bundle: Account<'info, RootBundle>,
