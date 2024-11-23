@@ -117,7 +117,7 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipient = Keypair.generate().publicKey;
     finalRecipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, finalRecipient)).address;
 
-    state = await initializeState();
+    ({ state } = await initializeState());
 
     const initialRelayData = {
       depositor: finalRecipient,
