@@ -116,11 +116,9 @@ pub fn _deposit_v3(
 
     let mut applied_deposit_id = deposit_id;
     // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
-    if deposit_id.iter().all(|&x| x == 0) {
+    if deposit_id == [0u8; 32] {
         state.number_of_deposits += 1;
-        let mut deposit_id_bytes = [0u8; 32];
-        deposit_id_bytes[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
-        applied_deposit_id = deposit_id_bytes;
+        applied_deposit_id[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
     }
 
     emit_cpi!(V3FundsDeposited {
@@ -255,9 +253,8 @@ pub fn unsafe_deposit_v3(
 pub struct Null {}
 pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonce: u64) -> [u8; 32] {
     let mut data = Vec::new();
-    data.extend_from_slice(&msg_sender.to_bytes());
-    data.extend_from_slice(&depositor.to_bytes());
-    data.extend_from_slice(&deposit_nonce.to_le_bytes());
+    // Use AnchorSerialize to serialize the tuple of values
+    (msg_sender, depositor, deposit_nonce).serialize(&mut data).unwrap();
 
     keccak::hash(&data).0
 }

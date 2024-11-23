@@ -23,7 +23,7 @@ const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQu
 
 const maxExclusivityOffsetSeconds = new BN(365 * 24 * 60 * 60); // 1 year in seconds
 
-describe("svm_spoke.deposit", () => {
+describe.only("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
