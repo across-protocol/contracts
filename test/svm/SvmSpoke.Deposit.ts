@@ -344,13 +344,13 @@ describe.only("svm_spoke.deposit", () => {
     }
   });
 
-  it.only("Tests deposit with a fake route PDA", async () => {
+  it("Tests deposit with a fake route PDA", async () => {
     // Create fake program state
     const fakeState = await initializeState();
     const fakeVault = await getVaultAta(inputToken, fakeState.state);
 
     const fakeRouteChainId = new BN(3);
-    const fakeRoutePda = createRoutePda(inputToken, seed, fakeRouteChainId);
+    const fakeRoutePda = createRoutePda(inputToken, fakeState.seed, fakeRouteChainId);
 
     // A seeds constraint was violated.
     const fakeSetEnableRouteAccounts = {
