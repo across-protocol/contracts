@@ -514,19 +514,28 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
-        _depositV3(
-            depositor,
-            recipient,
+        uint32 exclusivityDeadline = _depositV3(
             inputToken.toAddress(), // Input token will always be an address when deposits originate from EVM.
+            inputAmount,
+            destinationChainId,
+            exclusiveRelayer,
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityParameter
+        );
+        emit V3FundsDeposited(
+            inputToken,
             outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,
-            exclusiveRelayer,
-            numberOfDeposits++, // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            numberOfDeposits++,
             quoteTimestamp,
             fillDeadline,
-            exclusivityParameter,
+            exclusivityDeadline,
+            depositor,
+            recipient,
+            exclusiveRelayer,
             message
         );
     }
@@ -1243,20 +1252,14 @@ abstract contract SpokePool is
      **************************************/
 
     function _depositV3(
-        bytes32 depositor,
-        bytes32 recipient,
         address inputToken,
-        bytes32 outputToken,
         uint256 inputAmount,
-        uint256 outputAmount,
         uint256 destinationChainId,
         bytes32 exclusiveRelayer,
-        uint32 depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityParameter,
-        bytes calldata message
-    ) internal {
+        uint32 exclusivityParameter
+    ) internal returns (uint32 exclusivityDeadline) {
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
         if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
@@ -1292,7 +1295,7 @@ abstract contract SpokePool is
         // 3. Otherwise, interpret this parameter as a timestamp and emit it as the exclusivity deadline. This means
         //    that the filler of this deposit will not assume re-org risk related to the block.timestamp of this
         //    event changing.
-        uint32 exclusivityDeadline = exclusivityParameter;
+        exclusivityDeadline = exclusivityParameter;
         if (exclusivityDeadline > 0) {
             if (exclusivityDeadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
                 exclusivityDeadline += uint32(currentTime);
@@ -1317,22 +1320,6 @@ abstract contract SpokePool is
             if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
             IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
         }
-
-        emit V3FundsDeposited(
-            inputToken.toBytes32(),
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            depositId,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityDeadline,
-            depositor,
-            recipient,
-            exclusiveRelayer,
-            message
-        );
     }
 
     function _deposit(
