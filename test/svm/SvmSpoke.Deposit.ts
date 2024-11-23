@@ -20,7 +20,7 @@ const { provider, connection, program, owner, seedBalance, initializeState, depo
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
 
-describe("svm_spoke.deposit", () => {
+describe.only("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
@@ -28,6 +28,7 @@ describe("svm_spoke.deposit", () => {
   const tokenDecimals = 6;
 
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey, tokenProgram: PublicKey;
+  let seed: BN;
 
   // Re-used between tests to simplify props.
   type DepositAccounts = {
@@ -64,7 +65,7 @@ describe("svm_spoke.deposit", () => {
 
   const enableRoute = async () => {
     const routeChainId = new BN(1);
-    const route = createRoutePda(inputToken, state, routeChainId);
+    const route = createRoutePda(inputToken, seed, routeChainId);
     vault = await getVaultAta(inputToken, state);
 
     setEnableRouteAccounts = {
@@ -121,7 +122,7 @@ describe("svm_spoke.deposit", () => {
   };
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupInputToken();
@@ -215,7 +216,7 @@ describe("svm_spoke.deposit", () => {
     if (!depositData.inputToken) {
       throw new Error("Input token is null");
     }
-    const differentRoutePda = createRoutePda(depositData.inputToken, state, differentChainId);
+    const differentRoutePda = createRoutePda(depositData.inputToken, seed, differentChainId);
     depositAccounts.route = differentRoutePda;
 
     try {
@@ -346,16 +347,16 @@ describe("svm_spoke.deposit", () => {
   it("Tests deposit with a fake route PDA", async () => {
     // Create fake program state
     const fakeState = await initializeState();
-    const fakeVault = await getVaultAta(inputToken, fakeState);
+    const fakeVault = await getVaultAta(inputToken, fakeState.state);
 
     const fakeRouteChainId = new BN(3);
-    const fakeRoutePda = createRoutePda(inputToken, fakeState, fakeRouteChainId);
+    const fakeRoutePda = createRoutePda(inputToken, fakeState.seed, fakeRouteChainId);
 
     // A seeds constraint was violated.
     const fakeSetEnableRouteAccounts = {
       signer: owner,
       payer: owner,
-      state: fakeState,
+      state: fakeState.state,
       route: fakeRoutePda,
       vault: fakeVault,
       originTokenMint: inputToken,
@@ -370,7 +371,7 @@ describe("svm_spoke.deposit", () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const fakeDepositAccounts = {
-      state: fakeState,
+      state: fakeState.state,
       route: fakeRoutePda,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,

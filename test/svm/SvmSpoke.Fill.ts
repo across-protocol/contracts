@@ -116,8 +116,12 @@ describe("svm_spoke.fill", () => {
     await mintTo(connection, payer, mint, relayerTA, owner, seedBalance);
     await mintTo(connection, payer, mint, otherRelayerTA, owner, seedBalance);
 
-    state = await initializeState();
+    await connection.requestAirdrop(relayer.publicKey, 10_000_000_000); // 10 SOL
+    await connection.requestAirdrop(otherRelayer.publicKey, 10_000_000_000); // 10 SOL
+  });
 
+  beforeEach(async () => {
+    ({ state } = await initializeState());
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
 
     const initialRelayData = {

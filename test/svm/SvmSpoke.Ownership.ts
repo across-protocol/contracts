@@ -16,7 +16,7 @@ describe("svm_spoke.ownership", () => {
   let state: PublicKey;
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state } = await initializeState());
   });
 
   it("Initializes state with provided initial state", async () => {
@@ -30,7 +30,7 @@ describe("svm_spoke.ownership", () => {
     };
 
     // Initialize state with the provided initial state
-    state = await initializeState(undefined, initialState);
+    ({ state } = await initializeState(undefined, initialState));
 
     // Fetch the updated state
     const stateData = await program.account.state.fetch(state);
