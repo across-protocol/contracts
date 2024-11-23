@@ -256,5 +256,5 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
     // Use AnchorSerialize to serialize the tuple of values
     (msg_sender, depositor, deposit_nonce).serialize(&mut data).unwrap();
 
-    keccak::hash(&data).0
+    keccak::hash(&data).to_bytes()
 }
