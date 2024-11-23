@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
-    constants::MAX_EXCLUSIVITY_PERIOD_SECONDS,
+    constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
     error::{CommonError, SvmError},
     event::V3FundsDeposited,
     get_current_time,
@@ -116,7 +116,7 @@ pub fn _deposit_v3(
 
     let mut applied_deposit_id = deposit_id;
     // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
-    if deposit_id == [0u8; 32] {
+    if deposit_id == ZERO_DEPOSIT_ID {
         state.number_of_deposits += 1;
         applied_deposit_id[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
     }
@@ -165,7 +165,7 @@ pub fn deposit_v3(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
-        [0u8; 32], // deposit_id of informs internal function to use state.number_of_deposits as id.
+        ZERO_DEPOSIT_ID, // ZERO_DEPOSIT_ID informs internal function to use state.number_of_deposits as id.
         quote_timestamp,
         fill_deadline,
         exclusivity_parameter,
