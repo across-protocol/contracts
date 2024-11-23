@@ -29,6 +29,7 @@ import {
   RelayerRefundLeafType,
 } from "./utils";
 import { MerkleTree } from "../../utils";
+import { sendTransactionWithLookupTable } from "../../src/SvmUtils";
 import { ethers } from "ethers";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
@@ -1001,8 +1002,6 @@ describe("svm_spoke.bundle", () => {
       // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
       const evmDistributions = 100; // This would fit in 7 proof array elements.
 
-      const maxExtendedAccounts = 30; // Maximum number of accounts that can be added to ALT in a single transaction.
-
       const refundAccounts: web3.PublicKey[] = []; // These would hold either token accounts or claim accounts.
       const refundAddresses: web3.PublicKey[] = []; // These are relayer authority addresses used in leaf building.
       const refundAmounts: BN[] = [];
@@ -1095,42 +1094,6 @@ describe("svm_spoke.bundle", () => {
           ])
         : [];
 
-      // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
-      const lookupAddresses = [...Object.values(staticAccounts), ...refundAddresses, ...refundAccounts];
-
-      // Create instructions for creating and extending the ALT.
-      const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-        authority: owner,
-        payer: owner,
-        recentSlot: await connection.getSlot(),
-      });
-
-      // Submit the ALT creation transaction
-      await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [payer], {
-        skipPreflight: true, // Avoids recent slot mismatch in simulation.
-      });
-
-      // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
-      for (let i = 0; i < lookupAddresses.length; i += maxExtendedAccounts) {
-        const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-          lookupTable: lookupTableAddress,
-          authority: owner,
-          payer: owner,
-          addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
-        });
-
-        await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [payer], {
-          skipPreflight: true, // Avoids recent slot mismatch in simulation.
-        });
-      }
-
-      // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Fetch the AddressLookupTableAccount
-      const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
-      assert(lookupTableAccount !== null, "AddressLookupTableAccount not fetched");
-
       // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
@@ -1163,18 +1126,12 @@ describe("svm_spoke.bundle", () => {
       // Add relay refund leaf execution instruction.
       instructions.push(executeInstruction);
 
-      // Create the versioned transaction
-      const versionedTx = new VersionedTransaction(
-        new TransactionMessage({
-          payerKey: owner,
-          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-          instructions,
-        }).compileToV0Message([lookupTableAccount])
+      // Execute using ALT.
+      await sendTransactionWithLookupTable(
+        connection,
+        instructions,
+        (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
       );
-
-      // Sign and submit the versioned transaction.
-      versionedTx.sign([payer]);
-      await connection.sendTransaction(versionedTx);
 
       // Verify all refund account balances (either token or claim accounts).
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
