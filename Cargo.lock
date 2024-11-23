@@ -1296,6 +1296,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "multicall-handler"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2333,6 +2340,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "multicall-handler",
  "solana-program 2.0.3",
 ]
 

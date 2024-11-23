@@ -5,11 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-svm_spoke = "87FbS6hcHxp7U8HuxYVNhsWQZVHwmRVKYr2PWFdMM9BT"
+multicall_handler = "6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG"
+svm_spoke = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 
 [programs.devnet]
-svm_spoke = "87FbS6hcHxp7U8HuxYVNhsWQZVHwmRVKYr2PWFdMM9BT"
+multicall_handler = "6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG"
+svm_spoke = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
 
 [registry]
 url = "https://api.apr.dev"
@@ -33,6 +35,7 @@ closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelay
 closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
 remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remotePauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
+fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"

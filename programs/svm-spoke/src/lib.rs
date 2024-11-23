@@ -219,8 +219,8 @@ pub mod svm_spoke {
     }
 
     // Relayer methods.
-    pub fn fill_v3_relay(
-        ctx: Context<FillV3Relay>,
+    pub fn fill_v3_relay<'info>(
+        ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
         _relay_hash: [u8; 32],
         relay_data: V3RelayData,
         repayment_chain_id: u64,
@@ -250,8 +250,8 @@ pub mod svm_spoke {
         instructions::request_v3_slow_fill(ctx, relay_data)
     }
 
-    pub fn execute_v3_slow_relay_leaf(
-        ctx: Context<ExecuteV3SlowRelayLeaf>,
+    pub fn execute_v3_slow_relay_leaf<'info>(
+        ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
         slow_fill_leaf: V3SlowFill,
         _root_bundle_id: u32,
