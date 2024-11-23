@@ -94,34 +94,21 @@ pub struct V3SlowFill {
 }
 
 impl V3SlowFill {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::new();
 
         // This requires the first 64 bytes to be 0 within the encoded leaf data. This protects any kind of EVM leaf
         // from ever being used on SVM (and vice versa). This covers the deposit and recipient fields.
         bytes.extend_from_slice(&[0u8; 64]);
-        // Order should match the Solidity struct field order
-        bytes.extend_from_slice(&self.relay_data.depositor.to_bytes());
-        bytes.extend_from_slice(&self.relay_data.recipient.to_bytes());
-        bytes.extend_from_slice(&self.relay_data.exclusive_relayer.to_bytes());
-        bytes.extend_from_slice(&self.relay_data.input_token.to_bytes());
-        bytes.extend_from_slice(&self.relay_data.output_token.to_bytes());
-        bytes.extend_from_slice(&self.relay_data.input_amount.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.output_amount.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.origin_chain_id.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.deposit_id.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.fill_deadline.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.exclusivity_deadline.to_le_bytes());
-        bytes.extend_from_slice(&self.relay_data.message);
-        bytes.extend_from_slice(&self.chain_id.to_le_bytes());
-        bytes.extend_from_slice(&self.updated_output_amount.to_le_bytes());
 
-        bytes
+        AnchorSerialize::serialize(&self, &mut bytes)?;
+
+        Ok(bytes)
     }
 
-    pub fn to_keccak_hash(&self) -> [u8; 32] {
-        let input = self.to_bytes();
-        keccak::hash(&input).0
+    pub fn to_keccak_hash(&self) -> Result<[u8; 32]> {
+        let input = self.to_bytes()?;
+        Ok(keccak::hash(&input).to_bytes())
     }
 }
 
@@ -188,7 +175,7 @@ pub fn execute_v3_slow_relay_leaf<'info>(
     };
 
     let root = ctx.accounts.root_bundle.slow_relay_root;
-    let leaf = slow_fill.to_keccak_hash();
+    let leaf = slow_fill.to_keccak_hash()?;
     verify_merkle_proof(root, leaf, proof)?;
 
     // Check if the fill deadline has passed
