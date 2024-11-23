@@ -667,37 +667,6 @@ describe("SpokePool Depositor Logic", async function () {
       const fillDeadlineOffset = 1000;
       const exclusivityDeadline = 0;
 
-      // const tx = await spokePool
-      //   .connect(depositor)
-      // [SpokePoolFuncs.depositV3NowBytes](
-      //   addressToBytes(relayData.depositor),
-      //   addressToBytes(relayData.recipient),
-      //   addressToBytes(relayData.inputToken),
-      //   addressToBytes(relayData.outputToken),
-      //   relayData.inputAmount,
-      //   relayData.outputAmount,
-      //   destinationChainId,
-      //   addressToBytes(relayData.exclusiveRelayer),
-      //   fillDeadlineOffset,
-      //   exclusivityDeadline,
-      //   relayData.message
-      // )
-
-      // await tx.wait();
-
-      // const receipt = await tx.wait();
-      // // Fetch and log events
-      // const eventLogs = receipt.events?.map((event: any) => {
-      //   try {
-      //     return spokePool.interface.parseLog(event);
-      //   } catch (error) {
-      //     console.error("Error parsing event:", error);
-      //     return null;
-      //   }
-      // }).filter((log: any) => log !== null);
-
-      // console.log(eventLogs);
-
       await expect(
         spokePool
           .connect(depositor)
@@ -785,7 +754,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          0,
+          relayData.exclusivityDeadline,
           addressToBytes(relayData.depositor),
           addressToBytes(relayData.recipient),
           addressToBytes(relayData.exclusiveRelayer),
