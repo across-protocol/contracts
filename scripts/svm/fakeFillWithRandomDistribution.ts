@@ -21,6 +21,8 @@ import {
   calculateRelayHashUint8Array,
   sendTransactionWithLookupTable,
 } from "../../src/SvmUtils";
+import { FillDataParams, FillDataValues } from "../../test/svm/SvmSpoke.common";
+import { loadFillV3RelayParams } from "../../test/svm/utils";
 
 // Set up the provider and signer.
 const provider = AnchorProvider.env();
@@ -46,7 +48,8 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" })
   .option("repaymentChain", { type: "number", demandOption: false, description: "Repayment chain ID" })
   .option("repaymentAddress", { type: "string", demandOption: false, description: "Repayment address" })
-  .option("distributionCount", { type: "number", demandOption: false, describe: "Distribution count" }).argv;
+  .option("distributionCount", { type: "number", demandOption: false, describe: "Distribution count" })
+  .option("bufferParams", { type: "boolean", demandOption: false, describe: "Use buffer account for params" }).argv;
 
 async function fillV3RelayToRandom(): Promise<void> {
   const resolvedArgv = await argv;
@@ -65,6 +68,7 @@ async function fillV3RelayToRandom(): Promise<void> {
   const repaymentAddress = new PublicKey(resolvedArgv.repaymentAddress || signer.publicKey.toString());
   const seed = new BN(0);
   const distributionCount = resolvedArgv.distributionCount || 1;
+  const bufferParams = resolvedArgv.bufferParams || false;
 
   const tokenDecimals = (await getMint(provider.connection, outputToken)).decimals;
 
@@ -180,10 +184,22 @@ async function fillV3RelayToRandom(): Promise<void> {
   );
 
   // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
+  const fillV3RelayValues: FillDataValues = [relayHash, relayData, repaymentChain, repaymentAddress];
+  if (bufferParams) {
+    await loadFillV3RelayParams(program, signer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+  }
+  const fillV3RelayParams: FillDataParams = bufferParams ? [fillV3RelayValues[0], null, null, null] : fillV3RelayValues;
+  const [instructionParams] = bufferParams
+    ? PublicKey.findProgramAddressSync(
+        [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
+        program.programId
+      )
+    : [program.programId];
+
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
-    instructionParams: program.programId,
+    instructionParams,
     mintAccount: outputToken,
     relayerTokenAccount,
     recipientTokenAccount: handlerATA,
@@ -198,7 +214,7 @@ async function fillV3RelayToRandom(): Promise<void> {
     ...multicallHandlerCoder.compiledKeyMetas,
   ];
   const fillInstruction = await program.methods
-    .fillV3Relay(relayHash, relayData, repaymentChain, repaymentAddress)
+    .fillV3Relay(...fillV3RelayParams)
     .accounts(fillAccounts)
     .remainingAccounts(remainingAccounts)
     .instruction();

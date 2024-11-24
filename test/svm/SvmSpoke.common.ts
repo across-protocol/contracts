@@ -151,6 +151,8 @@ export type RelayData = {
 
 export type FillDataValues = [number[], RelayData, BN, PublicKey];
 
+export type FillDataParams = [number[], RelayData | null, BN | null, PublicKey | null];
+
 export const common = {
   provider,
   connection: provider.connection,
