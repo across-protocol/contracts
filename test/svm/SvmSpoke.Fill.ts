@@ -43,6 +43,7 @@ describe("svm_spoke.fill", () => {
   type FillAccounts = {
     state: PublicKey;
     signer: PublicKey;
+    instructionParams: PublicKey;
     mintAccount: PublicKey;
     relayerTokenAccount: PublicKey;
     recipientTokenAccount: PublicKey;
@@ -66,6 +67,7 @@ describe("svm_spoke.fill", () => {
     accounts = {
       state,
       signer: relayer.publicKey,
+      instructionParams: program.programId,
       mintAccount: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,

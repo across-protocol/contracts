@@ -63,6 +63,7 @@ describe("svm_spoke.fill.across_plus", () => {
     accounts = {
       state,
       signer: relayer.publicKey,
+      instructionParams: program.programId,
       mintAccount: mint,
       relayerTokenAccount: relayerATA,
       recipientTokenAccount: handlerATA,

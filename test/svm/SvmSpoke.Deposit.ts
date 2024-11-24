@@ -20,7 +20,7 @@ const { provider, connection, program, owner, seedBalance, initializeState, depo
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
 
-describe.only("svm_spoke.deposit", () => {
+describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();

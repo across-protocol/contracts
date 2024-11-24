@@ -76,6 +76,7 @@ describe("svm_spoke.slow_fill", () => {
     fillAccounts = {
       state,
       signer: relayer.publicKey,
+      instructionParams: program.programId,
       mintAccount: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
