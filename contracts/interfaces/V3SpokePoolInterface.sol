@@ -102,7 +102,7 @@ interface V3SpokePoolInterface {
         uint256 outputAmount;
         uint256 destinationChainId;
         bytes32 exclusiveRelayer;
-        uint32 depositId;
+        uint256 depositId;
         uint32 quoteTimestamp;
         uint32 fillDeadline;
         uint32 exclusivityParameter;

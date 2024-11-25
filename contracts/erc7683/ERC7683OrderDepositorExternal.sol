@@ -15,6 +15,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  */
 contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     event SetDestinationSettler(
         uint256 indexed chainId,
@@ -96,7 +97,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         return
             depositNonce == 0
                 ? SPOKE_POOL.numberOfDeposits()
-                : SPOKE_POOL.getUnsafeDepositId(address(this), depositor, depositNonce);
+                : SPOKE_POOL.getUnsafeDepositId(address(this), depositor.toBytes32(), depositNonce);
     }
 
     function _destinationSettler(uint256 chainId) internal view override returns (address) {

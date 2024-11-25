@@ -523,7 +523,7 @@ abstract contract SpokePool is
             outputAmount: outputAmount,
             destinationChainId: destinationChainId,
             exclusiveRelayer: exclusiveRelayer,
-            depositId: numberOfDeposits++, // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            depositId: numberOfDeposits++,
             quoteTimestamp: quoteTimestamp,
             fillDeadline: fillDeadline,
             exclusivityParameter: exclusivityParameter,
@@ -563,8 +563,17 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp, the fill will
      * revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer] where currentTime
      * is block.timestamp on this chain.
-     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
-     * anyone can fill the deposit.
+     * @param exclusivityParameter This value is used to set the exclusivity deadline timestamp in the emitted deposit
+     * event. Before this destination chain timestamp, only the exclusiveRelayer (if set to a non-zero address),
+     * can fill this deposit. There are three ways to use this parameter:
+     *     1. NO EXCLUSIVITY: If this value is set to 0, then a timestamp of 0 will be emitted,
+     *        meaning that there is no exclusivity period.
+     *     2. OFFSET: If this value is less than MAX_EXCLUSIVITY_PERIOD_SECONDS, then add this value to
+     *        the block.timestamp to derive the exclusive relayer deadline. Note that using the parameter in this way
+     *        will expose the filler of the deposit to the risk that the block.timestamp of this event gets changed
+     *        due to a chain-reorg, which would also change the exclusivity timestamp.
+     *     3. TIMESTAMP: Otherwise, set this value as the exclusivity deadline timestamp.
+     * which is the deadline for the exclusiveRelayer to fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract. If the
      * message is not empty, the recipient contract must implement `handleV3AcrossMessage()` or the fill will revert.
      */
@@ -582,24 +591,68 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
-        _depositV3(
-            depositor.toBytes32(),
-            recipient.toBytes32(),
-            inputToken.toBytes32(),
-            outputToken.toBytes32(),
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            // Increment count of deposits so that deposit ID for this spoke pool is unique.
-            // @dev Implicitly casts from uint32 to uint256 by padding the left-most bytes with zeros. Guarantees
-            // that the 24 most significant bytes are 0.
-            numberOfDeposits++,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityParameter,
-            message
-        );
+        DepositV3Params memory params = DepositV3Params({
+            depositor: depositor.toBytes32(),
+            recipient: recipient.toBytes32(),
+            inputToken: inputToken.toBytes32(),
+            outputToken: outputToken.toBytes32(),
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            destinationChainId: destinationChainId,
+            exclusiveRelayer: exclusiveRelayer.toBytes32(),
+            depositId: numberOfDeposits++,
+            quoteTimestamp: quoteTimestamp,
+            fillDeadline: fillDeadline,
+            exclusivityParameter: exclusivityParameter,
+            message: message
+        });
+        _depositV3(params);
+    }
+
+    /**
+     * @notice An overloaded version of `unsafeDepositV3` that accepts `address` types for backward compatibility.     *
+     * @dev This version mirrors the original `unsafeDepositV3` function, but uses `address` types for `depositor`, `recipient`,
+     * `inputToken`, `outputToken`, and `exclusiveRelayer` for compatibility with contracts using the `address` type.
+     *
+     * The key functionality and logic remain identical, ensuring interoperability across both versions.
+     */
+    function unsafeDepositV3(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint256 depositNonce,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityParameter,
+        bytes calldata message
+    ) public payable nonReentrant unpausedDeposits {
+        // @dev Create the uint256 deposit ID by concatenating the msg.sender and depositor address with the inputted
+        // depositNonce parameter. The resultant 32 byte string will be hashed and then casted to an "unsafe"
+        // uint256 deposit ID. The probability that the resultant ID collides with a "safe" deposit ID is
+        // equal to the chance that the first 28 bytes of the hash are 0, which is too small for us to consider.
+
+        uint256 depositId = getUnsafeDepositId(msg.sender, depositor.toBytes32(), depositNonce);
+        DepositV3Params memory params = DepositV3Params({
+            depositor: depositor.toBytes32(),
+            recipient: recipient.toBytes32(),
+            inputToken: inputToken.toBytes32(),
+            outputToken: outputToken.toBytes32(),
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            destinationChainId: destinationChainId,
+            exclusiveRelayer: exclusiveRelayer.toBytes32(),
+            depositId: depositId,
+            quoteTimestamp: quoteTimestamp,
+            fillDeadline: fillDeadline,
+            exclusivityParameter: exclusivityParameter,
+            message: message
+        });
+        _depositV3(params);
     }
 
     /**
@@ -635,14 +688,14 @@ abstract contract SpokePool is
      * @param message See identically named parameter in depositV3() comments.
      */
     function unsafeDepositV3(
-        address depositor,
-        address recipient,
-        address inputToken,
-        address outputToken,
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
@@ -655,21 +708,22 @@ abstract contract SpokePool is
         // equal to the chance that the first 28 bytes of the hash are 0, which is too small for us to consider.
 
         uint256 depositId = getUnsafeDepositId(msg.sender, depositor, depositNonce);
-        _depositV3(
-            depositor.toBytes32(),
-            recipient.toBytes32(),
-            inputToken.toBytes32(),
-            outputToken.toBytes32(),
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            depositId,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityParameter,
-            message
-        );
+        DepositV3Params memory params = DepositV3Params({
+            depositor: depositor,
+            recipient: recipient,
+            inputToken: inputToken,
+            outputToken: outputToken,
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            destinationChainId: destinationChainId,
+            exclusiveRelayer: exclusiveRelayer,
+            depositId: depositId,
+            quoteTimestamp: quoteTimestamp,
+            fillDeadline: fillDeadline,
+            exclusivityParameter: exclusivityParameter,
+            message: message
+        });
+        _depositV3(params);
     }
 
     /**
@@ -1321,7 +1375,7 @@ abstract contract SpokePool is
      */
     function getUnsafeDepositId(
         address msgSender,
-        address depositor,
+        bytes32 depositor,
         uint256 depositNonce
     ) public pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(msgSender, depositor, depositNonce)));
