@@ -105,9 +105,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         refund_address: ctx.accounts.signer.key(),
     });
 
-    // There is no need to reset the claim amount as the account will be closed at the end of instruction.
-
-    Ok(())
+    Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
 }
 
 #[event_cpi]
@@ -186,8 +184,7 @@ pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_addr
         refund_address,
     });
 
-    // There is no need to reset the claim amount as the account will be closed at the end of instruction.
-    Ok(())
+    Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
 }
 
 // Though claim accounts are being closed automatically when claiming the refund, there might be a scenario where

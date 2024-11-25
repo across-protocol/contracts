@@ -95,6 +95,7 @@ impl RelayerRefundLeaf {
 
     pub fn to_keccak_hash(&self) -> Result<[u8; 32]> {
         let input = self.to_bytes()?;
+
         Ok(keccak::hash(&input).to_bytes())
     }
 }

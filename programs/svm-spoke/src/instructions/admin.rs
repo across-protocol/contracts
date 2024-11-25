@@ -109,6 +109,7 @@ pub struct TransferOwnership<'info> {
 pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = new_owner;
+
     Ok(())
 }
 
@@ -239,6 +240,7 @@ pub fn relay_root_bundle(
     });
 
     state.root_bundle_id += 1;
+
     Ok(())
 }
 
