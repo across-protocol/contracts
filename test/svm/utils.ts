@@ -164,14 +164,17 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
 
   const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
+  // TODO: We better consider reusing Borch serializer in production.
   const contentToHash = Buffer.concat([
     // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
     Buffer.alloc(64, 0),
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
+    new BN(relayData.refundAmounts.length).toArrayLike(Buffer, "le", 4),
     refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
+    new BN(relayData.refundAddresses.length).toArrayLike(Buffer, "le", 4),
     refundAddressesBuffer,
   ]);
 
@@ -222,6 +225,7 @@ export interface SlowFillLeaf {
   updatedOutputAmount: BN;
 }
 
+// TODO: We better consider reusing Borch serializer in production.
 export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   const contentToHash = Buffer.concat([
     // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
@@ -237,6 +241,7 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     Buffer.from(slowFillLeaf.relayData.depositId),
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
     slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.updatedOutputAmount.toArrayLike(Buffer, "le", 8),

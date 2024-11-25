@@ -9,7 +9,7 @@ import {
   mintTo,
   createApproveCheckedInstruction,
 } from "@solana/spl-token";
-import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import {
@@ -374,7 +374,7 @@ describe("svm_spoke.slow_fill", () => {
       .rpc();
 
     // Execute V3 slow relay leaf after requesting slow fill
-    await program.methods
+    const ix = await program.methods
       .executeV3SlowRelayLeaf(
         Array.from(relayHash),
         { ...leaf, relayData: formatRelayData(relayData) },
@@ -383,7 +383,9 @@ describe("svm_spoke.slow_fill", () => {
       )
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
-      .rpc();
+      .instruction();
+    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
+    await sendAndConfirmTransaction(connection, new Transaction().add(computeBudgetInstruction, ix), [payer]);
 
     // Verify the results
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
