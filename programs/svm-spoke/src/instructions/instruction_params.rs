@@ -39,7 +39,7 @@ pub struct WriteInstructionParamsFragment<'info> {
 
 /// Writes a fragment of raw data into the `instruction_params` account at the specified offset.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the write operation.
 /// - `offset`: The starting position in the account's data where the fragment will be written.
 /// - `fragment`: The raw data to write into the account.
@@ -78,7 +78,7 @@ pub struct CloseInstructionParams<'info> {
 
 /// Closes the `instruction_params` account and transfers its SOL to the signer.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the close operation.
 pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<()> {
     let closed_account = ctx.accounts.instruction_params.to_account_info();

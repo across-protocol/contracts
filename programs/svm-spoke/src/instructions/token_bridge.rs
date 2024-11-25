@@ -84,7 +84,7 @@ pub struct BridgeTokensToHubPool<'info> {
 
 /// Bridges tokens from the vault to the HubPool using CCTP.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the bridge.
 /// - `amount`: The amount of tokens to bridge.
 pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {

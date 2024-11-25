@@ -78,7 +78,7 @@ pub struct FillV3Relay<'info> {
 
 /// Handles the relay-filling logic.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the fill.
 /// - `relay_data`: The relay data.
 /// - `repayment_chain_id`: The chain ID of the repayment.
@@ -197,7 +197,7 @@ pub struct CloseFillPda<'info> {
 
 /// Closes the PDA associated with a relay fill.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the close.
 /// - `relay_data`: The relay data.
 pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_data: V3RelayData) -> Result<()> {

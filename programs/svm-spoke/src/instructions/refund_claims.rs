@@ -44,7 +44,7 @@ pub struct RequestV3SlowFill<'info> {
 
 /// Requests a slow fill for a relay.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the request.
 /// - `relay_data`: The relay data.
 pub fn request_v3_slow_fill(ctx: Context<RequestV3SlowFill>, relay_data: V3RelayData) -> Result<()> {
@@ -170,7 +170,7 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
 
 /// Executes a slow fill relay by transferring tokens and updating the fill status.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the execution.
 /// - `slow_fill_leaf`: The slow fill leaf.
 /// - `proof`: The Merkle proof for the relay data.

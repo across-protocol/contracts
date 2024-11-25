@@ -50,7 +50,7 @@ pub struct HandleReceiveMessageParams {
 
 /// Handles a received message, translates it into an internal instruction, and invokes the instruction.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the handle receive message.
 /// - `params`: Contains the message body and metadata for processing.
 pub fn handle_receive_message<'info>(
@@ -64,7 +64,7 @@ pub fn handle_receive_message<'info>(
 
 /// Translates an incoming message body into Solana-compatible instruction data.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `data`: The message body to translate.
 fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
     match utils::get_solidity_selector(data)? {
@@ -107,7 +107,7 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
 
 /// Invokes self-CPI for message calls received from a remote domain.
 ///
-/// Parameters:
+/// ### Parameters:
 /// - `ctx`: The context for the self-CPI.
 /// - `data`: The instruction data to invoke.
 fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>, data: &Vec<u8>) -> Result<()> {
