@@ -14,20 +14,26 @@ use crate::{
 #[event_cpi]
 #[derive(Accounts)]
 pub struct BridgeTokensToHubPool<'info> {
+    /// Signer initiating the bridge.
     pub signer: Signer<'info>,
 
+    /// Signer paying for the message transmission.
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    /// Token mint of the asset being bridged.
     #[account(mut, mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
+    /// State account containing global configuration.
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
+    /// Transfer liability account tracking pending bridge amounts.
     #[account(mut, seeds = [b"transfer_liability", mint.key().as_ref()], bump)]
     pub transfer_liability: Account<'info, TransferLiability>,
 
+    /// Vault holding the tokens to be bridged, owned by the state.
     #[account(
         mut,
         associated_token::mint = mint,
@@ -36,53 +42,59 @@ pub struct BridgeTokensToHubPool<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    /// CHECK: empty PDA, checked in CCTP. Seeds must be \["sender_authority"\] (CCTP Token Messenger Minter program).
+    /// CHECK: Empty PDA validated by CCTP. Represents the sender authority in the CCTP program.
     pub token_messenger_minter_sender_authority: UncheckedAccount<'info>,
 
-    /// CHECK: MessageTransmitter is checked in CCTP. Seeds must be \["message_transmitter"\] (CCTP Message Transmitter
-    /// program).
+    /// CHECK: MessageTransmitter PDA validated by CCTP. Represents the message transmitter.
     #[account(mut)]
     pub message_transmitter: UncheckedAccount<'info>,
 
-    /// CHECK: TokenMessenger is checked in CCTP. Seeds must be \["token_messenger"\] (CCTP Token Messenger Minter
-    /// program).
+    /// CHECK: TokenMessenger PDA validated by CCTP.
     pub token_messenger: UncheckedAccount<'info>,
 
-    /// CHECK: RemoteTokenMessenger is checked in CCTP. Seeds must be \["remote_token_messenger"\,
-    /// remote_domain.to_string()] (CCTP Token Messenger Minter program).
+    /// CHECK: RemoteTokenMessenger PDA validated by CCTP. Represents the token messenger for the remote domain.
     pub remote_token_messenger: UncheckedAccount<'info>,
 
-    /// CHECK: TokenMinter is checked in CCTP. Seeds must be \["token_minter"\] (CCTP Token Messenger Minter program).
+    /// CHECK: TokenMinter PDA validated by CCTP.
     pub token_minter: UncheckedAccount<'info>,
 
-    /// CHECK: LocalToken is checked in CCTP. Seeds must be \["local_token", mint\] (CCTP Token Messenger Minter
-    /// program).
+    /// CHECK: LocalToken PDA validated by CCTP. Represents the local token associated with the mint.
     #[account(mut)]
     pub local_token: UncheckedAccount<'info>,
 
-    /// CHECK: EventAuthority is checked in CCTP. Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter
-    /// program).
+    /// CHECK: EventAuthority PDA validated by CCTP.
     pub cctp_event_authority: UncheckedAccount<'info>,
 
+    /// Data account used for storing event metadata during the bridging process.
     #[account(mut)]
     pub message_sent_event_data: Signer<'info>,
 
+    /// CCTP message transmitter program.
     pub message_transmitter_program: Program<'info, MessageTransmitter>,
 
+    /// CCTP token messenger minter program.
     pub token_messenger_minter_program: Program<'info, TokenMessengerMinter>,
 
+    /// Token program for CPI interactions.
     pub token_program: Interface<'info, TokenInterface>,
 
+    /// System program for account initialization.
     pub system_program: Program<'info, System>,
 }
 
+/// Bridges tokens from the vault to the HubPool using CCTP.
+///
+/// Parameters:
+/// - `ctx`: The context for the bridge.
+/// - `amount`: The amount of tokens to bridge.
 pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
+    // Validate the requested amount does not exceed the pending liability.
     if amount > ctx.accounts.transfer_liability.pending_to_hub_pool {
         return err!(SvmError::ExceededPendingBridgeAmount);
     }
     ctx.accounts.transfer_liability.pending_to_hub_pool -= amount;
 
-    // Invoke CCTP to bridge vault tokens from state account.
+    // Prepare the CCTP `deposit_for_burn` context.
     let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurn {
         owner: ctx.accounts.state.to_account_info(),
@@ -103,14 +115,22 @@ pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u6
         event_authority: ctx.accounts.cctp_event_authority.to_account_info(),
         program: ctx.accounts.token_messenger_minter_program.to_account_info(),
     };
+
+    // Generate the state signer seeds.
     let state_seed_bytes = ctx.accounts.state.seed.to_le_bytes();
     let state_seeds: &[&[&[u8]]] = &[&[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]]];
+
+    // Create the CPI context with signer seeds.
     let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, state_seeds);
+
+    // Define the parameters for the CCTP `deposit_for_burn` call.
     let params = DepositForBurnParams {
         amount,
-        destination_domain: ctx.accounts.state.remote_domain, // CCTP domain for Mainnet Ethereum.
-        mint_recipient: ctx.accounts.state.cross_domain_admin, // This is same as HubPool.
+        destination_domain: ctx.accounts.state.remote_domain, // CCTP domain for the HubPool (e.g., Mainnet Ethereum).
+        mint_recipient: ctx.accounts.state.cross_domain_admin, // HubPool address.
     };
+
+    // Call the CCTP `deposit_for_burn` instruction.
     token_messenger_minter::cpi::deposit_for_burn(cpi_ctx, params)?;
 
     emit_cpi!(BridgedToHubPool {
