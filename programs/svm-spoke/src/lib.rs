@@ -214,7 +214,7 @@ pub mod svm_spoke {
     /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
     ///   Seed: ["route", input_token, state.seed, destination_chain_id].
     /// - depositor_token_account (Writable): The depositor's ATA for the input token.
-    /// - vault (Writable): Programs ATA for the associated input token. This is where the depositors assets are sent.
+    /// - vault (Writable): Programs ATA for the associated input token. This is where the depositor's assets are sent.
     ///   Authority must be the state.
     /// - mint (Account): The mint account for the input token.
     /// - token_program (Interface): The token program.
