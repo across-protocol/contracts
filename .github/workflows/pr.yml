@@ -28,7 +28,7 @@ jobs:
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           profile: minimal
           components: rustc
       - name: Install packages
