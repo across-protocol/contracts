@@ -237,7 +237,10 @@ pub mod svm_spoke {
     ///   must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime].
     /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp,
     ///   the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer].
-    /// - exclusivity_period: TODO when other PR merged
+    /// - exclusivity_parameter: Sets the exclusivity deadline timestamp for the exclusiveRelayer to fill the deposit.
+    ///   1. If 0, no exclusivity period.
+    ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.
+    ///   3. Otherwise, uses this value as the exclusivity deadline timestamp.
     /// - message: The message to send to the recipient on the destination chain if the recipient is a contract.
     ///   If not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
     pub fn deposit_v3(
@@ -252,7 +255,7 @@ pub mod svm_spoke {
         exclusive_relayer: Pubkey,
         quote_timestamp: u32,
         fill_deadline: u32,
-        exclusivity_period: u32,
+        exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
         instructions::deposit_v3(
@@ -267,7 +270,7 @@ pub mod svm_spoke {
             exclusive_relayer,
             quote_timestamp,
             fill_deadline,
-            exclusivity_period,
+            exclusivity_parameter,
             message,
         )
     }
@@ -284,7 +287,7 @@ pub mod svm_spoke {
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         fill_deadline: u32,
-        exclusivity_period: u32,
+        exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
         instructions::deposit_v3_now(
@@ -298,7 +301,7 @@ pub mod svm_spoke {
             destination_chain_id,
             exclusive_relayer,
             fill_deadline,
-            exclusivity_period,
+            exclusivity_parameter,
             message,
         )
     }
