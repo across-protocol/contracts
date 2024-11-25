@@ -73,26 +73,26 @@ pub mod svm_spoke {
         )
     }
 
-    /// Pauses Spoke Pool from accepting deposits. Only Callable by owner.
+    /// Pauses the Spoke Pool from accepting deposits. Only callable by the owner.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the pause.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed], where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
-    /// - pause: true if the call is meant to pause the system, false if the call is meant to unpause it.
+    /// - pause: `true` to pause the system, `false` to unpause it.
     pub fn pause_deposits(ctx: Context<PauseDeposits>, pause: bool) -> Result<()> {
         instructions::pause_deposits(ctx, pause)
     }
 
-    /// Pauses Spoke Pool from processing fills. Only Callable by owner.
+    /// Pauses the Spoke Pool from processing fills. Only callable by the owner.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the pause.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed], where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
-    /// - pause: true if the call is meant to pause the system, false if the call is meant to unpause it.
+    /// - pause: `true` to pause the system, `false` to unpause it.
     pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
         instructions::pause_fills(ctx, pause)
     }
