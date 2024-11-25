@@ -138,7 +138,7 @@ describe("svm_spoke.fill.across_plus", () => {
     updateRelayData(initialRelayData);
   });
 
-  it.only("Forwards tokens to the final recipient within invoked message call", async () => {
+  it("Forwards tokens to the final recipient within invoked message call", async () => {
     const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
 
     // Construct ix to transfer all tokens from handler to the final recipient.
