@@ -581,7 +581,7 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         uint32 exclusivityPeriod,
         bytes calldata message
-    ) public payable {
+    ) public payable override {
         depositV3(
             depositor.toBytes32(),
             recipient.toBytes32(),
