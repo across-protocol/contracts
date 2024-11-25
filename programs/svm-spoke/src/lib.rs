@@ -379,7 +379,7 @@ pub mod svm_spoke {
     /// - relayer_token_account (Writable): The relayer's ATA for the input token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
     /// - fill_status (Writable): The fill status PDA, created on this function call to track the fill status to prevent
-    ///     re-entrancy & double fills. Also used to track requested slow fills. Seed: ["fills", relay_hash].
+    ///   re-entrancy & double fills. Also used to track requested slow fills. Seed: ["fills", relay_hash].
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Interface): The associated token program.
     /// - system_program (Interface): The system program.
@@ -744,7 +744,7 @@ pub mod svm_spoke {
     ///
     /// This function serves as the permissioned entry point for messages sent from the Ethereum mainnet to the Solana
     /// SVM Spoke program over CCTP. It processes the incoming message by translating it into a corresponding Solana
-    /// instruction and then invokes the instruction within thisprogram.
+    /// instruction and then invokes the instruction within this program.
     ///
     /// ### Accounts:
     /// - authority_pda: A signer account that ensures this instruction can only be called by the Message Transmitter.
