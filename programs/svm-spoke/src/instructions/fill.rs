@@ -33,11 +33,11 @@ pub struct FillV3Relay<'info> {
         mint::token_program = token_program,
         address = relay_data.output_token @ SvmError::InvalidMint
     )]
-    pub mint_account: InterfaceAccount<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        token::mint = mint_account,
+        token::mint = mint,
         token::authority = signer,
         token::token_program = token_program
     )]
@@ -45,7 +45,7 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mut,
-        associated_token::mint = mint_account,
+        associated_token::mint = mint,
         associated_token::authority = relay_data.recipient,
         associated_token::token_program = token_program
     )]
@@ -108,7 +108,7 @@ pub fn fill_v3_relay<'info>(
             relay_data.output_amount,
             state,
             ctx.bumps.state,
-            &ctx.accounts.mint_account,
+            &ctx.accounts.mint,
             &ctx.accounts.token_program,
         )?;
     }
