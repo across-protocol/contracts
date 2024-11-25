@@ -117,11 +117,7 @@ pub fn fill_v3_relay<'info>(
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
     if !relay_data.message.is_empty() {
-        invoke_handler(
-            ctx.accounts.signer.as_ref(),
-            ctx.remaining_accounts,
-            &relay_data.message,
-        )?;
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
     }
 
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.

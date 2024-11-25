@@ -127,9 +127,7 @@ pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_ad
     let state = &mut ctx.accounts.state;
     state.cross_domain_admin = cross_domain_admin;
 
-    emit_cpi!(SetXDomainAdmin {
-        new_admin: cross_domain_admin,
-    });
+    emit_cpi!(SetXDomainAdmin { new_admin: cross_domain_admin });
 
     Ok(())
 }
@@ -190,11 +188,7 @@ pub fn set_enable_route(
 ) -> Result<()> {
     ctx.accounts.route.enabled = enabled;
 
-    emit_cpi!(EnabledDepositRoute {
-        origin_token,
-        destination_chain_id,
-        enabled,
-    });
+    emit_cpi!(EnabledDepositRoute { origin_token, destination_chain_id, enabled });
 
     Ok(())
 }
@@ -233,11 +227,7 @@ pub fn relay_root_bundle(
     root_bundle.relayer_refund_root = relayer_refund_root;
     root_bundle.slow_relay_root = slow_relay_root;
 
-    emit_cpi!(RelayedRootBundle {
-        root_bundle_id: state.root_bundle_id,
-        relayer_refund_root,
-        slow_relay_root,
-    });
+    emit_cpi!(RelayedRootBundle { root_bundle_id: state.root_bundle_id, relayer_refund_root, slow_relay_root });
 
     state.root_bundle_id += 1;
 

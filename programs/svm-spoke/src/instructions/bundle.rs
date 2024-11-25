@@ -127,10 +127,7 @@ where
         return err!(CommonError::ClaimedMerkleLeaf);
     }
 
-    set_claimed(
-        &mut ctx.accounts.root_bundle.claimed_bitmap,
-        relayer_refund_leaf.leaf_id,
-    );
+    set_claimed(&mut ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id);
 
     if relayer_refund_leaf.refund_addresses.len() != relayer_refund_leaf.refund_amounts.len() {
         return err!(CommonError::InvalidMerkleLeaf);
@@ -203,11 +200,8 @@ fn distribute_relayer_refunds<'info>(
             to: refund_token_account.to_account_info(),
             authority: ctx.accounts.state.to_account_info(),
         };
-        let cpi_context = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            transfer_accounts,
-            signer_seeds,
-        );
+        let cpi_context =
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
         transfer_checked(cpi_context, amount.to_owned(), ctx.accounts.mint.decimals)?;
     }
 

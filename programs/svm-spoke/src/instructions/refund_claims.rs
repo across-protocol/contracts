@@ -92,11 +92,8 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         to: ctx.accounts.token_account.to_account_info(),
         authority: ctx.accounts.state.to_account_info(),
     };
-    let cpi_context = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-        signer_seeds,
-    );
+    let cpi_context =
+        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
     emit_cpi!(ClaimedRelayerRefund {
@@ -171,18 +168,11 @@ pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_addr
         to: ctx.accounts.token_account.to_account_info(),
         authority: ctx.accounts.state.to_account_info(),
     };
-    let cpi_context = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-        signer_seeds,
-    );
+    let cpi_context =
+        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
-    emit_cpi!(ClaimedRelayerRefund {
-        l2_token_address: ctx.accounts.mint.key(),
-        claim_amount,
-        refund_address,
-    });
+    emit_cpi!(ClaimedRelayerRefund { l2_token_address: ctx.accounts.mint.key(), claim_amount, refund_address });
 
     Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
 }
