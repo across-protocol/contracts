@@ -35,13 +35,13 @@ pub struct Initialize<'info> {
 
 pub fn initialize(
     ctx: Context<Initialize>,
-    seed: u64,
-    initial_number_of_deposits: u32,
-    chain_id: u64,                  // Across definition of chainId for Solana.
-    remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
-    cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
-    deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
-    fill_deadline_buffer: u32,      // Fill deadlines can't be set more than this amount into the future.
+    seed: u64,                       // Seed used to derive a new state to enable testing to reset between runs.
+    initial_number_of_deposits: u32, // Starting number of deposits to offset deposit_id.
+    chain_id: u64,                   // Across definition of chainId for Solana.
+    remote_domain: u32,              // CCTP domain for Mainnet Ethereum.
+    cross_domain_admin: Pubkey,      // HubPool on Mainnet Ethereum.
+    deposit_quote_time_buffer: u32,  // Deposit quote times can't be set more than this amount into the past/future.
+    fill_deadline_buffer: u32,       // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;

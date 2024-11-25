@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     event::V3FundsDeposited,
     get_current_time,
     state::{Route, State},
-    utils::transfer_from,
+    utils::{get_unsafe_deposit_id, transfer_from},
 };
 
 #[event_cpi]
@@ -246,15 +246,4 @@ pub fn unsafe_deposit_v3(
     )?;
 
     Ok(())
-}
-
-// Define a dummy context struct so we can export this as a view function in lib.
-#[derive(Accounts)]
-pub struct Null {}
-pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonce: u64) -> [u8; 32] {
-    let mut data = Vec::new();
-
-    AnchorSerialize::serialize(&(msg_sender, depositor, deposit_nonce), &mut data).unwrap();
-
-    keccak::hash(&data).to_bytes()
 }

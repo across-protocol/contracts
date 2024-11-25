@@ -26,6 +26,7 @@ pub mod utils;
 use common::*;
 use instructions::*;
 use state::*;
+use utils::*;
 
 #[program]
 pub mod svm_spoke {
@@ -691,7 +692,7 @@ pub mod svm_spoke {
     ///   of the params are missing or different from the origin chain deposit, then Across will not include a slow
     ///   fill for the intended deposit. See fill_v3_relay & V3RelayData struct for more details.
     pub fn request_v3_slow_fill(
-        ctx: Context<SlowFillV3Relay>,
+        ctx: Context<RequestV3SlowFill>,
         _relay_hash: [u8; 32],
         relay_data: V3RelayData,
     ) -> Result<()> {
