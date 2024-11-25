@@ -26,7 +26,13 @@ import {
   sendTransactionWithLookupTable,
 } from "../../src/SvmUtils";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { common } from "./SvmSpoke.common";
+import {
+  ExecuteV3SlowRelayLeafDataParams,
+  ExecuteV3SlowRelayLeafDataValues,
+  RequestV3SlowFillDataParams,
+  RequestV3SlowFillDataValues,
+  common,
+} from "./SvmSpoke.common";
 import {
   SlowFillLeaf,
   intToU8Array32,
@@ -59,14 +65,6 @@ describe("svm_spoke.slow_fill.across_plus", () => {
   let seed: BN;
 
   const seedBalance = 10_000_000_000;
-
-  const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
-    return {
-      ...relayData,
-      fillDeadline: relayData.fillDeadline.toNumber(),
-      exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
-    };
-  };
 
   async function updateRelayData(newRelayData: SlowFillLeaf["relayData"]) {
     relayData = newRelayData;
@@ -138,7 +136,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     // Relay root bundle with slow fill leaf.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
 
-    const requestV3SlowFillValues = [Array.from(relayHash), formatRelayData(leaf.relayData)];
+    const requestV3SlowFillValues: RequestV3SlowFillDataValues = [Array.from(relayHash), leaf.relayData];
     let loadRequestParamsInstructions: TransactionInstruction[] = [];
     if (bufferParams) {
       loadRequestParamsInstructions = await loadRequestV3SlowFillParams(program, relayer, requestV3SlowFillValues[1]);
@@ -147,7 +145,9 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         program.programId
       );
     }
-    const requestV3SlowFillParams = bufferParams ? [requestV3SlowFillValues[0], null] : requestV3SlowFillValues;
+    const requestV3SlowFillParams: RequestV3SlowFillDataParams = bufferParams
+      ? [requestV3SlowFillValues[0], null]
+      : requestV3SlowFillValues;
     const requestIx = await program.methods
       .requestV3SlowFill(...requestV3SlowFillParams)
       .accounts(requestAccounts)
@@ -169,9 +169,9 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
       ...multicallHandlerCoder.compiledKeyMetas,
     ];
-    const executeV3SlowRelayLeafValues = [
+    const executeV3SlowRelayLeafValues: ExecuteV3SlowRelayLeafDataValues = [
       Array.from(relayHash),
-      { ...leaf, relayData: formatRelayData(relayData) },
+      leaf,
       rootBundleId,
       proofAsNumbers,
     ];
@@ -189,7 +189,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         program.programId
       );
     }
-    const executeV3SlowRelayLeafParams = bufferParams
+    const executeV3SlowRelayLeafParams: ExecuteV3SlowRelayLeafDataParams = bufferParams
       ? [executeV3SlowRelayLeafValues[0], null, null, null]
       : executeV3SlowRelayLeafValues;
     const executeIx = await program.methods
@@ -230,8 +230,8 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
-      fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
-      exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
+      fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
+      exclusivityDeadline: Math.floor(Date.now() / 1000) - 30, // Note we set time in past to avoid exclusivity deadline
       message: Buffer.from(""), // Will be populated in the tests below.
     };
 

@@ -25,15 +25,6 @@ import {
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
 
-const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
-  return {
-    ...relayData,
-    depositId: relayData.depositId,
-    fillDeadline: relayData.fillDeadline.toNumber(),
-    exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
-  };
-};
-
 describe("svm_spoke.slow_fill", () => {
   anchor.setProvider(provider);
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
@@ -108,8 +99,8 @@ describe("svm_spoke.slow_fill", () => {
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
         depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
-        fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
-        exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
+        fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
+        exclusivityDeadline: Math.floor(Date.now() / 1000) - 30, // Note we set time in past to avoid exclusivity deadline
         message,
       },
       chainId: slowRelayLeafChainId,
@@ -184,8 +175,8 @@ describe("svm_spoke.slow_fill", () => {
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(1),
-      fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
-      exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
+      fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
+      exclusivityDeadline: Math.floor(Date.now() / 1000) + 30, // 30 seconds from now
       message: encodedMessage,
     };
 
@@ -197,24 +188,16 @@ describe("svm_spoke.slow_fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     try {
-      await program.methods
-        .requestV3SlowFill(relayHash, formatRelayData(relayData))
-        .accounts(requestAccounts)
-        .signers([relayer])
-        .rpc();
+      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to exclusivity deadline not passed");
     } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the exclusivityDeadline
-    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
+    await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
-    await program.methods
-      .requestV3SlowFill(relayHash, formatRelayData(relayData))
-      .accounts(requestAccounts)
-      .signers([relayer])
-      .rpc();
+    await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
 
     // Fetch and verify the RequestedV3SlowFill event
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -243,7 +226,7 @@ describe("svm_spoke.slow_fill", () => {
       tokenDecimals
     );
     const fillIx = await program.methods
-      .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
+      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -251,26 +234,18 @@ describe("svm_spoke.slow_fill", () => {
     await sendAndConfirmTransaction(connection, fillTx, [relayer]);
 
     try {
-      await program.methods
-        .requestV3SlowFill(relayHash, formatRelayData(relayData))
-        .accounts(requestAccounts)
-        .signers([relayer])
-        .rpc();
+      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to being within exclusivity window");
     } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
     }
 
     // Set the contract time to be after the exclusivityDeadline.
-    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
+    await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
     // Attempt to request a slow fill after the relay has been filled.
     try {
-      await program.methods
-        .requestV3SlowFill(relayHash, formatRelayData(relayData))
-        .accounts(requestAccounts)
-        .signers([relayer])
-        .rpc();
+      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to relay already being filled");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidSlowFillRequest", "Expected InvalidSlowFillRequest error");
@@ -286,11 +261,11 @@ describe("svm_spoke.slow_fill", () => {
     assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before requestV3SlowFill");
 
     // Set the contract time to be after the exclusivityDeadline
-    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
+    await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
     // Request a slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+      .requestV3SlowFill(Array.from(relayHash), relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -310,11 +285,11 @@ describe("svm_spoke.slow_fill", () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
     // Set the contract time to be after the exclusivityDeadline
-    await setCurrentTime(program, state, relayer, relayData.exclusivityDeadline.add(new BN(1)));
+    await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
     // Request a slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+      .requestV3SlowFill(Array.from(relayHash), relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -322,7 +297,7 @@ describe("svm_spoke.slow_fill", () => {
     // Attempt to request a slow fill again for the same relay
     try {
       await program.methods
-        .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+        .requestV3SlowFill(Array.from(relayHash), relayData)
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -355,12 +330,7 @@ describe("svm_spoke.slow_fill", () => {
     };
     try {
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -371,19 +341,14 @@ describe("svm_spoke.slow_fill", () => {
 
     // Request V3 slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
     // Execute V3 slow relay leaf after requesting slow fill
     const ix = await program.methods
-      .executeV3SlowRelayLeaf(
-        Array.from(relayHash),
-        { ...leaf, relayData: formatRelayData(relayData) },
-        rootBundleId,
-        proofAsNumbers
-      )
+      .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -446,7 +411,7 @@ describe("svm_spoke.slow_fill", () => {
     try {
       const relayHash = calculateRelayHashUint8Array(relayData, chainId);
       await program.methods
-        .requestV3SlowFill(Array.from(relayHash), formatRelayData(relayData))
+        .requestV3SlowFill(Array.from(relayHash), relayData)
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -461,7 +426,7 @@ describe("svm_spoke.slow_fill", () => {
     // Request V3 slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -483,12 +448,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -510,7 +470,7 @@ describe("svm_spoke.slow_fill", () => {
       rootBundle: firstRootBundle,
     } = await relaySlowFillRootBundle(firstRecipient);
     await program.methods
-      .requestV3SlowFill(Array.from(firstRelayHash), formatRelayData(firstLeaf.relayData))
+      .requestV3SlowFill(Array.from(firstRelayHash), firstLeaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -523,7 +483,7 @@ describe("svm_spoke.slow_fill", () => {
     const secondRecipient = Keypair.generate().publicKey;
     const { relayHash: secondRelayHash, leaf: secondLeaf } = await relaySlowFillRootBundle(secondRecipient);
     await program.methods
-      .requestV3SlowFill(Array.from(secondRelayHash), formatRelayData(secondLeaf.relayData))
+      .requestV3SlowFill(Array.from(secondRelayHash), secondLeaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -544,12 +504,7 @@ describe("svm_spoke.slow_fill", () => {
       program: program.programId,
     };
     await program.methods
-      .executeV3SlowRelayLeaf(
-        Array.from(firstRelayHash),
-        { ...firstLeaf, relayData: formatRelayData(firstLeaf.relayData) },
-        firstRootBundleId,
-        firstProofAsNumbers
-      )
+      .executeV3SlowRelayLeaf(Array.from(firstRelayHash), firstLeaf, firstRootBundleId, firstProofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .rpc();
@@ -576,12 +531,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(secondRelayHash),
-          { ...firstLeaf, relayData: formatRelayData(firstLeaf.relayData) },
-          firstRootBundleId,
-          firstProofAsNumbers
-        )
+        .executeV3SlowRelayLeaf(Array.from(secondRelayHash), firstLeaf, firstRootBundleId, firstProofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -596,7 +546,7 @@ describe("svm_spoke.slow_fill", () => {
     // Request V3 slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -622,12 +572,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -646,7 +591,7 @@ describe("svm_spoke.slow_fill", () => {
       anotherChainId
     );
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -667,12 +612,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(
-          Array.from(relayHash),
-          { ...leaf, relayData: formatRelayData(relayData) },
-          rootBundleId,
-          proofAsNumbers
-        )
+        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -693,7 +633,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Request V3 slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -712,12 +652,7 @@ describe("svm_spoke.slow_fill", () => {
       program: program.programId,
     };
     await program.methods
-      .executeV3SlowRelayLeaf(
-        Array.from(relayHash),
-        { ...leaf, relayData: formatRelayData(relayData) },
-        rootBundleId,
-        proofAsNumbers
-      )
+      .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .rpc();

@@ -223,8 +223,8 @@ export interface SlowFillLeaf {
     outputAmount: BN;
     originChainId: BN;
     depositId: number[];
-    fillDeadline: BN;
-    exclusivityDeadline: BN;
+    fillDeadline: number;
+    exclusivityDeadline: number;
     message: Buffer;
   };
   chainId: BN;
@@ -245,8 +245,8 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
     Buffer.from(slowFillLeaf.relayData.depositId),
-    slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
-    slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
     new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
     slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
