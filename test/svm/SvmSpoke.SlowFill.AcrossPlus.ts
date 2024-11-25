@@ -2,17 +2,12 @@ import * as anchor from "@coral-xyz/anchor";
 import * as crypto from "crypto";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
   getAccount,
   createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
-  getMinimumBalanceForRentExemptAccount,
-  createApproveCheckedInstruction,
 } from "@solana/spl-token";
 import {
   PublicKey,
@@ -31,15 +26,15 @@ import {
   sendTransactionWithLookupTable,
 } from "../../src/SvmUtils";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { FillDataParams, FillDataValues, common } from "./SvmSpoke.common";
+import { common } from "./SvmSpoke.common";
 import {
   SlowFillLeaf,
+  intToU8Array32,
   loadExecuteV3SlowRelayLeafParams,
-  loadFillV3RelayParams,
   loadRequestV3SlowFillParams,
   slowFillHashFn,
 } from "./utils";
-const { provider, connection, program, owner, chainId, seedBalance } = common;
+const { provider, connection, program, owner, chainId } = common;
 const { initializeState, assertSE } = common;
 
 describe("svm_spoke.slow_fill.across_plus", () => {
@@ -68,7 +63,6 @@ describe("svm_spoke.slow_fill.across_plus", () => {
   const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
     return {
       ...relayData,
-      depositId: relayData.depositId.toNumber(),
       fillDeadline: relayData.fillDeadline.toNumber(),
       exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
     };
@@ -235,7 +229,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
+      depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
       message: Buffer.from(""), // Will be populated in the tests below.

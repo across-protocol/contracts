@@ -274,7 +274,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
     it("Max token distributions within invoked message call, regular params", async () => {
       // Larger distribution would exceed message size limits.
-      const numberOfDistributions = 8;
+      const numberOfDistributions = 7;
 
       await fillTokenDistributions(numberOfDistributions);
     });
