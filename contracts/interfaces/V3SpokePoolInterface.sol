@@ -87,7 +87,7 @@ interface V3SpokePoolInterface {
     // filled so they don't have to be unpacked by all clients.
     struct V3RelayExecutionEventInfo {
         bytes32 updatedRecipient;
-        bytes updatedMessage;
+        bytes32 updatedMessageHash;
         uint256 updatedOutputAmount;
         FillType fillType;
     }
@@ -152,7 +152,7 @@ interface V3SpokePoolInterface {
         bytes32 indexed relayer,
         bytes32 depositor,
         bytes32 recipient,
-        bytes message,
+        bytes32 messageHash,
         V3RelayExecutionEventInfo relayExecutionInfo
     );
 
@@ -168,7 +168,7 @@ interface V3SpokePoolInterface {
         bytes32 exclusiveRelayer,
         bytes32 depositor,
         bytes32 recipient,
-        bytes message
+        bytes32 messageHash
     );
 
     event ClaimedRelayerRefund(

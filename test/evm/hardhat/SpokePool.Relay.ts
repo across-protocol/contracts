@@ -10,6 +10,7 @@ import {
   BigNumber,
   addressToBytes,
   bytes32ToAddress,
+  hashNonEmptyMessage,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -130,10 +131,10 @@ describe("SpokePool Relayer Logic", async function () {
             addressToBytes(relayer.address),
             addressToBytes(relayData.depositor),
             addressToBytes(relayData.recipient),
-            relayData.message,
+            hashNonEmptyMessage(relayData.message),
             [
               addressToBytes(relayData.recipient),
-              relayExecution.updatedMessage,
+              hashNonEmptyMessage(relayExecution.updatedMessage),
               relayExecution.updatedOutputAmount,
               // Testing that this FillType is not "FastFill"
               FillType.ReplacedSlowFill,
@@ -166,10 +167,10 @@ describe("SpokePool Relayer Logic", async function () {
             addressToBytes(relayer.address),
             addressToBytes(relayData.depositor),
             addressToBytes(relayData.recipient),
-            relayData.message,
+            hashNonEmptyMessage(relayData.message),
             [
               addressToBytes(relayData.recipient),
-              relayExecution.updatedMessage,
+              hashNonEmptyMessage(relayExecution.updatedMessage),
               relayExecution.updatedOutputAmount,
               // Testing that this FillType is "SlowFill"
               FillType.SlowFill,
@@ -201,10 +202,10 @@ describe("SpokePool Relayer Logic", async function () {
             addressToBytes(relayer.address),
             addressToBytes(relayData.depositor),
             addressToBytes(relayData.recipient),
-            relayData.message,
+            hashNonEmptyMessage(relayData.message),
             [
               addressToBytes(relayData.recipient),
-              relayExecution.updatedMessage,
+              hashNonEmptyMessage(relayExecution.updatedMessage),
               relayExecution.updatedOutputAmount,
               FillType.FastFill,
             ]
@@ -372,10 +373,10 @@ describe("SpokePool Relayer Logic", async function () {
             addressToBytes(relayer.address), // Should be equal to msg.sender of fillRelayV3
             addressToBytes(relayData.depositor),
             addressToBytes(relayData.recipient),
-            relayData.message,
+            hashNonEmptyMessage(relayData.message),
             [
               addressToBytes(relayData.recipient), // updatedRecipient should be equal to recipient
-              relayData.message, // updatedMessage should be equal to message
+              hashNonEmptyMessage(relayData.message), // updatedMessageHash should be equal to message hash
               relayData.outputAmount, // updatedOutputAmount should be equal to outputAmount
               // Should be FastFill
               FillType.FastFill,
@@ -487,11 +488,11 @@ describe("SpokePool Relayer Logic", async function () {
             addressToBytes(relayer.address), // Should be equal to msg.sender
             addressToBytes(relayData.depositor),
             addressToBytes(relayData.recipient),
-            relayData.message,
+            hashNonEmptyMessage(relayData.message),
             [
               // Should use passed-in updated params:
               addressToBytes(updatedRecipient),
-              updatedMessage,
+              hashNonEmptyMessage(updatedMessage),
               updatedOutputAmount,
               // Should be FastFill
               FillType.FastFill,
