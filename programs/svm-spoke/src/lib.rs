@@ -109,7 +109,7 @@ pub mod svm_spoke {
         instructions::transfer_ownership(ctx, new_owner)
     }
 
-    /// Enables or disables a route for deposits from an origin token to a destination chain ID. Callable only by the owner.
+    /// Enables or disables a route for deposits from origin token to destination chain ID. Callable only by the owner.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the route change.
@@ -157,7 +157,7 @@ pub mod svm_spoke {
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the addition of the new root bundle.
-    /// - payer (Signer): The account responsible for paying the transaction fees and covering the rent for the root_bundle PDA.
+    /// - payer (Signer): The account who pays rent to create root_bundle PDA.
     /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
     /// - root_bundle (Writable): The newly created bundle PDA to store root bundle data. Each root bundle has an
     ///   incrementing ID, stored in the state. Seed: ["root_bundle", state.seed,root_bundle_id].
@@ -174,7 +174,7 @@ pub mod svm_spoke {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
-    /// Deletes a root bundle in case of emergencies where a bad bundle has reached the Spoke. Only callable by the owner.
+    /// Deletes a root bundle in case of emergencies where bad bundle has reached the Spoke. Only callable by the owner.
     ///
     /// This function will close the PDA for the associated `root_bundle_id`.
     /// Note: Using this function does not decrement `state.root_bundle_id`.
@@ -202,12 +202,9 @@ pub mod svm_spoke {
     ///
     /// The fee paid to relayers and the system is captured in the spread between the input and output amounts,
     /// denominated in the input token. A relayer on the destination chain will send `output_amount` of `output_token`
-    /// to the recipient and receive `input_token` on a repayment chain of their choice.
-    ///
-    /// The fee accounts for:
-    /// - Destination transaction costs,
-    /// - The relayer's opportunity cost of capital while waiting for a refund during the optimistic challenge window in the HubPool,
-    /// - The system fee charged to the relayer.
+    /// to the recipient and receive `input_token` on a repayment chain of their choice. The fee accounts for:
+    /// Destination transaction costs, relayer's opportunity cost of capital while waiting for a refund during the
+    /// optimistic challenge window in the HubPool, and the system fee charged to the relayer.
     ///
     /// On the destination chain, a unique hash of the deposit data is used to identify this deposit. Modifying any
     /// parameters will result in a different hash, creating a separate deposit. The hash is computed using all parameters
@@ -237,13 +234,13 @@ pub mod svm_spoke {
     /// - output_amount: The amount of output tokens that the relayer will send to the recipient on the destination.
     /// - destination_chain_id: The destination chain identifier. Must be enabled along with the input token as a valid
     ///   deposit route from this spoke pool or this transaction will revert.
-    /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity deadline
-    ///   timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the current block
-    ///   timestamp.
+    /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity
+    ///   deadline timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the
+    ///   current block timestamp.
     /// - quote_timestamp: The HubPool timestamp that is used to determine the system fee paid by the depositor. This
     ///   must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime].
-    /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp,
-    ///   the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer].
+    /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp, the
+    ///   fill will revert on the destination chain. Must be set between [currentTime,currentTime+fillDeadlineBuffer].
     /// - exclusivity_parameter: Sets the exclusivity deadline timestamp for the exclusiveRelayer to fill the deposit.
     ///   1. If 0, no exclusivity period.
     ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.
@@ -630,7 +627,7 @@ pub mod svm_spoke {
     ///
     /// This function sets up a claim account for a relayer to claim their refund at a later time and should only be
     /// used in the un-happy path where a bundle cant not be executed due to a recipient in the bundle having a blocked
-    /// or uninitialized claim ATA. the refund address, ass passed into this function, becomes the "owner" of the claim_account.
+    /// or uninitialized claim ATA. The refund address becomes the "owner" of the claim_account.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that pays for the transaction and initializes the claim account.
