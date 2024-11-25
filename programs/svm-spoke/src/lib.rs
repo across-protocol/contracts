@@ -174,18 +174,19 @@ pub mod svm_spoke {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
-    /// Deletes a root bundle in case of emergencies where a bad bundle has reached the Spoke. Only callable by owner.
+    /// Deletes a root bundle in case of emergencies where a bad bundle has reached the Spoke. Only callable by the owner.
     ///
-    /// Will close the PDA for the associated root bundle_id. If used does not decrement state.root_bundle_id.
+    /// This function will close the PDA for the associated `root_bundle_id`.
+    /// Note: Using this function does not decrement `state.root_bundle_id`.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the deletion.
     /// - closer (SystemAccount): The account that will receive the lamports from closing the root_bundle account.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
     /// - root_bundle (Writable): The root bundle PDA to be closed. Seed: ["root_bundle", state.seed, root_bundle_id].
     ///
     /// ### Parameters:
-    /// - root_bundle_id: Index of root bundle that needs to be deleted.
+    /// - root_bundle_id: Index of the root bundle that needs to be deleted.
     pub fn emergency_delete_root_bundle(
         ctx: Context<EmergencyDeleteRootBundleState>,
         root_bundle_id: u32,
