@@ -91,6 +91,22 @@ interface V3SpokePoolInterface {
         uint256 updatedOutputAmount;
         FillType fillType;
     }
+    // Represents the parameters required for a V3 deposit operation in the SpokePool.
+    struct DepositV3Params {
+        bytes32 depositor;
+        bytes32 recipient;
+        bytes32 inputToken;
+        bytes32 outputToken;
+        uint256 inputAmount;
+        uint256 outputAmount;
+        uint256 destinationChainId;
+        bytes32 exclusiveRelayer;
+        uint32 depositId;
+        uint32 quoteTimestamp;
+        uint32 fillDeadline;
+        uint32 exclusivityParameter;
+        bytes message;
+    }
 
     /**************************************
      *              EVENTS                *
