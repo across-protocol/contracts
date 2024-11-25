@@ -591,22 +591,20 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
-        DepositV3Params memory params = DepositV3Params({
-            depositor: depositor.toBytes32(),
-            recipient: recipient.toBytes32(),
-            inputToken: inputToken.toBytes32(),
-            outputToken: outputToken.toBytes32(),
-            inputAmount: inputAmount,
-            outputAmount: outputAmount,
-            destinationChainId: destinationChainId,
-            exclusiveRelayer: exclusiveRelayer.toBytes32(),
-            depositId: numberOfDeposits++,
-            quoteTimestamp: quoteTimestamp,
-            fillDeadline: fillDeadline,
-            exclusivityParameter: exclusivityParameter,
-            message: message
-        });
-        _depositV3(params);
+        depositV3(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            inputToken.toBytes32(),
+            outputToken.toBytes32(),
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer.toBytes32(),
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityParameter,
+            message
+        );
     }
 
     /**
@@ -631,28 +629,21 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable nonReentrant unpausedDeposits {
-        // @dev Create the uint256 deposit ID by concatenating the msg.sender and depositor address with the inputted
-        // depositNonce parameter. The resultant 32 byte string will be hashed and then casted to an "unsafe"
-        // uint256 deposit ID. The probability that the resultant ID collides with a "safe" deposit ID is
-        // equal to the chance that the first 28 bytes of the hash are 0, which is too small for us to consider.
-
-        uint256 depositId = getUnsafeDepositId(msg.sender, depositor.toBytes32(), depositNonce);
-        DepositV3Params memory params = DepositV3Params({
-            depositor: depositor.toBytes32(),
-            recipient: recipient.toBytes32(),
-            inputToken: inputToken.toBytes32(),
-            outputToken: outputToken.toBytes32(),
-            inputAmount: inputAmount,
-            outputAmount: outputAmount,
-            destinationChainId: destinationChainId,
-            exclusiveRelayer: exclusiveRelayer.toBytes32(),
-            depositId: depositId,
-            quoteTimestamp: quoteTimestamp,
-            fillDeadline: fillDeadline,
-            exclusivityParameter: exclusivityParameter,
-            message: message
-        });
-        _depositV3(params);
+        unsafeDepositV3(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            inputToken.toBytes32(),
+            outputToken.toBytes32(),
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer.toBytes32(),
+            depositNonce,
+            quoteTimestamp,
+            fillDeadline,
+            exclusivityParameter,
+            message
+        );
     }
 
     /**
