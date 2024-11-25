@@ -376,7 +376,7 @@ pub mod svm_spoke {
     /// relayer's capital opportunity cost, and a system fee. The relay_data hash uniquely identifies the deposit to
     /// fill, ensuring relayers are refunded only for deposits matching the original hash from the origin SpokePool.
     /// This hash includes all parameters from deposit_v3() and must match the destination_chain_id. Note the relayer
-    /// creates a ATA in calling this method to store the fill_status. This should be closed once the deposit has
+    /// creates an ATA in calling this method to store the fill_status. This should be closed once the deposit has
     /// expired to let the relayer re-claim their rent. Cannot fill more than once. Partial fills are not supported.
     ///
     /// ### Accounts:
@@ -385,7 +385,7 @@ pub mod svm_spoke {
     /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
     ///   Seed: ["route", input_token, state.seed, destination_chain_id].
     /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
-    /// - mint (Account): The mint of the output token, send from the relayer to the recipient.
+    /// - mint (Account): The mint of the output token, sent from the relayer to the recipient.
     /// - relayer_token_account (Writable): The relayer's ATA for the input token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
     /// - fill_status (Writable): The fill status PDA, created on this function call to track the fill status to prevent
@@ -395,15 +395,15 @@ pub mod svm_spoke {
     /// - system_program (Interface): The system program.
     ///
     /// ### Parameters:
-    /// - _relay_hash: The hash identifying the deposit to to be filled. Caller must pass this in. Computed as hash of
-    ///    the flattened relay_data & destination_chain_id.
+    /// - _relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
+    ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit to be filled. Should match
     ///   all the same-named parameters emitted in the origin chain V3FundsDeposited event.
     ///   - depositor: The account credited with the deposit.
     ///   - recipient: The account receiving funds on this chain.
     ///   - input_token: The token pulled from the caller's account to initiate the deposit. The equivalent of this
     ///     token on the repayment chain will be sent as a refund to the caller.
-    ///   - output_token: The token that the caller will send to the recipient on the this chain.
+    ///   - output_token: The token that the caller will send to the recipient on this chain.
     ///   - input_amount: This amount, less a system fee, will be sent to the caller on their repayment chain.
     ///   - output_amount: The amount of output tokens that the caller will send to the recipient.
     ///   - origin_chain_id: The origin chain identifier.
