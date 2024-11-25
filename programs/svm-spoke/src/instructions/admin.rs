@@ -62,7 +62,7 @@ pub fn initialize(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct PauseDeposits<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -81,7 +81,7 @@ pub fn pause_deposits(ctx: Context<PauseDeposits>, pause: bool) -> Result<()> {
 #[event_cpi]
 #[derive(Accounts)]
 pub struct PauseFills<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -99,7 +99,7 @@ pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct TransferOwnership<'info> {
-    #[account(address = state.owner @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(address = state.owner @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -115,7 +115,7 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) ->
 #[event_cpi]
 #[derive(Accounts)]
 pub struct SetCrossDomainAdmin<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
@@ -137,7 +137,7 @@ pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_ad
 #[derive(Accounts)]
 #[instruction(origin_token: Pubkey, destination_chain_id: u64)]
 pub struct SetEnableRoute<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -171,7 +171,7 @@ pub struct SetEnableRoute<'info> {
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring `address = origin_token` for mint, thus using a custom constraint.
+        // IDL build fails when requiring address = origin_token for mint, thus using a custom constraint.
         constraint = origin_token_mint.key() == origin_token @ SvmError::InvalidMint
     )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
@@ -201,7 +201,7 @@ pub fn set_enable_route(
 #[event_cpi]
 #[derive(Accounts)]
 pub struct RelayRootBundle<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]
@@ -246,7 +246,7 @@ pub fn relay_root_bundle(
 #[derive(Accounts)]
 #[instruction(root_bundle_id: u32)]
 pub struct EmergencyDeleteRootBundleState<'info> {
-    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)] // Enforces onlyOwner.
+    #[account(constraint = is_local_or_remote_owner(&signer, &state) @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
 
     #[account(mut)]

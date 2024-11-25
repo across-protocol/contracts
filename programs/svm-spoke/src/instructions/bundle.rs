@@ -104,7 +104,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     deferred_refunds: bool,
 ) -> Result<()>
 where
-    'c: 'info, // The lifetime constraint `'c: 'info` ensures that the lifetime `'c` is at least as long as `'info`.
+    'c: 'info, // The lifetime constraint 'c: 'info ensures that the lifetime 'c is at least as long as 'info.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
