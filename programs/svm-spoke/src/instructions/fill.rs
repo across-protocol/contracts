@@ -116,7 +116,7 @@ pub fn fill_v3_relay<'info>(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
-    if relay_data.message.len() > 0 {
+    if !relay_data.message.is_empty() {
         invoke_handler(
             ctx.accounts.signer.as_ref(),
             ctx.remaining_accounts,

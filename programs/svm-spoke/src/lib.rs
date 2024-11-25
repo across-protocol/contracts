@@ -602,8 +602,8 @@ pub mod svm_spoke {
     /// ### Parameters:
     /// - offset: The starting position within the account's data where the fragment will be written.
     /// - fragment: The raw data fragment to be written into the account.
-    pub fn write_instruction_params_fragment<'info>(
-        ctx: Context<WriteInstructionParamsFragment<'info>>,
+    pub fn write_instruction_params_fragment(
+        ctx: Context<WriteInstructionParamsFragment<'_>>,
         offset: u32,
         fragment: Vec<u8>,
     ) -> Result<()> {

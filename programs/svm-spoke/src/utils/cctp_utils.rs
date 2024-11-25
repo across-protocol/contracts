@@ -47,11 +47,11 @@ pub fn decode_solidity_bool(data: &[u8; 32]) -> Result<bool> {
             0 => Ok(false),
             1 => Ok(true),
             _ => {
-                return err!(CallDataError::InvalidBool);
+                err!(CallDataError::InvalidBool)
             }
         },
         _ => {
-            return err!(CallDataError::InvalidBool);
+            err!(CallDataError::InvalidBool)
         }
     }
 }

@@ -208,7 +208,7 @@ pub fn execute_v3_slow_relay_leaf<'info>(
     // Update the fill status to Filled. Note we don't set the relayer here as it is set when the slow fill was requested.
     fill_status_account.status = FillStatus::Filled;
 
-    if relay_data.message.len() > 0 {
+    if !relay_data.message.is_empty() {
         invoke_handler(
             ctx.accounts.signer.as_ref(),
             ctx.remaining_accounts,
