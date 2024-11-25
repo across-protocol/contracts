@@ -379,14 +379,14 @@ describe("SpokePool Depositor Logic", async function () {
       _quoteTimestamp = quoteTimestamp
     ) {
       return [
-        _relayData.depositor,
-        _relayData.recipient,
-        _relayData.inputToken,
-        _relayData.outputToken,
+        addressToBytes(_relayData.depositor),
+        addressToBytes(_relayData.recipient),
+        addressToBytes(_relayData.inputToken),
+        addressToBytes(_relayData.outputToken),
         _relayData.inputAmount,
         _relayData.outputAmount,
         _destinationChainId,
-        _relayData.exclusiveRelayer,
+        addressToBytes(_relayData.exclusiveRelayer),
         _depositId,
         _quoteTimestamp,
         _relayData.fillDeadline,
@@ -831,19 +831,19 @@ describe("SpokePool Depositor Logic", async function () {
       const forcedDepositId = "99";
       const expectedDepositId = BigNumber.from(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "uint256"],
-          [depositor.address, recipient.address, forcedDepositId]
+          ["address", "bytes32", "uint256"],
+          [depositor.address, addressToBytes(recipient.address), forcedDepositId]
         )
       );
-      expect(await spokePool.getUnsafeDepositId(depositor.address, recipient.address, forcedDepositId)).to.equal(
-        expectedDepositId
-      );
+      expect(
+        await spokePool.getUnsafeDepositId(depositor.address, addressToBytes(recipient.address), forcedDepositId)
+      ).to.equal(expectedDepositId);
       // Note: we deliberately set the depositor != msg.sender to test that the hashing algorithm correctly includes
       // both addresses in the hash.
       await expect(
         spokePool
           .connect(depositor)
-          .unsafeDepositV3(
+          [SpokePoolFuncs.unsafeDepositV3Bytes](
             ...getUnsafeDepositArgsFromRelayData({ ...relayData, depositor: recipient.address }, forcedDepositId)
           )
       )
@@ -858,7 +858,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
           relayData.fillDeadline,
           0,
-          recipient.address,
+          addressToBytes(recipient.address),
           relayData.recipient,
           relayData.exclusiveRelayer,
           relayData.message
