@@ -358,6 +358,78 @@ export async function loadFillV3RelayParams(
   }
 }
 
+export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
+  // Close the instruction params account if the caller has used it before.
+  await closeInstructionParams(program, signer);
+
+  // Execute load instructions sequentially.
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("requestV3SlowFillParams", { relayData });
+
+  const loadInstructions: TransactionInstruction[] = [];
+  loadInstructions.push(
+    await program.methods
+      .initializeInstructionParams(instructionParamsBytes.length)
+      .accounts({ signer: signer.publicKey })
+      .instruction()
+  );
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
+    loadInstructions.push(
+      await program.methods
+        .writeInstructionParamsFragment(i, fragment)
+        .accounts({ signer: signer.publicKey })
+        .instruction()
+    );
+  }
+
+  return loadInstructions;
+}
+
+export async function loadExecuteV3SlowRelayLeafParams(
+  program: Program<SvmSpoke>,
+  signer: Keypair,
+  slowFillLeaf: SlowFillLeaf,
+  rootBundleId: number,
+  proof: number[][]
+) {
+  // Close the instruction params account if the caller has used it before.
+  await closeInstructionParams(program, signer);
+
+  // Execute load instructions sequentially.
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("executeV3SlowRelayLeafParams", {
+    slowFillLeaf,
+    rootBundleId,
+    proof,
+  });
+
+  const loadInstructions: TransactionInstruction[] = [];
+  loadInstructions.push(
+    await program.methods
+      .initializeInstructionParams(instructionParamsBytes.length)
+      .accounts({ signer: signer.publicKey })
+      .instruction()
+  );
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
+    loadInstructions.push(
+      await program.methods
+        .writeInstructionParamsFragment(i, fragment)
+        .accounts({ signer: signer.publicKey })
+        .instruction()
+    );
+  }
+
+  return loadInstructions;
+}
+
 // Encodes empty list of multicall handler instructions to be used as a test message field for fills.
 export function testAcrossPlusMessage() {
   const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;

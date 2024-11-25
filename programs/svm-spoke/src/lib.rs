@@ -206,9 +206,9 @@ pub mod svm_spoke {
     pub fn execute_v3_slow_relay_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
-        slow_fill_leaf: V3SlowFill,
-        _root_bundle_id: u32,
-        proof: Vec<[u8; 32]>,
+        slow_fill_leaf: Option<V3SlowFill>,
+        _root_bundle_id: Option<u32>,
+        proof: Option<Vec<[u8; 32]>>,
     ) -> Result<()> {
         instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }

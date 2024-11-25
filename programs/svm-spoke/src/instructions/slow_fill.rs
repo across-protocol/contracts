@@ -7,7 +7,7 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     get_current_time,
-    state::{FillStatus, FillStatusAccount, RequestV3SlowFillParams, RootBundle, State},
+    state::{ExecuteV3SlowRelayLeafParams, FillStatus, FillStatusAccount, RequestV3SlowFillParams, RootBundle, State},
     utils::{hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
 
@@ -112,7 +112,7 @@ fn unwrap_request_v3_slow_fill_params(
 }
 
 // Define the V3SlowFill struct
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct V3SlowFill {
     pub relay_data: V3RelayData,
     pub chain_id: u64,
@@ -141,13 +141,28 @@ impl V3SlowFill {
 // Define the V3SlowFill struct
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], slow_fill_leaf: V3SlowFill, root_bundle_id: u32)]
+#[instruction(relay_hash: [u8; 32], slow_fill_leaf: Option<V3SlowFill>, root_bundle_id: Option<u32>)]
 pub struct ExecuteV3SlowRelayLeaf<'info> {
     pub signer: Signer<'info>,
+
+    // This is required as fallback when None instruction params are passed in arguments.
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
+    pub instruction_params: Option<Account<'info, ExecuteV3SlowRelayLeafParams>>,
+
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), root_bundle_id.to_le_bytes().as_ref()], bump)]
+    #[account(
+        seeds = [
+            b"root_bundle",
+            state.seed.to_le_bytes().as_ref(),
+            root_bundle_id
+                .unwrap_or_else(|| instruction_params.as_ref().unwrap().root_bundle_id)
+                .to_le_bytes()
+                .as_ref(),
+        ],
+        bump
+    )]
     pub root_bundle: Account<'info, RootBundle>,
 
     #[account(
@@ -155,20 +170,34 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &slow_fill_leaf.relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(
+            &relay_hash,
+            &slow_fill_leaf
+                .clone()
+                .unwrap_or_else(|| instruction_params.as_ref().unwrap().slow_fill_leaf.clone())
+                .relay_data,
+            &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
     #[account(
         mint::token_program = token_program,
-        address = slow_fill_leaf.relay_data.output_token @ SvmError::InvalidMint
+        address = slow_fill_leaf
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().slow_fill_leaf.clone())
+            .relay_data
+            .output_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = slow_fill_leaf.relay_data.recipient,
+        associated_token::authority = slow_fill_leaf
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().slow_fill_leaf.clone())
+            .relay_data
+            .recipient,
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -187,9 +216,13 @@ pub struct ExecuteV3SlowRelayLeaf<'info> {
 
 pub fn execute_v3_slow_relay_leaf<'info>(
     ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
-    slow_fill_leaf: V3SlowFill,
-    proof: Vec<[u8; 32]>,
+    slow_fill_leaf: Option<V3SlowFill>,
+    proof: Option<Vec<[u8; 32]>>,
 ) -> Result<()> {
+    let ExecuteV3SlowRelayLeafParams {
+        slow_fill_leaf, proof, ..
+    } = unwrap_execute_v3_slow_relay_leaf_params(slow_fill_leaf, proof, &ctx.accounts.instruction_params);
+
     let current_time = get_current_time(&ctx.accounts.state)?;
 
     let relay_data = slow_fill_leaf.relay_data;
@@ -277,4 +310,27 @@ pub fn execute_v3_slow_relay_leaf<'info>(
     });
 
     Ok(())
+}
+
+// Helper to unwrap optional instruction params with fallback loading from buffer account.
+fn unwrap_execute_v3_slow_relay_leaf_params(
+    slow_fill_leaf: Option<V3SlowFill>,
+    proof: Option<Vec<[u8; 32]>>,
+    account: &Option<Account<ExecuteV3SlowRelayLeafParams>>,
+) -> ExecuteV3SlowRelayLeafParams {
+    match (slow_fill_leaf, proof) {
+        (Some(slow_fill_leaf), Some(proof)) => ExecuteV3SlowRelayLeafParams {
+            slow_fill_leaf,
+            root_bundle_id: 0, // This is not used in the caller.
+            proof,
+        },
+        _ => account
+            .as_ref()
+            .map(|account| ExecuteV3SlowRelayLeafParams {
+                slow_fill_leaf: account.slow_fill_leaf.clone(),
+                root_bundle_id: account.root_bundle_id,
+                proof: account.proof.clone(),
+            })
+            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+    }
 }
