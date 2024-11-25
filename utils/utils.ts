@@ -192,6 +192,16 @@ export function trimSolanaAddress(bytes32Address: string): string {
   return ethers.utils.hexZeroPad(ethers.utils.hexlify(uint160Address), 20);
 }
 
+export function hashNonEmptyMessage(message: string) {
+  if (!ethers.utils.isHexString(message) || message.length % 2 !== 0) throw new Error("Invalid hex message bytes");
+
+  // account for 0x prefix when checking length
+  if (message.length > 2) {
+    return ethers.utils.keccak256(message);
+  }
+  return ethers.utils.hexlify(new Uint8Array(32));
+}
+
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
 export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };

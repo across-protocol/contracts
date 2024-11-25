@@ -1064,7 +1064,7 @@ abstract contract SpokePool is
             relayData.exclusiveRelayer,
             relayData.depositor,
             relayData.recipient,
-            relayData.message
+            _hashNonEmptyMessage(relayData.message)
         );
     }
 
@@ -1630,10 +1630,10 @@ abstract contract SpokePool is
             relayer,
             relayData.depositor,
             relayData.recipient,
-            relayData.message,
+            _hashNonEmptyMessage(relayData.message),
             V3RelayExecutionEventInfo({
                 updatedRecipient: relayExecution.updatedRecipient,
-                updatedMessage: relayExecution.updatedMessage,
+                updatedMessageHash: _hashNonEmptyMessage(relayExecution.updatedMessage),
                 updatedOutputAmount: relayExecution.updatedOutputAmount,
                 fillType: fillType
             })
@@ -1681,6 +1681,16 @@ abstract contract SpokePool is
     // Determine whether the exclusivityDeadline implies active exclusivity.
     function _fillIsExclusive(uint32 exclusivityDeadline, uint32 currentTime) internal pure returns (bool) {
         return exclusivityDeadline >= currentTime;
+    }
+
+    // Helper for emitting message hash. For the sake of easier human observability we return zeroed bytes32 in case of
+    // empty message.
+    function _hashNonEmptyMessage(bytes memory message) internal pure returns (bytes32) {
+        if (message.length == 0) {
+            return bytes32(0);
+        } else {
+            return keccak256(message);
+        }
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute

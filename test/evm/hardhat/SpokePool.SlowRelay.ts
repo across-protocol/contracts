@@ -7,6 +7,7 @@ import {
   seedContract,
   seedWallet,
   addressToBytes,
+  hashNonEmptyMessage,
 } from "../../../utils/utils";
 import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } from "./fixtures/SpokePool.Fixture";
 import { buildV3SlowRelayTree } from "./MerkleLib.utils";
@@ -309,12 +310,12 @@ describe("SpokePool Slow Relay Logic", async function () {
           addressToBytes(consts.zeroAddress), // Sets relayer address to 0x0
           addressToBytes(relayData.depositor),
           addressToBytes(relayData.recipient),
-          relayData.message,
+          hashNonEmptyMessage(relayData.message),
           [
             // Uses relayData.recipient
             addressToBytes(relayData.recipient),
             // Uses relayData.message
-            relayData.message,
+            hashNonEmptyMessage(relayData.message),
             // Uses slow fill leaf's updatedOutputAmount
             slowRelayLeaf.updatedOutputAmount,
             // Should be SlowFill
