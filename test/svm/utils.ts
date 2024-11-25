@@ -1,8 +1,9 @@
-import { BN, Program } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { BN, Program, workspace } from "@coral-xyz/anchor";
+import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import { MerkleTree } from "@uma/common";
 import {
@@ -11,8 +12,9 @@ import {
   LargeAccountsCoder,
   readEvents,
   readProgramEvents,
+  MulticallHandlerCoder,
+  AcrossPlusMessageCoder,
 } from "../../src/SvmUtils";
-import { addressToBytes, isBytes32 } from "../../test-utils";
 
 export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
@@ -160,14 +162,17 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
 
   const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
+  // TODO: We better consider reusing Borch serializer in production.
   const contentToHash = Buffer.concat([
     // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
     Buffer.alloc(64, 0),
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
+    new BN(relayData.refundAmounts.length).toArrayLike(Buffer, "le", 4),
     refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
+    new BN(relayData.refundAddresses.length).toArrayLike(Buffer, "le", 4),
     refundAddressesBuffer,
   ]);
 
@@ -218,6 +223,7 @@ export interface SlowFillLeaf {
   updatedOutputAmount: BN;
 }
 
+// TODO: We better consider reusing Borch serializer in production.
 export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   const contentToHash = Buffer.concat([
     // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
@@ -233,6 +239,7 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.depositId.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
     slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.updatedOutputAmount.toArrayLike(Buffer, "le", 8),
@@ -273,4 +280,33 @@ export async function loadExecuteRelayerRefundLeafParams(
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
   return instructionParams;
+}
+
+// Encodes empty list of multicall handler instructions to be used as a test message field for fills.
+export function testAcrossPlusMessage() {
+  const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
+  const multicallHandlerCoder = new MulticallHandlerCoder([]);
+  const handlerMessage = multicallHandlerCoder.encode();
+  const message = new AcrossPlusMessageCoder({
+    handler: handlerProgram.programId,
+    readOnlyLen: multicallHandlerCoder.readOnlyLen,
+    valueAmount: new BN(0),
+    accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+    handlerMessage,
+  });
+  const encodedMessage = message.encode();
+  const fillRemainingAccounts: AccountMeta[] = [
+    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+    ...multicallHandlerCoder.compiledKeyMetas,
+  ];
+  return { encodedMessage, fillRemainingAccounts };
+}
+
+export function hashNonEmptyMessage(message: Buffer) {
+  if (message.length > 0) {
+    const hash = ethers.utils.keccak256(message);
+    return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
+  }
+  // else return zeroed bytes32
+  return new Uint8Array(32);
 }

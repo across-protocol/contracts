@@ -15,18 +15,10 @@ import {
   createEnableCpiGuardInstruction,
   ExtensionType,
 } from "@solana/spl-token";
-import {
-  PublicKey,
-  Keypair,
-  TransactionInstruction,
-  AddressLookupTableProgram,
-  VersionedTransaction,
-  TransactionMessage,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
-import { readProgramEvents, calculateRelayHashUint8Array } from "../../src/SvmUtils";
+import { PublicKey, Keypair, TransactionInstruction, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
+import { readProgramEvents, calculateRelayHashUint8Array, sendTransactionWithLookupTable } from "../../src/SvmUtils";
 import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
+import { testAcrossPlusMessage, hashNonEmptyMessage } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
@@ -35,6 +27,7 @@ describe("svm_spoke.fill", () => {
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
+  const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
   const tokenDecimals = 6;
 
   let state: PublicKey,
@@ -89,7 +82,7 @@ describe("svm_spoke.fill", () => {
     calledFillAccounts: FillAccounts = accounts,
     callingRelayer: Keypair = relayer
   ) => {
-    // Delegate state PDA to pull depositor tokens.
+    // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
       calledFillAccounts.mintAccount,
@@ -103,6 +96,7 @@ describe("svm_spoke.fill", () => {
     const fillIx = await program.methods
       .fillV3Relay(...fillDataValues)
       .accounts(calledFillAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .instruction();
     const fillTx = new Transaction().add(approveIx, fillIx);
     await sendAndConfirmTransaction(connection, fillTx, [payer, callingRelayer]);
@@ -122,8 +116,12 @@ describe("svm_spoke.fill", () => {
     await mintTo(connection, payer, mint, relayerTA, owner, seedBalance);
     await mintTo(connection, payer, mint, otherRelayerTA, owner, seedBalance);
 
-    state = await initializeState();
+    await connection.requestAirdrop(relayer.publicKey, 10_000_000_000); // 10 SOL
+    await connection.requestAirdrop(otherRelayer.publicKey, 10_000_000_000); // 10 SOL
+  });
 
+  beforeEach(async () => {
+    ({ state } = await initializeState());
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
 
     const initialRelayData = {
@@ -138,7 +136,7 @@ describe("svm_spoke.fill", () => {
       depositId: Math.floor(Math.random() * 1000000), // force that we always have a new deposit id.
       fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
       exclusivityDeadline: Math.floor(Date.now() / 1000) + 30, // 30 seconds from now
-      message: Buffer.from("Test message"),
+      message: encodedMessage,
     };
 
     updateRelayData(initialRelayData);
@@ -181,8 +179,19 @@ describe("svm_spoke.fill", () => {
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
-      assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      if (key === "message") {
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
+      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
     });
+    // RelayExecutionInfo should match.
+    assertSE(event.relayExecutionInfo.updatedRecipient, relayData.recipient, "UpdatedRecipient should match");
+    assertSE(
+      event.relayExecutionInfo.updatedMessageHash,
+      hashNonEmptyMessage(relayData.message),
+      "UpdatedMessageHash should match"
+    );
+    assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
+    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"fastFill":{}}`, "FillType should be FastFill");
     // These props below are not part of relayData.
     assertSE(event.repaymentChainId, new BN(420), "Repayment chain id should match");
     assertSE(event.relayer, otherRelayer.publicKey, "Repayment address should match");
@@ -389,6 +398,7 @@ describe("svm_spoke.fill", () => {
     const txSignature = await program.methods
       .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
+      .remainingAccounts(fillRemainingAccounts)
       .signers([relayer])
       .rpc();
 
@@ -481,6 +491,7 @@ describe("svm_spoke.fill", () => {
     const fillInstruction = await program.methods
       .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
+      .remainingAccounts(fillRemainingAccounts)
       .instruction();
 
     // Create and send the transaction
@@ -503,14 +514,14 @@ describe("svm_spoke.fill", () => {
     const recipientAssociatedTokens = recipientAuthorities.map((authority) =>
       getAssociatedTokenAddressSync(mint, authority)
     );
-    const remainingAccounts = recipientAuthorities.flatMap((authority, index) => [
+    const createTAremainingAccounts = recipientAuthorities.flatMap((authority, index) => [
       { pubkey: authority, isWritable: false, isSigner: false },
       { pubkey: recipientAssociatedTokens[index], isWritable: true, isSigner: false },
     ]);
     const createTokenAccountsInstruction = await program.methods
       .createTokenAccounts()
       .accounts({ signer: relayer.publicKey, mint, tokenProgram: TOKEN_PROGRAM_ID })
-      .remainingAccounts(remainingAccounts)
+      .remainingAccounts(createTAremainingAccounts)
       .instruction();
 
     // Build instructions for all fills
@@ -529,6 +540,7 @@ describe("svm_spoke.fill", () => {
       const fillInstruction = await program.methods
         .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
+        .remainingAccounts(fillRemainingAccounts)
         .instruction();
       fillInstructions.push(fillInstruction);
     }
@@ -544,51 +556,12 @@ describe("svm_spoke.fill", () => {
       tokenProgram
     );
 
-    // Consolidate all above addresses into a single array for the  Address Lookup Table (ALT).
-    const lookupAddresses = [...Object.values(accounts), ...recipientAuthorities, ...recipientAssociatedTokens];
-
-    // Create instructions for creating and extending the ALT.
-    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
-      authority: relayer.publicKey,
-      payer: relayer.publicKey,
-      recentSlot: await connection.getSlot(),
-    });
-
-    // Submit the ALT creation transaction
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [relayer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Extend the ALT with all accounts
-    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-      lookupTable: lookupTableAddress,
-      authority: relayer.publicKey,
-      payer: relayer.publicKey,
-      addresses: lookupAddresses as PublicKey[],
-    });
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [relayer], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
-
-    // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Fetch the AddressLookupTableAccount
-    const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
-    if (lookupTableAccount === null) throw new Error("AddressLookupTableAccount not fetched");
-
-    // Create the versioned transaction
-    const versionedTx = new VersionedTransaction(
-      new TransactionMessage({
-        payerKey: relayer.publicKey,
-        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        instructions: [createTokenAccountsInstruction, approveInstruction, ...fillInstructions],
-      }).compileToV0Message([lookupTableAccount])
+    // Fill using the ALT.
+    await sendTransactionWithLookupTable(
+      connection,
+      [createTokenAccountsInstruction, approveInstruction, ...fillInstructions],
+      relayer
     );
-
-    // Sign and submit the versioned transaction.
-    versionedTx.sign([relayer]);
-    await connection.sendTransaction(versionedTx);
 
     // Verify balances after the fill
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
@@ -669,5 +642,21 @@ describe("svm_spoke.fill", () => {
     // Verify recipient's balance after the fill
     recipientAccount = await getAccount(connection, recipientTA, undefined, tokenProgram);
     assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
+  });
+
+  it("Emits zeroed hash for empty message", async () => {
+    updateRelayData({ ...relayData, message: Buffer.alloc(0) });
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
+
+    // Fetch and verify the FilledV3Relay event
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "filledV3Relay").data;
+    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+
+    // Verify that the event data has zeroed message hash.
+    assertSE(event.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
+    assertSE(event.relayExecutionInfo.updatedMessageHash, new Uint8Array(32), `UpdatedMessageHash should be zeroed`);
   });
 });

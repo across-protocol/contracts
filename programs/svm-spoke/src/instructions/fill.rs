@@ -12,7 +12,7 @@ use crate::{
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     get_current_time,
     state::{FillStatus, FillStatusAccount, State},
-    utils::transfer_from,
+    utils::{hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -55,9 +55,8 @@ pub struct FillV3Relay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
+        seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
@@ -67,8 +66,8 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn fill_v3_relay(
-    ctx: Context<FillV3Relay>,
+pub fn fill_v3_relay<'info>(
+    ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
     relay_data: V3RelayData,
     repayment_chain_id: u64,
     repayment_address: Pubkey,
@@ -118,9 +117,17 @@ pub fn fill_v3_relay(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
-    // TODO: there might be a better way to do this
+    if relay_data.message.len() > 0 {
+        invoke_handler(
+            ctx.accounts.signer.as_ref(),
+            ctx.remaining_accounts,
+            &relay_data.message,
+        )?;
+    }
+
     // Emit the FilledV3Relay event
-    let message_clone = relay_data.message.clone(); // Clone the message before it is moved
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
 
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
@@ -136,10 +143,10 @@ pub fn fill_v3_relay(
         relayer: repayment_address,
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
-        message: relay_data.message,
+        message_hash,
         relay_execution_info: V3RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message: message_clone,
+            updated_message_hash: message_hash,
             updated_output_amount: relay_data.output_amount,
             fill_type,
         },
@@ -161,7 +168,7 @@ pub struct CloseFillPda<'info> {
         mut,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        close = signer, // TODO: check if this is correct party to receive refund.
+        close = signer,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]

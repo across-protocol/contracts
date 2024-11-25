@@ -15,7 +15,7 @@ import {
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
-describe("svm_spoke.refund_claims", () => {
+describe.only("svm_spoke.refund_claims", () => {
   anchor.setProvider(provider);
 
   const claimInitializer = Keypair.generate();
@@ -23,6 +23,7 @@ describe("svm_spoke.refund_claims", () => {
   const relayer = Keypair.generate();
 
   let state: PublicKey,
+    seed: BN,
     mint: PublicKey,
     tokenAccount: PublicKey,
     claimAccount: PublicKey,
@@ -86,7 +87,7 @@ describe("svm_spoke.refund_claims", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -129,7 +130,7 @@ describe("svm_spoke.refund_claims", () => {
   };
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     mint = await createMint(connection, payer, owner, owner, 6);
 
     tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;

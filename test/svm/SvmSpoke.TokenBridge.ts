@@ -26,6 +26,7 @@ describe("svm_spoke.token_bridge", () => {
   const messageTransmitterProgram = workspace.MessageTransmitter as Program<MessageTransmitter>;
 
   let state: PublicKey,
+    seed: BN,
     mint: PublicKey,
     vault: PublicKey,
     tokenMinter: PublicKey,
@@ -73,7 +74,7 @@ describe("svm_spoke.token_bridge", () => {
 
   beforeEach(async () => {
     // Each test will have different state and mint token.
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     mint = await createMint(connection, payer, owner, owner, 6);
     vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address;
 
@@ -154,7 +155,7 @@ describe("svm_spoke.token_bridge", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle

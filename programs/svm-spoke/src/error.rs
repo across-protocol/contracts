@@ -96,3 +96,24 @@ pub enum CallDataError {
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
 }
+
+// Errors to handle Across+ message calls.
+#[error_code]
+pub enum AcrossPlusError {
+    #[msg("Message did not deserialize")]
+    MessageDidNotDeserialize,
+    #[msg("Invalid handle message key length")]
+    InvalidMessageKeyLength,
+    #[msg("Invalid handle message read-only key length")]
+    InvalidReadOnlyKeyLength,
+    #[msg("Invalid message handler key")]
+    InvalidMessageHandler,
+    #[msg("Invalid message account key")]
+    InvalidMessageAccountKey,
+    #[msg("Not read-only message account key")]
+    NotReadOnlyMessageAccountKey,
+    #[msg("Not writable message account key")]
+    NotWritableMessageAccountKey,
+    #[msg("Missing value recipient key")]
+    MissingValueRecipientKey,
+}
