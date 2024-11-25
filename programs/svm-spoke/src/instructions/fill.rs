@@ -46,7 +46,7 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = relay_data.recipient,
+        associated_token::authority = relay_data.recipient, // Ensures tokens go to ATA owned by the recipient.
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -169,7 +169,6 @@ pub struct CloseFillPda<'info> {
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
         close = signer,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,

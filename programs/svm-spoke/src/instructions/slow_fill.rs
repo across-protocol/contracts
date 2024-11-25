@@ -33,7 +33,6 @@ pub struct SlowFillV3Relay<'info> {
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,

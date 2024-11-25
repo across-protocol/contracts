@@ -49,7 +49,7 @@ pub struct DepositV3<'info> {
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = state,
+        associated_token::authority = state, // Ensure owner is the state as tokens are sent here on deposit.
         associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
