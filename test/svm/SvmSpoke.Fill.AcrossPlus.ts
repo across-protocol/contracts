@@ -67,7 +67,7 @@ describe("svm_spoke.fill.across_plus", () => {
       state,
       signer: relayer.publicKey,
       instructionParams: program.programId,
-      mintAccount: mint,
+      mint: mint,
       relayerTokenAccount: relayerATA,
       recipientTokenAccount: handlerATA,
       fillStatus: fillStatusPDA,
@@ -81,7 +81,7 @@ describe("svm_spoke.fill.across_plus", () => {
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
-      accounts.mintAccount,
+      accounts.mint,
       accounts.state,
       accounts.signer,
       BigInt(relayAmount),

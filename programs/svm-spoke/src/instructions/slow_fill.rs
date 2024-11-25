@@ -1,22 +1,20 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
 use crate::{
     common::V3RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    get_current_time,
     state::{ExecuteV3SlowRelayLeafParams, FillStatus, FillStatusAccount, RequestV3SlowFillParams, RootBundle, State},
-    utils::{hash_non_empty_message, invoke_handler, verify_merkle_proof},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
-
-use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
 
 #[event_cpi]
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], relay_data: Option<V3RelayData>)]
-pub struct SlowFillV3Relay<'info> {
+pub struct RequestV3SlowFill<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
@@ -37,7 +35,6 @@ pub struct SlowFillV3Relay<'info> {
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(
             &relay_hash,
             &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
@@ -47,7 +44,7 @@ pub struct SlowFillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: Option<V3RelayData>) -> Result<()> {
+pub fn request_v3_slow_fill(ctx: Context<RequestV3SlowFill>, relay_data: Option<V3RelayData>) -> Result<()> {
     let RequestV3SlowFillParams { relay_data } =
         unwrap_request_v3_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
 
@@ -63,18 +60,16 @@ pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: Option<V3
         return err!(CommonError::ExpiredFillDeadline);
     }
 
-    // Check the fill status
+    // Check the fill status is unfilled.
     let fill_status_account = &mut ctx.accounts.fill_status;
     if fill_status_account.status != FillStatus::Unfilled {
         return err!(CommonError::InvalidSlowFillRequest);
     }
 
-    // Update the fill status to RequestedSlowFill
-    fill_status_account.status = FillStatus::RequestedSlowFill;
+    fill_status_account.status = FillStatus::RequestedSlowFill; // Update the fill status to RequestedSlowFill
     fill_status_account.relayer = ctx.accounts.signer.key();
 
-    // Emit the RequestedV3SlowFill event
-    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    // Emit the RequestedV3SlowFill event. Empty message is not hashed and emits zeroed bytes32 for easier observability
     let message_hash = hash_non_empty_message(&relay_data.message);
 
     emit_cpi!(RequestedV3SlowFill {
@@ -111,7 +106,6 @@ fn unwrap_request_v3_slow_fill_params(
     }
 }
 
-// Define the V3SlowFill struct
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct V3SlowFill {
     pub relay_data: V3RelayData,
@@ -138,7 +132,6 @@ impl V3SlowFill {
     }
 }
 
-// Define the V3SlowFill struct
 #[event_cpi]
 #[derive(Accounts)]
 #[instruction(relay_hash: [u8; 32], slow_fill_leaf: Option<V3SlowFill>, root_bundle_id: Option<u32>)]
@@ -282,7 +275,6 @@ pub fn execute_v3_slow_relay_leaf<'info>(
         )?;
     }
 
-    // Emit the FilledV3Relay event
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
