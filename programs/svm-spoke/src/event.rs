@@ -31,7 +31,7 @@ pub struct RelayedRootBundle {
 }
 
 #[event]
-pub struct EmergencyDeleteRootBundle {
+pub struct EmergencyDeletedRootBundle {
     pub root_bundle_id: u32,
 }
 
