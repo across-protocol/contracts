@@ -815,7 +815,7 @@ abstract contract SpokePool is
         bytes calldata depositorSignature
     ) public override nonReentrant {
         _verifyUpdateV3DepositMessage(
-            depositor,
+            depositor.toAddress(),
             depositId,
             chainId(),
             updatedOutputAmount,
@@ -869,7 +869,7 @@ abstract contract SpokePool is
         bytes calldata depositorSignature
     ) public {
         _verifyUpdateV3DepositMessage(
-            depositor.toBytes32(),
+            depositor,
             depositId,
             chainId(),
             updatedOutputAmount,
@@ -1009,7 +1009,7 @@ abstract contract SpokePool is
         });
 
         _verifyUpdateV3DepositMessage(
-            relayData.depositor,
+            relayData.depositor.toAddress(),
             relayData.depositId,
             relayData.originChainId,
             updatedOutputAmount,
@@ -1496,7 +1496,7 @@ abstract contract SpokePool is
     }
 
     function _verifyUpdateV3DepositMessage(
-        bytes32 depositor,
+        address depositor,
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
@@ -1521,7 +1521,7 @@ abstract contract SpokePool is
             ),
             originChainId
         );
-        _verifyDepositorSignature(depositor.toAddress(), expectedTypedDataV4Hash, depositorSignature);
+        _verifyDepositorSignature(depositor, expectedTypedDataV4Hash, depositorSignature);
     }
 
     // This function is isolated and made virtual to allow different L2's to implement chain specific recovery of
