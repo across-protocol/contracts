@@ -1683,14 +1683,10 @@ abstract contract SpokePool is
         return exclusivityDeadline >= currentTime;
     }
 
-    // Helper for emitting message hash. For the sake of easier human observability we return zeroed bytes32 in case of
-    // empty message.
+    // Helper for emitting message hash. For easier easier human readability we return bytes32(0) for empty message.
     function _hashNonEmptyMessage(bytes memory message) internal pure returns (bytes32) {
-        if (message.length == 0) {
-            return bytes32(0);
-        } else {
-            return keccak256(message);
-        }
+        if (message.length == 0) return bytes32(0);
+        else return keccak256(message);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
