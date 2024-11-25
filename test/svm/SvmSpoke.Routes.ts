@@ -12,20 +12,20 @@ describe("svm_spoke.routes", () => {
   anchor.setProvider(provider);
 
   const nonOwner = Keypair.generate();
-  let state: PublicKey, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
+  let state: PublicKey, seed: BN, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
   let routeChainId: BN;
   let setEnableRouteAccounts: any;
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     tokenMint = await createMint(provider.connection, (provider.wallet as anchor.Wallet).payer, owner, owner, 6);
 
     // Create a PDA for the route
     routeChainId = new BN(1);
-    routePda = createRoutePda(tokenMint, state, routeChainId);
+    routePda = createRoutePda(tokenMint, seed, routeChainId);
 
     // Create ATA for the origin token to be stored by state (vault).
-    vault = getVaultAta(tokenMint, state);
+    vault = await getVaultAta(tokenMint, state);
 
     // Common accounts object
     setEnableRouteAccounts = {
@@ -43,10 +43,7 @@ describe("svm_spoke.routes", () => {
 
   it("Sets, retrieves, and controls access to route enablement", async () => {
     // Enable the route as owner
-    await program.methods
-      .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, true)
-      .accounts(setEnableRouteAccounts)
-      .rpc();
+    await program.methods.setEnableRoute(tokenMint, routeChainId, true).accounts(setEnableRouteAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Retrieve and verify the route is enabled
@@ -63,10 +60,7 @@ describe("svm_spoke.routes", () => {
     assert.isTrue(event.enabled, "enabledDepositRoute enabled");
 
     // Disable the route as owner
-    await program.methods
-      .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, false)
-      .accounts(setEnableRouteAccounts)
-      .rpc();
+    await program.methods.setEnableRoute(tokenMint, routeChainId, false).accounts(setEnableRouteAccounts).rpc();
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Retrieve and verify the route is disabled
@@ -85,7 +79,7 @@ describe("svm_spoke.routes", () => {
     // Try to enable the route as non-owner
     try {
       await program.methods
-        .setEnableRoute(Array.from(tokenMint.toBytes()), routeChainId, true)
+        .setEnableRoute(tokenMint, routeChainId, true)
         .accounts({ ...setEnableRouteAccounts, signer: nonOwner.publicKey })
         .signers([nonOwner])
         .rpc();
@@ -109,11 +103,11 @@ describe("svm_spoke.routes", () => {
 
   it("Cannot misconfigure route with wrong origin token", async () => {
     const wrongOriginToken = Keypair.generate().publicKey;
-    const wrongRoutePda = createRoutePda(wrongOriginToken, state, routeChainId);
+    const wrongRoutePda = createRoutePda(wrongOriginToken, seed, routeChainId);
 
     try {
       await program.methods
-        .setEnableRoute(Array.from(wrongOriginToken.toBytes()), routeChainId, true)
+        .setEnableRoute(wrongOriginToken, routeChainId, true)
         .accounts({ ...setEnableRouteAccounts, route: wrongRoutePda })
         .rpc();
       assert.fail("Setting route with wrong origin token should fail");

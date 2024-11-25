@@ -13,7 +13,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | HubPool             | [0xc186fA914353c44b2E33eBE05f21846F1048bEda](https://etherscan.io/address/0xc186fA914353c44b2E33eBE05f21846F1048bEda) |
 | Optimism_Adapter    | [0xAd1b0a86c98703fd5F4E56fff04F6b2D9b9f246F](https://etherscan.io/address/0xAd1b0a86c98703fd5F4E56fff04F6b2D9b9f246F) |
 | Boba_Adapter        | [0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3](https://etherscan.io/address/0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3) |
-| Arbitrum_Adapter    | [0x937958992799bF4A9a656E6596FD10d7Da5c2216](https://etherscan.io/address/0x937958992799bF4A9a656E6596FD10d7Da5c2216) |
+| Arbitrum_Adapter    | [0x100EDfCf3af2B4625Fca4EaF6C533703e71F7210](https://etherscan.io/address/0x100EDfCf3af2B4625Fca4EaF6C533703e71F7210) |
 | Ethereum_Adapter    | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
 | Ethereum_SpokePool  | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://etherscan.io/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
@@ -123,3 +123,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | WorldChain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet.explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | MulticallHandler     | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://worldchain-mainnet.explorer.alchemy.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## AlephZero mainnet (41455)
+
+| Contract Name       | Address                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| AlephZero_SpokePool | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://evm-explorer.alephzero.org/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
+| MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://evm-explorer.alephzero.org/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

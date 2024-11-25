@@ -23,6 +23,13 @@ pub struct EnabledDepositRoute {
     pub enabled: bool,
 }
 
+#[event]
+pub struct RelayedRootBundle {
+    pub root_bundle_id: u32,
+    pub relayer_refund_root: [u8; 32],
+    pub slow_relay_root: [u8; 32],
+}
+
 // Deposit events
 #[event]
 pub struct V3FundsDeposited {
@@ -31,7 +38,7 @@ pub struct V3FundsDeposited {
     pub input_amount: u64,
     pub output_amount: u64,
     pub destination_chain_id: u64,
-    pub deposit_id: u32,
+    pub deposit_id: [u8; 32],
     pub quote_timestamp: u32,
     pub fill_deadline: u32,
     pub exclusivity_deadline: u32,
@@ -52,7 +59,7 @@ pub enum FillType {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V3RelayExecutionEventInfo {
     pub updated_recipient: Pubkey,
-    pub updated_message: Vec<u8>,
+    pub updated_message_hash: [u8; 32],
     pub updated_output_amount: u64,
     pub fill_type: FillType,
 }
@@ -65,14 +72,15 @@ pub struct FilledV3Relay {
     pub output_amount: u64,
     pub repayment_chain_id: u64,
     pub origin_chain_id: u64,
-    pub deposit_id: u32,
+    pub deposit_id: [u8; 32],
     pub fill_deadline: u32,
     pub exclusivity_deadline: u32,
     pub exclusive_relayer: Pubkey,
     pub relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    pub message: Vec<u8>,
+    // TODO: update EVM implementation to use message_hash in all fill related events.
+    pub message_hash: [u8; 32],
     pub relay_execution_info: V3RelayExecutionEventInfo,
 }
 
@@ -84,13 +92,13 @@ pub struct RequestedV3SlowFill {
     pub input_amount: u64,
     pub output_amount: u64,
     pub origin_chain_id: u64,
-    pub deposit_id: u32,
+    pub deposit_id: [u8; 32],
     pub fill_deadline: u32,
     pub exclusivity_deadline: u32,
     pub exclusive_relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    pub message: Vec<u8>,
+    pub message_hash: [u8; 32],
 }
 
 // Relayer refund events
@@ -103,5 +111,24 @@ pub struct ExecutedRelayerRefundRoot {
     pub leaf_id: u32,
     pub l2_token_address: Pubkey,
     pub refund_addresses: Vec<Pubkey>,
+    pub deferred_refunds: bool,
     pub caller: Pubkey,
+}
+
+#[event]
+pub struct ClaimedRelayerRefund {
+    pub l2_token_address: Pubkey,
+    pub claim_amount: u64,
+    pub refund_address: Pubkey,
+}
+
+#[event]
+pub struct EmergencyDeleteRootBundle {
+    pub root_bundle_id: u32,
+}
+
+#[event]
+pub struct BridgedToHubPool {
+    pub amount: u64,
+    pub mint: Pubkey,
 }

@@ -16,12 +16,18 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
 // Custom tasks to add to HRE.
+const tasks = [
+  "enableL1TokenAcrossEcosystem",
+  "finalizeScrollClaims",
+  "rescueStuckScrollTxn",
+  "verifySpokePool",
+  "evmRelayMessageWithdrawal",
+  "testChainAdapter",
+  "upgradeSpokePool",
+];
+
 // eslint-disable-next-line node/no-missing-require
-require("./tasks/enableL1TokenAcrossEcosystem");
-// eslint-disable-next-line node/no-missing-require
-require("./tasks/finalizeScrollClaims");
-// eslint-disable-next-line node/no-missing-require
-require("./tasks/rescueStuckScrollTxn");
+tasks.forEach((task) => require(`./tasks/${task}`));
 
 dotenv.config();
 
@@ -43,7 +49,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000 },
     viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -52,7 +58,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 
@@ -61,13 +67,6 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Arbitrum_SpokePool.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Arbitrum, only supports 0.8.19.
-        // See https://docs.arbitrum.io/for-devs/concepts/differences-between-arbitrum-ethereum/solidity-support#differences-from-solidity-on-ethereum
-        version: "0.8.19",
-      },
-      // "contracts/Polygon_SpokePool.sol": MEDIUM_CONTRACT_COMPILER_SETTINGS,
       "contracts/Linea_SpokePool.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
@@ -288,6 +287,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    alephzero: {
+      chainId: CHAIN_IDs.ALEPH_ZERO,
+      url: "https://rpc.alephzero.raas.gelato.cloud",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -316,8 +322,17 @@ const config: HardhatUserConfig = {
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
       worldchain: "blockscout",
+      alephzero: "blockscout",
     },
     customChains: [
+      {
+        network: "alephzero",
+        chainId: CHAIN_IDs.ALEPH_ZERO,
+        urls: {
+          apiURL: "https://evm-explorer.alephzero.org/api",
+          browserURL: "https://evm-explorer.alephzero.org",
+        },
+      },
       {
         network: "base",
         chainId: CHAIN_IDs.BASE,

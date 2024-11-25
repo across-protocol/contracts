@@ -1,7 +1,15 @@
+// This script is used to initiate a Solana deposit. useful in testing.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  createApproveCheckedInstruction,
+  getAssociatedTokenAddressSync,
+  getMint,
+} from "@solana/spl-token";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -33,7 +41,7 @@ async function depositV3(): Promise<void> {
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const destinationChainId = new BN(resolvedArgv.destinationChainId);
   const exclusiveRelayer = PublicKey.default;
-  const quoteTimestamp = Math.floor(Date.now() / 1000);
+  const quoteTimestamp = Math.floor(Date.now() / 1000) - 1;
   const fillDeadline = quoteTimestamp + 3600; // 1 hour from now
   const exclusivityDeadline = 0;
   const message = Buffer.from([]); // Convert to Buffer
@@ -51,7 +59,16 @@ async function depositV3(): Promise<void> {
   );
 
   // Define the signer (replace with your actual signer)
-  const signer = provider.wallet.publicKey;
+  const signer = (provider.wallet as anchor.Wallet).payer;
+
+  // Find ATA for the input token to be stored by state (vault). This was created when the route was enabled.
+  const vault = getAssociatedTokenAddressSync(
+    inputToken,
+    statePda,
+    true,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
 
   console.log("Depositing V3...");
   console.table([
@@ -69,20 +86,28 @@ async function depositV3(): Promise<void> {
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
     { property: "routePda", value: routePda.toString() },
+    { property: "vault", value: vault.toString() },
   ]);
 
-  // Create ATA for the input token to be stored by state (vault).
-  const vault = getAssociatedTokenAddressSync(
+  const userTokenAccount = getAssociatedTokenAddressSync(inputToken, signer.publicKey);
+
+  const tokenDecimals = (await getMint(provider.connection, inputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
+
+  // Delegate state PDA to pull depositor tokens.
+  const approveIx = await createApproveCheckedInstruction(
+    userTokenAccount,
     inputToken,
     statePda,
-    true,
-    TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    signer.publicKey,
+    BigInt(inputAmount.toString()),
+    tokenDecimals,
+    undefined,
+    TOKEN_PROGRAM_ID
   );
 
-  const tx = await (
+  const depositIx = await (
     program.methods.depositV3(
-      signer,
+      signer.publicKey,
       recipient,
       inputToken,
       outputToken,
@@ -99,13 +124,15 @@ async function depositV3(): Promise<void> {
     .accounts({
       state: statePda,
       route: routePda,
-      signer: signer,
-      userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer),
+      signer: signer.publicKey,
+      userTokenAccount,
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: inputToken,
     })
-    .rpc();
+    .instruction();
+  const depositTx = new Transaction().add(approveIx, depositIx);
+  const tx = await sendAndConfirmTransaction(provider.connection, depositTx, [signer]);
 
   console.log("Transaction signature:", tx);
 }

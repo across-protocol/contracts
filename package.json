@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "3.0.11",
+  "version": "3.0.16",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -21,10 +21,9 @@
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
-    "lint-js": "yarn prettier --list-different && yarn lint-rust",
+    "lint-js": "yarn prettier --list-different **/*.js **/*.ts",
     "lint-rust": "cargo fmt --all -- --check && cargo clippy",
-    "lint-fix": "yarn prettier --write && cargo fmt --all",
-    "prettier": "prettier .",
+    "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo fmt --all",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
     "build-evm": "hardhat compile",
@@ -32,14 +31,15 @@
     "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "build": "yarn build-evm && yarn build-svm && yarn build-ts",
     "test-evm": "IS_TEST=true hardhat test",
-    "test-svm": "anchor test",
+    "test-svm": "anchor test -- --features test",
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-contract-types": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
-    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types"
+    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-contract-types",
+    "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.16",
+    "@across-protocol/constants": "^3.1.19",
     "@coral-xyz/anchor": "^0.30.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
@@ -58,6 +58,7 @@
     "@uma/core": "^2.56.0",
     "axios": "^1.7.4",
     "bs58": "^6.0.0",
+    "prettier-plugin-rust": "^0.1.9",
     "yargs": "^17.7.2",
     "zksync-web3": "^0.14.3"
   },
@@ -114,7 +115,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"
+      "pre-commit": "echo '🏃‍♂️ Running pre-commit hook on staged files' && yarn pre-commit-hook"
     }
   },
   "publishConfig": {

@@ -40,7 +40,7 @@ export async function deploySpokePool(
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
   await unwhitelistedErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const destErc20 = await (
-    await getContractFactory("ExpandedERC20", deployerWallet)
+    await getContractFactory("ExpandedERC20WithBlacklist", deployerWallet)
   ).deploy("L2 USD Coin", "L2 USDC", 18);
   await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 
@@ -78,107 +78,6 @@ export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) 
       route.enabled ?? true
     );
   }
-}
-
-export async function depositV2(
-  spokePool: Contract,
-  token: Contract,
-  recipient: SignerWithAddress,
-  depositor: SignerWithAddress,
-  destinationChainId: number = consts.destinationChainId,
-  amount = consts.amountToDeposit,
-  relayerFeePct = consts.depositRelayerFeePct,
-  quoteTimestamp?: number,
-  message?: string
-): Promise<Record<string, number | BigNumber | string> | null> {
-  await spokePool.connect(depositor).depositV2(
-    ...getDepositParams({
-      recipient: recipient.address,
-      originToken: token.address,
-      amount,
-      destinationChainId,
-      relayerFeePct,
-      quoteTimestamp: quoteTimestamp ?? (await spokePool.getCurrentTime()).toNumber(),
-      message,
-    })
-  );
-  const [events, originChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.FundsDeposited()),
-    spokePool.chainId(),
-  ]);
-
-  const lastEvent = events[events.length - 1];
-  return lastEvent.args === undefined
-    ? null
-    : {
-        amount: lastEvent.args.amount,
-        originChainId: Number(originChainId),
-        destinationChainId: Number(lastEvent.args.destinationChainId),
-        relayerFeePct: lastEvent.args.relayerFeePct,
-        depositId: lastEvent.args.depositId,
-        quoteTimestamp: lastEvent.args.quoteTimestamp,
-        originToken: lastEvent.args.originToken,
-        recipient: lastEvent.args.recipient,
-        depositor: lastEvent.args.depositor,
-        message: lastEvent.args.message,
-      };
-}
-export async function fillRelay(
-  spokePool: Contract,
-  destErc20: Contract | string,
-  recipient: SignerWithAddress,
-  depositor: SignerWithAddress,
-  relayer: SignerWithAddress,
-  depositId = consts.firstDepositId,
-  originChainId = consts.originChainId,
-  depositAmount = consts.amountToDeposit,
-  amountToRelay = consts.amountToRelay,
-  realizedLpFeePct = consts.realizedLpFeePct,
-  relayerFeePct = consts.depositRelayerFeePct
-) {
-  await spokePool
-    .connect(relayer)
-    .fillRelay(
-      ...getFillRelayParams(
-        getRelayHash(
-          depositor.address,
-          recipient.address,
-          depositId,
-          originChainId,
-          consts.destinationChainId,
-          (destErc20 as Contract).address ?? (destErc20 as string),
-          depositAmount,
-          realizedLpFeePct,
-          relayerFeePct
-        ).relayData,
-        amountToRelay,
-        consts.repaymentChainId
-      )
-    );
-  const [events, destinationChainId] = await Promise.all([
-    spokePool.queryFilter(spokePool.filters.FilledRelay()),
-    spokePool.chainId(),
-  ]);
-  const lastEvent = events[events.length - 1];
-  if (lastEvent.args)
-    return {
-      amount: lastEvent.args.amount,
-      totalFilledAmount: lastEvent.args.totalFilledAmount,
-      fillAmount: lastEvent.args.fillAmount,
-      repaymentChainId: Number(lastEvent.args.repaymentChainId),
-      originChainId: Number(lastEvent.args.originChainId),
-      relayerFeePct: lastEvent.args.relayerFeePct,
-      appliedRelayerFeePct: lastEvent.args.appliedRelayerFeePct,
-      realizedLpFeePct: lastEvent.args.realizedLpFeePct,
-      depositId: lastEvent.args.depositId,
-      destinationToken: lastEvent.args.destinationToken,
-      relayer: lastEvent.args.relayer,
-      depositor: lastEvent.args.depositor,
-      recipient: lastEvent.args.recipient,
-      isSlowRelay: lastEvent.args.isSlowRelay,
-      destinationChainId: Number(destinationChainId),
-    };
-  else return null;
 }
 
 export interface RelayData {
@@ -281,7 +180,7 @@ export function getV3RelayHash(relayData: V3RelayData, destinationChainId: numbe
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
-        "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
         "uint256 destinationChainId",
       ],
       [relayData, destinationChainId]
@@ -441,7 +340,8 @@ export async function getUpdatedV3DepositSignature(
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
-  updatedMessage: string
+  updatedMessage: string,
+  isAddressOverload: boolean = false
 ): Promise<string> {
   const typedData = {
     types: {
@@ -449,7 +349,7 @@ export async function getUpdatedV3DepositSignature(
         { name: "depositId", type: "uint32" },
         { name: "originChainId", type: "uint256" },
         { name: "updatedOutputAmount", type: "uint256" },
-        { name: "updatedRecipient", type: "address" },
+        { name: "updatedRecipient", type: isAddressOverload ? "address" : "bytes32" },
         { name: "updatedMessage", type: "bytes" },
       ],
     },

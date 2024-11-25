@@ -22,9 +22,9 @@ const exclusiveRelayer = Keypair.generate().publicKey;
 const outputToken = new PublicKey("1111111111113EsMD5n1VA94D2fALdb1SAKLam8j"); // TODO: this is lazy. this is cast USDC from Eth mainnet.
 const inputAmount = new BN(500000);
 const outputAmount = inputAmount;
-const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 10); // 10 seconds ago.
+const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 60); // 60 seconds ago.
 const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600); // 600 seconds from now.
-const exclusivityDeadline = new BN(Math.floor(Date.now() / 1000) + 300); // 300 seconds from now.
+const exclusivityParameter = new BN(0); // 0 means no exclusivity and disables this. Set to special values in tests.
 const message = Buffer.from("Test message");
 const depositQuoteTimeBuffer = new BN(3600); // 1 hour.
 const fillDeadlineBuffer = new BN(3600 * 4); // 4 hours.
@@ -36,7 +36,6 @@ const initializeState = async (
     chainId: BN;
     remoteDomain: BN;
     crossDomainAdmin: PublicKey;
-    testableMode: boolean;
     depositQuoteTimeBuffer: BN;
     fillDeadlineBuffer: BN;
   }
@@ -50,7 +49,6 @@ const initializeState = async (
       chainId,
       remoteDomain,
       crossDomainAdmin,
-      testableMode: true,
       depositQuoteTimeBuffer,
       fillDeadlineBuffer,
     };
@@ -63,24 +61,30 @@ const initializeState = async (
       initialState.chainId,
       initialState.remoteDomain.toNumber(),
       initialState.crossDomainAdmin,
-      initialState.testableMode,
       initialState.depositQuoteTimeBuffer.toNumber(),
       initialState.fillDeadlineBuffer.toNumber()
     )
     .accounts(initializeAccounts)
     .rpc();
-  return state;
+  return { state, seed: actualSeed };
 };
 
-const createRoutePda = (originToken: PublicKey, state: PublicKey, routeChainId: BN) => {
+const createRoutePda = (originToken: PublicKey, seed: BN, routeChainId: BN) => {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), originToken.toBytes(), state.toBytes(), routeChainId.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from("route"),
+      originToken.toBytes(),
+      seed.toArrayLike(Buffer, "le", 8),
+      routeChainId.toArrayLike(Buffer, "le", 8),
+    ],
     program.programId
   )[0];
 };
 
-const getVaultAta = (tokenMint: PublicKey, state: PublicKey) => {
-  return getAssociatedTokenAddressSync(tokenMint, state, true, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+const getVaultAta = async (tokenMint: PublicKey, state: PublicKey) => {
+  const tokenMintAccount = await provider.connection.getAccountInfo(tokenMint);
+  if (tokenMintAccount === null) throw new Error("Token Mint account not found");
+  return getAssociatedTokenAddressSync(tokenMint, state, true, tokenMintAccount.owner, ASSOCIATED_TOKEN_PROGRAM_ID);
 };
 
 async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: anchor.web3.Keypair, newTime: BN) {
@@ -93,7 +97,11 @@ async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
 }
 
 function assertSE(a: any, b: any, errorMessage: string) {
-  assert.strictEqual(a.toString(), b.toString(), errorMessage);
+  if (a === undefined || b === undefined) {
+    throw new Error("Undefined value " + errorMessage);
+  } else {
+    assert.strictEqual(a.toString(), b.toString(), errorMessage);
+  }
 }
 
 interface DepositData {
@@ -107,7 +115,7 @@ interface DepositData {
   exclusiveRelayer: PublicKey;
   quoteTimestamp: BN;
   fillDeadline: BN;
-  exclusivityDeadline: BN;
+  exclusivityParameter: BN;
   message: Buffer;
 }
 
@@ -125,6 +133,23 @@ export type DepositDataValues = [
   number,
   Buffer
 ];
+
+export type RelayData = {
+  depositor: PublicKey;
+  recipient: PublicKey;
+  exclusiveRelayer: PublicKey;
+  inputToken: PublicKey;
+  outputToken: PublicKey;
+  inputAmount: BN;
+  outputAmount: BN;
+  originChainId: BN;
+  depositId: number[];
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  message: Buffer;
+};
+
+export type FillDataValues = [number[], RelayData, BN, PublicKey];
 
 export const common = {
   provider,
@@ -144,7 +169,7 @@ export const common = {
   outputAmount,
   quoteTimestamp,
   fillDeadline,
-  exclusivityDeadline,
+  exclusivityParameter,
   message,
   depositQuoteTimeBuffer,
   fillDeadlineBuffer,
@@ -166,7 +191,7 @@ export const common = {
     exclusiveRelayer,
     quoteTimestamp,
     fillDeadline,
-    exclusivityDeadline,
+    exclusivityParameter,
     message,
   } as DepositData,
 };

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
+import "./erc7683/ERC7683Permit2Lib.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./interfaces/SpokePoolMessageHandler.sol";
 import "./interfaces/SpokePoolInterface.sol";
@@ -10,6 +11,7 @@ import "./interfaces/V3SpokePoolInterface.sol";
 import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
+import "./libraries/AddressConverters.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -39,6 +41,8 @@ abstract contract SpokePool is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
+    using Bytes32ToAddress for bytes32;
+    using AddressToBytes32 for address;
 
     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
     // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
@@ -99,6 +103,10 @@ abstract contract SpokePool is
     // to eliminate any chance of collision between pre and post V3 relay hashes.
     mapping(bytes32 => uint256) public fillStatuses;
 
+    // Mapping of L2TokenAddress to relayer to outstanding refund amount. Used when a relayer repayment fails for some
+    // reason (eg blacklist) to track their outstanding liability, thereby letting them claim it later.
+    mapping(address => mapping(address => uint256)) public relayerRefund;
+
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
      **************************************************************/
@@ -127,6 +135,11 @@ abstract contract SpokePool is
 
     bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
         keccak256(
+            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
+        );
+
+    bytes32 public constant UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH =
+        keccak256(
             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
 
@@ -134,15 +147,19 @@ abstract contract SpokePool is
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
     // when executing a slow fill.
-    address public constant EMPTY_RELAYER = address(0);
+    bytes32 public constant EMPTY_RELAYER = bytes32(0);
     // This is the magic value that signals to the off-chain validator
     // that this deposit can never expire. A deposit with this fill deadline should always be eligible for a
     // slow fill, meaning that its output token and input token must be "equivalent". Therefore, this value is only
     // used as a fillDeadline in deposit(), a soon to be deprecated function that also hardcodes outputToken to
     // the zero address, which forces the off-chain validator to replace the output token with the equivalent
     // token for the input token. By using this magic value, off-chain validators do not have to keep
-    // this event in their lookback window when querying for expired deposts.
+    // this event in their lookback window when querying for expired deposits.
     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
+
+    // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
+    // exclusivityDeadline in a deposit event will be set to the current time plus this value.
+    uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -162,80 +179,19 @@ abstract contract SpokePool is
         uint32 indexed leafId,
         address l2TokenAddress,
         address[] refundAddresses,
+        bool deferredRefunds,
         address caller
     );
     event TokensBridged(
         uint256 amountToReturn,
         uint256 indexed chainId,
         uint32 indexed leafId,
-        address indexed l2TokenAddress,
+        bytes32 indexed l2TokenAddress,
         address caller
     );
-    event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
+    event EmergencyDeletedRootBundle(uint256 indexed rootBundleId);
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
-
-    /// EVENTS BELOW ARE DEPRECATED AND EXIST FOR BACKWARDS COMPATIBILITY ONLY.
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event FundsDeposited(
-        uint256 amount,
-        uint256 originChainId,
-        uint256 indexed destinationChainId,
-        int64 relayerFeePct,
-        uint32 indexed depositId,
-        uint32 quoteTimestamp,
-        address originToken,
-        address recipient,
-        address indexed depositor,
-        bytes message
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event RequestedSpeedUpDeposit(
-        int64 newRelayerFeePct,
-        uint32 indexed depositId,
-        address indexed depositor,
-        address updatedRecipient,
-        bytes updatedMessage,
-        bytes depositorSignature
-    );
-    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-    event FilledRelay(
-        uint256 amount,
-        uint256 totalFilledAmount,
-        uint256 fillAmount,
-        uint256 repaymentChainId,
-        uint256 indexed originChainId,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        int64 realizedLpFeePct,
-        uint32 indexed depositId,
-        address destinationToken,
-        address relayer,
-        address indexed depositor,
-        address recipient,
-        bytes message,
-        RelayExecutionInfo updatableRelayData
-    );
-    /**
-     * @notice Packs together information to include in FilledRelay event.
-     * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
-     * parameters in an event.
-     * @param recipient Recipient of the relayed funds.
-     * @param message Message included in the relay.
-     * @param relayerFeePct Relayer fee pct used for this relay.
-     * @param isSlowRelay Whether this is a slow relay.
-     * @param payoutAdjustmentPct Adjustment to the payout amount.
-     */
-    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-    struct RelayExecutionInfo {
-        address recipient;
-        bytes message;
-        int64 relayerFeePct;
-        bool isSlowRelay;
-        int256 payoutAdjustmentPct;
-    }
-
-    /// EVENTS ABOVE ARE DEPRECATED AND EXIST FOR BACKWARDS COMPATIBILITY ONLY.
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -319,7 +275,7 @@ abstract contract SpokePool is
     /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
-     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
+     * @dev Affects `deposit()` but not `speedUpV3Deposit()`, so that existing deposits can be sped up and still
      * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
@@ -400,7 +356,7 @@ abstract contract SpokePool is
         // would require a new list in storage to keep track of keys.
         //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
-        emit EmergencyDeleteRootBundle(rootBundleId);
+        emit EmergencyDeletedRootBundle(rootBundleId);
     }
 
     /**************************************
@@ -490,9 +446,8 @@ abstract contract SpokePool is
     /**
      * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
      * as exact timestamp on the destination chain before which only the exclusiveRelayer could fill the deposit. Now,
-     * the caller is expected to pass in an exclusivityPeriod which is the number of seconds to be added to the
-     * block.timestamp to produce the exclusivityDeadline. This allows the caller to ignore any latency associated
-     * with this transaction being mined and propagating this transaction to the miner.
+     * the caller is expected to pass in a number that will be interpreted either as an offset or a fixed
+     * timestamp depending on its value.
      * @notice Request to bridge input token cross chain to a destination chain and receive a specified amount
      * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
      * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
@@ -531,11 +486,87 @@ abstract contract SpokePool is
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
-     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline,
-     * which is the deadline for the exclusiveRelayer to fill the deposit. After this destination chain timestamp,
-     * anyone can fill the deposit.
+     * @param exclusivityParameter This value is used to set the exclusivity deadline timestamp in the emitted deposit
+     * event. Before this destinationchain timestamp, only the exclusiveRelayer (if set to a non-zero address),
+     * can fill this deposit. There are three ways to use this parameter:
+     *     1. NO EXCLUSIVITY: If this value is set to 0, then a timestamp of 0 will be emitted,
+     *        meaning that there is no exclusivity period.
+     *     2. OFFSET: If this value is less than MAX_EXCLUSIVITY_PERIOD_SECONDS, then add this value to
+     *        the block.timestamp to derive the exclusive relayer deadline. Note that using the parameter in this way
+     *        will expose the filler of the deposit to the risk that the block.timestamp of this event gets changed
+     *        due to a chain-reorg, which would also change the exclusivity timestamp.
+     *     3. TIMESTAMP: Otherwise, set this value as the exclusivity deadline timestamp.
+     * which is the deadline for the exclusiveRelayer to fill the deposit.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
+     */
+    function depositV3(
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        bytes32 exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityParameter,
+        bytes calldata message
+    ) public payable override nonReentrant unpausedDeposits {
+        DepositV3Params memory params = DepositV3Params({
+            depositor: depositor,
+            recipient: recipient,
+            inputToken: inputToken,
+            outputToken: outputToken,
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            destinationChainId: destinationChainId,
+            exclusiveRelayer: exclusiveRelayer,
+            depositId: numberOfDeposits++, // Increment count of deposits so that deposit ID for this spoke pool is unique.
+            quoteTimestamp: quoteTimestamp,
+            fillDeadline: fillDeadline,
+            exclusivityParameter: exclusivityParameter,
+            message: message
+        });
+        _depositV3(params);
+    }
+
+    /**
+     * @notice An overloaded version of `depositV3` that accepts `address` types for backward compatibility.
+     * This function allows bridging of input tokens cross-chain to a destination chain, receiving a specified amount of output tokens.
+     * The relayer is refunded in input tokens on a repayment chain of their choice, minus system fees, after an optimistic challenge
+     * window. The exclusivity period is specified as an offset from the current block timestamp.
+     *
+     * @dev This version mirrors the original `depositV3` function, but uses `address` types for `depositor`, `recipient`,
+     * `inputToken`, `outputToken`, and `exclusiveRelayer` for compatibility with contracts using the `address` type.
+     *
+     * The key functionality and logic remain identical, ensuring interoperability across both versions.
+     *
+     * @param depositor The account credited with the deposit who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to initiate the deposit.
+     * The equivalent of this token on the relayer's repayment chain of choice will be sent as a refund. If this is equal
+     * to the wrapped native token, the caller can optionally pass in native token as msg.value, provided msg.value = inputTokenAmount.
+     * @param outputToken The token that the relayer will send to the recipient on the destination chain. Must be an ERC20.
+     * @param inputAmount The amount of input tokens pulled from the caller's account and locked into this contract. This
+     * amount will be sent to the relayer as a refund following an optimistic challenge window in the HubPool, less a system fee.
+     * @param outputAmount The amount of output tokens that the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled along with the input token as a valid
+     * deposit route from this spoke pool or this transaction will revert.
+     * @param exclusiveRelayer The relayer exclusively allowed to fill this deposit before the exclusivity deadline.
+     * @param quoteTimestamp The HubPool timestamp that determines the system fee paid by the depositor. This must be set
+     * between [currentTime - depositQuoteTimeBuffer, currentTime] where currentTime is block.timestamp on this chain.
+     * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp, the fill will
+     * revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer] where currentTime
+     * is block.timestamp on this chain.
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
+     * anyone can fill the deposit.
+     * @param message The message to send to the recipient on the destination chain if the recipient is a contract. If the
+     * message is not empty, the recipient contract must implement `handleV3AcrossMessage()` or the fill will revert.
      */
     function depositV3(
         address depositor,
@@ -550,60 +581,19 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         uint32 exclusivityPeriod,
         bytes calldata message
-    ) public payable override nonReentrant unpausedDeposits {
-        // Check that deposit route is enabled for the input token. There are no checks required for the output token
-        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[inputToken][destinationChainId]) revert DisabledRoute();
-
-        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
-        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
-        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
-        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
-        // This will underflow if quoteTimestamp is more than depositQuoteTimeBuffer;
-        // this is safe but will throw an unintuitive error.
-
-        // slither-disable-next-line timestamp
-        uint256 currentTime = getCurrentTime();
-        if (currentTime - quoteTimestamp > depositQuoteTimeBuffer) revert InvalidQuoteTimestamp();
-
-        // fillDeadline is relative to the destination chain.
-        // Don’t allow fillDeadline to be more than several bundles into the future.
-        // This limits the maximum required lookback for dataworker and relayer instances.
-        // Also, don't allow fillDeadline to be in the past. This poses a potential UX issue if the destination
-        // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
-        // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
-        // situation won't be a problem for honest users.
-        if (fillDeadline < currentTime || fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
-
-        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
-        // transaction then the user is sending the native token. In this case, the native token should be
-        // wrapped.
-        if (inputToken == address(wrappedNativeToken) && msg.value > 0) {
-            if (msg.value != inputAmount) revert MsgValueDoesNotMatchInputAmount();
-            wrappedNativeToken.deposit{ value: msg.value }();
-            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
-            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
-            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else {
-            // msg.value should be 0 if input token isn't the wrapped native token.
-            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
-            IERC20Upgradeable(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
-        }
-
-        emit V3FundsDeposited(
-            inputToken,
-            outputToken,
+    ) public payable override {
+        depositV3(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            inputToken.toBytes32(),
+            outputToken.toBytes32(),
             inputAmount,
             outputAmount,
             destinationChainId,
-            // Increment count of deposits so that deposit ID for this spoke pool is unique.
-            numberOfDeposits++,
+            exclusiveRelayer.toBytes32(),
             quoteTimestamp,
             fillDeadline,
-            uint32(currentTime) + exclusivityPeriod,
-            depositor,
-            recipient,
-            exclusiveRelayer,
+            exclusivityPeriod,
             message
         );
     }
@@ -639,6 +629,67 @@ abstract contract SpokePool is
      * anyone can fill the deposit up to the fillDeadline timestamp.
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
+     */
+    function depositV3Now(
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        bytes32 exclusiveRelayer,
+        uint32 fillDeadlineOffset,
+        uint32 exclusivityPeriod,
+        bytes calldata message
+    ) external payable {
+        depositV3(
+            depositor,
+            recipient,
+            inputToken,
+            outputToken,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer,
+            uint32(getCurrentTime()),
+            uint32(getCurrentTime()) + fillDeadlineOffset,
+            exclusivityPeriod,
+            message
+        );
+    }
+
+    /**
+     * @notice An overloaded version of `depositV3Now` that supports addresses as input types for backward compatibility.
+     * This function submits a deposit and sets `quoteTimestamp` to the current time. The `fill` and `exclusivity` deadlines
+     * are set as offsets added to the current time. It is designed to be called by users, including Multisig contracts, who may
+     * not have certainty when their transaction will be mined.
+     *
+     * @dev This version is identical to the original `depositV3Now` but uses `address` types for `depositor`, `recipient`,
+     * `inputToken`, `outputToken`, and `exclusiveRelayer` to support compatibility with older systems.
+     * It maintains the same logic and purpose, ensuring interoperability with both versions.
+     *
+     * @param depositor The account credited with the deposit, who can request to "speed up" this deposit by modifying
+     * the output amount, recipient, and message.
+     * @param recipient The account receiving funds on the destination chain. Can be an EOA or a contract. If
+     * the output token is the wrapped native token for the chain, then the recipient will receive the native token if
+     * an EOA or wrapped native token if a contract.
+     * @param inputToken The token pulled from the caller's account and locked into this contract to initiate the deposit.
+     * Equivalent tokens on the relayer's repayment chain will be sent as a refund. If this is the wrapped native token,
+     * msg.value must equal inputTokenAmount when passed.
+     * @param outputToken The token the relayer will send to the recipient on the destination chain. Must be an ERC20.
+     * @param inputAmount The amount of input tokens pulled from the caller's account and locked into this contract.
+     * This amount will be sent to the relayer as a refund following an optimistic challenge window in the HubPool, plus a system fee.
+     * @param outputAmount The amount of output tokens the relayer will send to the recipient on the destination.
+     * @param destinationChainId The destination chain identifier. Must be enabled with the input token as a valid deposit route
+     * from this spoke pool, or the transaction will revert.
+     * @param exclusiveRelayer The relayer exclusively allowed to fill the deposit before the exclusivity deadline.
+     * @param fillDeadlineOffset Added to the current time to set the fill deadline. After this timestamp, fills on the
+     * destination chain will revert.
+     * @param exclusivityPeriod Added to the current time to set the exclusive relayer deadline. After this timestamp,
+     * anyone can fill the deposit until the fill deadline.
+     * @param message The message to send to the recipient on the destination chain. If the recipient is a contract, it must
+     * implement `handleV3AcrossMessage()` if the message is not empty, or the fill will revert.
      */
     function depositV3Now(
         address depositor,
@@ -688,21 +739,22 @@ abstract contract SpokePool is
      * _verifyUpdateV3DepositMessage() for more details about how this signature should be constructed.
      */
     function speedUpV3Deposit(
-        address depositor,
+        bytes32 depositor,
         uint32 depositId,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) public override nonReentrant {
         _verifyUpdateV3DepositMessage(
-            depositor,
+            depositor.toAddress(),
             depositId,
             chainId(),
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
-            depositorSignature
+            depositorSignature,
+            UPDATE_V3_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -712,6 +764,60 @@ abstract contract SpokePool is
             depositId,
             depositor,
             updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+    }
+
+    /**
+     * @notice An overloaded version of `speedUpV3Deposit` using `address` types for backward compatibility.
+     * This function allows the depositor to signal to the relayer to use updated output amount, recipient, and/or message
+     * when filling a deposit. This can be useful when the deposit needs to be modified after the original transaction has
+     * been mined.
+     *
+     * @dev The `depositor` and `depositId` must match the parameters in a `V3FundsDeposited` event that the depositor wants to speed up.
+     * The relayer is not obligated but has the option to use this updated information when filling the deposit using
+     * `fillV3RelayWithUpdatedDeposit()`. This version uses `address` types for compatibility with systems relying on
+     * `address`-based implementations.
+     *
+     * @param depositor The depositor that must sign the `depositorSignature` and was the original depositor.
+     * @param depositId The deposit ID to speed up.
+     * @param updatedOutputAmount The new output amount to use for this deposit. It should be lower than the previous value,
+     * otherwise the relayer has no incentive to use this updated value.
+     * @param updatedRecipient The new recipient for this deposit. Can be modified if the original recipient is a contract that
+     * expects to receive a message from the relay and needs to be changed.
+     * @param updatedMessage The new message for this deposit. Can be modified if the recipient is a contract that expects
+     * to receive a message from the relay and needs to be updated.
+     * @param depositorSignature The signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor account.
+     * If the depositor is a contract, it should implement EIP1271 to sign as a contract. See `_verifyUpdateV3DepositMessage()`
+     * for more details on how the signature should be constructed.
+     */
+    function speedUpV3Deposit(
+        address depositor,
+        uint32 depositId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
+    ) public {
+        _verifyUpdateV3DepositMessage(
+            depositor,
+            depositId,
+            chainId(),
+            updatedOutputAmount,
+            updatedRecipient.toBytes32(),
+            updatedMessage,
+            depositorSignature,
+            UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
+        );
+
+        // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
+        // from the following event to submit a fill with updated relay data.
+        emit RequestedSpeedUpV3Deposit(
+            updatedOutputAmount,
+            depositId,
+            depositor.toBytes32(),
+            updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature
         );
@@ -756,24 +862,24 @@ abstract contract SpokePool is
      * - fillDeadline The deadline for the caller to fill the deposit. After this timestamp,
      * the fill will revert on the destination chain.
      * - exclusivityDeadline: The deadline for the exclusive relayer to fill the deposit. After this
-     * timestamp, anyone can fill this deposit.
+     * timestamp, anyone can fill this deposit. Note that if this value was set in depositV3 by adding an offset
+     * to the deposit's block.timestamp, there is re-org risk for the caller of this method because the event's
+     * block.timestamp can change. Read the comments in `depositV3` about the `exclusivityParameter` for more details.
      * - message The message to send to the recipient if the recipient is a contract that implements a
      * handleV3AcrossMessage() public function
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
-    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId)
-        public
-        override
-        nonReentrant
-        unpausedFills
-    {
+    function fillV3Relay(
+        V3RelayData calldata relayData,
+        uint256 repaymentChainId,
+        bytes32 repaymentAddress
+    ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
-            relayData.exclusiveRelayer != msg.sender &&
-            relayData.exclusivityDeadline >= getCurrentTime() &&
-            relayData.exclusiveRelayer != address(0)
+            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != msg.sender
         ) {
             revert NotExclusiveRelayer();
         }
@@ -787,7 +893,7 @@ abstract contract SpokePool is
             repaymentChainId: repaymentChainId
         });
 
-        _fillRelayV3(relayExecution, msg.sender, false);
+        _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
     /**
@@ -795,7 +901,7 @@ abstract contract SpokePool is
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
      * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
      * If the signature can be verified, then this function will emit a FilledV3Event that will be used by
-     * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
+     * the system for refund verification purposes. In other words, this function is an alternative way to fill a
      * a deposit than fillV3Relay.
      * @dev Subject to same exclusivity deadline rules as fillV3Relay().
      * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
@@ -810,14 +916,18 @@ abstract contract SpokePool is
     function fillV3RelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
+        bytes32 repaymentAddress,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) public override nonReentrant unpausedFills {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
-        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+        if (
+            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != msg.sender
+        ) {
             revert NotExclusiveRelayer();
         }
 
@@ -831,16 +941,17 @@ abstract contract SpokePool is
         });
 
         _verifyUpdateV3DepositMessage(
-            relayData.depositor,
+            relayData.depositor.toAddress(),
             relayData.depositId,
             relayData.originChainId,
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
-            depositorSignature
+            depositorSignature,
+            UPDATE_V3_DEPOSIT_DETAILS_HASH
         );
 
-        _fillRelayV3(relayExecution, msg.sender, false);
+        _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
     /**
@@ -859,12 +970,15 @@ abstract contract SpokePool is
      * then Across will not include a slow fill for the intended deposit.
      */
     function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+        uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (relayData.exclusivityDeadline >= getCurrentTime()) revert NoSlowFillsInExclusivityWindow();
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+        if (_fillIsExclusive(relayData.exclusivityDeadline, currentTime)) {
+            revert NoSlowFillsInExclusivityWindow();
+        }
+        if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
 
         bytes32 relayHash = _getV3RelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
@@ -898,13 +1012,23 @@ abstract contract SpokePool is
         bytes calldata originData,
         bytes calldata fillerData
     ) external {
-        if (keccak256(originData) != orderId) {
+        if (keccak256(abi.encode(originData, chainId())) != orderId) {
             revert WrongERC7683OrderId();
         }
 
+        // Ensure that the call is not malformed. If the call is malformed, abi.decode will fail.
+        V3SpokePoolInterface.V3RelayData memory relayData = abi.decode(originData, (V3SpokePoolInterface.V3RelayData));
+        AcrossDestinationFillerData memory destinationFillerData = abi.decode(
+            fillerData,
+            (AcrossDestinationFillerData)
+        );
+
         // Must do a delegatecall because the function requires the inputs to be calldata.
         (bool success, bytes memory data) = address(this).delegatecall(
-            abi.encodeWithSelector(this.fillV3Relay.selector, abi.encodePacked(originData, fillerData))
+            abi.encodeCall(
+                V3SpokePoolInterface.fillV3Relay,
+                (relayData, destinationFillerData.repaymentChainId, msg.sender.toBytes32())
+            )
         );
         if (!success) {
             revert LowLevelCallFailed(data);
@@ -939,7 +1063,7 @@ abstract contract SpokePool is
     ) public override nonReentrant {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
-        _preExecuteLeafHook(relayData.outputToken);
+        _preExecuteLeafHook(relayData.outputToken.toAddress());
 
         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
         // deposit params like outputAmount, message and recipient.
@@ -979,12 +1103,13 @@ abstract contract SpokePool is
 
         // Check that proof proves that relayerRefundLeaf is contained within the relayer refund root.
         // Note: This should revert if the relayerRefundRoot is uninitialized.
-        if (!MerkleLib.verifyRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof))
+        if (!MerkleLib.verifyRelayerRefund(rootBundle.relayerRefundRoot, relayerRefundLeaf, proof)) {
             revert InvalidMerkleProof();
+        }
 
         _setClaimedLeaf(rootBundleId, relayerRefundLeaf.leafId);
 
-        _distributeRelayerRefunds(
+        bool deferredRefunds = _distributeRelayerRefunds(
             relayerRefundLeaf.chainId,
             relayerRefundLeaf.amountToReturn,
             relayerRefundLeaf.refundAmounts,
@@ -1001,8 +1126,25 @@ abstract contract SpokePool is
             relayerRefundLeaf.leafId,
             relayerRefundLeaf.l2TokenAddress,
             relayerRefundLeaf.refundAddresses,
+            deferredRefunds,
             msg.sender
         );
+    }
+
+    /**
+     * @notice Enables a relayer to claim outstanding repayments. Should virtually never be used, unless for some reason
+     * relayer repayment transfer fails for reasons such as token transfer reverts due to blacklisting. In this case,
+     * the relayer can still call this method and claim the tokens to a new address.
+     * @param l2TokenAddress Address of the L2 token to claim refunds for.
+     * @param refundAddress Address to send the refund to.
+     */
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public {
+        uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
+        if (refund == 0) revert NoRelayerRefundToClaim();
+        relayerRefund[l2TokenAddress.toAddress()][refundAddress.toAddress()] = 0;
+        IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
+
+        emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
     }
 
     /**************************************
@@ -1025,9 +1167,98 @@ abstract contract SpokePool is
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
+    function getRelayerRefund(address l2TokenAddress, address refundAddress) public view returns (uint256) {
+        return relayerRefund[l2TokenAddress][refundAddress];
+    }
+
     /**************************************
      *         INTERNAL FUNCTIONS         *
      **************************************/
+
+    function _depositV3(DepositV3Params memory params) internal {
+        // Check that deposit route is enabled for the input token. There are no checks required for the output token
+        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
+        if (!enabledDepositRoutes[params.inputToken.toAddress()][params.destinationChainId]) revert DisabledRoute();
+
+        // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
+        // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
+        // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
+        // within the configured buffer. The owner should pause deposits/fills if this is undesirable.
+        // This will underflow if quoteTimestamp is more than depositQuoteTimeBuffer;
+        // this is safe but will throw an unintuitive error.
+
+        // slither-disable-next-line timestamp
+        uint256 currentTime = getCurrentTime();
+        if (currentTime < params.quoteTimestamp || currentTime - params.quoteTimestamp > depositQuoteTimeBuffer)
+            revert InvalidQuoteTimestamp();
+
+        // fillDeadline is relative to the destination chain.
+        // Don’t allow fillDeadline to be more than several bundles into the future.
+        // This limits the maximum required lookback for dataworker and relayer instances.
+        // Also, don't allow fillDeadline to be in the past. This poses a potential UX issue if the destination
+        // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
+        // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
+        // situation won't be a problem for honest users.
+        if (params.fillDeadline < currentTime || params.fillDeadline > currentTime + fillDeadlineBuffer)
+            revert InvalidFillDeadline();
+
+        // There are three cases for setting the exclusivity deadline using the exclusivity parameter:
+        // 1. If this parameter is 0, then there is no exclusivity period and emit 0 for the deadline. This
+        //    means that fillers of this deposit do not have to worry about the block.timestamp of this event changing
+        //    due to re-orgs when filling this deposit.
+        // 2. If the exclusivity parameter is less than or equal to MAX_EXCLUSIVITY_PERIOD_SECONDS, then the exclusivity
+        //    deadline is set to the block.timestamp of this event plus the exclusivity parameter. This means that the
+        //    filler of this deposit assumes re-org risk when filling this deposit because the block.timestamp of this
+        //    event affects the exclusivity deadline.
+        // 3. Otherwise, interpret this parameter as a timestamp and emit it as the exclusivity deadline. This means
+        //    that the filler of this deposit will not assume re-org risk related to the block.timestamp of this
+        //    event changing.
+        uint32 exclusivityDeadline = params.exclusivityParameter;
+        if (exclusivityDeadline > 0) {
+            if (exclusivityDeadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
+                exclusivityDeadline += uint32(currentTime);
+            }
+
+            // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
+            //  by forcing them to specify an exclusive relayer.
+            if (params.exclusiveRelayer == bytes32(0)) revert InvalidExclusiveRelayer();
+        }
+
+        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
+        // transaction then the user is sending the native token. In this case, the native token should be
+        // wrapped.
+        if (params.inputToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
+            if (msg.value != params.inputAmount) revert MsgValueDoesNotMatchInputAmount();
+            wrappedNativeToken.deposit{ value: msg.value }();
+            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
+            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
+            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+        } else {
+            // msg.value should be 0 if input token isn't the wrapped native token.
+            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
+            IERC20Upgradeable(params.inputToken.toAddress()).safeTransferFrom(
+                msg.sender,
+                address(this),
+                params.inputAmount
+            );
+        }
+
+        emit V3FundsDeposited(
+            params.inputToken,
+            params.outputToken,
+            params.inputAmount,
+            params.outputAmount,
+            params.destinationChainId,
+            params.depositId,
+            params.quoteTimestamp,
+            params.fillDeadline,
+            exclusivityDeadline,
+            params.depositor,
+            params.recipient,
+            params.exclusiveRelayer,
+            params.message
+        );
+    }
 
     function _deposit(
         address depositor,
@@ -1066,11 +1297,13 @@ abstract contract SpokePool is
             // Else, it is a normal ERC20. In this case pull the token from the user's wallet as per normal.
             // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them.
             // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        } else {
+            IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
+        }
 
         emit V3FundsDeposited(
-            originToken, // inputToken
-            address(0), // outputToken. Setting this to 0x0 means that the outputToken should be assumed to be the
+            originToken.toBytes32(), // inputToken
+            bytes32(0), // outputToken. Setting this to 0x0 means that the outputToken should be assumed to be the
             // canonical token for the destination chain matching the inputToken. Therefore, this deposit
             // can always be slow filled.
             // - setting token to 0x0 will signal to off-chain validator that the "equivalent"
@@ -1087,9 +1320,9 @@ abstract contract SpokePool is
             // expired deposits refunds could be a breaking change for existing users of this function.
             0, // exclusivityDeadline. Setting this to 0 along with the exclusiveRelayer to 0x0 means that there
             // is no exclusive deadline
-            depositor,
-            recipient,
-            address(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            bytes32(0), // exclusiveRelayer. Setting this to 0x0 will signal to off-chain validator that there
             // is no exclusive relayer.
             message
         );
@@ -1102,24 +1335,65 @@ abstract contract SpokePool is
         uint32 leafId,
         address l2TokenAddress,
         address[] memory refundAddresses
-    ) internal {
-        if (refundAddresses.length != refundAmounts.length) revert InvalidMerkleLeaf();
+    ) internal returns (bool deferredRefunds) {
+        uint256 numRefunds = refundAmounts.length;
+        if (refundAddresses.length != numRefunds) revert InvalidMerkleLeaf();
 
-        // Send each relayer refund address the associated refundAmount for the L2 token address.
-        // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
-        uint256 length = refundAmounts.length;
-        for (uint256 i = 0; i < length; ++i) {
-            uint256 amount = refundAmounts[i];
-            if (amount > 0) IERC20Upgradeable(l2TokenAddress).safeTransfer(refundAddresses[i], amount);
+        if (numRefunds > 0) {
+            uint256 spokeStartBalance = IERC20Upgradeable(l2TokenAddress).balanceOf(address(this));
+            uint256 totalRefundedAmount = 0; // Track the total amount refunded.
+
+            // Send each relayer refund address the associated refundAmount for the L2 token address.
+            // Note: Even if the L2 token is not enabled on this spoke pool, we should still refund relayers.
+            for (uint256 i = 0; i < numRefunds; ++i) {
+                if (refundAmounts[i] > 0) {
+                    totalRefundedAmount += refundAmounts[i];
+
+                    // Only if the total refunded amount exceeds the spoke starting balance, should we revert. This
+                    // ensures that bundles are atomic, if we have sufficient balance to refund all relayers and
+                    // prevents can only re-pay some of the relayers.
+                    if (totalRefundedAmount > spokeStartBalance) revert InsufficientSpokePoolBalanceToExecuteLeaf();
+
+                    bool success = _noRevertTransfer(l2TokenAddress, refundAddresses[i], refundAmounts[i]);
+
+                    // If the transfer failed then track a deferred transfer for the relayer. Given this function would
+                    // have revered if there was insufficient balance, this will only happen if the transfer call
+                    // reverts. This will only occur if the underlying transfer method on the l2Token reverts due to
+                    // recipient blacklisting or other related modifications to the l2Token.transfer method.
+                    if (!success) {
+                        relayerRefund[l2TokenAddress][refundAddresses[i]] += refundAmounts[i];
+                        deferredRefunds = true;
+                    }
+                }
+            }
         }
-
         // If leaf's amountToReturn is positive, then send L2 --> L1 message to bridge tokens back via
         // chain-specific bridging method.
         if (amountToReturn > 0) {
             _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
 
-            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress, msg.sender);
+            emit TokensBridged(amountToReturn, _chainId, leafId, l2TokenAddress.toBytes32(), msg.sender);
         }
+    }
+
+    // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
+    // bool indicating if the external call was successful, rather than reverting. Original method:
+    // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
+    function _noRevertTransfer(
+        address token,
+        address to,
+        uint256 amount
+    ) internal returns (bool) {
+        bool success;
+        uint256 returnSize;
+        uint256 returnValue;
+        bytes memory data = abi.encodeCall(IERC20Upgradeable.transfer, (to, amount));
+        assembly {
+            success := call(gas(), token, 0, add(data, 0x20), mload(data), 0, 0x20)
+            returnSize := returndatasize()
+            returnValue := mload(0)
+        }
+        return success && (returnSize == 0 ? address(token).code.length > 0 : returnValue == 1);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
@@ -1158,21 +1432,18 @@ abstract contract SpokePool is
         uint32 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
-        bytes memory depositorSignature
+        bytes memory depositorSignature,
+        bytes32 hashType
     ) internal view {
         // A depositor can request to modify an un-relayed deposit by signing a hash containing the updated
         // details and information uniquely identifying the deposit to relay. This information ensures
         // that this signature cannot be re-used for other deposits.
-        // Note: We use the EIP-712 (https://eips.ethereum.org/EIPS/eip-712) standard for hashing and signing typed data.
-        // Specifically, we use the version of the encoding known as "v4", as implemented by the JSON RPC method
-        // `eth_signedTypedDataV4` in MetaMask (https://docs.metamask.io/guide/signing-data.html).
         bytes32 expectedTypedDataV4Hash = _hashTypedDataV4(
-            // EIP-712 compliant hash struct: https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
             keccak256(
                 abi.encode(
-                    UPDATE_V3_DEPOSIT_DETAILS_HASH,
+                    hashType,
                     depositId,
                     originChainId,
                     updatedOutputAmount,
@@ -1180,7 +1451,6 @@ abstract contract SpokePool is
                     keccak256(updatedMessage)
                 )
             ),
-            // By passing in the origin chain id, we enable the verification of the signature on a different chain
             originChainId
         );
         _verifyDepositorSignature(depositor, expectedTypedDataV4Hash, depositorSignature);
@@ -1196,7 +1466,7 @@ abstract contract SpokePool is
         bytes memory depositorSignature
     ) internal view virtual {
         // Note:
-        // - We don't need to worry about reentrancy from a contract deployed at the depositor address since the method
+        // - We don't need to worry about re-entrancy from a contract deployed at the depositor address since the method
         //   `SignatureChecker.isValidSignatureNow` is a view method. Re-entrancy can happen, but it cannot affect state.
         // - EIP-1271 signatures are supported. This means that a signature valid now, may not be valid later and vice-versa.
         // - For an EIP-1271 signature to work, the depositor contract address must map to a deployed contract on the destination
@@ -1217,8 +1487,9 @@ abstract contract SpokePool is
             updatedOutputAmount: relayExecution.updatedOutputAmount
         });
 
-        if (!MerkleLib.verifyV3SlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
+        if (!MerkleLib.verifyV3SlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof)) {
             revert InvalidMerkleProof();
+        }
     }
 
     function _computeAmountPostFees(uint256 amount, int256 feesPct) private pure returns (uint256) {
@@ -1243,7 +1514,7 @@ abstract contract SpokePool is
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
     function _fillRelayV3(
         V3RelayExecutionParams memory relayExecution,
-        address relayer,
+        bytes32 relayer,
         bool isSlowFill
     ) internal {
         V3RelayData memory relayData = relayExecution.relay;
@@ -1255,13 +1526,12 @@ abstract contract SpokePool is
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-        // is trivially true. We'll emit this value in the FilledRelay
+        // is trivially true. We'll emit this value in the FilledV3Relay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
         FillType fillType = isSlowFill
-            ? FillType.SlowFill
+            ? FillType.SlowFill // The following is true if this is a fast fill that was sent after a slow fill request.
             : (
-                // The following is true if this is a fast fill that was sent after a slow fill request.
                 fillStatuses[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
                     ? FillType.ReplacedSlowFill
                     : FillType.FastFill
@@ -1270,7 +1540,7 @@ abstract contract SpokePool is
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
-        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
+        // we can include a bool in the FilledV3Relay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
@@ -1307,12 +1577,12 @@ abstract contract SpokePool is
         // way (no need to have funds on the destination).
         // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
         // since there is no "relayer".
-        address recipientToSend = relayExecution.updatedRecipient;
+        address recipientToSend = relayExecution.updatedRecipient.toAddress();
 
         if (msg.sender == recipientToSend && !isSlowFill) return;
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
-        address outputToken = relayData.outputToken;
+        address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
@@ -1340,6 +1610,11 @@ abstract contract SpokePool is
         }
     }
 
+    // Determine whether the exclusivityDeadline implies active exclusivity.
+    function _fillIsExclusive(uint32 exclusivityDeadline, uint32 currentTime) internal pure returns (bool) {
+        return exclusivityDeadline >= currentTime;
+    }
+
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
     // certain admin functions. For L2 contracts, the cross chain admin refers to some L1 address or contract, and for
     // L1, this would just be the same admin of the HubPool.
@@ -1351,5 +1626,5 @@ abstract contract SpokePool is
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    uint256[999] private __gap;
+    uint256[998] private __gap;
 }

@@ -16,7 +16,7 @@ describe("svm_spoke.ownership", () => {
   let state: PublicKey;
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state } = await initializeState());
   });
 
   it("Initializes state with provided initial state", async () => {
@@ -25,28 +25,24 @@ describe("svm_spoke.ownership", () => {
       chainId: new BN(420), // Set the chainId
       remoteDomain: new BN(11), // Set the remoteDomain
       crossDomainAdmin, // Use the existing crossDomainAdmin
-      testableMode: true,
       depositQuoteTimeBuffer: new BN(3600), // Set the depositQuoteTimeBuffer
       fillDeadlineBuffer: new BN(14400), // Set the fillDeadlineBuffer (4 hours)
     };
 
     // Initialize state with the provided initial state
-    state = await initializeState(undefined, initialState);
+    ({ state } = await initializeState(undefined, initialState));
 
     // Fetch the updated state
     const stateData = await program.account.state.fetch(state);
 
     // Assert other properties as needed
     Object.keys(initialState).forEach((key) => {
-      if (key !== "testableMode") {
-        // We dont store testableMode in state.
-        const adjustedKey = key === "initialNumberOfDeposits" ? "numberOfDeposits" : key; // stored with diff key in state.
-        assertSE(
-          stateData[adjustedKey as keyof typeof stateData],
-          initialState[key as keyof typeof initialState],
-          `${key} should match`
-        );
-      }
+      const adjustedKey = key === "initialNumberOfDeposits" ? "numberOfDeposits" : key; // stored with diff key in state.
+      assertSE(
+        stateData[adjustedKey as keyof typeof stateData],
+        initialState[key as keyof typeof initialState],
+        `${key} should match`
+      );
     });
   });
 

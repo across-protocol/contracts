@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../SpokePool.sol";
 import "./interfaces/MockV2SpokePoolInterface.sol";
 import "./V2MerkleLib.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
  * @title MockSpokePool
@@ -12,6 +13,8 @@ import "./V2MerkleLib.sol";
  */
 contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using AddressToBytes32 for address;
+    using Bytes32ToAddress for bytes32;
 
     uint256 private chainId_;
     uint256 private currentTime;
@@ -25,7 +28,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         );
 
     event BridgedToHubPool(uint256 amount, address token);
-    event PreLeafExecuteHook(address token);
+    event PreLeafExecuteHook(bytes32 token);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
@@ -60,7 +63,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         uint32 depositId,
         uint256 originChainId,
         int64 updatedRelayerFeePct,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) internal view {
@@ -83,6 +86,28 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function verifyUpdateV3DepositMessage(
+        bytes32 depositor,
+        uint32 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        bytes32 updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public view {
+        return
+            _verifyUpdateV3DepositMessage(
+                depositor.toAddress(),
+                depositId,
+                originChainId,
+                updatedOutputAmount,
+                updatedRecipient,
+                updatedMessage,
+                depositorSignature,
+                UPDATE_V3_DEPOSIT_DETAILS_HASH
+            );
+    }
+
+    function verifyUpdateV3DepositMessage(
         address depositor,
         uint32 depositId,
         uint256 originChainId,
@@ -97,15 +122,16 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient,
+                updatedRecipient.toBytes32(),
                 updatedMessage,
-                depositorSignature
+                depositorSignature,
+                UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
             );
     }
 
     function fillRelayV3Internal(
         V3RelayExecutionParams memory relayExecution,
-        address relayer,
+        bytes32 relayer,
         bool isSlowFill
     ) external {
         _fillRelayV3(relayExecution, relayer, isSlowFill);
@@ -127,7 +153,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function _preExecuteLeafHook(address token) internal override {
-        emit PreLeafExecuteHook(token);
+        emit PreLeafExecuteHook(token.toBytes32());
     }
 
     function _bridgeTokensToHubPool(uint256 amount, address token) internal override {
@@ -143,247 +169,6 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function setChainId(uint256 _chainId) public {
         chainId_ = _chainId;
-    }
-
-    function depositV2(
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        uint32 quoteTimestamp,
-        bytes memory message,
-        uint256 // maxCount
-    ) public payable virtual nonReentrant unpausedDeposits {
-        // Increment count of deposits so that deposit ID for this spoke pool is unique.
-        uint32 newDepositId = numberOfDeposits++;
-
-        if (originToken == address(wrappedNativeToken) && msg.value > 0) {
-            require(msg.value == amount);
-            wrappedNativeToken.deposit{ value: msg.value }();
-        } else IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
-
-        emit FundsDeposited(
-            amount,
-            chainId(),
-            destinationChainId,
-            relayerFeePct,
-            newDepositId,
-            quoteTimestamp,
-            originToken,
-            recipient,
-            msg.sender,
-            message
-        );
-    }
-
-    function speedUpDeposit(
-        address depositor,
-        int64 updatedRelayerFeePct,
-        uint32 depositId,
-        address updatedRecipient,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature
-    ) public nonReentrant {
-        require(SignedMath.abs(updatedRelayerFeePct) < 0.5e18, "Invalid relayer fee");
-
-        _verifyUpdateDepositMessage(
-            depositor,
-            depositId,
-            chainId(),
-            updatedRelayerFeePct,
-            updatedRecipient,
-            updatedMessage,
-            depositorSignature
-        );
-
-        // Assuming the above checks passed, a relayer can take the signature and the updated relayer fee information
-        // from the following event to submit a fill with an updated fee %.
-        emit RequestedSpeedUpDeposit(
-            updatedRelayerFeePct,
-            depositId,
-            depositor,
-            updatedRecipient,
-            updatedMessage,
-            depositorSignature
-        );
-    }
-
-    function fillRelay(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 maxTokensToSend,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        bytes memory message,
-        uint256 maxCount
-    ) public nonReentrant unpausedFills {
-        RelayExecution memory relayExecution = RelayExecution({
-            relay: MockV2SpokePoolInterface.RelayData({
-                depositor: depositor,
-                recipient: recipient,
-                destinationToken: destinationToken,
-                amount: amount,
-                realizedLpFeePct: realizedLpFeePct,
-                relayerFeePct: relayerFeePct,
-                depositId: depositId,
-                originChainId: originChainId,
-                destinationChainId: chainId(),
-                message: message
-            }),
-            relayHash: bytes32(0),
-            updatedRelayerFeePct: relayerFeePct,
-            updatedRecipient: recipient,
-            updatedMessage: message,
-            repaymentChainId: repaymentChainId,
-            maxTokensToSend: maxTokensToSend,
-            slowFill: false,
-            payoutAdjustmentPct: 0,
-            maxCount: maxCount
-        });
-        relayExecution.relayHash = _getRelayHash(relayExecution.relay);
-
-        uint256 fillAmountPreFees = _fillRelay(relayExecution);
-        _emitFillRelay(relayExecution, fillAmountPreFees);
-    }
-
-    function executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 rootBundleId,
-        bytes memory message,
-        int256 payoutAdjustment,
-        bytes32[] memory proof
-    ) public nonReentrant {
-        _executeSlowRelayLeaf(
-            depositor,
-            recipient,
-            destinationToken,
-            amount,
-            originChainId,
-            chainId(),
-            realizedLpFeePct,
-            relayerFeePct,
-            depositId,
-            rootBundleId,
-            message,
-            payoutAdjustment,
-            proof
-        );
-    }
-
-    function fillRelayWithUpdatedDeposit(
-        address depositor,
-        address recipient,
-        address updatedRecipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 maxTokensToSend,
-        uint256 repaymentChainId,
-        uint256 originChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        int64 updatedRelayerFeePct,
-        uint32 depositId,
-        bytes memory message,
-        bytes memory updatedMessage,
-        bytes memory depositorSignature,
-        uint256 maxCount
-    ) public nonReentrant unpausedFills {
-        RelayExecution memory relayExecution = RelayExecution({
-            relay: MockV2SpokePoolInterface.RelayData({
-                depositor: depositor,
-                recipient: recipient,
-                destinationToken: destinationToken,
-                amount: amount,
-                realizedLpFeePct: realizedLpFeePct,
-                relayerFeePct: relayerFeePct,
-                depositId: depositId,
-                originChainId: originChainId,
-                destinationChainId: chainId(),
-                message: message
-            }),
-            relayHash: bytes32(0),
-            updatedRelayerFeePct: updatedRelayerFeePct,
-            updatedRecipient: updatedRecipient,
-            updatedMessage: updatedMessage,
-            repaymentChainId: repaymentChainId,
-            maxTokensToSend: maxTokensToSend,
-            slowFill: false,
-            payoutAdjustmentPct: 0,
-            maxCount: maxCount
-        });
-        relayExecution.relayHash = _getRelayHash(relayExecution.relay);
-
-        _verifyUpdateDepositMessage(
-            depositor,
-            depositId,
-            originChainId,
-            updatedRelayerFeePct,
-            updatedRecipient,
-            updatedMessage,
-            depositorSignature
-        );
-        uint256 fillAmountPreFees = _fillRelay(relayExecution);
-        _emitFillRelay(relayExecution, fillAmountPreFees);
-    }
-
-    function _executeSlowRelayLeaf(
-        address depositor,
-        address recipient,
-        address destinationToken,
-        uint256 amount,
-        uint256 originChainId,
-        uint256 destinationChainId,
-        int64 realizedLpFeePct,
-        int64 relayerFeePct,
-        uint32 depositId,
-        uint32 rootBundleId,
-        bytes memory message,
-        int256 payoutAdjustmentPct,
-        bytes32[] memory proof
-    ) internal {
-        RelayExecution memory relayExecution = RelayExecution({
-            relay: MockV2SpokePoolInterface.RelayData({
-                depositor: depositor,
-                recipient: recipient,
-                destinationToken: destinationToken,
-                amount: amount,
-                realizedLpFeePct: realizedLpFeePct,
-                relayerFeePct: relayerFeePct,
-                depositId: depositId,
-                originChainId: originChainId,
-                destinationChainId: destinationChainId,
-                message: message
-            }),
-            relayHash: bytes32(0),
-            updatedRelayerFeePct: 0,
-            updatedRecipient: recipient,
-            updatedMessage: message,
-            repaymentChainId: 0,
-            maxTokensToSend: SLOW_FILL_MAX_TOKENS_TO_SEND,
-            slowFill: true,
-            payoutAdjustmentPct: payoutAdjustmentPct,
-            maxCount: type(uint256).max
-        });
-        relayExecution.relayHash = _getRelayHash(relayExecution.relay);
-
-        _verifySlowFill(relayExecution, rootBundleId, proof);
-
-        uint256 fillAmountPreFees = _fillRelay(relayExecution);
-
-        _emitFillRelay(relayExecution, fillAmountPreFees);
     }
 
     function _computeAmountPreFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
@@ -435,24 +220,32 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
         relayFills[relayExecution.relayHash] += fillAmountPreFees;
 
-        if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return fillAmountPreFees;
+        if (msg.sender.toBytes32() == relayExecution.updatedRecipient && !relayExecution.slowFill) {
+            return fillAmountPreFees;
+        }
 
-        if (relayData.destinationToken == address(wrappedNativeToken)) {
-            if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
-        } else {
-            if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+        if (relayData.destinationToken == address(wrappedNativeToken).toBytes32()) {
+            if (!relayExecution.slowFill) {
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransferFrom(
                     msg.sender,
-                    relayExecution.updatedRecipient,
+                    address(this),
                     amountToSend
                 );
-            else
-                IERC20Upgradeable(relayData.destinationToken).safeTransfer(
-                    relayExecution.updatedRecipient,
+            }
+            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient.toAddress()), amountToSend);
+        } else {
+            if (!relayExecution.slowFill) {
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransferFrom(
+                    msg.sender,
+                    relayExecution.updatedRecipient.toAddress(),
                     amountToSend
                 );
+            } else {
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransfer(
+                    relayExecution.updatedRecipient.toAddress(),
+                    amountToSend
+                );
+            }
         }
     }
 
@@ -469,34 +262,6 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         require(
             V2MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
             "Invalid slow relay proof"
-        );
-    }
-
-    function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
-        RelayExecutionInfo memory relayExecutionInfo = RelayExecutionInfo({
-            relayerFeePct: relayExecution.updatedRelayerFeePct,
-            recipient: relayExecution.updatedRecipient,
-            message: relayExecution.updatedMessage,
-            isSlowRelay: relayExecution.slowFill,
-            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
-        });
-
-        emit FilledRelay(
-            relayExecution.relay.amount,
-            relayFills[relayExecution.relayHash],
-            fillAmountPreFees,
-            relayExecution.repaymentChainId,
-            relayExecution.relay.originChainId,
-            relayExecution.relay.destinationChainId,
-            relayExecution.relay.relayerFeePct,
-            relayExecution.relay.realizedLpFeePct,
-            relayExecution.relay.depositId,
-            relayExecution.relay.destinationToken,
-            msg.sender,
-            relayExecution.relay.depositor,
-            relayExecution.relay.recipient,
-            relayExecution.relay.message,
-            relayExecutionInfo
         );
     }
 }

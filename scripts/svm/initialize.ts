@@ -1,3 +1,5 @@
+// This script initializes a SVM spoke pool with initialization parameters.
+
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
@@ -40,7 +42,6 @@ async function initialize(): Promise<void> {
   const chainId = new BN(resolvedArgv.chainId);
   const remoteDomain = resolvedArgv.remoteDomain;
   const crossDomainAdmin = evmAddressToPublicKey(resolvedArgv.crossDomainAdmin); // Use the function to cast the value
-  const testableMode = false; // Hardcode testableMode to false
   const depositQuoteTimeBuffer = resolvedArgv.depositQuoteTimeBuffer;
   const fillDeadlineBuffer = resolvedArgv.fillDeadlineBuffer;
 
@@ -65,7 +66,6 @@ async function initialize(): Promise<void> {
     { Property: "chainId", Value: chainId.toString() },
     { Property: "remoteDomain", Value: remoteDomain.toString() },
     { Property: "crossDomainAdmin", Value: crossDomainAdmin.toString() },
-    { Property: "testableMode", Value: testableMode.toString() },
     { Property: "depositQuoteTimeBuffer", Value: depositQuoteTimeBuffer.toString() },
     { Property: "fillDeadlineBuffer", Value: fillDeadlineBuffer.toString() },
   ]);
@@ -77,7 +77,6 @@ async function initialize(): Promise<void> {
       chainId,
       remoteDomain,
       crossDomainAdmin,
-      testableMode,
       depositQuoteTimeBuffer,
       fillDeadlineBuffer
     ) as any

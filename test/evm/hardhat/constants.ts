@@ -100,10 +100,28 @@ export const l1TokenTransferThreshold = toWei(100);
 
 export const MAX_UINT32 = BigNumber.from("0xFFFFFFFF");
 
+export const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365; // 1 year
+
 // DAI's Rate model.
 export const sampleRateModel = {
   UBar: toWei(0.8).toString(),
   R0: toWei(0.04).toString(),
   R1: toWei(0.07).toString(),
   R2: toWei(0.75).toString(),
+};
+
+export const SpokePoolFuncs = {
+  depositV3Bytes:
+    "depositV3(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint32,bytes)",
+  depositV3Address:
+    "depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)",
+  depositV3NowBytes:
+    "depositV3Now(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,bytes)",
+  depositV3NowAddress:
+    "depositV3Now(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,bytes)",
+  speedUpV3DepositBytes: "speedUpV3Deposit(bytes32,uint32,uint256,bytes32,bytes,bytes)",
+  speedUpV3DepositAddress: "speedUpV3Deposit(address,uint32,uint256,address,bytes,bytes)",
+  verifyUpdateV3DepositMessageBytes: "verifyUpdateV3DepositMessage(bytes32,uint32,uint256,uint256,bytes32,bytes,bytes)",
+  verifyUpdateV3DepositMessageAddress:
+    "verifyUpdateV3DepositMessage(address,uint32,uint256,uint256,address,bytes,bytes)",
 };

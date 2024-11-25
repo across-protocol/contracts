@@ -1,17 +1,22 @@
-import { BN, Program } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
-import { ethers } from "ethers";
+import { BN, Program, workspace } from "@coral-xyz/anchor";
+import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
+import { BigNumber, ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 
+import { MerkleTree } from "@uma/common";
 import {
-  readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
+  readEvents,
+  readProgramEvents,
+  MulticallHandlerCoder,
+  AcrossPlusMessageCoder,
 } from "../../src/SvmUtils";
 
-export { readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();
@@ -49,10 +54,10 @@ export function randomBigInt(bytes = 8, signed = false) {
 
 export interface RelayerRefundLeaf {
   isSolana: boolean;
-  amountToReturn: bigint;
-  chainId: bigint;
-  refundAmounts: bigint[];
-  leafId: bigint;
+  amountToReturn: BigNumber;
+  chainId: BigNumber;
+  refundAmounts: BigNumber[];
+  leafId: BigNumber;
   l2TokenAddress: string;
   refundAddresses: string[];
 }
@@ -64,13 +69,86 @@ export interface RelayerRefundLeafSolana {
   refundAmounts: BN[];
   leafId: BN;
   mintPublicKey: PublicKey;
-  refundAccounts: PublicKey[];
+  refundAddresses: PublicKey[];
 }
 
 export type RelayerRefundLeafType = RelayerRefundLeaf | RelayerRefundLeafSolana;
 
 export function convertLeafIdToNumber(leaf: RelayerRefundLeafSolana) {
   return { ...leaf, leafId: leaf.leafId.toNumber() };
+}
+
+export function buildRelayerRefundMerkleTree({
+  totalEvmDistributions,
+  totalSolanaDistributions,
+  mixLeaves,
+  chainId,
+  mint,
+  svmRelayers,
+  evmRelayers,
+  evmTokenAddress,
+  evmRefundAmounts,
+  svmRefundAmounts,
+}: {
+  totalEvmDistributions: number;
+  totalSolanaDistributions: number;
+  chainId: number;
+  mixLeaves?: boolean;
+  mint?: PublicKey;
+  svmRelayers?: PublicKey[];
+  evmRelayers?: string[];
+  evmTokenAddress?: string;
+  evmRefundAmounts?: BigNumber[];
+  svmRefundAmounts?: BN[];
+}): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
+  const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+
+  const createSolanaLeaf = (index: number) => ({
+    isSolana: true,
+    leafId: new BN(index),
+    chainId: new BN(chainId),
+    amountToReturn: new BN(0),
+    mintPublicKey: mint ?? Keypair.generate().publicKey,
+    refundAddresses: svmRelayers || [Keypair.generate().publicKey, Keypair.generate().publicKey],
+    refundAmounts: svmRefundAmounts || [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
+  });
+
+  const createEvmLeaf = (index: number) =>
+    ({
+      isSolana: false,
+      leafId: BigNumber.from(index),
+      chainId: BigNumber.from(chainId),
+      amountToReturn: BigNumber.from(0),
+      l2TokenAddress: evmTokenAddress ?? randomAddress(),
+      refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
+      refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
+    } as RelayerRefundLeaf);
+
+  if (mixLeaves) {
+    let solanaIndex = 0;
+    let evmIndex = 0;
+    const totalDistributions = totalSolanaDistributions + totalEvmDistributions;
+    for (let i = 0; i < totalDistributions; i++) {
+      if (solanaIndex < totalSolanaDistributions && (i % 2 === 0 || evmIndex >= totalEvmDistributions)) {
+        relayerRefundLeaves.push(createSolanaLeaf(solanaIndex));
+        solanaIndex++;
+      } else if (evmIndex < totalEvmDistributions) {
+        relayerRefundLeaves.push(createEvmLeaf(evmIndex));
+        evmIndex++;
+      }
+    }
+  } else {
+    for (let i = 0; i < totalSolanaDistributions; i++) {
+      relayerRefundLeaves.push(createSolanaLeaf(i));
+    }
+    for (let i = 0; i < totalEvmDistributions; i++) {
+      relayerRefundLeaves.push(createEvmLeaf(i + totalSolanaDistributions));
+    }
+  }
+
+  const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+
+  return { relayerRefundLeaves, merkleTree };
 }
 
 export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefundLeafSolana): string {
@@ -82,15 +160,20 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
     })
   );
 
-  const refundAccountsBuffer = Buffer.concat(relayData.refundAccounts.map((account) => account.toBuffer()));
+  const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
+  // TODO: We better consider reusing Borch serializer in production.
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
+    new BN(relayData.refundAmounts.length).toArrayLike(Buffer, "le", 4),
+    refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
-    refundAmountsBuffer,
-    refundAccountsBuffer,
+    new BN(relayData.refundAddresses.length).toArrayLike(Buffer, "le", 4),
+    refundAddressesBuffer,
   ]);
 
   const relayHash = ethers.utils.keccak256(contentToHash);
@@ -102,7 +185,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
     const abiCoder = new ethers.utils.AbiCoder();
     const encodedData = abiCoder.encode(
       [
-        "tuple(uint256 leafId, uint256 chainId, uint256 amountToReturn, address l2TokenAddress, address[] refundAddresses, uint256[] refundAmounts)",
+        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
       ],
       [
         {
@@ -131,7 +214,7 @@ export interface SlowFillLeaf {
     inputAmount: BN;
     outputAmount: BN;
     originChainId: BN;
-    depositId: BN;
+    depositId: number[];
     fillDeadline: BN;
     exclusivityDeadline: BN;
     message: Buffer;
@@ -140,8 +223,11 @@ export interface SlowFillLeaf {
   updatedOutputAmount: BN;
 }
 
+// TODO: We better consider reusing Borch serializer in production.
 export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     slowFillLeaf.relayData.depositor.toBuffer(),
     slowFillLeaf.relayData.recipient.toBuffer(),
     slowFillLeaf.relayData.exclusiveRelayer.toBuffer(),
@@ -150,9 +236,10 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.depositId.toArrayLike(Buffer, "le", 4),
+    Buffer.from(slowFillLeaf.relayData.depositId),
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
     slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.updatedOutputAmount.toArrayLike(Buffer, "le", 8),
@@ -192,4 +279,56 @@ export async function loadExecuteRelayerRefundLeafParams(
     const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
+  return instructionParams;
+}
+
+export function intToU8Array32(num: number): number[] {
+  if (!Number.isInteger(num) || num < 0) {
+    throw new Error("Input must be a non-negative integer");
+  }
+
+  const u8Array = new Array(32).fill(0);
+  let i = 0;
+  while (num > 0 && i < 32) {
+    u8Array[i++] = num & 0xff; // Get least significant byte
+    num >>= 8; // Shift right by 8 bits
+  }
+
+  return u8Array;
+}
+
+export function u8Array32ToInt(u8Array: Uint8Array): bigint {
+  if (!(u8Array instanceof Uint8Array) || u8Array.length !== 32) {
+    throw new Error("Input must be a Uint8Array of length 32");
+  }
+  return u8Array.reduce((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
+}
+
+// Encodes empty list of multicall handler instructions to be used as a test message field for fills.
+export function testAcrossPlusMessage() {
+  const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
+  const multicallHandlerCoder = new MulticallHandlerCoder([]);
+  const handlerMessage = multicallHandlerCoder.encode();
+  const message = new AcrossPlusMessageCoder({
+    handler: handlerProgram.programId,
+    readOnlyLen: multicallHandlerCoder.readOnlyLen,
+    valueAmount: new BN(0),
+    accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+    handlerMessage,
+  });
+  const encodedMessage = message.encode();
+  const fillRemainingAccounts: AccountMeta[] = [
+    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+    ...multicallHandlerCoder.compiledKeyMetas,
+  ];
+  return { encodedMessage, fillRemainingAccounts };
+}
+
+export function hashNonEmptyMessage(message: Buffer) {
+  if (message.length > 0) {
+    const hash = ethers.utils.keccak256(message);
+    return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
+  }
+  // else return zeroed bytes32
+  return new Uint8Array(32);
 }

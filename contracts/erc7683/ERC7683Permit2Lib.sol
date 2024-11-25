@@ -10,8 +10,8 @@ struct AcrossOrderData {
     uint256 inputAmount;
     address outputToken;
     uint256 outputAmount;
-    uint32 destinationChainId;
-    address recipient;
+    uint256 destinationChainId;
+    bytes32 recipient;
     address exclusiveRelayer;
     uint32 exclusivityPeriod;
     bytes message;
@@ -31,8 +31,8 @@ bytes constant ACROSS_ORDER_DATA_TYPE = abi.encodePacked(
     "uint256 inputAmount,",
     "address outputToken,",
     "uint256 outputAmount,",
-    "uint32 destinationChainId,",
-    "address recipient,",
+    "uint256 destinationChainId,",
+    "bytes32 recipient,",
     "address exclusiveRelayer,"
     "uint32 exclusivityPeriod,",
     "bytes message)"
@@ -46,30 +46,30 @@ bytes32 constant ACROSS_ORDER_DATA_TYPE_HASH = keccak256(ACROSS_ORDER_DATA_TYPE)
  * @custom:security-contact bugs@across.to
  */
 library ERC7683Permit2Lib {
-    bytes internal constant CROSS_CHAIN_ORDER_TYPE =
+    bytes internal constant GASLESS_CROSS_CHAIN_ORDER_TYPE =
         abi.encodePacked(
             "GaslessCrossChainOrder(",
             "address originSettler,",
             "address user,",
             "uint256 nonce,",
-            "uint32 originChainId,",
+            "uint256 originChainId,",
             "uint32 openDeadline,",
             "uint32 fillDeadline,",
             "bytes32 orderDataType,",
             "AcrossOrderData orderData)"
         );
 
-    bytes internal constant CROSS_CHAIN_ORDER_EIP712_TYPE =
-        abi.encodePacked(CROSS_CHAIN_ORDER_TYPE, ACROSS_ORDER_DATA_TYPE);
-    bytes32 internal constant CROSS_CHAIN_ORDER_TYPE_HASH = keccak256(CROSS_CHAIN_ORDER_EIP712_TYPE);
+    bytes internal constant GASLESS_CROSS_CHAIN_ORDER_EIP712_TYPE =
+        abi.encodePacked(GASLESS_CROSS_CHAIN_ORDER_TYPE, ACROSS_ORDER_DATA_TYPE);
+    bytes32 internal constant GASLESS_CROSS_CHAIN_ORDER_TYPE_HASH = keccak256(GASLESS_CROSS_CHAIN_ORDER_EIP712_TYPE);
 
     string private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
     string internal constant PERMIT2_ORDER_TYPE =
         string(
             abi.encodePacked(
-                "CrossChainOrder witness)",
+                "GaslessCrossChainOrder witness)",
                 ACROSS_ORDER_DATA_TYPE,
-                CROSS_CHAIN_ORDER_TYPE,
+                GASLESS_CROSS_CHAIN_ORDER_TYPE,
                 TOKEN_PERMISSIONS_TYPE
             )
         );
@@ -79,13 +79,14 @@ library ERC7683Permit2Lib {
         return
             keccak256(
                 abi.encode(
-                    CROSS_CHAIN_ORDER_TYPE_HASH,
+                    GASLESS_CROSS_CHAIN_ORDER_TYPE_HASH,
                     order.originSettler,
                     order.user,
                     order.nonce,
                     order.originChainId,
                     order.openDeadline,
                     order.fillDeadline,
+                    order.orderDataType,
                     orderDataHash
                 )
             );
@@ -102,6 +103,7 @@ library ERC7683Permit2Lib {
                     orderData.outputAmount,
                     orderData.destinationChainId,
                     orderData.recipient,
+                    orderData.exclusiveRelayer,
                     orderData.exclusivityPeriod,
                     keccak256(orderData.message)
                 )

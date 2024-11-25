@@ -1,4 +1,14 @@
-import { SignerWithAddress, seedContract, toBN, expect, Contract, ethers, BigNumber } from "../../../utils/utils";
+import {
+  SignerWithAddress,
+  seedContract,
+  toBN,
+  expect,
+  Contract,
+  ethers,
+  BigNumber,
+  addressToBytes,
+} from "../../../utils/utils";
+import { buildRelayerRefundMerkleTree } from "../../svm/utils";
 import * as consts from "./constants";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { buildRelayerRefundTree, buildRelayerRefundLeaves } from "./MerkleLib.utils";
@@ -76,6 +86,78 @@ describe("SpokePool Root Bundle Execution", function () {
     expect(tokensBridgedEvents.length).to.equal(1);
   });
 
+  it("Execute relayer root correctly with mixed solana and evm leaves", async function () {
+    const totalDistributions = 10;
+    const evmDistributions = totalDistributions / 2;
+    const { relayerRefundLeaves: leaves, merkleTree: tree } = buildRelayerRefundMerkleTree({
+      totalEvmDistributions: evmDistributions,
+      totalSolanaDistributions: evmDistributions,
+      mixLeaves: true,
+      chainId: destinationChainId,
+      evmTokenAddress: destErc20.address,
+      evmRelayers: [relayer.address, rando.address],
+      evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
+    });
+
+    const leavesRefundAmount = leaves
+      .filter((leaf) => !leaf.isSolana)
+      .map((leaf) => (leaf.refundAmounts as BigNumber[]).reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
+      .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
+
+    // Store new tree.
+    await spokePool.connect(dataWorker).relayRootBundle(
+      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayRoot
+    );
+
+    // Distribute all non-Solana leaves.
+    for (let i = 0; i < leaves.length; i++) {
+      if (leaves[i].isSolana) continue;
+      await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[i], tree.getHexProof(leaves[i]));
+    }
+
+    // Relayers should be refunded
+    expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(leavesRefundAmount));
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToRelay);
+    expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
+  });
+
+  it("Execute relayer root correctly with sorted solana and evm leaves", async function () {
+    const totalDistributions = 10;
+    const evmDistributions = totalDistributions / 2;
+    const { relayerRefundLeaves: leaves, merkleTree: tree } = buildRelayerRefundMerkleTree({
+      totalEvmDistributions: evmDistributions,
+      totalSolanaDistributions: evmDistributions,
+      mixLeaves: false,
+      chainId: destinationChainId,
+      evmTokenAddress: destErc20.address,
+      evmRelayers: [relayer.address, rando.address],
+      evmRefundAmounts: [consts.amountToRelay.div(evmDistributions), consts.amountToRelay.div(evmDistributions)],
+    });
+
+    const leavesRefundAmount = leaves
+      .filter((leaf) => !leaf.isSolana)
+      .map((leaf) => (leaf.refundAmounts as BigNumber[]).reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
+      .reduce((bn1, bn2) => bn1.add(bn2), toBN(0));
+
+    // Store new tree.
+    await spokePool.connect(dataWorker).relayRootBundle(
+      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayRoot
+    );
+
+    // Distribute all non-Solana leaves.
+    for (let i = 0; i < leaves.length; i++) {
+      if (leaves[i].isSolana) continue;
+      await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[i], tree.getHexProof(leaves[i]));
+    }
+
+    // Relayers should be refunded
+    expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(leavesRefundAmount));
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(consts.amountToRelay);
+    expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
+  });
+
   it("Execution rejects invalid leaf, tree, proof combinations", async function () {
     const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
@@ -117,6 +199,28 @@ describe("SpokePool Root Bundle Execution", function () {
     await expect(spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))).to
       .be.reverted;
   });
+  it("Execution correctly logs deferred refunds", async function () {
+    const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
+
+    // Store new tree.
+    await spokePool.connect(dataWorker).relayRootBundle(
+      tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
+      consts.mockSlowRelayRoot
+    );
+
+    // Blacklist the relayer EOA to prevent it from receiving refunds. The execution should still succeed, though.
+    await destErc20.setBlacklistStatus(relayer.address, true);
+    await spokePool.connect(dataWorker).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+
+    // Only the non-blacklisted recipient should receive their refund.
+    expect(await destErc20.balanceOf(spokePool.address)).to.equal(consts.amountHeldByPool.sub(consts.amountToRelay));
+    expect(await destErc20.balanceOf(relayer.address)).to.equal(toBN(0));
+    expect(await destErc20.balanceOf(rando.address)).to.equal(consts.amountToRelay);
+
+    // Check event that tracks deferred refunds.
+    let relayTokensEvents = await spokePool.queryFilter(spokePool.filters.ExecutedRelayerRefundRoot());
+    expect(relayTokensEvents[0].args?.deferredRefunds).to.equal(true);
+  });
 
   describe("_distributeRelayerRefunds", function () {
     it("refund address length mismatch", async function () {
@@ -150,7 +254,7 @@ describe("SpokePool Root Bundle Execution", function () {
             .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
         )
           .to.emit(spokePool, "TokensBridged")
-          .withArgs(toBN(1), destinationChainId, 0, destErc20.address, dataWorker.address);
+          .withArgs(toBN(1), destinationChainId, 0, addressToBytes(destErc20.address), dataWorker.address);
       });
     });
     describe("amountToReturn = 0", function () {
@@ -205,6 +309,22 @@ describe("SpokePool Root Bundle Execution", function () {
         )
           .to.emit(spokePool, "BridgedToHubPool")
           .withArgs(toBN(1), destErc20.address);
+      });
+    });
+    describe("Total refundAmounts > spokePool's balance", function () {
+      it("Reverts and emits log", async function () {
+        await expect(
+          spokePool.connect(dataWorker).distributeRelayerRefunds(
+            destinationChainId,
+            toBN(1),
+            [consts.amountHeldByPool, consts.amountToRelay], // spoke has only amountHeldByPool.
+            0,
+            destErc20.address,
+            [relayer.address, rando.address]
+          )
+        ).to.be.revertedWith("InsufficientSpokePoolBalanceToExecuteLeaf");
+
+        expect((await destErc20.queryFilter(destErc20.filters.Transfer(spokePool.address))).length).to.equal(0);
       });
     });
   });
