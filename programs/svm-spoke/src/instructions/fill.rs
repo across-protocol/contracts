@@ -85,11 +85,7 @@ pub fn fill_v3_relay<'info>(
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
-    let FillV3RelayParams {
-        relay_data,
-        repayment_chain_id,
-        repayment_address,
-    } = unwrap_fill_v3_relay_params(
+    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_v3_relay_params(
         relay_data,
         repayment_chain_id,
         repayment_address,
@@ -141,12 +137,8 @@ pub fn fill_v3_relay<'info>(
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
 
-    if relay_data.message.len() > 0 {
-        invoke_handler(
-            ctx.accounts.signer.as_ref(),
-            ctx.remaining_accounts,
-            &relay_data.message,
-        )?;
+    if !relay_data.message.is_empty() {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
     }
 
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
@@ -186,11 +178,9 @@ fn unwrap_fill_v3_relay_params(
     account: &Option<Account<FillV3RelayParams>>,
 ) -> FillV3RelayParams {
     match (relay_data, repayment_chain_id, repayment_address) {
-        (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => FillV3RelayParams {
-            relay_data,
-            repayment_chain_id,
-            repayment_address,
-        },
+        (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
+            FillV3RelayParams { relay_data, repayment_chain_id, repayment_address }
+        }
         _ => account
             .as_ref()
             .map(|account| FillV3RelayParams {

@@ -87,9 +87,7 @@ pub mod test {
     }
     pub fn test_emit_large_log(_ctx: Context<EmitLargeLog>, length: u32) -> Result<()> {
         let large_message = "LOG_TO_TEST_LARGE_MESSAGE".repeat(length as usize);
-        emit!(TestEvent {
-            message: large_message.into(),
-        });
+        emit!(TestEvent { message: large_message });
         Ok(())
     }
 }

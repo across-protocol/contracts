@@ -99,9 +99,7 @@ fn unwrap_request_v3_slow_fill_params(
         Some(relay_data) => RequestV3SlowFillParams { relay_data },
         _ => account
             .as_ref()
-            .map(|account| RequestV3SlowFillParams {
-                relay_data: account.relay_data.clone(),
-            })
+            .map(|account| RequestV3SlowFillParams { relay_data: account.relay_data.clone() })
             .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
     }
 }
@@ -212,9 +210,8 @@ pub fn execute_v3_slow_relay_leaf<'info>(
     slow_fill_leaf: Option<V3SlowFill>,
     proof: Option<Vec<[u8; 32]>>,
 ) -> Result<()> {
-    let ExecuteV3SlowRelayLeafParams {
-        slow_fill_leaf, proof, ..
-    } = unwrap_execute_v3_slow_relay_leaf_params(slow_fill_leaf, proof, &ctx.accounts.instruction_params);
+    let ExecuteV3SlowRelayLeafParams { slow_fill_leaf, proof, .. } =
+        unwrap_execute_v3_slow_relay_leaf_params(slow_fill_leaf, proof, &ctx.accounts.instruction_params);
 
     let current_time = get_current_time(&ctx.accounts.state)?;
 
@@ -253,26 +250,15 @@ pub fn execute_v3_slow_relay_leaf<'info>(
         to: ctx.accounts.recipient_token_account.to_account_info(), // Send to the recipient
         authority: ctx.accounts.state.to_account_info(),            // Authority is the state (owner of the vault)
     };
-    let cpi_context = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-        signer_seeds,
-    );
-    transfer_checked(
-        cpi_context,
-        slow_fill_leaf.updated_output_amount,
-        ctx.accounts.mint.decimals,
-    )?;
+    let cpi_context =
+        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
+    transfer_checked(cpi_context, slow_fill_leaf.updated_output_amount, ctx.accounts.mint.decimals)?;
 
     // Update the fill status to Filled. Note we don't set the relayer here as it is set when the slow fill was requested.
     fill_status_account.status = FillStatus::Filled;
 
-    if relay_data.message.len() > 0 {
-        invoke_handler(
-            ctx.accounts.signer.as_ref(),
-            ctx.remaining_accounts,
-            &relay_data.message,
-        )?;
+    if !relay_data.message.is_empty() {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
     }
 
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.

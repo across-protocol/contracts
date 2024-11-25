@@ -33,8 +33,8 @@ pub struct WriteInstructionParamsFragment<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn write_instruction_params_fragment<'info>(
-    ctx: Context<WriteInstructionParamsFragment<'info>>,
+pub fn write_instruction_params_fragment(
+    ctx: Context<WriteInstructionParamsFragment<'_>>,
     offset: u32,
     fragment: Vec<u8>,
 ) -> Result<()> {
