@@ -123,7 +123,7 @@ pub struct ClaimedRelayerRefund {
 }
 
 #[event]
-pub struct EmergencyDeleteRootBundle {
+pub struct EmergencyDeletedRootBundle {
     pub root_bundle_id: u32,
 }
 
