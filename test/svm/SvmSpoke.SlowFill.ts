@@ -13,6 +13,7 @@ import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudg
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import {
+  intToU8Array32,
   slowFillHashFn,
   SlowFillLeaf,
   readProgramEvents,
@@ -27,7 +28,7 @@ const { recipient, setCurrentTime, assertSE, assert } = common;
 const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
   return {
     ...relayData,
-    depositId: relayData.depositId.toNumber(),
+    depositId: relayData.depositId,
     fillDeadline: relayData.fillDeadline.toNumber(),
     exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
   };
@@ -106,7 +107,7 @@ describe("svm_spoke.slow_fill", () => {
         inputAmount: new BN(relayAmount),
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
-        depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
+        depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
         fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
         exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
         message,
@@ -182,7 +183,7 @@ describe("svm_spoke.slow_fill", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: new BN(1),
+      depositId: intToU8Array32(1),
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
       message: encodedMessage,

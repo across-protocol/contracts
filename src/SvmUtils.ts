@@ -155,7 +155,7 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8
     relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    new BN(relayData.depositId).toArrayLike(Buffer, "le", 4),
+    Buffer.from(relayData.depositId),
     new BN(relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
     new BN(relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
     messageBuffer,
