@@ -19,7 +19,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub signer: Signer<'info>,
 
     #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
-    pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
+    pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>, // Contains all leaf & proof information.
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
@@ -27,6 +27,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(
         mut,
         seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        // Realloc to let the size of the dynamic array within root_bundle to grow as leafs are executed.
         realloc = std::cmp::max(
             DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
             root_bundle.to_account_info().data_len()
@@ -39,7 +40,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = state,
+        associated_token::authority = state, // Ensure owner is the state.
         associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
@@ -51,7 +52,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-        init_if_needed,
+        init_if_needed, // If first time creating, initialize the liability tracker, else re-use.
         payer = signer,
         space = DISCRIMINATOR_SIZE + TransferLiability::INIT_SPACE,
         seeds = [b"transfer_liability", mint.key().as_ref()],
@@ -64,7 +65,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// TODO: update UMIP to consider different encoding for different chains (evm and svm).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
@@ -104,7 +104,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     deferred_refunds: bool,
 ) -> Result<()>
 where
-    'c: 'info, // The lifetime constraint `'c: 'info` ensures that the lifetime `'c` is at least as long as `'info`.
+    'c: 'info, // The lifetime constraint 'c: 'info ensures that the lifetime 'c is at least as long as 'info.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -155,7 +155,6 @@ where
         ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
     }
 
-    // Emit the ExecutedRelayerRefundRoot event
     emit_cpi!(ExecutedRelayerRefundRoot {
         amount_to_return: relayer_refund_leaf.amount_to_return,
         chain_id: relayer_refund_leaf.chain_id,

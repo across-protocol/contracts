@@ -77,7 +77,7 @@ describe("svm_spoke.slow_fill", () => {
     fillAccounts = {
       state,
       signer: relayer.publicKey,
-      mintAccount: mint,
+      mint: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
       fillStatus,
@@ -234,7 +234,7 @@ describe("svm_spoke.slow_fill", () => {
     // Fill the relay first
     const approveIx = await createApproveCheckedInstruction(
       fillAccounts.relayerTokenAccount,
-      fillAccounts.mintAccount,
+      fillAccounts.mint,
       fillAccounts.state,
       fillAccounts.signer,
       BigInt(relayData.outputAmount.toString()),
