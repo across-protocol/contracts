@@ -474,7 +474,7 @@ abstract contract SpokePool is
      * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
      * @param exclusivityParameter This value is used to set the exclusivity deadline timestamp in the emitted deposit
-     * event. Before this destinationchain timestamp, only the exclusiveRelayer (if set to a non-zero address),
+     * event. Before this destination chain timestamp, only the exclusiveRelayer (if set to a non-zero address),
      * can fill this deposit. There are three ways to use this parameter:
      *     1. NO EXCLUSIVITY: If this value is set to 0, then a timestamp of 0 will be emitted,
      *        meaning that there is no exclusivity period.
