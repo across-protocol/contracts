@@ -7,8 +7,8 @@ use crate::{
     constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
     error::{CallDataError, SvmError},
     program::SvmSpoke,
+    state::State,
     utils::{self, EncodeInstructionData},
-    State,
 };
 
 #[derive(Accounts)]
