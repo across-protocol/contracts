@@ -33,6 +33,8 @@ pub enum CommonError {
     FillsArePaused,
     #[msg("Insufficient spoke pool balance to execute leaf")]
     InsufficientSpokePoolBalanceToExecuteLeaf,
+    #[msg("Invalid exclusive relayer!")]
+    InvalidExclusiveRelayer,
 }
 
 // SVM specific errors.

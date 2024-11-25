@@ -21,6 +21,7 @@ import {
   sendAndConfirmTransaction,
   Transaction,
 } from "@solana/web3.js";
+import { intToU8Array32 } from "./utils";
 import {
   calculateRelayHashUint8Array,
   MulticallHandlerCoder,
@@ -128,7 +129,7 @@ describe("svm_spoke.fill.across_plus", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: new BN(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
+      depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
       message: Buffer.from(""), // Will be populated in the tests below.

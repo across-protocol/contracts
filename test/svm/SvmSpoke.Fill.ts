@@ -17,6 +17,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Keypair, TransactionInstruction, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import { readProgramEvents, calculateRelayHashUint8Array, sendTransactionWithLookupTable } from "../../src/SvmUtils";
+import { intToU8Array32 } from "./utils";
 import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
 import { testAcrossPlusMessage, hashNonEmptyMessage } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
@@ -133,7 +134,7 @@ describe("svm_spoke.fill", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: Math.floor(Math.random() * 1000000), // force that we always have a new deposit id.
+      depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
       fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
       exclusivityDeadline: Math.floor(Date.now() / 1000) + 30, // 30 seconds from now
       message: encodedMessage,
@@ -454,7 +455,7 @@ describe("svm_spoke.fill", () => {
     const newRelayData = {
       ...relayData,
       recipient: newRecipient,
-      depositId: Math.floor(Math.random() * 1000000),
+      depositId: intToU8Array32(Math.floor(Math.random() * 1000000)),
     };
     updateRelayData(newRelayData);
     accounts.recipientTokenAccount = newRecipientATA;
@@ -531,7 +532,7 @@ describe("svm_spoke.fill", () => {
       const newRelayData = {
         ...relayData,
         recipient: recipientAuthorities[i],
-        depositId: Math.floor(Math.random() * 1000000),
+        depositId: intToU8Array32(Math.floor(Math.random() * 1000000)),
       };
       totalFillAmount = totalFillAmount.add(newRelayData.outputAmount);
       updateRelayData(newRelayData);
