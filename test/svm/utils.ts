@@ -1,21 +1,22 @@
-import { BN, Program } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
+import { BN, Program, workspace } from "@coral-xyz/anchor";
+import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
+import { BigNumber, ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 
+import { MerkleTree } from "@uma/common";
 import {
-  readEvents,
-  readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
+  readEvents,
+  readProgramEvents,
+  MulticallHandlerCoder,
+  AcrossPlusMessageCoder,
 } from "../../src/SvmUtils";
-import { MerkleTree } from "@uma/common";
-import { getParamType, keccak256 } from "../../test-utils";
-import { ParamType } from "ethers/lib/utils";
 
-export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();
@@ -161,12 +162,17 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
 
   const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
 
+  // TODO: We better consider reusing Borch serializer in production.
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
     relayData.chainId.toArrayLike(Buffer, "le", 8),
+    new BN(relayData.refundAmounts.length).toArrayLike(Buffer, "le", 4),
     refundAmountsBuffer,
     relayData.leafId.toArrayLike(Buffer, "le", 4),
     relayData.mintPublicKey.toBuffer(),
+    new BN(relayData.refundAddresses.length).toArrayLike(Buffer, "le", 4),
     refundAddressesBuffer,
   ]);
 
@@ -208,7 +214,7 @@ export interface SlowFillLeaf {
     inputAmount: BN;
     outputAmount: BN;
     originChainId: BN;
-    depositId: BN;
+    depositId: number[];
     fillDeadline: BN;
     exclusivityDeadline: BN;
     message: Buffer;
@@ -217,8 +223,11 @@ export interface SlowFillLeaf {
   updatedOutputAmount: BN;
 }
 
+// TODO: We better consider reusing Borch serializer in production.
 export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   const contentToHash = Buffer.concat([
+    // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
+    Buffer.alloc(64, 0),
     slowFillLeaf.relayData.depositor.toBuffer(),
     slowFillLeaf.relayData.recipient.toBuffer(),
     slowFillLeaf.relayData.exclusiveRelayer.toBuffer(),
@@ -227,9 +236,10 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.depositId.toArrayLike(Buffer, "le", 4),
+    Buffer.from(slowFillLeaf.relayData.depositId),
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
     slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.updatedOutputAmount.toArrayLike(Buffer, "le", 8),
@@ -270,4 +280,55 @@ export async function loadExecuteRelayerRefundLeafParams(
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
   return instructionParams;
+}
+
+export function intToU8Array32(num: number): number[] {
+  if (!Number.isInteger(num) || num < 0) {
+    throw new Error("Input must be a non-negative integer");
+  }
+
+  const u8Array = new Array(32).fill(0);
+  let i = 0;
+  while (num > 0 && i < 32) {
+    u8Array[i++] = num & 0xff; // Get least significant byte
+    num >>= 8; // Shift right by 8 bits
+  }
+
+  return u8Array;
+}
+
+export function u8Array32ToInt(u8Array: Uint8Array): bigint {
+  if (!(u8Array instanceof Uint8Array) || u8Array.length !== 32) {
+    throw new Error("Input must be a Uint8Array of length 32");
+  }
+  return u8Array.reduce((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
+}
+
+// Encodes empty list of multicall handler instructions to be used as a test message field for fills.
+export function testAcrossPlusMessage() {
+  const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
+  const multicallHandlerCoder = new MulticallHandlerCoder([]);
+  const handlerMessage = multicallHandlerCoder.encode();
+  const message = new AcrossPlusMessageCoder({
+    handler: handlerProgram.programId,
+    readOnlyLen: multicallHandlerCoder.readOnlyLen,
+    valueAmount: new BN(0),
+    accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+    handlerMessage,
+  });
+  const encodedMessage = message.encode();
+  const fillRemainingAccounts: AccountMeta[] = [
+    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+    ...multicallHandlerCoder.compiledKeyMetas,
+  ];
+  return { encodedMessage, fillRemainingAccounts };
+}
+
+export function hashNonEmptyMessage(message: Buffer) {
+  if (message.length > 0) {
+    const hash = ethers.utils.keccak256(message);
+    return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
+  }
+  // else return zeroed bytes32
+  return new Uint8Array(32);
 }

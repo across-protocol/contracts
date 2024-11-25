@@ -8,7 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Output, GaslessCrossChainOrder, OnchainCrossChainOrder, ResolvedCrossChainOrder, IOriginSettler, FillInstruction } from "./ERC7683.sol";
-import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Across.sol";
+import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Permit2Lib.sol";
+import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice ERC7683OrderDepositor processes an external order type and translates it into an AcrossV3 deposit.
@@ -18,6 +19,7 @@ import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDE
  */
 abstract contract ERC7683OrderDepositor is IOriginSettler {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     error WrongSettlementContract();
     error WrongChainId();
@@ -46,18 +48,18 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
      * @dev This will pull in the user's funds and make the order available to be filled.
      * @param order the ERC7683 compliant order.
      * @param signature signature for the EIP-712 compliant order type.
-     * @param fillerData Across-specific fillerData.
+     * @param originFillerData Across-specific fillerData.
      */
     function openFor(
         GaslessCrossChainOrder calldata order,
         bytes calldata signature,
-        bytes calldata fillerData
+        bytes calldata originFillerData
     ) external {
         (
             ResolvedCrossChainOrder memory resolvedOrder,
             AcrossOrderData memory acrossOrderData,
             AcrossOriginFillerData memory acrossOriginFillerData
-        ) = _resolveFor(order, fillerData);
+        ) = _resolveFor(order, originFillerData);
 
         // Verify Permit2 signature and pull user funds into this contract
         _processPermit2Order(order, acrossOrderData, signature);
@@ -226,11 +228,11 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         V3SpokePoolInterface.V3RelayData memory relayData;
-        relayData.depositor = order.user;
-        relayData.recipient = _toAddress(acrossOrderData.recipient);
-        relayData.exclusiveRelayer = acrossOriginFillerData.exclusiveRelayer;
-        relayData.inputToken = acrossOrderData.inputToken;
-        relayData.outputToken = acrossOrderData.outputToken;
+        relayData.depositor = order.user.toBytes32();
+        relayData.recipient = acrossOrderData.recipient;
+        relayData.exclusiveRelayer = acrossOriginFillerData.exclusiveRelayer.toBytes32();
+        relayData.inputToken = acrossOrderData.inputToken.toBytes32();
+        relayData.outputToken = acrossOrderData.outputToken.toBytes32();
         relayData.inputAmount = acrossOrderData.inputAmount;
         relayData.outputAmount = acrossOrderData.outputAmount;
         relayData.originChainId = block.chainid;
@@ -290,11 +292,11 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         V3SpokePoolInterface.V3RelayData memory relayData;
-        relayData.depositor = msg.sender;
-        relayData.recipient = _toAddress(acrossOrderData.recipient);
-        relayData.exclusiveRelayer = acrossOrderData.exclusiveRelayer;
-        relayData.inputToken = acrossOrderData.inputToken;
-        relayData.outputToken = acrossOrderData.outputToken;
+        relayData.depositor = msg.sender.toBytes32();
+        relayData.recipient = acrossOrderData.recipient;
+        relayData.exclusiveRelayer = acrossOrderData.exclusiveRelayer.toBytes32();
+        relayData.inputToken = acrossOrderData.inputToken.toBytes32();
+        relayData.outputToken = acrossOrderData.outputToken.toBytes32();
         relayData.inputAmount = acrossOrderData.inputAmount;
         relayData.outputAmount = acrossOrderData.outputAmount;
         relayData.originChainId = block.chainid;
@@ -371,7 +373,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityPeriod,
         bytes memory message
     ) internal virtual;
 

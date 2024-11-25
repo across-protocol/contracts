@@ -99,7 +99,6 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
     );
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
-    // Emit the ClaimedRelayerRefund event.
     emit_cpi!(ClaimedRelayerRefund {
         l2_token_address: ctx.accounts.mint.key(),
         claim_amount,
@@ -181,7 +180,6 @@ pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_addr
     );
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
-    // Emit the ClaimedRelayerRefund event.
     emit_cpi!(ClaimedRelayerRefund {
         l2_token_address: ctx.accounts.mint.key(),
         claim_amount,
@@ -189,7 +187,6 @@ pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_addr
     });
 
     // There is no need to reset the claim amount as the account will be closed at the end of instruction.
-
     Ok(())
 }
 

@@ -7,11 +7,20 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
+  createApproveCheckedInstruction,
 } from "@solana/spl-token";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { slowFillHashFn, SlowFillLeaf, readProgramEvents, calculateRelayHashUint8Array } from "./utils";
+import {
+  intToU8Array32,
+  slowFillHashFn,
+  SlowFillLeaf,
+  readProgramEvents,
+  calculateRelayHashUint8Array,
+  testAcrossPlusMessage,
+  hashNonEmptyMessage,
+} from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
@@ -19,7 +28,7 @@ const { recipient, setCurrentTime, assertSE, assert } = common;
 const formatRelayData = (relayData: SlowFillLeaf["relayData"]) => {
   return {
     ...relayData,
-    depositId: relayData.depositId.toNumber(),
+    depositId: relayData.depositId,
     fillDeadline: relayData.fillDeadline.toNumber(),
     exclusivityDeadline: relayData.exclusivityDeadline.toNumber(),
   };
@@ -30,8 +39,11 @@ describe("svm_spoke.slow_fill", () => {
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
+  const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
+  const tokenDecimals = 6;
 
   let state: PublicKey,
+    seed: BN,
     mint: PublicKey,
     relayerTA: PublicKey,
     recipientTA: PublicKey,
@@ -65,7 +77,7 @@ describe("svm_spoke.slow_fill", () => {
     fillAccounts = {
       state,
       signer: relayer.publicKey,
-      mintAccount: mint,
+      mint: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
       fillStatus,
@@ -75,7 +87,11 @@ describe("svm_spoke.slow_fill", () => {
     };
   }
 
-  const relaySlowFillRootBundle = async (slowRelayLeafRecipient = recipient, slowRelayLeafChainId = chainId) => {
+  const relaySlowFillRootBundle = async (
+    slowRelayLeafRecipient = recipient,
+    slowRelayLeafChainId = chainId,
+    message = encodedMessage
+  ) => {
     //TODO: verify that the leaf structure created here is equivalent to the one created by the EVM logic. I think
     // I've gotten the concatenation, endianness, etc correct but want to be sure.
     const slowRelayLeafs: SlowFillLeaf[] = [];
@@ -89,10 +105,10 @@ describe("svm_spoke.slow_fill", () => {
         inputAmount: new BN(relayAmount),
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
-        depositId: new BN(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
+        depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
         fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
         exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) - 30), // Note we set time in past to avoid exclusivity deadline
-        message: Buffer.from("Test message"),
+        message,
       },
       chainId: slowRelayLeafChainId,
       updatedOutputAmount: new BN(relayAmount),
@@ -112,7 +128,7 @@ describe("svm_spoke.slow_fill", () => {
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     const relayerRefundRoot = crypto.randomBytes(32);
@@ -131,7 +147,7 @@ describe("svm_spoke.slow_fill", () => {
   };
 
   before("Creates token mint and associated token accounts", async () => {
-    mint = await createMint(connection, payer, owner, owner, 6);
+    mint = await createMint(connection, payer, owner, owner, tokenDecimals);
     relayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     otherRelayerTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, otherRelayer.publicKey)).address;
 
@@ -143,7 +159,7 @@ describe("svm_spoke.slow_fill", () => {
   });
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address; // Initialize vault
 
     // mint mint to vault
@@ -165,10 +181,10 @@ describe("svm_spoke.slow_fill", () => {
       inputAmount: new BN(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
-      depositId: new BN(1),
+      depositId: intToU8Array32(1),
       fillDeadline: new BN(Math.floor(Date.now() / 1000) + 60), // 1 minute from now
       exclusivityDeadline: new BN(Math.floor(Date.now() / 1000) + 30), // 30 seconds from now
-      message: Buffer.from("Test message"),
+      message: encodedMessage,
     };
 
     await updateRelayData(initialRelayData);
@@ -205,12 +221,10 @@ describe("svm_spoke.slow_fill", () => {
     assert.isNotNull(event, "RequestedV3SlowFill event should be emitted");
 
     // Verify that the event data matches the relay data.
-    Object.keys(relayData).forEach((key) => {
-      assertSE(
-        event[key],
-        relayData[key as keyof typeof relayData],
-        `${key.charAt(0).toUpperCase() + key.slice(1)} should match`
-      );
+    Object.entries(relayData).forEach(([key, value]) => {
+      if (key === "message") {
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
+      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
     });
   });
 
@@ -218,11 +232,21 @@ describe("svm_spoke.slow_fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Fill the relay first
-    await program.methods
+    const approveIx = await createApproveCheckedInstruction(
+      fillAccounts.relayerTokenAccount,
+      fillAccounts.mint,
+      fillAccounts.state,
+      fillAccounts.signer,
+      BigInt(relayData.outputAmount.toString()),
+      tokenDecimals
+    );
+    const fillIx = await program.methods
       .fillV3Relay(relayHash, formatRelayData(relayData), new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
-      .signers([relayer])
-      .rpc();
+      .remainingAccounts(fillRemainingAccounts)
+      .instruction();
+    const fillTx = new Transaction().add(approveIx, fillIx);
+    await sendAndConfirmTransaction(connection, fillTx, [relayer]);
 
     try {
       await program.methods
@@ -306,7 +330,7 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Executes V3 slow relay leaf", async () => {
+  it("Executes V3 slow relay leaf, verify the event & state change", async () => {
     // Relay root bundle with slow fill leaf.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
 
@@ -335,6 +359,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed due to fill status account not being initialized");
     } catch (err: any) {
@@ -349,7 +374,7 @@ describe("svm_spoke.slow_fill", () => {
       .rpc();
 
     // Execute V3 slow relay leaf after requesting slow fill
-    await program.methods
+    const ix = await program.methods
       .executeV3SlowRelayLeaf(
         Array.from(relayHash),
         { ...leaf, relayData: formatRelayData(relayData) },
@@ -357,7 +382,10 @@ describe("svm_spoke.slow_fill", () => {
         proofAsNumbers
       )
       .accounts(executeSlowRelayLeafAccounts)
-      .rpc();
+      .remainingAccounts(fillRemainingAccounts)
+      .instruction();
+    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
+    await sendAndConfirmTransaction(connection, new Transaction().add(computeBudgetInstruction, ix), [payer]);
 
     // Verify the results
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -373,6 +401,31 @@ describe("svm_spoke.slow_fill", () => {
       BigInt(leaf.updatedOutputAmount.toNumber()),
       "Recipient balance should be increased by relay amount"
     );
+
+    // Fetch and verify the FilledV3Relay event
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const events = await readProgramEvents(connection, program);
+    const event = events.find((event) => event.name === "filledV3Relay").data;
+    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+
+    // Verify that the event data matches the relay data.
+    Object.entries(relayData).forEach(([key, value]) => {
+      if (key === "message") {
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
+      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+    });
+    // RelayExecutionInfo should match.
+    assertSE(event.relayExecutionInfo.updatedRecipient, relayData.recipient, "UpdatedRecipient should match");
+    assertSE(
+      event.relayExecutionInfo.updatedMessageHash,
+      hashNonEmptyMessage(relayData.message),
+      "UpdatedMessageHash should match"
+    );
+    assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
+    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"slowFill":{}}`, "FillType should be SlowFill");
+    // These props below are not part of relayData.
+    assertSE(event.repaymentChainId, new BN(0), "Repayment chain id should be 0");
+    assertSE(event.relayer, PublicKey.default, "Repayment address should be 0");
   });
 
   it("Fails to request a V3 slow fill when fills are paused", async () => {
@@ -433,6 +486,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong recipient token account");
     } catch (err: any) {
@@ -492,6 +546,7 @@ describe("svm_spoke.slow_fill", () => {
         firstProofAsNumbers
       )
       .accounts(executeSlowRelayLeafAccounts)
+      .remainingAccounts(fillRemainingAccounts)
       .rpc();
     const fFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
     assert.strictEqual(
@@ -522,6 +577,7 @@ describe("svm_spoke.slow_fill", () => {
           firstProofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed due to wrong fill status account");
     } catch (err: any) {
@@ -540,7 +596,7 @@ describe("svm_spoke.slow_fill", () => {
       .rpc();
 
     // Create and fund new accounts as derived from wrong mint account.
-    const wrongMint = await createMint(connection, payer, owner, owner, 6);
+    const wrongMint = await createMint(connection, payer, owner, owner, tokenDecimals);
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, recipient)).address;
     const wrongVault = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, state, true)).address;
     await mintTo(connection, payer, wrongMint, wrongVault, provider.publicKey, initialMintAmount);
@@ -566,6 +622,7 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed for inconsistent mint");
     } catch (err: any) {
@@ -609,11 +666,66 @@ describe("svm_spoke.slow_fill", () => {
           proofAsNumbers
         )
         .accounts(executeSlowRelayLeafAccounts)
+        .remainingAccounts(fillRemainingAccounts)
         .rpc();
       assert.fail("Execution should have failed for another chain");
     } catch (err: any) {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMerkleProof", "Expected error code InvalidMerkleProof");
     }
+  });
+
+  it("Emits zeroed hash for empty message", async () => {
+    // Relay root bundle of slow fill leaf with empty message.
+    const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
+      undefined,
+      undefined,
+      Buffer.alloc(0)
+    );
+
+    // Request V3 slow fill
+    await program.methods
+      .requestV3SlowFill(Array.from(relayHash), formatRelayData(leaf.relayData))
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
+
+    // Execute V3 slow relay leaf after requesting slow fill
+    const executeSlowRelayLeafAccounts = {
+      state,
+      rootBundle,
+      signer: owner,
+      fillStatus: requestAccounts.fillStatus,
+      vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint,
+      recipientTokenAccount: recipientTA,
+      program: program.programId,
+    };
+    await program.methods
+      .executeV3SlowRelayLeaf(
+        Array.from(relayHash),
+        { ...leaf, relayData: formatRelayData(relayData) },
+        rootBundleId,
+        proofAsNumbers
+      )
+      .accounts(executeSlowRelayLeafAccounts)
+      .remainingAccounts(fillRemainingAccounts)
+      .rpc();
+
+    // Fetch and verify message hash in the RequestedV3SlowFill and FilledV3Relay events
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const events = await readProgramEvents(connection, program);
+    const requestEvent = events.find((event) => event.name === "requestedV3SlowFill").data;
+    const fillEvent = events.find((event) => event.name === "filledV3Relay").data;
+    assert.isNotNull(requestEvent, "RequestedV3SlowFill event should be emitted");
+    assert.isNotNull(fillEvent, "FilledV3Relay event should be emitted");
+    assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
+    assertSE(fillEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
+    assertSE(
+      fillEvent.relayExecutionInfo.updatedMessageHash,
+      new Uint8Array(32),
+      `UpdatedMessageHash should be zeroed`
+    );
   });
 });

@@ -7,18 +7,14 @@ use crate::{
     constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
     error::{CallDataError, SvmError},
     program::SvmSpoke,
+    state::State,
     utils::{self, EncodeInstructionData},
-    State,
 };
-
-//TODO: we have inconsistent imports in this file, in some places referencing from source crates (SvmSpoke::id)
-// rather than importing at the top. fix overall and check other files.
 
 #[derive(Accounts)]
 #[instruction(params: HandleReceiveMessageParams)]
 pub struct HandleReceiveMessage<'info> {
-    // authority_pda is a Signer to ensure that this instruction
-    // can only be called by Message Transmitter
+    // authority_pda is a Signer to ensure that this instruction can only be called by the Message Transmitter.
     #[account(
         seeds = [b"message_transmitter_authority", SvmSpoke::id().as_ref()],
         bump = params.authority_bump,
@@ -56,7 +52,6 @@ pub fn handle_receive_message<'info>(
     invoke_self(&ctx, &self_ix_data)
 }
 
-// TODO: ensure that CCTP blocks re-played messages sent over the bridge. i.e one pauseDeposit Call cant be replayed.
 fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
     match utils::get_solidity_selector(data)? {
         s if s == utils::encode_solidity_selector("pauseDeposits(bool)") => {

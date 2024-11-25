@@ -12,20 +12,20 @@ describe("svm_spoke.routes", () => {
   anchor.setProvider(provider);
 
   const nonOwner = Keypair.generate();
-  let state: PublicKey, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
+  let state: PublicKey, seed: BN, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
   let routeChainId: BN;
   let setEnableRouteAccounts: any;
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     tokenMint = await createMint(provider.connection, (provider.wallet as anchor.Wallet).payer, owner, owner, 6);
 
     // Create a PDA for the route
     routeChainId = new BN(1);
-    routePda = createRoutePda(tokenMint, state, routeChainId);
+    routePda = createRoutePda(tokenMint, seed, routeChainId);
 
     // Create ATA for the origin token to be stored by state (vault).
-    vault = getVaultAta(tokenMint, state);
+    vault = await getVaultAta(tokenMint, state);
 
     // Common accounts object
     setEnableRouteAccounts = {
@@ -103,7 +103,7 @@ describe("svm_spoke.routes", () => {
 
   it("Cannot misconfigure route with wrong origin token", async () => {
     const wrongOriginToken = Keypair.generate().publicKey;
-    const wrongRoutePda = createRoutePda(wrongOriginToken, state, routeChainId);
+    const wrongRoutePda = createRoutePda(wrongOriginToken, seed, routeChainId);
 
     try {
       await program.methods
