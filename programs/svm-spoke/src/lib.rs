@@ -10,7 +10,7 @@ declare_program!(token_messenger_minter);
 ///
 /// Spoke pool implementation for Across Protocol enabling connection to the Solana Ecosystem. Program is functionally
 /// the re-implementation of SpokePool.sol for Solana, with some extensions to be Solana compatible. The implementation
-/// Leverages Circle's CCTP for message and token bridging back and forth from Ethereum mainnet. As the EVM spoke pool,
+/// leverages Circle's CCTP for message and token bridging back and forth from Ethereum mainnet. As the EVM spoke pool,
 /// this spoke pool is instructed by the EVM hubpool for pool rebalancing and relayer repayment.
 ///
 /// For any issues, please reach out to bugs@across.to.
