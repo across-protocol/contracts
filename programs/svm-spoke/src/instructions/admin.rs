@@ -11,8 +11,8 @@ use crate::{
     event::{
         EmergencyDeleteRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle, SetXDomainAdmin,
     },
-    initialize_current_time, set_seed,
     state::{RootBundle, Route, State},
+    utils::{initialize_current_time, set_seed},
 };
 
 #[derive(Accounts)]

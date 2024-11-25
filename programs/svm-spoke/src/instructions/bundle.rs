@@ -155,7 +155,6 @@ where
         ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
     }
 
-    // Emit the ExecutedRelayerRefundRoot event
     emit_cpi!(ExecutedRelayerRefundRoot {
         amount_to_return: relayer_refund_leaf.amount_to_return,
         chain_id: relayer_refund_leaf.chain_id,

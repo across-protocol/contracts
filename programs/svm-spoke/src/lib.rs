@@ -357,7 +357,7 @@ pub mod svm_spoke {
         depositor: Pubkey,
         deposit_nonce: u64,
     ) -> Result<[u8; 32]> {
-        Ok(instructions::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
+        Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
     /****************************************
@@ -775,6 +775,6 @@ pub mod svm_spoke {
 
     /// Sets the current time for the SVM Spoke Pool when running in test mode. Disabled on Mainnet.
     pub fn set_current_time(ctx: Context<SetCurrentTime>, new_time: u32) -> Result<()> {
-        instructions::set_current_time(ctx, new_time)
+        utils::set_current_time(ctx, new_time)
     }
 }

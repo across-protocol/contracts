@@ -5,9 +5,8 @@ use crate::{
     constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
     error::{CommonError, SvmError},
     event::V3FundsDeposited,
-    get_current_time,
     state::{Route, State},
-    utils::{get_unsafe_deposit_id, transfer_from},
+    utils::{get_current_time, get_unsafe_deposit_id, transfer_from},
 };
 
 #[event_cpi]

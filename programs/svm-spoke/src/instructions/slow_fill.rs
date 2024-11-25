@@ -1,17 +1,15 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
 use crate::{
     common::V3RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    get_current_time,
     state::{FillStatus, FillStatusAccount, RootBundle, State},
-    utils::{hash_non_empty_message, invoke_handler, verify_merkle_proof},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
-
-use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -218,7 +216,6 @@ pub fn execute_v3_slow_relay_leaf<'info>(
         )?;
     }
 
-    // Emit the FilledV3Relay event
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
