@@ -198,7 +198,7 @@ pub mod svm_spoke {
     pub fn request_v3_slow_fill(
         ctx: Context<SlowFillV3Relay>,
         _relay_hash: [u8; 32],
-        relay_data: V3RelayData,
+        relay_data: Option<V3RelayData>,
     ) -> Result<()> {
         instructions::request_v3_slow_fill(ctx, relay_data)
     }

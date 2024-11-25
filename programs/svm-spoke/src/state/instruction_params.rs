@@ -18,3 +18,9 @@ pub struct FillV3RelayParams {
     pub repayment_chain_id: u64,
     pub repayment_address: Pubkey,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct RequestV3SlowFillParams {
+    pub relay_data: V3RelayData,
+}

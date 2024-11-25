@@ -69,6 +69,7 @@ describe("svm_spoke.slow_fill", () => {
     requestAccounts = {
       state,
       signer: relayer.publicKey,
+      instructionParams: program.programId,
       recipient: relayData.recipient, // This could be different from global recipient.
       fillStatus,
       systemProgram: anchor.web3.SystemProgram.programId,

@@ -7,7 +7,7 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     get_current_time,
-    state::{FillStatus, FillStatusAccount, RootBundle, State},
+    state::{FillStatus, FillStatusAccount, RequestV3SlowFillParams, RootBundle, State},
     utils::{hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
 
@@ -15,10 +15,14 @@ use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutio
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<V3RelayData>)]
 pub struct SlowFillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    // This is required as fallback when None instruction params are passed in arguments.
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
+    pub instruction_params: Option<Account<'info, RequestV3SlowFillParams>>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -34,13 +38,19 @@ pub struct SlowFillV3Relay<'info> {
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(
+            &relay_hash,
+            &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
+            &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: V3RelayData) -> Result<()> {
+pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: Option<V3RelayData>) -> Result<()> {
+    let RequestV3SlowFillParams { relay_data } =
+        unwrap_request_v3_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
+
     let state = &ctx.accounts.state;
 
     let current_time = get_current_time(state)?;
@@ -83,6 +93,22 @@ pub fn request_v3_slow_fill(ctx: Context<SlowFillV3Relay>, relay_data: V3RelayDa
     });
 
     Ok(())
+}
+
+// Helper to unwrap optional instruction params with fallback loading from buffer account.
+fn unwrap_request_v3_slow_fill_params(
+    relay_data: Option<V3RelayData>,
+    account: &Option<Account<RequestV3SlowFillParams>>,
+) -> RequestV3SlowFillParams {
+    match relay_data {
+        Some(relay_data) => RequestV3SlowFillParams { relay_data },
+        _ => account
+            .as_ref()
+            .map(|account| RequestV3SlowFillParams {
+                relay_data: account.relay_data.clone(),
+            })
+            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+    }
 }
 
 // Define the V3SlowFill struct
