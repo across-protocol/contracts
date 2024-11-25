@@ -6,6 +6,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddres
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { evmAddressToPublicKey } from "../../src/SvmUtils";
 import { assert } from "chai";
+import { SlowFillLeaf } from "./utils";
 
 const provider = anchor.AnchorProvider.env();
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
@@ -150,6 +151,16 @@ export type RelayData = {
 };
 
 export type FillDataValues = [number[], RelayData, BN, PublicKey];
+
+export type FillDataParams = [number[], RelayData | null, BN | null, PublicKey | null];
+
+export type RequestV3SlowFillDataValues = [number[], RelayData];
+
+export type RequestV3SlowFillDataParams = [number[], RelayData | null];
+
+export type ExecuteV3SlowRelayLeafDataValues = [number[], SlowFillLeaf, number, number[][]];
+
+export type ExecuteV3SlowRelayLeafDataParams = [number[], SlowFillLeaf | null, number | null, number[][] | null];
 
 export const common = {
   provider,

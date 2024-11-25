@@ -1,5 +1,12 @@
 import { BN, Program, workspace } from "@coral-xyz/anchor";
-import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
+import {
+  AccountMeta,
+  Keypair,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
 import * as crypto from "crypto";
 import { SvmSpoke } from "../../target/types/svm_spoke";
@@ -15,8 +22,7 @@ import {
   AcrossPlusMessageCoder,
 } from "../../src/SvmUtils";
 import { MerkleTree } from "@uma/common";
-import { getParamType, keccak256 } from "../../test-utils";
-import { ParamType } from "ethers/lib/utils";
+import { RelayData } from "./SvmSpoke.common";
 
 export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
 
@@ -217,8 +223,8 @@ export interface SlowFillLeaf {
     outputAmount: BN;
     originChainId: BN;
     depositId: number[];
-    fillDeadline: BN;
-    exclusivityDeadline: BN;
+    fillDeadline: number;
+    exclusivityDeadline: number;
     message: Buffer;
   };
   chainId: BN;
@@ -239,8 +245,8 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
     Buffer.from(slowFillLeaf.relayData.depositId),
-    slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
-    slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
+    new BN(slowFillLeaf.relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
     new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.message,
     slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
@@ -282,6 +288,146 @@ export async function loadExecuteRelayerRefundLeafParams(
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
   return instructionParams;
+}
+
+export async function closeInstructionParams(program: Program<SvmSpoke>, signer: Keypair) {
+  const [instructionParams] = PublicKey.findProgramAddressSync(
+    [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
+    program.programId
+  );
+  const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
+  if (accountInfo !== null) {
+    const closeIx = await program.methods.closeInstructionParams().accounts({ signer: signer.publicKey }).instruction();
+    await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(closeIx), [signer]);
+  }
+}
+
+export async function createFillV3RelayParamsInstructions(
+  program: Program<SvmSpoke>,
+  signer: PublicKey,
+  relayData: RelayData,
+  repaymentChainId: BN,
+  repaymentAddress: PublicKey
+) {
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("fillV3RelayParams", {
+    relayData,
+    repaymentChainId,
+    repaymentAddress,
+  });
+
+  const loadInstructions: TransactionInstruction[] = [];
+  loadInstructions.push(
+    await program.methods.initializeInstructionParams(instructionParamsBytes.length).accounts({ signer }).instruction()
+  );
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
+    loadInstructions.push(
+      await program.methods.writeInstructionParamsFragment(i, fragment).accounts({ signer }).instruction()
+    );
+  }
+
+  const closeInstruction = await program.methods.closeInstructionParams().accounts({ signer }).instruction();
+
+  return { loadInstructions, closeInstruction };
+}
+
+export async function loadFillV3RelayParams(
+  program: Program<SvmSpoke>,
+  signer: Keypair,
+  relayData: RelayData,
+  repaymentChainId: BN,
+  repaymentAddress: PublicKey
+) {
+  // Close the instruction params account if the caller has used it before.
+  await closeInstructionParams(program, signer);
+
+  // Execute load instructions sequentially.
+  const { loadInstructions } = await createFillV3RelayParamsInstructions(
+    program,
+    signer.publicKey,
+    relayData,
+    repaymentChainId,
+    repaymentAddress
+  );
+  for (let i = 0; i < loadInstructions.length; i += 1) {
+    await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(loadInstructions[i]), [signer]);
+  }
+}
+
+export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
+  // Close the instruction params account if the caller has used it before.
+  await closeInstructionParams(program, signer);
+
+  // Execute load instructions sequentially.
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("requestV3SlowFillParams", { relayData });
+
+  const loadInstructions: TransactionInstruction[] = [];
+  loadInstructions.push(
+    await program.methods
+      .initializeInstructionParams(instructionParamsBytes.length)
+      .accounts({ signer: signer.publicKey })
+      .instruction()
+  );
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
+    loadInstructions.push(
+      await program.methods
+        .writeInstructionParamsFragment(i, fragment)
+        .accounts({ signer: signer.publicKey })
+        .instruction()
+    );
+  }
+
+  return loadInstructions;
+}
+
+export async function loadExecuteV3SlowRelayLeafParams(
+  program: Program<SvmSpoke>,
+  signer: Keypair,
+  slowFillLeaf: SlowFillLeaf,
+  rootBundleId: number,
+  proof: number[][]
+) {
+  // Close the instruction params account if the caller has used it before.
+  await closeInstructionParams(program, signer);
+
+  // Execute load instructions sequentially.
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
+
+  const accountCoder = new LargeAccountsCoder(program.idl);
+  const instructionParamsBytes = await accountCoder.encode("executeV3SlowRelayLeafParams", {
+    slowFillLeaf,
+    rootBundleId,
+    proof,
+  });
+
+  const loadInstructions: TransactionInstruction[] = [];
+  loadInstructions.push(
+    await program.methods
+      .initializeInstructionParams(instructionParamsBytes.length)
+      .accounts({ signer: signer.publicKey })
+      .instruction()
+  );
+
+  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
+    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
+    loadInstructions.push(
+      await program.methods
+        .writeInstructionParamsFragment(i, fragment)
+        .accounts({ signer: signer.publicKey })
+        .instruction()
+    );
+  }
+
+  return loadInstructions;
 }
 
 export function intToU8Array32(num: number): number[] {

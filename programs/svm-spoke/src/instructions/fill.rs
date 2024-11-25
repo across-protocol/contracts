@@ -10,16 +10,20 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
-    state::{FillStatus, FillStatusAccount, State},
+    state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<V3RelayData>)]
 pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    // This is required as fallback when None instruction params are passed in arguments.
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
+    pub instruction_params: Option<Account<'info, FillV3RelayParams>>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -30,7 +34,10 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mint::token_program = token_program,
-        address = relay_data.output_token @ SvmError::InvalidMint
+        address = relay_data
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
+            .output_token @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -45,7 +52,11 @@ pub struct FillV3Relay<'info> {
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = relay_data.recipient, // Ensures tokens go to ATA owned by the recipient.
+        // Ensures tokens go to ATA owned by the recipient.
+        associated_token::authority = relay_data
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
+            .recipient,
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -56,7 +67,10 @@ pub struct FillV3Relay<'info> {
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(
+            &relay_hash,
+            &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
+            &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
@@ -67,10 +81,17 @@ pub struct FillV3Relay<'info> {
 
 pub fn fill_v3_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
-    relay_data: V3RelayData,
-    repayment_chain_id: u64,
-    repayment_address: Pubkey,
+    relay_data: Option<V3RelayData>,
+    repayment_chain_id: Option<u64>,
+    repayment_address: Option<Pubkey>,
 ) -> Result<()> {
+    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_v3_relay_params(
+        relay_data,
+        repayment_chain_id,
+        repayment_address,
+        &ctx.accounts.instruction_params,
+    );
+
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
@@ -147,6 +168,28 @@ pub fn fill_v3_relay<'info>(
     });
 
     Ok(())
+}
+
+// Helper to unwrap optional instruction params with fallback loading from buffer account.
+fn unwrap_fill_v3_relay_params(
+    relay_data: Option<V3RelayData>,
+    repayment_chain_id: Option<u64>,
+    repayment_address: Option<Pubkey>,
+    account: &Option<Account<FillV3RelayParams>>,
+) -> FillV3RelayParams {
+    match (relay_data, repayment_chain_id, repayment_address) {
+        (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
+            FillV3RelayParams { relay_data, repayment_chain_id, repayment_address }
+        }
+        _ => account
+            .as_ref()
+            .map(|account| FillV3RelayParams {
+                relay_data: account.relay_data.clone(),
+                repayment_chain_id: account.repayment_chain_id,
+                repayment_address: account.repayment_address,
+            })
+            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+    }
 }
 
 #[derive(Accounts)]
