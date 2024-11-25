@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multicall_handler = "6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG"
-svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
-test = "84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4"
+multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
+svm_spoke = "DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn"
+test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
-multicall_handler = "6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG"
-svm_spoke = "Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q"
+multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
+svm_spoke = "DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn"
 
 [registry]
 url = "https://api.apr.dev"

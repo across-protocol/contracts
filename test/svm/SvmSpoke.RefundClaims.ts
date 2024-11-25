@@ -15,7 +15,7 @@ import {
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
-describe.only("svm_spoke.refund_claims", () => {
+describe("svm_spoke.refund_claims", () => {
   anchor.setProvider(provider);
 
   const claimInitializer = Keypair.generate();

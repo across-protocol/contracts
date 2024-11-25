@@ -216,7 +216,7 @@ export interface SlowFillLeaf {
     inputAmount: BN;
     outputAmount: BN;
     originChainId: BN;
-    depositId: BN;
+    depositId: number[];
     fillDeadline: BN;
     exclusivityDeadline: BN;
     message: Buffer;
@@ -238,7 +238,7 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
     slowFillLeaf.relayData.inputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
     slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.depositId.toArrayLike(Buffer, "le", 4),
+    Buffer.from(slowFillLeaf.relayData.depositId),
     slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
     slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
     new BN(slowFillLeaf.relayData.message.length).toArrayLike(Buffer, "le", 4),
@@ -282,6 +282,28 @@ export async function loadExecuteRelayerRefundLeafParams(
     await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
   }
   return instructionParams;
+}
+
+export function intToU8Array32(num: number): number[] {
+  if (!Number.isInteger(num) || num < 0) {
+    throw new Error("Input must be a non-negative integer");
+  }
+
+  const u8Array = new Array(32).fill(0);
+  let i = 0;
+  while (num > 0 && i < 32) {
+    u8Array[i++] = num & 0xff; // Get least significant byte
+    num >>= 8; // Shift right by 8 bits
+  }
+
+  return u8Array;
+}
+
+export function u8Array32ToInt(u8Array: Uint8Array): bigint {
+  if (!(u8Array instanceof Uint8Array) || u8Array.length !== 32) {
+    throw new Error("Input must be a Uint8Array of length 32");
+  }
+  return u8Array.reduce((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
 }
 
 // Encodes empty list of multicall handler instructions to be used as a test message field for fills.

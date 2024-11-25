@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("Fdedr2RqfufUiE1sbVEfpSQ3NADJqxrvu1zojWpQJj4q");
+declare_id!("DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter);
@@ -301,6 +301,59 @@ pub mod svm_spoke {
             exclusivity_period,
             message,
         )
+    }
+
+    /// Equivalent to deposit_v3 except the deposit_nonce is not used to derive the deposit_id for the depositor. This
+    /// Lets the caller influence the deposit ID to make it deterministic for the depositor. The computed depositID is
+    /// the keccak256 hash of [signer, depositor, deposit_nonce].
+    pub fn unsafe_deposit_v3(
+        ctx: Context<DepositV3>,
+        depositor: Pubkey,
+        recipient: Pubkey,
+        input_token: Pubkey,
+        output_token: Pubkey,
+        input_amount: u64,
+        output_amount: u64,
+        destination_chain_id: u64,
+        exclusive_relayer: Pubkey,
+        deposit_nonce: u64,
+        quote_timestamp: u32,
+        fill_deadline: u32,
+        exclusivity_parameter: u32,
+        message: Vec<u8>,
+    ) -> Result<()> {
+        instructions::unsafe_deposit_v3(
+            ctx,
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            deposit_nonce,
+            quote_timestamp,
+            fill_deadline,
+            exclusivity_parameter,
+            message,
+        )
+    }
+
+    /// Computes the deposit ID for the depositor using the provided deposit_nonce. This acts like a "view" function for
+    /// off-chain actors to compute what the expected deposit ID is for a given depositor and deposit nonce will be.
+    ///
+    /// ### Parameters:
+    /// - signer: The public key of the depositor sender.
+    /// - depositor: The public key of the depositor.
+    /// - deposit_nonce: The nonce used to derive the deposit ID.
+    pub fn get_unsafe_deposit_id(
+        _ctx: Context<Null>,
+        signer: Pubkey,
+        depositor: Pubkey,
+        deposit_nonce: u64,
+    ) -> Result<[u8; 32]> {
+        Ok(instructions::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
     /****************************************
