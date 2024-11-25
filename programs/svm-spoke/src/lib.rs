@@ -6,7 +6,7 @@ declare_id!("DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn");
 declare_program!(message_transmitter);
 declare_program!(token_messenger_minter);
 
-/// # Across SVM Spoke Prgram
+/// # Across SVM Spoke Program
 ///
 /// Spoke pool implementation for Across Protocol enabling connection to the Solana Ecosystem. Program is functionally
 /// the re-implementation of SpokePool.sol for Solana, with some extensions to be Solana compatible. The implementation
