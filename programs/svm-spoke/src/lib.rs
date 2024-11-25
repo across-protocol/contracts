@@ -198,15 +198,19 @@ pub mod svm_spoke {
 
     /// Request to bridge input_token to a target chain and receive output_token.
     ///
-    /// The fee paid to relayers and the system should be is captured in the spread between input and output amount
-    /// when adjusted to be denominated in the input token. A relayer on the destination chain will send output_amount
-    /// of output_token to the recipient and receive input_tokenon a repayment chain of their choice. Therefore,
-    /// the fee should account for destination fee transaction costs, the relayer's opportunity cost of capital while
-    /// they wait to be refunded following an optimistic challenge window in the HubPool, and the system fee that
-    /// they'll be charged. On the destination chain, the hash of the deposit data will be used to uniquely identify
-    /// this deposit, so modifying any params in it will result in a different hash and a different deposit. The hash
-    /// will comprise all parameters to this function along with this chain's chainId(). Relayers are only refunded for
-    /// filling deposits with deposit hashes that map exactly to the one emitted by this contract.
+    /// The fee paid to relayers and the system is captured in the spread between the input and output amounts,
+    /// denominated in the input token. A relayer on the destination chain will send `output_amount` of `output_token`
+    /// to the recipient and receive `input_token` on a repayment chain of their choice.
+    ///
+    /// The fee accounts for:
+    /// - Destination transaction costs,
+    /// - The relayer's opportunity cost of capital while waiting for a refund during the optimistic challenge window in the HubPool,
+    /// - The system fee charged to the relayer.
+    ///
+    /// On the destination chain, a unique hash of the deposit data is used to identify this deposit. Modifying any
+    /// parameters will result in a different hash, creating a separate deposit. The hash is computed using all parameters
+    /// of this function along with the chain's `chainId()`. Relayers are refunded only for deposits with hashes that
+    /// exactly match those emitted by this contract.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that authorizes the deposit.
