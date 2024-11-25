@@ -6,7 +6,7 @@ use anchor_lang::{
     },
 };
 
-declare_id!("6zbEkDZGuHqGiACGWc2Xd5DY4m52qwXjmthzWtnoCTyG");
+declare_id!("6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH");
 
 #[program]
 pub mod multicall_handler {
