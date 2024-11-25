@@ -372,6 +372,28 @@ describe("SpokePool Depositor Logic", async function () {
         _relayData.message,
       ];
     }
+    function getUnsafeDepositArgsFromRelayData(
+      _relayData: V3RelayData,
+      _depositId: string,
+      _destinationChainId = destinationChainId,
+      _quoteTimestamp = quoteTimestamp
+    ) {
+      return [
+        addressToBytes(_relayData.depositor),
+        addressToBytes(_relayData.recipient),
+        addressToBytes(_relayData.inputToken),
+        addressToBytes(_relayData.outputToken),
+        _relayData.inputAmount,
+        _relayData.outputAmount,
+        _destinationChainId,
+        addressToBytes(_relayData.exclusiveRelayer),
+        _depositId,
+        _quoteTimestamp,
+        _relayData.fillDeadline,
+        _relayData.exclusivityDeadline,
+        _relayData.message,
+      ];
+    }
     beforeEach(async function () {
       relayData = {
         depositor: addressToBytes(depositor.address),
@@ -803,6 +825,44 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
       );
+    });
+    it("unsafe deposit ID", async function () {
+      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, forcedDepositId}.
+      const forcedDepositId = "99";
+      const expectedDepositId = BigNumber.from(
+        ethers.utils.solidityKeccak256(
+          ["address", "bytes32", "uint256"],
+          [depositor.address, addressToBytes(recipient.address), forcedDepositId]
+        )
+      );
+      expect(
+        await spokePool.getUnsafeDepositId(depositor.address, addressToBytes(recipient.address), forcedDepositId)
+      ).to.equal(expectedDepositId);
+      // Note: we deliberately set the depositor != msg.sender to test that the hashing algorithm correctly includes
+      // both addresses in the hash.
+      await expect(
+        spokePool
+          .connect(depositor)
+          [SpokePoolFuncs.unsafeDepositV3Bytes](
+            ...getUnsafeDepositArgsFromRelayData({ ...relayData, depositor: recipient.address }, forcedDepositId)
+          )
+      )
+        .to.emit(spokePool, "V3FundsDeposited")
+        .withArgs(
+          relayData.inputToken,
+          relayData.outputToken,
+          relayData.inputAmount,
+          relayData.outputAmount,
+          destinationChainId,
+          expectedDepositId,
+          quoteTimestamp,
+          relayData.fillDeadline,
+          0,
+          addressToBytes(recipient.address),
+          relayData.recipient,
+          relayData.exclusiveRelayer,
+          relayData.message
+        );
     });
   });
   describe("speed up V3 deposit", function () {

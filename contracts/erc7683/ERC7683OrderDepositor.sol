@@ -73,6 +73,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             acrossOrderData.outputAmount,
             acrossOrderData.destinationChainId,
             acrossOriginFillerData.exclusiveRelayer,
+            acrossOrderData.depositNonce,
             // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.openDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
@@ -103,6 +104,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             acrossOrderData.outputAmount,
             acrossOrderData.destinationChainId,
             acrossOrderData.exclusiveRelayer,
+            acrossOrderData.depositNonce,
             // Note: simplifying assumption to avoid the order type having to bake in the quote timestamp.
             SafeCast.toUint32(block.timestamp),
             order.fillDeadline,
@@ -160,6 +162,17 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
     function getCurrentTime() public view virtual returns (uint32) {
         return SafeCast.toUint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
+
+    /**
+     * @notice Convenience method to compute the Across depositId for orders sent through 7683.
+     * @dev if a 0 depositNonce is used, the depositId will not be deterministic (meaning it can change depending on
+     * when the open txn is mined), but you will be safe from collisions. See the unsafeDepositV3 method on SpokePool
+     * for more details on how to choose between deterministic and non-deterministic.
+     * @param depositNonce the depositNonce field in the order.
+     * @param depositor the sender or signer of the order.
+     * @return the resulting Across depositId.
+     */
+    function computeDepositId(uint256 depositNonce, address depositor) public view virtual returns (uint256);
 
     function _resolveFor(GaslessCrossChainOrder calldata order, bytes calldata fillerData)
         internal
@@ -223,7 +236,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.inputAmount = acrossOrderData.inputAmount;
         relayData.outputAmount = acrossOrderData.outputAmount;
         relayData.originChainId = block.chainid;
-        relayData.depositId = _currentDepositId();
+        relayData.depositId = computeDepositId(acrossOrderData.depositNonce, order.user);
         relayData.fillDeadline = order.fillDeadline;
         relayData.exclusivityDeadline = acrossOrderData.exclusivityPeriod;
         relayData.message = acrossOrderData.message;
@@ -287,7 +300,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.inputAmount = acrossOrderData.inputAmount;
         relayData.outputAmount = acrossOrderData.outputAmount;
         relayData.originChainId = block.chainid;
-        relayData.depositId = _currentDepositId();
+        relayData.depositId = computeDepositId(acrossOrderData.depositNonce, msg.sender);
         relayData.fillDeadline = order.fillDeadline;
         relayData.exclusivityDeadline = acrossOrderData.exclusivityPeriod;
         relayData.message = acrossOrderData.message;
@@ -357,13 +370,12 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
+        uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityPeriod,
         bytes memory message
     ) internal virtual;
-
-    function _currentDepositId() internal view virtual returns (uint32);
 
     function _destinationSettler(uint256 chainId) internal view virtual returns (address);
 }

@@ -24,7 +24,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
-            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
+            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
         );
 
     event BridgedToHubPool(uint256 amount, address token);
@@ -60,7 +60,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function _verifyUpdateDepositMessage(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         int64 updatedRelayerFeePct,
         bytes32 updatedRecipient,
@@ -87,7 +87,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function verifyUpdateV3DepositMessage(
         bytes32 depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
@@ -109,7 +109,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function verifyUpdateV3DepositMessage(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,

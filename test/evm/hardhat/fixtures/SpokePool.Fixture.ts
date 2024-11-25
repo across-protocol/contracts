@@ -346,7 +346,7 @@ export async function getUpdatedV3DepositSignature(
   const typedData = {
     types: {
       UpdateDepositDetails: [
-        { name: "depositId", type: "uint32" },
+        { name: "depositId", type: "uint256" },
         { name: "originChainId", type: "uint256" },
         { name: "updatedOutputAmount", type: "uint256" },
         { name: "updatedRecipient", type: isAddressOverload ? "address" : "bytes32" },
