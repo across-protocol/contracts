@@ -380,7 +380,7 @@ pub mod svm_spoke {
     /// - signer (Signer): The account that authorizes the fill (filler). No permission requirements.
     /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
     ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
-    ///   be derived from the signer's public key with seed ["instruction_params", signer].
+    ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
     ///   Seed: ["route",input_token,state.seed,destination_chain_id].
@@ -689,7 +689,7 @@ pub mod svm_spoke {
     /// - signer (Signer): The account that authorizes the slow fill request.
     /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
     ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
-    ///   be derived from the signer's public key with seed ["instruction_params", signer].
+    ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - fill_status (Writable): The fill status PDA, created on this function call. Updated to track slow fill status.
     ///   Used to prevent double request and fill. Seed: ["fills",relay_hash].
@@ -722,7 +722,7 @@ pub mod svm_spoke {
     /// - signer (Signer): The account that authorizes the execution. No permission requirements.
     /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
     ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
-    ///   be derived from the signer's public key with seed ["instruction_params", signer].
+    ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - root_bundle (Account): Root bundle PDA with slowRelayRoot. Seed: ["root_bundle",state.seed,root_bundle_id].
     /// - fill_status (Writable): The fill status PDA, created when slow request was made. Updated to track slow fill.
