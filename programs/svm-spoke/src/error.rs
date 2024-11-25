@@ -78,7 +78,7 @@ pub enum SvmError {
     InvalidATACreationAccounts,
 }
 
-// Errors to handle the CCTP interactions.
+// CCTP specific errors.
 #[error_code]
 pub enum CallDataError {
     #[msg("Invalid solidity selector")]
@@ -99,7 +99,7 @@ pub enum CallDataError {
     UnsupportedSelector,
 }
 
-// Errors to handle Across+ message calls.
+// Across+ specific errors.
 #[error_code]
 pub enum AcrossPlusError {
     #[msg("Message did not deserialize")]
