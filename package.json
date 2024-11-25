@@ -22,7 +22,7 @@
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
     "lint-js": "yarn prettier --list-different **/*.js **/*.ts",
-    "lint-rust": "cargo fmt --all -- --check && cargo clippy",
+    "lint-rust": "cargo +nightly fmt --all -- --check && cargo clippy",
     "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo fmt --all",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",

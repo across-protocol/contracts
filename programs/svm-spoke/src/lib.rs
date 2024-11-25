@@ -32,9 +32,9 @@ use utils::*;
 pub mod svm_spoke {
     use super::*;
 
-    /****************************************
-     *            ADMIN FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///            ADMIN FUNCTIONS           *
+    /// *************************************
 
     /// Initializes the state for the SVM Spoke Pool. Only callable once.
     ///
@@ -194,9 +194,9 @@ pub mod svm_spoke {
         instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
     }
 
-    /****************************************
-     *          DEPOSIT FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///          DEPOSIT FUNCTIONS           *
+    /// *************************************
 
     /// Request to bridge input_token to a target chain and receive output_token.
     ///
@@ -363,9 +363,9 @@ pub mod svm_spoke {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
-    /****************************************
-     *          RELAYER FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///          RELAYER FUNCTIONS           *
+    /// *************************************
 
     /// Fulfill request to bridge cross chain by sending specified output tokens to recipient.
     ///
@@ -481,9 +481,9 @@ pub mod svm_spoke {
         instructions::create_token_accounts(ctx)
     }
 
-    /****************************************
-     *           BUNDLE FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///           BUNDLE FUNCTIONS           *
+    /// *************************************
 
     /// Executes relayer refund leaf. Only callable by owner.
     ///
@@ -667,9 +667,9 @@ pub mod svm_spoke {
         instructions::close_claim_account(ctx)
     }
 
-    /****************************************
-     *         SLOW FILL FUNCTIONS          *
-     ****************************************/
+    /// **************************************
+    ///         SLOW FILL FUNCTIONS          *
+    /// *************************************
 
     /// Requests Across to send LP funds to this program to fulfill a slow fill.
     ///
@@ -742,9 +742,9 @@ pub mod svm_spoke {
         instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
 
-    /****************************************
-     *       CCTP FUNCTIONS FUNCTIONS       *
-     ****************************************/
+    /// **************************************
+    ///       CCTP FUNCTIONS FUNCTIONS       *
+    /// *************************************
 
     /// Handles cross-chain messages received from L1 Ethereum over CCTP.
     ///
