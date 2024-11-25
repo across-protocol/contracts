@@ -9,8 +9,7 @@ use crate::{
     constraints::is_local_or_remote_owner,
     error::SvmError,
     event::{
-        EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle,
-        SetXDomainAdmin,
+        EmergencyDeleteRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle, SetXDomainAdmin,
     },
     initialize_current_time, set_seed,
     state::{RootBundle, Route, State},
@@ -265,7 +264,7 @@ pub struct EmergencyDeleteRootBundleState<'info> {
 }
 
 pub fn emergency_delete_root_bundle(ctx: Context<EmergencyDeleteRootBundleState>, root_bundle_id: u32) -> Result<()> {
-    emit_cpi!(EmergencyDeletedRootBundle { root_bundle_id });
+    emit_cpi!(EmergencyDeleteRootBundle { root_bundle_id });
 
     Ok(())
 }
