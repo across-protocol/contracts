@@ -30,6 +30,11 @@ pub struct RelayedRootBundle {
     pub slow_relay_root: [u8; 32],
 }
 
+#[event]
+pub struct EmergencyDeletedRootBundle {
+    pub root_bundle_id: u32,
+}
+
 // Deposit events
 #[event]
 pub struct V3FundsDeposited {
@@ -101,7 +106,7 @@ pub struct RequestedV3SlowFill {
     pub message_hash: [u8; 32],
 }
 
-// Relayer refund events
+// Bundle refund events
 #[event]
 pub struct ExecutedRelayerRefundRoot {
     pub amount_to_return: u64,
@@ -120,11 +125,6 @@ pub struct ClaimedRelayerRefund {
     pub l2_token_address: Pubkey,
     pub claim_amount: u64,
     pub refund_address: Pubkey,
-}
-
-#[event]
-pub struct EmergencyDeletedRootBundle {
-    pub root_bundle_id: u32,
 }
 
 #[event]

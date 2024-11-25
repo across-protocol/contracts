@@ -15,7 +15,7 @@ pub fn set_current_time(ctx: Context<SetCurrentTime>, _new_time: u32) -> Result<
 
     #[cfg(not(feature = "test"))]
     {
-        return err!(crate::error::SvmError::CannotSetCurrentTime);
+        err!(crate::error::SvmError::CannotSetCurrentTime)
     }
 
     #[cfg(feature = "test")]

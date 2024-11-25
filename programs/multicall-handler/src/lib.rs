@@ -46,11 +46,7 @@ pub mod multicall_handler {
                 account_infos.push(account_info.to_owned());
             }
 
-            let cpi_instruction = Instruction {
-                program_id: target_program.key(),
-                accounts,
-                data: compiled_ix.data,
-            };
+            let cpi_instruction = Instruction { program_id: target_program.key(), accounts, data: compiled_ix.data };
 
             match use_handler_signer {
                 true => invoke_signed(&cpi_instruction, &account_infos, &[&[b"handler_signer", &[bump]]])?,
