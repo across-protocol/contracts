@@ -513,7 +513,7 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes calldata message
-    ) public payable override nonReentrant unpausedDeposits {
+    ) public payable override {
         DepositV3Params memory params = DepositV3Params({
             depositor: depositor,
             recipient: recipient,
@@ -628,7 +628,7 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes calldata message
-    ) public payable nonReentrant unpausedDeposits {
+    ) public payable {
         unsafeDepositV3(
             depositor.toBytes32(),
             recipient.toBytes32(),
