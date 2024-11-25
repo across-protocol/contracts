@@ -76,12 +76,9 @@ pub fn invoke_handler<'info>(
     // Note that the depositor is responsible to make sure that after invoking the handler the recipient account will
     // not hold any balance that is below its rent-exempt threshold, otherwise the fill would fail.
     if message.value_amount > 0 {
-        let recipient_account = account_infos.get(0).ok_or(AcrossPlusError::MissingValueRecipientKey)?;
+        let recipient_account = account_infos.first().ok_or(AcrossPlusError::MissingValueRecipientKey)?;
         let transfer_ix = system_instruction::transfer(&relayer.key(), &recipient_account.key(), message.value_amount);
-        invoke(
-            &transfer_ix,
-            &[relayer.to_account_info(), recipient_account.to_account_info()],
-        )?;
+        invoke(&transfer_ix, &[relayer.to_account_info(), recipient_account.to_account_info()])?;
     }
 
     // The data will hold the handler ix discriminator and raw handler message bytes (including 4 bytes for the length).
@@ -89,11 +86,7 @@ pub fn invoke_handler<'info>(
     data.extend_from_slice(&HANDLE_V3_ACROSS_MESSAGE_DISCRIMINATOR);
     AnchorSerialize::serialize(&message.handler_message, &mut data)?;
 
-    let instruction = Instruction {
-        program_id: message.handler,
-        accounts,
-        data,
-    };
+    let instruction = Instruction { program_id: message.handler, accounts, data };
 
     // TODO: consider if the message handler requires signed invocation.
     invoke(&instruction, account_infos)?;

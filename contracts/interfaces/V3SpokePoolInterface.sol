@@ -53,7 +53,7 @@ interface V3SpokePoolInterface {
         // Origin chain id.
         uint256 originChainId;
         // The id uniquely identifying this deposit on the origin chain.
-        uint32 depositId;
+        uint256 depositId;
         // The timestamp on the destination chain after which this deposit can no longer be filled.
         uint32 fillDeadline;
         // The timestamp on the destination chain after which any relayer can fill the deposit.
@@ -102,7 +102,7 @@ interface V3SpokePoolInterface {
         uint256 outputAmount;
         uint256 destinationChainId;
         bytes32 exclusiveRelayer;
-        uint32 depositId;
+        uint256 depositId;
         uint32 quoteTimestamp;
         uint32 fillDeadline;
         uint32 exclusivityParameter;
@@ -119,7 +119,7 @@ interface V3SpokePoolInterface {
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 indexed destinationChainId,
-        uint32 indexed depositId,
+        uint256 indexed depositId,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -131,7 +131,7 @@ interface V3SpokePoolInterface {
 
     event RequestedSpeedUpV3Deposit(
         uint256 updatedOutputAmount,
-        uint32 indexed depositId,
+        uint256 indexed depositId,
         bytes32 indexed depositor,
         bytes32 updatedRecipient,
         bytes updatedMessage,
@@ -145,7 +145,7 @@ interface V3SpokePoolInterface {
         uint256 outputAmount,
         uint256 repaymentChainId,
         uint256 indexed originChainId,
-        uint32 indexed depositId,
+        uint256 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes32 exclusiveRelayer,
@@ -162,7 +162,7 @@ interface V3SpokePoolInterface {
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 indexed originChainId,
-        uint32 indexed depositId,
+        uint256 indexed depositId,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
         bytes32 exclusiveRelayer,
@@ -228,7 +228,7 @@ interface V3SpokePoolInterface {
 
     function speedUpV3Deposit(
         bytes32 depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
