@@ -28,11 +28,11 @@ jobs:
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           profile: minimal
           components: rustc
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile && rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
       - name: Lint js
         shell: bash
         run: yarn lint-js

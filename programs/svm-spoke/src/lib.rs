@@ -32,15 +32,15 @@ use utils::*;
 pub mod svm_spoke {
     use super::*;
 
-    /****************************************
-     *            ADMIN FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///            ADMIN FUNCTIONS           *
+    /// *************************************
 
     /// Initializes the state for the SVM Spoke Pool. Only callable once.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Writable, Signer): The account that pays for the transaction and will own the state.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - system_program: The system program required for account creation.
     ///
     /// ### Parameters:
@@ -75,9 +75,9 @@ pub mod svm_spoke {
 
     /// Pauses the Spoke Pool from accepting deposits. Only callable by the owner.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the pause.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed], where `seed` is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed], where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
     /// - pause: `true` to pause the system, `false` to unpause it.
@@ -87,9 +87,9 @@ pub mod svm_spoke {
 
     /// Pauses the Spoke Pool from processing fills. Only callable by the owner.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the pause.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed], where `seed` is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed], where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
     /// - pause: `true` to pause the system, `false` to unpause it.
@@ -99,9 +99,9 @@ pub mod svm_spoke {
 
     /// Transfers ownership of the Spoke Pool. Only callable by the current owner.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the current owner to authorize the transfer.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed] where `seed` is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed] where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
     /// - new_owner: The public key of the new owner.
@@ -109,14 +109,14 @@ pub mod svm_spoke {
         instructions::transfer_ownership(ctx, new_owner)
     }
 
-    /// Enables or disables a route for deposits from an origin token to a destination chain ID. Callable only by the owner.
+    /// Enables or disables a route for deposits from origin token to destination chain ID. Callable only by the owner.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the route change.
     /// - payer (Signer): The account responsible for paying the transaction fees.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed] where `seed` is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed] where `seed` is 0 on mainnet.
     /// - route (Writable): PDA to store route information. Created on the first call, updated subsequently.
-    ///   Seed: ["route", origin_token, state.seed, destination_chain_id].
+    ///   Seed: ["route",origin_token,state.seed,destination_chain_id].
     /// - vault (Writable): ATA to hold the origin token for the associated route. Created on the first call.
     ///   Authority must be set as the state, and mint must be the origin_token_mint.
     /// - origin_token_mint: The mint account for the origin token.
@@ -139,9 +139,9 @@ pub mod svm_spoke {
 
     /// Sets the cross-domain admin for the Spoke Pool. Only callable by owner. Used if Hubpool upgrades.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the admin change.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     ///
     /// ### Parameters:
     /// - cross_domain_admin: The public key of the new cross-domain admin.
@@ -155,12 +155,12 @@ pub mod svm_spoke {
     /// This method initializes a root_bundle PDA to store the root bundle data. The caller
     /// of this method is responsible for paying the rent for this PDA.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the addition of the new root bundle.
-    /// - payer (Signer): The account responsible for paying the transaction fees and covering the rent for the root_bundle PDA.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
+    /// - payer (Signer): The account who pays rent to create root_bundle PDA.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - root_bundle (Writable): The newly created bundle PDA to store root bundle data. Each root bundle has an
-    ///   incrementing ID, stored in the state. Seed: ["root_bundle", state.seed,root_bundle_id].
+    ///   incrementing ID, stored in the state. Seed: ["root_bundle",state.seed,root_bundle_id].
     /// - system_program (Program): The system program required for account creation.
     ///
     /// ### Parameters:
@@ -174,16 +174,16 @@ pub mod svm_spoke {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
 
-    /// Deletes a root bundle in case of emergencies where a bad bundle has reached the Spoke. Only callable by the owner.
+    /// Deletes a root bundle in case of emergencies where bad bundle has reached the Spoke. Only callable by the owner.
     ///
     /// This function will close the PDA for the associated `root_bundle_id`.
     /// Note: Using this function does not decrement `state.root_bundle_id`.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the deletion.
     /// - closer (SystemAccount): The account that will receive the lamports from closing the root_bundle account.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
-    /// - root_bundle (Writable): The root bundle PDA to be closed. Seed: ["root_bundle", state.seed, root_bundle_id].
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
+    /// - root_bundle (Writable): The root bundle PDA to be closed. Seed: ["root_bundle",state.seed,root_bundle_id].
     ///
     /// ### Parameters:
     /// - root_bundle_id: Index of the root bundle that needs to be deleted.
@@ -194,31 +194,28 @@ pub mod svm_spoke {
         instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
     }
 
-    /****************************************
-     *          DEPOSIT FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///          DEPOSIT FUNCTIONS           *
+    /// *************************************
 
     /// Request to bridge input_token to a target chain and receive output_token.
     ///
     /// The fee paid to relayers and the system is captured in the spread between the input and output amounts,
     /// denominated in the input token. A relayer on the destination chain will send `output_amount` of `output_token`
-    /// to the recipient and receive `input_token` on a repayment chain of their choice.
-    ///
-    /// The fee accounts for:
-    /// - Destination transaction costs,
-    /// - The relayer's opportunity cost of capital while waiting for a refund during the optimistic challenge window in the HubPool,
-    /// - The system fee charged to the relayer.
+    /// to the recipient and receive `input_token` on a repayment chain of their choice. The fee accounts for:
+    /// Destination transaction costs, relayer's opportunity cost of capital while waiting for a refund during the
+    /// optimistic challenge window in the HubPool, and the system fee charged to the relayer.
     ///
     /// On the destination chain, a unique hash of the deposit data is used to identify this deposit. Modifying any
     /// parameters will result in a different hash, creating a separate deposit. The hash is computed using all parameters
     /// of this function along with the chain's `chainId()`. Relayers are refunded only for deposits with hashes that
     /// exactly match those emitted by this contract.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the deposit.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
-    ///   Seed: ["route", input_token, state.seed, destination_chain_id].
+    ///   Seed: ["route",input_token,state.seed,destination_chain_id].
     /// - depositor_token_account (Writable): The depositor's ATA for the input token.
     /// - vault (Writable): Programs ATA for the associated input token. This is where the depositor's assets are sent.
     ///   Authority must be the state.
@@ -237,13 +234,13 @@ pub mod svm_spoke {
     /// - output_amount: The amount of output tokens that the relayer will send to the recipient on the destination.
     /// - destination_chain_id: The destination chain identifier. Must be enabled along with the input token as a valid
     ///   deposit route from this spoke pool or this transaction will revert.
-    /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity deadline
-    ///   timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the current block
-    ///   timestamp.
+    /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity
+    ///   deadline timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the
+    ///   current block timestamp.
     /// - quote_timestamp: The HubPool timestamp that is used to determine the system fee paid by the depositor. This
     ///   must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime].
-    /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp,
-    ///   the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer].
+    /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp, the
+    ///   fill will revert on the destination chain. Must be set between [currentTime,currentTime+fillDeadlineBuffer].
     /// - exclusivity_parameter: Sets the exclusivity deadline timestamp for the exclusiveRelayer to fill the deposit.
     ///   1. If 0, no exclusivity period.
     ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.
@@ -366,9 +363,9 @@ pub mod svm_spoke {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
-    /****************************************
-     *          RELAYER FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///          RELAYER FUNCTIONS           *
+    /// *************************************
 
     /// Fulfill request to bridge cross chain by sending specified output tokens to recipient.
     ///
@@ -379,17 +376,17 @@ pub mod svm_spoke {
     /// creates an ATA in calling this method to store the fill_status. This should be closed once the deposit has
     /// expired to let the relayer re-claim their rent. Cannot fill more than once. Partial fills are not supported.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the fill (filler). No permission requirements.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
-    ///   Seed: ["route", input_token, state.seed, destination_chain_id].
+    ///   Seed: ["route",input_token,state.seed,destination_chain_id].
     /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
     /// - mint (Account): The mint of the output token, sent from the relayer to the recipient.
     /// - relayer_token_account (Writable): The relayer's ATA for the input token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
     /// - fill_status (Writable): The fill status PDA, created on this function call to track the fill status to prevent
-    ///   re-entrancy & double fills. Also used to track requested slow fills. Seed: ["fills", relay_hash].
+    ///   re-entrancy & double fills. Also used to track requested slow fills. Seed: ["fills",relay_hash].
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Interface): The associated token program.
     /// - system_program (Interface): The system program.
@@ -434,10 +431,10 @@ pub mod svm_spoke {
     /// the end of its lifecycle. This can only be done once the fill deadline has passed. Relayers should do this for
     /// all fills once they expire to reclaim their rent.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure. Must be the relayer in the fill_status PDA.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
-    /// - fill_status (Writable): The FillStatusAccount PDA to be closed. Seed: ["fills", relay_hash].
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
+    /// - fill_status (Writable): The FillStatusAccount PDA to be closed. Seed: ["fills",relay_hash].
     ///
     /// ### Parameters:
     /// - _relay_hash: The hash identifying the relay for which the fill status account is being closed.
@@ -451,14 +448,14 @@ pub mod svm_spoke {
     /// In the event a relayer refund was sent to a claim account, then this function enables the relayer to claim it by
     /// transferring the claim amount from the vault to their token account. The claim account is closed after refund.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the claim.
     /// - initializer (UncheckedAccount): Must be the same account that initialized the claim account.
-    /// - state (Account): Spoke state PDA. Seed: ["state", state.seed] where seed is 0 on mainnet.
+    /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - vault (InterfaceAccount): The ATA for the refunded mint. Authority must be the state.
     /// - mint (InterfaceAccount): The mint account for the token being refunded.
     /// - token_account (InterfaceAccount): The ATA for the token being refunded to.
-    /// - claim_account (Account): The claim account PDA. Seed: ["claim_account", mint, refund_address].
+    /// - claim_account (Account): The claim account PDA. Seed: ["claim_account",mint,refund_address].
     /// - token_program (Interface): The token program.
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         instructions::claim_relayer_refund(ctx)
@@ -474,7 +471,7 @@ pub mod svm_spoke {
     /// This helper function allows the caller to pass in a set of remaining accounts to create a batch of Associated
     /// Token Accounts (ATAs) for addresses. It is particularly useful for relayers to call before filling a deposit.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the creation of token accounts.
     /// - mint (InterfaceAccount): The mint account for the token.
     /// - token_program (Interface): The token program.
@@ -484,9 +481,9 @@ pub mod svm_spoke {
         instructions::create_token_accounts(ctx)
     }
 
-    /****************************************
-     *           BUNDLE FUNCTIONS           *
-     ****************************************/
+    /// **************************************
+    ///           BUNDLE FUNCTIONS           *
+    /// *************************************
 
     /// Executes relayer refund leaf. Only callable by owner.
     ///
@@ -509,12 +506,12 @@ pub mod svm_spoke {
     ///     - refund_addresses: The addresses to be refunded.
     /// - proof: The Merkle proof for the relayer refund leaf.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the execution. No permission requirements.
-    /// - instruction_params (Account): LUT containing the execution parameters. seed: ["instruction_params", signer]
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
+    /// - instruction_params (Account): LUT containing the execution parameters. seed: ["instruction_params",signer]
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - root_bundle (Writable): The root bundle PDA containing the relayer refund root, created when the root bundle
-    ///   was initially bridged. seed: ["root_bundle", state.seed, root_bundle_id].
+    ///   was initially bridged. seed: ["root_bundle",state.seed,root_bundle_id].
     /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
     /// - mint (Account): The mint account for the token being refunded.
     /// - transfer_liability (Writable): Account to track pending refunds to be sent to the Ethereum hub pool. Only used
@@ -548,13 +545,13 @@ pub mod svm_spoke {
     /// token liability this Spoke Pool has accrued. Enables the caller to choose a custom amount to work around CCTP
     /// bridging limits. enforces that amount is less than or equal to liability. On execution decrements liability.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the bridge operation.
     /// - payer (Signer): The account responsible for paying the transaction fees.
     /// - mint (InterfaceAccount): The mint account for the token being bridged.
-    /// - state (Account): Spoke state PDA. Seed: ["state", state.seed] where seed is 0 on mainnet.
+    /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - transfer_liability (Account): Account tracking the pending amount to be sent to the Hub Pool. Incremented on
-    ///   relayRootBundle() and decremented on when this function is called. Seed: ["transfer_liability", mint].
+    ///   relayRootBundle() and decremented on when this function is called. Seed: ["transfer_liability",mint].
     /// - vault (InterfaceAccount): The ATA for the token being bridged. Authority must be the state.
     /// - token_messenger_minter_sender_authority (UncheckedAccount): Authority for the token messenger minter.
     /// - message_transmitter (UncheckedAccount): Account for the message transmitter.
@@ -580,10 +577,10 @@ pub mod svm_spoke {
     ///
     /// This function sets up an account to store raw data fragments for instructions (LUT).
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that pays for the transaction and initializes the instruction parameters.
     /// - instruction_params (UncheckedAccount): The account where raw data will be stored. Initialized with specified
-    ///   size. seed: ["instruction_params", signer].
+    ///   size. seed: ["instruction_params",signer].
     /// - system_program: The system program required for account creation.
     ///
     /// ### Parameters:
@@ -597,16 +594,16 @@ pub mod svm_spoke {
     /// This function allows writing a fragment of data into a specified offset within the instruction parameters
     /// account. It ensures that the data does not overflow the account's allocated space.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): Account that authorizes the write operation.
-    /// - instruction_params (UncheckedAccount): Account to write raw data to. seed: ["instruction_params", signer].
+    /// - instruction_params (UncheckedAccount): Account to write raw data to. seed: ["instruction_params",signer].
     /// - system_program: The system program required for account operations.
     ///
     /// ### Parameters:
     /// - offset: The starting position within the account's data where the fragment will be written.
     /// - fragment: The raw data fragment to be written into the account.
-    pub fn write_instruction_params_fragment<'info>(
-        ctx: Context<WriteInstructionParamsFragment<'info>>,
+    pub fn write_instruction_params_fragment(
+        ctx: Context<WriteInstructionParamsFragment<'_>>,
         offset: u32,
         fragment: Vec<u8>,
     ) -> Result<()> {
@@ -618,9 +615,9 @@ pub mod svm_spoke {
     /// This function is used to close the instruction parameters account, effectively marking the end of its lifecycle.
     /// It transfers any remaining lamports to the signer and resets the account.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure.
-    /// - instruction_params (UncheckedAccount): The account to be closed. seed: ["instruction_params", signer]. Not
+    /// - instruction_params (UncheckedAccount): The account to be closed. seed: ["instruction_params",signer]. Not
     ///   the signer being within the seed here implicitly protects this from only being called by the creator.
     pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<()> {
         instructions::close_instruction_params(ctx)
@@ -630,12 +627,12 @@ pub mod svm_spoke {
     ///
     /// This function sets up a claim account for a relayer to claim their refund at a later time and should only be
     /// used in the un-happy path where a bundle cant not be executed due to a recipient in the bundle having a blocked
-    /// or uninitialized claim ATA. the refund address, ass passed into this function, becomes the "owner" of the claim_account.
+    /// or uninitialized claim ATA. The refund address becomes the "owner" of the claim_account.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that pays for the transaction and initializes the claim account.
     /// - claim_account (Writable): The newly created claim account PDA to store claim data for this associated mint.
-    ///   Seed: ["claim_account", mint, refund_address].
+    ///   Seed: ["claim_account",mint,refund_address].
     /// - system_program: The system program required for account creation.
     ///
     /// ### Parameters:
@@ -655,9 +652,9 @@ pub mod svm_spoke {
     /// effectively marking the end of its lifecycle. It can only be called once the claim account is empty. It
     /// transfers any remaining lamports to the signer and resets the account.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure. Must be the initializer of the claim account.
-    /// - claim_account (Writable): The claim account PDA to be closed. Seed: ["claim_account", mint, refund_address].
+    /// - claim_account (Writable): The claim account PDA to be closed. Seed: ["claim_account",mint,refund_address].
     ///
     /// ### Parameters:
     /// - _mint: The public key of the mint associated with the claim account.
@@ -670,9 +667,9 @@ pub mod svm_spoke {
         instructions::close_claim_account(ctx)
     }
 
-    /****************************************
-     *         SLOW FILL FUNCTIONS          *
-     ****************************************/
+    /// **************************************
+    ///         SLOW FILL FUNCTIONS          *
+    /// *************************************
 
     /// Requests Across to send LP funds to this program to fulfill a slow fill.
     ///
@@ -683,11 +680,11 @@ pub mod svm_spoke {
     /// executed by anyone who calls executeV3SlowRelayLeaf(). Cant request a slow fill if the fill deadline has
     /// passed. Cant request a slow fill if the relay has already been filled or a slow fill has already been requested.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the slow fill request.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - fill_status (Writable): The fill status PDA, created on this function call. Updated to track slow fill status.
-    ///   Used to prevent double request and fill. Seed: ["fills", relay_hash].
+    ///   Used to prevent double request and fill. Seed: ["fills",relay_hash].
     /// - system_program (Interface): The system program.
     ///
     /// ### Parameters:
@@ -711,12 +708,12 @@ pub mod svm_spoke {
     /// like any other fill sent through fillV3Relay(). There is no relayer credited with filling this relay since funds
     /// are sent directly out of this program's vault.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the execution. No permission requirements.
-    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
+    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - root_bundle (Account): Root bundle PDA with slowRelayRoot. Seed: ["root_bundle",state.seed,root_bundle_id].
     /// - fill_status (Writable): The fill status PDA, created when slow request was made. Updated to track slow fill.
-    ///   Used to prevent double request and fill. Seed: ["fills", relay_hash].
+    ///   Used to prevent double request and fill. Seed: ["fills",relay_hash].
     /// - mint (Account): The mint account for the output token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
     /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
@@ -745,9 +742,9 @@ pub mod svm_spoke {
         instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
 
-    /****************************************
-     *       CCTP FUNCTIONS FUNCTIONS       *
-     ****************************************/
+    /// **************************************
+    ///       CCTP FUNCTIONS FUNCTIONS       *
+    /// *************************************
 
     /// Handles cross-chain messages received from L1 Ethereum over CCTP.
     ///
@@ -755,11 +752,11 @@ pub mod svm_spoke {
     /// SVM Spoke program over CCTP. It processes the incoming message by translating it into a corresponding Solana
     /// instruction and then invokes the instruction within this program.
     ///
-    /// ### Accounts:
+    /// ### Required Accounts:
     /// - authority_pda: A signer account that ensures this instruction can only be called by the Message Transmitter.
     ///   This acts to block that only the CCTP Message Transmitter can send messages to this program.
     ///   seed:["message_transmitter_authority", program_id]
-    /// - state (Account): Spoke state PDA. Seed: ["state", state.seed] where seed is 0 on mainnet. Enforces that the
+    /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet. Enforces that the
     ///   remote domain and sender are valid.
     /// - self_authority: An unchecked account used for authenticating self-CPI invoked by the received message.
     ///   seed: ["self_authority"].
