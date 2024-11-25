@@ -253,8 +253,8 @@ pub fn unsafe_deposit_v3(
 pub struct Null {}
 pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonce: u64) -> [u8; 32] {
     let mut data = Vec::new();
-    // Use AnchorSerialize to serialize the tuple of values
-    (msg_sender, depositor, deposit_nonce).serialize(&mut data).unwrap();
+
+    AnchorSerialize::serialize(&(msg_sender, depositor, deposit_nonce), &mut data).unwrap();
 
     keccak::hash(&data).to_bytes()
 }
