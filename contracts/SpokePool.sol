@@ -60,12 +60,11 @@ abstract contract SpokePool is
     WETH9Interface private DEPRECATED_wrappedNativeToken;
     uint32 private DEPRECATED_depositQuoteTimeBuffer;
 
-    // Count of deposits is used to construct a unique deposit identifier for this spoke pool. This value
-    // gets emitted and incremented on each depositV3 call. Because its a uint32, it will get implicitly cast to
-    // uint256 in the emitted V3FundsDeposited event by setting its most significant bits to 0.
-    // This variable name `numberOfDeposits` should ideally be re-named to
-    // depositNonceCounter or something similar because its not a true representation of the number of deposits
-    // because `unsafeDepositV3` can be called directly and bypass this increment.
+    // `numberOfDeposits` acts as a counter to generate unique deposit identifiers for this spoke pool.
+    // It is a uint32 that increments with each `depositV3` call. In the `V3FundsDeposited` event, it is
+    // implicitly cast to uint256 by setting its most significant bits to 0, reducing the risk of ID collisions
+    // with unsafe deposits. However, this variable's name could be improved (e.g., `depositNonceCounter`)
+    // since it does not accurately reflect the total number of deposits, as `unsafeDepositV3` can bypass this increment.
     uint32 public numberOfDeposits;
 
     // Whether deposits and fills are disabled.
@@ -519,13 +518,7 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable override nonReentrant unpausedDeposits {
-        // Increment deposit nonce variable `numberOfDeposits` so that deposit ID for this deposit on this
-        // spoke pool is unique. This variable `numberOfDeposits` should ideally be re-named to
-        // depositNonceCounter or something similar because its not a true representation of the number of deposits
-        // because `unsafeDepositV3` can be called directly and bypass this increment.
-        // The `numberOfDeposits` is a uint32 that will get implicitly cast to uint256 by setting the
-        // most significant bits to 0, which creates very little chance this an unsafe deposit ID collides
-        // with a safe deposit ID.
+        // Increment the `numberOfDeposits` counter to ensure a unique deposit ID for this spoke pool.
         DepositV3Params memory params = DepositV3Params({
             depositor: depositor,
             recipient: recipient,
