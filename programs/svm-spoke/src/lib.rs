@@ -378,6 +378,9 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the fill (filler). No permission requirements.
+    /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
+    ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
+    ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
     ///   Seed: ["route",input_token,state.seed,destination_chain_id].
@@ -415,12 +418,14 @@ pub mod svm_spoke {
     /// - repayment_chain_id: Chain of SpokePool where relayer wants to be refunded after the challenge window has
     ///     passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.
+    /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters. If None for any of these
+    /// is passed, the caller must load them via the instruction_params account.
     pub fn fill_v3_relay<'info>(
         ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
         _relay_hash: [u8; 32],
-        relay_data: V3RelayData,
-        repayment_chain_id: u64,
-        repayment_address: Pubkey,
+        relay_data: Option<V3RelayData>,
+        repayment_chain_id: Option<u64>,
+        repayment_address: Option<Pubkey>,
     ) -> Result<()> {
         instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
@@ -682,6 +687,9 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the slow fill request.
+    /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
+    ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
+    ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - fill_status (Writable): The fill status PDA, created on this function call. Updated to track slow fill status.
     ///   Used to prevent double request and fill. Seed: ["fills",relay_hash].
@@ -693,10 +701,12 @@ pub mod svm_spoke {
     /// - relay_data: Struct containing all the data needed to identify the deposit that should be slow filled. If any
     ///   of the params are missing or different from the origin chain deposit, then Across will not include a slow
     ///   fill for the intended deposit. See fill_v3_relay & V3RelayData struct for more details.
+    /// Note: relay_data is optional parameter. If None for it is passed, the caller must load it via the
+    /// instruction_params account.
     pub fn request_v3_slow_fill(
         ctx: Context<RequestV3SlowFill>,
         _relay_hash: [u8; 32],
-        relay_data: V3RelayData,
+        relay_data: Option<V3RelayData>,
     ) -> Result<()> {
         instructions::request_v3_slow_fill(ctx, relay_data)
     }
@@ -710,6 +720,9 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the execution. No permission requirements.
+    /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
+    ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
+    ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - root_bundle (Account): Root bundle PDA with slowRelayRoot. Seed: ["root_bundle",state.seed,root_bundle_id].
     /// - fill_status (Writable): The fill status PDA, created when slow request was made. Updated to track slow fill.
@@ -732,12 +745,14 @@ pub mod svm_spoke {
     ///       this will be set higher to reimburse the recipient for waiting for the slow fill.
     /// - _root_bundle_id: Unique ID of root bundle containing slow relay root that this leaf is contained in.
     /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
+    /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters. If None for any of these is passed,
+    /// the caller must load them via the instruction_params account.
     pub fn execute_v3_slow_relay_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
-        slow_fill_leaf: V3SlowFill,
-        _root_bundle_id: u32,
-        proof: Vec<[u8; 32]>,
+        slow_fill_leaf: Option<V3SlowFill>,
+        _root_bundle_id: Option<u32>,
+        proof: Option<Vec<[u8; 32]>>,
     ) -> Result<()> {
         instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }

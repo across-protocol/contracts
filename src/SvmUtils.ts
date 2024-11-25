@@ -419,7 +419,7 @@ export class AcrossPlusMessageCoder {
   encode() {
     const fieldLayouts = [IdlCoder.fieldLayout(AcrossPlusMessageCoder.coderArg, AcrossPlusMessageCoder.coderTypes)];
     const layout = borsh.struct(fieldLayouts);
-    const buffer = Buffer.alloc(1280);
+    const buffer = Buffer.alloc(12800);
     const len = layout.encode({ message: this.acrossPlusMessage }, buffer);
     return buffer.slice(0, len);
   }

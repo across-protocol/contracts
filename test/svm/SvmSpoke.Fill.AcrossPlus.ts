@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, web3 } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -20,6 +20,7 @@ import {
   TransactionInstruction,
   sendAndConfirmTransaction,
   Transaction,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import { intToU8Array32 } from "./utils";
 import {
@@ -29,7 +30,8 @@ import {
   sendTransactionWithLookupTable,
 } from "../../src/SvmUtils";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { common } from "./SvmSpoke.common";
+import { FillDataParams, FillDataValues, common } from "./SvmSpoke.common";
+import { loadFillV3RelayParams } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { initializeState, assertSE } = common;
 
@@ -64,6 +66,7 @@ describe("svm_spoke.fill.across_plus", () => {
     accounts = {
       state,
       signer: relayer.publicKey,
+      instructionParams: program.programId,
       mint: mint,
       relayerTokenAccount: relayerATA,
       recipientTokenAccount: handlerATA,
@@ -74,7 +77,7 @@ describe("svm_spoke.fill.across_plus", () => {
     };
   }
 
-  async function createApproveAndFillIx(multicallHandlerCoder: MulticallHandlerCoder) {
+  async function createApproveAndFillIx(multicallHandlerCoder: MulticallHandlerCoder, bufferParams = false) {
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
@@ -93,8 +96,19 @@ describe("svm_spoke.fill.across_plus", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Prepare fill instruction.
+    const fillV3RelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
+    if (bufferParams) {
+      await loadFillV3RelayParams(program, relayer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+      [accounts.instructionParams] = PublicKey.findProgramAddressSync(
+        [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
+        program.programId
+      );
+    }
+    const fillV3RelayParams: FillDataParams = bufferParams
+      ? [fillV3RelayValues[0], null, null, null]
+      : fillV3RelayValues;
     const fillIx = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillV3Relay(...fillV3RelayParams)
       .accounts(accounts)
       .remainingAccounts(remainingAccounts)
       .instruction();
@@ -186,75 +200,91 @@ describe("svm_spoke.fill.across_plus", () => {
     );
   });
 
-  it("Max token distributions within invoked message call", async () => {
-    const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
+  describe("Max token distributions within invoked message call", async () => {
+    const fillTokenDistributions = async (numberOfDistributions: number, bufferParams = false) => {
+      const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
 
-    // Larger distribution would exceed message size limits.
-    const numberOfDistributions = 8;
-    const distributionAmount = Math.floor(relayAmount / numberOfDistributions);
+      const distributionAmount = Math.floor(relayAmount / numberOfDistributions);
 
-    const recipientAccounts: PublicKey[] = [];
-    const transferInstructions: TransactionInstruction[] = [];
-    for (let i = 0; i < numberOfDistributions; i++) {
-      const recipient = Keypair.generate().publicKey;
-      const recipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
-      recipientAccounts.push(recipientATA);
+      const recipientAccounts: PublicKey[] = [];
+      const transferInstructions: TransactionInstruction[] = [];
+      for (let i = 0; i < numberOfDistributions; i++) {
+        const recipient = Keypair.generate().publicKey;
+        const recipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, recipient)).address;
+        recipientAccounts.push(recipientATA);
 
-      // Construct ix to transfer tokens from handler to the recipient.
-      const transferInstruction = createTransferCheckedInstruction(
-        handlerATA,
-        mint,
-        recipientATA,
-        handlerSigner,
-        distributionAmount,
-        mintDecimals
+        // Construct ix to transfer tokens from handler to the recipient.
+        const transferInstruction = createTransferCheckedInstruction(
+          handlerATA,
+          mint,
+          recipientATA,
+          handlerSigner,
+          distributionAmount,
+          mintDecimals
+        );
+        transferInstructions.push(transferInstruction);
+      }
+
+      const multicallHandlerCoder = new MulticallHandlerCoder(transferInstructions);
+
+      const handlerMessage = multicallHandlerCoder.encode();
+
+      const message = new AcrossPlusMessageCoder({
+        handler: handlerProgram.programId,
+        readOnlyLen: multicallHandlerCoder.readOnlyLen,
+        valueAmount: new BN(0),
+        accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+        handlerMessage,
+      });
+
+      const encodedMessage = message.encode();
+
+      // Update relay data with the encoded message and total relay amount.
+      const newRelayData = {
+        ...relayData,
+        message: encodedMessage,
+        outputAmount: new BN(distributionAmount * numberOfDistributions),
+      };
+      updateRelayData(newRelayData);
+
+      // Prepare approval and fill instructions as we will need to use Address Lookup Table (ALT).
+      const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder, bufferParams);
+
+      // Fill using the ALT.
+      const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
+      await sendTransactionWithLookupTable(connection, [computeBudgetIx, approveIx, fillIx], relayer);
+
+      // Verify relayer's balance after the fill
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
+      const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
+      assertSE(
+        fRelayerBal,
+        iRelayerBal - BigInt(distributionAmount * numberOfDistributions),
+        "Relayer's balance should be reduced by the relay amount"
       );
-      transferInstructions.push(transferInstruction);
-    }
 
-    const multicallHandlerCoder = new MulticallHandlerCoder(transferInstructions);
+      // Verify all recipient account balances after the fill.
+      const recipientBalances = await Promise.all(
+        recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount)
+      );
+      recipientBalances.forEach((balance, i) => {
+        assertSE(balance, distributionAmount, `Recipient account ${i} balance should match distribution amount`);
+      });
+    };
 
-    const handlerMessage = multicallHandlerCoder.encode();
+    it("Max token distributions within invoked message call, regular params", async () => {
+      // Larger distribution would exceed message size limits.
+      const numberOfDistributions = 7;
 
-    const message = new AcrossPlusMessageCoder({
-      handler: handlerProgram.programId,
-      readOnlyLen: multicallHandlerCoder.readOnlyLen,
-      valueAmount: new BN(0),
-      accounts: multicallHandlerCoder.compiledMessage.accountKeys,
-      handlerMessage,
+      await fillTokenDistributions(numberOfDistributions);
     });
 
-    const encodedMessage = message.encode();
+    it("Max token distributions within invoked message call, buffer account params", async () => {
+      // Larger distribution count hits inner instruction size limit when invoking CPI to message handler on public
+      // devnet. On localnet this is not an issue, but we hit out of memory panic above 34 distributions.
+      const numberOfDistributions = 19;
 
-    // Update relay data with the encoded message and total relay amount.
-    const newRelayData = {
-      ...relayData,
-      message: encodedMessage,
-      outputAmount: new BN(distributionAmount * numberOfDistributions),
-    };
-    updateRelayData(newRelayData);
-
-    // Prepare approval and fill instructions as we will need to use Address Lookup Table (ALT).
-    const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
-
-    // Fill using the ALT.
-    await sendTransactionWithLookupTable(connection, [approveIx, fillIx], relayer);
-
-    // Verify relayer's balance after the fill
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
-    const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
-    assertSE(
-      fRelayerBal,
-      iRelayerBal - BigInt(distributionAmount * numberOfDistributions),
-      "Relayer's balance should be reduced by the relay amount"
-    );
-
-    // Verify all recipient account balances after the fill.
-    const recipientBalances = await Promise.all(
-      recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount)
-    );
-    recipientBalances.forEach((balance, i) => {
-      assertSE(balance, distributionAmount, `Recipient account ${i} balance should match distribution amount`);
+      await fillTokenDistributions(numberOfDistributions, true);
     });
   });
 
