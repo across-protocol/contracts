@@ -7,15 +7,14 @@ use crate::{
     constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
     error::{CallDataError, SvmError},
     program::SvmSpoke,
+    state::State,
     utils::{self, EncodeInstructionData},
-    State,
 };
 
 #[derive(Accounts)]
 #[instruction(params: HandleReceiveMessageParams)]
 pub struct HandleReceiveMessage<'info> {
-    // authority_pda is a Signer to ensure that this instruction
-    // can only be called by Message Transmitter
+    // authority_pda is a Signer to ensure that this instruction can only be called by the Message Transmitter.
     #[account(
         seeds = [b"message_transmitter_authority", SvmSpoke::id().as_ref()],
         bump = params.authority_bump,

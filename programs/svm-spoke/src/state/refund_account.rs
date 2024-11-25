@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 #[account]
 #[derive(InitSpace)]
 pub struct ClaimAccount {
-    pub amount: u64,
-    pub initializer: Pubkey,
+    pub amount: u64,         // Amount of tokens to be refunded to the relayer.
+    pub initializer: Pubkey, // Address that initialized this PDA
 }
 
 // This implements the following Anchor account constraints when parsing remaining account as a claim account:

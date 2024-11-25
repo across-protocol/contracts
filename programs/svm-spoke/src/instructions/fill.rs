@@ -10,9 +10,8 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
-    get_current_time,
     state::{FillStatus, FillStatusAccount, State},
-    utils::{hash_non_empty_message, invoke_handler, transfer_from},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -33,11 +32,11 @@ pub struct FillV3Relay<'info> {
         mint::token_program = token_program,
         address = relay_data.output_token @ SvmError::InvalidMint
     )]
-    pub mint_account: InterfaceAccount<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        token::mint = mint_account,
+        token::mint = mint,
         token::authority = signer,
         token::token_program = token_program
     )]
@@ -45,8 +44,8 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mut,
-        associated_token::mint = mint_account,
-        associated_token::authority = relay_data.recipient,
+        associated_token::mint = mint,
+        associated_token::authority = relay_data.recipient, // Ensures tokens go to ATA owned by the recipient.
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -108,7 +107,7 @@ pub fn fill_v3_relay<'info>(
             relay_data.output_amount,
             state,
             ctx.bumps.state,
-            &ctx.accounts.mint_account,
+            &ctx.accounts.mint,
             &ctx.accounts.token_program,
         )?;
     }
@@ -125,7 +124,6 @@ pub fn fill_v3_relay<'info>(
         )?;
     }
 
-    // Emit the FilledV3Relay event
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
@@ -169,7 +167,6 @@ pub struct CloseFillPda<'info> {
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
         close = signer,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
