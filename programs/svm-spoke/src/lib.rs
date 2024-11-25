@@ -101,7 +101,7 @@ pub mod svm_spoke {
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the current owner to authorize the transfer.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed] where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
     /// - new_owner: The public key of the new owner.
@@ -109,16 +109,16 @@ pub mod svm_spoke {
         instructions::transfer_ownership(ctx, new_owner)
     }
 
-    /// Enable/Disable an origin token => destination chain ID route for deposits. Callable by owner only.
+    /// Enables or disables a route for deposits from an origin token to a destination chain ID. Callable only by the owner.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the route change.
     /// - payer (Signer): The account responsible for paying the transaction fees.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
-    /// - route (Writable): PDA to store route information. Newly created on first call, updated subsequently.
-    ///   Seed: ["route",origin_token,state.seed,destination_chain_id].
-    /// - vault (Writable): ATA to enable the program to hold origin_token for the associated route. Newly created
-    ///   on first call. Authority must be set as the state and mint must be the origin_token_mint.
+    /// - state (Writable): The Spoke state PDA. Seed: ["state", seed] where `seed` is 0 on mainnet.
+    /// - route (Writable): PDA to store route information. Created on the first call, updated subsequently.
+    ///   Seed: ["route", origin_token, state.seed, destination_chain_id].
+    /// - vault (Writable): ATA to hold the origin token for the associated route. Created on the first call.
+    ///   Authority must be set as the state, and mint must be the origin_token_mint.
     /// - origin_token_mint: The mint account for the origin token.
     /// - token_program: The token program.
     /// - associated_token_program: The associated token program.
@@ -149,17 +149,18 @@ pub mod svm_spoke {
         instructions::set_cross_domain_admin(ctx, cross_domain_admin)
     }
 
-    /// Stores a new root bundle for later execution. Only callable by owner.
+    /// Stores a new root bundle for later execution. Only callable by the owner.
     ///
-    /// Once stored, these roots are used to execute relayer refunds, slow fills and pool rebalances actions.
-    /// This method initializes a root_bundle PDA to store the root bundle data. Caller of this method pays this rent.
+    /// Once stored, these roots are used to execute relayer refunds, slow fills, and pool rebalancing actions.
+    /// This method initializes a root_bundle PDA to store the root bundle data. The caller
+    /// of this method is responsible for paying the rent for this PDA.
     ///
     /// ### Accounts:
     /// - signer (Signer): The account that must be the owner to authorize the addition of the new root bundle.
-    /// - payer (Signer): The account responsible for paying the transaction fees.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",seed] where seed is 0 on mainnet.
+    /// - payer (Signer): The account responsible for paying the transaction fees and covering the rent for the root_bundle PDA.
+    /// - state (Writable): Spoke state PDA. Seed: ["state", seed] where seed is 0 on mainnet.
     /// - root_bundle (Writable): The newly created bundle PDA to store root bundle data. Each root bundle has an
-    ///   incrementing Id, stored in state. Seed: ["root_bundle",state.seed,root_bundle_id]
+    ///   incrementing ID, stored in the state. Seed: ["root_bundle", state.seed,root_bundle_id].
     /// - system_program (Program): The system program required for account creation.
     ///
     /// ### Parameters:
