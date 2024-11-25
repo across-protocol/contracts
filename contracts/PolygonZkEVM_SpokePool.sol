@@ -31,9 +31,8 @@ interface IBridgeMessageReceiver {
  */
 contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
     using SafeERC20 for IERC20;
-    using AddressToBytes32 for address;
-    // Address of Polygon zkEVM's Canonical Bridge on L2.
 
+    // Address of Polygon zkEVM's Canonical Bridge on L2.
     IPolygonZkEVMBridge public l2PolygonZkEVMBridge;
 
     // Polygon zkEVM's internal network id for L1.
