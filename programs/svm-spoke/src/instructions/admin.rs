@@ -11,8 +11,8 @@ use crate::{
     event::{
         EmergencyDeleteRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle, SetXDomainAdmin,
     },
-    initialize_current_time, set_seed,
     state::{RootBundle, Route, State},
+    utils::{initialize_current_time, set_seed},
 };
 
 #[derive(Accounts)]
@@ -35,13 +35,13 @@ pub struct Initialize<'info> {
 
 pub fn initialize(
     ctx: Context<Initialize>,
-    seed: u64,
-    initial_number_of_deposits: u32,
-    chain_id: u64,                  // Across definition of chainId for Solana.
-    remote_domain: u32,             // CCTP domain for Mainnet Ethereum.
-    cross_domain_admin: Pubkey,     // HubPool on Mainnet Ethereum.
-    deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
-    fill_deadline_buffer: u32,      // Fill deadlines can't be set more than this amount into the future.
+    seed: u64,                       // Seed used to derive a new state to enable testing to reset between runs.
+    initial_number_of_deposits: u32, // Starting number of deposits to offset deposit_id.
+    chain_id: u64,                   // Across definition of chainId for Solana.
+    remote_domain: u32,              // CCTP domain for Mainnet Ethereum.
+    cross_domain_admin: Pubkey,      // HubPool on Mainnet Ethereum.
+    deposit_quote_time_buffer: u32,  // Deposit quote times can't be set more than this amount into the past/future.
+    fill_deadline_buffer: u32,       // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
@@ -99,11 +99,11 @@ pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct TransferOwnership<'info> {
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
-    pub state: Account<'info, State>,
-
     #[account(address = state.owner @ SvmError::NotOwner)]
     pub signer: Signer<'info>,
+
+    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    pub state: Account<'info, State>,
 }
 
 pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) -> Result<()> {
@@ -158,7 +158,7 @@ pub struct SetEnableRoute<'info> {
         ],
         bump
     )]
-    pub route: Account<'info, Route>,
+    pub route: Account<'info, Route>, // PDA to store route information for this particular token & chainId pair.
 
     #[account(
         init_if_needed,
@@ -167,11 +167,11 @@ pub struct SetEnableRoute<'info> {
         associated_token::authority = state,
         associated_token::token_program = token_program
     )]
-    pub vault: InterfaceAccount<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccount>, // ATA, owned by the state, to store the origin token for spoke.
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring `address = origin_token` for mint, thus using a custom constraint.
+        // IDL build fails when requiring address = origin_token for mint, thus using a custom constraint.
         constraint = origin_token_mint.key() == origin_token @ SvmError::InvalidMint
     )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
@@ -211,7 +211,7 @@ pub struct RelayRootBundle<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        init, // Init to create root bundle account. Prevents re-initialization.
+        init, // Init to create root bundle account. Prevents re-initialization for a given root..
         payer = payer,
         space = DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE,
         seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), state.root_bundle_id.to_le_bytes().as_ref()],

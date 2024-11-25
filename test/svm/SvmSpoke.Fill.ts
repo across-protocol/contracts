@@ -44,7 +44,7 @@ describe("svm_spoke.fill", () => {
   type FillAccounts = {
     state: PublicKey;
     signer: PublicKey;
-    mintAccount: PublicKey;
+    mint: PublicKey;
     relayerTokenAccount: PublicKey;
     recipientTokenAccount: PublicKey;
     fillStatus: PublicKey;
@@ -67,7 +67,7 @@ describe("svm_spoke.fill", () => {
     accounts = {
       state,
       signer: relayer.publicKey,
-      mintAccount: mint,
+      mint: mint,
       relayerTokenAccount: relayerTA,
       recipientTokenAccount: recipientTA,
       fillStatus: fillStatusPDA,
@@ -86,7 +86,7 @@ describe("svm_spoke.fill", () => {
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
-      calledFillAccounts.mintAccount,
+      calledFillAccounts.mint,
       calledFillAccounts.state,
       calledFillAccounts.signer,
       BigInt(fillDataValues[1].outputAmount.toString()),
@@ -375,7 +375,7 @@ describe("svm_spoke.fill", () => {
     try {
       await approvedFillV3Relay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey], {
         ...accounts,
-        mintAccount: wrongMint,
+        mint: wrongMint,
         relayerTokenAccount: wrongRelayerTA,
         recipientTokenAccount: wrongRecipientTA,
       });
@@ -481,7 +481,7 @@ describe("svm_spoke.fill", () => {
     // Fill the deposit in the same transaction
     const approveInstruction = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
-      accounts.mintAccount,
+      accounts.mint,
       accounts.state,
       accounts.signer,
       BigInt(newRelayData.outputAmount.toString()),
@@ -548,7 +548,7 @@ describe("svm_spoke.fill", () => {
 
     const approveInstruction = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
-      accounts.mintAccount,
+      accounts.mint,
       accounts.state,
       accounts.signer,
       BigInt(totalFillAmount.toString()),

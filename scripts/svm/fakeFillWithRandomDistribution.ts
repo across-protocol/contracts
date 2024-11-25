@@ -183,7 +183,7 @@ async function fillV3RelayToRandom(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
-    mintAccount: outputToken,
+    mint: outputToken,
     relayerTokenAccount,
     recipientTokenAccount: handlerATA,
     fillStatus: fillStatusPda,
