@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
-import { SpokePoolV3Periphery } from "../../../../contracts/SpokeV3PoolPeriphery.sol";
+import { SpokePoolV3Periphery } from "../../../../contracts/SpokePoolV3Periphery.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
