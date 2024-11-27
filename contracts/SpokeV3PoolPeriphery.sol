@@ -120,10 +120,12 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
+        if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
         wrappedNativeToken = _wrappedNativeToken;
         for (uint256 i = 0; i < exchanges.length; i++) {
             WhitelistedExchanges memory _exchange = exchanges[i];
+            if (!_exchange.exchange.isContract()) revert InvalidExchange();
             for (uint256 j = 0; j < _exchange.allowedSelectors.length; j++) {
                 bytes4 selector = _exchange.allowedSelectors[j];
                 allowedSelectors[_exchange.exchange][selector] = true;
@@ -165,7 +167,6 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         bytes memory message
     ) external payable nonReentrant {
         if (msg.value != inputAmount) revert InvalidMsgValue();
-        if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         spokePool.depositV3{ value: msg.value }(
             msg.sender,
