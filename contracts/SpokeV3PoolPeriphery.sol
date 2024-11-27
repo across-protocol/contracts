@@ -12,13 +12,13 @@ import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 
 /**
- * @title SpokePoolPeriphery
+ * @title SpokePoolV3Periphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
  * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolPeriphery is Lockable, MultiCaller {
+contract SpokePoolV3Periphery is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
