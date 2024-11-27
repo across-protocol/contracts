@@ -12,24 +12,27 @@ import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 
 /**
- * @title SpokePoolV3Periphery
- * @notice Contract for performing more complex interactions with an AcrossV3 spoke pool deployment.
- * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this contract may be deployed deterministically.
+ * @title SpokePoolPeriphery
+ * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
+ * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
+ * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolV3Periphery is Lockable, MultiCaller {
+contract SpokePoolPeriphery is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
-    // surface and we should whitelist which function selectors are allowed to be called on the exchange.
-    mapping(bytes4 => bool) public allowedSelectors;
+    // surface and we should whitelist which function selectors are allowed to be called on which exchange.
+    mapping(address => mapping(bytes4 => bool)) public allowedSelectors;
+
+    struct WhitelistedExchanges {
+        address exchange;
+        bytes4[] allowedSelectors;
+    }
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
     V3SpokePoolInterface public spokePool;
-
-    // Exchange address or router where the swapping will happen.
-    address public exchange;
 
     // Wrapped native token contract address.
     WETH9Interface internal wrappedNativeToken;
@@ -87,40 +90,45 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     error InvalidMsgValue();
     error InvalidSpokePool();
     error InvalidSwapToken();
+    error InvalidExchange();
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
-     * @param _allowedSelectors Function selectors that are allowed to be called on the exchange.
+     * @dev Is empty and all of the state variables are initialized in the initialize function
+     * to allow for deployment at a deterministic address via create2, which requires that the bytecode
+     * across different networks is the same. Constructor parameters affect the bytecode so we can only
+     * add parameters here that are consistent across networks.
      */
-    constructor(bytes4[] memory _allowedSelectors) {
-        for (uint256 i = 0; i < _allowedSelectors.length; i++) {
-            allowedSelectors[_allowedSelectors[i]] = true;
-        }
-    }
+    constructor() {}
 
     /**
      * @notice Initializes the SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _wrappedNativeToken Address of the wrapped native token for the network this contract is deployed to.
-     * @param _exchange Address of the exchange where tokens will be swapped.
+     * @param exchanges Array of exchange addresses and their allowed function selectors.
      * @dev These values are initialized in a function and not in the constructor so that the creation code of this contract
-     * is the same across networks with different addresses for the wrapped native token, the exchange this contract uses to
-     * swap and bridge, and this network's corresponding spoke pool contract. This is to allow this contract to be deterministically
-     * deployed with CREATE2.
-     * @dev This function can be front-run by anybody, so it is critical to check that the `spokePool`, `wrappedNativeToken`, and `exchange`
-     * values used in the single call to this function were passed in correctly before enabling the usage of this contract.
+     * is the same across networks with different addresses for the wrapped native token and this network's
+     * corresponding spoke pool contract. This is to allow this contract to be deterministically deployed with CREATE2.
+     * @dev This function can be front-run by anybody, so it is critical to check that the values used in the
+     * single call to this function were passed in correctly before enabling the usage of this contract.
      */
     function initialize(
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
-        address _exchange
+        WhitelistedExchanges[] calldata exchanges
     ) external {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
         spokePool = _spokePool;
         wrappedNativeToken = _wrappedNativeToken;
-        exchange = _exchange;
+        for (uint256 i = 0; i < exchanges.length; i++) {
+            WhitelistedExchanges memory _exchange = exchanges[i];
+            for (uint256 j = 0; j < _exchange.allowedSelectors.length; j++) {
+                bytes4 selector = _exchange.allowedSelectors[j];
+                allowedSelectors[_exchange.exchange][selector] = true;
+            }
+        }
     }
 
     /**
@@ -184,6 +192,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * the assumption is that this function will handle only ERC20 tokens.
      * @param swapToken Address of the token that will be swapped for acrossInputToken.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param exchange Address of the exchange contract to call.
      * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
      * enough of acrossInputToken, otherwise this function will revert.
      * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
@@ -194,6 +203,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function swapAndBridge(
         IERC20 swapToken,
         IERC20 acrossInputToken,
+        address exchange,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
@@ -209,6 +219,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         }
         _swapAndBridge(
+            exchange,
             routerCalldata,
             swapTokenAmount,
             minExpectedInputTokenAmount,
@@ -224,6 +235,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @param swapToken Address of the token that will be swapped for acrossInputToken.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param exchange Address of the exchange contract to call.
      * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
      * enough of acrossInputToken, otherwise this function will revert.
      * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
@@ -238,6 +250,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function swapAndBridgeWithPermit(
         IERC20Permit swapToken,
         IERC20 acrossInputToken,
+        address exchange,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
@@ -255,6 +268,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
         _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         _swapAndBridge(
+            exchange,
             routerCalldata,
             swapTokenAmount,
             minExpectedInputTokenAmount,
@@ -270,6 +284,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
      * @param swapToken Address of the token that will be swapped for acrossInputToken.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param exchange Address of the exchange contract to call.
      * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
      * enough of acrossInputToken, otherwise this function will revert.
      * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
@@ -286,6 +301,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function swapAndBridgeWithAuthorization(
         IERC20Auth swapToken,
         IERC20 acrossInputToken,
+        address exchange,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
@@ -314,6 +330,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Auth to IERC20.
 
         _swapAndBridge(
+            exchange,
             routerCalldata,
             swapTokenAmount,
             minExpectedInputTokenAmount,
@@ -422,6 +439,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
     // This contract supports two variants of swap and bridge, one that allows one token and another that allows the caller to pass them in.
     function _swapAndBridge(
+        address exchange,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
@@ -432,7 +450,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         // Note: this check should never be impactful, but is here out of an abundance of caution.
         // For example, if the exchange address in the contract is also an ERC20 token that is approved by some
         // user on this contract, a malicious actor could call transferFrom to steal the user's tokens.
-        if (!allowedSelectors[bytes4(routerCalldata)]) revert InvalidFunctionSelector();
+        if (!allowedSelectors[exchange][bytes4(routerCalldata)]) revert InvalidFunctionSelector();
 
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
@@ -444,6 +462,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         require(success, string(result));
 
         _checkSwapOutputAndDeposit(
+            exchange,
             swapTokenAmount,
             srcBalanceBefore,
             dstBalanceBefore,
@@ -462,6 +481,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * @param minExpectedInputTokenAmount Minimum amount of received acrossInputToken that we'll bridge
      **/
     function _checkSwapOutputAndDeposit(
+        address exchange,
         uint256 swapTokenAmount,
         uint256 swapTokenBalanceBefore,
         uint256 inputTokenBalanceBefore,
