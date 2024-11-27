@@ -445,11 +445,14 @@ export function intToU8Array32(num: number): number[] {
   return u8Array;
 }
 
-export function u8Array32ToInt(u8Array: Uint8Array): bigint {
-  if (!(u8Array instanceof Uint8Array) || u8Array.length !== 32) {
-    throw new Error("Input must be a Uint8Array of length 32");
+export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
+  const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
+
+  if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
+    return Array.from(u8Array).reduce<bigint>((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
   }
-  return u8Array.reduce((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
+
+  throw new Error("Input must be a Uint8Array or an array of 32 numbers.");
 }
 
 // Encodes empty list of multicall handler instructions to be used as a test message field for fills.

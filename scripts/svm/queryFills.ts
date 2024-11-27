@@ -7,6 +7,7 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { readProgramEvents } from "../../src/SvmUtils";
+import { u8Array32ToInt } from "../../test/svm/utils";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -46,7 +47,7 @@ async function queryFills(): Promise<void> {
       console.log("No fill events found for the given seed.");
       return;
     }
-
+    console.log("events", events);
     console.log("Fill events fetched successfully:");
     fillEvents.forEach((event, index) => {
       console.log(`Fill Event ${index + 1}:`);
@@ -58,18 +59,22 @@ async function queryFills(): Promise<void> {
         { Property: "repaymentChainId", Value: event.data.repaymentChainId.toString() },
         { Property: "originChainId", Value: event.data.originChainId.toString() },
         { Property: "depositId", Value: event.data.depositId.toString() },
+        { Property: "depositIdNum", Value: u8Array32ToInt(event.data.depositId).toString() },
         { Property: "fillDeadline", Value: event.data.fillDeadline.toString() },
         { Property: "exclusivityDeadline", Value: event.data.exclusivityDeadline.toString() },
         { Property: "exclusiveRelayer", Value: new PublicKey(event.data.exclusiveRelayer).toString() },
         { Property: "relayer", Value: new PublicKey(event.data.relayer).toString() },
         { Property: "depositor", Value: new PublicKey(event.data.depositor).toString() },
         { Property: "recipient", Value: new PublicKey(event.data.recipient).toString() },
-        { Property: "message", Value: event.data.message.toString() },
+        { Property: "messageHash", Value: new PublicKey(event.data.messageHash).toString() },
         {
           Property: "updatedRecipient",
           Value: new PublicKey(event.data.relayExecutionInfo.updatedRecipient).toString(),
         },
-        { Property: "updatedMessage", Value: event.data.relayExecutionInfo.updatedMessage.toString() },
+        {
+          Property: "updatedMessageHash",
+          Value: new PublicKey(event.data.relayExecutionInfo.updatedMessageHash).toString(),
+        },
         { Property: "updatedOutputAmount", Value: event.data.relayExecutionInfo.updatedOutputAmount.toString() },
         { Property: "fillType", Value: event.data.relayExecutionInfo.fillType },
       ]);

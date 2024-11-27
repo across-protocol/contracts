@@ -55,7 +55,12 @@ async function depositV3(): Promise<void> {
 
   // Define the route account PDA
   const [routePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), inputToken.toBytes(), statePda.toBytes(), destinationChainId.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from("route"),
+      inputToken.toBytes(),
+      seed.toArrayLike(Buffer, "le", 8),
+      destinationChainId.toArrayLike(Buffer, "le", 8),
+    ],
     programId
   );
 
