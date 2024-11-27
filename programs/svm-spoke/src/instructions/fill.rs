@@ -133,9 +133,10 @@ pub fn fill_v3_relay<'info>(
         )?;
     }
 
-    // Update the fill status to Filled and set the relayer
+    // Update the fill status to Filled, set the relayer and fill deadline
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
+    fill_status_account.fill_deadline = relay_data.fill_deadline;
 
     if !relay_data.message.is_empty() {
         invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
@@ -193,7 +194,6 @@ fn unwrap_fill_v3_relay_params(
 }
 
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
     #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
     pub signer: Signer<'info>,
@@ -201,22 +201,16 @@ pub struct CloseFillPda<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(
-        mut,
-        seeds = [b"fills", relay_hash.as_ref()],
-        bump,
-        close = signer,
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
-    )]
+    #[account(mut, close = signer)]
     pub fill_status: Account<'info, FillStatusAccount>,
 }
 
-pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_data: V3RelayData) -> Result<()> {
+pub fn close_fill_pda(ctx: Context<CloseFillPda>) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the deposit has expired
-    if current_time <= relay_data.fill_deadline {
+    if current_time <= ctx.accounts.fill_status.fill_deadline {
         return err!(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed);
     }
 

@@ -68,6 +68,7 @@ pub fn request_v3_slow_fill(ctx: Context<RequestV3SlowFill>, relay_data: Option<
 
     fill_status_account.status = FillStatus::RequestedSlowFill; // Update the fill status to RequestedSlowFill
     fill_status_account.relayer = ctx.accounts.signer.key();
+    fill_status_account.fill_deadline = relay_data.fill_deadline;
 
     // Emit the RequestedV3SlowFill event. Empty message is not hashed and emits zeroed bytes32 for easier observability
     let message_hash = hash_non_empty_message(&relay_data.message);
@@ -254,7 +255,8 @@ pub fn execute_v3_slow_relay_leaf<'info>(
         CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, slow_fill_leaf.updated_output_amount, ctx.accounts.mint.decimals)?;
 
-    // Update the fill status to Filled. Note we don't set the relayer here as it is set when the slow fill was requested.
+    // Update the fill status to Filled. Note we don't set the relayer and fill deadline here as it is set when the slow
+    // fill was requested.
     fill_status_account.status = FillStatus::Filled;
 
     if !relay_data.message.is_empty() {

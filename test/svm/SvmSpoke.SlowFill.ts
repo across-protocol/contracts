@@ -19,8 +19,8 @@ import {
   readProgramEvents,
   calculateRelayHashUint8Array,
   testAcrossPlusMessage,
-  hashNonEmptyMessage,
 } from "./utils";
+import { hashNonEmptyMessage } from "../../src/SvmUtils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
