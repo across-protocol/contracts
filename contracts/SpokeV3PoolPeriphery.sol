@@ -123,10 +123,12 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
         wrappedNativeToken = _wrappedNativeToken;
-        for (uint256 i = 0; i < exchanges.length; i++) {
+        uint256 nExchanges = exchanges.length;
+        for (uint256 i = 0; i < nExchanges; i++) {
             WhitelistedExchanges memory _exchange = exchanges[i];
             if (!_exchange.exchange.isContract()) revert InvalidExchange();
-            for (uint256 j = 0; j < _exchange.allowedSelectors.length; j++) {
+            uint256 nSelectors = _exchange.allowedSelectors.length;
+            for (uint256 j = 0; j < nSelectors; j++) {
                 bytes4 selector = _exchange.allowedSelectors[j];
                 allowedSelectors[_exchange.exchange][selector] = true;
             }
