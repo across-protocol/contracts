@@ -35,7 +35,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     V3SpokePoolInterface public spokePool;
 
     // Wrapped native token contract address.
-    WETH9Interface internal wrappedNativeToken;
+    WETH9Interface public wrappedNativeToken;
 
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
@@ -55,7 +55,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         // chain and if this is a contract then they will receive an ERC20.
         address recipient;
         // The destination chain identifier.
-        uint256 destinationChainid;
+        uint256 destinationChainId;
         // The account that can exclusively fill the deposit before the exclusivity parameter.
         address exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
@@ -116,7 +116,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
         WhitelistedExchanges[] calldata exchanges
-    ) external {
+    ) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
@@ -169,6 +169,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         bytes memory message
     ) external payable nonReentrant {
         if (msg.value != inputAmount) revert InvalidMsgValue();
+        if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         spokePool.depositV3{ value: msg.value }(
             msg.sender,
@@ -431,7 +432,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             depositData.outputToken, // output token
             _acrossInputAmount, // input amount.
             depositData.outputAmount, // output amount
-            depositData.destinationChainid,
+            depositData.destinationChainId,
             depositData.exclusiveRelayer,
             depositData.quoteTimestamp,
             depositData.fillDeadline,
