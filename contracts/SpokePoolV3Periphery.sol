@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import { Lockable } from "./Lockable.sol";
@@ -19,7 +18,7 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolV3Periphery is Ownable, Lockable, MultiCaller {
+contract SpokePoolV3Periphery is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -30,7 +29,6 @@ contract SpokePoolV3Periphery is Ownable, Lockable, MultiCaller {
     struct WhitelistedExchanges {
         address exchange;
         bytes4[] allowedSelectors;
-        bool[] enabled;
     }
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
@@ -93,7 +91,6 @@ contract SpokePoolV3Periphery is Ownable, Lockable, MultiCaller {
     error InvalidSpokePool();
     error InvalidSwapToken();
     error InvalidExchange();
-    error InvalidExchangeData();
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
@@ -118,22 +115,13 @@ contract SpokePoolV3Periphery is Ownable, Lockable, MultiCaller {
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
         WhitelistedExchanges[] calldata exchanges
-    ) external nonReentrant onlyOwner {
+    ) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
         if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
         wrappedNativeToken = _wrappedNativeToken;
-        _whitelistExchanges(exchanges);
-    }
-
-    /**
-     * @notice Whitelists exchanges and their allowed function selectors. Can also be used to disable exchanges.
-     * @dev Only the owner can call this function.
-     * @param exchanges Array of exchange addresses and their allowed function selectors and an enable flag.
-     */
-    function whitelistExchanges(WhitelistedExchanges[] calldata exchanges) public nonReentrant onlyOwner {
         _whitelistExchanges(exchanges);
     }
 
@@ -523,10 +511,9 @@ contract SpokePoolV3Periphery is Ownable, Lockable, MultiCaller {
             WhitelistedExchanges memory _exchange = exchanges[i];
             if (!_exchange.exchange.isContract()) revert InvalidExchange();
             uint256 nSelectors = _exchange.allowedSelectors.length;
-            if (_exchange.enabled.length != nSelectors) revert InvalidExchangeData();
             for (uint256 j = 0; j < nSelectors; j++) {
                 bytes4 selector = _exchange.allowedSelectors[j];
-                allowedSelectors[_exchange.exchange][selector] = _exchange.enabled[j];
+                allowedSelectors[_exchange.exchange][selector] = true;
             }
         }
     }

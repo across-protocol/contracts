@@ -88,25 +88,17 @@ contract SpokePoolPeripheryTest is Test {
         exchanges = new SpokePoolV3Periphery.WhitelistedExchanges[](2);
         exchanges[0] = SpokePoolV3Periphery.WhitelistedExchanges({
             exchange: address(dex),
-            allowedSelectors: new bytes4[](1),
-            enabled: new bool[](1)
+            allowedSelectors: new bytes4[](1)
         });
         exchanges[0].allowedSelectors[0] = dex.swap.selector;
-        exchanges[0].enabled[0] = true;
         exchanges[1] = SpokePoolV3Periphery.WhitelistedExchanges({
             exchange: address(cex),
-            allowedSelectors: new bytes4[](1),
-            enabled: new bool[](1)
+            allowedSelectors: new bytes4[](1)
         });
         exchanges[1].allowedSelectors[0] = cex.swap.selector;
-        exchanges[1].enabled[0] = true;
     }
 
     function testInitialize() public {
-        vm.expectRevert();
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
-
-        vm.startPrank(owner);
         spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
 
         assertEq(address(spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
@@ -117,28 +109,6 @@ contract SpokePoolPeripheryTest is Test {
 
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
         spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
-
-        vm.stopPrank();
-    }
-
-    function testWhitelistExchanges() public {
-        vm.prank(owner);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
-
-        // Enable new function selector for one exchange:
-        exchanges[0].allowedSelectors[0] = dex.stealYourMoney.selector;
-        // Disable existing function selector for other exchange:
-        exchanges[1].enabled[0] = false;
-
-        vm.prank(owner);
-        spokePoolPeriphery.whitelistExchanges(exchanges);
-
-        // New function selector enabled for an exchange:
-        assertTrue(spokePoolPeriphery.allowedSelectors(exchanges[0].exchange, dex.stealYourMoney.selector));
-        // If we didn't update the function selector enabled flag for an exchange it should be unchanged:
-        assertTrue(spokePoolPeriphery.allowedSelectors(exchanges[0].exchange, dex.swap.selector));
-        // Existing function selector for an exchange was disabled:
-        assertFalse(spokePoolPeriphery.allowedSelectors(exchanges[1].exchange, cex.swap.selector));
     }
 
     function testSwapAndBridge() public {
