@@ -4,14 +4,14 @@
 resolution = true
 skip-lint = false
 
-[programs.devnet]
-multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
-svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
-
 [programs.localnet]
 multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
 svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
+
+[programs.devnet]
+multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
+svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
 
 [registry]
 url = "https://api.apr.dev"
