@@ -1653,7 +1653,7 @@ abstract contract SpokePool is
                     relayData.depositId,
                     relayData.fillDeadline,
                     relayData.exclusivityDeadline,
-                    relayData.message.length > 0 ? keccak256(relayData.message) : bytes32(0),
+                    _hashNonEmptyMessage(relayData.message),
                     chainId()
                 )
             );
