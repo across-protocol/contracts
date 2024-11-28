@@ -201,6 +201,7 @@ pub struct CloseFillPda<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
+    // No need to check seed derivation as this method only evaluates fill deadline that is recorded in this account.
     #[account(mut, close = signer)]
     pub fill_status: Account<'info, FillStatusAccount>,
 }

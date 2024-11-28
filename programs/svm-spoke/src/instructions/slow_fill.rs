@@ -255,8 +255,7 @@ pub fn execute_v3_slow_relay_leaf<'info>(
         CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, slow_fill_leaf.updated_output_amount, ctx.accounts.mint.decimals)?;
 
-    // Update the fill status to Filled. Note we don't set the relayer and fill deadline here as it is set when the slow
-    // fill was requested.
+    // Update the fill status. We don't set the relayer and fill deadline as it is set when the slow fill was requested.
     fill_status_account.status = FillStatus::Filled;
 
     if !relay_data.message.is_empty() {
