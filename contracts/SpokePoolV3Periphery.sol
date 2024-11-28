@@ -25,6 +25,8 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 contract SpokePoolProxy is Lockable {
     using SafeERC20 for IERC20;
 
+    error LeftoverInputTokens();
+
     // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
     // so this contract should also be able to be deterministically deployed at the same address across all networks
     // since the periphery address is the only constructor argument.
@@ -34,16 +36,27 @@ contract SpokePoolProxy is Lockable {
         SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
     }
 
+    /**
+     * @notice Caller must insure that exactly `inputAmount` of `inputToken` is used in the subsequent call to
+     * the SpokePoolPeriphery contract. All of the periphery functions have an easily identifiable input
+     * amount and input token so this should be easy to verify. Any leftover tokens would be locked in this contract
+     * and could be used by ANYONE in a subsequent call to the SpokePoolPeriphery contract. So, this function
+     * attempts to protect the user from locking tokens by reverting if not exactly `inputAmount` of `inputToken`
+     * is used in the periphery contract call.
+     */
     function callSpokePoolPeriphery(
         address inputToken,
         uint256 inputAmount,
         bytes memory peripheryFunctionCalldata
     ) external payable nonReentrant {
+        uint256 balanceBefore = IERC20(inputToken).balanceOf(address(this));
         IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
         IERC20(inputToken).forceApprove(SPOKE_POOL_PERIPHERY, inputAmount);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = SPOKE_POOL_PERIPHERY.call{ value: msg.value }(peripheryFunctionCalldata);
         require(success, string(result));
+        uint256 balanceAfter = IERC20(inputToken).balanceOf(address(this));
+        if (balanceAfter != balanceBefore) revert LeftoverInputTokens();
     }
 }
 
