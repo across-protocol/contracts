@@ -1,6 +1,7 @@
 // This script bridges remote call to pause deposits on Solana Spoke Pool. Required environment:
 // - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
 // - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - HUB_POOL_ADDRESS: Hub Pool address
 
 import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
