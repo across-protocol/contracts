@@ -9,7 +9,6 @@ import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { utils as anchorUtils } from "@coral-xyz/anchor";
 
 chai.use(smock.matchers);
 
