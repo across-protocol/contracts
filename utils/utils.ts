@@ -9,6 +9,7 @@ import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { utils as anchorUtils } from "@coral-xyz/anchor";
 
 chai.use(smock.matchers);
 
@@ -100,6 +101,11 @@ export const utf8ToHex = (input: string) => ethers.utils.formatBytes32String(inp
 export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
+
+export const fromBase58ToBytes32 = (input: string): string => {
+  const decodedBytes = anchorUtils.bytes.bs58.decode(input);
+  return "0x" + Buffer.from(decodedBytes).toString("hex");
+};
 
 export async function seedWallet(
   walletToFund: Signer,
