@@ -43,7 +43,7 @@ async function getRelayExecutionParams(
   };
 }
 
-describe.only("SpokePool Relayer Logic", async function () {
+describe("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20, erc1271 } = await spokePoolFixture());
@@ -291,7 +291,7 @@ describe.only("SpokePool Relayer Logic", async function () {
           )
         ).to.changeTokenBalance(destErc20, spokePool, relayExecution.updatedOutputAmount.mul(-1));
       });
-      it.only("if recipient is contract that implements message handler, calls message handler", async function () {
+      it("if recipient is contract that implements message handler, calls message handler", async function () {
         // Does nothing if message length is 0
         const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
         const _relayData = {
@@ -307,8 +307,6 @@ describe.only("SpokePool Relayer Logic", async function () {
           addressToBytes(relayer.address),
           false // isSlowFill
         );
-        // console.log("fill", fill)
-        console.log("waited gas after", (await fill.wait()).gasUsed);
 
         expect(acrossMessageHandler.handleV3AcrossMessage).to.have.been.calledOnceWith(
           bytes32ToAddress(_relayData.outputToken),
