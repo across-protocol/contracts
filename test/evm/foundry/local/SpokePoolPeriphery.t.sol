@@ -23,10 +23,6 @@ contract Exchange {
         require(tokenIn.transferFrom(msg.sender, address(this), amountIn));
         require(tokenOut.transfer(msg.sender, amountOutMin));
     }
-
-    function stealYourMoney(IERC20 tokenIn, uint256 amount) external {
-        require(tokenIn.transferFrom(msg.sender, address(this), amount));
-    }
 }
 
 contract SpokePoolPeripheryTest is Test {
@@ -46,8 +42,6 @@ contract SpokePoolPeripheryTest is Test {
     uint256 mintAmount = 10**22;
     uint256 depositAmount = 5 * (10**18);
     uint32 fillDeadlineBuffer = 7200;
-
-    SpokePoolV3Periphery.WhitelistedExchanges[] exchanges;
 
     function setUp() public {
         dex = new Exchange();
@@ -84,36 +78,21 @@ contract SpokePoolPeripheryTest is Test {
         mockERC20.approve(address(spokePoolPeriphery), mintAmount);
         IERC20(address(mockWETH)).approve(address(spokePoolPeriphery), mintAmount);
         vm.stopPrank();
-
-        exchanges = new SpokePoolV3Periphery.WhitelistedExchanges[](2);
-        exchanges[0] = SpokePoolV3Periphery.WhitelistedExchanges({
-            exchange: address(dex),
-            allowedSelectors: new bytes4[](1)
-        });
-        exchanges[0].allowedSelectors[0] = dex.swap.selector;
-        exchanges[1] = SpokePoolV3Periphery.WhitelistedExchanges({
-            exchange: address(cex),
-            allowedSelectors: new bytes4[](1)
-        });
-        exchanges[1].allowedSelectors[0] = cex.swap.selector;
     }
 
     function testInitialize() public {
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
 
         assertEq(address(spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
         assertEq(address(spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
-        assertTrue(spokePoolPeriphery.allowedSelectors(address(dex), dex.swap.selector));
-        assertTrue(spokePoolPeriphery.allowedSelectors(address(cex), cex.swap.selector));
-        assertFalse(spokePoolPeriphery.allowedSelectors(address(dex), dex.stealYourMoney.selector));
 
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
     }
 
     function testSwapAndBridge() public {
         vm.prank(owner);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
 
         // Should emit expected deposit event
         vm.startPrank(depositor);
@@ -167,7 +146,7 @@ contract SpokePoolPeripheryTest is Test {
         deal(depositor, mintAmount);
 
         vm.prank(owner);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, exchanges);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
 
         // Should emit expected deposit event
         vm.startPrank(depositor);
@@ -220,11 +199,7 @@ contract SpokePoolPeripheryTest is Test {
 
     function testDepositWithValue() public {
         vm.prank(owner);
-        spokePoolPeriphery.initialize(
-            V3SpokePoolInterface(ethereumSpokePool),
-            mockWETH,
-            new SpokePoolV3Periphery.WhitelistedExchanges[](0)
-        );
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
         deal(depositor, mintAmount);
 
         // Should emit expected deposit event

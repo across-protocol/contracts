@@ -12,6 +12,42 @@ import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 
 /**
+ * @title SpokePoolProxy
+ * @notice User should only interact with SpokePool via the SpokePoolV3Periphery contract through this
+ * contract. This is purposefully a simple passthrough contract so that the user only approves this contract
+ * to pull its assets while the SpokePoolV3Periphery contract can be used to call any calldata on any exchange
+ * that the user wants to. By separating the contract that gets approved from the contract that executes arbitrary
+ * calldata, the SpokePoolPeriphery does not need to validate the calldata that gets executed.
+ * @dev If this proxy didn't exist and users instead approved and interacted directly with the SpokePoolV3Periphery
+ * then users would run the unneccessary risk that another user could instruct the Periphery contract to steal
+ * any approved tokens that the user had left outstanding.
+ */
+contract SpokePoolProxy is Lockable {
+    using SafeERC20 for IERC20;
+
+    // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
+    // so this contract should also be able to be deterministically deployed at the same address across all networks
+    // since the periphery address is the only constructor argument.
+    address public immutable SPOKE_POOL_PERIPHERY;
+
+    constructor(address _spokePoolPeriphery) {
+        SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
+    }
+
+    function callSpokePoolPeriphery(
+        address inputToken,
+        uint256 inputAmount,
+        bytes memory peripheryFunctionCalldata
+    ) external payable nonReentrant {
+        IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+        IERC20(inputToken).forceApprove(SPOKE_POOL_PERIPHERY, inputAmount);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory result) = SPOKE_POOL_PERIPHERY.call{ value: msg.value }(peripheryFunctionCalldata);
+        require(success, string(result));
+    }
+}
+
+/**
  * @title SpokePoolV3Periphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
  * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
@@ -21,15 +57,6 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 contract SpokePoolV3Periphery is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
-
-    // This contract performs a low level call with arbirary data to an external contract. This is a large attack
-    // surface and we should whitelist which function selectors are allowed to be called on which exchange.
-    mapping(address => mapping(bytes4 => bool)) public allowedSelectors;
-
-    struct WhitelistedExchanges {
-        address exchange;
-        bytes4[] allowedSelectors;
-    }
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
     V3SpokePoolInterface public spokePool;
@@ -72,6 +99,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
     event SwapBeforeBridge(
         address exchange,
+        bytes exchangeCalldata,
         address indexed swapToken,
         address indexed acrossInputToken,
         uint256 swapTokenAmount,
@@ -85,12 +113,10 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      ****************************************/
     error MinimumExpectedInputAmount();
     error LeftoverSrcTokens();
-    error InvalidFunctionSelector();
     error ContractInitialized();
     error InvalidMsgValue();
     error InvalidSpokePool();
     error InvalidSwapToken();
-    error InvalidExchange();
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
@@ -106,23 +132,17 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * @dev Only the owner can call this function.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _wrappedNativeToken Address of the wrapped native token for the network this contract is deployed to.
-     * @param exchanges Array of exchange addresses and their allowed function selectors.
      * @dev These values are initialized in a function and not in the constructor so that the creation code of this contract
      * is the same across networks with different addresses for the wrapped native token and this network's
      * corresponding spoke pool contract. This is to allow this contract to be deterministically deployed with CREATE2.
      */
-    function initialize(
-        V3SpokePoolInterface _spokePool,
-        WETH9Interface _wrappedNativeToken,
-        WhitelistedExchanges[] calldata exchanges
-    ) external nonReentrant {
+    function initialize(V3SpokePoolInterface _spokePool, WETH9Interface _wrappedNativeToken) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
         if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
         wrappedNativeToken = _wrappedNativeToken;
-        _whitelistExchanges(exchanges);
     }
 
     /**
@@ -441,11 +461,6 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         IERC20 _swapToken,
         IERC20 _acrossInputToken
     ) private {
-        // Note: this check should never be impactful, but is here out of an abundance of caution.
-        // For example, if the exchange address in the contract is also an ERC20 token that is approved by some
-        // user on this contract, a malicious actor could call transferFrom to steal the user's tokens.
-        if (!allowedSelectors[exchange][bytes4(routerCalldata)]) revert InvalidFunctionSelector();
-
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
@@ -457,6 +472,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
         _checkSwapOutputAndDeposit(
             exchange,
+            routerCalldata,
             swapTokenAmount,
             srcBalanceBefore,
             dstBalanceBefore,
@@ -476,6 +492,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      **/
     function _checkSwapOutputAndDeposit(
         address exchange,
+        bytes memory routerCalldata,
         uint256 swapTokenAmount,
         uint256 swapTokenBalanceBefore,
         uint256 inputTokenBalanceBefore,
@@ -494,6 +511,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
         emit SwapBeforeBridge(
             exchange,
+            routerCalldata,
             address(_swapToken),
             address(_acrossInputToken),
             swapTokenAmount,
@@ -503,18 +521,5 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         _depositV3(_acrossInputToken, returnAmount, depositData);
-    }
-
-    function _whitelistExchanges(WhitelistedExchanges[] calldata exchanges) internal {
-        uint256 nExchanges = exchanges.length;
-        for (uint256 i = 0; i < nExchanges; i++) {
-            WhitelistedExchanges memory _exchange = exchanges[i];
-            if (!_exchange.exchange.isContract()) revert InvalidExchange();
-            uint256 nSelectors = _exchange.allowedSelectors.length;
-            for (uint256 j = 0; j < nSelectors; j++) {
-                bytes4 selector = _exchange.allowedSelectors[j];
-                allowedSelectors[_exchange.exchange][selector] = true;
-            }
-        }
     }
 }
