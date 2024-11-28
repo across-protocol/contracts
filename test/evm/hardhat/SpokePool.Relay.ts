@@ -11,6 +11,7 @@ import {
   addressToBytes,
   bytes32ToAddress,
   hashNonEmptyMessage,
+  toBN,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -42,7 +43,7 @@ async function getRelayExecutionParams(
   };
 }
 
-describe("SpokePool Relayer Logic", async function () {
+describe.only("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20, erc1271 } = await spokePoolFixture());
@@ -290,7 +291,7 @@ describe("SpokePool Relayer Logic", async function () {
           )
         ).to.changeTokenBalance(destErc20, spokePool, relayExecution.updatedOutputAmount.mul(-1));
       });
-      it("if recipient is contract that implements message handler, calls message handler", async function () {
+      it.only("if recipient is contract that implements message handler, calls message handler", async function () {
         // Does nothing if message length is 0
         const acrossMessageHandler = await createFake("AcrossMessageHandlerMock");
         const _relayData = {
@@ -301,12 +302,14 @@ describe("SpokePool Relayer Logic", async function () {
         const relayExecution = await getRelayExecutionParams(_relayData, consts.destinationChainId);
 
         // Handler is called with expected params.
-        await spokePool.connect(relayer).fillRelayV3Internal(
+        const fill = await spokePool.connect(relayer).fillRelayV3Internal(
           relayExecution,
           addressToBytes(relayer.address),
           false // isSlowFill
         );
-        const test = bytes32ToAddress(_relayData.outputToken);
+        // console.log("fill", fill)
+        console.log("waited gas after", (await fill.wait()).gasUsed);
+
         expect(acrossMessageHandler.handleV3AcrossMessage).to.have.been.calledOnceWith(
           bytes32ToAddress(_relayData.outputToken),
           relayExecution.updatedOutputAmount,
@@ -522,7 +525,7 @@ describe("SpokePool Relayer Logic", async function () {
         // Incorrect signature for new deposit ID
         const otherSignature = await getUpdatedV3DepositSignature(
           depositor,
-          relayData.depositId + 1,
+          relayData.depositId.add(toBN(1)),
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),

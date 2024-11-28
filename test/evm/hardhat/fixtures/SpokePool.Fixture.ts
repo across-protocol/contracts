@@ -102,7 +102,7 @@ export interface V3RelayData {
   inputAmount: BigNumber;
   outputAmount: BigNumber;
   originChainId: number;
-  depositId: number;
+  depositId: BigNumber;
   fillDeadline: number;
   exclusivityDeadline: number;
   message: string;
@@ -176,14 +176,70 @@ export function getRelayHash(
   return { relayHash, relayData };
 }
 
+// export function getV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
+//   const messageHash = relayData.message.length > 0 ? ethers.utils.keccak256(relayData.message) : ethers.constants.HashZero;
+
+//   return ethers.utils.keccak256(
+//     defaultAbiCoder.encode(
+//       [
+//         "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 messageHash)",
+//         "uint256 destinationChainId"
+//       ],
+//       [
+//         {
+//           depositor: relayData.depositor,
+//           recipient: relayData.recipient,
+//           exclusiveRelayer: relayData.exclusiveRelayer,
+//           inputToken: relayData.inputToken,
+//           outputToken: relayData.outputToken,
+//           inputAmount: relayData.inputAmount,
+//           outputAmount: relayData.outputAmount,
+//           originChainId: relayData.originChainId,
+//           depositId: relayData.depositId,
+//           fillDeadline: relayData.fillDeadline,
+//           exclusivityDeadline: relayData.exclusivityDeadline,
+//           messageHash: messageHash
+//         },
+//         destinationChainId
+//       ]
+//     )
+//   );
+// }
+
 export function getV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
+  const messageHash = relayData.message == "0x" ? ethers.constants.HashZero : ethers.utils.keccak256(relayData.message);
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
-        "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
-        "uint256 destinationChainId",
+        "bytes32", // depositor
+        "bytes32", // recipient
+        "bytes32", // exclusiveRelayer
+        "bytes32", // inputToken
+        "bytes32", // outputToken
+        "uint256", // inputAmount
+        "uint256", // outputAmount
+        "uint256", // originChainId
+        "uint256", // depositId
+        "uint32", // fillDeadline
+        "uint32", // exclusivityDeadline
+        "bytes32", // messageHash
+        "uint256", // destinationChainId
       ],
-      [relayData, destinationChainId]
+      [
+        relayData.depositor,
+        relayData.recipient,
+        relayData.exclusiveRelayer,
+        relayData.inputToken,
+        relayData.outputToken,
+        relayData.inputAmount,
+        relayData.outputAmount,
+        relayData.originChainId,
+        relayData.depositId,
+        relayData.fillDeadline,
+        relayData.exclusivityDeadline,
+        messageHash,
+        destinationChainId,
+      ]
     )
   );
 }
@@ -336,7 +392,7 @@ export async function modifyRelayHelper(
 
 export async function getUpdatedV3DepositSignature(
   depositor: SignerWithAddress,
-  depositId: number,
+  depositId: BigNumber,
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
