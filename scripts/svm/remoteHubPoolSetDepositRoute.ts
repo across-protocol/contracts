@@ -17,12 +17,10 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGR
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
-  HUB_POOL_ADDRESS_MAINNET,
-  HUB_POOL_ADDRESS_SEPOLIA,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "./constants";
-import { fromBase58ToBytes32 } from "../../test-utils";
+} from "./utils/constants";
+import { fromBase58ToBytes32, fromBytes32ToAddress } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -36,12 +34,6 @@ const argv = yargs(hideBin(process.argv))
   .option("depositsEnabled", { type: "boolean", demandOption: true, describe: "Deposits enabled" })
   .option("resumeRemoteTx", { type: "string", demandOption: false, describe: "Resume receiving remote tx" })
   .check((argv) => {
-    // if (argv.pause !== undefined && argv.resumeRemoteTx !== undefined) {
-    //   throw new Error("Options --pause and --resumeRemoteTx are mutually exclusive");
-    // }
-    // if (argv.pause === undefined && argv.resumeRemoteTx === undefined) {
-    //   throw new Error("One of the options --pause or --resumeRemoteTx is required");
-    // }
     return true;
   }).argv;
 
@@ -52,7 +44,6 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   const destinationChainId = resolvedArgv.destinationChainId;
   const depositsEnabled = resolvedArgv.depositsEnabled;
   const seed = new BN(resolvedArgv.seed);
-  const pause = resolvedArgv.pause;
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
 
   // Set up Ethereum provider.
@@ -65,6 +56,11 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   }
   const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
 
+  if (!process.env.HUB_POOL_ADDRESS) {
+    throw new Error("Environment variable HUB_POOL_ADDRESS is not set");
+  }
+  const hubPoolAddress = process.env.HUB_POOL_ADDRESS;
+
   let cluster: "devnet" | "mainnet";
   const rpcEndpoint = provider.connection.rpcEndpoint;
   if (rpcEndpoint.includes("devnet")) cluster = "devnet";
@@ -74,7 +70,7 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
 
   const usdcProgramId = isDevnet ? SOLANA_USDC_DEVNET : SOLANA_USDC_MAINNET;
   const originToken = new PublicKey(usdcProgramId);
-  const originTokenAddress = fromBase58ToBytes32(originToken.toBase58());
+  const originTokenAddress = fromBytes32ToAddress(fromBase58ToBytes32(originToken.toBase58()));
 
   // CCTP domains.
   const remoteDomain = 0; // Ethereum
@@ -128,15 +124,15 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
     throw new Error(`Chain ID ${chainId} does not match expected Solana cluster ${cluster}`);
   }
 
-  const hubPoolAddress = isDevnet ? HUB_POOL_ADDRESS_SEPOLIA : HUB_POOL_ADDRESS_MAINNET;
-
   const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
 
   console.log("Remotely configuring deposit route...");
   console.table([
     { Property: "seed", Value: seed.toString() },
     { Property: "chainId", Value: (chainId as any).toString() },
-    { Property: "pause", Value: pause },
+    { Property: "originChainId", Value: originChainId },
+    { Property: "destinationChainId", Value: destinationChainId },
+    { Property: "depositsEnabled", Value: depositsEnabled },
     { Property: "svmSpokeProgramProgramId", Value: svmSpokeProgram.programId.toString() },
     { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },
     { Property: "statePda", Value: statePda.toString() },
