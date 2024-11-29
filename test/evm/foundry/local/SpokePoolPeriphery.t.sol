@@ -9,6 +9,7 @@ import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
+import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -30,6 +31,7 @@ contract SpokePoolPeripheryTest is Test {
     SpokePoolV3Periphery spokePoolPeriphery;
     Exchange dex;
     Exchange cex;
+    IPermit2 permit2;
 
     WETH9Interface mockWETH;
     ERC20 mockERC20;
@@ -53,6 +55,7 @@ contract SpokePoolPeripheryTest is Test {
         depositor = vm.addr(1);
         owner = vm.addr(2);
         recipient = vm.addr(3);
+        permit2 = IPermit2(vm.addr(4)); // Permit2 is usused in this test.
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
@@ -81,18 +84,18 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testInitialize() public {
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
 
         assertEq(address(spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
         assertEq(address(spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
 
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
     }
 
     function testSwapAndBridge() public {
         vm.prank(owner);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
 
         // Should emit expected deposit event
         vm.startPrank(depositor);
@@ -146,7 +149,7 @@ contract SpokePoolPeripheryTest is Test {
         deal(depositor, mintAmount);
 
         vm.prank(owner);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
 
         // Should emit expected deposit event
         vm.startPrank(depositor);
@@ -199,7 +202,7 @@ contract SpokePoolPeripheryTest is Test {
 
     function testDepositWithValue() public {
         vm.prank(owner);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
         deal(depositor, mintAmount);
 
         // Should emit expected deposit event

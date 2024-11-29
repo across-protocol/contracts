@@ -10,6 +10,7 @@ import { Lockable } from "./Lockable.sol";
 import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
 import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
+import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 
 /**
  * @title SpokePoolProxy
@@ -76,6 +77,9 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
     // Wrapped native token contract address.
     WETH9Interface public wrappedNativeToken;
+
+    // Canonical Permit2 contract address.
+    IPermit2 public permit2;
 
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
@@ -149,12 +153,17 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * is the same across networks with different addresses for the wrapped native token and this network's
      * corresponding spoke pool contract. This is to allow this contract to be deterministically deployed with CREATE2.
      */
-    function initialize(V3SpokePoolInterface _spokePool, WETH9Interface _wrappedNativeToken) external nonReentrant {
+    function initialize(
+        V3SpokePoolInterface _spokePool,
+        WETH9Interface _wrappedNativeToken,
+        IPermit2 _permit2
+    ) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
         if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
+        permit2 = _permit2;
         wrappedNativeToken = _wrappedNativeToken;
     }
 
@@ -306,6 +315,44 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     }
 
     /**
+     * @notice Uses permit2 to transfer tokens from a user before swapping a token on this chain via specified router and submitting an Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
+     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param exchange Address of the exchange contract to call.
+     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
+     * enough of acrossInputToken, otherwise this function will revert.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param permit The permit data signed over by the owner.
+     * @param transferDetails The spender's requested transfer details for the permitted token.
+     * @param signature The signature to verify.
+     */
+    function swapAndBridgeWithPermit2(
+        IERC20 acrossInputToken,
+        address exchange,
+        bytes calldata routerCalldata,
+        uint256 minExpectedInputTokenAmount,
+        DepositData calldata depositData,
+        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2.SignatureTransferDetails calldata transferDetails,
+        bytes calldata signature
+    ) external nonReentrant {
+        permit2.permitTransferFrom(permit, transferDetails, msg.sender, signature);
+        _swapAndBridge(
+            exchange,
+            routerCalldata,
+            permit.permitted.amount,
+            minExpectedInputTokenAmount,
+            depositData,
+            IERC20(permit.permitted.token),
+            acrossInputToken
+        );
+    }
+
+    /**
      * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
@@ -395,6 +442,25 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
         _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
+    }
+
+    /**
+     * @notice Uses permit2 to transfer and submit an Across deposit to the Spoke Pool contract.
+     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
+     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param permit The permit data signed over by the owner.
+     * @param transferDetails The spender's requested transfer details for the permitted token.
+     * @param signature The signature to verify.
+     */
+    function depositWithPermit2(
+        DepositData calldata depositData,
+        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2.SignatureTransferDetails calldata transferDetails,
+        bytes calldata signature
+    ) external nonReentrant {
+        permit2.permitTransferFrom(permit, transferDetails, msg.sender, signature);
+        _depositV3(IERC20(permit.permitted.token), permit.permitted.amount, depositData);
     }
 
     /**
