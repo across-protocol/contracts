@@ -182,7 +182,7 @@ describe("svm_spoke.fill", () => {
     // Fetch and verify the FilledV3Relay event
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "filledV3Relay").data;
+    const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
     // Verify that the event data matches the relay data.
@@ -660,7 +660,7 @@ describe("svm_spoke.fill", () => {
     // Fetch and verify the FilledV3Relay event
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "filledV3Relay").data;
+    const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
     // Verify that the event data has zeroed message hash.
