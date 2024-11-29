@@ -3,25 +3,18 @@
 // - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 // - HUB_POOL_ADDRESS: Hub Pool address
 
-import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
-import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { AccountMeta, PublicKey } from "@solana/web3.js";
+import "dotenv/config";
+import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import {
-  CIRCLE_IRIS_API_URL_DEVNET,
-  CIRCLE_IRIS_API_URL_MAINNET,
-  SOLANA_USDC_DEVNET,
-  SOLANA_USDC_MAINNET,
-} from "./utils/constants";
-import { fromBase58ToBytes32, fromBytes32ToAddress } from "./utils/helpers";
+import { CIRCLE_IRIS_API_URL_DEVNET, CIRCLE_IRIS_API_URL_MAINNET } from "./utils/constants";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -29,19 +22,17 @@ anchor.setProvider(provider);
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
-  .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
-  .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" })
-  .option("depositsEnabled", { type: "boolean", demandOption: true, describe: "Deposits enabled" })
+  .option("chainId", { type: "string", demandOption: true, describe: "Chain ID" })
+  .option("pause", { type: "boolean", demandOption: true, describe: "Pause deposits" })
   .option("resumeRemoteTx", { type: "string", demandOption: false, describe: "Resume receiving remote tx" }).argv;
 
-async function remoteHubPoolSetDepositRoute(): Promise<void> {
+async function remoteHubPoolPauseDeposit(): Promise<void> {
   const resolvedArgv = await argv;
 
-  const originChainId = resolvedArgv.originChainId;
-  const destinationChainId = resolvedArgv.destinationChainId;
-  const depositsEnabled = resolvedArgv.depositsEnabled;
+  const chainId = resolvedArgv.chainId;
   const seed = new BN(0);
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
+  const pause = resolvedArgv.pause;
 
   // Set up Ethereum provider.
   if (!process.env.ETHERS_PROVIDER_URL) {
@@ -65,10 +56,6 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   else throw new Error(`Unsupported cluster endpoint: ${rpcEndpoint}`);
   const isDevnet = cluster == "devnet";
 
-  const usdcProgramId = isDevnet ? SOLANA_USDC_DEVNET : SOLANA_USDC_MAINNET;
-  const originToken = new PublicKey(usdcProgramId);
-  const originTokenAddress = fromBytes32ToAddress(fromBase58ToBytes32(originToken.toBase58()));
-
   // CCTP domains.
   const remoteDomain = 0; // Ethereum
 
@@ -78,23 +65,6 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
-  );
-  const [routePda] = PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("route"),
-      originToken.toBytes(),
-      seed.toArrayLike(Buffer, "le", 8),
-      new BN(destinationChainId).toArrayLike(Buffer, "le", 8),
-    ],
-    svmSpokeProgram.programId
-  );
-
-  const vault = getAssociatedTokenAddressSync(
-    originToken,
-    statePda,
-    true,
-    TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
@@ -115,21 +85,14 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
 
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
 
-  const supportedChainId = isDevnet ? 11155111 : 1; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
-  const chainId = (await ethersProvider.getNetwork()).chainId;
-  if (chainId !== supportedChainId) {
-    throw new Error(`Chain ID ${chainId} does not match expected Solana cluster ${cluster}`);
-  }
-
   const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
+  const spokePoolIface = new ethers.utils.Interface(["function pauseDeposits(bool pause)"]);
 
   console.log("Remotely configuring deposit route...");
   console.table([
     { Property: "seed", Value: seed.toString() },
     { Property: "chainId", Value: (chainId as any).toString() },
-    { Property: "originChainId", Value: originChainId },
-    { Property: "destinationChainId", Value: destinationChainId },
-    { Property: "depositsEnabled", Value: depositsEnabled },
+    { Property: "pause", Value: pause },
     { Property: "svmSpokeProgramProgramId", Value: svmSpokeProgram.programId.toString() },
     { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },
     { Property: "statePda", Value: statePda.toString() },
@@ -141,13 +104,12 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
     { Property: "remoteSender", Value: ethersSigner.address },
   ]);
 
-  // Send setDepositRoute call from Ethereum, unless resuming a remote transaction.
+  // Send pauseDeposits call from Ethereum, unless resuming a remote transaction.
   let remoteTxHash: string;
   if (!resumeRemoteTx) {
-    console.log("Sending setDepositRoute message from HubPool...");
-    const tx = await hubPool
-      .connect(ethersSigner)
-      .setDepositRoute(originChainId, destinationChainId, originTokenAddress, depositsEnabled);
+    console.log("Sending pauseDeposits message from HubPool...");
+    const calldata = spokePoolIface.encodeFunctionData("pauseDeposits", [pause]);
+    const tx = await hubPool.connect(ethersSigner).relaySpokePoolAdminFunction(chainId, calldata);
     await tx.wait();
     remoteTxHash = tx.hash;
     console.log("Message sent on remote chain, tx", remoteTxHash);
@@ -202,58 +164,13 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
     pubkey: svmSpokeProgram.programId,
   });
 
-  // payer
-  remainingAccounts.push({
-    isSigner: true,
-    isWritable: true,
-    pubkey: provider.wallet.publicKey,
-  });
-
-  // state in self-invoked CPIs (state can change as a result of remote call).
+  // state
   remainingAccounts.push({
     isSigner: false,
     isWritable: true,
     pubkey: statePda,
   });
 
-  // route
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: routePda,
-  });
-  // vault
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: vault,
-  });
-
-  // origin token mint
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: originToken,
-  });
-
-  // token_program
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: TOKEN_PROGRAM_ID,
-  });
-  // associated_token_program
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,
-  });
-  // system_program
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: SystemProgram.programId,
-  });
   // event_authority in self-invoked CPIs (appended by Anchor with event_cpi macro).
   remainingAccounts.push({
     isSigner: false,
@@ -280,11 +197,14 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   console.log("\nReceived remote message");
   console.log("Your transaction signature", receiveMessageTx);
 
-  let routeAccount = await svmSpokeProgram.account.route.fetch(routePda);
-  console.log("Updated deposit route state to: enabled =", routeAccount.enabled);
+  // wait 1 second for the state to be updated
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  let stateAccount = await svmSpokeProgram.account.state.fetch(statePda);
+  console.log("Updated deposit route state to: pausedDeposits =", stateAccount.pausedDeposits);
 }
 
-remoteHubPoolSetDepositRoute()
+remoteHubPoolPauseDeposit()
   .then(() => {
     process.exit(0);
   })
