@@ -55,28 +55,33 @@ export async function readEvents<IDL extends Idl = Idl>(
     maxSupportedTransactionVersion: 0,
   });
 
-  let eventAuthorities = new Map();
+  if (txResult === null) return [];
+
+  const eventAuthorities: Map<string, PublicKey> = new Map();
   for (const program of programs) {
     eventAuthorities.set(
       program.programId.toString(),
-      findProgramAddress("__event_authority", program.programId).publicKey.toString()
+      findProgramAddress("__event_authority", program.programId).publicKey
     );
   }
 
-  let events: any[] = [];
+  const events = [];
 
-  // TODO: Add support for version 0 transactions.
-  if (!txResult || txResult.transaction.message.version !== "legacy") return events;
+  // Resolve any potential addresses that were passed from address lookup tables.
+  const messageAccountKeys = txResult.transaction.message.getAccountKeys({
+    accountKeysFromLookups: txResult.meta?.loadedAddresses,
+  });
 
   for (const ixBlock of txResult.meta?.innerInstructions ?? []) {
     for (const ix of ixBlock.instructions) {
       for (const program of programs) {
-        const programStr = program.programId.toString();
+        const ixProgramId = messageAccountKeys.get(ix.programIdIndex);
+        const singleIxAccount = ix.accounts.length === 1 ? messageAccountKeys.get(ix.accounts[0]) : undefined;
         if (
-          ix.accounts.length === 1 &&
-          (txResult.transaction.message as any).accountKeys[ix.programIdIndex].toString() === programStr &&
-          (txResult.transaction.message as any).accountKeys[ix.accounts[0]].toString() ===
-            eventAuthorities.get(programStr)
+          ixProgramId !== undefined &&
+          singleIxAccount !== undefined &&
+          program.programId.equals(ixProgramId) &&
+          eventAuthorities.get(ixProgramId.toString())?.equals(singleIxAccount)
         ) {
           const ixData = utils.bytes.bs58.decode(ix.data);
           const eventData = utils.bytes.base64.encode(Buffer.from(new Uint8Array(ixData).slice(8)));
@@ -109,7 +114,7 @@ export async function readProgramEvents(
   options?: SignaturesForAddressOptions,
   finality: Finality = "confirmed"
 ) {
-  let events = [];
+  const events = [];
   const pastSignatures = await connection.getSignaturesForAddress(program.programId, options, finality);
 
   for (const signature of pastSignatures) {
