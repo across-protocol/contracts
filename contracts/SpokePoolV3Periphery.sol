@@ -13,7 +13,7 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 
 /**
  * @title SpokePoolProxy
- * @notice User should only interact with SpokePool via the SpokePoolV3Periphery contract through this
+ * @notice User should only call the SpokePoolV3Periphery contract functions that require an ERC20.approval through this
  * contract. This is purposefully a simple passthrough contract so that the user only approves this contract
  * to pull its assets while the SpokePoolV3Periphery contract can be used to call any calldata on any exchange
  * that the user wants to. By separating the contract that gets approved from the contract that executes arbitrary
@@ -22,7 +22,7 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
  * then users would run the unneccessary risk that another user could instruct the Periphery contract to steal
  * any approved tokens that the user had left outstanding.
  */
-contract SpokePoolProxy is Lockable {
+contract SpokePoolPeripheryApproveProxy is Lockable {
     using SafeERC20 for IERC20;
 
     error LeftoverInputTokens();
@@ -30,33 +30,47 @@ contract SpokePoolProxy is Lockable {
     // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
     // so this contract should also be able to be deterministically deployed at the same address across all networks
     // since the periphery address is the only constructor argument.
-    address public immutable SPOKE_POOL_PERIPHERY;
+    SpokePoolV3Periphery public immutable SPOKE_POOL_PERIPHERY;
 
-    constructor(address _spokePoolPeriphery) {
+    constructor(SpokePoolV3Periphery _spokePoolPeriphery) {
         SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
     }
 
     /**
-     * @notice Caller must insure that exactly `inputAmount` of `inputToken` is used in the subsequent call to
-     * the SpokePoolPeriphery contract. All of the periphery functions have an easily identifiable input
-     * amount and input token so this should be easy to verify. Any leftover tokens would be locked in this contract
-     * and could be used by ANYONE in a subsequent call to the SpokePoolPeriphery contract. So, this function
-     * attempts to protect the user from locking tokens by reverting if not exactly `inputAmount` of `inputToken`
-     * is used in the periphery contract call.
+     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
+     * the assumption is that this function will handle only ERC20 tokens.
+     * @param swapToken Address of the token that will be swapped for acrossInputToken.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param exchange Address of the exchange contract to call.
+     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
+     * enough of acrossInputToken, otherwise this function will revert.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
      */
-    function callSpokePoolPeriphery(
-        address inputToken,
-        uint256 inputAmount,
-        bytes memory peripheryFunctionCalldata
+    function swapAndBridge(
+        IERC20 swapToken,
+        IERC20 acrossInputToken,
+        address exchange,
+        bytes calldata routerCalldata,
+        uint256 swapTokenAmount,
+        uint256 minExpectedInputTokenAmount,
+        SpokePoolV3Periphery.DepositData calldata depositData
     ) external payable nonReentrant {
-        uint256 balanceBefore = IERC20(inputToken).balanceOf(address(this));
-        IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
-        IERC20(inputToken).forceApprove(SPOKE_POOL_PERIPHERY, inputAmount);
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = SPOKE_POOL_PERIPHERY.call{ value: msg.value }(peripheryFunctionCalldata);
-        require(success, string(result));
-        uint256 balanceAfter = IERC20(inputToken).balanceOf(address(this));
-        if (balanceAfter != balanceBefore) revert LeftoverInputTokens();
+        IERC20(swapToken).safeTransferFrom(msg.sender, address(this), swapTokenAmount);
+        swapToken.forceApprove(address(SPOKE_POOL_PERIPHERY), swapTokenAmount);
+        SPOKE_POOL_PERIPHERY.swapAndBridge{ value: msg.value }(
+            swapToken,
+            acrossInputToken,
+            exchange,
+            routerCalldata,
+            swapTokenAmount,
+            minExpectedInputTokenAmount,
+            depositData
+        );
     }
 }
 
