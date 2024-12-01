@@ -56,7 +56,7 @@ contract SpokePoolPeripheryTest is Test {
         depositor = vm.addr(1);
         owner = vm.addr(2);
         recipient = vm.addr(3);
-        permit2 = IPermit2(vm.addr(4)); // Permit2 is usused in this test.
+        permit2 = IPermit2(vm.addr(4));
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
