@@ -72,7 +72,7 @@ contract SpokePoolPeripheryTest is Test {
         ethereumSpokePool = Ethereum_SpokePool(payable(proxy));
         ethereumSpokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
         ethereumSpokePool.setEnableRoute(address(mockERC20), destinationChainId, true);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
         vm.stopPrank();
 
         deal(depositor, mintAmount);
