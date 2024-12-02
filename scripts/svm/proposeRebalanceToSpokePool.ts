@@ -5,7 +5,7 @@ import { hideBin } from "yargs/helpers";
 import { ethers, BigNumber } from "ethers";
 // eslint-disable-next-line camelcase
 import { BondToken__factory, HubPool__factory } from "../../typechain";
-import { MerkleTree } from "@uma/common";
+import { constructSimpleRebalanceTree } from "./utils/rebalanceTree";
 
 // Set up Ethereum provider.
 if (!process.env.ETHERS_PROVIDER_URL) {
@@ -31,7 +31,7 @@ const argv = yargs(hideBin(process.argv)).option("netSendAmount", {
   describe: "Net send amount to spoke",
 }).argv;
 
-async function rebalanceToSpokePool(): Promise<void> {
+async function proposeRebalanceToSpokePool(): Promise<void> {
   const resolvedArgv = await argv;
   const netSendAmount = BigNumber.from(resolvedArgv.netSendAmount);
 
@@ -88,25 +88,5 @@ async function rebalanceToSpokePool(): Promise<void> {
   console.log(`✔️ tx confirmed`);
 }
 
-export function constructSimpleRebalanceTree(l1TokenAddress: string, netSendAmount: BigNumber, chainId: BigNumber) {
-  const poolRebalanceLeaf = {
-    chainId,
-    groupIndex: BigNumber.from(1), // Not 0 as this script is not relaying root bundles, only sending tokens to spoke.
-    bundleLpFees: [BigNumber.from(0)],
-    netSendAmounts: [netSendAmount],
-    runningBalances: [netSendAmount],
-    leafId: BigNumber.from(0),
-    l1Tokens: [l1TokenAddress],
-  };
-
-  const rebalanceParamType =
-    "tuple( uint256 chainId, uint256[] bundleLpFees, int256[] netSendAmounts, int256[] runningBalances, uint256 groupIndex, uint8 leafId, address[] l1Tokens )";
-  const rebalanceHashFn = (input: any) =>
-    ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([rebalanceParamType], [input]));
-
-  const poolRebalanceTree = new MerkleTree([poolRebalanceLeaf], rebalanceHashFn);
-  return { poolRebalanceLeaf, poolRebalanceTree };
-}
-
-// Run the rebalanceToSpokePool function
-rebalanceToSpokePool();
+// Run the proposeRebalanceToSpokePool function
+proposeRebalanceToSpokePool();
