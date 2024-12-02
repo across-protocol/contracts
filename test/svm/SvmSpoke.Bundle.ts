@@ -279,6 +279,14 @@ describe("svm_spoke.bundle", () => {
     assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
+    event = events.find((event) => event.name === "tokensBridged").data;
+
+    assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
+    assertSE(event.chainId, chainId, "chainId should match");
+    assertSE(event.leafId, leaf.leafId, "leafId should match");
+    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
+    assertSE(event.caller, owner, "caller should match");
+
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
     const fRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
     const fRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
@@ -1172,7 +1180,7 @@ describe("svm_spoke.bundle", () => {
     });
   });
 
-  it("Increments pending amount to HubPool", async () => {
+  it("Increments pending amount to HubPool and emits TokensBridged event", async () => {
     const initialPendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
 
     const incrementPendingToHubPool = async (amountToReturn: BN) => {
