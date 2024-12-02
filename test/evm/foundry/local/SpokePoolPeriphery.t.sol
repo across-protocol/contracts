@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
-import { SpokePoolV3Periphery, SpokePoolPeripheryApproveProxy } from "../../../../contracts/SpokePoolV3Periphery.sol";
+import { SpokePoolV3Periphery, SpokePoolPeripheryProxy } from "../../../../contracts/SpokePoolV3Periphery.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
@@ -29,7 +29,7 @@ contract Exchange {
 contract SpokePoolPeripheryTest is Test {
     Ethereum_SpokePool ethereumSpokePool;
     SpokePoolV3Periphery spokePoolPeriphery;
-    SpokePoolPeripheryApproveProxy approveProxy;
+    SpokePoolPeripheryProxy proxy;
     Exchange dex;
     Exchange cex;
     IPermit2 permit2;
@@ -60,43 +60,49 @@ contract SpokePoolPeripheryTest is Test {
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
-        approveProxy = new SpokePoolPeripheryApproveProxy(spokePoolPeriphery);
+        proxy = new SpokePoolPeripheryProxy();
+        proxy.initialize(spokePoolPeriphery);
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
             fillDeadlineBuffer,
             fillDeadlineBuffer
         );
-        address proxy = address(
+        address spokePoolProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner)))
         );
-        ethereumSpokePool = Ethereum_SpokePool(payable(proxy));
+        ethereumSpokePool = Ethereum_SpokePool(payable(spokePoolProxy));
         ethereumSpokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
         ethereumSpokePool.setEnableRoute(address(mockERC20), destinationChainId, true);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
         vm.stopPrank();
 
         deal(depositor, mintAmount);
         deal(address(mockERC20), depositor, mintAmount, true);
         deal(address(mockERC20), address(dex), depositAmount, true);
-        // deal(address(mockWETH), address(dex), depositAmount, true);
         vm.startPrank(depositor);
         mockWETH.deposit{ value: mintAmount }();
-        mockERC20.approve(address(spokePoolPeriphery), mintAmount);
-        IERC20(address(mockWETH)).approve(address(spokePoolPeriphery), mintAmount);
-        IERC20(address(mockWETH)).approve(address(approveProxy), mintAmount);
+        mockERC20.approve(address(proxy), mintAmount);
+        IERC20(address(mockWETH)).approve(address(proxy), mintAmount);
         vm.stopPrank();
     }
 
-    function testInitialize() public {
+    function testInitializePeriphery() public {
         SpokePoolV3Periphery _spokePoolPeriphery = new SpokePoolV3Periphery();
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
-
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
         assertEq(address(_spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
         assertEq(address(_spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
+        assertEq(address(_spokePoolPeriphery.proxy()), address(proxy));
         assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
-
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
+    }
+
+    function testInitializeProxy() public {
+        SpokePoolPeripheryProxy _proxy = new SpokePoolPeripheryProxy();
+        _proxy.initialize(spokePoolPeriphery);
+        assertEq(address(_proxy.SPOKE_POOL_PERIPHERY()), address(spokePoolPeriphery));
+        vm.expectRevert(SpokePoolPeripheryProxy.ContractInitialized.selector);
+        _proxy.initialize(spokePoolPeriphery);
     }
 
     function testSwapAndBridge() public {
@@ -118,7 +124,7 @@ contract SpokePoolPeripheryTest is Test {
             address(0), // exclusiveRelayer
             new bytes(0)
         );
-        spokePoolPeriphery.swapAndBridge(
+        proxy.swapAndBridge(
             IERC20(address(mockWETH)), // swapToken
             IERC20(mockERC20), // acrossInputToken
             address(dex),
@@ -149,6 +155,8 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testSwapAndBridgeWithValue() public {
+        // Unlike previous test, this one calls the spokePoolPeriphery directly rather than through the proxy
+        // because there is no approval required to be set on the periphery.
         deal(depositor, mintAmount);
 
         // Should emit expected deposit event
@@ -200,7 +208,48 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
+    function testDeposit() public {
+        // Should emit expected deposit event
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockWETH),
+            address(0),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        proxy.depositERC20(
+            IERC20(address(mockWETH)), // inputToken
+            mintAmount, // inputAmount
+            SpokePoolV3Periphery.DepositData({
+                outputToken: address(0),
+                outputAmount: mintAmount,
+                depositor: depositor,
+                recipient: depositor,
+                destinationChainId: destinationChainId,
+                exclusiveRelayer: address(0),
+                quoteTimestamp: uint32(block.timestamp),
+                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                exclusivityParameter: 0,
+                message: new bytes(0)
+            })
+        );
+
+        vm.stopPrank();
+    }
+
     function testDepositWithValue() public {
+        // Unlike previous test, this one calls the spokePoolPeriphery directly rather than through the proxy
+        // because there is no approval required to be set on the periphery.
         deal(depositor, mintAmount);
 
         // Should emit expected deposit event
@@ -232,55 +281,6 @@ contract SpokePoolPeripheryTest is Test {
             uint32(block.timestamp) + fillDeadlineBuffer,
             0,
             new bytes(0)
-        );
-
-        vm.stopPrank();
-    }
-
-    function testApproveProxy() public {
-        // Should emit expected deposit event
-        vm.startPrank(depositor);
-        vm.expectEmit(address(ethereumSpokePool));
-        emit V3SpokePoolInterface.V3FundsDeposited(
-            address(mockERC20),
-            address(0),
-            depositAmount,
-            depositAmount,
-            destinationChainId,
-            0, // depositId
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
-            0, // exclusivityDeadline
-            depositor,
-            depositor,
-            address(0), // exclusiveRelayer
-            new bytes(0)
-        );
-        approveProxy.swapAndBridge(
-            IERC20(address(mockWETH)), // swapToken
-            IERC20(mockERC20), // acrossInputToken
-            address(dex),
-            abi.encodeWithSelector(
-                dex.swap.selector,
-                IERC20(address(mockWETH)),
-                IERC20(mockERC20),
-                mintAmount,
-                depositAmount
-            ),
-            mintAmount, // swapTokenAmount
-            depositAmount, // minExpectedInputTokenAmount
-            SpokePoolV3Periphery.DepositData({
-                outputToken: address(0),
-                outputAmount: depositAmount,
-                depositor: depositor,
-                recipient: depositor,
-                destinationChainId: destinationChainId,
-                exclusiveRelayer: address(0),
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                exclusivityParameter: 0,
-                message: new bytes(0)
-            })
         );
 
         vm.stopPrank();
