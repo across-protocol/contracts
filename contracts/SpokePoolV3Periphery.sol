@@ -30,6 +30,31 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
+    bytes private constant ACROSS_DEPOSIT_DATA_TYPE =
+        abi.encodePacked(
+            "DepositData(",
+            "address outputToken",
+            "uint256 outputAmount",
+            "address depositor",
+            "address recipient",
+            "uint256 destinationChainId",
+            "address exclusiveRelayer",
+            "uint32 quoteTimestamp",
+            "uint32 fillDeadline",
+            "uint32 exclusivityParameter",
+            "bytes message)"
+        );
+    bytes32 private constant ACROSS_DEPOSIT_DATA_TYPEHASH = keccak256(ACROSS_DEPOSIT_DATA_TYPE);
+    string private constant ACROSS_DEPOSIT_TYPE_STRING =
+        string(
+            abi.encodePacked(
+                "DepositData witness)",
+                ACROSS_DEPOSIT_DATA_TYPE,
+                "TokenPermissions(address token, uint256 amount)"
+            )
+        );
+
+    // Flag set for one time initialization.
     bool private initialized;
 
     // Canonical Permit2 contract address.
@@ -167,6 +192,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
      */
     function swapAndBridgeWithPermit2(
         IERC20 acrossInputToken,
+        address depositor,
         address exchange,
         bytes calldata routerCalldata,
         uint256 minExpectedInputTokenAmount,
@@ -175,7 +201,29 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
         IPermit2.SignatureTransferDetails calldata transferDetails,
         bytes calldata signature
     ) external nonReentrant {
-        permit2.permitTransferFrom(permit, transferDetails, msg.sender, signature);
+        bytes32 witness = keccak256(
+            abi.encode(
+                ACROSS_DEPOSIT_DATA_TYPEHASH,
+                depositData.outputToken,
+                depositData.outputAmount,
+                depositData.depositor,
+                depositData.recipient,
+                depositData.destinationChainId,
+                depositData.exclusiveRelayer,
+                depositData.quoteTimestamp,
+                depositData.fillDeadline,
+                depositData.exclusivityParameter,
+                depositData.message
+            )
+        );
+        permit2.permitWitnessTransferFrom(
+            permit,
+            transferDetails,
+            depositor,
+            witness,
+            ACROSS_DEPOSIT_TYPE_STRING,
+            signature
+        );
         _callSwapAndBridge(
             IERC20(permit.permitted.token),
             acrossInputToken,
@@ -292,6 +340,48 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
         try acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s) {} catch {}
 
         _callDeposit(_acrossInputToken, acrossInputAmount, depositData);
+    }
+
+    /**
+     * @notice Uses permit2 to transfer and submit an Across deposit to the Spoke Pool contract.
+     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
+     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param permit The permit data signed over by the owner.
+     * @param transferDetails The spender's requested transfer details for the permitted token.
+     * @param signature The signature to verify.
+     */
+    function depositWithPermit2(
+        address depositor,
+        SpokePoolV3Periphery.DepositData calldata depositData,
+        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2.SignatureTransferDetails calldata transferDetails,
+        bytes calldata signature
+    ) external nonReentrant {
+        bytes32 witness = keccak256(
+            abi.encode(
+                ACROSS_DEPOSIT_DATA_TYPEHASH,
+                depositData.outputToken,
+                depositData.outputAmount,
+                depositData.depositor,
+                depositData.recipient,
+                depositData.destinationChainId,
+                depositData.exclusiveRelayer,
+                depositData.quoteTimestamp,
+                depositData.fillDeadline,
+                depositData.exclusivityParameter,
+                depositData.message
+            )
+        );
+        permit2.permitWitnessTransferFrom(
+            permit,
+            transferDetails,
+            depositor,
+            witness,
+            ACROSS_DEPOSIT_TYPE_STRING,
+            signature
+        );
+        _callDeposit(IERC20(permit.permitted.token), permit.permitted.amount, depositData);
     }
 
     /**

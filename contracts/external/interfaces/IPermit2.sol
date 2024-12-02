@@ -18,13 +18,6 @@ interface IPermit2 {
         uint256 requestedAmount;
     }
 
-    function permitTransferFrom(
-        PermitTransferFrom memory permit,
-        SignatureTransferDetails calldata transferDetails,
-        address owner,
-        bytes calldata signature
-    ) external;
-
     function permitWitnessTransferFrom(
         PermitTransferFrom memory permit,
         SignatureTransferDetails calldata transferDetails,
