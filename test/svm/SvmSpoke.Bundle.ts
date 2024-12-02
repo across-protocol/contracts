@@ -1180,7 +1180,7 @@ describe("svm_spoke.bundle", () => {
     });
   });
 
-  it("Increments pending amount to HubPool and emits TokensBridged event", async () => {
+  it("Increments pending amount to HubPool", async () => {
     const initialPendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
 
     const incrementPendingToHubPool = async (amountToReturn: BN) => {
