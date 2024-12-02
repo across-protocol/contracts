@@ -90,13 +90,13 @@ async function rebalanceToSpokePool(): Promise<void> {
   const tree = new MerkleTree(poolRebalanceLeaves, hashFn);
 
   // Propose the rebalance to the spoke pool.
-  console.log("Proposing rebalance to spoke pool:");
+  console.log(`Proposing ${netSendAmount.toString()} rebalance to spoke pool:`);
   const tx = await hubPool.connect(ethersSigner).proposeRootBundle(
     [0], // bundleEvaluationBlockNumbers, not checked in this script.
     poolRebalanceLeaves.length, // poolRebalanceLeafCount.
     tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
-    crypto.randomBytes(32), // relayerRefundRoot, not relevant for this script.
-    crypto.randomBytes(32) // slowRelayRoot, not relevant for this test.
+    ethers.constants.HashZero, // relayerRefundRoot, not relevant for this script.
+    ethers.constants.HashZero // slowRelayRoot, not relevant for this test.
   );
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();
