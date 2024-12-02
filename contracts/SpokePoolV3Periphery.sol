@@ -32,6 +32,9 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
 
     bool private initialized;
 
+    // Canonical Permit2 contract address.
+    IPermit2 public permit2;
+
     // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
     // so this contract should also be able to be deterministically deployed at the same address across all networks
     // since the periphery address is the only constructor argument.
@@ -39,6 +42,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
 
     error LeftoverInputTokens();
     error InvalidPeriphery();
+    error InvalidPermit2();
     error ContractInitialized();
 
     /**
@@ -54,11 +58,13 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
      * @notice Initialize the SpokePoolPeripheryProxy contract.
      * @param _spokePoolPeriphery Address of the SpokePoolPeriphery contract that this proxy will call.
      */
-    function initialize(SpokePoolV3Periphery _spokePoolPeriphery) external nonReentrant {
+    function initialize(SpokePoolV3Periphery _spokePoolPeriphery, IPermit2 _permit2) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
         if (!address(_spokePoolPeriphery).isContract()) revert InvalidPeriphery();
         SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
+        if (!address(_permit2).isContract()) revert InvalidPermit2();
+        permit2 = _permit2;
     }
 
     /**
@@ -142,7 +148,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
             depositData
         );
     }
-    
+
     /**
      * @notice Uses permit2 to transfer tokens from a user before swapping a token on this chain via specified router and submitting an Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
@@ -164,7 +170,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
         address exchange,
         bytes calldata routerCalldata,
         uint256 minExpectedInputTokenAmount,
-        DepositData calldata depositData,
+        SpokePoolV3Periphery.DepositData calldata depositData,
         IPermit2.PermitTransferFrom calldata permit,
         IPermit2.SignatureTransferDetails calldata transferDetails,
         bytes calldata signature
@@ -374,15 +380,11 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     // Wrapped native token contract address.
     WETH9Interface public wrappedNativeToken;
 
-    // Canonical Permit2 contract address.
-    IPermit2 public permit2;
-
     // Address of the proxy contract that users should interact with to call this contract.
     // Force users to call through this contract to make sure they don't leave any approvals/permits
     // outstanding on this contract that could be abused because this contract executes arbitrary
     // calldata.
     address public proxy;
-
 
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
@@ -466,15 +468,13 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function initialize(
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
-        address _proxy,
-        IPermit2 _permit2
+        address _proxy
     ) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
 
         if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
-        permit2 = _permit2;
         wrappedNativeToken = _wrappedNativeToken;
         if (!_proxy.isContract()) revert InvalidProxy();
         proxy = _proxy;

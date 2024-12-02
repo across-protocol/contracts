@@ -1,0 +1,32 @@
+import { IPermit2 } from "../external/interfaces/IPermit2.sol";
+
+contract MockPermit2 is IPermit2 {
+    function permitTransferFrom(
+        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2.SignatureTransferDetails calldata transferDetails,
+        address spender,
+        bytes calldata signature
+    ) external override {
+        // do nothing
+    }
+
+    function permitWitnessTransferFrom(
+        PermitTransferFrom memory permit,
+        SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes32 witness,
+        string calldata witnessTypeString,
+        bytes calldata signature
+    ) external override {
+        // do nothing
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint160 amount,
+        address token
+    ) external override {
+        // do nothing
+    }
+}

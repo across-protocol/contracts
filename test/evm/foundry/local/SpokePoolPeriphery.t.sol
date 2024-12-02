@@ -10,6 +10,7 @@ import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePo
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
+import { MockPermit2 } from "../../../../contracts/test/MockPermit2.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -56,12 +57,12 @@ contract SpokePoolPeripheryTest is Test {
         depositor = vm.addr(1);
         owner = vm.addr(2);
         recipient = vm.addr(3);
-        permit2 = IPermit2(vm.addr(4));
+        permit2 = IPermit2(new MockPermit2());
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
         proxy = new SpokePoolPeripheryProxy();
-        proxy.initialize(spokePoolPeriphery);
+        proxy.initialize(spokePoolPeriphery, permit2);
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
             fillDeadlineBuffer,
@@ -73,7 +74,7 @@ contract SpokePoolPeripheryTest is Test {
         ethereumSpokePool = Ethereum_SpokePool(payable(spokePoolProxy));
         ethereumSpokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
         ethereumSpokePool.setEnableRoute(address(mockERC20), destinationChainId, true);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy));
         vm.stopPrank();
 
         deal(depositor, mintAmount);
@@ -88,21 +89,21 @@ contract SpokePoolPeripheryTest is Test {
 
     function testInitializePeriphery() public {
         SpokePoolV3Periphery _spokePoolPeriphery = new SpokePoolV3Periphery();
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy));
         assertEq(address(_spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
         assertEq(address(_spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
         assertEq(address(_spokePoolPeriphery.proxy()), address(proxy));
-        assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy));
     }
 
     function testInitializeProxy() public {
         SpokePoolPeripheryProxy _proxy = new SpokePoolPeripheryProxy();
-        _proxy.initialize(spokePoolPeriphery);
+        _proxy.initialize(spokePoolPeriphery, permit2);
         assertEq(address(_proxy.SPOKE_POOL_PERIPHERY()), address(spokePoolPeriphery));
+        assertEq(address(_proxy.permit2()), address(permit2));
         vm.expectRevert(SpokePoolPeripheryProxy.ContractInitialized.selector);
-        _proxy.initialize(spokePoolPeriphery);
+        _proxy.initialize(spokePoolPeriphery, permit2);
     }
 
     function testSwapAndBridge() public {
