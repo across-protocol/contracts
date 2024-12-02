@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 // eslint-disable-next-line camelcase
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 import yargs from "yargs";
