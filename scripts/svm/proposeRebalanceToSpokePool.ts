@@ -71,35 +71,41 @@ async function rebalanceToSpokePool(): Promise<void> {
     console.log(`✔️ tx confirmed`);
   }
 
-  // Construct the merkle tree for the pool rebalance.
-  const poolRebalanceLeaves = [
-    {
-      chainId: solanaChainId,
-      groupIndex: BigNumber.from(1), // Not 0 as this script is not relaying root bundles, only sending tokens to spoke.
-      bundleLpFees: [BigNumber.from(0)],
-      netSendAmounts: [netSendAmount],
-      runningBalances: [netSendAmount],
-      leafId: BigNumber.from(0),
-      l1Tokens: [l1TokenAddress],
-    },
-  ];
-  const paramType =
-    "tuple( uint256 chainId, uint256[] bundleLpFees, int256[] netSendAmounts, int256[] runningBalances, uint256 groupIndex, uint8 leafId, address[] l1Tokens )";
-  const hashFn = (input: any) => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([paramType], [input]));
-  const tree = new MerkleTree(poolRebalanceLeaves, hashFn);
+  // Construct simple merkle tree for the pool rebalance.
+  const { poolRebalanceTree } = constructSimpleRebalanceTree(l1TokenAddress, netSendAmount, solanaChainId);
 
   // Propose the rebalance to the spoke pool.
   console.log(`Proposing ${netSendAmount.toString()} rebalance to spoke pool:`);
   const tx = await hubPool.connect(ethersSigner).proposeRootBundle(
     [0], // bundleEvaluationBlockNumbers, not checked in this script.
-    poolRebalanceLeaves.length, // poolRebalanceLeafCount.
-    tree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
+    1, // poolRebalanceLeafCount.
+    poolRebalanceTree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
     ethers.constants.HashZero, // relayerRefundRoot, not relevant for this script.
     ethers.constants.HashZero // slowRelayRoot, not relevant for this test.
   );
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();
   console.log(`✔️ tx confirmed`);
+}
+
+export function constructSimpleRebalanceTree(l1TokenAddress: string, netSendAmount: BigNumber, chainId: BigNumber) {
+  const poolRebalanceLeaf = {
+    chainId,
+    groupIndex: BigNumber.from(1), // Not 0 as this script is not relaying root bundles, only sending tokens to spoke.
+    bundleLpFees: [BigNumber.from(0)],
+    netSendAmounts: [netSendAmount],
+    runningBalances: [netSendAmount],
+    leafId: BigNumber.from(0),
+    l1Tokens: [l1TokenAddress],
+  };
+
+  const rebalanceParamType =
+    "tuple( uint256 chainId, uint256[] bundleLpFees, int256[] netSendAmounts, int256[] runningBalances, uint256 groupIndex, uint8 leafId, address[] l1Tokens )";
+  const rebalanceHashFn = (input: any) =>
+    ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([rebalanceParamType], [input]));
+
+  const poolRebalanceTree = new MerkleTree([poolRebalanceLeaf], rebalanceHashFn);
+  return { poolRebalanceLeaf, poolRebalanceTree };
 }
 
 // Run the rebalanceToSpokePool function
