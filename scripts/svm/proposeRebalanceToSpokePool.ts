@@ -5,7 +5,7 @@ import { hideBin } from "yargs/helpers";
 import { ethers, BigNumber } from "ethers";
 // eslint-disable-next-line camelcase
 import { BondToken__factory, HubPool__factory } from "../../typechain";
-import { constructSimpleRebalanceTree } from "./utils/rebalanceTree";
+import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 
 // Set up Ethereum provider.
 if (!process.env.ETHERS_PROVIDER_URL) {
