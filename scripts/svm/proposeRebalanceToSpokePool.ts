@@ -1,3 +1,9 @@
+// This script proposes root bundle on HubPool that would rebalance tokens to Solana Spoke Pool once executed.
+// Required environment:
+// - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
+// - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - HUB_POOL_ADDRESS: Hub Pool address
+
 // eslint-disable-next-line camelcase
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 import yargs from "yargs";
@@ -44,6 +50,19 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
   );
   const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
 
+  // Construct simple merkle tree for the pool rebalance.
+  const { poolRebalanceTree } = constructSimpleRebalanceTree(l1TokenAddress, netSendAmount, solanaChainId);
+
+  console.log("Proposing rebalance pool bundle to spoke...");
+  console.table([
+    { Property: "originChainId", Value: evmChainId.toString() },
+    { Property: "targetChainId", Value: solanaChainId.toString() },
+    { Property: "hubPoolAddress", Value: hubPool.address },
+    { Property: "l1TokenAddress", Value: l1TokenAddress },
+    { Property: "netSendAmount", Value: netSendAmount.toString() },
+    { Property: "poolRebalanceRoot", Value: poolRebalanceTree.getHexRoot() },
+  ]);
+
   // Check there are no active proposals.
   const currentRootBundleProposal = await hubPool.callStatic.rootBundleProposal();
   if (currentRootBundleProposal.unclaimedPoolRebalanceLeafCount !== 0) throw new Error("Proposal has unclaimed leaves");
@@ -71,9 +90,6 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
     console.log(`✔️ tx confirmed`);
   }
 
-  // Construct simple merkle tree for the pool rebalance.
-  const { poolRebalanceTree } = constructSimpleRebalanceTree(l1TokenAddress, netSendAmount, solanaChainId);
-
   // Propose the rebalance to the spoke pool.
   console.log(`Proposing ${netSendAmount.toString()} rebalance to spoke pool:`);
   const tx = await hubPool.connect(ethersSigner).proposeRootBundle(
@@ -86,6 +102,10 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();
   console.log(`✔️ tx confirmed`);
+
+  console.log(
+    "Rebalance proposal submitted successfully, to execute, run executeRebalanceToSpokePool script with the same netSendAmount after liveness period."
+  );
 }
 
 // Run the proposeRebalanceToSpokePool function
