@@ -302,7 +302,7 @@ describe("SpokePool Relayer Logic", async function () {
         const relayExecution = await getRelayExecutionParams(_relayData, consts.destinationChainId);
 
         // Handler is called with expected params.
-        const fill = await spokePool.connect(relayer).fillRelayV3Internal(
+        await spokePool.connect(relayer).fillRelayV3Internal(
           relayExecution,
           addressToBytes(relayer.address),
           false // isSlowFill
@@ -563,7 +563,7 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool
             .connect(relayer)
             .fillV3RelayWithUpdatedDeposit(
-              { ...relayData, depositId: relayData.depositId + 1 },
+              { ...relayData, depositId: relayData.depositId.add(toBN(1)) },
               consts.repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
