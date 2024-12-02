@@ -21,6 +21,7 @@ import {
   FakeContract,
   createFakeFromABI,
   addressToBytes,
+  toBN,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -329,7 +330,7 @@ describe("Polygon Spoke Pool", function () {
       inputAmount: toWei("1"),
       outputAmount: toWei("1"),
       originChainId: originChainId,
-      depositId: 0,
+      depositId: toBN(0),
       fillDeadline: currentTime + 7200,
       exclusivityDeadline: 0,
       message: "0x1234",
