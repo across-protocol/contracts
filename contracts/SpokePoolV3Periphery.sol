@@ -424,7 +424,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     // calldata.
     address public proxy;
 
-    // Nonce for this contract to use for EIP1217 "signatures".
+    // Nonce for this contract to use for EIP1271 "signatures".
     uint48 private nonce;
 
     // Boolean indicating whether the contract is initialized.
@@ -434,11 +434,11 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
     bytes32 private cachedSwapHash;
 
-    // EIP 1217 magic bytes indicating a valid signature.
-    bytes4 private constant EIP1217_VALID_SIGNATURE = 0x1626ba7e;
+    // EIP 1271 magic bytes indicating a valid signature.
+    bytes4 private constant EIP1271_VALID_SIGNATURE = 0x1626ba7e;
 
-    // EIP 1217 bytes indicating an invalid signature.
-    bytes4 private constant EIP1217_INVALID_SIGNATURE = 0xffffffff;
+    // EIP 1271 bytes indicating an invalid signature.
+    bytes4 private constant EIP1271_INVALID_SIGNATURE = 0xffffffff;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -657,9 +657,9 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             uint256(cachedSwapHash) != 0 &&
             _signature.length == 32
         ) {
-            return EIP1217_VALID_SIGNATURE;
+            return EIP1271_VALID_SIGNATURE;
         }
-        return EIP1217_INVALID_SIGNATURE;
+        return EIP1271_INVALID_SIGNATURE;
     }
 
     /**
