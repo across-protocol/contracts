@@ -204,45 +204,6 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
-    function testDeposit() public {
-        // Should emit expected deposit event
-        vm.startPrank(depositor);
-        vm.expectEmit(address(ethereumSpokePool));
-        emit V3SpokePoolInterface.V3FundsDeposited(
-            address(mockWETH),
-            address(0),
-            mintAmount,
-            mintAmount,
-            destinationChainId,
-            0, // depositId
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
-            0, // exclusivityDeadline
-            depositor,
-            depositor,
-            address(0), // exclusiveRelayer
-            new bytes(0)
-        );
-        proxy.depositERC20(
-            IERC20(address(mockWETH)), // inputToken
-            mintAmount, // inputAmount
-            SpokePoolV3Periphery.DepositData({
-                outputToken: address(0),
-                outputAmount: mintAmount,
-                depositor: depositor,
-                recipient: depositor,
-                destinationChainId: destinationChainId,
-                exclusiveRelayer: address(0),
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                exclusivityParameter: 0,
-                message: new bytes(0)
-            })
-        );
-
-        vm.stopPrank();
-    }
-
     function testDepositWithValue() public {
         // Unlike previous test, this one calls the spokePoolPeriphery directly rather than through the proxy
         // because there is no approval required to be set on the periphery.

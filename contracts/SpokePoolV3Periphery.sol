@@ -208,24 +208,6 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
     }
 
     /**
-     * @notice Deposits an ERC20 token into the Spoke Pool contract.
-     * @dev User should probably just call SpokePool.depositV3 directly to save marginal gas costs,
-     * but this is added here for convenience in case caller only wants to interface Across through a single
-     * address.
-     * @param acrossInputToken ERC20 token to deposit.
-     * @param acrossInputAmount Amount of the input token to deposit.
-     * @param depositData Specifies the Across deposit params to send.
-     */
-    function depositERC20(
-        IERC20 acrossInputToken,
-        uint256 acrossInputAmount,
-        SpokePoolV3Periphery.DepositData calldata depositData
-    ) external nonReentrant {
-        IERC20(acrossInputToken).safeTransferFrom(msg.sender, address(this), acrossInputAmount);
-        _callDeposit(IERC20(address(acrossInputToken)), acrossInputAmount, depositData);
-    }
-
-    /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @param acrossInputToken EIP-2612 compliant token to deposit.
@@ -319,6 +301,8 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
         SpokePoolV3Periphery.DepositData calldata depositData
     ) internal {
         acrossInputToken.forceApprove(address(SPOKE_POOL_PERIPHERY), acrossInputAmount);
+        // Periphery.depositERC20 sets msg.sender as the spender in a safeTransferFrom call so there is no way
+        // for the caller to use this method to steal a third party user's funds.
         SPOKE_POOL_PERIPHERY.depositERC20(acrossInputToken, acrossInputAmount, depositData);
     }
 }
@@ -553,6 +537,8 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         DepositData calldata depositData
     ) external nonReentrant onlyProxy {
         acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
+        // _depositV3 calls spokePool.depositV3 which calls safeTransferFrom with the spender as the msg.sender
+        // so there is no way for someone to use this function to deposit using a third party's funds.
         _depositV3(acrossInputToken, acrossInputAmount, depositData);
     }
 
