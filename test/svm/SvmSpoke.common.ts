@@ -7,6 +7,7 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import { evmAddressToPublicKey } from "../../src/SvmUtils";
 import { assert } from "chai";
 import { SlowFillLeaf } from "./utils";
+import { randomBytes } from "crypto";
 
 const provider = anchor.AnchorProvider.env();
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
@@ -41,7 +42,7 @@ const initializeState = async (
     fillDeadlineBuffer: BN;
   }
 ) => {
-  const actualSeed = seed || new BN(Math.floor(Math.random() * 1000000));
+  const actualSeed = seed || new BN(randomBytes(8).toString("hex"), 16);
   const seeds = [Buffer.from("state"), actualSeed.toArrayLike(Buffer, "le", 8)];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
   if (!initialState) {
