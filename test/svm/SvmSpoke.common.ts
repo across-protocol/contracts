@@ -42,7 +42,7 @@ const initializeState = async (
     fillDeadlineBuffer: BN;
   }
 ) => {
-  const actualSeed = seed || new BN(randomBytes(8).toString("hex"), 16);
+  const actualSeed = seed || new BN(randomBytes(8).toString("hex"), 16); // Generate a random u64
   const seeds = [Buffer.from("state"), actualSeed.toArrayLike(Buffer, "le", 8)];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
   if (!initialState) {
