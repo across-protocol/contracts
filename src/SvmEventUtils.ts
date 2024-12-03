@@ -1,73 +1,88 @@
-import { Connection, Finality, SignaturesForAddressOptions, PublicKey, TransactionSignature } from "@solana/web3.js";
+import { Connection, Finality, SignaturesForAddressOptions, PublicKey, ConfirmedSignatureInfo } from "@solana/web3.js";
 import { Program, utils, Idl } from "@coral-xyz/anchor";
 
-// In-memory store for events
-const eventStore = new Map<number, any[]>();
+export interface EventType {
+  program: PublicKey;
+  data: any;
+  name: string;
+  slot: number;
+  confirmationStatus: string;
+  blockTime: number;
+  signature: string;
+}
 
 // Function to update the event store with all events using pagination
-export async function update(
-  connection: Connection,
-  program: Program<any>,
-  eventStore: Map<number, any[]>,
-  options?: SignaturesForAddressOptions
-) {
-  let allEvents: any[] = [];
-  options = options || { limit: 1000 }; // Default limit
-  let signatures: any[] = [];
+export async function update(connection: Connection, program: Program<any>, eventStore: Map<number, EventType[]>) {
+  let options: SignaturesForAddressOptions = { limit: 1000 }; // Default max limit of 1000.
+
+  let signatures: ConfirmedSignatureInfo[] = [];
 
   // Fetch signatures in batches
   do {
-    const fetchedSignatures = await connection.getSignaturesForAddress(program.programId, options);
+    const fetchedSignatures = await connection.getSignaturesForAddress(program.programId, options, "finalized");
     signatures = fetchedSignatures;
 
-    // Fetch events for each signature
-    for (const signature of signatures) {
-      const txEvents = await readEvents(connection, signature.signature, [program]);
-      allEvents.push(...txEvents);
+    // Fetch events for each signature in parallel
+    const readEventsPromises = signatures.map(async (signature) => {
+      const events = await readEvents(connection, signature.signature, [program]);
+      return {
+        events: events.map((event) => ({
+          ...event,
+          confirmationStatus: signature.confirmationStatus,
+          blockTime: signature.blockTime,
+          signature: signature.signature,
+        })),
+        slot: signature.slot,
+      }; // Return events with associated slot
+    });
+    const eventsWithSlots = await Promise.all(readEventsPromises);
 
-      // Store events by slot number
-      const slot = signature.slot; // Assuming signature object has a slot property
+    // Flatten the array of events and store them by slot number
+    for (const { events, slot } of eventsWithSlots) {
+      const eventsWithSlot = events.map((event) => ({ ...event, slot }));
+
       if (!eventStore.has(slot)) {
         eventStore.set(slot, []);
       }
-      eventStore.get(slot)?.push(...txEvents);
+
+      // Append events only if the signature is not already present
+      const existingEvents = eventStore.get(slot) || [];
+      const newEvents = eventsWithSlot.filter(
+        (event) => !existingEvents.some((existingEvent) => existingEvent.signature === event.signature)
+      );
+
+      eventStore.get(slot)?.push(...newEvents); // Store new events with slot
     }
 
-    // Update options for the next batch
-    if (signatures.length > 0) {
-      options = {
-        ...options,
-        before: signatures[signatures.length - 1].signature, // Set before to the last fetched signature
-      };
-    }
+    // Update options for the next batch. Set before to the last fetched signature.
+    if (signatures.length > 0) options = { ...options, before: signatures[signatures.length - 1].signature };
+
+    if (options.limit && signatures.length < options.limit) break; // Exit early if the number of signatures < limit
   } while (signatures.length > 0);
-
-  return allEvents;
 }
 
-export async function readProgramEvents(
-  connection: Connection,
-  program: Program<any>,
-  eventStore: Map<number, any[]>,
-  options?: SignaturesForAddressOptions,
-  finality: Finality = "confirmed"
-) {
-  console.time("readProgramEvents Total Time");
-  const events = await update(connection, program, eventStore, options); // Call the update function to store events
-  console.timeEnd("readProgramEvents Total Time");
-  return events;
-}
-
-// Helper method to query events by slot range and event name
-export function queryEventsBySlotRange(startSlot: number, endSlot: number, eventName: string): any[] {
+// Helper method to query events by event name and optional slot range. startSlot and endSlot are inclusive.
+export function queryEventsBySlotRange(
+  eventName: string,
+  eventStore: Map<number, EventType[]>,
+  startSlot?: number,
+  endSlot?: number
+): EventType[] {
   let queriedEvents = [];
-  for (let slot = startSlot; slot <= endSlot; slot++) {
+
+  // Determine the range of slots to search
+  const slots = Array.from(eventStore.keys());
+  const minSlot = startSlot ?? Math.min(...slots);
+  const maxSlot = endSlot ?? Math.max(...slots);
+
+  for (let slot = minSlot; slot <= maxSlot; slot++) {
     if (eventStore.has(slot)) {
       const eventsAtSlot = eventStore.get(slot);
       const filteredEvents = eventsAtSlot?.filter((event) => event.name === eventName);
       queriedEvents.push(...(filteredEvents ?? []));
     }
   }
+
   return queriedEvents;
 }
 
@@ -77,10 +92,7 @@ export async function readEvents<IDL extends Idl = Idl>(
   programs: Program<IDL>[],
   commitment: Finality = "confirmed"
 ) {
-  const txResult = await connection.getTransaction(txSignature, {
-    commitment,
-    maxSupportedTransactionVersion: 0,
-  });
+  const txResult = await connection.getTransaction(txSignature, { commitment, maxSupportedTransactionVersion: 0 });
 
   let eventAuthorities = new Map();
   for (const program of programs) {
