@@ -430,9 +430,9 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
 
-    // Slot for keeping a swap identifier. Used to confirm whether a signature originated from this contract or not.
+    // Slot for checking whether this contract is expecting a callback from permit2. Used to confirm whether it should return a valid signature response.
     // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
-    bytes32 private cachedSwapHash;
+    bool private expectingPermit2Callback;
 
     // EIP 1271 magic bytes indicating a valid signature.
     bytes4 private constant EIP1271_VALID_SIGNATURE = 0x1626ba7e;
@@ -646,20 +646,14 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
     /**
      * @notice Verifies that the signer is the owner of the signing contract.
-     * @param _signature The signature to verify.
-     * @dev The _hash field is intentionally ignored since this contract only expects to receive data from permit2,
-     * which should return an EIP712 hash of PermitSingle.
+     * @dev The _hash and _signature fields are intentionally ignored since this contract will accept
+     * any signature which originated from permit2 after the call to the exchange.
+     * @dev This is safe since this contract should never hold funds nor approvals, other than when it is depositing or swapping.
      */
-    function isValidSignature(bytes32, bytes calldata _signature) external view returns (bytes4 magicBytes) {
-        if (
-            msg.sender != address(permit2) &&
-            bytes32(_signature) == cachedSwapHash &&
-            uint256(cachedSwapHash) != 0 &&
-            _signature.length == 32
-        ) {
-            return EIP1271_VALID_SIGNATURE;
-        }
-        return EIP1271_INVALID_SIGNATURE;
+    function isValidSignature(bytes32, bytes calldata) external view returns (bytes4 magicBytes) {
+        magicBytes = (msg.sender == address(permit2) && expectingPermit2Callback)
+            ? EIP1271_VALID_SIGNATURE
+            : EIP1271_INVALID_SIGNATURE;
     }
 
     /**
@@ -708,30 +702,27 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         if (_transferType == TransferType.Approval) _swapToken.forceApprove(_exchange, _swapTokenAmount);
         else if (_transferType == TransferType.Transfer) _swapToken.transfer(_exchange, _swapTokenAmount);
         else {
-            IPermit2.PermitSingle memory permitSingle = IPermit2.PermitSingle({
-                details: IPermit2.PermitDetails({
-                    token: address(_swapToken),
-                    amount: uint160(_swapTokenAmount),
-                    expiration: uint48(block.timestamp),
-                    nonce: nonce++
-                }),
-                spender: _exchange,
-                sigDeadline: block.timestamp
-            });
-            cachedSwapHash = keccak256(abi.encode(permitSingle, depositData.depositor));
-
             permit2.permit(
                 address(this), // owner
-                permitSingle, // permitSingle
-                // Pass in a hash of the swap and deposit details to the permit2 contract so that this contract can check if it matches the cached data.
-                abi.encodePacked(cachedSwapHash)
+                IPermit2.PermitSingle({
+                    details: IPermit2.PermitDetails({
+                        token: address(_swapToken),
+                        amount: uint160(_swapTokenAmount),
+                        expiration: uint48(block.timestamp),
+                        nonce: nonce++
+                    }),
+                    spender: _exchange,
+                    sigDeadline: block.timestamp
+                }), // permitSingle
+                "0x" // signature is unused. The only verification for a valid signature is if we are at this code block.
             );
+            expectingPermit2Callback = true;
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = _exchange.call(swapData.routerCalldata);
         require(success, string(result));
 
-        cachedSwapHash = bytes32(uint256(0));
+        expectingPermit2Callback = false;
         _checkSwapOutputAndDeposit(
             _exchange,
             swapData.routerCalldata,
