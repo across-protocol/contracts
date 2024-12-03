@@ -96,6 +96,11 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
         );
     }
 
+    // TODO: Consider moving swapAndBridgeWithPermit, swapAndBridgeWithPermit2
+    // and swapAndBridgeWithAuthorization to SpokePoolPeriphery because there is no way for a third party to call those
+    // functions to "steal" a user's funds. swapAndBridge() on the periphery contract can only be used to steal a
+    // user's approval.
+
     /**
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
