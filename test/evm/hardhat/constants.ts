@@ -42,7 +42,7 @@ export const originChainId = 666;
 
 export const repaymentChainId = 777;
 
-export const firstDepositId = 0;
+export const firstDepositId = toBN(0);
 
 export const bondAmount = toWei("5");
 

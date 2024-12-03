@@ -122,7 +122,7 @@ describe("MerkleLib Proofs", async function () {
         inputAmount: randomBigNumber(),
         outputAmount: randomBigNumber(),
         originChainId: randomBigNumber(2).toNumber(),
-        depositId: BigNumber.from(i).toNumber(),
+        depositId: BigNumber.from(i),
         fillDeadline: randomBigNumber(2).toNumber(),
         exclusivityDeadline: randomBigNumber(2).toNumber(),
         message: ethers.utils.hexlify(ethers.utils.randomBytes(1024)),

@@ -404,7 +404,7 @@ describe("SpokePool Depositor Logic", async function () {
         inputAmount: amountToDeposit,
         outputAmount: amountToDeposit.sub(19),
         originChainId: originChainId,
-        depositId: 0,
+        depositId: toBN(0),
         fillDeadline: quoteTimestamp + 1000,
         exclusivityDeadline: 0,
         message: "0x",
@@ -869,7 +869,7 @@ describe("SpokePool Depositor Logic", async function () {
     const updatedOutputAmount = amountToDeposit.add(1);
     const updatedRecipient = randomAddress();
     const updatedMessage = "0x1234";
-    const depositId = 100;
+    const depositId = toBN(100);
     it("_verifyUpdateV3DepositMessage", async function () {
       const signature = await getUpdatedV3DepositSignature(
         depositor,
@@ -905,7 +905,7 @@ describe("SpokePool Depositor Logic", async function () {
       // @dev Creates an invalid signature using different params
       const invalidSignature = await getUpdatedV3DepositSignature(
         depositor,
-        depositId + 1,
+        depositId.add(toBN(1)),
         originChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -994,7 +994,7 @@ describe("SpokePool Depositor Logic", async function () {
       const updatedOutputAmount = amountToDeposit.add(1);
       const updatedRecipient = randomAddress();
       const updatedMessage = "0x1234";
-      const depositId = 100;
+      const depositId = toBN(100);
       const spokePoolChainId = await spokePool.chainId();
 
       const signature = await getUpdatedV3DepositSignature(

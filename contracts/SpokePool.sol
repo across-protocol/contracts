@@ -1639,7 +1639,24 @@ abstract contract SpokePool is
     }
 
     function _getV3RelayHash(V3RelayData memory relayData) private view returns (bytes32) {
-        return keccak256(abi.encode(relayData, chainId()));
+        return
+            keccak256(
+                abi.encode(
+                    relayData.depositor,
+                    relayData.recipient,
+                    relayData.exclusiveRelayer,
+                    relayData.inputToken,
+                    relayData.outputToken,
+                    relayData.inputAmount,
+                    relayData.outputAmount,
+                    relayData.originChainId,
+                    relayData.depositId,
+                    relayData.fillDeadline,
+                    relayData.exclusivityDeadline,
+                    _hashNonEmptyMessage(relayData.message),
+                    chainId()
+                )
+            );
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.

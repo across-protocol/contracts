@@ -11,6 +11,7 @@ import {
   addressToBytes,
   bytes32ToAddress,
   hashNonEmptyMessage,
+  toBN,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -306,7 +307,7 @@ describe("SpokePool Relayer Logic", async function () {
           addressToBytes(relayer.address),
           false // isSlowFill
         );
-        const test = bytes32ToAddress(_relayData.outputToken);
+
         expect(acrossMessageHandler.handleV3AcrossMessage).to.have.been.calledOnceWith(
           bytes32ToAddress(_relayData.outputToken),
           relayExecution.updatedOutputAmount,
@@ -522,7 +523,7 @@ describe("SpokePool Relayer Logic", async function () {
         // Incorrect signature for new deposit ID
         const otherSignature = await getUpdatedV3DepositSignature(
           depositor,
-          relayData.depositId + 1,
+          relayData.depositId.add(toBN(1)),
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -562,7 +563,7 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool
             .connect(relayer)
             .fillV3RelayWithUpdatedDeposit(
-              { ...relayData, depositId: relayData.depositId + 1 },
+              { ...relayData, depositId: relayData.depositId.add(toBN(1)) },
               consts.repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
