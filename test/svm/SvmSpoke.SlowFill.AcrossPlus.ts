@@ -24,6 +24,8 @@ import {
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
   sendTransactionWithLookupTable,
+  readProgramEvents,
+  calculateRelayEventHashUint8Array,
 } from "../../src/SvmUtils";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import {
@@ -40,8 +42,8 @@ import {
   loadRequestV3SlowFillParams,
   slowFillHashFn,
 } from "./utils";
-const { provider, connection, program, owner, chainId } = common;
-const { initializeState, assertSE } = common;
+const { provider, connection, program, owner, chainId, setCurrentTime } = common;
+const { initializeState, assertSE, assert } = common;
 
 describe("svm_spoke.slow_fill.across_plus", () => {
   anchor.setProvider(provider);
@@ -395,5 +397,94 @@ describe("svm_spoke.slow_fill.across_plus", () => {
 
       await fillTokenDistributions(numberOfDistributions, true);
     });
+  });
+
+  it("Can recover and close fill status PDA from event data", async () => {
+    // Construct ix to transfer all tokens from handler to the final recipient.
+    const transferIx = createTransferCheckedInstruction(
+      handlerATA,
+      mint,
+      finalRecipientATA,
+      handlerSigner,
+      relayData.outputAmount.toNumber(),
+      tokenDecimals
+    );
+
+    const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
+
+    const handlerMessage = multicallHandlerCoder.encode();
+
+    const message = new AcrossPlusMessageCoder({
+      handler: handlerProgram.programId,
+      readOnlyLen: multicallHandlerCoder.readOnlyLen,
+      valueAmount: new BN(0),
+      accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+      handlerMessage,
+    });
+
+    const encodedMessage = message.encode();
+
+    // Update relay data with the encoded message.
+    const newRelayData = { ...relayData, message: encodedMessage };
+    updateRelayData(newRelayData);
+
+    // Prepare request and execute slow fill instructions as we will need to use Address Lookup Table (ALT).
+    // Request and execute slow fill.
+    const { loadRequestParamsInstructions, requestIx, loadExecuteParamsInstructions, executeIx } =
+      await createSlowFillIx(multicallHandlerCoder, true);
+
+    // Fill using the ALT and submit load params transactions.
+    for (let i = 0; i < loadRequestParamsInstructions.length; i += 1) {
+      await sendAndConfirmTransaction(
+        program.provider.connection,
+        new Transaction().add(loadRequestParamsInstructions[i]),
+        [relayer]
+      );
+    }
+    await sendTransactionWithLookupTable(connection, [requestIx], relayer);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure request tx gets processed.
+    for (let i = 0; i < loadExecuteParamsInstructions.length; i += 1) {
+      await sendAndConfirmTransaction(
+        program.provider.connection,
+        new Transaction().add(loadExecuteParamsInstructions[i]),
+        [relayer]
+      );
+    }
+    const { txSignature } = await sendTransactionWithLookupTable(connection, [executeIx], relayer);
+    await connection.confirmTransaction(txSignature, "confirmed");
+    await connection.getTransaction(txSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+
+    // We don't close ALT here as that would require ~4 minutes between deactivation and closing, but we demonstrate
+    // being able to close the fill status PDA using only event data.
+    const events = await readProgramEvents(connection, program);
+    const eventData = events.find((event) => event.name === "filledV3Relay")?.data;
+    assert.isNotNull(eventData, "FilledV3Relay event should be emitted");
+
+    // Recover relay hash and derived fill status from event data.
+    const relayHashUint8Array = calculateRelayEventHashUint8Array(eventData, chainId);
+    const [fillStatusPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("fills"), relayHashUint8Array],
+      program.programId
+    );
+    const fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
+    assert.isTrue("filled" in fillStatusAccount.status, "Fill status account should be marked as filled");
+    assertSE(fillStatusAccount.relayer, relayer.publicKey, "Relayer should match in the fill status");
+
+    // Set the current time to past the fill deadline
+    await setCurrentTime(program, state, relayer, new BN(fillStatusAccount.fillDeadline + 1));
+
+    const closeFillPdaAccounts = {
+      signer: relayer.publicKey,
+      state,
+      fillStatus: fillStatusPDA,
+    };
+    await program.methods.closeFillPda().accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+
+    // Verify the fill PDA is closed
+    const fillStatusAccountAfter = await connection.getAccountInfo(fillStatusPDA);
+    assert.isNull(fillStatusAccountAfter, "Fill PDA should be closed after closing");
   });
 });
