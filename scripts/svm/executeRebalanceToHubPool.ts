@@ -478,24 +478,41 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
   const tokenMessengerMinterIdl = require("../../target/idl/token_messenger_minter.json");
   const tokenMessengerMinterProgram = new Program<TokenMessengerMinter>(tokenMessengerMinterIdl, provider);
 
-  const tokenMessengerMinterSenderAuthority = findProgramAddress(
-    "sender_authority",
+  const [tokenMessengerMinterSenderAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from("sender_authority")],
     tokenMessengerMinterProgram.programId
-  ).publicKey;
+  );
 
-  const messageTransmitter = findProgramAddress("message_transmitter", messageTransmitterProgram.programId).publicKey;
+  const [messageTransmitter] = PublicKey.findProgramAddressSync(
+    [Buffer.from("message_transmitter")],
+    messageTransmitterProgram.programId
+  );
 
-  const tokenMessenger = findProgramAddress("token_messenger", tokenMessengerMinterProgram.programId).publicKey;
+  const [tokenMessenger] = PublicKey.findProgramAddressSync(
+    [Buffer.from("token_messenger")],
+    tokenMessengerMinterProgram.programId
+  );
 
-  const remoteTokenMessenger = findProgramAddress("remote_token_messenger", tokenMessengerMinterProgram.programId, [
-    new BN(remoteDomain).toString(),
-  ]).publicKey;
+  const [remoteTokenMessenger] = PublicKey.findProgramAddressSync(
+    [Buffer.from("remote_token_messenger"), Buffer.from(anchor.utils.bytes.utf8.encode(remoteDomain.toString()))],
+    tokenMessengerMinterProgram.programId
+  );
 
-  const tokenMinter = findProgramAddress("token_minter", tokenMessengerMinterProgram.programId).publicKey;
+  const [tokenMinter] = PublicKey.findProgramAddressSync(
+    [Buffer.from("token_minter")],
+    tokenMessengerMinterProgram.programId
+  );
 
-  const localToken = findProgramAddress("local_token", tokenMessengerMinterProgram.programId, [
-    inputToken as any,
-  ]).publicKey;
+  const [localToken] = PublicKey.findProgramAddressSync(
+    [Buffer.from("local_token"), inputToken.toBuffer()],
+    tokenMessengerMinterProgram.programId
+  );
+
+  const [cctpEventAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from("__event_authority")],
+    tokenMessengerMinterProgram.programId
+  );
+
   const messageSentEventData = anchor.web3.Keypair.generate(); // This will hold the message sent event data.
   const bridgeTokensToHubPoolAccounts = {
     payer: signer.publicKey,
@@ -514,7 +531,7 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
     tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
     tokenProgram: TOKEN_PROGRAM_ID,
     systemProgram: SystemProgram.programId,
-    cctpEventAuthority: eventAuthority,
+    cctpEventAuthority: cctpEventAuthority,
     program: svmSpokeProgram.programId,
   };
 
