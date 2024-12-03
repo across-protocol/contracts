@@ -415,14 +415,30 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     // Wrapped native token contract address.
     WETH9Interface public wrappedNativeToken;
 
+    // Canonical Permit2 contract address.
+    IPermit2 public permit2;
+
     // Address of the proxy contract that users should interact with to call this contract.
     // Force users to call through this contract to make sure they don't leave any approvals/permits
     // outstanding on this contract that could be abused because this contract executes arbitrary
     // calldata.
     address public proxy;
 
+    // Nonce for this contract to use for EIP1217 "signatures".
+    uint48 private nonce;
+
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
+
+    // Slot for keeping a swap identifier. Used to confirm whether a signature originated from this contract or not.
+    // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
+    bytes32 private cachedSwapHash;
+
+    // EIP 1217 magic bytes indicating a valid signature.
+    bytes4 private constant EIP1217_VALID_SIGNATURE = 0x1626ba7e;
+
+    // EIP 1217 bytes indicating an invalid signature.
+    bytes4 private constant EIP1217_INVALID_SIGNATURE = 0xffffffff;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -610,16 +626,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             _calledByProxy();
             swapData.swapToken.safeTransferFrom(msg.sender, address(this), swapData.swapTokenAmount);
         }
-        _swapAndBridge(
-            swapData.exchange,
-            swapData.transferType,
-            swapData.routerCalldata,
-            swapData.swapTokenAmount,
-            swapData.minExpectedInputTokenAmount,
-            depositData,
-            swapData.swapToken,
-            acrossInputToken
-        );
+        _swapAndBridge(swapData, depositData, acrossInputToken);
     }
 
     /**
@@ -639,12 +646,20 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
     /**
      * @notice Verifies that the signer is the owner of the signing contract.
-     * @param _hash Hash of the message which was signed
-     * @param _signature Signature encoded as (bytes32 r, bytes32 s, uint8 v)
+     * @param _signature The signature to verify.
+     * @dev The _hash field is intentionally ignored since this contract only expects to receive data from permit2,
+     * which should return an EIP712 hash of PermitSingle.
      */
-    function isValidSignature(bytes32 _hash, bytes calldata _signature) external view returns (bytes4) {
-        return 0x1626ba7e;
-        //return 0xffffffff;
+    function isValidSignature(bytes32, bytes calldata _signature) external view returns (bytes4 magicBytes) {
+        if (
+            msg.sender != address(permit2) &&
+            bytes32(_signature) == cachedSwapHash &&
+            uint256(cachedSwapHash) != 0 &&
+            _signature.length == 32
+        ) {
+            return EIP1217_VALID_SIGNATURE;
+        }
+        return EIP1217_INVALID_SIGNATURE;
     }
 
     /**
@@ -677,33 +692,53 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
 
     // This contract supports two variants of swap and bridge, one that allows one token and another that allows the caller to pass them in.
     function _swapAndBridge(
-        address exchange,
-        TransferType transferType,
-        bytes calldata routerCalldata,
-        uint256 swapTokenAmount,
-        uint256 minExpectedInputTokenAmount,
+        SwapData calldata swapData,
         DepositData calldata depositData,
-        IERC20 _swapToken,
         IERC20 _acrossInputToken
     ) private {
+        // Load variables we use multiple times onto the stack.
+        IERC20 _swapToken = swapData.swapToken;
+        TransferType _transferType = swapData.transferType;
+        address _exchange = swapData.exchange;
+        uint256 _swapTokenAmount = swapData.swapTokenAmount;
         // Swap and run safety checks.
         uint256 srcBalanceBefore = _swapToken.balanceOf(address(this));
         uint256 dstBalanceBefore = _acrossInputToken.balanceOf(address(this));
 
-        if (transferType == TransferType.Approval) _swapToken.forceApprove(exchange, swapTokenAmount);
-        else if (transferType == TransferType.Transfer) _swapToken.transfer(exchange, swapTokenAmount);
-        else {}
+        if (_transferType == TransferType.Approval) _swapToken.forceApprove(_exchange, _swapTokenAmount);
+        else if (_transferType == TransferType.Transfer) _swapToken.transfer(_exchange, _swapTokenAmount);
+        else {
+            IPermit2.PermitSingle memory permitSingle = IPermit2.PermitSingle({
+                details: IPermit2.PermitDetails({
+                    token: address(_swapToken),
+                    amount: uint160(_swapTokenAmount),
+                    expiration: uint48(block.timestamp),
+                    nonce: nonce++
+                }),
+                spender: _exchange,
+                sigDeadline: block.timestamp
+            });
+            cachedSwapHash = keccak256(abi.encode(permitSingle, depositData.depositor));
+
+            permit2.permit(
+                address(this), // owner
+                permitSingle, // permitSingle
+                // Pass in a hash of the swap and deposit details to the permit2 contract so that this contract can check if it matches the cached data.
+                abi.encodePacked(cachedSwapHash)
+            );
+        }
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = exchange.call(routerCalldata);
+        (bool success, bytes memory result) = _exchange.call(swapData.routerCalldata);
         require(success, string(result));
 
+        cachedSwapHash = bytes32(uint256(0));
         _checkSwapOutputAndDeposit(
-            exchange,
-            routerCalldata,
-            swapTokenAmount,
+            _exchange,
+            swapData.routerCalldata,
+            _swapTokenAmount,
             srcBalanceBefore,
             dstBalanceBefore,
-            minExpectedInputTokenAmount,
+            swapData.minExpectedInputTokenAmount,
             depositData,
             _swapToken,
             _acrossInputToken

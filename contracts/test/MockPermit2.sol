@@ -22,4 +22,12 @@ contract MockPermit2 is IPermit2 {
     ) external override {
         // do nothing
     }
+
+    function permit(
+        address owner,
+        PermitSingle calldata permitSingle,
+        bytes calldata signature
+    ) external override {
+        // do nothing
+    }
 }
