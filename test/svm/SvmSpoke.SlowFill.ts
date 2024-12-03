@@ -19,8 +19,8 @@ import {
   readProgramEvents,
   calculateRelayHashUint8Array,
   testAcrossPlusMessage,
-  hashNonEmptyMessage,
 } from "./utils";
+import { hashNonEmptyMessage } from "../../src/SvmUtils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
@@ -202,7 +202,7 @@ describe("svm_spoke.slow_fill", () => {
     // Fetch and verify the RequestedV3SlowFill event
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "requestedV3SlowFill").data;
+    const event = events.find((event) => event.name === "requestedV3SlowFill")?.data;
     assert.isNotNull(event, "RequestedV3SlowFill event should be emitted");
 
     // Verify that the event data matches the relay data.
@@ -373,7 +373,7 @@ describe("svm_spoke.slow_fill", () => {
     // Fetch and verify the FilledV3Relay event
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "filledV3Relay").data;
+    const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
     // Verify that the event data matches the relay data.
@@ -660,8 +660,8 @@ describe("svm_spoke.slow_fill", () => {
     // Fetch and verify message hash in the RequestedV3SlowFill and FilledV3Relay events
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const requestEvent = events.find((event) => event.name === "requestedV3SlowFill").data;
-    const fillEvent = events.find((event) => event.name === "filledV3Relay").data;
+    const requestEvent = events.find((event) => event.name === "requestedV3SlowFill")?.data;
+    const fillEvent = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(requestEvent, "RequestedV3SlowFill event should be emitted");
     assert.isNotNull(fillEvent, "FilledV3Relay event should be emitted");
     assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);

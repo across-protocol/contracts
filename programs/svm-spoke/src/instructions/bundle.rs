@@ -7,7 +7,7 @@ use anchor_spl::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::{CommonError, SvmError},
-    event::ExecutedRelayerRefundRoot,
+    event::{ExecutedRelayerRefundRoot, TokensBridged},
     state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
@@ -151,6 +151,14 @@ where
 
     if relayer_refund_leaf.amount_to_return > 0 {
         ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
+
+        emit_cpi!(TokensBridged {
+            amount_to_return: relayer_refund_leaf.amount_to_return,
+            chain_id: relayer_refund_leaf.chain_id,
+            leaf_id: relayer_refund_leaf.leaf_id,
+            l2_token_address: ctx.accounts.mint.key(),
+            caller: ctx.accounts.signer.key(),
+        });
     }
 
     emit_cpi!(ExecutedRelayerRefundRoot {

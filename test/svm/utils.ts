@@ -471,12 +471,3 @@ export function testAcrossPlusMessage() {
   ];
   return { encodedMessage, fillRemainingAccounts };
 }
-
-export function hashNonEmptyMessage(message: Buffer) {
-  if (message.length > 0) {
-    const hash = ethers.utils.keccak256(message);
-    return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
-  }
-  // else return zeroed bytes32
-  return new Uint8Array(32);
-}

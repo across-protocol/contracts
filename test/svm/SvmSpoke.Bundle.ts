@@ -191,7 +191,7 @@ describe("svm_spoke.bundle", () => {
 
     // Check for the emitted event
     const events = await readEvents(connection, tx, [program]);
-    const event = events.find((event) => event.name === "relayedRootBundle").data;
+    const event = events.find((event) => event.name === "relayedRootBundle")?.data;
     assert.isTrue(event.rootBundleId.toString() === rootBundleId.toString(), "Root bundle ID should match");
     assert.isTrue(
       event.relayerRefundRoot.toString() === relayerRefundRootArray.toString(),
@@ -264,7 +264,7 @@ describe("svm_spoke.bundle", () => {
     // Verify the ExecutedRelayerRefundRoot event
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
     let events = await readProgramEvents(connection, program);
-    let event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+    let event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
 
     // Remove the expectedValues object and use direct assertions
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
@@ -277,6 +277,14 @@ describe("svm_spoke.bundle", () => {
     assertSE(event.refundAddresses[0], relayerA.publicKey, "Relayer A address should match");
     assertSE(event.refundAddresses[1], relayerB.publicKey, "Relayer B address should match");
     assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
+    assertSE(event.caller, owner, "caller should match");
+
+    event = events.find((event) => event.name === "tokensBridged").data;
+
+    assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
+    assertSE(event.chainId, chainId, "chainId should match");
+    assertSE(event.leafId, leaf.leafId, "leafId should match");
+    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.caller, owner, "caller should match");
 
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -1480,7 +1488,7 @@ describe("svm_spoke.bundle", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
-      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
       assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     });
 
@@ -1489,7 +1497,7 @@ describe("svm_spoke.bundle", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
       const events = await readEvents(connection, tx, [program]);
-      const event = events.find((event) => event.name === "executedRelayerRefundRoot").data;
+      const event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
       assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
     });
   });

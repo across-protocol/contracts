@@ -185,7 +185,7 @@ describe("svm_spoke.refund_claims", () => {
     // Verify the ClaimedRelayerRefund event
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "claimedRelayerRefund").data;
+    const event = events.find((event) => event.name === "claimedRelayerRefund")?.data;
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");
     assertSE(event.refundAddress, relayer.publicKey, "Relayer refund address should match");
@@ -381,7 +381,7 @@ describe("svm_spoke.refund_claims", () => {
     // Verify the ClaimedRelayerRefund event
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "claimedRelayerRefund").data;
+    const event = events.find((event) => event.name === "claimedRelayerRefund")?.data;
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");
     assertSE(event.refundAddress, relayer.publicKey, "Relayer refund address should match");
