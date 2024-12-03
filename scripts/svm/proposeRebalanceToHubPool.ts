@@ -91,7 +91,7 @@ async function proposeRebalanceToHubPool(): Promise<void> {
   ]);
 
   // Relayer refund root Merkle tree.
-  const merkleTree = constructSimpleRebalanceTreeToHubPool(netSendAmount, solanaChainId, new PublicKey(svmUsdc));
+  const { merkleTree } = constructSimpleRebalanceTreeToHubPool(netSendAmount, solanaChainId, new PublicKey(svmUsdc));
 
   console.log(`Proposing ${netSendAmount.toString()} rebalance to hub pool:`);
   const tx = await hubPool.connect(ethersSigner).proposeRootBundle(

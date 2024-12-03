@@ -59,5 +59,6 @@ export const constructSimpleRebalanceTreeToHubPool = (
     refundAddresses: [],
     refundAmounts: [],
   });
-  return new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+  const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+  return { merkleTree, leaves: relayerRefundLeaves };
 };
