@@ -84,7 +84,6 @@ pub struct FilledV3Relay {
     pub relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    // TODO: update EVM implementation to use message_hash in all fill related events.
     pub message_hash: [u8; 32],
     pub relay_execution_info: V3RelayExecutionEventInfo,
 }
