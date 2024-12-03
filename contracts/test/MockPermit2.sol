@@ -1,3 +1,5 @@
+pragma solidity ^0.8.0;
+
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 
 contract MockPermit2 is IPermit2 {

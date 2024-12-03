@@ -126,18 +126,21 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         proxy.swapAndBridge(
-            IERC20(address(mockWETH)), // swapToken
             IERC20(mockERC20), // acrossInputToken
-            address(dex),
-            abi.encodeWithSelector(
-                dex.swap.selector,
-                IERC20(address(mockWETH)),
-                IERC20(mockERC20),
-                mintAmount,
-                depositAmount
-            ),
-            mintAmount, // swapTokenAmount
-            depositAmount, // minExpectedInputTokenAmount
+            SpokePoolV3Periphery.SwapData({
+                swapToken: IERC20(address(mockWETH)),
+                exchange: address(dex),
+                transferType: SpokePoolV3Periphery.TransferType.Approval,
+                swapTokenAmount: mintAmount, // swapTokenAmount
+                minExpectedInputTokenAmount: depositAmount,
+                routerCalldata: abi.encodeWithSelector(
+                    dex.swap.selector,
+                    IERC20(address(mockWETH)),
+                    IERC20(mockERC20),
+                    mintAmount,
+                    depositAmount
+                )
+            }),
             SpokePoolV3Periphery.DepositData({
                 outputToken: address(0),
                 outputAmount: depositAmount,
@@ -180,18 +183,21 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge{ value: mintAmount }(
-            IERC20(address(mockWETH)), // swapToken
             IERC20(mockERC20), // acrossInputToken
-            address(dex),
-            abi.encodeWithSelector(
-                dex.swap.selector,
-                IERC20(address(mockWETH)),
-                IERC20(mockERC20),
-                mintAmount,
-                depositAmount
-            ),
-            mintAmount, // swapTokenAmount
-            depositAmount, // minExpectedInputTokenAmount
+            SpokePoolV3Periphery.SwapData({
+                swapToken: IERC20(address(mockWETH)),
+                exchange: address(dex),
+                transferType: SpokePoolV3Periphery.TransferType.Approval,
+                swapTokenAmount: mintAmount, // swapTokenAmount
+                minExpectedInputTokenAmount: depositAmount,
+                routerCalldata: abi.encodeWithSelector(
+                    dex.swap.selector,
+                    IERC20(address(mockWETH)),
+                    IERC20(mockERC20),
+                    mintAmount,
+                    depositAmount
+                )
+            }),
             SpokePoolV3Periphery.DepositData({
                 outputToken: address(0),
                 outputAmount: depositAmount,
