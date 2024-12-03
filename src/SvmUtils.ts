@@ -50,10 +50,12 @@ export async function readEvents<IDL extends Idl = Idl>(
   programs: Program<IDL>[],
   commitment: Finality = "confirmed"
 ) {
+  console.time(`getTransaction for ${txSignature}`);
   const txResult = await connection.getTransaction(txSignature, {
     commitment,
     maxSupportedTransactionVersion: 0,
   });
+  console.timeEnd(`getTransaction for ${txSignature}`);
 
   let eventAuthorities = new Map();
   for (const program of programs) {
@@ -109,12 +111,18 @@ export async function readProgramEvents(
   options?: SignaturesForAddressOptions,
   finality: Finality = "confirmed"
 ) {
+  console.time("readProgramEvents Total Time");
   let events = [];
+  console.time("getSignaturesForAddress");
   const pastSignatures = await connection.getSignaturesForAddress(program.programId, options, finality);
+  console.timeEnd("getSignaturesForAddress");
 
+  console.time(`readEvents for signatures`);
   for (const signature of pastSignatures) {
     events.push(...(await readEvents(connection, signature.signature, [program], finality)));
   }
+  console.timeEnd(`readEvents for signatures`);
+  console.timeEnd("readProgramEvents Total Time");
   return events;
 }
 

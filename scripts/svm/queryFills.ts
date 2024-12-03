@@ -13,7 +13,7 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const idl = require("../../target/idl/svm_spoke.json");
 const program = new Program<SvmSpoke>(idl, provider);
-const programId = program.programId;
+const programId = new PublicKey("YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt");
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv)).option("seed", {
