@@ -40,6 +40,7 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" }).argv;
 
 async function fillV3Relay(): Promise<void> {
+  vm;
   const resolvedArgv = await argv;
   const depositor = new PublicKey(resolvedArgv.depositor);
   const recipient = new PublicKey(resolvedArgv.recipient);

@@ -130,7 +130,6 @@ export async function readProgramEvents(
   // Fetch all signatures in sequential batches
   while (true) {
     const signatures = await connection.getSignaturesForAddress(program.programId, options, finality);
-    console.log("signatures", signatures);
     allSignatures.push(...signatures);
 
     // Update options for the next batch. Set before to the last fetched signature.
