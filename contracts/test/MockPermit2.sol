@@ -4,7 +4,7 @@ import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 
 contract MockPermit2 is IPermit2 {
     function permitWitnessTransferFrom(
-        PermitTransferFrom memory permit,
+        PermitTransferFrom memory _permit,
         SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,

@@ -361,19 +361,11 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @param swapToken Address of the token that will be swapped for acrossInputToken.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
-     * @param exchange Address of the exchange contract to call.
-     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
-     * enough of acrossInputToken, otherwise this function will revert.
-     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
-     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
-     * deposit with.
+     * @param swapData Specifies the data needed to perform a swap on a generic exchange.
      * @param depositData Specifies the Across deposit params we'll send after the swap.
      * @param deadline Deadline before which the permit signature is valid.
-     * @param v v of the permit signature.
-     * @param r r of the permit signature.
-     * @param s s of the permit signature.
+     * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v)
      */
     function swapAndBridgeWithPermit(
         IERC20 acrossInputToken,
