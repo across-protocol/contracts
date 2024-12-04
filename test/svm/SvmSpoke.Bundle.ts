@@ -280,6 +280,7 @@ describe("svm_spoke.bundle", () => {
     assertSE(event.caller, owner, "caller should match");
 
     event = events.find((event) => event.name === "tokensBridged")?.data;
+
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
     assertSE(event.chainId, chainId, "chainId should match");
     assertSE(event.leafId, leaf.leafId, "leafId should match");
