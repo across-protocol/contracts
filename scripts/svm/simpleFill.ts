@@ -36,7 +36,7 @@ const argv = yargs(hideBin(process.argv))
   .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
-  .option("depositId", { type: "number", demandOption: true, describe: "Deposit ID" })
+  .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" }).argv;
 
@@ -50,7 +50,7 @@ async function fillV3Relay(): Promise<void> {
   const inputAmount = new BN(resolvedArgv.inputAmount);
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
-  const depositId = intToU8Array32(resolvedArgv.depositId);
+  const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
   const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
   const message = Buffer.from("");

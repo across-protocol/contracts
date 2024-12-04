@@ -536,3 +536,7 @@ export function hashNonEmptyMessage(message: Buffer) {
   // else return zeroed bytes32
   return new Uint8Array(32);
 }
+
+export function strPublicKey(publicKey: PublicKey): string {
+  return new PublicKey(publicKey).toString();
+}

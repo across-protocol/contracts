@@ -430,16 +430,28 @@ export async function loadExecuteV3SlowRelayLeafParams(
   return loadInstructions;
 }
 
-export function intToU8Array32(num: number): number[] {
-  if (!Number.isInteger(num) || num < 0) {
-    throw new Error("Input must be a non-negative integer");
+export function intToU8Array32(num: number | BN): number[] {
+  let bigIntValue: bigint;
+
+  if (typeof num === "number") {
+    if (!Number.isInteger(num) || num < 0) {
+      throw new Error("Input must be a non-negative integer");
+    }
+    bigIntValue = BigInt(num);
+  } else if (BN.isBN(num)) {
+    if (num.isNeg()) {
+      throw new Error("Input must be a non-negative BN");
+    }
+    bigIntValue = BigInt(num.toString());
+  } else {
+    throw new Error("Input must be a non-negative integer or BN");
   }
 
   const u8Array = new Array(32).fill(0);
   let i = 0;
-  while (num > 0 && i < 32) {
-    u8Array[i++] = num & 0xff; // Get least significant byte
-    num >>= 8; // Shift right by 8 bits
+  while (bigIntValue > 0 && i < 32) {
+    u8Array[i++] = Number(bigIntValue & 0xffn); // Get least significant byte
+    bigIntValue >>= 8n; // Shift right by 8 bits
   }
 
   return u8Array;
