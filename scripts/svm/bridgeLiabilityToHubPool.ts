@@ -39,14 +39,13 @@ import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
-  MAINNET_USDC_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
-  SEPOLIA_USDC_ADDRESS,
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
 } from "./utils/constants";
 
+import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
@@ -147,7 +146,8 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 
   const messageTransmitter = new ethers.Contract(cctpMessageTransmitter, messageTransmitterAbi, ethersSigner);
 
-  const usdcAddress = isDevnet ? SEPOLIA_USDC_ADDRESS : MAINNET_USDC_ADDRESS;
+  const evmChainId = (await ethersProvider.getNetwork()).chainId;
+  const usdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
   const usdc = BondToken__factory.connect(usdcAddress, ethersProvider);
   const usdcBalanceBefore = await usdc.balanceOf(hubPoolAddress);
 
