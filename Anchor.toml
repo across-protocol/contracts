@@ -35,7 +35,6 @@ closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelay
 closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
 remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remotePauseDeposits.ts"
 remoteHubPoolSetDepositRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolSetDepositRoute.ts"
-remoteHubPoolPauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolPauseDeposits.ts"
 proposeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/proposeRebalanceToHubPool.ts"
 executeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/executeRebalanceToHubPool.ts"
 bridgeLiabilityToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/bridgeLiabilityToHubPool.ts"
