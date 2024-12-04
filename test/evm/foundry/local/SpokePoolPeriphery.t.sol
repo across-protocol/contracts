@@ -62,7 +62,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
         proxy = new SpokePoolPeripheryProxy();
-        proxy.initialize(spokePoolPeriphery, permit2);
+        proxy.initialize(spokePoolPeriphery);
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
             fillDeadlineBuffer,
@@ -74,7 +74,7 @@ contract SpokePoolPeripheryTest is Test {
         ethereumSpokePool = Ethereum_SpokePool(payable(spokePoolProxy));
         ethereumSpokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
         ethereumSpokePool.setEnableRoute(address(mockERC20), destinationChainId, true);
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy));
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
         vm.stopPrank();
 
         deal(depositor, mintAmount);
@@ -89,21 +89,21 @@ contract SpokePoolPeripheryTest is Test {
 
     function testInitializePeriphery() public {
         SpokePoolV3Periphery _spokePoolPeriphery = new SpokePoolV3Periphery();
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy));
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
         assertEq(address(_spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
         assertEq(address(_spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
         assertEq(address(_spokePoolPeriphery.proxy()), address(proxy));
+        assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy));
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
     }
 
     function testInitializeProxy() public {
         SpokePoolPeripheryProxy _proxy = new SpokePoolPeripheryProxy();
-        _proxy.initialize(spokePoolPeriphery, permit2);
+        _proxy.initialize(spokePoolPeriphery);
         assertEq(address(_proxy.SPOKE_POOL_PERIPHERY()), address(spokePoolPeriphery));
-        assertEq(address(_proxy.permit2()), address(permit2));
         vm.expectRevert(SpokePoolPeripheryProxy.ContractInitialized.selector);
-        _proxy.initialize(spokePoolPeriphery, permit2);
+        _proxy.initialize(spokePoolPeriphery);
     }
 
     function testSwapAndBridge() public {

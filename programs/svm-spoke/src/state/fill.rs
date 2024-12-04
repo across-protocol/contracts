@@ -11,5 +11,6 @@ pub enum FillStatus {
 #[derive(InitSpace)]
 pub struct FillStatusAccount {
     pub status: FillStatus, // Tracks the status of the fill between Unfilled, requestedSlowFill, and Filled.
-    pub relayer: Pubkey,    // Address of the relayer that made the fill to control who can close this PDA.
+    pub relayer: Pubkey, // Address of the relayer that made the fill to control who can close this PDA.
+    pub fill_deadline: u32, // Stores the fill deadline to control when this PDA can be safely closed.
 }
