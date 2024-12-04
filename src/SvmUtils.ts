@@ -55,28 +55,33 @@ export async function readEvents<IDL extends Idl = Idl>(
     maxSupportedTransactionVersion: 0,
   });
 
-  let eventAuthorities = new Map();
+  if (txResult === null) return [];
+
+  const eventAuthorities: Map<string, PublicKey> = new Map();
   for (const program of programs) {
     eventAuthorities.set(
       program.programId.toString(),
-      findProgramAddress("__event_authority", program.programId).publicKey.toString()
+      findProgramAddress("__event_authority", program.programId).publicKey
     );
   }
 
-  let events: any[] = [];
+  const events = [];
 
-  // TODO: Add support for version 0 transactions.
-  if (!txResult || txResult.transaction.message.version !== "legacy") return events;
+  // Resolve any potential addresses that were passed from address lookup tables.
+  const messageAccountKeys = txResult.transaction.message.getAccountKeys({
+    accountKeysFromLookups: txResult.meta?.loadedAddresses,
+  });
 
   for (const ixBlock of txResult.meta?.innerInstructions ?? []) {
     for (const ix of ixBlock.instructions) {
       for (const program of programs) {
-        const programStr = program.programId.toString();
+        const ixProgramId = messageAccountKeys.get(ix.programIdIndex);
+        const singleIxAccount = ix.accounts.length === 1 ? messageAccountKeys.get(ix.accounts[0]) : undefined;
         if (
-          ix.accounts.length === 1 &&
-          (txResult.transaction.message as any).accountKeys[ix.programIdIndex].toString() === programStr &&
-          (txResult.transaction.message as any).accountKeys[ix.accounts[0]].toString() ===
-            eventAuthorities.get(programStr)
+          ixProgramId !== undefined &&
+          singleIxAccount !== undefined &&
+          program.programId.equals(ixProgramId) &&
+          eventAuthorities.get(ixProgramId.toString())?.equals(singleIxAccount)
         ) {
           const ixData = utils.bytes.bs58.decode(ix.data);
           const eventData = utils.bytes.base64.encode(Buffer.from(new Uint8Array(ixData).slice(8)));
@@ -109,7 +114,7 @@ export async function readProgramEvents(
   options?: SignaturesForAddressOptions,
   finality: Finality = "confirmed"
 ) {
-  let events = [];
+  const events = [];
   const pastSignatures = await connection.getSignaturesForAddress(program.programId, options, finality);
 
   for (const signature of pastSignatures) {
@@ -154,9 +159,6 @@ export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => 
 // want to re-use within the test directory. more over, when moving things into the canonical across repo, we should
 // re-use the test utils there.
 export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8Array {
-  const messageBuffer = Buffer.alloc(4);
-  messageBuffer.writeUInt32LE(relayData.message.length, 0);
-
   const contentToHash = Buffer.concat([
     relayData.depositor.toBuffer(),
     relayData.recipient.toBuffer(),
@@ -169,8 +171,30 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8
     Buffer.from(relayData.depositId),
     new BN(relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
     new BN(relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
-    messageBuffer,
-    relayData.message,
+    hashNonEmptyMessage(relayData.message), // Replace with hash of message, so that relay hash can be recovered from event.
+    chainId.toArrayLike(Buffer, "le", 8),
+  ]);
+
+  const relayHash = ethers.utils.keccak256(contentToHash);
+  const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
+  return new Uint8Array(relayHashBuffer);
+}
+
+// Same method as above, but message in the relayData is already hashed, as fetched from fill events.
+export function calculateRelayEventHashUint8Array(relayEventData: any, chainId: BN): Uint8Array {
+  const contentToHash = Buffer.concat([
+    relayEventData.depositor.toBuffer(),
+    relayEventData.recipient.toBuffer(),
+    relayEventData.exclusiveRelayer.toBuffer(),
+    relayEventData.inputToken.toBuffer(),
+    relayEventData.outputToken.toBuffer(),
+    relayEventData.inputAmount.toArrayLike(Buffer, "le", 8),
+    relayEventData.outputAmount.toArrayLike(Buffer, "le", 8),
+    relayEventData.originChainId.toArrayLike(Buffer, "le", 8),
+    Buffer.from(relayEventData.depositId),
+    new BN(relayEventData.fillDeadline).toArrayLike(Buffer, "le", 4),
+    new BN(relayEventData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
+    Buffer.from(relayEventData.messageHash), // Renamed to messageHash in the event data.
     chainId.toArrayLike(Buffer, "le", 8),
   ]);
 
@@ -502,4 +526,13 @@ export async function sendTransactionWithLookupTable(
   const txSignature = await connection.sendTransaction(versionedTx);
 
   return { txSignature, lookupTableAddress };
+}
+
+export function hashNonEmptyMessage(message: Buffer) {
+  if (message.length > 0) {
+    const hash = ethers.utils.keccak256(message);
+    return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
+  }
+  // else return zeroed bytes32
+  return new Uint8Array(32);
 }

@@ -132,3 +132,12 @@ pub struct BridgedToHubPool {
     pub amount: u64,
     pub mint: Pubkey,
 }
+
+#[event]
+pub struct TokensBridged {
+    pub amount_to_return: u64,
+    pub chain_id: u64,
+    pub leaf_id: u32,
+    pub l2_token_address: Pubkey,
+    pub caller: Pubkey,
+}
