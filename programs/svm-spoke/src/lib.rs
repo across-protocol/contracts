@@ -59,7 +59,7 @@ pub mod svm_spoke {
         remote_domain: u32,
         cross_domain_admin: Pubkey,
         deposit_quote_time_buffer: u32,
-        fill_deadline_buffer: u32
+        fill_deadline_buffer: u32,
     ) -> Result<()> {
         instructions::initialize(
             ctx,
@@ -69,7 +69,7 @@ pub mod svm_spoke {
             remote_domain,
             cross_domain_admin,
             deposit_quote_time_buffer,
-            fill_deadline_buffer
+            fill_deadline_buffer,
         )
     }
 
@@ -132,7 +132,7 @@ pub mod svm_spoke {
         ctx: Context<SetEnableRoute>,
         origin_token: Pubkey,
         destination_chain_id: u64,
-        enabled: bool
+        enabled: bool,
     ) -> Result<()> {
         instructions::set_enable_route(ctx, origin_token, destination_chain_id, enabled)
     }
@@ -169,7 +169,7 @@ pub mod svm_spoke {
     pub fn relay_root_bundle(
         ctx: Context<RelayRootBundle>,
         relayer_refund_root: [u8; 32],
-        slow_relay_root: [u8; 32]
+        slow_relay_root: [u8; 32],
     ) -> Result<()> {
         instructions::relay_root_bundle(ctx, relayer_refund_root, slow_relay_root)
     }
@@ -189,7 +189,7 @@ pub mod svm_spoke {
     /// - root_bundle_id: Index of the root bundle that needs to be deleted.
     pub fn emergency_delete_root_bundle(
         ctx: Context<EmergencyDeleteRootBundleState>,
-        root_bundle_id: u32
+        root_bundle_id: u32,
     ) -> Result<()> {
         instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
     }
@@ -260,7 +260,7 @@ pub mod svm_spoke {
         quote_timestamp: u32,
         fill_deadline: u32,
         exclusivity_parameter: u32,
-        message: Vec<u8>
+        message: Vec<u8>,
     ) -> Result<()> {
         instructions::deposit_v3(
             ctx,
@@ -275,7 +275,7 @@ pub mod svm_spoke {
             quote_timestamp,
             fill_deadline,
             exclusivity_parameter,
-            message
+            message,
         )
     }
 
@@ -292,7 +292,7 @@ pub mod svm_spoke {
         exclusive_relayer: Pubkey,
         fill_deadline: u32,
         exclusivity_parameter: u32,
-        message: Vec<u8>
+        message: Vec<u8>,
     ) -> Result<()> {
         instructions::deposit_v3_now(
             ctx,
@@ -306,7 +306,7 @@ pub mod svm_spoke {
             exclusive_relayer,
             fill_deadline,
             exclusivity_parameter,
-            message
+            message,
         )
     }
 
@@ -327,7 +327,7 @@ pub mod svm_spoke {
         quote_timestamp: u32,
         fill_deadline: u32,
         exclusivity_parameter: u32,
-        message: Vec<u8>
+        message: Vec<u8>,
     ) -> Result<()> {
         instructions::unsafe_deposit_v3(
             ctx,
@@ -343,7 +343,7 @@ pub mod svm_spoke {
             quote_timestamp,
             fill_deadline,
             exclusivity_parameter,
-            message
+            message,
         )
     }
 
@@ -358,7 +358,7 @@ pub mod svm_spoke {
         _ctx: Context<Null>,
         signer: Pubkey,
         depositor: Pubkey,
-        deposit_nonce: u64
+        deposit_nonce: u64,
     ) -> Result<[u8; 32]> {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
@@ -425,7 +425,7 @@ pub mod svm_spoke {
         _relay_hash: [u8; 32],
         relay_data: Option<V3RelayData>,
         repayment_chain_id: Option<u64>,
-        repayment_address: Option<Pubkey>
+        repayment_address: Option<Pubkey>,
     ) -> Result<()> {
         instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
@@ -523,17 +523,19 @@ pub mod svm_spoke {
     /// execute_relayer_refund_leaf executes in mode (a) where refunds are sent to ATA directly.
     /// execute_relayer_refund_leaf_deferred executes in mode (b) where refunds are allocated to the claim_account PDA.
     pub fn execute_relayer_refund_leaf<'c, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
-        where 'c: 'info
+    where
+        'c: 'info,
     {
         instructions::execute_relayer_refund_leaf(ctx, false)
     }
 
     pub fn execute_relayer_refund_leaf_deferred<'c, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>
+        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
-        where 'c: 'info
+    where
+        'c: 'info,
     {
         instructions::execute_relayer_refund_leaf(ctx, true)
     }
@@ -604,7 +606,7 @@ pub mod svm_spoke {
     pub fn write_instruction_params_fragment(
         ctx: Context<WriteInstructionParamsFragment<'_>>,
         offset: u32,
-        fragment: Vec<u8>
+        fragment: Vec<u8>,
     ) -> Result<()> {
         instructions::write_instruction_params_fragment(ctx, offset, fragment)
     }
@@ -640,7 +642,7 @@ pub mod svm_spoke {
     pub fn initialize_claim_account(
         ctx: Context<InitializeClaimAccount>,
         _mint: Pubkey,
-        _refund_address: Pubkey
+        _refund_address: Pubkey,
     ) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
@@ -660,8 +662,8 @@ pub mod svm_spoke {
     /// - _refund_address: The public key of the refund address associated with the claim account.
     pub fn close_claim_account(
         ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey, // Only used in account constraints.
-        _refund_address: Pubkey // Only used in account constraints.
+        _mint: Pubkey,           // Only used in account constraints.
+        _refund_address: Pubkey, // Only used in account constraints.
     ) -> Result<()> {
         instructions::close_claim_account(ctx)
     }
@@ -700,7 +702,7 @@ pub mod svm_spoke {
     pub fn request_v3_slow_fill(
         ctx: Context<RequestV3SlowFill>,
         _relay_hash: [u8; 32],
-        relay_data: Option<V3RelayData>
+        relay_data: Option<V3RelayData>,
     ) -> Result<()> {
         instructions::request_v3_slow_fill(ctx, relay_data)
     }
@@ -746,7 +748,7 @@ pub mod svm_spoke {
         _relay_hash: [u8; 32],
         slow_fill_leaf: Option<V3SlowFill>,
         _root_bundle_id: Option<u32>,
-        proof: Option<Vec<[u8; 32]>>
+        proof: Option<Vec<[u8; 32]>>,
     ) -> Result<()> {
         instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
@@ -779,7 +781,7 @@ pub mod svm_spoke {
     ///     - authority_bump: The authority bump for the message transmitter.
     pub fn handle_receive_message<'info>(
         ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
-        params: HandleReceiveMessageParams
+        params: HandleReceiveMessageParams,
     ) -> Result<()> {
         instructions::handle_receive_message(ctx, params)
     }

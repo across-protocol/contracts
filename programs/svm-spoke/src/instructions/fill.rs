@@ -1,14 +1,17 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{ associated_token::AssociatedToken, token_interface::{ Mint, TokenAccount, TokenInterface } };
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 
 use crate::{
     common::V3RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
-    error::{ CommonError, SvmError },
-    event::{ FillType, FilledV3Relay, V3RelayExecutionEventInfo },
-    state::{ FillStatus, FillStatusAccount, FillV3RelayParams, State },
-    utils::{ get_current_time, hash_non_empty_message, invoke_handler, transfer_from },
+    error::{CommonError, SvmError},
+    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
+    state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -80,23 +83,22 @@ pub fn fill_v3_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
     relay_data: Option<V3RelayData>,
     repayment_chain_id: Option<u64>,
-    repayment_address: Option<Pubkey>
+    repayment_address: Option<Pubkey>,
 ) -> Result<()> {
     let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_v3_relay_params(
         relay_data,
         repayment_chain_id,
         repayment_address,
-        &ctx.accounts.instruction_params
+        &ctx.accounts.instruction_params,
     );
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if
-        relay_data.exclusive_relayer != ctx.accounts.signer.key() &&
-        relay_data.exclusivity_deadline >= current_time &&
-        relay_data.exclusive_relayer != Pubkey::default()
+    if relay_data.exclusive_relayer != ctx.accounts.signer.key()
+        && relay_data.exclusivity_deadline >= current_time
+        && relay_data.exclusive_relayer != Pubkey::default()
     {
         return err!(CommonError::NotExclusiveRelayer);
     }
@@ -127,7 +129,7 @@ pub fn fill_v3_relay<'info>(
             state,
             ctx.bumps.state,
             &ctx.accounts.mint,
-            &ctx.accounts.token_program
+            &ctx.accounts.token_program,
         )?;
     }
 
@@ -174,21 +176,20 @@ fn unwrap_fill_v3_relay_params(
     relay_data: Option<V3RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
-    account: &Option<Account<FillV3RelayParams>>
+    account: &Option<Account<FillV3RelayParams>>,
 ) -> FillV3RelayParams {
     match (relay_data, repayment_chain_id, repayment_address) {
         (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
             FillV3RelayParams { relay_data, repayment_chain_id, repayment_address }
         }
-        _ =>
-            account
-                .as_ref()
-                .map(|account| FillV3RelayParams {
-                    relay_data: account.relay_data.clone(),
-                    repayment_chain_id: account.repayment_chain_id,
-                    repayment_address: account.repayment_address,
-                })
-                .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+        _ => account
+            .as_ref()
+            .map(|account| FillV3RelayParams {
+                relay_data: account.relay_data.clone(),
+                repayment_chain_id: account.repayment_chain_id,
+                repayment_address: account.repayment_address,
+            })
+            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
     }
 }
 

@@ -1,6 +1,6 @@
-use anchor_lang::{ prelude::*, solana_program::keccak };
+use anchor_lang::{prelude::*, solana_program::keccak};
 
-use crate::{ common::V3RelayData, error::CommonError, utils::hash_non_empty_message };
+use crate::{common::V3RelayData, error::CommonError, utils::hash_non_empty_message};
 
 pub fn get_v3_relay_hash(relay_data: &V3RelayData, chain_id: u64) -> [u8; 32] {
     let mut input = relay_data.try_to_vec().unwrap();
@@ -37,7 +37,11 @@ pub fn process_proof(proof: &[[u8; 32]], leaf: &[u8; 32]) -> [u8; 32] {
 
 // See https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/Hashes.sol
 fn commutative_keccak256(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {
-    if a < b { efficient_keccak256(a, b) } else { efficient_keccak256(b, a) }
+    if a < b {
+        efficient_keccak256(a, b)
+    } else {
+        efficient_keccak256(b, a)
+    }
 }
 
 fn efficient_keccak256(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {

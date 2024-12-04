@@ -1,15 +1,15 @@
-use anchor_lang::{ prelude::*, solana_program::keccak };
+use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::{
     associated_token,
-    token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked },
+    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
-    error::{ CommonError, SvmError },
-    event::{ ExecutedRelayerRefundRoot, TokensBridged },
-    state::{ ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability },
-    utils::{ is_claimed, set_claimed, verify_merkle_proof },
+    error::{CommonError, SvmError},
+    event::{ExecutedRelayerRefundRoot, TokensBridged},
+    state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
+    utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
 
 #[event_cpi]
@@ -102,10 +102,10 @@ impl RelayerRefundLeaf {
 
 pub fn execute_relayer_refund_leaf<'c, 'info>(
     ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    deferred_refunds: bool
+    deferred_refunds: bool,
 ) -> Result<()>
-    where
-        'c: 'info // The lifetime constraint 'c: 'info ensures that the lifetime 'c is at least as long as 'info.
+where
+    'c: 'info, // The lifetime constraint 'c: 'info ensures that the lifetime 'c is at least as long as 'info.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -178,7 +178,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
 
 fn distribute_relayer_refunds<'info>(
     ctx: &Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    relayer_refund_leaf: &RelayerRefundLeaf
+    relayer_refund_leaf: &RelayerRefundLeaf,
 ) -> Result<()> {
     // Derive the signer seeds for the state. The vault owns the state PDA so we need to derive this to create the
     // signer seeds to execute the CPI transfer from the vault to the refund recipient's token account.
@@ -196,7 +196,7 @@ fn distribute_relayer_refunds<'info>(
         let associated_token_address = associated_token::get_associated_token_address_with_program_id(
             &relayer_refund_leaf.refund_addresses[i],
             &ctx.accounts.mint.key(),
-            &ctx.accounts.token_program.key()
+            &ctx.accounts.token_program.key(),
         );
         if refund_token_account.key() != associated_token_address {
             return Err(Error::from(SvmError::InvalidRefund).with_account_name(&format!("remaining_accounts[{}]", i)));
@@ -208,11 +208,8 @@ fn distribute_relayer_refunds<'info>(
             to: refund_token_account.to_account_info(),
             authority: ctx.accounts.state.to_account_info(),
         };
-        let cpi_context = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            transfer_accounts,
-            signer_seeds
-        );
+        let cpi_context =
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
         transfer_checked(cpi_context, amount.to_owned(), ctx.accounts.mint.decimals)?;
     }
 
@@ -221,9 +218,10 @@ fn distribute_relayer_refunds<'info>(
 
 fn accrue_relayer_refunds<'c, 'info>(
     ctx: &Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    relayer_refund_leaf: &RelayerRefundLeaf
+    relayer_refund_leaf: &RelayerRefundLeaf,
 ) -> Result<()>
-    where 'c: 'info
+where
+    'c: 'info,
 {
     for (i, amount) in relayer_refund_leaf.refund_amounts.iter().enumerate() {
         // It should be safe to access elements of refund_addresses and remaining_accounts as their lengths are checked
@@ -231,13 +229,16 @@ fn accrue_relayer_refunds<'c, 'info>(
         let mut claim_account = ClaimAccount::try_from(
             &ctx.remaining_accounts[i],
             &relayer_refund_leaf.mint_public_key,
-            &relayer_refund_leaf.refund_addresses[i]
-        ).map_err(|e| e.with_account_name(&format!("remaining_accounts[{}]", i)))?;
+            &relayer_refund_leaf.refund_addresses[i],
+        )
+        .map_err(|e| e.with_account_name(&format!("remaining_accounts[{}]", i)))?;
 
         claim_account.amount += amount;
 
         // Persist the updated claim account (Anchor handles this only for static accounts).
-        claim_account.exit(ctx.program_id).map_err(|e| e.with_account_name(&format!("remaining_accounts[{}]", i)))?;
+        claim_account
+            .exit(ctx.program_id)
+            .map_err(|e| e.with_account_name(&format!("remaining_accounts[{}]", i)))?;
     }
 
     Ok(())
