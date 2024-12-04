@@ -439,13 +439,9 @@ pub mod svm_spoke {
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure. Must be the relayer in the fill_status PDA.
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - fill_status (Writable): The FillStatusAccount PDA to be closed. Seed: ["fills",relay_hash].
-    ///
-    /// ### Parameters:
-    /// - _relay_hash: The hash identifying the relay for which the fill status account is being closed.
-    /// - relay_data: The data structure containing information about the relay.
-    pub fn close_fill_pda(ctx: Context<CloseFillPda>, _relay_hash: [u8; 32], relay_data: V3RelayData) -> Result<()> {
-        instructions::close_fill_pda(ctx, relay_data)
+    /// - fill_status (Writable): The FillStatusAccount PDA to be closed.
+    pub fn close_fill_pda(ctx: Context<CloseFillPda>) -> Result<()> {
+        instructions::close_fill_pda(ctx)
     }
 
     /// Claims a relayer refund for the caller.
