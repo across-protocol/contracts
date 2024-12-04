@@ -12,57 +12,63 @@ export interface EventType {
 }
 
 // Function to update the event store with all events using pagination
-export async function update(connection: Connection, program: Program<any>, eventStore: Map<number, EventType[]>) {
-  let options: SignaturesForAddressOptions = { limit: 1000 }; // Default max limit of 1000.
-
+export async function update(
+  connection: Connection,
+  program: Program<any>,
+  eventStore: Map<number, EventType[]> = new Map(),
+  finality: Finality = "finalized",
+  options: SignaturesForAddressOptions = { limit: 1000 }
+) {
+  let allSignatures: ConfirmedSignatureInfo[] = [];
   let signatures: ConfirmedSignatureInfo[] = [];
 
-  // Fetch signatures in batches
+  // Fetch all signatures in sequential batches
   do {
-    const fetchedSignatures = await connection.getSignaturesForAddress(program.programId, options, "finalized");
+    const fetchedSignatures = await connection.getSignaturesForAddress(program.programId, options, finality);
     signatures = fetchedSignatures;
-
-    // Fetch events for each signature in parallel
-    const readEventsPromises = signatures.map(async (signature) => {
-      const events = await readEvents(connection, signature.signature, [program]);
-      return {
-        events: events.map((event) => ({
-          ...event,
-          confirmationStatus: signature.confirmationStatus,
-          blockTime: signature.blockTime,
-          signature: signature.signature,
-        })),
-        slot: signature.slot,
-      }; // Return events with associated slot
-    });
-    const eventsWithSlots = await Promise.all(readEventsPromises);
-
-    // Flatten the array of events and store them by slot number
-    for (const { events, slot } of eventsWithSlots) {
-      const eventsWithSlot = events.map((event) => ({ ...event, slot }));
-
-      if (!eventStore.has(slot)) {
-        eventStore.set(slot, []);
-      }
-
-      // Append events only if the signature is not already present
-      const existingEvents = eventStore.get(slot) || [];
-      const newEvents = eventsWithSlot.filter(
-        (event) => !existingEvents.some((existingEvent) => existingEvent.signature === event.signature)
-      );
-
-      eventStore.get(slot)?.push(...newEvents); // Store new events with slot
-    }
+    allSignatures.push(...signatures);
 
     // Update options for the next batch. Set before to the last fetched signature.
     if (signatures.length > 0) options = { ...options, before: signatures[signatures.length - 1].signature };
 
     if (options.limit && signatures.length < options.limit) break; // Exit early if the number of signatures < limit
   } while (signatures.length > 0);
+
+  // Fetch events for all signatures in parallel
+  const readEventsPromises = allSignatures.map(async (signature) => {
+    const events = await readEvents(connection, signature.signature, [program], finality);
+    return {
+      events: events.map((event) => ({
+        ...event,
+        confirmationStatus: signature.confirmationStatus,
+        blockTime: signature.blockTime,
+        signature: signature.signature,
+      })),
+      slot: signature.slot,
+    }; // Return events with associated slot
+  });
+  const eventsWithSlots = await Promise.all(readEventsPromises);
+
+  // Flatten the array of events and store them by slot number
+  for (const { events, slot } of eventsWithSlots) {
+    const eventsWithSlot = events.map((event) => ({ ...event, slot }));
+
+    if (!eventStore.has(slot)) {
+      eventStore.set(slot, []);
+    }
+
+    // Append events only if the signature is not already present
+    const existingEvents = eventStore.get(slot) || [];
+    const newEvents = eventsWithSlot.filter(
+      (event) => !existingEvents.some((existingEvent) => existingEvent.signature === event.signature)
+    );
+
+    eventStore.get(slot)?.push(...newEvents); // Store new events with slot
+  }
 }
 
 // Helper method to query events by event name and optional slot range. startSlot and endSlot are inclusive.
-export function queryEventsBySlotRange(
+export function queryEvents(
   eventName: string,
   eventStore: Map<number, EventType[]>,
   startSlot?: number,

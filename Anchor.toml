@@ -6,7 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
-svm_spoke = "DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn"
+svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
@@ -17,8 +17,8 @@ svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
-wallet = "~/.config/solana/id-2.json"
+cluster = "localnet"
+wallet = "test/svm/keys/localnet-wallet.json"
 
 [scripts]
 test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"

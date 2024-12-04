@@ -40,6 +40,7 @@ async function queryFills(): Promise<void> {
 
   try {
     const events = await readProgramEvents(provider.connection, program);
+    console.log("events", events);
     const fillEvents = events.filter((event) => event.name === "filledV3Relay");
 
     if (fillEvents.length === 0) {

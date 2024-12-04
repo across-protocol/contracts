@@ -23,6 +23,7 @@ import {
   AddressLookupTableProgram,
   VersionedTransaction,
   TransactionMessage,
+  ConfirmedSignatureInfo,
 } from "@solana/web3.js";
 
 export function findProgramAddress(label: string, program: PublicKey, extraSeeds?: string[]) {
@@ -50,12 +51,10 @@ export async function readEvents<IDL extends Idl = Idl>(
   programs: Program<IDL>[],
   commitment: Finality = "confirmed"
 ) {
-  console.time(`getTransaction for ${txSignature}`);
   const txResult = await connection.getTransaction(txSignature, {
     commitment,
     maxSupportedTransactionVersion: 0,
   });
-  console.timeEnd(`getTransaction for ${txSignature}`);
 
   let eventAuthorities = new Map();
   for (const program of programs) {
@@ -105,25 +104,53 @@ export function getEvent(events: any[], program: PublicKey, eventName: string) {
   throw new Error("Event " + eventName + " not found");
 }
 
+export interface EventType {
+  program: PublicKey;
+  data: any;
+  name: string;
+  slot: number;
+  confirmationStatus: string;
+  blockTime: number;
+  signature: string;
+}
+
 export async function readProgramEvents(
   connection: Connection,
   program: Program<any>,
-  options?: SignaturesForAddressOptions,
-  finality: Finality = "confirmed"
-) {
-  console.time("readProgramEvents Total Time");
-  let events = [];
-  console.time("getSignaturesForAddress");
-  const pastSignatures = await connection.getSignaturesForAddress(program.programId, options, finality);
-  console.timeEnd("getSignaturesForAddress");
+  finality: Finality = "confirmed",
+  options: SignaturesForAddressOptions = { limit: 1000 }
+): Promise<EventType[]> {
+  const allSignatures: ConfirmedSignatureInfo[] = [];
 
-  console.time(`readEvents for signatures`);
-  for (const signature of pastSignatures) {
-    events.push(...(await readEvents(connection, signature.signature, [program], finality)));
+  // Fetch all signatures in sequential batches
+  while (true) {
+    const signatures = await connection.getSignaturesForAddress(program.programId, options, finality);
+    console.log("signatures", signatures);
+    allSignatures.push(...signatures);
+
+    // Update options for the next batch. Set before to the last fetched signature.
+    if (signatures.length > 0) {
+      options = { ...options, before: signatures[signatures.length - 1].signature };
+    }
+
+    if (options.limit && signatures.length < options.limit) break; // Exit early if the number of signatures < limit
   }
-  console.timeEnd(`readEvents for signatures`);
-  console.timeEnd("readProgramEvents Total Time");
-  return events;
+
+  // Fetch events for all signatures in parallel
+  const eventsWithSlots = await Promise.all(
+    allSignatures.map(async (signature) => {
+      const events = await readEvents(connection, signature.signature, [program], finality);
+      return events.map((event) => ({
+        ...event,
+        confirmationStatus: signature.confirmationStatus,
+        blockTime: signature.blockTime,
+        signature: signature.signature,
+        slot: signature.slot,
+      }));
+    })
+  );
+
+  return eventsWithSlots.flat(); // Flatten the array of events & return.
 }
 
 export async function subscribeToCpiEventsForProgram(
