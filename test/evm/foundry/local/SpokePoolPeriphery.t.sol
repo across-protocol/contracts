@@ -126,9 +126,21 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         proxy.swapAndBridge(
-            IERC20(mockERC20), // acrossInputToken
-            SpokePoolV3Periphery.SwapData({
-                swapToken: IERC20(address(mockWETH)),
+            SpokePoolV3Periphery.SwapAndDepositData({
+                depositData: SpokePoolV3Periphery.BaseDepositData({
+                    inputToken: address(mockERC20),
+                    outputToken: address(0),
+                    outputAmount: depositAmount,
+                    depositor: depositor,
+                    recipient: depositor,
+                    destinationChainId: destinationChainId,
+                    exclusiveRelayer: address(0),
+                    quoteTimestamp: uint32(block.timestamp),
+                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                    exclusivityParameter: 0,
+                    message: new bytes(0)
+                }),
+                swapToken: address(mockWETH),
                 exchange: address(dex),
                 transferType: SpokePoolV3Periphery.TransferType.Approval,
                 swapTokenAmount: mintAmount, // swapTokenAmount
@@ -140,21 +152,8 @@ contract SpokePoolPeripheryTest is Test {
                     mintAmount,
                     depositAmount
                 )
-            }),
-            SpokePoolV3Periphery.DepositData({
-                outputToken: address(0),
-                outputAmount: depositAmount,
-                depositor: depositor,
-                recipient: depositor,
-                destinationChainId: destinationChainId,
-                exclusiveRelayer: address(0),
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                exclusivityParameter: 0,
-                message: new bytes(0)
             })
         );
-
         vm.stopPrank();
     }
 
@@ -183,9 +182,21 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge{ value: mintAmount }(
-            IERC20(mockERC20), // acrossInputToken
-            SpokePoolV3Periphery.SwapData({
-                swapToken: IERC20(address(mockWETH)),
+            SpokePoolV3Periphery.SwapAndDepositData({
+                depositData: SpokePoolV3Periphery.BaseDepositData({
+                    inputToken: address(mockERC20),
+                    outputToken: address(0),
+                    outputAmount: depositAmount,
+                    depositor: depositor,
+                    recipient: depositor,
+                    destinationChainId: destinationChainId,
+                    exclusiveRelayer: address(0),
+                    quoteTimestamp: uint32(block.timestamp),
+                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                    exclusivityParameter: 0,
+                    message: new bytes(0)
+                }),
+                swapToken: address(mockWETH),
                 exchange: address(dex),
                 transferType: SpokePoolV3Periphery.TransferType.Approval,
                 swapTokenAmount: mintAmount, // swapTokenAmount
@@ -197,21 +208,8 @@ contract SpokePoolPeripheryTest is Test {
                     mintAmount,
                     depositAmount
                 )
-            }),
-            SpokePoolV3Periphery.DepositData({
-                outputToken: address(0),
-                outputAmount: depositAmount,
-                depositor: depositor,
-                recipient: depositor,
-                destinationChainId: destinationChainId,
-                exclusiveRelayer: address(0),
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                exclusivityParameter: 0,
-                message: new bytes(0)
             })
         );
-
         vm.stopPrank();
     }
 
@@ -250,7 +248,6 @@ contract SpokePoolPeripheryTest is Test {
             0,
             new bytes(0)
         );
-
         vm.stopPrank();
     }
 }
