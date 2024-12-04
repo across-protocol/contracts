@@ -6,12 +6,12 @@ skip-lint = false
 
 [programs.localnet]
 multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
-svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
+svm_spoke = "DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
 multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
-svm_spoke = "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt"
+svm_spoke = "DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn"
 
 [registry]
 url = "https://api.apr.dev"
