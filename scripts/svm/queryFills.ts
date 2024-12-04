@@ -13,7 +13,7 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const idl = require("../../target/idl/svm_spoke.json");
 const program = new Program<SvmSpoke>(idl, provider);
-const programId = new PublicKey("YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt");
+const programId = program.programId;
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv)).option("seed", {
@@ -40,7 +40,6 @@ async function queryFills(): Promise<void> {
 
   try {
     const events = await readProgramEvents(provider.connection, program);
-    console.log("events", events);
     const fillEvents = events.filter((event) => event.name === "filledV3Relay");
 
     if (fillEvents.length === 0) {
