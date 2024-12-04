@@ -14,14 +14,12 @@ import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 
 /**
  * @title SpokePoolProxy
- * @notice User should only call the SpokePoolV3Periphery contract functions through this
- * contract. This is purposefully a simple passthrough contract so that the user only approves (or permits or
- * authorizes) this contract to pull its assets while the SpokePoolV3Periphery contract can be used to call
- * any calldata on any exchange that the user wants to. By separating the contract that pulls user funds from the
- * contract that executes arbitrary calldata, the SpokePoolPeriphery does not need to validate the calldata
- * that gets executed. If the user's request to pull funds into this contract gets front-run, then there won't be
- * avenues for a blackhat to exploit the user because they'd still need to make a call on the SpokePoolPeriphery
- * contract through this contract but they wouldn't have access to the user's signature.
+ * @notice User should only call SpokePoolV3Periphery contract functions that require approvals through this
+ * contract. This is purposefully a simple passthrough contract so that the user only approves this contract to
+ * pull its assets because the SpokePoolV3Periphery contract can be used to call
+ * any calldata on any exchange that the user wants to. By separating the contract that is approved to spend
+ * user funds from the contract that executes arbitrary calldata, the SpokePoolPeriphery does not
+ * need to validate the calldata that gets executed.
  * @dev If this proxy didn't exist and users instead approved and interacted directly with the SpokePoolV3Periphery
  * then users would run the unneccessary risk that another user could instruct the Periphery contract to steal
  * any approved tokens that the user had left outstanding.
@@ -30,6 +28,108 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
+    // Flag set for one time initialization.
+    bool private initialized;
+
+    // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
+    // so this contract should also be able to be deterministically deployed at the same address across all networks
+    // since the periphery address is the only constructor argument.
+    SpokePoolV3Periphery public SPOKE_POOL_PERIPHERY;
+
+    error InvalidPeriphery();
+    error ContractInitialized();
+
+    /**
+     * @notice Construct a new Proxy contract.
+     * @dev Is empty and all of the state variables are initialized in the initialize function
+     * to allow for deployment at a deterministic address via create2, which requires that the bytecode
+     * across different networks is the same. Constructor parameters affect the bytecode so we can only
+     * add parameters here that are consistent across networks.
+     */
+    constructor() {}
+
+    /**
+     * @notice Initialize the SpokePoolPeripheryProxy contract.
+     * @param _spokePoolPeriphery Address of the SpokePoolPeriphery contract that this proxy will call.
+     */
+    function initialize(SpokePoolV3Periphery _spokePoolPeriphery) external nonReentrant {
+        if (initialized) revert ContractInitialized();
+        initialized = true;
+        if (!address(_spokePoolPeriphery).isContract()) revert InvalidPeriphery();
+        SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
+    }
+
+    /**
+     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
+     * the assumption is that this function will handle only ERC20 tokens.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param swapData Specifies the params we need to perform a swap on a generic exchange.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     */
+    function swapAndBridge(
+        IERC20 acrossInputToken,
+        SpokePoolV3Periphery.SwapData calldata swapData,
+        SpokePoolV3Periphery.DepositData calldata depositData
+    ) external nonReentrant {
+        swapData.swapToken.safeTransferFrom(msg.sender, address(this), swapData.swapTokenAmount);
+        _callSwapAndBridge(acrossInputToken, swapData, depositData);
+    }
+
+    function _callSwapAndBridge(
+        IERC20 acrossInputToken,
+        SpokePoolV3Periphery.SwapData calldata swapData,
+        SpokePoolV3Periphery.DepositData calldata depositData
+    ) internal {
+        swapData.swapToken.forceApprove(address(SPOKE_POOL_PERIPHERY), swapData.swapTokenAmount);
+        SPOKE_POOL_PERIPHERY.swapAndBridge(acrossInputToken, swapData, depositData);
+    }
+}
+
+/**
+ * @title SpokePoolV3Periphery
+ * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
+ * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
+ * contract may be deployed deterministically at the same address across different networks.
+ * @custom:security-contact bugs@across.to
+ */
+contract SpokePoolV3Periphery is Lockable, MultiCaller {
+    using SafeERC20 for IERC20;
+    using Address for address;
+
+    // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
+    V3SpokePoolInterface public spokePool;
+
+    // Wrapped native token contract address.
+    WETH9Interface public wrappedNativeToken;
+
+    // Canonical Permit2 contract address.
+    IPermit2 public permit2;
+
+    // Address of the proxy contract that users should interact with to call this contract.
+    // Force users to call through this contract to make sure they don't leave any approvals/permits
+    // outstanding on this contract that could be abused because this contract executes arbitrary
+    // calldata.
+    address public proxy;
+
+    // Nonce for this contract to use for EIP1271 "signatures".
+    uint48 private eip1271Nonce;
+
+    // Boolean indicating whether the contract is initialized.
+    bool private initialized;
+
+    // Slot for checking whether this contract is expecting a callback from permit2. Used to confirm whether it should return a valid signature response.
+    // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
+    bool private expectingPermit2Callback;
+
+    // EIP 1271 magic bytes indicating a valid signature.
+    bytes4 private constant EIP1271_VALID_SIGNATURE = 0x1626ba7e;
+
+    // EIP 1271 bytes indicating an invalid signature.
+    bytes4 private constant EIP1271_INVALID_SIGNATURE = 0xffffffff;
+
+    // Permit2 constants:
     bytes private constant ACROSS_DEPOSIT_DATA_TYPE =
         abi.encodePacked(
             "DepositData(",
@@ -53,392 +153,6 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
                 "TokenPermissions(address token, uint256 amount)"
             )
         );
-
-    // Flag set for one time initialization.
-    bool private initialized;
-
-    // Canonical Permit2 contract address.
-    IPermit2 public permit2;
-
-    // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
-    // so this contract should also be able to be deterministically deployed at the same address across all networks
-    // since the periphery address is the only constructor argument.
-    SpokePoolV3Periphery public SPOKE_POOL_PERIPHERY;
-
-    error LeftoverInputTokens();
-    error InvalidPeriphery();
-    error InvalidPermit2();
-    error ContractInitialized();
-    error InvalidSignature();
-
-    /**
-     * @notice Construct a new Proxy contract.
-     * @dev Is empty and all of the state variables are initialized in the initialize function
-     * to allow for deployment at a deterministic address via create2, which requires that the bytecode
-     * across different networks is the same. Constructor parameters affect the bytecode so we can only
-     * add parameters here that are consistent across networks.
-     */
-    constructor() {}
-
-    /**
-     * @notice Initialize the SpokePoolPeripheryProxy contract.
-     * @param _spokePoolPeriphery Address of the SpokePoolPeriphery contract that this proxy will call.
-     */
-    function initialize(SpokePoolV3Periphery _spokePoolPeriphery, IPermit2 _permit2) external nonReentrant {
-        if (initialized) revert ContractInitialized();
-        initialized = true;
-        if (!address(_spokePoolPeriphery).isContract()) revert InvalidPeriphery();
-        SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
-        if (!address(_permit2).isContract()) revert InvalidPermit2();
-        permit2 = _permit2;
-    }
-
-    /**
-     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
-     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
-     * @param swapData Specifies the params we need to perform a swap on a generic exchange.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
-     */
-    function swapAndBridge(
-        IERC20 acrossInputToken,
-        SpokePoolV3Periphery.SwapData calldata swapData,
-        SpokePoolV3Periphery.DepositData calldata depositData
-    ) external nonReentrant {
-        swapData.swapToken.safeTransferFrom(msg.sender, address(this), swapData.swapTokenAmount);
-        _callSwapAndBridge(acrossInputToken, swapData, depositData);
-    }
-
-    /**
-     * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
-     * @param swapData Specifies the params we need to perform a swap on a generic exchange.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
-     * @param deadline Deadline before which the permit signature is valid.
-     * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v)
-     */
-    function swapAndBridgeWithPermit(
-        IERC20 acrossInputToken,
-        SpokePoolV3Periphery.SwapData calldata swapData,
-        SpokePoolV3Periphery.DepositData calldata depositData,
-        uint256 deadline,
-        bytes calldata permitSignature
-    ) external nonReentrant {
-        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(permitSignature);
-        // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
-        // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
-        // other than this contract.
-        try
-            IERC20Permit(address(swapData.swapToken)).permit(
-                msg.sender,
-                address(this),
-                swapData.swapTokenAmount,
-                deadline,
-                v,
-                r,
-                s
-            )
-        {} catch {}
-        _callSwapAndBridge(acrossInputToken, swapData, depositData);
-    }
-
-    /**
-     * @notice Uses permit2 to transfer tokens from a user before swapping a token on this chain via specified router and submitting an Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
-     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
-     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
-     * @param depositor The owner of the permit2 signature and depositor for the Across spoke pool.
-     * @param swapData Specifies the params we need to perform a swap on a generic exchange.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
-     * @param permit The permit data signed over by the owner.
-     * @param transferDetails The spender's requested transfer details for the permitted token.
-     * @param signature The permit2 signature to verify against the deposit data.
-     */
-    function swapAndBridgeWithPermit2(
-        IERC20 acrossInputToken,
-        address depositor,
-        SpokePoolV3Periphery.SwapData calldata swapData,
-        SpokePoolV3Periphery.DepositData calldata depositData,
-        IPermit2.PermitTransferFrom calldata permit,
-        IPermit2.SignatureTransferDetails calldata transferDetails,
-        bytes calldata signature
-    ) external nonReentrant {
-        bytes32 witness = keccak256(
-            abi.encode(
-                ACROSS_DEPOSIT_DATA_TYPEHASH,
-                depositData.outputToken,
-                depositData.outputAmount,
-                depositData.depositor,
-                depositData.recipient,
-                depositData.destinationChainId,
-                depositData.exclusiveRelayer,
-                depositData.quoteTimestamp,
-                depositData.fillDeadline,
-                depositData.exclusivityParameter,
-                depositData.message
-            )
-        );
-        permit2.permitWitnessTransferFrom(
-            permit,
-            transferDetails,
-            depositor,
-            witness,
-            ACROSS_DEPOSIT_TYPE_STRING,
-            signature
-        );
-        _callSwapAndBridge(acrossInputToken, swapData, depositData);
-    }
-
-    /**
-     * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
-     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
-     * @param swapData Specifies the params we need to perform a swap on a generic exchange.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
-     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
-     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
-     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     */
-    function swapAndBridgeWithAuthorization(
-        IERC20 acrossInputToken,
-        SpokePoolV3Periphery.SwapData calldata swapData,
-        SpokePoolV3Periphery.DepositData calldata depositData,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes32 nonce,
-        bytes calldata receiveWithAuthSignature
-    ) external nonReentrant {
-        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(receiveWithAuthSignature);
-        // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
-        // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
-        // when attempting to swap tokens it does not own.
-        IERC20Auth(address(swapData.swapToken)).receiveWithAuthorization(
-            msg.sender,
-            address(this),
-            swapData.swapTokenAmount,
-            validAfter,
-            validBefore,
-            nonce,
-            v,
-            r,
-            s
-        );
-        _callSwapAndBridge(acrossInputToken, swapData, depositData);
-    }
-
-    /**
-     * @notice Deposits an ERC20 token into the Spoke Pool contract.
-     * @dev User should probably just call SpokePool.depositV3 directly to save marginal gas costs,
-     * but this is added here for convenience in case caller only wants to interface Across through a single
-     * address.
-     * @param acrossInputToken ERC20 token to deposit.
-     * @param acrossInputAmount Amount of the input token to deposit.
-     * @param depositData Specifies the Across deposit params to send.
-     */
-    function depositERC20(
-        IERC20 acrossInputToken,
-        uint256 acrossInputAmount,
-        SpokePoolV3Periphery.DepositData calldata depositData
-    ) external nonReentrant {
-        IERC20(acrossInputToken).safeTransferFrom(msg.sender, address(this), acrossInputAmount);
-        _callDeposit(IERC20(address(acrossInputToken)), acrossInputAmount, depositData);
-    }
-
-    /**
-     * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
-     * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @param acrossInputToken EIP-2612 compliant token to deposit.
-     * @param acrossInputAmount Amount of the input token to deposit.
-     * @param depositData Specifies the Across deposit params to send.
-     * @param deadline Deadline before which the permit signature is valid.
-     * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v)
-     */
-    function depositWithPermit(
-        IERC20Permit acrossInputToken,
-        uint256 acrossInputAmount,
-        SpokePoolV3Periphery.DepositData calldata depositData,
-        uint256 deadline,
-        bytes calldata permitSignature
-    ) external nonReentrant {
-        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(permitSignature);
-        IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast IERC20Permit to an IERC20 type.
-        // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
-        // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
-        // other than this contract.
-        try acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s) {} catch {}
-
-        _callDeposit(_acrossInputToken, acrossInputAmount, depositData);
-    }
-
-    /**
-     * @notice Uses permit2 to transfer and submit an Across deposit to the Spoke Pool contract.
-     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
-     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
-     * @param permit The permit data signed over by the owner.
-     * @param transferDetails The spender's requested transfer details for the permitted token.
-     * @param signature The permit2 signature to verify against the deposit data.
-     */
-    function depositWithPermit2(
-        address depositor,
-        SpokePoolV3Periphery.DepositData calldata depositData,
-        IPermit2.PermitTransferFrom calldata permit,
-        IPermit2.SignatureTransferDetails calldata transferDetails,
-        bytes calldata signature
-    ) external nonReentrant {
-        bytes32 witness = keccak256(
-            abi.encode(
-                ACROSS_DEPOSIT_DATA_TYPEHASH,
-                depositData.outputToken,
-                depositData.outputAmount,
-                depositData.depositor,
-                depositData.recipient,
-                depositData.destinationChainId,
-                depositData.exclusiveRelayer,
-                depositData.quoteTimestamp,
-                depositData.fillDeadline,
-                depositData.exclusivityParameter,
-                depositData.message
-            )
-        );
-        permit2.permitWitnessTransferFrom(
-            permit,
-            transferDetails,
-            depositor,
-            witness,
-            ACROSS_DEPOSIT_TYPE_STRING,
-            signature
-        );
-        _callDeposit(IERC20(permit.permitted.token), permit.permitted.amount, depositData);
-    }
-
-    /**
-     * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
-     * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
-     * @param acrossInputToken EIP-3009 compliant token to deposit.
-     * @param acrossInputAmount Amount of the input token to deposit.
-     * @param depositData Specifies the Across deposit params to send.
-     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
-     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
-     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     */
-    function depositWithAuthorization(
-        IERC20Auth acrossInputToken,
-        uint256 acrossInputAmount,
-        SpokePoolV3Periphery.DepositData calldata depositData,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes32 nonce,
-        bytes calldata receiveWithAuthSignature
-    ) external nonReentrant {
-        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(receiveWithAuthSignature);
-        acrossInputToken.receiveWithAuthorization(
-            msg.sender,
-            address(this),
-            acrossInputAmount,
-            validAfter,
-            validBefore,
-            nonce,
-            v,
-            r,
-            s
-        );
-        _callDeposit(IERC20(address(acrossInputToken)), acrossInputAmount, depositData);
-    }
-
-    function _callSwapAndBridge(
-        IERC20 acrossInputToken,
-        SpokePoolV3Periphery.SwapData calldata swapData,
-        SpokePoolV3Periphery.DepositData calldata depositData
-    ) internal {
-        swapData.swapToken.forceApprove(address(SPOKE_POOL_PERIPHERY), swapData.swapTokenAmount);
-        SPOKE_POOL_PERIPHERY.swapAndBridge(acrossInputToken, swapData, depositData);
-    }
-
-    function _callDeposit(
-        IERC20 acrossInputToken,
-        uint256 acrossInputAmount,
-        SpokePoolV3Periphery.DepositData calldata depositData
-    ) internal {
-        acrossInputToken.forceApprove(address(SPOKE_POOL_PERIPHERY), acrossInputAmount);
-        SPOKE_POOL_PERIPHERY.depositERC20(acrossInputToken, acrossInputAmount, depositData);
-    }
-
-    function _deserializeSignature(bytes calldata _signature)
-        private
-        pure
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
-        if (_signature.length != 65) revert InvalidSignature();
-        v = uint8(_signature[64]);
-        r = bytes32(_signature[0:32]);
-        s = bytes32(_signature[32:64]);
-    }
-}
-
-/**
- * @title SpokePoolV3Periphery
- * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
- * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
- * contract may be deployed deterministically at the same address across different networks.
- * @custom:security-contact bugs@across.to
- */
-contract SpokePoolV3Periphery is Lockable, MultiCaller {
-    using SafeERC20 for IERC20;
-    using Address for address;
-
-    // Enum describing the method of transferring tokens to an exchange.
-    enum TransferType {
-        // Approve the exchange so that it may transfer tokens from this contract.
-        Approval,
-        // Transfer tokens to the exchange before calling it in this contract.
-        Transfer,
-        // Approve the exchange by use of an EIP1271 callback.
-        EIP1271Signature
-    }
-
-    // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
-    V3SpokePoolInterface public spokePool;
-
-    // Wrapped native token contract address.
-    WETH9Interface public wrappedNativeToken;
-
-    // Canonical Permit2 contract address.
-    IPermit2 public permit2;
-
-    // Address of the proxy contract that users should interact with to call this contract.
-    // Force users to call through this contract to make sure they don't leave any approvals/permits
-    // outstanding on this contract that could be abused because this contract executes arbitrary
-    // calldata.
-    address public proxy;
-
-    // Nonce for this contract to use for EIP1271 "signatures".
-    uint48 private nonce;
-
-    // Boolean indicating whether the contract is initialized.
-    bool private initialized;
-
-    // Slot for checking whether this contract is expecting a callback from permit2. Used to confirm whether it should return a valid signature response.
-    // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
-    bool private expectingPermit2Callback;
-
-    // EIP 1271 magic bytes indicating a valid signature.
-    bytes4 private constant EIP1271_VALID_SIGNATURE = 0x1626ba7e;
-
-    // EIP 1271 bytes indicating an invalid signature.
-    bytes4 private constant EIP1271_INVALID_SIGNATURE = 0xffffffff;
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
@@ -470,6 +184,16 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         bytes message;
     }
 
+    // Enum describing the method of transferring tokens to an exchange.
+    enum TransferType {
+        // Approve the exchange so that it may transfer tokens from this contract.
+        Approval,
+        // Transfer tokens to the exchange before calling it in this contract.
+        Transfer,
+        // Approve the exchange by use of an EIP1271 callback.
+        EIP1271Signature
+    }
+
     // Minimum amount of parameters needed to perform a swap on an exchange specified. We include information beyond just the router calldata
     // and exchange address so that we may ensure that the swap was performed properly.
     struct SwapData {
@@ -478,7 +202,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         // Address of the exchange to use in the swap.
         address exchange;
         // Method of transferring tokens to the exchange.
-        SpokePoolV3Periphery.TransferType transferType;
+        TransferType transferType;
         // Amount of the token to swap on the exchange.
         uint256 swapTokenAmount;
         // Minimum output amount of the exchange, and, by extension, the minimum required amount to deposit into an Across spoke pool.
@@ -509,6 +233,8 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     error InvalidProxy();
     error InvalidSwapToken();
     error NotProxy();
+    error InvalidPermit2();
+    error InvalidSignature();
 
     /**
      * @notice Construct a new SwapAndBridgeBase contract.
@@ -518,11 +244,6 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
      * add parameters here that are consistent across networks.
      */
     constructor() {}
-
-    modifier onlyProxy() {
-        if (msg.sender != proxy) revert NotProxy();
-        _;
-    }
 
     /**
      * @notice Initializes the SwapAndBridgeBase contract.
@@ -536,7 +257,8 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function initialize(
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
-        address _proxy
+        address _proxy,
+        IPermit2 _permit2
     ) external nonReentrant {
         if (initialized) revert ContractInitialized();
         initialized = true;
@@ -546,6 +268,8 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         wrappedNativeToken = _wrappedNativeToken;
         if (!_proxy.isContract()) revert InvalidProxy();
         proxy = _proxy;
+        if (!address(_permit2).isContract()) revert InvalidPermit2();
+        permit2 = _permit2;
     }
 
     /**
@@ -605,6 +329,10 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If msg.value is 0, then this function is only callable by the proxy contract, to protect against
+     * approval abuse attacks where a user has set an approval on this contract to spend any ERC20 token.
+     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
+     * the assumption is that this function will handle only ERC20 tokens.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      * @param swapData Specifies the data needed to perform a swap on a generic exchange.
      * @param depositData Specifies the Across deposit params we'll send after the swap.
@@ -630,18 +358,234 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     }
 
     /**
-     * @notice Calls depositV3 on spokepool.
-     * @param acrossInputToken inputToken to deposit.
-     * @param acrossInputAmount inputAmount to deposit.
-     * @param depositData DepositData required to specify Across deposit.
+     * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @param swapToken Address of the token that will be swapped for acrossInputToken.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param exchange Address of the exchange contract to call.
+     * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
+     * enough of acrossInputToken, otherwise this function will revert.
+     * @param swapTokenAmount Amount of swapToken to swap for a minimum amount of depositData.inputToken.
+     * @param minExpectedInputTokenAmount Minimum amount of received depositData.inputToken that we'll submit bridge
+     * deposit with.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param deadline Deadline before which the permit signature is valid.
+     * @param v v of the permit signature.
+     * @param r r of the permit signature.
+     * @param s s of the permit signature.
      */
-    function depositERC20(
+    function swapAndBridgeWithPermit(
         IERC20 acrossInputToken,
+        SwapData calldata swapData,
+        DepositData calldata depositData,
+        uint256 deadline,
+        bytes calldata permitSignature
+    ) external nonReentrant {
+        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(permitSignature);
+        // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
+        // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
+        // other than this contract.
+        try
+            IERC20Permit(address(swapData.swapToken)).permit(
+                msg.sender,
+                address(this),
+                swapData.swapTokenAmount,
+                deadline,
+                v,
+                r,
+                s
+            )
+        {} catch {}
+        IERC20 _swapToken = IERC20(address(swapData.swapToken));
+        _swapToken.safeTransferFrom(msg.sender, address(this), swapData.swapTokenAmount);
+        _swapAndBridge(swapData, depositData, acrossInputToken);
+    }
+
+    /**
+     * @notice Uses permit2 to transfer tokens from a user before swapping a token on this chain via specified router and submitting an Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
+     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param depositor The owner of the permit2 signature and depositor for the Across spoke pool.
+     * @param swapData Specifies the params we need to perform a swap on a generic exchange.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param permit The permit data signed over by the owner.
+     * @param transferDetails The spender's requested transfer details for the permitted token.
+     * @param signature The permit2 signature to verify against the deposit data.
+     */
+    function swapAndBridgeWithPermit2(
+        IERC20 acrossInputToken,
+        address depositor,
+        SwapData calldata swapData,
+        DepositData calldata depositData,
+        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2.SignatureTransferDetails calldata transferDetails,
+        bytes calldata signature
+    ) external nonReentrant {
+        bytes32 witness = keccak256(
+            abi.encode(
+                ACROSS_DEPOSIT_DATA_TYPEHASH,
+                depositData.outputToken,
+                depositData.outputAmount,
+                depositData.depositor,
+                depositData.recipient,
+                depositData.destinationChainId,
+                depositData.exclusiveRelayer,
+                depositData.quoteTimestamp,
+                depositData.fillDeadline,
+                depositData.exclusivityParameter,
+                depositData.message
+            )
+        );
+        permit2.permitWitnessTransferFrom(
+            permit,
+            transferDetails,
+            depositor,
+            witness,
+            ACROSS_DEPOSIT_TYPE_STRING,
+            signature
+        );
+        _swapAndBridge(swapData, depositData, acrossInputToken);
+    }
+
+    /**
+     * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
+     * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @param swapData Specifies the params we need to perform a swap on a generic exchange.     * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
+     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
+     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
+     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     */
+    function swapAndBridgeWithAuthorization(
+        IERC20 acrossInputToken,
+        SwapData calldata swapData,
+        DepositData calldata depositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata receiveWithAuthSignature
+    ) external nonReentrant {
+        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(receiveWithAuthSignature);
+        IERC20Auth(address(swapData.swapToken)).receiveWithAuthorization(
+            msg.sender,
+            address(this),
+            swapData.swapTokenAmount,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+        _swapAndBridge(swapData, depositData, acrossInputToken);
+    }
+
+    /**
+     * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
+     * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @param acrossInputToken EIP-2612 compliant token to deposit.
+     * @param acrossInputAmount Amount of the input token to deposit.
+     * @param depositData Specifies the Across deposit params to send.
+     * @param deadline Deadline before which the permit signature is valid.
+     * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v)
+     */
+    function depositWithPermit(
+        IERC20Permit acrossInputToken,
         uint256 acrossInputAmount,
-        DepositData calldata depositData
-    ) external nonReentrant onlyProxy {
-        acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
-        _depositV3(acrossInputToken, acrossInputAmount, depositData);
+        DepositData calldata depositData,
+        uint256 deadline,
+        bytes calldata permitSignature
+    ) external nonReentrant {
+        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(permitSignature);
+        // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
+        // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
+        // other than this contract.
+        try acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s) {} catch {}
+        IERC20 _acrossInputToken = IERC20(address(acrossInputToken));
+        _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
+        _depositV3(_acrossInputToken, acrossInputAmount, depositData);
+    }
+
+    /**
+     * @notice Uses permit2 to transfer and submit an Across deposit to the Spoke Pool contract.
+     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
+     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @param depositData Specifies the Across deposit params we'll send after the swap.
+     * @param permit The permit data signed over by the owner.
+     * @param transferDetails The spender's requested transfer details for the permitted token.
+     * @param signature The permit2 signature to verify against the deposit data.
+     */
+    function depositWithPermit2(
+        address depositor,
+        SpokePoolV3Periphery.DepositData calldata depositData,
+        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2.SignatureTransferDetails calldata transferDetails,
+        bytes calldata signature
+    ) external nonReentrant {
+        bytes32 witness = keccak256(
+            abi.encode(
+                ACROSS_DEPOSIT_DATA_TYPEHASH,
+                depositData.outputToken,
+                depositData.outputAmount,
+                depositData.depositor,
+                depositData.recipient,
+                depositData.destinationChainId,
+                depositData.exclusiveRelayer,
+                depositData.quoteTimestamp,
+                depositData.fillDeadline,
+                depositData.exclusivityParameter,
+                depositData.message
+            )
+        );
+        permit2.permitWitnessTransferFrom(
+            permit,
+            transferDetails,
+            depositor,
+            witness,
+            ACROSS_DEPOSIT_TYPE_STRING,
+            signature
+        );
+        _depositV3(IERC20(permit.permitted.token), permit.permitted.amount, depositData);
+    }
+
+    /**
+     * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
+     * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @param acrossInputToken EIP-3009 compliant token to deposit.
+     * @param acrossInputAmount Amount of the input token to deposit.
+     * @param depositData Specifies the Across deposit params to send.
+     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
+     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
+     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
+     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     */
+    function depositWithAuthorization(
+        IERC20Auth acrossInputToken,
+        uint256 acrossInputAmount,
+        DepositData calldata depositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata receiveWithAuthSignature
+    ) external nonReentrant {
+        (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(receiveWithAuthSignature);
+        acrossInputToken.receiveWithAuthorization(
+            msg.sender,
+            address(this),
+            acrossInputAmount,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+        _depositV3(IERC20(address(acrossInputToken)), acrossInputAmount, depositData);
     }
 
     /**
@@ -709,7 +653,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
                         token: address(_swapToken),
                         amount: uint160(_swapTokenAmount),
                         expiration: uint48(block.timestamp),
-                        nonce: nonce++
+                        nonce: eip1271Nonce++
                     }),
                     spender: _exchange,
                     sigDeadline: block.timestamp
@@ -774,6 +718,21 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         _depositV3(_acrossInputToken, returnAmount, depositData);
+    }
+
+    function _deserializeSignature(bytes calldata _signature)
+        private
+        pure
+        returns (
+            bytes32 r,
+            bytes32 s,
+            uint8 v
+        )
+    {
+        if (_signature.length != 65) revert InvalidSignature();
+        v = uint8(_signature[64]);
+        r = bytes32(_signature[0:32]);
+        s = bytes32(_signature[32:64]);
     }
 
     function _calledByProxy() internal view {

@@ -16,10 +16,15 @@ import {
   ExtensionType,
 } from "@solana/spl-token";
 import { PublicKey, Keypair, TransactionInstruction, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import { readProgramEvents, calculateRelayHashUint8Array, sendTransactionWithLookupTable } from "../../src/SvmUtils";
+import {
+  readProgramEvents,
+  calculateRelayHashUint8Array,
+  sendTransactionWithLookupTable,
+  hashNonEmptyMessage,
+} from "../../src/SvmUtils";
 import { intToU8Array32 } from "./utils";
 import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
-import { testAcrossPlusMessage, hashNonEmptyMessage } from "./utils";
+import { testAcrossPlusMessage } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
@@ -177,7 +182,7 @@ describe("svm_spoke.fill", () => {
     // Fetch and verify the FilledV3Relay event
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "filledV3Relay").data;
+    const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
     // Verify that the event data matches the relay data.
@@ -288,7 +293,7 @@ describe("svm_spoke.fill", () => {
 
     // Attempt to close the fill PDA before the fill deadline should fail.
     try {
-      await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+      await program.methods.closeFillPda().accounts(closeFillPdaAccounts).signers([relayer]).rpc();
       assert.fail("Closing fill PDA should have failed before fill deadline");
     } catch (err: any) {
       assert.include(
@@ -302,7 +307,7 @@ describe("svm_spoke.fill", () => {
     await setCurrentTime(program, state, relayer, new BN(relayData.fillDeadline + 1));
 
     // Close the fill PDA
-    await program.methods.closeFillPda(relayHash, relayData).accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+    await program.methods.closeFillPda().accounts(closeFillPdaAccounts).signers([relayer]).rpc();
 
     // Verify the fill PDA is closed
     const fillStatusAccountAfter = await connection.getAccountInfo(accounts.fillStatus);
@@ -655,7 +660,7 @@ describe("svm_spoke.fill", () => {
     // Fetch and verify the FilledV3Relay event
     await new Promise((resolve) => setTimeout(resolve, 500));
     const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "filledV3Relay").data;
+    const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
     // Verify that the event data has zeroed message hash.
