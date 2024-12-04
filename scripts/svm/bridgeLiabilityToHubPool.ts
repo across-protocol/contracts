@@ -47,11 +47,11 @@ import {
   SOLANA_USDC_MAINNET,
 } from "./utils/constants";
 
+import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
 import { getMessages } from "../../test/svm/cctpHelpers";
 import { BondToken__factory } from "../../typechain";
-import { getNodeUrl } from "@uma/common";
 import { formatUsdc, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
