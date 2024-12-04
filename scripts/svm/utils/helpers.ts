@@ -4,6 +4,21 @@ import { BigNumber, ethers } from "ethers";
 import { PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common";
 
+export const requireEnv = (name: string): string => {
+  if (!process.env[name]) throw new Error(`Environment variable ${name} is not set`);
+  return process.env[name];
+};
+
+export const getSolanaChainId = (cluster: "devnet" | "mainnet"): BigNumber => {
+  return BigNumber.from(
+    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFFFFFF")
+  );
+};
+
+export const formatUsdc = (amount: BigNumber): string => {
+  return ethers.utils.formatUnits(amount, 6);
+};
+
 export const fromBase58ToBytes32 = (input: string): string => {
   const decodedBytes = anchorUtils.bytes.bs58.decode(input);
   return "0x" + Buffer.from(decodedBytes).toString("hex");
