@@ -166,7 +166,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
   );
 
   const liability = await svmSpokeProgram.account.transferLiability.fetch(transferLiability);
-  console.log(`Pending transfer liability: ${formatUsdc(BigNumber.from(liability.pendingToHubPool))} USDC`);
+  console.log(`Pending transfer liability: ${formatUsdc(BigNumber.from(liability.pendingToHubPool.toString()))} USDC.`);
 
   if (liability.pendingToHubPool.eq(new BN(0))) {
     console.log("No pending transfer liability to bridge. Exiting...");
@@ -292,7 +292,7 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
 
   const finalVaultBalance = (await provider.connection.getTokenAccountBalance(vault)).value.amount;
 
-  console.log(`SVM Spoke Pool Initial Vault balance: ${formatUsdc(BigNumber.from(initialVaultBalance))} USDC`);
+  console.log(`SVM Spoke Pool Initial Vault balance: ${formatUsdc(BigNumber.from(initialVaultBalance))} USDC.`);
   console.log(`SVM Spoke Pool Final Vault balance: ${formatUsdc(BigNumber.from(finalVaultBalance))} USDC.`);
   console.log(
     `Sent ${formatUsdc(BigNumber.from(initialVaultBalance).sub(BigNumber.from(finalVaultBalance)))} USDC through CCTP.`

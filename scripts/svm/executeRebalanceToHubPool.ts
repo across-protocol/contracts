@@ -303,7 +303,7 @@ async function executeRebalanceToHubPool(): Promise<void> {
   );
 
   const liability = await svmSpokeProgram.account.transferLiability.fetch(transferLiability);
-  console.log(`Pending transfer liability: ${formatUsdc(BigNumber.from(liability.pendingToHubPool))} USDC`);
+  console.log(`Pending transfer liability: ${formatUsdc(BigNumber.from(liability.pendingToHubPool.toString()))} USDC`);
   console.log("You can now send the pending liability to hub pool with bridgeLiabilityToHubPool.ts");
 }
 
