@@ -627,7 +627,7 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it.only("Emits zeroed hash for empty message", async () => {
+  it("Emits zeroed hash for empty message", async () => {
     // Relay root bundle of slow fill leaf with empty message.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
       undefined,
