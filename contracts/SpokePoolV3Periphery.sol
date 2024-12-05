@@ -12,6 +12,7 @@ import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
+import { SpokePoolV3PeripheryProxyInterface, SpokePoolV3PeripheryInterface } from "./interfaces/SpokePoolV3PeripheryInterface.sol";
 
 /**
  * @title SpokePoolPeripheryProxy
@@ -25,7 +26,7 @@ import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
  * then users would run the unneccessary risk that another user could instruct the Periphery contract to steal
  * any approved tokens that the user had left outstanding.
  */
-contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
+contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -67,7 +68,11 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
      * the assumption is that this function will handle only ERC20 tokens.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      */
-    function swapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData) external nonReentrant {
+    function swapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData)
+        external
+        override
+        nonReentrant
+    {
         _callSwapAndBridge(swapAndDepositData);
     }
 
@@ -93,7 +98,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolV3Periphery is Lockable, MultiCaller {
+contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -222,7 +227,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes memory message
-    ) external payable nonReentrant {
+    ) external payable override nonReentrant {
         if (msg.value != inputAmount) revert InvalidMsgValue();
         if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
@@ -256,6 +261,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function swapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData)
         external
         payable
+        override
         nonReentrant
     {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
@@ -289,7 +295,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData,
         uint256 deadline,
         bytes calldata permitSignature
-    ) external nonReentrant {
+    ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
         address _swapToken = swapAndDepositData.swapToken;
@@ -353,7 +359,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint256 validBefore,
         bytes32 nonce,
         bytes calldata receiveWithAuthSignature
-    ) external nonReentrant {
+    ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
@@ -384,7 +390,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         PeripherySigningLib.DepositData calldata depositData,
         uint256 deadline,
         bytes calldata permitSignature
-    ) external nonReentrant {
+    ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
         address _inputToken = depositData.baseDepositData.inputToken;
@@ -472,7 +478,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint256 validBefore,
         bytes32 nonce,
         bytes calldata receiveWithAuthSignature
-    ) external nonReentrant {
+    ) external override nonReentrant {
         // Load variables used multiple times onto the stack.
         uint256 _inputAmount = depositData.inputAmount;
 

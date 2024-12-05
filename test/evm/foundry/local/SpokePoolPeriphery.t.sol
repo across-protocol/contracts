@@ -180,6 +180,40 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
+    function testSwapAndBridgeNoValueNoProxy() public {
+        // Cannot call swapAndBridge with no value directly.
+        vm.startPrank(depositor);
+        vm.expectRevert(SpokePoolV3Periphery.NotProxy.selector);
+        spokePoolPeriphery.swapAndBridge(
+            IERC20(address(mockWETH)), // swapToken
+            IERC20(mockERC20), // acrossInputToken
+            address(dex),
+            abi.encodeWithSelector(
+                dex.swap.selector,
+                IERC20(address(mockWETH)),
+                IERC20(mockERC20),
+                mintAmount,
+                depositAmount
+            ),
+            mintAmount, // swapTokenAmount
+            depositAmount, // minExpectedInputTokenAmount
+            SpokePoolV3Periphery.DepositData({
+                outputToken: address(0),
+                outputAmount: depositAmount,
+                depositor: depositor,
+                recipient: depositor,
+                destinationChainId: destinationChainId,
+                exclusiveRelayer: address(0),
+                quoteTimestamp: uint32(block.timestamp),
+                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                exclusivityParameter: 0,
+                message: new bytes(0)
+            })
+        );
+
+        vm.stopPrank();
+    }
+
     function testSwapAndBridgeWithValue() public {
         // Unlike previous test, this one calls the spokePoolPeriphery directly rather than through the proxy
         // because there is no approval required to be set on the periphery.
@@ -354,6 +388,26 @@ contract SpokePoolPeripheryTest is Test {
             //transferDetails, // transferDetails
             signature // permit2 signature
         );
+        vm.stopPrank();
+    }
+
+    function testDepositNoValueNoProxy() public {
+        // Cannot call deposit with no value directly.
+        vm.startPrank(depositor);
+        vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
+        spokePoolPeriphery.deposit(
+            depositor, // recipient
+            address(mockWETH), // inputToken
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            address(0), // exclusiveRelayer
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            new bytes(0)
+        );
+
         vm.stopPrank();
     }
 }
