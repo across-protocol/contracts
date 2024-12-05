@@ -20,11 +20,12 @@ import {
   LargeAccountsCoder,
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
+  readEventsUntilFound,
 } from "../../src/SvmUtils";
 import { MerkleTree } from "@uma/common";
 import { RelayData } from "./SvmSpoke.common";
 
-export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress, readEventsUntilFound };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();

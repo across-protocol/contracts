@@ -3,7 +3,7 @@ import { BN } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
-import { readProgramEvents } from "./utils";
+import { readEventsUntilFound } from "./utils";
 
 const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
@@ -51,28 +51,26 @@ describe("svm_spoke.ownership", () => {
 
     // Pause deposits as owner
     const pauseDepositsAccounts = { state, signer: owner, program: program.programId };
-    await program.methods.pauseDeposits(true).accounts(pauseDepositsAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx = await program.methods.pauseDeposits(true).accounts(pauseDepositsAccounts).rpc();
 
     // Fetch the updated state
     let stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedDeposits, "Deposits should be paused");
 
     // Verify the PausedDeposits event
-    let events = await readProgramEvents(provider.connection, program);
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
     let pausedDepositEvents = events.filter((event) => event.name === "pausedDeposits");
     assert.isTrue(pausedDepositEvents[0].data.isPaused, "PausedDeposits event should indicate deposits are paused");
 
     // Unpause deposits as owner
-    await program.methods.pauseDeposits(false).accounts(pauseDepositsAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx2 = await program.methods.pauseDeposits(false).accounts(pauseDepositsAccounts).rpc();
 
     // Fetch the updated state
     stateAccountData = await program.account.state.fetch(state);
     assert.isFalse(stateAccountData.pausedDeposits, "Deposits should not be paused");
 
     // Verify the PausedDeposits event
-    events = await readProgramEvents(provider.connection, program);
+    events = await readEventsUntilFound(provider.connection, tx2, [program]);
     pausedDepositEvents = events.filter((event) => event.name === "pausedDeposits");
     assert.isFalse(pausedDepositEvents[0].data.isPaused, "PausedDeposits event should indicate deposits are unpaused");
 
@@ -91,28 +89,26 @@ describe("svm_spoke.ownership", () => {
 
     // Pause fills as owner
     const pauseFillsAccounts = { state, signer: owner, program: program.programId };
-    await program.methods.pauseFills(true).accounts(pauseFillsAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx = await program.methods.pauseFills(true).accounts(pauseFillsAccounts).rpc();
 
     // Fetch the updated state
     let stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(stateAccountData.pausedFills, "Fills should be paused");
 
     // Verify the PausedFills event
-    let events = await readProgramEvents(provider.connection, program);
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
     let pausedFillEvents = events.filter((event) => event.name === "pausedFills");
     assert.isTrue(pausedFillEvents[0].data.isPaused, "PausedFills event should indicate fills are paused");
 
     // Unpause fills as owner
-    await program.methods.pauseFills(false).accounts(pauseFillsAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx2 = await program.methods.pauseFills(false).accounts(pauseFillsAccounts).rpc();
 
     // Fetch the updated state
     stateAccountData = await program.account.state.fetch(state);
     assert.isFalse(stateAccountData.pausedFills, "Fills should not be paused");
 
     // Verify the PausedFills event
-    events = await readProgramEvents(provider.connection, program);
+    events = await readEventsUntilFound(provider.connection, tx2, [program]);
     pausedFillEvents = events.filter((event) => event.name === "pausedFills");
     assert.isFalse(pausedFillEvents[0].data.isPaused, "PausedFills event should indicate fills are unpaused");
 
@@ -130,7 +126,6 @@ describe("svm_spoke.ownership", () => {
     // Transfer ownership to newOwner
     const transferOwnershipAccounts = { state, signer: owner };
     await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Verify the new owner
     let stateAccountData = await program.account.state.fetch(state);
@@ -153,11 +148,10 @@ describe("svm_spoke.ownership", () => {
   it("Sets cross-domain admin", async () => {
     // Set cross-domain admin as owner
     const setCrossDomainAdminAccounts = { state, signer: owner, program: program.programId };
-    await program.methods
+    const tx = await program.methods
       .setCrossDomainAdmin(newCrossDomainAdmin.publicKey)
       .accounts(setCrossDomainAdminAccounts)
       .rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Verify the new cross-domain admin
     let stateAccountData = await program.account.state.fetch(state);
@@ -168,7 +162,7 @@ describe("svm_spoke.ownership", () => {
     );
 
     // Verify the SetXDomainAdmin event
-    let events = await readProgramEvents(provider.connection, program);
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
     let setXDomainAdminEvents = events.filter((event) => event.name === "setXDomainAdmin");
     assert.equal(
       setXDomainAdminEvents[0].data.newAdmin.toString(),

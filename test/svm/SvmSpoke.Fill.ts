@@ -17,7 +17,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Keypair, TransactionInstruction, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import {
-  readProgramEvents,
+  readEventsUntilFound,
   calculateRelayHashUint8Array,
   sendTransactionWithLookupTable,
   hashNonEmptyMessage,
@@ -89,7 +89,7 @@ describe("svm_spoke.fill", () => {
     fillDataValues: FillDataValues,
     calledFillAccounts: FillAccounts = accounts,
     callingRelayer: Keypair = relayer
-  ) => {
+  ): Promise<string> => {
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
@@ -107,7 +107,8 @@ describe("svm_spoke.fill", () => {
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
     const fillTx = new Transaction().add(approveIx, fillIx);
-    await sendAndConfirmTransaction(connection, fillTx, [payer, callingRelayer]);
+    const tx = await sendAndConfirmTransaction(connection, fillTx, [payer, callingRelayer]);
+    return tx;
   };
 
   before("Funds relayer wallets", async () => {
@@ -177,11 +178,10 @@ describe("svm_spoke.fill", () => {
 
   it("Verifies FilledV3Relay event after filling a relay", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
+    const tx = await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
 
     // Fetch and verify the FilledV3Relay event
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
@@ -572,7 +572,7 @@ describe("svm_spoke.fill", () => {
     );
 
     // Verify balances after the fill
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for tx processing
     const fRelayerBal = (await getAccount(connection, relayerTA)).amount;
     assertSE(
       fRelayerBal,
@@ -655,11 +655,10 @@ describe("svm_spoke.fill", () => {
   it("Emits zeroed hash for empty message", async () => {
     updateRelayData({ ...relayData, message: Buffer.alloc(0) });
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
+    const tx = await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
 
     // Fetch and verify the FilledV3Relay event
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
