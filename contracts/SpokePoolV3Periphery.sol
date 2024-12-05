@@ -10,6 +10,7 @@ import { Lockable } from "./Lockable.sol";
 import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
 import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
+import { SpokePoolV3PeripheryProxyInterface, SpokePoolV3PeripheryInterface } from "./interfaces/SpokePoolV3PeripheryInterface.sol";
 
 /**
  * @title SpokePoolProxy
@@ -23,7 +24,7 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
  * then users would run the unneccessary risk that another user could instruct the Periphery contract to steal
  * any approved tokens that the user had left outstanding.
  */
-contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
+contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -81,7 +82,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         SpokePoolV3Periphery.DepositData calldata depositData
-    ) external nonReentrant {
+    ) external override nonReentrant {
         IERC20(swapToken).safeTransferFrom(msg.sender, address(this), swapTokenAmount);
         _callSwapAndBridge(
             swapToken,
@@ -123,7 +124,7 @@ contract SpokePoolPeripheryProxy is Lockable, MultiCaller {
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolV3Periphery is Lockable, MultiCaller {
+contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -260,7 +261,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes memory message
-    ) external payable nonReentrant {
+    ) external payable override nonReentrant {
         if (msg.value != inputAmount) revert InvalidMsgValue();
         if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
@@ -307,7 +308,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData
-    ) external payable nonReentrant {
+    ) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
         // as though the user deposited a wrapped native token.
         if (msg.value != 0) {
@@ -361,7 +362,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external nonReentrant {
+    ) external override nonReentrant {
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
@@ -413,7 +414,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external nonReentrant {
+    ) external override nonReentrant {
         // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to the swapToken, the call to `transferFrom`
         // in _swapAndBridge will revert.
@@ -458,7 +459,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external nonReentrant {
+    ) external override nonReentrant {
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
@@ -491,7 +492,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external nonReentrant {
+    ) external override nonReentrant {
         acrossInputToken.receiveWithAuthorization(
             msg.sender,
             address(this),
