@@ -185,29 +185,32 @@ contract SpokePoolPeripheryTest is Test {
         vm.startPrank(depositor);
         vm.expectRevert(SpokePoolV3Periphery.NotProxy.selector);
         spokePoolPeriphery.swapAndBridge(
-            IERC20(address(mockWETH)), // swapToken
-            IERC20(mockERC20), // acrossInputToken
-            address(dex),
-            abi.encodeWithSelector(
-                dex.swap.selector,
-                IERC20(address(mockWETH)),
-                IERC20(mockERC20),
-                mintAmount,
-                depositAmount
-            ),
-            mintAmount, // swapTokenAmount
-            depositAmount, // minExpectedInputTokenAmount
-            SpokePoolV3Periphery.DepositData({
-                outputToken: address(0),
-                outputAmount: depositAmount,
-                depositor: depositor,
-                recipient: depositor,
-                destinationChainId: destinationChainId,
-                exclusiveRelayer: address(0),
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                exclusivityParameter: 0,
-                message: new bytes(0)
+            PeripherySigningLib.SwapAndDepositData({
+                depositData: PeripherySigningLib.BaseDepositData({
+                    inputToken: address(mockERC20),
+                    outputToken: address(0),
+                    outputAmount: depositAmount,
+                    depositor: depositor,
+                    recipient: depositor,
+                    destinationChainId: destinationChainId,
+                    exclusiveRelayer: address(0),
+                    quoteTimestamp: uint32(block.timestamp),
+                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                    exclusivityParameter: 0,
+                    message: new bytes(0)
+                }),
+                swapToken: address(mockWETH),
+                exchange: address(dex),
+                transferType: PeripherySigningLib.TransferType.Approval,
+                swapTokenAmount: mintAmount, // swapTokenAmount
+                minExpectedInputTokenAmount: depositAmount,
+                routerCalldata: abi.encodeWithSelector(
+                    dex.swap.selector,
+                    IERC20(address(mockWETH)),
+                    IERC20(mockERC20),
+                    mintAmount,
+                    depositAmount
+                )
             })
         );
 
