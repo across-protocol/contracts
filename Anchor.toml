@@ -5,12 +5,12 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
+multicall_handler = "71cJqNV4vkmxsbk422c2KpST3aSwuvKsQ4kpLD8RBHZ5"
 svm_spoke = "D1WcTLKRyN4TuqnfMBGPvc16nACHfNhFPbgWNExb1aur"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
-multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
+multicall_handler = "71cJqNV4vkmxsbk422c2KpST3aSwuvKsQ4kpLD8RBHZ5"
 svm_spoke = "D1WcTLKRyN4TuqnfMBGPvc16nACHfNhFPbgWNExb1aur"
 
 [registry]

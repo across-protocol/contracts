@@ -1301,6 +1301,7 @@ name = "multicall-handler"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "solana-security-txt",
 ]
 
 [[package]]

@@ -6,7 +6,21 @@ use anchor_lang::{
     },
 };
 
-declare_id!("6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH");
+#[cfg(not(feature = "no-entrypoint"))]
+use ::solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Across",
+    project_url: "https://across.to",
+    contacts: "email:bugs@across.to",
+    policy: "https://docs.across.to/resources/bug-bounty",
+    preferred_languages: "en",
+    source_code: "https://github.com/across-protocol/contracts/tree/master/programs/multicall-handler",
+    auditors: "TBD"
+}
+
+declare_id!("71cJqNV4vkmxsbk422c2KpST3aSwuvKsQ4kpLD8RBHZ5");
 
 #[program]
 pub mod multicall_handler {
