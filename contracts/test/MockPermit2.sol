@@ -40,6 +40,7 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
     using SafeERC20 for IERC20;
 
     mapping(address => mapping(uint256 => uint256)) public nonceBitmap;
+    mapping(address => mapping(address => mapping(address => uint256))) public allowance;
 
     bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
     string public constant _PERMIT_TRANSFER_FROM_WITNESS_TYPEHASH_STUB =
@@ -48,6 +49,8 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
     error SignatureExpired();
     error InvalidAmount();
     error InvalidNonce();
+    error AllowanceExpired();
+    error InsufficientAllowance();
 
     function permitWitnessTransferFrom(
         PermitTransferFrom memory _permit,
@@ -71,14 +74,45 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
         address to,
         uint160 amount,
         address token
-    ) external override {}
+    ) external {
+        _transfer(from, to, amount, token);
+    }
 
+    // This is not a copy of permit2's permit.
     function permit(
         address owner,
-        PermitSingle calldata permitSingle,
+        PermitSingle memory permitSingle,
         bytes calldata signature
-    ) external override {
-        // do nothing
+    ) external {
+        if (block.timestamp > permitSingle.sigDeadline) revert SignatureExpired();
+
+        // Verify the signer address from the signature.
+        SignatureVerification.verify(signature, _hashTypedData(keccak256(abi.encode(permitSingle))), owner);
+
+        allowance[owner][permitSingle.details.token][permitSingle.spender] = permitSingle.details.amount;
+    }
+
+    // This is not a copy of permit2's permit.
+    function _transfer(
+        address from,
+        address to,
+        uint160 amount,
+        address token
+    ) private {
+        uint256 allowed = allowance[from][token][msg.sender];
+
+        if (allowed != type(uint160).max) {
+            if (amount > allowed) {
+                revert InsufficientAllowance();
+            } else {
+                unchecked {
+                    allowance[from][token][msg.sender] = uint160(allowed) - amount;
+                }
+            }
+        }
+
+        // Transfer the tokens from the from address to the recipient.
+        IERC20(token).safeTransferFrom(from, to, amount);
     }
 
     function _permitTransferFrom(

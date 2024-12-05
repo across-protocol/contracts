@@ -16,14 +16,34 @@ import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySi
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 contract Exchange {
+    IPermit2 permit2;
+
+    constructor(IPermit2 _permit2) {
+        permit2 = _permit2;
+    }
+
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountIn,
-        uint256 amountOutMin
+        uint256 amountOutMin,
+        bool usePermit2
     ) external {
+        if (tokenIn.balanceOf(address(this)) >= amountIn) {
+            tokenIn.transfer(address(1), amountIn);
+            require(tokenOut.transfer(msg.sender, amountOutMin));
+            return;
+        }
+        // The periphery contract should call the exchange, which should call permit2. Permit2 should call the periphery contract, and
+        // should allow the exchange to take tokens away from the periphery.
+        if (usePermit2) {
+            permit2.transferFrom(msg.sender, address(this), uint160(amountIn), address(tokenIn));
+            tokenOut.transfer(msg.sender, amountOutMin);
+            return;
+        }
         require(tokenIn.transferFrom(msg.sender, address(this), amountIn));
         require(tokenOut.transfer(msg.sender, amountOutMin));
     }
@@ -73,8 +93,6 @@ contract SpokePoolPeripheryTest is Test {
         keccak256(abi.encodePacked(PeripherySigningLib.TOKEN_PERMISSIONS_TYPE));
 
     function setUp() public {
-        dex = new Exchange();
-        cex = new Exchange();
         hashUtils = new HashUtils();
 
         mockWETH = WETH9Interface(address(new WETH9()));
@@ -84,6 +102,8 @@ contract SpokePoolPeripheryTest is Test {
         owner = vm.addr(2);
         recipient = vm.addr(3);
         permit2 = IPermit2(new MockPermit2());
+        dex = new Exchange(permit2);
+        cex = new Exchange(permit2);
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
@@ -111,6 +131,9 @@ contract SpokePoolPeripheryTest is Test {
         mockWETH.deposit{ value: mintAmount }();
         mockERC20.approve(address(proxy), mintAmount);
         IERC20(address(mockWETH)).approve(address(proxy), mintAmount);
+
+        // Approve permit2
+        IERC20(address(mockWETH)).approve(address(permit2), mintAmount * 10);
         vm.stopPrank();
     }
 
@@ -153,33 +176,81 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         proxy.swapAndBridge(
-            SpokePoolV3PeripheryInterface.SwapAndDepositData({
-                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
-                    inputToken: address(mockERC20),
-                    outputToken: address(0),
-                    outputAmount: depositAmount,
-                    depositor: depositor,
-                    recipient: depositor,
-                    destinationChainId: destinationChainId,
-                    exclusiveRelayer: address(0),
-                    quoteTimestamp: uint32(block.timestamp),
-                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                    exclusivityParameter: 0,
-                    message: new bytes(0)
-                }),
-                swapToken: address(mockWETH),
-                exchange: address(dex),
-                transferType: SpokePoolV3PeripheryInterface.TransferType.Approval,
-                swapTokenAmount: mintAmount, // swapTokenAmount
-                minExpectedInputTokenAmount: depositAmount,
-                routerCalldata: abi.encodeWithSelector(
-                    dex.swap.selector,
-                    IERC20(address(mockWETH)),
-                    IERC20(mockERC20),
-                    mintAmount,
-                    depositAmount
-                )
-            })
+            _defaultSwapAndDepositData(
+                address(mockWETH),
+                mintAmount,
+                dex,
+                SpokePoolV3PeripheryInterface.TransferType.Approval,
+                address(mockERC20),
+                depositAmount,
+                depositor
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgePermitTransferType() public {
+        // Should emit expected deposit event
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockERC20),
+            address(0),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        proxy.swapAndBridge(
+            _defaultSwapAndDepositData(
+                address(mockWETH),
+                mintAmount,
+                dex,
+                SpokePoolV3PeripheryInterface.TransferType.EIP1271Signature,
+                address(mockERC20),
+                depositAmount,
+                depositor
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeTransferTransferType() public {
+        // Should emit expected deposit event
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockERC20),
+            address(0),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        proxy.swapAndBridge(
+            _defaultSwapAndDepositData(
+                address(mockWETH),
+                mintAmount,
+                dex,
+                SpokePoolV3PeripheryInterface.TransferType.Transfer,
+                address(mockERC20),
+                depositAmount,
+                depositor
+            )
         );
         vm.stopPrank();
     }
@@ -189,33 +260,15 @@ contract SpokePoolPeripheryTest is Test {
         vm.startPrank(depositor);
         vm.expectRevert(SpokePoolV3Periphery.NotProxy.selector);
         spokePoolPeriphery.swapAndBridge(
-            SpokePoolV3PeripheryInterface.SwapAndDepositData({
-                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
-                    inputToken: address(mockERC20),
-                    outputToken: address(0),
-                    outputAmount: depositAmount,
-                    depositor: depositor,
-                    recipient: depositor,
-                    destinationChainId: destinationChainId,
-                    exclusiveRelayer: address(0),
-                    quoteTimestamp: uint32(block.timestamp),
-                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                    exclusivityParameter: 0,
-                    message: new bytes(0)
-                }),
-                swapToken: address(mockWETH),
-                exchange: address(dex),
-                transferType: SpokePoolV3PeripheryInterface.TransferType.Approval,
-                swapTokenAmount: mintAmount, // swapTokenAmount
-                minExpectedInputTokenAmount: depositAmount,
-                routerCalldata: abi.encodeWithSelector(
-                    dex.swap.selector,
-                    IERC20(address(mockWETH)),
-                    IERC20(mockERC20),
-                    mintAmount,
-                    depositAmount
-                )
-            })
+            _defaultSwapAndDepositData(
+                address(mockWETH),
+                mintAmount,
+                dex,
+                SpokePoolV3PeripheryInterface.TransferType.Approval,
+                address(mockERC20),
+                depositAmount,
+                depositor
+            )
         );
 
         vm.stopPrank();
@@ -246,33 +299,15 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge{ value: mintAmount }(
-            SpokePoolV3PeripheryInterface.SwapAndDepositData({
-                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
-                    inputToken: address(mockERC20),
-                    outputToken: address(0),
-                    outputAmount: depositAmount,
-                    depositor: depositor,
-                    recipient: depositor,
-                    destinationChainId: destinationChainId,
-                    exclusiveRelayer: address(0),
-                    quoteTimestamp: uint32(block.timestamp),
-                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                    exclusivityParameter: 0,
-                    message: new bytes(0)
-                }),
-                swapToken: address(mockWETH),
-                exchange: address(dex),
-                transferType: SpokePoolV3PeripheryInterface.TransferType.Approval,
-                swapTokenAmount: mintAmount, // swapTokenAmount
-                minExpectedInputTokenAmount: depositAmount,
-                routerCalldata: abi.encodeWithSelector(
-                    dex.swap.selector,
-                    IERC20(address(mockWETH)),
-                    IERC20(mockERC20),
-                    mintAmount,
-                    depositAmount
-                )
-            })
+            _defaultSwapAndDepositData(
+                address(mockWETH),
+                mintAmount,
+                dex,
+                SpokePoolV3PeripheryInterface.TransferType.Approval,
+                address(mockERC20),
+                depositAmount,
+                depositor
+            )
         );
         vm.stopPrank();
     }
@@ -316,28 +351,11 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testPermit2DepositValidWitness() public {
-        // Approve permit2
-        vm.startPrank(depositor);
-        IERC20(address(mockWETH)).approve(address(permit2), mintAmount);
-        vm.stopPrank();
-
-        SpokePoolV3PeripheryInterface.DepositData memory depositData = SpokePoolV3PeripheryInterface.DepositData({
-            baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
-                inputToken: address(mockWETH),
-                outputToken: address(0),
-                outputAmount: mintAmount,
-                depositor: depositor,
-                recipient: depositor,
-                destinationChainId: destinationChainId,
-                exclusiveRelayer: address(0),
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
-                exclusivityParameter: 0,
-                message: new bytes(0)
-            }),
-            inputAmount: mintAmount
-        });
-
+        SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockWETH),
+            mintAmount,
+            depositor
+        );
         // Signature transfer details
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
             permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
@@ -416,5 +434,70 @@ contract SpokePoolPeripheryTest is Test {
         );
 
         vm.stopPrank();
+    }
+
+    function _defaultDepositData(
+        address _token,
+        uint256 _amount,
+        address _depositor
+    ) internal returns (SpokePoolV3Periphery.DepositData memory) {
+        return
+            SpokePoolV3PeripheryInterface.DepositData({
+                baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
+                    inputToken: _token,
+                    outputToken: address(0),
+                    outputAmount: _amount,
+                    depositor: _depositor,
+                    recipient: _depositor,
+                    destinationChainId: destinationChainId,
+                    exclusiveRelayer: address(0),
+                    quoteTimestamp: uint32(block.timestamp),
+                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                    exclusivityParameter: 0,
+                    message: new bytes(0)
+                }),
+                inputAmount: _amount
+            });
+    }
+
+    function _defaultSwapAndDepositData(
+        address _swapToken,
+        uint256 _swapAmount,
+        Exchange _exchange,
+        SpokePoolV3PeripheryInterface.TransferType _transferType,
+        address _inputToken,
+        uint256 _amount,
+        address _depositor
+    ) internal returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
+        bool usePermit2 = _transferType == SpokePoolV3PeripheryInterface.TransferType.EIP1271Signature;
+        return
+            SpokePoolV3PeripheryInterface.SwapAndDepositData({
+                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
+                    inputToken: _inputToken,
+                    outputToken: address(0),
+                    outputAmount: _amount,
+                    depositor: _depositor,
+                    recipient: _depositor,
+                    destinationChainId: destinationChainId,
+                    exclusiveRelayer: address(0),
+                    quoteTimestamp: uint32(block.timestamp),
+                    fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
+                    exclusivityParameter: 0,
+                    message: new bytes(0)
+                }),
+                swapToken: _swapToken,
+                exchange: address(_exchange),
+                transferType: _transferType,
+                swapTokenAmount: _swapAmount, // swapTokenAmount
+                minExpectedInputTokenAmount: _amount,
+                routerCalldata: abi.encodeWithSelector(
+                    _exchange.swap.selector,
+                    IERC20(_swapToken),
+                    IERC20(_inputToken),
+                    _swapAmount,
+                    _amount,
+                    usePermit2
+                )
+            });
     }
 }

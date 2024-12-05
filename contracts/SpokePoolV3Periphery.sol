@@ -587,6 +587,8 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         if (_transferType == TransferType.Approval) _swapToken.forceApprove(_exchange, _swapTokenAmount);
         else if (_transferType == TransferType.Transfer) _swapToken.transfer(_exchange, _swapTokenAmount);
         else {
+            _swapToken.forceApprove(address(permit2), _swapTokenAmount);
+            expectingPermit2Callback = true;
             permit2.permit(
                 address(this), // owner
                 IPermit2.PermitSingle({
@@ -601,13 +603,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
                 }), // permitSingle
                 "0x" // signature is unused. The only verification for a valid signature is if we are at this code block.
             );
-            expectingPermit2Callback = true;
+            expectingPermit2Callback = false;
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = _exchange.call(swapAndDepositData.routerCalldata);
         require(success, string(result));
-
-        expectingPermit2Callback = false;
 
         // Sanity check that we received as many tokens as we require:
         uint256 returnAmount = _acrossInputToken.balanceOf(address(this)) - dstBalanceBefore;
