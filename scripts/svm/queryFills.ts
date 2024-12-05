@@ -47,7 +47,6 @@ async function queryFills(): Promise<void> {
       console.log("No fill events found for the given seed.");
       return;
     }
-    console.log("events", events);
     console.log("Fill events fetched successfully:");
     fillEvents.forEach((event, index) => {
       console.log(`Fill Event ${index + 1}:`);

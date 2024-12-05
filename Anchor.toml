@@ -40,6 +40,8 @@ remoteHubPoolSetDepositRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/sv
 remoteHubPoolPauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolPauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
+addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressToPublicKey.ts"
+publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
