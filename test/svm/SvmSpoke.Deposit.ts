@@ -397,7 +397,7 @@ describe("svm_spoke.deposit", () => {
       assertSE(event[key], value, `${key} should match`);
     }
 
-    // Check fake vault acount balance
+    // Check fake vault account balance
     const fakeVaultAccount = await getAccount(connection, fakeVault);
     assertSE(
       fakeVaultAccount.amount,

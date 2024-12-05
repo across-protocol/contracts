@@ -668,7 +668,7 @@ describe("svm_spoke.bundle", () => {
     relayerRefundLeaves.push({
       isSolana: true,
       leafId: new BN(0),
-      // Set chainId to 1000. this is a diffrent chainId than what is set in the initialization. This mimics trying to execute a leaf for another chain on the SVM chain.
+      // Set chainId to 1000. this is a different chainId than what is set in the initialization. This mimics trying to execute a leaf for another chain on the SVM chain.
       chainId: new BN(1000),
       amountToReturn: new BN(0),
       mintPublicKey: mint,

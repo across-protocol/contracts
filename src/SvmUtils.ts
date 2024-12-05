@@ -144,7 +144,7 @@ export const evmAddressToPublicKey = (address: string): PublicKey => {
   return new PublicKey(ethers.utils.arrayify(bytes32Address));
 };
 
-// TODO: we are inconsistant with where we are placing some utils. we have some stuff here, some stuff that we might
+// TODO: we are inconsistent with where we are placing some utils. we have some stuff here, some stuff that we might
 // want to re-use within the test directory. more over, when moving things into the canonical across repo, we should
 // re-use the test utils there.
 export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8Array {
