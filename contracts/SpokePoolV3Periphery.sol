@@ -325,7 +325,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData,
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
-    ) external nonReentrant {
+    ) external override nonReentrant {
         bytes32 witness = PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
         IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
             to: address(this),
@@ -432,7 +432,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         PeripherySigningLib.DepositData calldata depositData,
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
-    ) external nonReentrant {
+    ) external override nonReentrant {
         bytes32 witness = PeripherySigningLib.hashDepositData(depositData);
         IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
             to: address(this),

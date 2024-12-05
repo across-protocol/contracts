@@ -82,7 +82,7 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
     }
 
     function _permitTransferFrom(
-        PermitTransferFrom memory permit,
+        PermitTransferFrom memory _permit,
         SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 dataHash,
@@ -90,14 +90,14 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
     ) private {
         uint256 requestedAmount = transferDetails.requestedAmount;
 
-        if (block.timestamp > permit.deadline) revert SignatureExpired();
-        if (requestedAmount > permit.permitted.amount) revert InvalidAmount();
+        if (block.timestamp > _permit.deadline) revert SignatureExpired();
+        if (requestedAmount > _permit.permitted.amount) revert InvalidAmount();
 
-        _useUnorderedNonce(owner, permit.nonce);
+        _useUnorderedNonce(owner, _permit.nonce);
 
         SignatureVerification.verify(signature, _hashTypedData(dataHash), owner);
 
-        IERC20(permit.permitted.token).safeTransferFrom(owner, transferDetails.to, requestedAmount);
+        IERC20(_permit.permitted.token).safeTransferFrom(owner, transferDetails.to, requestedAmount);
     }
 
     function bitmapPositions(uint256 nonce) private pure returns (uint256 wordPos, uint256 bitPos) {
@@ -114,15 +114,15 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
     }
 
     function hashWithWitness(
-        PermitTransferFrom memory permit,
+        PermitTransferFrom memory _permit,
         bytes32 witness,
         string calldata witnessTypeString
     ) internal view returns (bytes32) {
         bytes32 typeHash = keccak256(abi.encodePacked(_PERMIT_TRANSFER_FROM_WITNESS_TYPEHASH_STUB, witnessTypeString));
 
-        bytes32 tokenPermissionsHash = _hashTokenPermissions(permit.permitted);
+        bytes32 tokenPermissionsHash = _hashTokenPermissions(_permit.permitted);
         return
-            keccak256(abi.encode(typeHash, tokenPermissionsHash, msg.sender, permit.nonce, permit.deadline, witness));
+            keccak256(abi.encode(typeHash, tokenPermissionsHash, msg.sender, _permit.nonce, _permit.deadline, witness));
     }
 
     function _hashTokenPermissions(TokenPermissions memory permitted) private pure returns (bytes32) {
