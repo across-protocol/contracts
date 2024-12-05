@@ -1,10 +1,9 @@
 /**
  * Script: Execute USDC Rebalance to Hub Pool
  *
- * This script executes a previously proposed root bundle on the Hub Pool
- * to rebalance USDC from the Solana Spoke Pool to the Ethereum Hub Pool.
- * It handles CCTP attestations, relayer refund leaf execution, and prepares
- * pending liabilities for bridging back to the Hub Pool.
+ * This script executes a previously proposed root bundle on the Hub Pool to rebalance USDC from the Solana Spoke Pool
+ * to the Ethereum Hub Pool. It handles CCTP attestations, relayer refund leaf execution, and prepares pending
+ * liabilities for bridging back to the Hub Pool.
  *
  * Required Environment Variables:
  * - TESTNET: (Optional) Set to "true" to use Sepolia; defaults to mainnet.

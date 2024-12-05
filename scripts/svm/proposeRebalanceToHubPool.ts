@@ -1,10 +1,8 @@
 /**
  * Script: Propose Root Bundle for USDC Rebalance to Hub Pool
  *
- * Submits a root bundle proposal on the Hub Pool to rebalance USDC
- * from the Solana Spoke Pool to the Ethereum Hub Pool. After submission
- * and the liveness period, the rebalance can be executed with
- * `executeRebalanceToHubPool.ts`.
+ * Submits a root bundle proposal on the Hub Pool to rebalance USDC from the Solana Spoke Pool to the Ethereum Hub Pool.
+ * After submission and the liveness period, the rebalance can be executed with `executeRebalanceToHubPool.ts`.
  *
  * Required Environment Variables:
  * - TESTNET: (Optional) Set to "true" to use Sepolia; defaults to mainnet.
@@ -14,8 +12,7 @@
  * - NODE_URL_11155111: Ethereum RPC URL for Sepolia (ignored if TESTNET=false).
  *
  * Required Argument:
- * - `--netSendAmount`: The unscaled amount of USDC to rebalance.
- *   (e.g., for USDC with 6 decimals, 1 = 0.000001 USDC).
+ * - `--netSendAmount`: The unscaled amount of USDC to rebalance. (e.g., for USDC with 6 decimals, 1 = 0.000001 USDC).
  *
  * Example Usage:
  * TESTNET=true \

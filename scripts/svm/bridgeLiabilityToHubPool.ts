@@ -1,9 +1,8 @@
 /**
  * Script: Bridge USDC Liability to Hub Pool
  *
- * This script bridges pending USDC liabilities from the Solana Spoke Pool
- * to the Ethereum Hub Pool using the CCTP (Circle Cross-Chain Transfer Protocol).
- * It manages CCTP message attestations, verifies transfer completion, and
+ * This script bridges pending USDC liabilities from the Solana Spoke Pool to the Ethereum Hub Pool using the CCTP
+ * (Circle Cross-Chain Transfer Protocol). It manages CCTP message attestations, verifies transfer completion, and
  * updates the Hub Pool’s USDC balance.
  *
  * Required Environment Variables:
