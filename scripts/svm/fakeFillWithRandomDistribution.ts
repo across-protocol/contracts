@@ -20,7 +20,7 @@ import {
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
   sendTransactionWithLookupTable,
-} from "../../src/SvmUtils";
+} from "../../src/svm";
 import { FillDataParams, FillDataValues } from "../../test/svm/SvmSpoke.common";
 import { loadFillV3RelayParams } from "../../test/svm/utils";
 

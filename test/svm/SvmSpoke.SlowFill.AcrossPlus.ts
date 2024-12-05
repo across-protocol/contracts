@@ -26,7 +26,7 @@ import {
   sendTransactionWithLookupTable,
   readProgramEvents,
   calculateRelayEventHashUint8Array,
-} from "../../src/SvmUtils";
+} from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import {
   ExecuteV3SlowRelayLeafDataParams,

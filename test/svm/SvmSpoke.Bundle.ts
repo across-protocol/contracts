@@ -24,13 +24,11 @@ import {
   randomBigInt,
   readEvents,
   readProgramEvents,
-  relayerRefundHashFn,
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
 } from "./utils";
 import { MerkleTree } from "../../utils";
-import { sendTransactionWithLookupTable } from "../../src/SvmUtils";
+import { relayerRefundHashFn, sendTransactionWithLookupTable } from "../../src/svm";
 import { ethers } from "ethers";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 

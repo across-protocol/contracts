@@ -20,7 +20,7 @@ import {
   calculateRelayHashUint8Array,
   testAcrossPlusMessage,
 } from "./utils";
-import { hashNonEmptyMessage } from "../../src/SvmUtils";
+import { hashNonEmptyMessage } from "../../src/svm";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;

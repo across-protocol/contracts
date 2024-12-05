@@ -12,7 +12,7 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { evmAddressToPublicKey } from "../../src/SvmUtils";
+import { evmAddressToPublicKey } from "../../src/svm";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
 import { ethers, BigNumber } from "ethers";

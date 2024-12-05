@@ -21,7 +21,7 @@ import {
   calculateRelayHashUint8Array,
   sendTransactionWithLookupTable,
   hashNonEmptyMessage,
-} from "../../src/SvmUtils";
+} from "../../src/svm";
 import { intToU8Array32 } from "./utils";
 import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
 import { testAcrossPlusMessage } from "./utils";
