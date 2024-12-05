@@ -7,6 +7,7 @@ import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
 import { SpokePoolV3Periphery, SpokePoolPeripheryProxy } from "../../../../contracts/SpokePoolV3Periphery.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
+import { SpokePoolV3PeripheryInterface } from "../../../../contracts/interfaces/SpokePoolV3PeripheryInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
@@ -30,7 +31,11 @@ contract Exchange {
 
 // Utility contract which lets us perform external calls to an internal library.
 contract HashUtils {
-    function hashDepositData(PeripherySigningLib.DepositData calldata depositData) external pure returns (bytes32) {
+    function hashDepositData(SpokePoolV3PeripheryInterface.DepositData calldata depositData)
+        external
+        pure
+        returns (bytes32)
+    {
         return PeripherySigningLib.hashDepositData(depositData);
     }
 }
@@ -149,8 +154,8 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         proxy.swapAndBridge(
-            PeripherySigningLib.SwapAndDepositData({
-                depositData: PeripherySigningLib.BaseDepositData({
+            SpokePoolV3PeripheryInterface.SwapAndDepositData({
+                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: address(mockERC20),
                     outputToken: address(0),
                     outputAmount: depositAmount,
@@ -165,7 +170,7 @@ contract SpokePoolPeripheryTest is Test {
                 }),
                 swapToken: address(mockWETH),
                 exchange: address(dex),
-                transferType: PeripherySigningLib.TransferType.Approval,
+                transferType: SpokePoolV3PeripheryInterface.TransferType.Approval,
                 swapTokenAmount: mintAmount, // swapTokenAmount
                 minExpectedInputTokenAmount: depositAmount,
                 routerCalldata: abi.encodeWithSelector(
@@ -185,8 +190,8 @@ contract SpokePoolPeripheryTest is Test {
         vm.startPrank(depositor);
         vm.expectRevert(SpokePoolV3Periphery.NotProxy.selector);
         spokePoolPeriphery.swapAndBridge(
-            PeripherySigningLib.SwapAndDepositData({
-                depositData: PeripherySigningLib.BaseDepositData({
+            SpokePoolV3PeripheryInterface.SwapAndDepositData({
+                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: address(mockERC20),
                     outputToken: address(0),
                     outputAmount: depositAmount,
@@ -201,7 +206,7 @@ contract SpokePoolPeripheryTest is Test {
                 }),
                 swapToken: address(mockWETH),
                 exchange: address(dex),
-                transferType: PeripherySigningLib.TransferType.Approval,
+                transferType: SpokePoolV3PeripheryInterface.TransferType.Approval,
                 swapTokenAmount: mintAmount, // swapTokenAmount
                 minExpectedInputTokenAmount: depositAmount,
                 routerCalldata: abi.encodeWithSelector(
@@ -242,8 +247,8 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge{ value: mintAmount }(
-            PeripherySigningLib.SwapAndDepositData({
-                depositData: PeripherySigningLib.BaseDepositData({
+            SpokePoolV3PeripheryInterface.SwapAndDepositData({
+                depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: address(mockERC20),
                     outputToken: address(0),
                     outputAmount: depositAmount,
@@ -258,7 +263,7 @@ contract SpokePoolPeripheryTest is Test {
                 }),
                 swapToken: address(mockWETH),
                 exchange: address(dex),
-                transferType: PeripherySigningLib.TransferType.Approval,
+                transferType: SpokePoolV3PeripheryInterface.TransferType.Approval,
                 swapTokenAmount: mintAmount, // swapTokenAmount
                 minExpectedInputTokenAmount: depositAmount,
                 routerCalldata: abi.encodeWithSelector(
@@ -316,8 +321,8 @@ contract SpokePoolPeripheryTest is Test {
         // Approve permit2
         IERC20(address(mockWETH)).approve(address(permit2), mintAmount);
 
-        PeripherySigningLib.DepositData memory depositData = PeripherySigningLib.DepositData({
-            baseDepositData: PeripherySigningLib.BaseDepositData({
+        SpokePoolV3PeripheryInterface.DepositData memory depositData = SpokePoolV3PeripheryInterface.DepositData({
+            baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                 inputToken: address(mockWETH),
                 outputToken: address(0),
                 outputAmount: mintAmount,

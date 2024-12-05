@@ -68,7 +68,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
      * the assumption is that this function will handle only ERC20 tokens.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      */
-    function swapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData)
+    function swapAndBridge(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
         external
         override
         nonReentrant
@@ -80,7 +80,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
      * @notice Calls swapAndBridge on the spoke pool periphery contract.
      * @param swapAndDepositData The data outlining the conditions for the swap and across deposit when calling the periphery contract.
      */
-    function _callSwapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData) internal {
+    function _callSwapAndBridge(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData) internal {
         // Load relevant variables on the stack.
         IERC20 _swapToken = IERC20(swapAndDepositData.swapToken);
         uint256 _swapTokenAmount = swapAndDepositData.swapTokenAmount;
@@ -258,12 +258,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * the assumption is that this function will handle only ERC20 tokens.
      * @param swapAndDepositData Specifies the data needed to perform a swap on a generic exchange.
      */
-    function swapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData)
-        external
-        payable
-        override
-        nonReentrant
-    {
+    function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
         // as though the user deposited a wrapped native token.
         if (msg.value != 0) {
@@ -292,7 +287,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function swapAndBridgeWithPermit(
-        PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData,
+        SwapAndDepositData calldata swapAndDepositData,
         uint256 deadline,
         bytes calldata permitSignature
     ) external override nonReentrant {
@@ -322,7 +317,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
-        PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData,
+        SwapAndDepositData calldata swapAndDepositData,
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
     ) external override nonReentrant {
@@ -354,7 +349,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @param receiveWithAuthSignature EIP3009 signature encoded adepositors (bytes32 r, bytes32 s, uint8 v).
      */
     function swapAndBridgeWithAuthorization(
-        PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData,
+        SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
         bytes32 nonce,
@@ -387,7 +382,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function depositWithPermit(
-        PeripherySigningLib.DepositData calldata depositData,
+        DepositData calldata depositData,
         uint256 deadline,
         bytes calldata permitSignature
     ) external override nonReentrant {
@@ -429,7 +424,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      */
     function depositWithPermit2(
         address signatureOwner,
-        PeripherySigningLib.DepositData calldata depositData,
+        DepositData calldata depositData,
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
     ) external override nonReentrant {
@@ -473,7 +468,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function depositWithAuthorization(
-        PeripherySigningLib.DepositData calldata depositData,
+        DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
         bytes32 nonce,
@@ -575,11 +570,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @notice Swaps a token on the origin chain before depositing into the Across spoke pool atomically.
      * @param swapAndDepositData The parameters to use when calling both the swap on an exchange and bridging via an Across spoke pool.
      */
-    function _swapAndBridge(PeripherySigningLib.SwapAndDepositData calldata swapAndDepositData) private {
+    function _swapAndBridge(SwapAndDepositData calldata swapAndDepositData) private {
         // Load variables we use multiple times onto the stack.
         IERC20 _swapToken = IERC20(swapAndDepositData.swapToken);
         IERC20 _acrossInputToken = IERC20(swapAndDepositData.depositData.inputToken);
-        PeripherySigningLib.TransferType _transferType = swapAndDepositData.transferType;
+        TransferType _transferType = swapAndDepositData.transferType;
         address _exchange = swapAndDepositData.exchange;
         uint256 _swapTokenAmount = swapAndDepositData.swapTokenAmount;
 
@@ -589,10 +584,8 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // The exchange will either receive funds from this contract via a direct transfer, an approval to spend funds on this contract, or via an
         // EIP1271 permit2 signature.
-        if (_transferType == PeripherySigningLib.TransferType.Approval)
-            _swapToken.forceApprove(_exchange, _swapTokenAmount);
-        else if (_transferType == PeripherySigningLib.TransferType.Transfer)
-            _swapToken.transfer(_exchange, _swapTokenAmount);
+        if (_transferType == TransferType.Approval) _swapToken.forceApprove(_exchange, _swapTokenAmount);
+        else if (_transferType == TransferType.Transfer) _swapToken.transfer(_exchange, _swapTokenAmount);
         else {
             permit2.permit(
                 address(this), // owner
