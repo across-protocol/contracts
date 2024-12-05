@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../SpokePool.sol";
 import "./interfaces/MockV2SpokePoolInterface.sol";
 import "./V2MerkleLib.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**
  * @title MockSpokePool
@@ -12,6 +13,8 @@ import "./V2MerkleLib.sol";
  */
 contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using AddressToBytes32 for address;
+    using Bytes32ToAddress for bytes32;
 
     uint256 private chainId_;
     uint256 private currentTime;
@@ -21,11 +24,11 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
-            "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
+            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
         );
 
     event BridgedToHubPool(uint256 amount, address token);
-    event PreLeafExecuteHook(address token);
+    event PreLeafExecuteHook(bytes32 token);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours) {} // solhint-disable-line no-empty-blocks
@@ -57,10 +60,10 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function _verifyUpdateDepositMessage(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         int64 updatedRelayerFeePct,
-        address updatedRecipient,
+        bytes32 updatedRecipient,
         bytes memory updatedMessage,
         bytes memory depositorSignature
     ) internal view {
@@ -83,8 +86,30 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function verifyUpdateV3DepositMessage(
+        bytes32 depositor,
+        uint256 depositId,
+        uint256 originChainId,
+        uint256 updatedOutputAmount,
+        bytes32 updatedRecipient,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature
+    ) public view {
+        return
+            _verifyUpdateV3DepositMessage(
+                depositor.toAddress(),
+                depositId,
+                originChainId,
+                updatedOutputAmount,
+                updatedRecipient,
+                updatedMessage,
+                depositorSignature,
+                UPDATE_V3_DEPOSIT_DETAILS_HASH
+            );
+    }
+
+    function verifyUpdateV3DepositMessage(
         address depositor,
-        uint32 depositId,
+        uint256 depositId,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -97,15 +122,16 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 depositId,
                 originChainId,
                 updatedOutputAmount,
-                updatedRecipient,
+                updatedRecipient.toBytes32(),
                 updatedMessage,
-                depositorSignature
+                depositorSignature,
+                UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
             );
     }
 
     function fillRelayV3Internal(
         V3RelayExecutionParams memory relayExecution,
-        address relayer,
+        bytes32 relayer,
         bool isSlowFill
     ) external {
         _fillRelayV3(relayExecution, relayer, isSlowFill);
@@ -127,7 +153,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     }
 
     function _preExecuteLeafHook(address token) internal override {
-        emit PreLeafExecuteHook(token);
+        emit PreLeafExecuteHook(token.toBytes32());
     }
 
     function _bridgeTokensToHubPool(uint256 amount, address token) internal override {
@@ -194,24 +220,32 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
         relayFills[relayExecution.relayHash] += fillAmountPreFees;
 
-        if (msg.sender == relayExecution.updatedRecipient && !relayExecution.slowFill) return fillAmountPreFees;
+        if (msg.sender.toBytes32() == relayExecution.updatedRecipient && !relayExecution.slowFill) {
+            return fillAmountPreFees;
+        }
 
-        if (relayData.destinationToken == address(wrappedNativeToken)) {
-            if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient), amountToSend);
-        } else {
-            if (!relayExecution.slowFill)
-                IERC20Upgradeable(relayData.destinationToken).safeTransferFrom(
+        if (relayData.destinationToken == address(wrappedNativeToken).toBytes32()) {
+            if (!relayExecution.slowFill) {
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransferFrom(
                     msg.sender,
-                    relayExecution.updatedRecipient,
+                    address(this),
                     amountToSend
                 );
-            else
-                IERC20Upgradeable(relayData.destinationToken).safeTransfer(
-                    relayExecution.updatedRecipient,
+            }
+            _unwrapwrappedNativeTokenTo(payable(relayExecution.updatedRecipient.toAddress()), amountToSend);
+        } else {
+            if (!relayExecution.slowFill) {
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransferFrom(
+                    msg.sender,
+                    relayExecution.updatedRecipient.toAddress(),
                     amountToSend
                 );
+            } else {
+                IERC20Upgradeable(relayData.destinationToken.toAddress()).safeTransfer(
+                    relayExecution.updatedRecipient.toAddress(),
+                    amountToSend
+                );
+            }
         }
     }
 

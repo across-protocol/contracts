@@ -146,9 +146,15 @@
     },
     {
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
-      "label": "__gap",
+      "label": "relayerRefund",
       "offset": 0,
       "slot": "2163"
+    },
+    {
+      "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2164"
     },
     {
       "contract": "contracts/Optimism_SpokePool.sol:Optimism_SpokePool",

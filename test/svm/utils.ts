@@ -12,19 +12,19 @@ import * as crypto from "crypto";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 
+import { MerkleTree } from "@uma/common";
 import {
-  readEvents,
-  readProgramEvents,
   calculateRelayHashUint8Array,
   findProgramAddress,
   LargeAccountsCoder,
+  readEvents,
+  readProgramEvents,
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
 } from "../../src/SvmUtils";
-import { MerkleTree } from "@uma/common";
 import { RelayData } from "./SvmSpoke.common";
 
-export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();

@@ -10,6 +10,7 @@ import {
   getContractFactory,
   seedContract,
   createFakeFromABI,
+  addressToBytes,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import { hre } from "../../../../utils/utils.hre";

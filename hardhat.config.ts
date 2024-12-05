@@ -49,7 +49,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000 },
     viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -58,7 +58,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 

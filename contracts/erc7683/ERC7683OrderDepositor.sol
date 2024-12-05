@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Output, GaslessCrossChainOrder, OnchainCrossChainOrder, ResolvedCrossChainOrder, IOriginSettler, FillInstruction } from "./ERC7683.sol";
 import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Permit2Lib.sol";
+import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice ERC7683OrderDepositor processes an external order type and translates it into an AcrossV3 deposit.
@@ -18,6 +19,7 @@ import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDE
  */
 abstract contract ERC7683OrderDepositor is IOriginSettler {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     error WrongSettlementContract();
     error WrongChainId();
@@ -71,6 +73,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             acrossOrderData.outputAmount,
             acrossOrderData.destinationChainId,
             acrossOriginFillerData.exclusiveRelayer,
+            acrossOrderData.depositNonce,
             // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.openDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
@@ -101,6 +104,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             acrossOrderData.outputAmount,
             acrossOrderData.destinationChainId,
             acrossOrderData.exclusiveRelayer,
+            acrossOrderData.depositNonce,
             // Note: simplifying assumption to avoid the order type having to bake in the quote timestamp.
             SafeCast.toUint32(block.timestamp),
             order.fillDeadline,
@@ -159,6 +163,17 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         return SafeCast.toUint32(block.timestamp); // solhint-disable-line not-rely-on-time
     }
 
+    /**
+     * @notice Convenience method to compute the Across depositId for orders sent through 7683.
+     * @dev if a 0 depositNonce is used, the depositId will not be deterministic (meaning it can change depending on
+     * when the open txn is mined), but you will be safe from collisions. See the unsafeDepositV3 method on SpokePool
+     * for more details on how to choose between deterministic and non-deterministic.
+     * @param depositNonce the depositNonce field in the order.
+     * @param depositor the sender or signer of the order.
+     * @return the resulting Across depositId.
+     */
+    function computeDepositId(uint256 depositNonce, address depositor) public view virtual returns (uint256);
+
     function _resolveFor(GaslessCrossChainOrder calldata order, bytes calldata fillerData)
         internal
         view
@@ -213,15 +228,15 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         V3SpokePoolInterface.V3RelayData memory relayData;
-        relayData.depositor = order.user;
-        relayData.recipient = _toAddress(acrossOrderData.recipient);
-        relayData.exclusiveRelayer = acrossOriginFillerData.exclusiveRelayer;
-        relayData.inputToken = acrossOrderData.inputToken;
-        relayData.outputToken = acrossOrderData.outputToken;
+        relayData.depositor = order.user.toBytes32();
+        relayData.recipient = acrossOrderData.recipient;
+        relayData.exclusiveRelayer = acrossOriginFillerData.exclusiveRelayer.toBytes32();
+        relayData.inputToken = acrossOrderData.inputToken.toBytes32();
+        relayData.outputToken = acrossOrderData.outputToken.toBytes32();
         relayData.inputAmount = acrossOrderData.inputAmount;
         relayData.outputAmount = acrossOrderData.outputAmount;
         relayData.originChainId = block.chainid;
-        relayData.depositId = _currentDepositId();
+        relayData.depositId = computeDepositId(acrossOrderData.depositNonce, order.user);
         relayData.fillDeadline = order.fillDeadline;
         relayData.exclusivityDeadline = acrossOrderData.exclusivityPeriod;
         relayData.message = acrossOrderData.message;
@@ -277,15 +292,15 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         V3SpokePoolInterface.V3RelayData memory relayData;
-        relayData.depositor = msg.sender;
-        relayData.recipient = _toAddress(acrossOrderData.recipient);
-        relayData.exclusiveRelayer = acrossOrderData.exclusiveRelayer;
-        relayData.inputToken = acrossOrderData.inputToken;
-        relayData.outputToken = acrossOrderData.outputToken;
+        relayData.depositor = msg.sender.toBytes32();
+        relayData.recipient = acrossOrderData.recipient;
+        relayData.exclusiveRelayer = acrossOrderData.exclusiveRelayer.toBytes32();
+        relayData.inputToken = acrossOrderData.inputToken.toBytes32();
+        relayData.outputToken = acrossOrderData.outputToken.toBytes32();
         relayData.inputAmount = acrossOrderData.inputAmount;
         relayData.outputAmount = acrossOrderData.outputAmount;
         relayData.originChainId = block.chainid;
-        relayData.depositId = _currentDepositId();
+        relayData.depositId = computeDepositId(acrossOrderData.depositNonce, msg.sender);
         relayData.fillDeadline = order.fillDeadline;
         relayData.exclusivityDeadline = acrossOrderData.exclusivityPeriod;
         relayData.message = acrossOrderData.message;
@@ -355,13 +370,12 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
+        uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityPeriod,
         bytes memory message
     ) internal virtual;
-
-    function _currentDepositId() internal view virtual returns (uint32);
 
     function _destinationSettler(uint256 chainId) internal view virtual returns (address);
 }
