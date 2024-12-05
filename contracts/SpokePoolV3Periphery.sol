@@ -439,7 +439,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             transferDetails,
             signatureOwner,
             witness,
-            PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING,
+            PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING,
             signature
         );
         _depositV3(

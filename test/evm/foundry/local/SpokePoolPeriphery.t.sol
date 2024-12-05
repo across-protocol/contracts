@@ -11,7 +11,7 @@ import { SpokePoolV3PeripheryInterface } from "../../../../contracts/interfaces/
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
-import { MockPermit2 } from "../../../../contracts/test/MockPermit2.sol";
+import { MockPermit2, Permit2EIP712 } from "../../../../contracts/test/MockPermit2.sol";
 import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySigningLib.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -66,11 +66,11 @@ contract SpokePoolPeripheryTest is Test {
     bytes32 private constant TYPE_HASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
-    string private constant PERMIT_TRANSFER_TYPEHASH_STUB =
+    string private constant PERMIT_TRANSFER_TYPE_STUB =
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
 
     bytes32 private constant TOKEN_PERMISSIONS_TYPEHASH =
-        keccak256(abi.encode(PeripherySigningLib.TOKEN_PERMISSIONS_TYPE));
+        keccak256(abi.encodePacked(PeripherySigningLib.TOKEN_PERMISSIONS_TYPE));
 
     function setUp() public {
         dex = new Exchange();
@@ -87,8 +87,7 @@ contract SpokePoolPeripheryTest is Test {
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
-        (, bytes memory unprocessedDomainSeparator) = address(permit2).staticcall(abi.encode("DOMAIN_SEPARATOR"));
-        domainSeparator = bytes32(unprocessedDomainSeparator);
+        domainSeparator = Permit2EIP712(address(permit2)).DOMAIN_SEPARATOR();
         proxy = new SpokePoolPeripheryProxy();
         proxy.initialize(spokePoolPeriphery);
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
@@ -317,9 +316,10 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testPermit2DepositValidWitness() public {
-        deal(depositor, mintAmount);
         // Approve permit2
+        vm.startPrank(depositor);
         IERC20(address(mockWETH)).approve(address(permit2), mintAmount);
+        vm.stopPrank();
 
         SpokePoolV3PeripheryInterface.DepositData memory depositData = SpokePoolV3PeripheryInterface.DepositData({
             baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
@@ -341,12 +341,12 @@ contract SpokePoolPeripheryTest is Test {
         // Signature transfer details
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
             permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
-            nonce: 0,
+            nonce: 1,
             deadline: block.timestamp + 100
         });
 
         bytes32 typehash = keccak256(
-            abi.encodePacked(PERMIT_TRANSFER_TYPEHASH_STUB, PeripherySigningLib.EIP712_DEPOSIT_DATA_TYPE)
+            abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING)
         );
         bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
 
@@ -359,7 +359,7 @@ contract SpokePoolPeripheryTest is Test {
                     abi.encode(
                         typehash,
                         tokenPermissions,
-                        address(this),
+                        address(spokePoolPeriphery),
                         permit.nonce,
                         permit.deadline,
                         hashUtils.hashDepositData(depositData)
@@ -390,10 +390,9 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         spokePoolPeriphery.depositWithPermit2(
-            address(0xFeABe39e2109234DB5803077Cb76eE533020E520), // signatureOwner
+            depositor, // signatureOwner
             depositData,
             permit, // permit
-            //transferDetails, // transferDetails
             signature // permit2 signature
         );
         vm.stopPrank();

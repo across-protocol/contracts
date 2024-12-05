@@ -21,7 +21,7 @@ library PeripherySigningLib {
             "bytes message)"
         );
     bytes internal constant EIP712_DEPOSIT_DATA_TYPE =
-        abi.encodePacked("DepositData(", "BaseDepositData baseDepositData", "uint256 inputAmount)");
+        abi.encodePacked("DepositData(BaseDepositData baseDepositData,uint256 inputAmount)");
     bytes internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
         abi.encodePacked(
             "SwapAndDepositData(",
@@ -41,13 +41,13 @@ library PeripherySigningLib {
         keccak256(abi.encode(EIP712_SWAP_AND_DEPOSIT_DATA_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE));
 
     // EIP712 Type strings.
-    string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token, uint256 amount)";
+    string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
     string internal constant EIP712_SWAP_AND_DEPOSIT_TYPE_STRING =
         string(
             abi.encodePacked(
                 "SwapAndDepositData witness)",
-                EIP712_SWAP_AND_DEPOSIT_DATA_TYPE,
                 EIP712_BASE_DEPOSIT_DATA_TYPE,
+                EIP712_SWAP_AND_DEPOSIT_DATA_TYPE,
                 TOKEN_PERMISSIONS_TYPE
             )
         );
@@ -55,8 +55,8 @@ library PeripherySigningLib {
         string(
             abi.encodePacked(
                 "DepositData witness)",
-                EIP712_DEPOSIT_DATA_TYPE,
                 EIP712_BASE_DEPOSIT_DATA_TYPE,
+                EIP712_DEPOSIT_DATA_TYPE,
                 TOKEN_PERMISSIONS_TYPE
             )
         );
