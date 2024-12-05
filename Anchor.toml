@@ -6,7 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 multicall_handler = "6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH"
-svm_spoke = "DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn"
+svm_spoke = "D1WcTLKRyN4TuqnfMBGPvc16nACHfNhFPbgWNExb1aur"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
