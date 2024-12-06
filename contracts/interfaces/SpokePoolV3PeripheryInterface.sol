@@ -105,9 +105,11 @@ interface SpokePoolV3PeripheryInterface {
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable;
 
     function swapAndBridgeWithPermit(
+        address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
         uint256 deadline,
-        bytes calldata permitSignature
+        bytes calldata permitSignature,
+        bytes calldata swapAndDepositDataSignature
     ) external;
 
     function swapAndBridgeWithPermit2(
@@ -118,17 +120,21 @@ interface SpokePoolV3PeripheryInterface {
     ) external;
 
     function swapAndBridgeWithAuthorization(
+        address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
         bytes32 nonce,
-        bytes calldata receiveWithAuthSignature
+        bytes calldata receiveWithAuthSignature,
+        bytes calldata swapAndDepositDataSignature
     ) external;
 
     function depositWithPermit(
+        address signatureOwner,
         DepositData calldata depositData,
         uint256 deadline,
-        bytes calldata permitSignature
+        bytes calldata permitSignature,
+        bytes calldata depositDataSignature
     ) external;
 
     function depositWithPermit2(
@@ -139,10 +145,12 @@ interface SpokePoolV3PeripheryInterface {
     ) external;
 
     function depositWithAuthorization(
+        address signatureOwner,
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
         bytes32 nonce,
-        bytes calldata receiveWithAuthSignature
+        bytes calldata receiveWithAuthSignature,
+        bytes calldata depositDataSignature
     ) external;
 }
