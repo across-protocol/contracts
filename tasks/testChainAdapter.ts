@@ -38,7 +38,13 @@ task("testChainAdapter", "Verify a chain adapter")
     const tokenAddress = TOKEN_SYMBOLS_MAP[tokenSymbol].addresses[hubChainId];
 
     // For USDC this will resolve to native USDC on CCTP-enabled chains.
-    const l2Token = await hubPool.poolRebalanceRoute(spokeChainId, tokenAddress);
+    let l2Token = TOKEN_SYMBOLS_MAP[tokenSymbol]?.addresses[spokeChainId];
+    if (tokenSymbol === "USDC") {
+      l2Token ??=
+        TOKEN_SYMBOLS_MAP["USDC.e"]?.addresses[spokeChainId] ??
+        TOKEN_SYMBOLS_MAP.USDbC?.addresses[spokeChainId] ??
+        TOKEN_SYMBOLS_MAP.USDzC?.addresses[spokeChainId];
+    }
     if (l2Token === ethers.constants.AddressZero) {
       const proceed = await askYesNoQuestion(
         `\t\nWARNING: ${tokenSymbol} maps to address ${l2Token} on chain ${spokeChainId}\n\t\nProceed ?`
@@ -54,7 +60,7 @@ task("testChainAdapter", "Verify a chain adapter")
     const { amount } = args;
     const scaledAmount = ethers.utils.parseUnits(amount, decimals);
 
-    if (balance.lt(amount)) {
+    if (balance.lt(scaledAmount)) {
       const proceed = await askYesNoQuestion(
         `\t\nWARNING: ${amount} ${tokenSymbol} may be lost.\n` +
           `\t\nProceed to send ${amount} ${tokenSymbol} to chain adapter ${adapterAddress} ?`

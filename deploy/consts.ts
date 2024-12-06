@@ -83,6 +83,7 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
       L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
+      L1OpUSDCBridgeAdapter: "0xE3622468Ea7dD804702B56ca2a4f88C0936995e6",
     },
     [CHAIN_IDs.MODE]: {
       L1CrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
