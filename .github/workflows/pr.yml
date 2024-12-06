@@ -104,7 +104,7 @@ jobs:
         shell: bash
         run: yarn test-svm
   forge:
-    name: Forge
+    name: Test Forge
     runs-on: ubuntu-latest
     strategy:
       matrix:
