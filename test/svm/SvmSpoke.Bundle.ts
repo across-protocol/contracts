@@ -11,7 +11,12 @@ import { ComputeBudgetProgram, Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
-import { loadExecuteRelayerRefundLeafParams, relayerRefundHashFn, sendTransactionWithLookupTable } from "../../src/svm";
+import {
+  loadExecuteRelayerRefundLeafParams,
+  readEventsUntilFound,
+  relayerRefundHashFn,
+  sendTransactionWithLookupTable,
+} from "../../src/svm";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 import { MerkleTree } from "../../utils";
 import { common } from "./SvmSpoke.common";
@@ -171,11 +176,8 @@ describe("svm_spoke.bundle", () => {
       .accounts(relayRootBundleAccounts)
       .rpc();
 
-    // Wait for event processing
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Check for the emitted event
-    const events = await readEvents(connection, tx, [program]);
+    let events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "relayedRootBundle")?.data;
     assert.isTrue(event.rootBundleId.toString() === rootBundleId.toString(), "Root bundle ID should match");
     assert.isTrue(
@@ -240,17 +242,15 @@ describe("svm_spoke.bundle", () => {
     };
     const proofAsNumbers = proof.map((p) => Array.from(p));
     await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
-    await program.methods
+    const tx = await program.methods
       .executeRelayerRefundLeaf()
       .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
 
     // Verify the ExecutedRelayerRefundRoot event
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-    let events = await readProgramEvents(connection, program);
+    let events = await readEventsUntilFound(connection, tx, [program]);
     let event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
-
     // Remove the expectedValues object and use direct assertions
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
     assertSE(event.chainId, chainId, "chainId should match");
@@ -265,7 +265,6 @@ describe("svm_spoke.bundle", () => {
     assertSE(event.caller, owner, "caller should match");
 
     event = events.find((event) => event.name === "tokensBridged")?.data;
-
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
     assertSE(event.chainId, chainId, "chainId should match");
     assertSE(event.leafId, leaf.leafId, "leafId should match");
@@ -1471,17 +1470,14 @@ describe("svm_spoke.bundle", () => {
     it("No deferred refunds in all Token Accounts", async () => {
       const tx = await executeRelayerRefundLeaf({ deferredRefunds: false });
 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-      const events = await readEvents(connection, tx, [program]);
+      const events = await readEventsUntilFound(connection, tx, [program]);
       const event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
       assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     });
 
     it("Deferred refunds in all Claim Accounts", async () => {
       const tx = await executeRelayerRefundLeaf({ deferredRefunds: true });
-
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-      const events = await readEvents(connection, tx, [program]);
+      const events = await readEventsUntilFound(connection, tx, [program]);
       const event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
       assert.isTrue(event.deferredRefunds, "deferredRefunds should be true");
     });
@@ -1642,7 +1638,6 @@ describe("svm_spoke.bundle", () => {
         .rpc();
       assert.fail("Leaf verification should fail without leading 64 bytes");
     } catch (err: any) {
-      console.log("err", err);
       assert.include(err.toString(), "Invalid Merkle proof", "Expected merkle verification to fail");
     }
   });
@@ -1734,7 +1729,6 @@ describe("svm_spoke.bundle", () => {
         .rpc();
       assert.fail("Leaf verification should fail without leading 64 bytes");
     } catch (err: any) {
-      console.log("err", err);
       assert.include(err.toString(), "Invalid Merkle proof", "Expected merkle verification to fail");
     }
   });

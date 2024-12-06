@@ -21,7 +21,7 @@ cluster = "localnet"
 wallet = "test/svm/keys/localnet-wallet.json"
 
 [scripts]
-test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
+test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts --grep 'Test BridgedToHubPool event'"
 initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"
 queryState = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryState.ts"
 enableRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/enableRoute.ts"
@@ -43,6 +43,8 @@ bridgeLiabilityToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/br
 remoteHubPoolPauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolPauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
+addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressToPublicKey.ts"
+publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"

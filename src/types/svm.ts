@@ -115,3 +115,13 @@ export type AcrossPlusMessage = {
   accounts: PublicKey[];
   handlerMessage: Buffer;
 };
+
+export interface EventType {
+  program: PublicKey;
+  data: any;
+  name: string;
+  slot: number;
+  confirmationStatus: string;
+  blockTime: number;
+  signature: string;
+}

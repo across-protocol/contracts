@@ -1,3 +1,5 @@
+import { PublicKey } from "@solana/web3.js";
+
 /**
  * Converts an integer to a 32-byte Uint8Array.
  */
@@ -24,4 +26,8 @@ export function u8Array32ToInt(u8Array: Uint8Array): bigint {
     throw new Error("Input must be a Uint8Array of length 32");
   }
   return u8Array.reduce((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
+}
+
+export function strPublicKey(str: string): string {
+  return new PublicKey(str).toString();
 }

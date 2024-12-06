@@ -6,11 +6,15 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { common } from "./SvmSpoke.common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { findProgramAddress, readProgramEvents } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm";
+import {
+  findProgramAddress,
+  loadExecuteRelayerRefundLeafParams,
+  readEventsUntilFound,
+  relayerRefundHashFn,
+} from "../../src/svm";
 
 const { provider, program, owner, initializeState, connection, remoteDomain, chainId, crossDomainAdmin } = common;
 
@@ -312,16 +316,13 @@ describe("svm_spoke.token_bridge", () => {
     const simpleBridgeMessageSentEventData = web3.Keypair.generate();
 
     // Perform the bridge operation.
-    await program.methods
+    const tx = await program.methods
       .bridgeTokensToHubPool(new BN(simpleBridgeAmount))
       .accounts({ ...bridgeTokensToHubPoolAccounts, messageSentEventData: simpleBridgeMessageSentEventData.publicKey })
       .signers([simpleBridgeMessageSentEventData])
       .rpc();
 
-    // Wait for the event to be emitted.
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "bridgedToHubPool")?.data;
     assert.isNotNull(event, "BridgedToHubPool event should be emitted");
     assert.strictEqual(event.amount.toString(), simpleBridgeAmount.toString(), "Invalid amount");
