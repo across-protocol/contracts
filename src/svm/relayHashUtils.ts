@@ -12,6 +12,20 @@ export const evmAddressToPublicKey = (address: string): PublicKey => {
 };
 
 /**
+ * Converts a Solana PublicKey to an EVM address.
+ */
+export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => {
+  // Convert the input to a PublicKey if it's a string
+  const pubKeyBuffer = typeof publicKey === "string" ? new PublicKey(publicKey).toBuffer() : publicKey.toBuffer();
+
+  // Extract the last 20 bytes to get the Ethereum address
+  const addressBuffer = pubKeyBuffer.slice(-20);
+
+  // Convert the buffer to a hex string and prepend '0x'
+  return `0x${addressBuffer.toString("hex")}`;
+};
+
+/**
  * Calculates the relay hash from relay data and chain ID.
  */
 export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8Array {

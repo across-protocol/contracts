@@ -1,4 +1,3 @@
-// export * from "./SvmUtils";
 export * from "./relayHashUtils";
 export * from "./instructionParamsUtils";
 export * from "./conversionUtils";

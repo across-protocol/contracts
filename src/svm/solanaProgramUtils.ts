@@ -31,6 +31,9 @@ export function findProgramAddress(label: string, program: PublicKey, extraSeeds
   return { publicKey: res[0], bump: res[1] };
 }
 
+/**
+ * Reads events from a transaction.
+ */
 export async function readEvents<IDL extends Idl = Idl>(
   connection: Connection,
   txSignature: string,
@@ -44,6 +47,9 @@ export async function readEvents<IDL extends Idl = Idl>(
   return processEventFromTx(txResult, programs);
 }
 
+/**
+ * Processes events from a transaction.
+ */
 function processEventFromTx(txResult: web3.VersionedTransactionResponse, programs: Program<any>[]) {
   const eventAuthorities: Map<string, PublicKey> = new Map();
   for (const program of programs) {
@@ -84,6 +90,31 @@ function processEventFromTx(txResult: web3.VersionedTransactionResponse, program
     }
   }
   return events;
+}
+
+/**
+ * Helper function to wait for an event to be emitted. Should only be used in tests where txSignature is known to emit.
+ */
+export async function readEventsUntilFound<IDL extends Idl = Idl>(
+  connection: Connection,
+  txSignature: string,
+  programs: Program<IDL>[]
+) {
+  const startTime = Date.now();
+  let txResult = null;
+
+  while (Date.now() - startTime < 5000) {
+    // 5 seconds timeout to wait to find the event.
+    txResult = await connection.getTransaction(txSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    if (txResult !== null) return processEventFromTx(txResult, programs);
+
+    await new Promise((resolve) => setTimeout(resolve, 50)); // 50 ms delay between retries.
+  }
+
+  throw new Error("No event found within 5 seconds");
 }
 
 /**
@@ -157,27 +188,4 @@ export async function subscribeToCpiEventsForProgram(
   );
 
   return subscriptionId;
-}
-
-// Helper function to wait for an event to be emitted. Should only be used in tests where txSignature is known to emit.
-export async function readEventsUntilFound<IDL extends Idl = Idl>(
-  connection: Connection,
-  txSignature: string,
-  programs: Program<IDL>[]
-) {
-  const startTime = Date.now();
-  let txResult = null;
-
-  while (Date.now() - startTime < 5000) {
-    // 5 seconds timeout to wait to find the event.
-    txResult = await connection.getTransaction(txSignature, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0,
-    });
-    if (txResult !== null) return processEventFromTx(txResult, programs);
-
-    await new Promise((resolve) => setTimeout(resolve, 50)); // 50 ms delay between retries.
-  }
-
-  throw new Error("No event found within 5 seconds");
 }

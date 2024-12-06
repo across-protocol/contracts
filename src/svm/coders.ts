@@ -40,7 +40,7 @@ export class LargeAccountsCoder<A extends string = string> extends BorshAccounts
 type KeyModeMap = Map<string, { isWritable: boolean }>;
 
 /**
- * Modified version of CompiledKeys to handle compilation of unsigned transactions. Original implementation is here:
+ * Extended version of legacy CompiledKeys to handle compilation of unsigned transactions. Base implementation is here:
  * https://github.com/solana-labs/solana-web3.js/blob/v1.95.3/src/message/compiled-keys.ts
  */
 class UnsignedCompiledKeys {
@@ -130,7 +130,7 @@ class UnsignedMessage extends Message {
 }
 
 /**
- * Helper to encode message compiled transactions for Across+ multicall handler.
+ * Helper to encode MulticallHandler transactions.
  */
 export class MulticallHandlerCoder {
   readonly compiledMessage: Message;
