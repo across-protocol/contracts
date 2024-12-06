@@ -255,7 +255,7 @@ describe("svm_spoke.fill.across_plus", () => {
       await sendTransactionWithLookupTable(connection, [computeBudgetIx, approveIx, fillIx], relayer);
 
       // Verify relayer's balance after the fill
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfers get processed.
       const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
       assertSE(
         fRelayerBal,
