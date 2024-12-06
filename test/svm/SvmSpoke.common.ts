@@ -1,13 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import { PublicKey, Keypair } from "@solana/web3.js";
-import { ethers } from "ethers";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
-import { evmAddressToPublicKey } from "../../src/SvmUtils";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
-import { SlowFillLeaf } from "./utils";
 import { randomBytes } from "crypto";
+import { ethers } from "ethers";
+import { evmAddressToPublicKey } from "../../src/svm";
+import { DepositData } from "../../src/types/svm";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 
 const provider = anchor.AnchorProvider.env();
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
@@ -105,63 +105,6 @@ function assertSE(a: any, b: any, errorMessage: string) {
     assert.strictEqual(a.toString(), b.toString(), errorMessage);
   }
 }
-
-interface DepositData {
-  depositor: PublicKey | null; // Adjust type as necessary
-  recipient: PublicKey;
-  inputToken: PublicKey | null; // Adjust type as necessary
-  outputToken: PublicKey;
-  inputAmount: BN;
-  outputAmount: BN;
-  destinationChainId: BN;
-  exclusiveRelayer: PublicKey;
-  quoteTimestamp: BN;
-  fillDeadline: BN;
-  exclusivityParameter: BN;
-  message: Buffer;
-}
-
-export type DepositDataValues = [
-  PublicKey,
-  PublicKey,
-  PublicKey,
-  PublicKey,
-  BN,
-  BN,
-  BN,
-  PublicKey,
-  number,
-  number,
-  number,
-  Buffer
-];
-
-export type RelayData = {
-  depositor: PublicKey;
-  recipient: PublicKey;
-  exclusiveRelayer: PublicKey;
-  inputToken: PublicKey;
-  outputToken: PublicKey;
-  inputAmount: BN;
-  outputAmount: BN;
-  originChainId: BN;
-  depositId: number[];
-  fillDeadline: number;
-  exclusivityDeadline: number;
-  message: Buffer;
-};
-
-export type FillDataValues = [number[], RelayData, BN, PublicKey];
-
-export type FillDataParams = [number[], RelayData | null, BN | null, PublicKey | null];
-
-export type RequestV3SlowFillDataValues = [number[], RelayData];
-
-export type RequestV3SlowFillDataParams = [number[], RelayData | null];
-
-export type ExecuteV3SlowRelayLeafDataValues = [number[], SlowFillLeaf, number, number[][]];
-
-export type ExecuteV3SlowRelayLeafDataParams = [number[], SlowFillLeaf | null, number | null, number[][] | null];
 
 export const common = {
   provider,

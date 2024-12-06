@@ -1,8 +1,9 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
-import { relayerRefundHashFn, RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../test/svm/utils";
 import { BigNumber, ethers } from "ethers";
 import { PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";
+import { relayerRefundHashFn } from "../../../src/svm";
 
 export const requireEnv = (name: string): string => {
   if (!process.env[name]) throw new Error(`Environment variable ${name} is not set`);

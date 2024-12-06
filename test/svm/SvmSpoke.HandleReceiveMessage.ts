@@ -7,7 +7,7 @@ import { assert } from "chai";
 import { ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { evmAddressToPublicKey } from "../../src/SvmUtils";
+import { evmAddressToPublicKey } from "../../src/svm";
 import { encodeMessageHeader } from "./cctpHelpers";
 import { common } from "./SvmSpoke.common";
 

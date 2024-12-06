@@ -68,11 +68,8 @@ import {
 
 import { getNodeUrl, MerkleTree } from "@uma/common";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
-import {
-  loadExecuteRelayerRefundLeafParams,
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
-} from "../../test/svm/utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { loadExecuteRelayerRefundLeafParams } from "../../src/svm";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
