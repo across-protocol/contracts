@@ -202,6 +202,17 @@ export const evmAddressToPublicKey = (address: string): PublicKey => {
   return new PublicKey(ethers.utils.arrayify(bytes32Address));
 };
 
+export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => {
+  // Convert the input to a PublicKey if it's a string
+  const pubKeyBuffer = typeof publicKey === "string" ? new PublicKey(publicKey).toBuffer() : publicKey.toBuffer();
+
+  // Extract the last 20 bytes to get the Ethereum address
+  const addressBuffer = pubKeyBuffer.slice(-20);
+
+  // Convert the buffer to a hex string and prepend '0x'
+  return `0x${addressBuffer.toString("hex")}`;
+};
+
 // TODO: we are inconsistant with where we are placing some utils. we have some stuff here, some stuff that we might
 // want to re-use within the test directory. more over, when moving things into the canonical across repo, we should
 // re-use the test utils there.
@@ -582,4 +593,8 @@ export function hashNonEmptyMessage(message: Buffer) {
   }
   // else return zeroed bytes32
   return new Uint8Array(32);
+}
+
+export function strPublicKey(publicKey: PublicKey): string {
+  return new PublicKey(publicKey).toString();
 }
