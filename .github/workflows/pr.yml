@@ -42,8 +42,30 @@ jobs:
       - name: Lint rust
         shell: bash
         run: yarn lint-rust
-  test:
-    name: Test
+  test-evm:
+    name: Test EVM
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile
+      - name: Build
+        run: yarn build
+      - name: Test evm-hardhat
+        shell: bash
+        run: yarn test-evm
+  test-svm:
+    name: Test SVM
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -78,9 +100,6 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Build
         run: yarn build
-      - name: Test evm-hardhat
-        shell: bash
-        run: yarn test-evm
       - name: Test svm-anchor
         shell: bash
         run: yarn test-svm
