@@ -108,6 +108,9 @@ export type ExecuteV3SlowRelayLeafDataValues = [number[], SlowFillLeaf, number, 
 
 export type ExecuteV3SlowRelayLeafDataParams = [number[], SlowFillLeaf | null, number | null, number[][] | null];
 
+/**
+ * Across+ Message Interface
+ */
 export type AcrossPlusMessage = {
   handler: PublicKey;
   readOnlyLen: number;
@@ -116,6 +119,9 @@ export type AcrossPlusMessage = {
   handlerMessage: Buffer;
 };
 
+/**
+ * Event Type Interface
+ */
 export interface EventType {
   program: PublicKey;
   data: any;
