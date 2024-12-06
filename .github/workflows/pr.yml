@@ -60,7 +60,7 @@ jobs:
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Build
-        run: yarn build
+        run: yarn build-evm
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
@@ -99,7 +99,7 @@ jobs:
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Build
-        run: yarn build
+        run: yarn build-svm
       - name: Test svm-anchor
         shell: bash
         run: yarn test-svm
