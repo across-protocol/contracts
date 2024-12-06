@@ -573,6 +573,13 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
+     * @notice Returns the contract's EIP712 domain separator, used to sign hashed depositData/swapAndDepositData types.
+     */
+    function domainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    /**
      * @notice Approves the spoke pool and calls `depositV3` function with the specified input parameters.
      * @param depositor The address on the origin chain which should be treated as the depositor by Across, and will therefore receive refunds if this deposit
      * is unfilled.

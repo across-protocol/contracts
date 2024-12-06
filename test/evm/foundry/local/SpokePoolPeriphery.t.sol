@@ -13,7 +13,7 @@ import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9I
 import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
 import { MockPermit2, Permit2EIP712 } from "../../../../contracts/test/MockPermit2.sol";
 import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySigningLib.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
@@ -70,7 +70,7 @@ contract SpokePoolPeripheryTest is Test {
     IPermit2 permit2;
 
     WETH9Interface mockWETH;
-    ERC20 mockERC20;
+    MockERC20 mockERC20;
 
     address depositor;
     address owner;
@@ -96,7 +96,7 @@ contract SpokePoolPeripheryTest is Test {
         hashUtils = new HashUtils();
 
         mockWETH = WETH9Interface(address(new WETH9()));
-        mockERC20 = new ERC20("ERC20", "ERC20");
+        mockERC20 = new MockERC20();
 
         depositor = vm.addr(privateKey);
         owner = vm.addr(2);
@@ -156,6 +156,9 @@ contract SpokePoolPeripheryTest is Test {
         _proxy.initialize(spokePoolPeriphery);
     }
 
+    /**
+     * Approval based flows
+     */
     function testSwapAndBridge() public {
         // Should emit expected deposit event
         vm.startPrank(depositor);
@@ -255,6 +258,9 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
+    /**
+     * Value based flows
+     */
     function testSwapAndBridgeNoValueNoProxy() public {
         // Cannot call swapAndBridge with no value directly.
         vm.startPrank(depositor);
@@ -350,6 +356,106 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
+    function testDepositNoValueNoProxy() public {
+        // Cannot call deposit with no value directly.
+        vm.startPrank(depositor);
+        vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
+        spokePoolPeriphery.deposit(
+            depositor, // recipient
+            address(mockWETH), // inputToken
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            address(0), // exclusiveRelayer
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            new bytes(0)
+        );
+
+        vm.stopPrank();
+    }
+
+    /**
+     * Permit (2612) based flows
+     */
+    function testPermitDepositValidWitness() public {}
+
+    /**
+     * Transfer with authorization based flows
+     */
+    function testTransferWithAuthDepositValidWitness() public {
+        SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            depositor
+        );
+
+        bytes32 nonce = bytes32(block.prevrandao);
+
+        // Get the transfer with auth signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.AUTH_TYPEHASH,
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                block.timestamp,
+                block.timestamp,
+                nonce
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                keccak256(
+                    abi.encode(PeripherySigningLib.EIP712_DEPOSIT_DATA_TYPEHASH, hashUtils.hashDepositData(depositData))
+                )
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should emit expected deposit event
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockERC20),
+            address(0),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithAuthorization(
+            depositor, // signatureOwner
+            depositData,
+            block.timestamp, // valid before
+            block.timestamp, // valid after
+            nonce, // nonce
+            signature, // receiveWithAuthSignature
+            depositDataSignature
+        );
+        vm.stopPrank();
+    }
+
+    /**
+     * Permit2 based flows
+     */
     function testPermit2DepositValidWitness() public {
         SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
             address(mockWETH),
@@ -416,26 +522,9 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
-    function testDepositNoValueNoProxy() public {
-        // Cannot call deposit with no value directly.
-        vm.startPrank(depositor);
-        vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
-        spokePoolPeriphery.deposit(
-            depositor, // recipient
-            address(mockWETH), // inputToken
-            mintAmount,
-            mintAmount,
-            destinationChainId,
-            address(0), // exclusiveRelayer
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
-            0,
-            new bytes(0)
-        );
-
-        vm.stopPrank();
-    }
-
+    /**
+     * Helper functions
+     */
     function _defaultDepositData(
         address _token,
         uint256 _amount,
