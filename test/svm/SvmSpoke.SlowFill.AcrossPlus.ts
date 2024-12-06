@@ -26,22 +26,20 @@ import {
   sendTransactionWithLookupTable,
   readProgramEvents,
   calculateRelayEventHashUint8Array,
+  slowFillHashFn,
+  loadRequestV3SlowFillParams,
+  loadExecuteV3SlowRelayLeafParams,
+  intToU8Array32,
 } from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
+import { common } from "./SvmSpoke.common";
 import {
   ExecuteV3SlowRelayLeafDataParams,
   ExecuteV3SlowRelayLeafDataValues,
   RequestV3SlowFillDataParams,
   RequestV3SlowFillDataValues,
-  common,
-} from "./SvmSpoke.common";
-import {
   SlowFillLeaf,
-  intToU8Array32,
-  loadExecuteV3SlowRelayLeafParams,
-  loadRequestV3SlowFillParams,
-  slowFillHashFn,
-} from "./utils";
+} from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, setCurrentTime } = common;
 const { initializeState, assertSE, assert } = common;
 

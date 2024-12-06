@@ -12,15 +12,9 @@ import {
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import {
-  intToU8Array32,
-  slowFillHashFn,
-  SlowFillLeaf,
-  readProgramEvents,
-  calculateRelayHashUint8Array,
-  testAcrossPlusMessage,
-} from "./utils";
-import { hashNonEmptyMessage } from "../../src/svm";
+import { readProgramEvents, calculateRelayHashUint8Array, testAcrossPlusMessage } from "./utils";
+import { hashNonEmptyMessage, intToU8Array32, slowFillHashFn } from "../../src/svm";
+import { SlowFillLeaf } from "../../src/types/svm";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;

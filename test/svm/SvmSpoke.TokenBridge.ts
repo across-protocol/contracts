@@ -6,11 +6,11 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { common } from "./SvmSpoke.common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { findProgramAddress, loadExecuteRelayerRefundLeafParams, readProgramEvents } from "./utils";
+import { findProgramAddress, readProgramEvents } from "./utils";
 import { assert } from "chai";
 import { decodeMessageSentData } from "./cctpHelpers";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { relayerRefundHashFn } from "../../src/svm";
+import { loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm";
 
 const { provider, program, owner, initializeState, connection, remoteDomain, chainId, crossDomainAdmin } = common;
 

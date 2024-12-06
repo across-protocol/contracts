@@ -15,8 +15,10 @@ import {
   ExtensionType,
 } from "@solana/spl-token";
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
-import { common, DepositDataValues } from "./SvmSpoke.common";
-import { readProgramEvents, intToU8Array32, u8Array32ToInt } from "./utils";
+import { common } from "./SvmSpoke.common";
+import { readProgramEvents } from "./utils";
+import { DepositDataValues } from "../../src/types/svm";
+import { intToU8Array32 } from "../../src/svm";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
