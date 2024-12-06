@@ -213,7 +213,7 @@ contract SpokePoolPeripheryTest is Test {
                 address(mockWETH),
                 mintAmount,
                 dex,
-                SpokePoolV3PeripheryInterface.TransferType.EIP1271Signature,
+                SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
                 address(mockERC20),
                 depositAmount,
                 depositor
@@ -469,7 +469,7 @@ contract SpokePoolPeripheryTest is Test {
         uint256 _amount,
         address _depositor
     ) internal returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
-        bool usePermit2 = _transferType == SpokePoolV3PeripheryInterface.TransferType.EIP1271Signature;
+        bool usePermit2 = _transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval;
         return
             SpokePoolV3PeripheryInterface.SwapAndDepositData({
                 depositData: SpokePoolV3PeripheryInterface.BaseDepositData({

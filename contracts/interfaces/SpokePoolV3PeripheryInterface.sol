@@ -26,8 +26,8 @@ interface SpokePoolV3PeripheryInterface {
         Approval,
         // Transfer tokens to the exchange before calling it in this contract.
         Transfer,
-        // Approve the exchange by use of an EIP1271 callback.
-        EIP1271Signature
+        // Approve the exchange by authorizing a transfer with Permit2.
+        Permit2Approval
     }
 
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
