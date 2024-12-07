@@ -19,7 +19,6 @@ for CONTRACT in "${CONTRACTS[@]}"; do
     echo "Comparing storage layout snapshot of the $CONTRACT contract at ./storage-layouts/$CONTRACT.json with current storage layout"
     echo "Created temporary storage layout file at ./storage-layouts/proposed.$CONTRACT.json"
     forge inspect $CONTRACT storagelayout --json > ./storage-layouts/temp.$CONTRACT.json
-    cat ./storage-layouts/temp.$CONTRACT.json 
     # Delete any astId keys from the file, which seem to change every time the bytecode changes
     # and the types object which also contains astId changes. We only care about the size and relative
     # location of state variable slots.
