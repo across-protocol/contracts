@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { readUInt256BE } from "../../src/SvmUtils";
+import { readUInt256BE } from "../../src/svm";
 
 // Index positions to decode Message Header from
 // https://developers.circle.com/stablecoins/docs/message-format#message-header

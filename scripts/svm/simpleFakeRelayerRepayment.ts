@@ -25,12 +25,8 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import {
-  relayerRefundHashFn,
-  RelayerRefundLeafType,
-  RelayerRefundLeafSolana,
-  loadExecuteRelayerRefundLeafParams,
-} from "../../test/svm/utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

@@ -5,13 +5,8 @@ import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import {
-  loadExecuteRelayerRefundLeafParams,
-  relayerRefundHashFn,
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
-  readEventsUntilFound,
-} from "./utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { loadExecuteRelayerRefundLeafParams, readEventsUntilFound, relayerRefundHashFn } from "../../src/svm";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
