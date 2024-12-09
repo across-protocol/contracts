@@ -13,6 +13,7 @@ anchor.setProvider(provider);
 const idl = require("../../target/idl/svm_spoke.json");
 const program = new Program<SvmSpoke>(idl, provider);
 const programId = program.programId;
+console.log("SVM-Spoke Program ID:", programId.toString());
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv)).option("seed", {
