@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import assert from "assert";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
-import { askYesNoQuestion, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
+import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
 import { TokenSymbol } from "./types";
 
 const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
