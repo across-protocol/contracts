@@ -1,29 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../types/svm";
-
-/**
- * Converts an EVM address to a Solana PublicKey.
- */
-export const evmAddressToPublicKey = (address: string): PublicKey => {
-  const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
-  return new PublicKey(ethers.utils.arrayify(bytes32Address));
-};
-
-/**
- * Converts a Solana PublicKey to an EVM address.
- */
-export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => {
-  // Convert the input to a PublicKey if it's a string
-  const pubKeyBuffer = typeof publicKey === "string" ? new PublicKey(publicKey).toBuffer() : publicKey.toBuffer();
-
-  // Extract the last 20 bytes to get the Ethereum address
-  const addressBuffer = pubKeyBuffer.slice(-20);
-
-  // Convert the buffer to a hex string and prepend '0x'
-  return `0x${addressBuffer.toString("hex")}`;
-};
 
 /**
  * Calculates the relay hash from relay data and chain ID.

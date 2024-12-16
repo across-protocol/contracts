@@ -58,9 +58,9 @@ export type RelayData = {
  * Deposit Data Interfaces
  */
 export interface DepositData {
-  depositor: PublicKey | null; // Adjust type as necessary
+  depositor: PublicKey | null;
   recipient: PublicKey;
-  inputToken: PublicKey | null; // Adjust type as necessary
+  inputToken: PublicKey | null;
   outputToken: PublicKey;
   inputAmount: BN;
   outputAmount: BN;

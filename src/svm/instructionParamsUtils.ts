@@ -161,9 +161,11 @@ export async function loadExecuteV3SlowRelayLeafParams(
   rootBundleId: number,
   proof: number[][]
 ) {
+  // Close the instruction params account if the caller has used it before.
   await closeInstructionParams(program, signer);
 
-  const maxInstructionParamsFragment = 900;
+  // Execute load instructions sequentially.
+  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   const accountCoder = new LargeAccountsCoder(program.idl);
   const instructionParamsBytes = await accountCoder.encode("executeV3SlowRelayLeafParams", {
