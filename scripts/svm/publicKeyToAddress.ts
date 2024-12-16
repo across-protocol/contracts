@@ -1,6 +1,6 @@
-import { publicKeyToEvmAddress } from "../../src/SvmUtils";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { publicKeyToEvmAddress } from "../../src/svm";
 
 const argv = yargs(hideBin(process.argv)).option("publicKey", {
   type: "string",

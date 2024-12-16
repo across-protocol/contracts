@@ -6,7 +6,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayEventHashUint8Array, readProgramEvents } from "../../src/SvmUtils";
+import { calculateRelayEventHashUint8Array, readProgramEvents } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

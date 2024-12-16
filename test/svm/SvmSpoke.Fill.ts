@@ -21,10 +21,11 @@ import {
   calculateRelayHashUint8Array,
   sendTransactionWithLookupTable,
   hashNonEmptyMessage,
-} from "../../src/SvmUtils";
-import { intToU8Array32 } from "./utils";
-import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
+  intToU8Array32,
+} from "../../src/svm";
+import { common } from "./SvmSpoke.common";
 import { testAcrossPlusMessage } from "./utils";
+import { FillDataValues, RelayData } from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 

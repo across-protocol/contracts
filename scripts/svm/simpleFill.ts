@@ -15,8 +15,7 @@ import {
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayHashUint8Array } from "../../src/SvmUtils";
-import { intToU8Array32 } from "../../test/svm/utils";
+import { calculateRelayHashUint8Array, intToU8Array32 } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
