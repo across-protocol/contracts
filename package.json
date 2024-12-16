@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "3.0.17",
+  "version": "3.0.18",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -39,7 +39,7 @@
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.20",
+    "@across-protocol/constants": "^3.1.22",
     "@coral-xyz/anchor": "^0.30.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
