@@ -23,10 +23,7 @@ const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
 // Get the HubPool contract instance.
-if (!process.env.HUB_POOL_ADDRESS) {
-  throw new Error("Environment variable HUB_POOL_ADDRESS is not set");
-}
-const hubPoolAddress = ethers.utils.getAddress(process.env.HUB_POOL_ADDRESS);
+const hubPoolAddress = ethers.utils.getAddress(requireEnv("HUB_POOL_ADDRESS"));
 const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
 
 // Parse arguments
