@@ -9,6 +9,7 @@ import {
 } from "@solana/web3.js";
 import { EventType } from "../types/svm";
 import { publicKeyToEvmAddress } from "./conversionUtils";
+import { deserialize } from "borsh";
 
 /**
  * Finds a program address with a given label and optional extra seeds.
@@ -192,23 +193,67 @@ export async function subscribeToCpiEventsForProgram(
 }
 
 /**
+ * Class for DepositId.
+ */
+class DepositId {
+  value: Uint8Array; // Fixed-length array as Uint8Array
+
+  constructor(properties: { value: Uint8Array }) {
+    this.value = properties.value;
+  }
+}
+
+/**
+ * Borsh schema for deserializing DepositId.
+ */
+const depositIdSchema = new Map(
+  [[DepositId, { kind: "struct", fields: [["value", [32]]] }]] // Fixed array [u8; 32]
+);
+
+/**
+ * Parses depositId: checks if only the first 4 bytes are non-zero and returns a u32 or deserializes the full array.
+ */
+function parseDepositId(value: Uint8Array): string {
+  const restAreZero = value.slice(4).every((byte) => byte === 0);
+
+  if (restAreZero) {
+    // Parse the first 4 bytes as a little-endian u32
+    const u32Value = new DataView(value.buffer).getUint32(0, true); // true for little-endian
+    return u32Value.toString();
+  }
+
+  // Deserialize the full depositId using the Borsh schema
+  const depositId = deserialize(depositIdSchema, DepositId, Buffer.from(value));
+  return new BN(depositId.value).toString();
+}
+
+/**
  * Stringifies a CPI event.
  */
 export function stringifyCpiEvent(obj: any): any {
   if (obj?.constructor?.toString()?.includes("PublicKey")) {
     if (obj.toString().includes("111111111111")) {
-      // First 8 bytes are 0 for evm addresses.
+      // First 8 bytes are 0 for EVM addresses.
       return publicKeyToEvmAddress(obj);
     }
     return obj.toString();
   } else if (BN.isBN(obj)) {
     return obj.toString();
   } else if (Array.isArray(obj) && obj.length == 32) {
-    return Buffer.from(obj).toString("hex");
+    return Buffer.from(obj).toString("hex"); // Hex representation for fixed-length arrays
   } else if (Array.isArray(obj)) {
     return obj.map(stringifyCpiEvent);
   } else if (obj !== null && typeof obj === "object") {
-    return Object.fromEntries(Object.entries(obj).map(([key, value]) => [key, stringifyCpiEvent(value)]));
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => {
+        if (key === "depositId" && Array.isArray(value) && value.length === 32) {
+          // Parse depositId using the helper function
+          const parsedValue = parseDepositId(new Uint8Array(value));
+          return [key, parsedValue];
+        }
+        return [key, stringifyCpiEvent(value)];
+      })
+    );
   }
   return obj;
 }
