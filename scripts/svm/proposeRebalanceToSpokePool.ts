@@ -1,27 +1,26 @@
 // This script proposes root bundle on HubPool that would rebalance tokens to Solana Spoke Pool once executed.
 // Required environment:
-// - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
-// - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - TESTNET: (Optional) Set to "true" to use Sepolia; defaults to mainnet.
+// - MNEMONIC: Wallet mnemonic to sign the Ethereum transaction.
 // - HUB_POOL_ADDRESS: Hub Pool address
+// - NODE_URL_1: Ethereum RPC URL for mainnet (ignored if TESTNET=true).
+// - NODE_URL_11155111: Ethereum RPC URL for Sepolia (ignored if TESTNET=false).
 
 // eslint-disable-next-line camelcase
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { ethers, BigNumber } from "ethers";
+import { getNodeUrl } from "@uma/common";
 // eslint-disable-next-line camelcase
 import { BondToken__factory, HubPool__factory } from "../../typechain";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
+import { getSolanaChainId, requireEnv } from "./utils/helpers";
 
 // Set up Ethereum provider.
-if (!process.env.ETHERS_PROVIDER_URL) {
-  throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
-}
-const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
-if (!process.env.ETHERS_MNEMONIC) {
-  throw new Error("Environment variable ETHERS_MNEMONIC is not set");
-}
-const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
+const nodeURL = process.env.TESTNET === "true" ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
+const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
 // Get the HubPool contract instance.
 if (!process.env.HUB_POOL_ADDRESS) {
@@ -45,9 +44,7 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
   const evmChainId = (await ethersProvider.getNetwork()).chainId;
   if (evmChainId !== CHAIN_IDs.MAINNET && evmChainId !== CHAIN_IDs.SEPOLIA) throw new Error("Unsupported EVM chain ID");
   const solanaCluster = evmChainId === CHAIN_IDs.MAINNET ? "mainnet" : "devnet";
-  const solanaChainId = BigNumber.from(
-    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${solanaCluster}`))) & BigInt("0xFFFFFFFFFFFFFFFF")
-  );
+  const solanaChainId = getSolanaChainId(solanaCluster);
   const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
 
   // Construct simple merkle tree for the pool rebalance.
