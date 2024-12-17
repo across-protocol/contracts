@@ -1,4 +1,4 @@
-import { Idl, Program, utils, web3 } from "@coral-xyz/anchor";
+import { BN, Idl, Program, utils, web3 } from "@coral-xyz/anchor";
 import {
   ConfirmedSignatureInfo,
   Connection,
@@ -8,6 +8,8 @@ import {
   SignaturesForAddressOptions,
 } from "@solana/web3.js";
 import { EventType } from "../types/svm";
+import { BigNumber } from "ethers";
+import { publicKeyToEvmAddress } from "./conversionUtils";
 
 /**
  * Finds a program address with a given label and optional extra seeds.
@@ -188,4 +190,26 @@ export async function subscribeToCpiEventsForProgram(
   );
 
   return subscriptionId;
+}
+
+/**
+ * Stringifies a CPI event.
+ */
+export function stringifyCpiEvent(obj: any): any {
+  if (obj?.constructor?.toString()?.includes("PublicKey")) {
+    if (obj.toString().includes("111111111111")) {
+      // First 8 bytes are 0 for evm addresses.
+      return publicKeyToEvmAddress(obj);
+    }
+    return obj.toString();
+  } else if (BN.isBN(obj)) {
+    return obj.toString();
+  } else if (Array.isArray(obj) && obj.length == 32) {
+    return Buffer.from(obj).toString("hex");
+  } else if (Array.isArray(obj)) {
+    return obj.map(stringifyCpiEvent);
+  } else if (obj !== null && typeof obj === "object") {
+    return Object.fromEntries(Object.entries(obj).map(([key, value]) => [key, stringifyCpiEvent(value)]));
+  }
+  return obj;
 }
