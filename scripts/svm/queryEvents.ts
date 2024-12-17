@@ -45,5 +45,5 @@ async function queryEvents(): Promise<void> {
   console.log(JSON.stringify(formattedEvents, null, 2));
 }
 
-// Run the queryState function
+// Run the queryEvents function
 queryEvents();
