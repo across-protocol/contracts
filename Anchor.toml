@@ -37,9 +37,14 @@ proposeRebalanceToSpokePool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm
 executeRebalanceToSpokePool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/executeRebalanceToSpokePool.ts"
 remotePauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remotePauseDeposits.ts"
 remoteHubPoolSetDepositRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolSetDepositRoute.ts"
+proposeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/proposeRebalanceToHubPool.ts"
+executeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/executeRebalanceToHubPool.ts"
+bridgeLiabilityToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/bridgeLiabilityToHubPool.ts"
 remoteHubPoolPauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolPauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
+addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressToPublicKey.ts"
+publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"

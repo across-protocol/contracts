@@ -23,6 +23,7 @@ import {
   AddressLookupTableProgram,
   VersionedTransaction,
   TransactionMessage,
+  ConfirmedSignatureInfo,
 } from "@solana/web3.js";
 
 export function findProgramAddress(label: string, program: PublicKey, extraSeeds?: string[]) {
@@ -50,13 +51,14 @@ export async function readEvents<IDL extends Idl = Idl>(
   programs: Program<IDL>[],
   commitment: Finality = "confirmed"
 ) {
-  const txResult = await connection.getTransaction(txSignature, {
-    commitment,
-    maxSupportedTransactionVersion: 0,
-  });
+  const txResult = await connection.getTransaction(txSignature, { commitment, maxSupportedTransactionVersion: 0 });
 
   if (txResult === null) return [];
 
+  return processEventFromTx(txResult, programs);
+}
+
+function processEventFromTx(txResult: web3.VersionedTransactionResponse, programs: Program<any>[]) {
   const eventAuthorities: Map<string, PublicKey> = new Map();
   for (const program of programs) {
     eventAuthorities.set(
@@ -95,8 +97,30 @@ export async function readEvents<IDL extends Idl = Idl>(
       }
     }
   }
-
   return events;
+}
+
+// Helper function to wait for an event to be emitted. Should only be used in tests where txSignature is known to emit.
+export async function readEventsUntilFound<IDL extends Idl = Idl>(
+  connection: Connection,
+  txSignature: string,
+  programs: Program<IDL>[]
+) {
+  const startTime = Date.now();
+  let txResult = null;
+
+  while (Date.now() - startTime < 5000) {
+    // 5 seconds timeout to wait to find the event.
+    txResult = await connection.getTransaction(txSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    if (txResult !== null) return processEventFromTx(txResult, programs);
+
+    await new Promise((resolve) => setTimeout(resolve, 50)); // 50 ms delay between retries.
+  }
+
+  throw new Error("No event found within 5 seconds");
 }
 
 export function getEvent(events: any[], program: PublicKey, eventName: string) {
@@ -108,19 +132,53 @@ export function getEvent(events: any[], program: PublicKey, eventName: string) {
   throw new Error("Event " + eventName + " not found");
 }
 
+export interface EventType {
+  program: PublicKey;
+  data: any;
+  name: string;
+  slot: number;
+  confirmationStatus: string;
+  blockTime: number;
+  signature: string;
+}
+
 export async function readProgramEvents(
   connection: Connection,
   program: Program<any>,
-  options?: SignaturesForAddressOptions,
-  finality: Finality = "confirmed"
-) {
-  const events = [];
-  const pastSignatures = await connection.getSignaturesForAddress(program.programId, options, finality);
+  finality: Finality = "confirmed",
+  options: SignaturesForAddressOptions = { limit: 1000 }
+): Promise<EventType[]> {
+  const allSignatures: ConfirmedSignatureInfo[] = [];
 
-  for (const signature of pastSignatures) {
-    events.push(...(await readEvents(connection, signature.signature, [program], finality)));
+  // Fetch all signatures in sequential batches
+  while (true) {
+    const signatures = await connection.getSignaturesForAddress(program.programId, options, finality);
+    allSignatures.push(...signatures);
+
+    // Update options for the next batch. Set before to the last fetched signature.
+    if (signatures.length > 0) {
+      options = { ...options, before: signatures[signatures.length - 1].signature };
+    }
+
+    if (options.limit && signatures.length < options.limit) break; // Exit early if the number of signatures < limit
   }
-  return events;
+
+  // Fetch events for all signatures in parallel
+  const eventsWithSlots = await Promise.all(
+    allSignatures.map(async (signature) => {
+      const events = await readEvents(connection, signature.signature, [program], finality);
+      return events.map((event) => ({
+        ...event,
+        confirmationStatus: signature.confirmationStatus || "Unknown",
+        blockTime: signature.blockTime || 0,
+        signature: signature.signature,
+        slot: signature.slot,
+        name: event.name || "Unknown",
+      }));
+    })
+  );
+
+  return eventsWithSlots.flat(); // Flatten the array of events & return.
 }
 
 export async function subscribeToCpiEventsForProgram(
@@ -142,6 +200,17 @@ export async function subscribeToCpiEventsForProgram(
 export const evmAddressToPublicKey = (address: string): PublicKey => {
   const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
   return new PublicKey(ethers.utils.arrayify(bytes32Address));
+};
+
+export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => {
+  // Convert the input to a PublicKey if it's a string
+  const pubKeyBuffer = typeof publicKey === "string" ? new PublicKey(publicKey).toBuffer() : publicKey.toBuffer();
+
+  // Extract the last 20 bytes to get the Ethereum address
+  const addressBuffer = pubKeyBuffer.slice(-20);
+
+  // Convert the buffer to a hex string and prepend '0x'
+  return `0x${addressBuffer.toString("hex")}`;
 };
 
 // TODO: we are inconsistant with where we are placing some utils. we have some stuff here, some stuff that we might
@@ -524,4 +593,8 @@ export function hashNonEmptyMessage(message: Buffer) {
   }
   // else return zeroed bytes32
   return new Uint8Array(32);
+}
+
+export function strPublicKey(publicKey: PublicKey): string {
+  return new PublicKey(publicKey).toString();
 }

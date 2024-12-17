@@ -6,12 +6,14 @@ import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
+import "forge-std/console.sol";
+
 /**
  * @title MockERC20
  * @notice Implements mocked ERC20 contract with various features.
  */
 contract MockERC20 is IERC20Auth, ERC20Permit {
-    bytes32 public constant AUTH_TYPEHASH =
+    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
         keccak256(
             "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
         );
@@ -34,10 +36,12 @@ contract MockERC20 is IERC20Auth, ERC20Permit {
         require(msg.sender == to, "Receiver not caller");
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
-        bytes32 structHash = keccak256(abi.encode(AUTH_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
+        bytes32 structHash = keccak256(
+            abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)
+        );
         bytes32 sigHash = _hashTypedDataV4(structHash);
         require(SignatureChecker.isValidSignatureNow(from, sigHash, signature), "Invalid signature");
-        _approve(from, to, value);
+        _transfer(from, to, value);
     }
 
     function hashTypedData(bytes32 typedData) external returns (bytes32) {

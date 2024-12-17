@@ -18,6 +18,8 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
+import "forge-std/console.sol";
+
 contract Exchange {
     IPermit2 permit2;
 
@@ -396,7 +398,7 @@ contract SpokePoolPeripheryTest is Test {
         // Get the transfer with auth signature.
         bytes32 structHash = keccak256(
             abi.encode(
-                mockERC20.AUTH_TYPEHASH,
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 depositor,
                 address(spokePoolPeriphery),
                 mintAmount,
@@ -412,13 +414,7 @@ contract SpokePoolPeripheryTest is Test {
 
         // Get the deposit data signature.
         bytes32 depositMsgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                spokePoolPeriphery.domainSeparator(),
-                keccak256(
-                    abi.encode(PeripherySigningLib.EIP712_DEPOSIT_DATA_TYPEHASH, hashUtils.hashDepositData(depositData))
-                )
-            )
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
@@ -529,7 +525,7 @@ contract SpokePoolPeripheryTest is Test {
         address _token,
         uint256 _amount,
         address _depositor
-    ) internal view returns (SpokePoolV3Periphery.DepositData memory) {
+    ) internal returns (SpokePoolV3Periphery.DepositData memory) {
         return
             SpokePoolV3PeripheryInterface.DepositData({
                 baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
@@ -557,7 +553,7 @@ contract SpokePoolPeripheryTest is Test {
         address _inputToken,
         uint256 _amount,
         address _depositor
-    ) internal view returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
+    ) internal returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
         bool usePermit2 = _transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval;
         return
             SpokePoolV3PeripheryInterface.SwapAndDepositData({
