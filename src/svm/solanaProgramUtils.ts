@@ -233,7 +233,7 @@ function parseDepositId(value: Uint8Array): string {
 export function stringifyCpiEvent(obj: any): any {
   if (obj?.constructor?.toString()?.includes("PublicKey")) {
     if (obj.toString().includes("111111111111")) {
-      // First 8 bytes are 0 for EVM addresses.
+      // First 12 bytes are 0 for EVM addresses.
       return publicKeyToEvmAddress(obj);
     }
     return obj.toString();
