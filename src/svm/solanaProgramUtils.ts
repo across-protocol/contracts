@@ -8,7 +8,6 @@ import {
   SignaturesForAddressOptions,
 } from "@solana/web3.js";
 import { EventType } from "../types/svm";
-import { BigNumber } from "ethers";
 import { publicKeyToEvmAddress } from "./conversionUtils";
 
 /**
