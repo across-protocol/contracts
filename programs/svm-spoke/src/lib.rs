@@ -1,6 +1,20 @@
 use anchor_lang::prelude::*;
 
-declare_id!("DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn");
+#[cfg(not(feature = "no-entrypoint"))]
+use ::solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Across",
+    project_url: "https://across.to",
+    contacts: "email:bugs@across.to",
+    policy: "https://docs.across.to/resources/bug-bounty",
+    preferred_languages: "en",
+    source_code: "https://github.com/across-protocol/contracts/tree/master/programs/svm-spoke",
+    auditors: "TBD"
+}
+
+declare_id!("D1WcTLKRyN4TuqnfMBGPvc16nACHfNhFPbgWNExb1aur");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter);
