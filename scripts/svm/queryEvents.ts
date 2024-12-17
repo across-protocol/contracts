@@ -36,7 +36,6 @@ const argvPromise = yargs(hideBin(process.argv)).option("eventName", {
   ],
 }).argv;
 
-// Parse argument
 async function queryEvents(): Promise<void> {
   const argv = await argvPromise;
   const eventName = argv.eventName || "any";
