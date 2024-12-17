@@ -6,8 +6,6 @@ import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-import "forge-std/console.sol";
-
 /**
  * @title MockERC20
  * @notice Implements mocked ERC20 contract with various features.
@@ -17,6 +15,9 @@ contract MockERC20 is IERC20Auth, ERC20Permit {
         keccak256(
             "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
         );
+    // Expose the typehash in ERC20Permit.
+    bytes32 public constant PERMIT_TYPEHASH_EXTERNAL =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     constructor() ERC20Permit("MockERC20") ERC20("MockERC20", "ERC20") {}
 
