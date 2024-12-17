@@ -1,6 +1,6 @@
 // This script bridges remote call to pause deposits on Solana Spoke Pool. Required environment:
-// - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
-// - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
+// - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
@@ -10,11 +10,13 @@ import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { getNodeUrl } from "@uma/common";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
 import { CIRCLE_IRIS_API_URL_DEVNET, CIRCLE_IRIS_API_URL_MAINNET } from "./utils/constants";
+import { isSolanaDevnet, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -34,27 +36,13 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
   const pause = resolvedArgv.pause;
 
-  // Set up Ethereum provider.
-  if (!process.env.ETHERS_PROVIDER_URL) {
-    throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
-  }
-  const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
-  if (!process.env.ETHERS_MNEMONIC) {
-    throw new Error("Environment variable ETHERS_MNEMONIC is not set");
-  }
-  const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
+  // Set up Ethereum provider and signer.
+  const isDevnet = isSolanaDevnet(provider);
+  const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+  const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
+  const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
-  if (!process.env.HUB_POOL_ADDRESS) {
-    throw new Error("Environment variable HUB_POOL_ADDRESS is not set");
-  }
-  const hubPoolAddress = process.env.HUB_POOL_ADDRESS;
-
-  let cluster: "devnet" | "mainnet";
-  const rpcEndpoint = provider.connection.rpcEndpoint;
-  if (rpcEndpoint.includes("devnet")) cluster = "devnet";
-  else if (rpcEndpoint.includes("mainnet")) cluster = "mainnet";
-  else throw new Error(`Unsupported cluster endpoint: ${rpcEndpoint}`);
-  const isDevnet = cluster == "devnet";
+  const hubPoolAddress = requireEnv("HUB_POOL_ADDRESS");
 
   // CCTP domains.
   const remoteDomain = 0; // Ethereum
