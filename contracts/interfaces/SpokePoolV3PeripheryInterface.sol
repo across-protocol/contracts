@@ -30,6 +30,15 @@ interface SpokePoolV3PeripheryInterface {
         Permit2Approval
     }
 
+    // Submission fees can be set by user to pay whoever submits the transaction in a gasless flow.
+    // These are assumed to be in the same currency that is input into the contract.
+    struct Fees {
+        // Amount of fees to pay recipient for submitting transaction.
+        uint256 amount;
+        // Recipient of fees amount.
+        address recipient;
+    }
+
     // Params we'll need caller to pass in to specify an Across Deposit. The input token will be swapped into first
     // before submitting a bridge deposit, which is why we don't include the input token amount as it is not known
     // until after the swap.
@@ -65,6 +74,8 @@ interface SpokePoolV3PeripheryInterface {
     // Minimum amount of parameters needed to perform a swap on an exchange specified. We include information beyond just the router calldata
     // and exchange address so that we may ensure that the swap was performed properly.
     struct SwapAndDepositData {
+        // Amount of fees to pay for submitting transaction. Unused in gasful flows.
+        Fees submissionFees;
         // Deposit data to use when interacting with the Across spoke pool.
         BaseDepositData depositData;
         // Token to swap.
@@ -83,6 +94,8 @@ interface SpokePoolV3PeripheryInterface {
 
     // Extended deposit data to be used specifically for signing off on periphery deposits.
     struct DepositData {
+        // Amount of fees to pay for submitting transaction. Unused in gasful flows.
+        Fees submissionFees;
         // Deposit data describing the parameters for the V3 Across deposit.
         BaseDepositData baseDepositData;
         // The precise input amount to deposit into the spoke pool.
