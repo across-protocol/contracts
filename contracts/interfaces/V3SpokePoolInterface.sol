@@ -62,6 +62,22 @@ interface V3SpokePoolInterface {
         bytes message;
     }
 
+    // Same as V3RelayData but using addresses instead of bytes32. Will be deprecated in favor of V3RelayData in the future.
+    struct V3RelayDataLegacy {
+        address depositor;
+        address recipient;
+        address exclusiveRelayer;
+        address inputToken;
+        address outputToken;
+        uint256 inputAmount;
+        uint256 outputAmount;
+        uint256 originChainId;
+        uint256 depositId;
+        uint32 fillDeadline;
+        uint32 exclusivityDeadline;
+        bytes message;
+    }
+
     // Contains parameters passed in by someone who wants to execute a slow relay leaf.
     struct V3SlowFill {
         V3RelayData relayData;
@@ -240,6 +256,8 @@ interface V3SpokePoolInterface {
         uint256 repaymentChainId,
         bytes32 repaymentAddress
     ) external;
+
+    function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) external;
 
     function fillV3RelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
