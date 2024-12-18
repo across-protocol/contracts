@@ -11,9 +11,9 @@ import { SpokePoolV3PeripheryInterface } from "../../../../contracts/interfaces/
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
-import { MockPermit2, Permit2EIP712 } from "../../../../contracts/test/MockPermit2.sol";
+import { MockPermit2, Permit2EIP712, SignatureVerification } from "../../../../contracts/test/MockPermit2.sol";
 import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySigningLib.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
@@ -58,6 +58,14 @@ contract HashUtils {
     {
         return PeripherySigningLib.hashDepositData(depositData);
     }
+
+    function hashSwapAndDepositData(SpokePoolV3Periphery.SwapAndDepositData calldata swapAndDepositData)
+        external
+        pure
+        returns (bytes32)
+    {
+        return PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
+    }
 }
 
 contract SpokePoolPeripheryTest is Test {
@@ -70,7 +78,7 @@ contract SpokePoolPeripheryTest is Test {
     IPermit2 permit2;
 
     WETH9Interface mockWETH;
-    ERC20 mockERC20;
+    MockERC20 mockERC20;
 
     address depositor;
     address owner;
@@ -96,7 +104,7 @@ contract SpokePoolPeripheryTest is Test {
         hashUtils = new HashUtils();
 
         mockWETH = WETH9Interface(address(new WETH9()));
-        mockERC20 = new ERC20("ERC20", "ERC20");
+        mockERC20 = new MockERC20();
 
         depositor = vm.addr(privateKey);
         owner = vm.addr(2);
@@ -156,6 +164,9 @@ contract SpokePoolPeripheryTest is Test {
         _proxy.initialize(spokePoolPeriphery);
     }
 
+    /**
+     * Approval based flows
+     */
     function testSwapAndBridge() public {
         // Should emit expected deposit event
         vm.startPrank(depositor);
@@ -255,6 +266,9 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
+    /**
+     * Value based flows
+     */
     function testSwapAndBridgeNoValueNoProxy() public {
         // Cannot call swapAndBridge with no value directly.
         vm.startPrank(depositor);
@@ -350,6 +364,434 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
+    function testDepositNoValueNoProxy() public {
+        // Cannot call deposit with no value directly.
+        vm.startPrank(depositor);
+        vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
+        spokePoolPeriphery.deposit(
+            depositor, // recipient
+            address(mockWETH), // inputToken
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            address(0), // exclusiveRelayer
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            new bytes(0)
+        );
+
+        vm.stopPrank();
+    }
+
+    /**
+     * Permit (2612) based flows
+     */
+    function testPermitDepositValidWitness() public {
+        SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            depositor
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should emit expected deposit event
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockERC20),
+            address(0),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithPermit(
+            depositor, // signatureOwner
+            depositData,
+            block.timestamp, // deadline
+            signature, // permitSignature
+            depositDataSignature
+        );
+    }
+
+    function testPermitSwapAndBridgeValidWitness() public {
+        // We need to deal the exchange some WETH in this test since we swap a permit ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should emit expected deposit event
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockWETH),
+            address(0),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor, // signatureOwner
+            swapAndDepositData,
+            block.timestamp, // deadline
+            signature, // permitSignature
+            swapAndDepositDataSignature
+        );
+    }
+
+    function testPermitSwapAndBridgeInvalidWitness(address rando) public {
+        vm.assume(rando != depositor);
+        // We need to deal the exchange some WETH in this test since we swap a permit ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Make a swapAndDepositStruct which is different from the one the depositor signed off on. For example, make one where we set somebody else as the recipient/depositor.
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            rando
+        );
+
+        // Should emit expected deposit event
+        vm.expectRevert(SpokePoolV3Periphery.InvalidSignature.selector);
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor, // signatureOwner
+            invalidSwapAndDepositData,
+            block.timestamp, // deadline
+            signature, // permitSignature
+            swapAndDepositDataSignature
+        );
+    }
+
+    /**
+     * Transfer with authorization based flows
+     */
+    function testTransferWithAuthDepositValidWitness() public {
+        SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            depositor
+        );
+
+        bytes32 nonce = bytes32(block.prevrandao);
+
+        // Get the transfer with auth signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                block.timestamp,
+                block.timestamp,
+                nonce
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should emit expected deposit event
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockERC20),
+            address(0),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithAuthorization(
+            depositor, // signatureOwner
+            depositData,
+            block.timestamp, // valid before
+            block.timestamp, // valid after
+            nonce, // nonce
+            signature, // receiveWithAuthSignature
+            depositDataSignature
+        );
+    }
+
+    function testTransferWithAuthSwapAndBridgeValidWitness() public {
+        // We need to deal the exchange some WETH in this test since we swap a eip3009 ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor
+        );
+
+        bytes32 nonce = bytes32(block.prevrandao);
+
+        // Get the transfer with auth signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                block.timestamp,
+                block.timestamp,
+                nonce
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should emit expected deposit event
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockWETH),
+            address(0),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithAuthorization(
+            depositor, // signatureOwner
+            swapAndDepositData,
+            block.timestamp, // validAfter
+            block.timestamp, // validBefore
+            nonce, // nonce
+            signature, // receiveWithAuthSignature
+            swapAndDepositDataSignature
+        );
+    }
+
+    function testTransferWithAuthSwapAndBridgeInvalidWitness(address rando) public {
+        vm.assume(rando != depositor);
+        // We need to deal the exchange some WETH in this test since we swap a eip3009 ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor
+        );
+
+        bytes32 nonce = bytes32(block.prevrandao);
+
+        // Get the transfer with auth signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmount,
+                block.timestamp,
+                block.timestamp,
+                nonce
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Make a swapAndDepositStruct which is different from the one the depositor signed off on. For example, make one where we set somebody else as the recipient/depositor.
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            rando
+        );
+
+        // Should emit expected deposit event
+        vm.expectRevert(SpokePoolV3Periphery.InvalidSignature.selector);
+        spokePoolPeriphery.swapAndBridgeWithAuthorization(
+            depositor, // signatureOwner
+            invalidSwapAndDepositData,
+            block.timestamp, // validAfter
+            block.timestamp, // validBefore
+            nonce, // nonce
+            signature, // receiveWithAuthSignature
+            swapAndDepositDataSignature
+        );
+    }
+
+    /**
+     * Permit2 based flows
+     */
     function testPermit2DepositValidWitness() public {
         SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
             address(mockWETH),
@@ -390,7 +832,6 @@ contract SpokePoolPeripheryTest is Test {
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
         // Should emit expected deposit event
-        vm.startPrank(depositor);
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.V3FundsDeposited(
             address(mockWETH),
@@ -413,29 +854,146 @@ contract SpokePoolPeripheryTest is Test {
             permit, // permit
             signature // permit2 signature
         );
-        vm.stopPrank();
     }
 
-    function testDepositNoValueNoProxy() public {
-        // Cannot call deposit with no value directly.
-        vm.startPrank(depositor);
-        vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
-        spokePoolPeriphery.deposit(
-            depositor, // recipient
-            address(mockWETH), // inputToken
+    function testPermit2SwapAndBridgeValidWitness() public {
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockWETH),
             mintAmount,
-            mintAmount,
-            destinationChainId,
-            address(0), // exclusiveRelayer
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
-            0,
-            new bytes(0)
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Transfer,
+            address(mockERC20),
+            depositAmount,
+            depositor
         );
 
-        vm.stopPrank();
+        // Signature transfer details
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
+            nonce: 1,
+            deadline: block.timestamp + 100
+        });
+
+        bytes32 typehash = keccak256(
+            abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING)
+        );
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+
+        // Get the permit2 signature.
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        typehash,
+                        tokenPermissions,
+                        address(spokePoolPeriphery),
+                        permit.nonce,
+                        permit.deadline,
+                        hashUtils.hashSwapAndDepositData(swapAndDepositData)
+                    )
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Should emit expected deposit event
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.V3FundsDeposited(
+            address(mockERC20),
+            address(0),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor,
+            depositor,
+            address(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithPermit2(
+            depositor, // signatureOwner
+            swapAndDepositData,
+            permit,
+            signature
+        );
     }
 
+    function testPermit2SwapAndBridgeInvalidWitness(address rando) public {
+        vm.assume(rando != depositor);
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Transfer,
+            address(mockERC20),
+            depositAmount,
+            depositor
+        );
+
+        // Signature transfer details
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
+            nonce: 1,
+            deadline: block.timestamp + 100
+        });
+
+        bytes32 typehash = keccak256(
+            abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING)
+        );
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+
+        // Get the permit2 signature.
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        typehash,
+                        tokenPermissions,
+                        address(spokePoolPeriphery),
+                        permit.nonce,
+                        permit.deadline,
+                        hashUtils.hashSwapAndDepositData(swapAndDepositData)
+                    )
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Make a swapAndDepositStruct which is different from the one the depositor signed off on. For example, make one where we set somebody else as the recipient/depositor.
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            rando
+        );
+
+        // Should emit expected deposit event
+        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
+        spokePoolPeriphery.swapAndBridgeWithPermit2(
+            depositor, // signatureOwner
+            invalidSwapAndDepositData,
+            permit,
+            signature
+        );
+    }
+
+    /**
+     * Helper functions
+     */
     function _defaultDepositData(
         address _token,
         uint256 _amount,

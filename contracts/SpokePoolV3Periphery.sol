@@ -7,6 +7,8 @@ import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
 import { Lockable } from "./Lockable.sol";
+import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
 import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
@@ -98,7 +100,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiCaller {
+contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiCaller, EIP712 {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -157,6 +159,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     error InvalidProxy();
     error InvalidSwapToken();
     error NotProxy();
+    error InvalidSignature();
 
     /**
      * @notice Construct a new Proxy contract.
@@ -165,7 +168,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * across different networks is the same. Constructor parameters affect the bytecode so we can only
      * add parameters here that are consistent across networks.
      */
-    constructor() {}
+    constructor() EIP712("ACROSS-V3-PERIPHERY", "1.0.0") {}
 
     /**
      * @notice Initializes the SwapAndBridgeBase contract.
@@ -282,14 +285,18 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @param signatureOwner The owner of the permit signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param deadline Deadline before which the permit signature is valid.
      * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function swapAndBridgeWithPermit(
+        address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
         uint256 deadline,
-        bytes calldata permitSignature
+        bytes calldata permitSignature,
+        bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
@@ -299,9 +306,17 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
-        try IERC20Permit(_swapToken).permit(msg.sender, address(this), _swapTokenAmount, deadline, v, r, s) {} catch {}
-        IERC20(_swapToken).safeTransferFrom(msg.sender, address(this), _swapTokenAmount);
+        try
+            IERC20Permit(_swapToken).permit(signatureOwner, address(this), _swapTokenAmount, deadline, v, r, s)
+        {} catch {}
+        IERC20(_swapToken).safeTransferFrom(signatureOwner, address(this), _swapTokenAmount);
 
+        // Verify that the signatureOwner signed the input swapAndDepositData.
+        _validateSignature(
+            signatureOwner,
+            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
+            swapAndDepositDataSignature
+        );
         _swapAndBridge(swapAndDepositData);
     }
 
@@ -342,25 +357,29 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @param signatureOwner The owner of the EIP3009 signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
      * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
-     * @param receiveWithAuthSignature EIP3009 signature encoded adepositors (bytes32 r, bytes32 s, uint8 v).
+     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function swapAndBridgeWithAuthorization(
+        address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
         bytes32 nonce,
-        bytes calldata receiveWithAuthSignature
+        bytes calldata receiveWithAuthSignature,
+        bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
         IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
-            msg.sender,
+            signatureOwner,
             address(this),
             swapAndDepositData.swapTokenAmount,
             validAfter,
@@ -371,20 +390,30 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             s
         );
 
+        // Verify that the signatureOwner signed the input swapAndDepositData.
+        _validateSignature(
+            signatureOwner,
+            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
+            swapAndDepositDataSignature
+        );
         _swapAndBridge(swapAndDepositData);
     }
 
     /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @param signatureOwner The owner of the permit signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param deadline Deadline before which the permit signature is valid.
      * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function depositWithPermit(
+        address signatureOwner,
         DepositData calldata depositData,
         uint256 deadline,
-        bytes calldata permitSignature
+        bytes calldata permitSignature,
+        bytes calldata depositDataSignature
     ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
@@ -394,9 +423,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
-        try IERC20Permit(_inputToken).permit(msg.sender, address(this), _inputAmount, deadline, v, r, s) {} catch {}
-        IERC20(_inputToken).safeTransferFrom(msg.sender, address(this), _inputAmount);
+        try IERC20Permit(_inputToken).permit(signatureOwner, address(this), _inputAmount, deadline, v, r, s) {} catch {}
+        IERC20(_inputToken).safeTransferFrom(signatureOwner, address(this), _inputAmount);
 
+        // Verify that the signatureOwner signed the input depositData.
+        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _depositV3(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
@@ -461,18 +492,22 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     /**
      * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @param signatureOwner The owner of the EIP3009 signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
      * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function depositWithAuthorization(
+        address signatureOwner,
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
         bytes32 nonce,
-        bytes calldata receiveWithAuthSignature
+        bytes calldata receiveWithAuthSignature,
+        bytes calldata depositDataSignature
     ) external override nonReentrant {
         // Load variables used multiple times onto the stack.
         uint256 _inputAmount = depositData.inputAmount;
@@ -480,7 +515,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // Redeem the receiveWithAuthSignature.
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         IERC20Auth(depositData.baseDepositData.inputToken).receiveWithAuthorization(
-            msg.sender,
+            signatureOwner,
             address(this),
             _inputAmount,
             validAfter,
@@ -491,6 +526,8 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             s
         );
 
+        // Verify that the signatureOwner signed the input depositData.
+        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _depositV3(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
@@ -517,6 +554,28 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         magicBytes = (msg.sender == address(permit2) && expectingPermit2Callback)
             ? EIP1271_VALID_SIGNATURE
             : EIP1271_INVALID_SIGNATURE;
+    }
+
+    /**
+     * @notice Returns the contract's EIP712 domain separator, used to sign hashed depositData/swapAndDepositData types.
+     */
+    function domainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    /**
+     * @notice Validates that the typed data hash corresponds to the input signature owner and corresponding signature.
+     * @param signatureOwner The alledged signer of the input hash.
+     * @param typedDataHash The EIP712 data hash to check the signature against.
+     * @param signature The signature to validate.
+     */
+    function _validateSignature(
+        address signatureOwner,
+        bytes32 typedDataHash,
+        bytes calldata signature
+    ) private {
+        if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature))
+            revert InvalidSignature();
     }
 
     /**

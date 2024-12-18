@@ -35,6 +35,7 @@ library PeripherySigningLib {
         );
 
     // EIP712 Type hashes.
+    bytes32 internal constant EIP712_BASE_DEPOSIT_DATA_TYPEHASH = keccak256(EIP712_BASE_DEPOSIT_DATA_TYPE);
     bytes32 internal constant EIP712_DEPOSIT_DATA_TYPEHASH =
         keccak256(abi.encode(EIP712_DEPOSIT_DATA_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE));
     bytes32 internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPEHASH =
@@ -76,7 +77,7 @@ library PeripherySigningLib {
         return
             keccak256(
                 abi.encode(
-                    EIP712_BASE_DEPOSIT_DATA_TYPE,
+                    EIP712_BASE_DEPOSIT_DATA_TYPEHASH,
                     baseDepositData.outputToken,
                     baseDepositData.outputAmount,
                     baseDepositData.depositor,
@@ -103,7 +104,7 @@ library PeripherySigningLib {
         return
             keccak256(
                 abi.encode(
-                    EIP712_DEPOSIT_DATA_TYPE,
+                    EIP712_DEPOSIT_DATA_TYPEHASH,
                     hashBaseDepositData(depositData.baseDepositData),
                     depositData.inputAmount
                 )
