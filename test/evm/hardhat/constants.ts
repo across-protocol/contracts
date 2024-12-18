@@ -127,4 +127,8 @@ export const SpokePoolFuncs = {
     "verifyUpdateV3DepositMessage(bytes32,uint256,uint256,uint256,bytes32,bytes,bytes)",
   verifyUpdateV3DepositMessageAddress:
     "verifyUpdateV3DepositMessage(address,uint256,uint256,uint256,address,bytes,bytes)",
+  fillV3RelayBytes:
+    "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+  fillV3RelayAddress:
+    "fillV3Relay((address,address,address,address,address,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256)",
 };

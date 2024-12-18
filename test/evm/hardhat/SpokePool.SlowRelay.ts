@@ -13,6 +13,7 @@ import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } f
 import { buildV3SlowRelayTree } from "./MerkleLib.utils";
 import * as consts from "./constants";
 import { FillStatus } from "../../../utils/constants";
+import { SpokePoolFuncs } from "./constants";
 
 let spokePool: Contract, erc20: Contract, destErc20: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -91,7 +92,9 @@ describe("SpokePool Slow Relay Logic", async function () {
       );
 
       // Can fast fill after:
-      await spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address));
+      await spokePool
+        .connect(relayer)
+        [SpokePoolFuncs.fillV3RelayBytes](relayData, consts.repaymentChainId, addressToBytes(relayer.address));
     });
     it("cannot request if FillStatus is Filled", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);
@@ -175,7 +178,11 @@ describe("SpokePool Slow Relay Logic", async function () {
       await expect(
         spokePool
           .connect(relayer)
-          .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address))
+          [SpokePoolFuncs.fillV3RelayBytes](
+            slowRelayLeaf.relayData,
+            consts.repaymentChainId,
+            addressToBytes(relayer.address)
+          )
       ).to.be.revertedWith("RelayFilled");
     });
     it("cannot be used to double send a fill", async function () {
@@ -185,7 +192,11 @@ describe("SpokePool Slow Relay Logic", async function () {
       // Fill before executing slow fill
       await spokePool
         .connect(relayer)
-        .fillV3Relay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address));
+        [SpokePoolFuncs.fillV3RelayBytes](
+          slowRelayLeaf.relayData,
+          consts.repaymentChainId,
+          addressToBytes(relayer.address)
+        );
       await expect(
         spokePool.connect(relayer).executeV3SlowRelayLeaf(
           slowRelayLeaf,
