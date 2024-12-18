@@ -239,6 +239,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         IERC20Permit swapToken,
         IERC20 acrossInputToken,
         bytes calldata routerCalldata,
+        uint256 msgSenderFeeAmount,
         uint256 swapTokenAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData,
@@ -251,9 +252,12 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
-        try swapToken.permit(msg.sender, address(this), swapTokenAmount, deadline, v, r, s) {} catch {}
+        try
+            swapToken.permit(msg.sender, address(this), swapTokenAmount + msgSenderFeeAmount, deadline, v, r, s)
+        {} catch {}
 
         _swapToken.safeTransferFrom(msg.sender, address(this), swapTokenAmount);
+        _swapToken.safeTransfer(msg.sender, msgSenderFeeAmount);
         _swapAndBridge(
             routerCalldata,
             swapTokenAmount,
@@ -288,6 +292,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         IERC20 acrossInputToken,
         bytes calldata routerCalldata,
         uint256 swapTokenAmount,
+        uint256 msgSenderFeeAmount,
         uint256 minExpectedInputTokenAmount,
         DepositData calldata depositData,
         uint256 validAfter,
@@ -303,7 +308,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         swapToken.receiveWithAuthorization(
             msg.sender,
             address(this),
-            swapTokenAmount,
+            swapTokenAmount + msgSenderFeeAmount,
             validAfter,
             validBefore,
             nonce,
@@ -312,7 +317,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             s
         );
         IERC20 _swapToken = IERC20(address(swapToken)); // Cast IERC20Auth to IERC20.
-
+        _swapToken.safeTransfer(msg.sender, msgSenderFeeAmount);
         _swapAndBridge(
             routerCalldata,
             swapTokenAmount,
@@ -337,6 +342,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function depositWithPermit(
         IERC20Permit acrossInputToken,
         uint256 acrossInputAmount,
+        uint256 msgSenderFeeAmount,
         DepositData calldata depositData,
         uint256 deadline,
         uint8 v,
@@ -347,9 +353,20 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
-        try acrossInputToken.permit(msg.sender, address(this), acrossInputAmount, deadline, v, r, s) {} catch {}
+        try
+            acrossInputToken.permit(
+                msg.sender,
+                address(this),
+                acrossInputAmount + msgSenderFeeAmount,
+                deadline,
+                v,
+                r,
+                s
+            )
+        {} catch {}
 
         _acrossInputToken.safeTransferFrom(msg.sender, address(this), acrossInputAmount);
+        _acrossInputToken.safeTransfer(msg.sender, msgSenderFeeAmount);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
     }
 
@@ -369,6 +386,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
     function depositWithAuthorization(
         IERC20Auth acrossInputToken,
         uint256 acrossInputAmount,
+        uint256 msgSenderFeeAmount,
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
@@ -380,7 +398,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
         acrossInputToken.receiveWithAuthorization(
             msg.sender,
             address(this),
-            acrossInputAmount,
+            acrossInputAmount + msgSenderFeeAmount,
             validAfter,
             validBefore,
             nonce,
@@ -389,6 +407,7 @@ contract SpokePoolV3Periphery is Lockable, MultiCaller {
             s
         );
         IERC20 _acrossInputToken = IERC20(address(acrossInputToken)); // Cast the input token to an IERC20.
+        _acrossInputToken.safeTransfer(msg.sender, msgSenderFeeAmount);
         _depositV3(_acrossInputToken, acrossInputAmount, depositData);
     }
 
