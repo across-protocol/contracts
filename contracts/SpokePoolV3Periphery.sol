@@ -311,9 +311,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // other than this contract.
         try IERC20Permit(_swapToken).permit(signatureOwner, address(this), _pullAmount, deadline, v, r, s) {} catch {}
         IERC20(_swapToken).safeTransferFrom(signatureOwner, address(this), _pullAmount);
-        if (_submissionFeeAmount > 0) {
-            IERC20(_swapToken).safeTransfer(_submissionFeeRecipient, _submissionFeeAmount);
-        }
+        _paySubmissionFees(_swapToken, _submissionFeeRecipient, _submissionFeeAmount);
 
         // Verify that the signatureOwner signed the input swapAndDepositData.
         if (
@@ -357,12 +355,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING,
             signature
         );
-        if (_submissionFeeAmount > 0) {
-            IERC20(swapAndDepositData.swapToken).safeTransfer(
-                swapAndDepositData.submissionFees.recipient,
-                _submissionFeeAmount
-            );
-        }
+        _paySubmissionFees(
+            swapAndDepositData.swapToken,
+            swapAndDepositData.submissionFees.recipient,
+            _submissionFeeAmount
+        );
         _swapAndBridge(swapAndDepositData);
     }
 
@@ -403,12 +400,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             r,
             s
         );
-        if (_submissionFeeAmount > 0) {
-            IERC20(swapAndDepositData.swapToken).safeTransfer(
-                swapAndDepositData.submissionFees.recipient,
-                _submissionFeeAmount
-            );
-        }
+        _paySubmissionFees(
+            swapAndDepositData.swapToken,
+            swapAndDepositData.submissionFees.recipient,
+            _submissionFeeAmount
+        );
 
         // Verify that the signatureOwner signed the input swapAndDepositData.
         if (
@@ -450,9 +446,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // other than this contract.
         try IERC20Permit(_inputToken).permit(signatureOwner, address(this), _pullAmount, deadline, v, r, s) {} catch {}
         IERC20(_inputToken).safeTransferFrom(signatureOwner, address(this), _pullAmount);
-        if (_submissionFeeAmount > 0) {
-            IERC20(_inputToken).safeTransfer(_submissionFeeRecipient, _submissionFeeAmount);
-        }
+        _paySubmissionFees(_inputToken, _submissionFeeRecipient, _submissionFeeAmount);
 
         // Verify that the signatureOwner signed the input depositData.
         if (
@@ -508,12 +502,12 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING,
             signature
         );
-        if (_submissionFeeAmount > 0) {
-            IERC20(depositData.baseDepositData.inputToken).safeTransfer(
-                depositData.submissionFees.recipient,
-                _submissionFeeAmount
-            );
-        }
+        _paySubmissionFees(
+            depositData.baseDepositData.inputToken,
+            depositData.submissionFees.recipient,
+            _submissionFeeAmount
+        );
+
         _depositV3(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
@@ -567,12 +561,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             r,
             s
         );
-        if (_submissionFeeAmount > 0) {
-            IERC20(depositData.baseDepositData.inputToken).safeTransfer(
-                depositData.submissionFees.recipient,
-                _submissionFeeAmount
-            );
-        }
+        _paySubmissionFees(
+            depositData.baseDepositData.inputToken,
+            depositData.submissionFees.recipient,
+            _submissionFeeAmount
+        );
 
         // Verify that the signatureOwner signed the input depositData.
         if (
@@ -742,6 +735,16 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             swapAndDepositData.depositData.exclusivityParameter,
             swapAndDepositData.depositData.message
         );
+    }
+
+    function _paySubmissionFees(
+        address swapToken,
+        address recipient,
+        uint256 amount
+    ) private {
+        if (amount > 0) {
+            IERC20(swapToken).safeTransfer(recipient, amount);
+        }
     }
 
     /**
