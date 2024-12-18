@@ -736,12 +736,12 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     function _paySubmissionFees(
-        address swapToken,
+        address feeToken,
         address recipient,
         uint256 amount
     ) private {
         if (amount > 0) {
-            IERC20(swapToken).safeTransfer(recipient, amount);
+            IERC20(feeToken).safeTransfer(recipient, amount);
         }
     }
 
