@@ -4,7 +4,7 @@
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import { getNodeUrl } from "@uma/common";
@@ -12,8 +12,7 @@ import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram } from "../../src/svm";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { getMessageTransmitterProgram, getSpokePoolProgram } from "../../src/svm";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
 import { CHAIN_IDs } from "../../utils/constants";
@@ -84,8 +83,7 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId
