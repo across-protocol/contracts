@@ -603,7 +603,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         address signatureOwner,
         bytes32 typedDataHash,
         bytes calldata signature
-    ) private {
+    ) private view {
         if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature))
             revert InvalidSignature();
     }
