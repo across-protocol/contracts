@@ -312,13 +312,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         IERC20(_swapToken).safeTransferFrom(signatureOwner, address(this), _swapTokenAmount);
 
         // Verify that the signatureOwner signed the input swapAndDepositData.
-        if (
-            !SignatureChecker.isValidSignatureNow(
-                signatureOwner,
-                _hashTypedDataV4(PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData)),
-                swapAndDepositDataSignature
-            )
-        ) revert InvalidSignature();
+        _validateSignature(
+            signatureOwner,
+            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
+            swapAndDepositDataSignature
+        );
         _swapAndBridge(swapAndDepositData);
     }
 
@@ -393,13 +391,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
 
         // Verify that the signatureOwner signed the input swapAndDepositData.
-        if (
-            !SignatureChecker.isValidSignatureNow(
-                signatureOwner,
-                _hashTypedDataV4(PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData)),
-                swapAndDepositDataSignature
-            )
-        ) revert InvalidSignature();
+        _validateSignature(
+            signatureOwner,
+            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
+            swapAndDepositDataSignature
+        );
         _swapAndBridge(swapAndDepositData);
     }
 
@@ -431,13 +427,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         IERC20(_inputToken).safeTransferFrom(signatureOwner, address(this), _inputAmount);
 
         // Verify that the signatureOwner signed the input depositData.
-        if (
-            !SignatureChecker.isValidSignatureNow(
-                signatureOwner,
-                _hashTypedDataV4(PeripherySigningLib.hashDepositData(depositData)),
-                depositDataSignature
-            )
-        ) revert InvalidSignature();
+        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _depositV3(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
@@ -537,13 +527,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
 
         // Verify that the signatureOwner signed the input depositData.
-        if (
-            !SignatureChecker.isValidSignatureNow(
-                signatureOwner,
-                _hashTypedDataV4(PeripherySigningLib.hashDepositData(depositData)),
-                depositDataSignature
-            )
-        ) revert InvalidSignature();
+        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _depositV3(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
@@ -577,6 +561,21 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      */
     function domainSeparator() external view returns (bytes32) {
         return _domainSeparatorV4();
+    }
+
+    /**
+     * @notice Validates that the typed data hash corresponds to the input signature owner and corresponding signature.
+     * @param signatureOwner The alledged signer of the input hash.
+     * @param typedDataHash The EIP712 data hash to check the signature against.
+     * @param signature The signature to validate.
+     */
+    function _validateSignature(
+        address signatureOwner,
+        bytes32 typedDataHash,
+        bytes calldata signature
+    ) private {
+        if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature))
+            revert InvalidSignature();
     }
 
     /**

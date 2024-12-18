@@ -925,7 +925,7 @@ contract SpokePoolPeripheryTest is Test {
         );
     }
 
-    function testPermit2SwapAndBridgeValidWitness(address rando) public {
+    function testPermit2SwapAndBridgeInvalidWitness(address rando) public {
         vm.assume(rando != depositor);
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockWETH),
