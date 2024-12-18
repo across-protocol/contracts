@@ -3,19 +3,20 @@
 // - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 // - HUB_POOL_ADDRESS: Hub Pool address
 
-import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { getNodeUrl } from "@uma/common";
+import "dotenv/config";
+import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
-import { getNodeUrl } from "@uma/common";
+import { getSpokePoolProgram } from "../../src/svm";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { CHAIN_IDs } from "../../utils/constants";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
@@ -23,8 +24,6 @@ import {
   SOLANA_USDC_MAINNET,
 } from "./utils/constants";
 import { fromBase58ToBytes32, fromBytes32ToAddress, isSolanaDevnet, requireEnv } from "./utils/helpers";
-import { CHAIN_IDs } from "../../utils/constants";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -62,7 +61,7 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   const remoteDomain = 0; // Ethereum
 
   // Get Solana programs and accounts.
-  const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+  const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId

@@ -4,18 +4,18 @@
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
+import { getNodeUrl } from "@uma/common";
 import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getNodeUrl } from "@uma/common";
+import { getMessageTransmitterProgram, getSpokePoolProgram } from "../../src/svm";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
 import { CIRCLE_IRIS_API_URL_DEVNET, CIRCLE_IRIS_API_URL_MAINNET } from "./utils/constants";
 import { isSolanaDevnet, requireEnv } from "./utils/helpers";
-import { MessageTransmitterAnchor, MessageTransmitterIdl, SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -47,13 +47,13 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const remoteDomain = 0; // Ethereum
 
   // Get Solana programs and accounts.
-  const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+  const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
 
-  const messageTransmitterProgram = new Program<MessageTransmitterAnchor>(MessageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId

@@ -1,22 +1,22 @@
 // This script fetches route information for a given spoke pool, originToken and chainId.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddressSync,
   getAccount,
+  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
+import { getSpokePoolProgram } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 console.log("SVM-Spoke Program ID:", programId.toString());
 

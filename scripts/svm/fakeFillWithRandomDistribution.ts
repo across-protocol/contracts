@@ -1,35 +1,35 @@
 // This script implements a fill where relayed tokens are distributed to random recipients via the message handler.
 // Note that this should be run only on devnet as this is fake fill and all filled tokens are sent to random recipients.
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { AccountMeta, Keypair, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createApproveCheckedInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
-  getOrCreateAssociatedTokenAccount,
   getMint,
-  createApproveCheckedInstruction,
+  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
+import { AccountMeta, Keypair, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
   AcrossPlusMessageCoder,
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
+  getSpokePoolProgram,
   loadFillV3RelayParams,
   sendTransactionWithLookupTable,
 } from "../../src/svm";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
 
 // Set up the provider and signer.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const signer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
 
-const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments

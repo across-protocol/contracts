@@ -1,8 +1,7 @@
 // This script is used to initiate a Solana deposit. useful in testing.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -10,14 +9,15 @@ import {
   getAssociatedTokenAddressSync,
   getMint,
 } from "@solana/spl-token";
+import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
+import { getSpokePoolProgram } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 console.log("SVM-Spoke Program ID:", programId.toString());
 

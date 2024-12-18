@@ -24,7 +24,7 @@
  */
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 // eslint-disable-next-line camelcase
@@ -41,24 +41,17 @@ import {
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
+import { getMessageTransmitterProgram, getSpokePoolProgram, getTokenMessengerMinterProgram } from "../../src/svm";
 import { getMessages } from "../../test/svm/cctpHelpers";
 import { BondToken__factory } from "../../typechain";
-import { formatUsdc, requireEnv, isSolanaDevnet } from "./utils/helpers";
-import {
-  MessageTransmitterAnchor,
-  MessageTransmitterIdl,
-  SvmSpokeAnchor,
-  SvmSpokeIdl,
-  TokenMessengerMinterAnchor,
-  TokenMessengerMinterIdl,
-} from "../../src/svm/assets";
+import { formatUsdc, isSolanaDevnet, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs and IDLs.
-const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const svmSpokeProgram = getSpokePoolProgram(provider);
 
 // CCTP domains.
 const ethereumDomain = 0; // Ethereum
@@ -200,7 +193,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 }
 
 async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda: PublicKey, inputToken: PublicKey) {
-  const messageTransmitterProgram = new Program<MessageTransmitterAnchor>(MessageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
 
   const vault = getAssociatedTokenAddressSync(
     inputToken,
@@ -215,7 +208,7 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
     [Buffer.from("transfer_liability"), inputToken.toBuffer()],
     svmSpokeProgram.programId
   );
-  const tokenMessengerMinterProgram = new Program<TokenMessengerMinterAnchor>(TokenMessengerMinterIdl, provider);
+  const tokenMessengerMinterProgram = getTokenMessengerMinterProgram(provider);
 
   const [tokenMessengerMinterSenderAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("sender_authority")],

@@ -1,17 +1,16 @@
 // This script fetches all fills for a given spoke pool.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEvents, strPublicKey, u8Array32ToInt } from "../../src/svm";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
+import { getSpokePoolProgram, readProgramEvents, strPublicKey, u8Array32ToInt } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments

@@ -1,17 +1,16 @@
 // This script closes all Relayer PDAs associated with tracking fill Status. Relayers should do this periodically to
 // reclaim the lamports within these tracking accounts. Fill Status PDAs can be closed on the deposit has expired.
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayEventHashUint8Array, readProgramEvents } from "../../src/svm";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
+import { calculateRelayEventHashUint8Array, getSpokePoolProgram, readProgramEvents } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments

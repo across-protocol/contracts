@@ -3,15 +3,14 @@
 // - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
 import { getNodeUrl } from "@uma/common";
 import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { getMessageTransmitterProgram, getSpokePoolProgram } from "../../src/svm";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { CHAIN_IDs } from "../../utils/constants";
 import {
@@ -58,13 +57,12 @@ async function remotePauseDeposits(): Promise<void> {
   const localDomain = 5; // Solana
 
   // Get Solana programs and accounts.
-  const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+  const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
-  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId

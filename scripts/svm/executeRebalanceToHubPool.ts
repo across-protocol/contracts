@@ -58,23 +58,23 @@ import {
   constructSimpleRebalanceTreeToHubPool,
   formatUsdc,
   getSolanaChainId,
-  requireEnv,
   isSolanaDevnet,
+  requireEnv,
 } from "./utils/helpers";
 
 import { getNodeUrl, MerkleTree } from "@uma/common";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
+import { getMessageTransmitterProgram, getSpokePoolProgram, loadExecuteRelayerRefundLeafParams } from "../../src/svm";
+import { SvmSpokeAnchor } from "../../src/svm/assets";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { loadExecuteRelayerRefundLeafParams } from "../../src/svm";
-import { MessageTransmitterAnchor, MessageTransmitterIdl, SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
+import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs.
 
-const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
-const messageTransmitterProgram = new Program<MessageTransmitterAnchor>(MessageTransmitterIdl, provider);
+const svmSpokeProgram = getSpokePoolProgram(provider);
+const messageTransmitterProgram = getMessageTransmitterProgram(provider);
 
 const [messageTransmitterState] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter")],

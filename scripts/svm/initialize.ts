@@ -1,17 +1,16 @@
 // This script initializes a SVM spoke pool with initialization parameters.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { evmAddressToPublicKey } from "../../src/svm";
-import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
+import { evmAddressToPublicKey, getSpokePoolProgram } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments
