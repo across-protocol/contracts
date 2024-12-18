@@ -11,12 +11,11 @@ import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getNodeUrl } from "@uma/common";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
 import { CIRCLE_IRIS_API_URL_DEVNET, CIRCLE_IRIS_API_URL_MAINNET } from "./utils/constants";
 import { isSolanaDevnet, requireEnv } from "./utils/helpers";
+import { MessageTransmitterAnchor, MessageTransmitterIdl, SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -48,15 +47,13 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const remoteDomain = 0; // Ethereum
 
   // Get Solana programs and accounts.
-  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
+  const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
 
-  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = new Program<MessageTransmitterAnchor>(MessageTransmitterIdl, provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId

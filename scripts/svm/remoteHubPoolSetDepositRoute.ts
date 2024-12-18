@@ -24,6 +24,7 @@ import {
 } from "./utils/constants";
 import { fromBase58ToBytes32, fromBytes32ToAddress, isSolanaDevnet, requireEnv } from "./utils/helpers";
 import { CHAIN_IDs } from "../../utils/constants";
+import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -61,8 +62,7 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   const remoteDomain = 0; // Ethereum
 
   // Get Solana programs and accounts.
-  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
+  const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId

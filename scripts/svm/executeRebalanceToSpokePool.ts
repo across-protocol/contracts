@@ -28,18 +28,23 @@ import {
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { getSolanaChainId, isSolanaDevnet, requireEnv } from "./utils/helpers";
+import {
+  MessageTransmitterAnchor,
+  MessageTransmitterIdl,
+  SvmSpokeAnchor,
+  SvmSpokeIdl,
+  TokenMessengerMinterAnchor,
+  TokenMessengerMinterIdl,
+} from "../../src/svm/assets";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
-const tokenMessengerMinterIdl = require("../../target/idl/token_messenger_minter.json");
-const tokenMessengerMinterProgram = new Program<TokenMessengerMinter>(tokenMessengerMinterIdl, provider);
+const svmSpokeProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
+const messageTransmitterProgram = new Program<MessageTransmitterAnchor>(MessageTransmitterIdl, provider);
+const tokenMessengerMinterProgram = new Program<TokenMessengerMinterAnchor>(TokenMessengerMinterIdl, provider);
 
 // Set up Ethereum provider and signer.
 const isDevnet = isSolanaDevnet(provider);

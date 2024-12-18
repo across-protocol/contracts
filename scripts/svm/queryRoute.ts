@@ -9,15 +9,14 @@ import {
   getAssociatedTokenAddressSync,
   getAccount,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { SvmSpokeAnchor, SvmSpokeIdl } from "../../src/svm/assets";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = new Program<SvmSpokeAnchor>(SvmSpokeIdl, provider);
 const programId = program.programId;
 console.log("SVM-Spoke Program ID:", programId.toString());
 

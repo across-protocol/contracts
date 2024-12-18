@@ -40,7 +40,7 @@ for file in "$SVM_IDL"/*.json; do
       printf toupper(substr($i,1,1)) tolower(substr($i,2));
     }
   }')
-  IMPORTS+="import ${camelCaseName}Idl from \"./${filename}\";\n"
+  IMPORTS+="const ${camelCaseName}Idl = require(\"./${filename}\");\n"
   EXPORTS+="  ${camelCaseName}Idl,\n"
 done
 
@@ -75,7 +75,7 @@ for file in "$SVM_TYPES"/*.ts; do
     }
   }')
   newName="${camelCaseName}Anchor"
-  echo "export * as ${newName} from \"./${name}\";" >> "$TYPES_OUTPUT_FILE"
+  echo "export {${camelCaseName} as ${newName}} from \"./${name}\";" >> "$TYPES_OUTPUT_FILE"
 done
 
 echo "svm-types index.ts generated successfully at $TYPES_OUTPUT_FILE"
