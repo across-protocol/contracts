@@ -334,6 +334,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @param swapToken Address of the token that will be swapped for acrossInputToken.
+     * @param msgSenderFeeAmount Amount of fees to pull from depositor to cover this transaction cost.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
      * enough of acrossInputToken, otherwise this function will revert.
@@ -384,6 +385,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
      * @param swapToken Address of the token that will be swapped for acrossInputToken.
+     * @param msgSenderFeeAmount Amount of fees to pull from depositor to cover this transaction cost.
      * @param acrossInputToken Address of the token that will be bridged via Across as the inputToken.
      * @param routerCalldata ABI encoded function data to call on router. Should form a swap of swapToken for
      * enough of acrossInputToken, otherwise this function will revert.
@@ -443,6 +445,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @param acrossInputToken EIP-2612 compliant token to deposit.
+     * @param msgSenderFeeAmount Amount of fees to pull from depositor to cover this transaction cost.
      * @param acrossInputAmount Amount of the input token to deposit.
      * @param depositData Specifies the Across deposit params to send.
      * @param deadline Deadline before which the permit signature is valid.
@@ -485,6 +488,7 @@ contract UniversalSwapAndBridge is SwapAndBridgeBase {
      * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
      * @param acrossInputToken EIP-3009 compliant token to deposit.
+     * @param msgSenderFeeAmount Amount of fees to pull from depositor to cover this transaction cost.
      * @param acrossInputAmount Amount of the input token to deposit.
      * @param depositData Specifies the Across deposit params to send.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
