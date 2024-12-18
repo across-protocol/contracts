@@ -51,7 +51,7 @@ async function getRelayExecutionParams(
   };
 }
 
-describe.only("SpokePool Relayer Logic", async function () {
+describe("SpokePool Relayer Logic", async function () {
   beforeEach(async function () {
     [depositor, recipient, relayer] = await ethers.getSigners();
     ({ weth, erc20, spokePool, destErc20, erc1271 } = await spokePoolFixture());
