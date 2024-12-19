@@ -164,7 +164,7 @@ contract SpokePoolPeripheryTest is Test {
     function testInitializeProxy() public {
         SpokePoolPeripheryProxy _proxy = new SpokePoolPeripheryProxy();
         _proxy.initialize(spokePoolPeriphery);
-        assertEq(address(_proxy.SPOKE_POOL_PERIPHERY()), address(spokePoolPeriphery));
+        assertEq(address(_proxy.spokePoolPeriphery()), address(spokePoolPeriphery));
         vm.expectRevert(SpokePoolPeripheryProxy.ContractInitialized.selector);
         _proxy.initialize(spokePoolPeriphery);
     }
