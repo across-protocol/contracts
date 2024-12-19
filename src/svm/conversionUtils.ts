@@ -23,10 +23,15 @@ export function intToU8Array32(num: number | BN): number[] {
   }
 
   const u8Array = new Array(32).fill(0);
-  let i = 0;
-  while (bigIntValue > 0 && i < 32) {
-    u8Array[i++] = Number(bigIntValue & 0xffn); // Get least significant byte
-    bigIntValue >>= 8n; // Shift right by 8 bits
+
+  // Get the 4-byte BE representation of the number
+  const beBytes = Array.from(bigIntValue.toString(16).padStart(8, "0").match(/.{2}/g) || []).map((byte) =>
+    parseInt(byte, 16)
+  );
+
+  // Insert the BE bytes into the last 4 bytes of the array
+  for (let i = 0; i < 4; i++) {
+    u8Array[28 + i] = beBytes[i] || 0;
   }
 
   return u8Array;
@@ -39,7 +44,7 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
   const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
 
   if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
-    return Array.from(u8Array).reduce<bigint>((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
+    return Array.from(u8Array.slice(28, 32)).reduce<bigint>((num, byte) => (num << 8n) | BigInt(byte), 0n);
   }
 
   throw new Error("Input must be a Uint8Array or an array of 32 numbers.");

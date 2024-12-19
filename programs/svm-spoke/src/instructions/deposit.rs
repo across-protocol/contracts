@@ -117,7 +117,7 @@ pub fn _deposit_v3(
     // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
     if deposit_id == ZERO_DEPOSIT_ID {
         state.number_of_deposits += 1;
-        applied_deposit_id[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
+        applied_deposit_id[28..].copy_from_slice(&state.number_of_deposits.to_be_bytes());
     }
 
     emit_cpi!(V3FundsDeposited {
