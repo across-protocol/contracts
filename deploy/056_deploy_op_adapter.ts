@@ -36,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    constructorArguments,
+    args: constructorArguments,
   });
 
   await hre.run("verify:verify", { address: deployment, constructorArguments });

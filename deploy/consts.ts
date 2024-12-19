@@ -1,6 +1,7 @@
-export { ZERO_ADDRESS } from "@uma/common";
-
+import { ZERO_ADDRESS } from "@uma/common";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+
+export { ZERO_ADDRESS } from "@uma/common";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
@@ -79,6 +80,11 @@ export const OP_STACK_ADDRESS_MAP: {
       L1BlastBridge: "0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115",
       L1CrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
+    },
+    [CHAIN_IDs.INK]: {
+      L1CrossDomainMessenger: "0x69d3cf86b2bf1a9e99875b7e2d9b6a84426c171f",
+      L1StandardBridge: "0x88ff1e5b602916615391f55854588efcbb7663f0",
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
     },
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",

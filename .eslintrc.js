@@ -15,5 +15,6 @@ module.exports = {
     "node/no-unsupported-features/es-syntax": ["error", { ignores: ["modules"] }],
     "mocha/no-exclusive-tests": "error",
     "@typescript-eslint/no-var-requires": 0,
+    "@typescript-eslint/naming-convention": "none",
   },
 };
