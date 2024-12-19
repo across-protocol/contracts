@@ -195,6 +195,7 @@ describe("svm_spoke.deposit", () => {
       assertSE(event[key], value, `${key} should match`);
     }
 
+    // Test the id recovery with the conversion utils
     assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
     assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
 
@@ -209,6 +210,7 @@ describe("svm_spoke.deposit", () => {
       assertSE(event[key], value, `${key} should match`);
     }
 
+    // Test the id recovery with the conversion utils
     assertSE(u8Array32ToInt(event.depositId), 2, `depositId should recover to 2`);
     assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), `depositId should recover to 2`);
   });
