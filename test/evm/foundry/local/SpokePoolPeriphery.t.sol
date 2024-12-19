@@ -83,10 +83,14 @@ contract SpokePoolPeripheryTest is Test {
     address depositor;
     address owner;
     address recipient;
+    address relayer;
 
     uint256 destinationChainId = 10;
     uint256 mintAmount = 10**22;
+    uint256 submissionFeeAmount = 1;
     uint256 depositAmount = 5 * (10**18);
+    uint256 depositAmountWithSubmissionFee = depositAmount + submissionFeeAmount;
+    uint256 mintAmountWithSubmissionFee = mintAmount + submissionFeeAmount;
     uint32 fillDeadlineBuffer = 7200;
     uint256 privateKey = 0x12345678910;
 
@@ -109,6 +113,7 @@ contract SpokePoolPeripheryTest is Test {
         depositor = vm.addr(privateKey);
         owner = vm.addr(2);
         recipient = vm.addr(3);
+        relayer = vm.addr(4);
         permit2 = IPermit2(new MockPermit2());
         dex = new Exchange(permit2);
         cex = new Exchange(permit2);
@@ -132,16 +137,16 @@ contract SpokePoolPeripheryTest is Test {
         spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
         vm.stopPrank();
 
-        deal(depositor, mintAmount);
-        deal(address(mockERC20), depositor, mintAmount, true);
+        deal(depositor, mintAmountWithSubmissionFee);
+        deal(address(mockERC20), depositor, mintAmountWithSubmissionFee, true);
         deal(address(mockERC20), address(dex), depositAmount, true);
         vm.startPrank(depositor);
-        mockWETH.deposit{ value: mintAmount }();
-        mockERC20.approve(address(proxy), mintAmount);
-        IERC20(address(mockWETH)).approve(address(proxy), mintAmount);
+        mockWETH.deposit{ value: mintAmountWithSubmissionFee }();
+        mockERC20.approve(address(proxy), mintAmountWithSubmissionFee);
+        IERC20(address(mockWETH)).approve(address(proxy), mintAmountWithSubmissionFee);
 
         // Approve permit2
-        IERC20(address(mockWETH)).approve(address(permit2), mintAmount * 10);
+        IERC20(address(mockWETH)).approve(address(permit2), mintAmountWithSubmissionFee * 10);
         vm.stopPrank();
     }
 
@@ -190,6 +195,8 @@ contract SpokePoolPeripheryTest is Test {
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
+                0,
+                address(0),
                 dex,
                 SpokePoolV3PeripheryInterface.TransferType.Approval,
                 address(mockERC20),
@@ -223,6 +230,8 @@ contract SpokePoolPeripheryTest is Test {
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
+                0,
+                address(0),
                 dex,
                 SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
                 address(mockERC20),
@@ -256,6 +265,8 @@ contract SpokePoolPeripheryTest is Test {
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
+                0,
+                address(0),
                 dex,
                 SpokePoolV3PeripheryInterface.TransferType.Transfer,
                 address(mockERC20),
@@ -277,6 +288,8 @@ contract SpokePoolPeripheryTest is Test {
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
+                0,
+                address(0),
                 dex,
                 SpokePoolV3PeripheryInterface.TransferType.Approval,
                 address(mockERC20),
@@ -316,6 +329,8 @@ contract SpokePoolPeripheryTest is Test {
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
+                0,
+                address(0),
                 dex,
                 SpokePoolV3PeripheryInterface.TransferType.Approval,
                 address(mockERC20),
@@ -391,6 +406,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             depositor
         );
 
@@ -402,7 +419,7 @@ contract SpokePoolPeripheryTest is Test {
                 mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
                 depositor,
                 address(spokePoolPeriphery),
-                mintAmount,
+                mintAmountWithSubmissionFee,
                 nonce,
                 block.timestamp
             )
@@ -443,6 +460,9 @@ contract SpokePoolPeripheryTest is Test {
             signature, // permitSignature
             depositDataSignature
         );
+
+        // Check that fee recipient receives expected amount
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
     function testPermitSwapAndBridgeValidWitness() public {
@@ -453,6 +473,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -468,7 +490,7 @@ contract SpokePoolPeripheryTest is Test {
                 mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
                 depositor,
                 address(spokePoolPeriphery),
-                mintAmount,
+                mintAmountWithSubmissionFee,
                 nonce,
                 block.timestamp
             )
@@ -513,6 +535,9 @@ contract SpokePoolPeripheryTest is Test {
             signature, // permitSignature
             swapAndDepositDataSignature
         );
+
+        // Check that fee recipient receives expected amount
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
     function testPermitSwapAndBridgeInvalidWitness(address rando) public {
@@ -524,6 +549,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -539,7 +566,7 @@ contract SpokePoolPeripheryTest is Test {
                 mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
                 depositor,
                 address(spokePoolPeriphery),
-                mintAmount,
+                mintAmountWithSubmissionFee,
                 nonce,
                 block.timestamp
             )
@@ -564,6 +591,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -589,6 +618,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             depositor
         );
 
@@ -600,7 +631,7 @@ contract SpokePoolPeripheryTest is Test {
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 depositor,
                 address(spokePoolPeriphery),
-                mintAmount,
+                mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
                 nonce
@@ -644,6 +675,9 @@ contract SpokePoolPeripheryTest is Test {
             signature, // receiveWithAuthSignature
             depositDataSignature
         );
+
+        // Check that fee recipient receives expected amount
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
     function testTransferWithAuthSwapAndBridgeValidWitness() public {
@@ -654,6 +688,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -669,7 +705,7 @@ contract SpokePoolPeripheryTest is Test {
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 depositor,
                 address(spokePoolPeriphery),
-                mintAmount,
+                mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
                 nonce
@@ -717,6 +753,9 @@ contract SpokePoolPeripheryTest is Test {
             signature, // receiveWithAuthSignature
             swapAndDepositDataSignature
         );
+
+        // Check that fee recipient receives expected amount
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
     function testTransferWithAuthSwapAndBridgeInvalidWitness(address rando) public {
@@ -728,6 +767,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -743,7 +784,7 @@ contract SpokePoolPeripheryTest is Test {
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 depositor,
                 address(spokePoolPeriphery),
-                mintAmount,
+                mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
                 nonce
@@ -769,6 +810,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -796,11 +839,13 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.DepositData memory depositData = _defaultDepositData(
             address(mockWETH),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             depositor
         );
         // Signature transfer details
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
-            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
             nonce: 1,
             deadline: block.timestamp + 100
         });
@@ -854,12 +899,17 @@ contract SpokePoolPeripheryTest is Test {
             permit, // permit
             signature // permit2 signature
         );
+
+        // Check that fee recipient receives expected amount
+        assertEq(mockWETH.balanceOf(relayer), submissionFeeAmount);
     }
 
     function testPermit2SwapAndBridgeValidWitness() public {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockWETH),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Transfer,
             address(mockERC20),
@@ -869,7 +919,7 @@ contract SpokePoolPeripheryTest is Test {
 
         // Signature transfer details
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
-            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
             nonce: 1,
             deadline: block.timestamp + 100
         });
@@ -923,6 +973,9 @@ contract SpokePoolPeripheryTest is Test {
             permit,
             signature
         );
+
+        // Check that fee recipient receives expected amount
+        assertEq(mockWETH.balanceOf(relayer), submissionFeeAmount);
     }
 
     function testPermit2SwapAndBridgeInvalidWitness(address rando) public {
@@ -930,6 +983,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockWETH),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Transfer,
             address(mockERC20),
@@ -939,7 +994,7 @@ contract SpokePoolPeripheryTest is Test {
 
         // Signature transfer details
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
-            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmount }),
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
             nonce: 1,
             deadline: block.timestamp + 100
         });
@@ -974,6 +1029,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
+            submissionFeeAmount,
+            relayer,
             dex,
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
@@ -997,10 +1054,13 @@ contract SpokePoolPeripheryTest is Test {
     function _defaultDepositData(
         address _token,
         uint256 _amount,
+        uint256 _feeAmount,
+        address _feeRecipient,
         address _depositor
-    ) internal returns (SpokePoolV3Periphery.DepositData memory) {
+    ) internal view returns (SpokePoolV3Periphery.DepositData memory) {
         return
             SpokePoolV3PeripheryInterface.DepositData({
+                submissionFees: SpokePoolV3PeripheryInterface.Fees({ amount: _feeAmount, recipient: _feeRecipient }),
                 baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: _token,
                     outputToken: address(0),
@@ -1021,15 +1081,18 @@ contract SpokePoolPeripheryTest is Test {
     function _defaultSwapAndDepositData(
         address _swapToken,
         uint256 _swapAmount,
+        uint256 _feeAmount,
+        address _feeRecipient,
         Exchange _exchange,
         SpokePoolV3PeripheryInterface.TransferType _transferType,
         address _inputToken,
         uint256 _amount,
         address _depositor
-    ) internal returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
+    ) internal view returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
         bool usePermit2 = _transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval;
         return
             SpokePoolV3PeripheryInterface.SwapAndDepositData({
+                submissionFees: SpokePoolV3PeripheryInterface.Fees({ amount: _feeAmount, recipient: _feeRecipient }),
                 depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: _inputToken,
                     outputToken: address(0),

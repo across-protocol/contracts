@@ -45,7 +45,7 @@ contract MockERC20 is IERC20Auth, ERC20Permit {
         _transfer(from, to, value);
     }
 
-    function hashTypedData(bytes32 typedData) external returns (bytes32) {
+    function hashTypedData(bytes32 typedData) external view returns (bytes32) {
         return _hashTypedDataV4(typedData);
     }
 }

@@ -302,15 +302,16 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // Load variables used in this function onto the stack.
         address _swapToken = swapAndDepositData.swapToken;
         uint256 _swapTokenAmount = swapAndDepositData.swapTokenAmount;
+        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
+        address _submissionFeeRecipient = swapAndDepositData.submissionFees.recipient;
+        uint256 _pullAmount = _submissionFeeAmount + _swapTokenAmount;
 
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
-        try
-            IERC20Permit(_swapToken).permit(signatureOwner, address(this), _swapTokenAmount, deadline, v, r, s)
-        {} catch {}
-        IERC20(_swapToken).safeTransferFrom(signatureOwner, address(this), _swapTokenAmount);
-
+        try IERC20Permit(_swapToken).permit(signatureOwner, address(this), _pullAmount, deadline, v, r, s) {} catch {}
+        IERC20(_swapToken).safeTransferFrom(signatureOwner, address(this), _pullAmount);
+        _paySubmissionFees(_swapToken, _submissionFeeRecipient, _submissionFeeAmount);
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
@@ -337,9 +338,10 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         bytes calldata signature
     ) external override nonReentrant {
         bytes32 witness = PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
+        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
             to: address(this),
-            requestedAmount: swapAndDepositData.swapTokenAmount
+            requestedAmount: swapAndDepositData.swapTokenAmount + _submissionFeeAmount
         });
 
         permit2.permitWitnessTransferFrom(
@@ -349,6 +351,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             witness,
             PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING,
             signature
+        );
+        _paySubmissionFees(
+            swapAndDepositData.swapToken,
+            swapAndDepositData.submissionFees.recipient,
+            _submissionFeeAmount
         );
         _swapAndBridge(swapAndDepositData);
     }
@@ -375,19 +382,25 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
+        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
         IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            swapAndDepositData.swapTokenAmount,
+            swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
             nonce,
             v,
             r,
             s
+        );
+        _paySubmissionFees(
+            swapAndDepositData.swapToken,
+            swapAndDepositData.submissionFees.recipient,
+            _submissionFeeAmount
         );
 
         // Verify that the signatureOwner signed the input swapAndDepositData.
@@ -419,12 +432,16 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // Load variables used in this function onto the stack.
         address _inputToken = depositData.baseDepositData.inputToken;
         uint256 _inputAmount = depositData.inputAmount;
+        uint256 _submissionFeeAmount = depositData.submissionFees.amount;
+        address _submissionFeeRecipient = depositData.submissionFees.recipient;
+        uint256 _pullAmount = _submissionFeeAmount + _inputAmount;
 
         // For permit transactions, we wrap the call in a try/catch block so that the transaction will continue even if the call to
         // permit fails. For example, this may be useful if the permit signature, which can be redeemed by anyone, is executed by somebody
         // other than this contract.
-        try IERC20Permit(_inputToken).permit(signatureOwner, address(this), _inputAmount, deadline, v, r, s) {} catch {}
-        IERC20(_inputToken).safeTransferFrom(signatureOwner, address(this), _inputAmount);
+        try IERC20Permit(_inputToken).permit(signatureOwner, address(this), _pullAmount, deadline, v, r, s) {} catch {}
+        IERC20(_inputToken).safeTransferFrom(signatureOwner, address(this), _pullAmount);
+        _paySubmissionFees(_inputToken, _submissionFeeRecipient, _submissionFeeAmount);
 
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
@@ -460,9 +477,10 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         bytes calldata signature
     ) external override nonReentrant {
         bytes32 witness = PeripherySigningLib.hashDepositData(depositData);
+        uint256 _submissionFeeAmount = depositData.submissionFees.amount;
         IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
             to: address(this),
-            requestedAmount: depositData.inputAmount
+            requestedAmount: depositData.inputAmount + _submissionFeeAmount
         });
 
         permit2.permitWitnessTransferFrom(
@@ -473,6 +491,12 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING,
             signature
         );
+        _paySubmissionFees(
+            depositData.baseDepositData.inputToken,
+            depositData.submissionFees.recipient,
+            _submissionFeeAmount
+        );
+
         _depositV3(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
@@ -511,19 +535,25 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     ) external override nonReentrant {
         // Load variables used multiple times onto the stack.
         uint256 _inputAmount = depositData.inputAmount;
+        uint256 _submissionFeeAmount = depositData.submissionFees.amount;
 
         // Redeem the receiveWithAuthSignature.
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         IERC20Auth(depositData.baseDepositData.inputToken).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            _inputAmount,
+            _inputAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
             nonce,
             v,
             r,
             s
+        );
+        _paySubmissionFees(
+            depositData.baseDepositData.inputToken,
+            depositData.submissionFees.recipient,
+            _submissionFeeAmount
         );
 
         // Verify that the signatureOwner signed the input depositData.
@@ -573,7 +603,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         address signatureOwner,
         bytes32 typedDataHash,
         bytes calldata signature
-    ) private {
+    ) private view {
         if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature))
             revert InvalidSignature();
     }
@@ -703,6 +733,16 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             swapAndDepositData.depositData.exclusivityParameter,
             swapAndDepositData.depositData.message
         );
+    }
+
+    function _paySubmissionFees(
+        address feeToken,
+        address recipient,
+        uint256 amount
+    ) private {
+        if (amount > 0) {
+            IERC20(feeToken).safeTransfer(recipient, amount);
+        }
     }
 
     /**
