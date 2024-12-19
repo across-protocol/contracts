@@ -2,25 +2,24 @@
 // - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
 // - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 
-import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { getNodeUrl } from "@uma/common";
+import "dotenv/config";
+import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
-import { getNodeUrl } from "@uma/common";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { getMessageTransmitterProgram, getSpokePoolProgram } from "../../src/svm";
 import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
-import { isSolanaDevnet, requireEnv } from "./utils/helpers";
+import { CHAIN_IDs } from "../../utils/constants";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
 } from "./utils/constants";
-import { CHAIN_IDs } from "../../utils/constants";
+import { isSolanaDevnet, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -58,14 +57,12 @@ async function remotePauseDeposits(): Promise<void> {
   const localDomain = 5; // Solana
 
   // Get Solana programs and accounts.
-  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
+  const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
-  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId

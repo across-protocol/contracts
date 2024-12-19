@@ -4,20 +4,23 @@
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import { getNodeUrl } from "@uma/common";
 // eslint-disable-next-line camelcase
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { evmAddressToPublicKey } from "../../src/svm";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { ethers, BigNumber } from "ethers";
+import {
+  evmAddressToPublicKey,
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
+  getTokenMessengerMinterProgram,
+} from "../../src/svm";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 // eslint-disable-next-line camelcase
+import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
@@ -25,21 +28,17 @@ import {
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
 } from "./utils/constants";
-import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { getSolanaChainId, isSolanaDevnet, requireEnv } from "./utils/helpers";
+import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
-const tokenMessengerMinterIdl = require("../../target/idl/token_messenger_minter.json");
-const tokenMessengerMinterProgram = new Program<TokenMessengerMinter>(tokenMessengerMinterIdl, provider);
+const svmSpokeProgram = getSpokePoolProgram(provider);
+const messageTransmitterProgram = getMessageTransmitterProgram(provider);
+const tokenMessengerMinterProgram = getTokenMessengerMinterProgram(provider);
 
 // Set up Ethereum provider and signer.
 const isDevnet = isSolanaDevnet(provider);
