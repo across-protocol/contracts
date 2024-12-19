@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -17,7 +17,7 @@ import {
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { DepositDataValues } from "../../src/types/svm";
-import { intToU8Array32, readEventsUntilFound } from "../../src/svm";
+import { intToU8Array32, readEventsUntilFound, u8Array32ToInt, u8Array32ToBigNumber } from "../../src/svm";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
@@ -195,6 +195,9 @@ describe("svm_spoke.deposit", () => {
       assertSE(event[key], value, `${key} should match`);
     }
 
+    assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
+    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
+
     // Execute the second deposit_v3 call
     const tx2 = await approvedDepositV3(depositDataValues);
     events = await readEventsUntilFound(connection, tx2, [program]);
@@ -205,6 +208,9 @@ describe("svm_spoke.deposit", () => {
       if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
     }
+
+    assertSE(u8Array32ToInt(event.depositId), 2, `depositId should recover to 2`);
+    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), `depositId should recover to 2`);
   });
 
   it("Fails to deposit tokens to a route that is uninitalized", async () => {

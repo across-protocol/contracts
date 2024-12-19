@@ -1,6 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
@@ -44,7 +44,20 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
   const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
 
   if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
-    return Array.from(u8Array.slice(28, 32)).reduce<bigint>((num, byte) => (num << 8n) | BigInt(byte), 0n);
+    return Array.from(u8Array).reduce<bigint>((num, byte) => (num << 8n) | BigInt(byte), 0n);
+  }
+
+  throw new Error("Input must be a Uint8Array or an array of 32 numbers.");
+}
+
+/**
+ * Converts a 32-byte Uint8Array to a BigNumber.
+ */
+export function u8Array32ToBigNumber(u8Array: Uint8Array | number[]): BigNumber {
+  const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
+  if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
+    const hexString = "0x" + Buffer.from(u8Array).toString("hex");
+    return BigNumber.from(hexString);
   }
 
   throw new Error("Input must be a Uint8Array or an array of 32 numbers.");
