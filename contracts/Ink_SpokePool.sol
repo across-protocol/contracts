@@ -14,7 +14,7 @@ contract Ink_SpokePool is Ovm_SpokePool {
     using SafeERC20 for IERC20;
 
     // Address of the custom L2 USDC bridge.
-    address private constant USDC_BRIDGE = 0xbD80b06d3dbD0801132c6689429aC09Ca6D27f82;
+    address private constant USDC_BRIDGE = address(0);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
