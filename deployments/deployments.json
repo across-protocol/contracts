@@ -161,6 +161,6 @@
   },
   "57073": {
     "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 1139240 },
-    "Ink_Adapter": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1145284 }
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1145284 }
   }
 }
