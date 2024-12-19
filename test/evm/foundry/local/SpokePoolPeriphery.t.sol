@@ -18,8 +18,6 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
-import "forge-std/console.sol";
-
 contract Exchange {
     IPermit2 permit2;
 
@@ -161,7 +159,6 @@ contract SpokePoolPeripheryTest is Test {
         assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
         _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
-        console.logBytes(type(SpokePoolV3Periphery).creationCode);
     }
 
     function testInitializeProxy() public {
