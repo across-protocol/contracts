@@ -37,8 +37,8 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
 
     // The SpokePoolPeriphery should be deterministically deployed at the same address across all networks,
     // so this contract should also be able to be deterministically deployed at the same address across all networks
-    // since the periphery address is the only constructor argument.
-    SpokePoolV3Periphery public SPOKE_POOL_PERIPHERY;
+    // since the periphery address is the only initializer argument.
+    SpokePoolV3Periphery public spokePoolPeriphery;
 
     error InvalidPeriphery();
     error ContractInitialized();
@@ -60,7 +60,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
         if (initialized) revert ContractInitialized();
         initialized = true;
         if (!address(_spokePoolPeriphery).isContract()) revert InvalidPeriphery();
-        SPOKE_POOL_PERIPHERY = _spokePoolPeriphery;
+        spokePoolPeriphery = _spokePoolPeriphery;
     }
 
     /**
@@ -88,8 +88,8 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
         uint256 _swapTokenAmount = swapAndDepositData.swapTokenAmount;
 
         _swapToken.safeTransferFrom(msg.sender, address(this), _swapTokenAmount);
-        _swapToken.forceApprove(address(SPOKE_POOL_PERIPHERY), _swapTokenAmount);
-        SPOKE_POOL_PERIPHERY.swapAndBridge(swapAndDepositData);
+        _swapToken.forceApprove(address(spokePoolPeriphery), _swapTokenAmount);
+        spokePoolPeriphery.swapAndBridge(swapAndDepositData);
     }
 }
 
