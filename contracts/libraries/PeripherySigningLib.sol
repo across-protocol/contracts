@@ -42,7 +42,7 @@ library PeripherySigningLib {
     bytes32 internal constant EIP712_DEPOSIT_DATA_TYPEHASH =
         keccak256(abi.encode(EIP712_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE));
     bytes32 internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPEHASH =
-        keccak256(abi.encode(EIP712_SWAP_AND_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPEHASH, EIP712_BASE_DEPOSIT_DATA_TYPE));
+        keccak256(abi.encode(EIP712_SWAP_AND_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE));
 
     // EIP712 Type strings.
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
