@@ -1,4 +1,3 @@
-import assert from "assert";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getMnemonic } from "@uma/common";
 import { DeployFunction } from "hardhat-deploy/types";
@@ -9,7 +8,7 @@ import deployments from "../deployments/deployments.json";
 
 /**
  * Usage:
- * $ SPOKE_POOL_ADDRESS=0x.... yarn hardhat deploy --network mainnet --tags Create2Factory
+ * $ yarn hardhat deploy --network mainnet --tags SpokePoolPeriphery
  */
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
