@@ -58,6 +58,7 @@
     "@uma/core": "^2.61.0",
     "axios": "^1.7.4",
     "bs58": "^6.0.0",
+    "cross-fetch": "^4.0.0",
     "prettier-plugin-rust": "^0.1.9",
     "yargs": "^17.7.2",
     "zksync-web3": "^0.14.3"

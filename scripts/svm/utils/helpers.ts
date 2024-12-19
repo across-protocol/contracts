@@ -27,6 +27,10 @@ export const formatUsdc = (amount: BigNumber): string => {
   return ethers.utils.formatUnits(amount, 6);
 };
 
+export const parseUsdc = (amount: string): BigNumber => {
+  return ethers.utils.parseUnits(amount, 6);
+};
+
 export const fromBase58ToBytes32 = (input: string): string => {
   const decodedBytes = anchorUtils.bytes.bs58.decode(input);
   return "0x" + Buffer.from(decodedBytes).toString("hex");
