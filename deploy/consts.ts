@@ -215,7 +215,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
   },
-  [CHAIN_IDs.WORLDCHAIN]: {
+  [CHAIN_IDs.WORLD_CHAIN]: {
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
