@@ -6,33 +6,11 @@ import { BigNumber, ethers } from "ethers";
  * Converts an integer to a 32-byte Uint8Array.
  */
 export function intToU8Array32(num: number | BN): number[] {
-  let bigIntValue: bigint;
+  const bigIntValue = BigInt(num instanceof BN ? num.toString() : num);
+  if (bigIntValue < 0) throw new Error("Input must be a non-negative integer or BN");
 
-  if (typeof num === "number") {
-    if (!Number.isInteger(num) || num < 0) {
-      throw new Error("Input must be a non-negative integer");
-    }
-    bigIntValue = BigInt(num);
-  } else if (BN.isBN(num)) {
-    if (num.isNeg()) {
-      throw new Error("Input must be a non-negative BN");
-    }
-    bigIntValue = BigInt(num.toString());
-  } else {
-    throw new Error("Input must be a non-negative integer or BN");
-  }
-
-  const u8Array = new Array(32).fill(0);
-
-  // Get the 4-byte BE representation of the number
-  const beBytes = Array.from(bigIntValue.toString(16).padStart(8, "0").match(/.{2}/g) || []).map((byte) =>
-    parseInt(byte, 16)
-  );
-
-  // Insert the BE bytes into the last 4 bytes of the array
-  for (let i = 0; i < 4; i++) {
-    u8Array[28 + i] = beBytes[i] || 0;
-  }
+  const hexString = bigIntValue.toString(16).padStart(64, "0"); // 32 bytes = 64 hex chars
+  const u8Array = Array.from(Buffer.from(hexString, "hex"));
 
   return u8Array;
 }
