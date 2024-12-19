@@ -1,3 +1,6 @@
+/* eslint-disable node/no-missing-require */
+/* eslint-disable node/no-missing-import */
+/* eslint-disable camelcase */
 /**
  * Script: Bridge USDC Liability to Hub Pool
  *
@@ -27,10 +30,8 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-// eslint-disable-next-line camelcase
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
-// eslint-disable-next-line camelcase
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
@@ -124,7 +125,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
   // Resolve Solana USDC addresses.
   const svmUsdc = isDevnet ? SOLANA_USDC_DEVNET : SOLANA_USDC_MAINNET;
 
-  const [statePda, _] = PublicKey.findProgramAddressSync(
+  const [statePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
