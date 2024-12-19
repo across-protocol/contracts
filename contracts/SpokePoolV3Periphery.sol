@@ -64,11 +64,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
     }
 
     /**
-     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
-     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
+     * @inheritdoc SpokePoolV3PeripheryProxyInterface
      */
     function swapAndBridge(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
         external
@@ -199,25 +195,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Passthrough function to `depositV3()` on the SpokePool contract.
-     * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
-     * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
-     * everywhere callers should be protected even if the transaction is submitted to an unintended network.
-     * This contract should only be used for native token deposits, as this problem only exists for native tokens.
-     * @param recipient Address to receive funds at on destination chain.
-     * @param inputToken Token to lock into this contract to initiate deposit.
-     * @param inputAmount Amount of tokens to deposit.
-     * @param outputAmount Amount of tokens to receive on destination chain.
-     * @param destinationChainId Denotes network where user will receive funds from SpokePool by a relayer.
-     * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
-     * to LP pool on HubPool.
-     * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
-     * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param exclusiveRelayer Address of the relayer who has exclusive rights to fill this deposit. Can be set to
-     * 0x0 if no period is desired. If so, then must set exclusivityParameter to 0.
-     * @param exclusivityParameter Timestamp or offset, after which any relayer can fill this deposit. Must set
-     * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
-     * @param fillDeadline Timestamp after which this deposit can no longer be filled.
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function deposit(
         address recipient,
@@ -253,13 +231,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If msg.value is 0, then this function is only callable by the proxy contract, to protect against
-     * approval abuse attacks where a user has set an approval on this contract to spend any ERC20 token.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
-     * @param swapAndDepositData Specifies the data needed to perform a swap on a generic exchange.
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
@@ -282,14 +254,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @param signatureOwner The owner of the permit signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
-     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
-     * @param deadline Deadline before which the permit signature is valid.
-     * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function swapAndBridgeWithPermit(
         address signatureOwner,
@@ -322,14 +287,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Uses permit2 to transfer tokens from a user before swapping a token on this chain via specified router and submitting an Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
-     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
-     * @param signatureOwner The owner of the permit2 signature and depositor for the Across spoke pool.
-     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
-     * @param permit The permit data signed over by the owner.
-     * @param signature The permit2 signature to verify against the deposit data.
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -361,16 +319,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
-     * @param signatureOwner The owner of the EIP3009 signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
-     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
-     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
-     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
-     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
@@ -413,13 +362,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
-     * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @param signatureOwner The owner of the permit signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
-     * @param depositData Specifies the Across deposit params to send.
-     * @param deadline Deadline before which the permit signature is valid.
-     * @param permitSignature Permit signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function depositWithPermit(
         address signatureOwner,
@@ -462,13 +405,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Uses permit2 to transfer and submit an Across deposit to the Spoke Pool contract.
-     * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
-     * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
-     * @param signatureOwner The owner of the permit2 signature and depositor for the Across spoke pool.
-     * @param depositData Specifies the Across deposit params we'll send after the swap.
-     * @param permit The permit data signed over by the owner.
-     * @param signature The permit2 signature to verify against the deposit data.
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function depositWithPermit2(
         address signatureOwner,
@@ -514,15 +451,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
-     * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
-     * @param signatureOwner The owner of the EIP3009 signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
-     * @param depositData Specifies the Across deposit params to send.
-     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
-     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
-     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function depositWithAuthorization(
         address signatureOwner,
