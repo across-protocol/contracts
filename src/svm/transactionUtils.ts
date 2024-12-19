@@ -39,7 +39,8 @@ export async function sendTransactionWithLookupTable(
 
   // Submit the ALT creation transaction
   await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(lookupTableInstruction), [sender], {
-    skipPreflight: true, // Avoids recent slot mismatch in simulation.
+    commitment: "confirmed",
+    skipPreflight: true,
   });
 
   // Extend the ALT with all accounts making sure not to exceed the maximum number of accounts per transaction.
@@ -51,13 +52,14 @@ export async function sendTransactionWithLookupTable(
       addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
     });
 
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [sender], {
-      skipPreflight: true, // Avoids recent slot mismatch in simulation.
-    });
+    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [sender]);
   }
 
-  // Avoids invalid ALT index as ALT might not be active yet on the following tx.
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Wait for slot to advance. LUTs only active after slot advance.
+  const initialSlot = await connection.getSlot();
+  while ((await connection.getSlot()) === initialSlot) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 
   // Fetch the AddressLookupTableAccount
   const lookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
@@ -75,6 +77,13 @@ export async function sendTransactionWithLookupTable(
   // Sign and submit the versioned transaction.
   versionedTx.sign([sender]);
   const txSignature = await connection.sendTransaction(versionedTx);
+
+  // Confirm the versioned transaction
+  let block = await connection.getLatestBlockhash();
+  await connection.confirmTransaction(
+    { signature: txSignature, blockhash: block.blockhash, lastValidBlockHeight: block.lastValidBlockHeight },
+    "confirmed"
+  );
 
   return { txSignature, lookupTableAddress };
 }
