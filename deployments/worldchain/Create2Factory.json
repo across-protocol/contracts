@@ -1,0 +1,103 @@
+{
+  "address": "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "InitializationFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "bytecode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "initializationCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deploy",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "96f01fbf4985ad7df0ca99bf86062bf0",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.23+commit.f704f362\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"InitializationFailed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"salt\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"bytecode\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"initializationCode\",\"type\":\"bytes\"}],\"name\":\"deploy\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"custom:security-contact\":\"bugs@across.to\",\"details\":\"Contracts designed to be deployed at deterministic addresses should initialize via a non-constructor initializer to maintain bytecode across different chains.\",\"kind\":\"dev\",\"methods\":{\"deploy(uint256,bytes32,bytes,bytes)\":{\"params\":{\"amount\":\"The amount of ETH to send with the deployment. If this is not zero then the contract must have a payable constructor\",\"bytecode\":\"The bytecode of the contract to deploy\",\"initializationCode\":\"The initialization code to call on the deployed contract\",\"salt\":\"The salt to use for the create2 deployment. Must not have been used before for the bytecode\"}}},\"title\":\"Create2Factory\",\"version\":1},\"userdoc\":{\"errors\":{\"InitializationFailed()\":[{\"notice\":\"Emitted when the initialization to a newly deployed contract fails\"}]},\"kind\":\"user\",\"methods\":{\"deploy(uint256,bytes32,bytes,bytes)\":{\"notice\":\"Deploys a new contract via create2 at a deterministic address and then atomically initializes the contract\"}},\"notice\":\"Deploys a new contract via create2 at a deterministic address and then atomically initializes the contract\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/Create2Factory.sol\":\"Create2Factory\"},\"debug\":{\"revertStrings\":\"strip\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/utils/Create2.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.0) (utils/Create2.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Helper to make usage of the `CREATE2` EVM opcode easier and safer.\\n * `CREATE2` can be used to compute in advance the address where a smart\\n * contract will be deployed, which allows for interesting new mechanisms known\\n * as 'counterfactual interactions'.\\n *\\n * See the https://eips.ethereum.org/EIPS/eip-1014#motivation[EIP] for more\\n * information.\\n */\\nlibrary Create2 {\\n    /**\\n     * @dev Deploys a contract using `CREATE2`. The address where the contract\\n     * will be deployed can be known in advance via {computeAddress}.\\n     *\\n     * The bytecode for a contract can be obtained from Solidity with\\n     * `type(contractName).creationCode`.\\n     *\\n     * Requirements:\\n     *\\n     * - `bytecode` must not be empty.\\n     * - `salt` must have not been used for `bytecode` already.\\n     * - the factory must have a balance of at least `amount`.\\n     * - if `amount` is non-zero, `bytecode` must have a `payable` constructor.\\n     */\\n    function deploy(uint256 amount, bytes32 salt, bytes memory bytecode) internal returns (address addr) {\\n        require(address(this).balance >= amount, \\\"Create2: insufficient balance\\\");\\n        require(bytecode.length != 0, \\\"Create2: bytecode length is zero\\\");\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            addr := create2(amount, add(bytecode, 0x20), mload(bytecode), salt)\\n        }\\n        require(addr != address(0), \\\"Create2: Failed on deploy\\\");\\n    }\\n\\n    /**\\n     * @dev Returns the address where a contract will be stored if deployed via {deploy}. Any change in the\\n     * `bytecodeHash` or `salt` will result in a new destination address.\\n     */\\n    function computeAddress(bytes32 salt, bytes32 bytecodeHash) internal view returns (address) {\\n        return computeAddress(salt, bytecodeHash, address(this));\\n    }\\n\\n    /**\\n     * @dev Returns the address where a contract will be stored if deployed via {deploy} from a contract located at\\n     * `deployer`. If `deployer` is this contract's address, returns the same value as {computeAddress}.\\n     */\\n    function computeAddress(bytes32 salt, bytes32 bytecodeHash, address deployer) internal pure returns (address addr) {\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            let ptr := mload(0x40) // Get free memory pointer\\n\\n            // |                   | \\u2193 ptr ...  \\u2193 ptr + 0x0B (start) ...  \\u2193 ptr + 0x20 ...  \\u2193 ptr + 0x40 ...   |\\n            // |-------------------|---------------------------------------------------------------------------|\\n            // | bytecodeHash      |                                                        CCCCCCCCCCCCC...CC |\\n            // | salt              |                                      BBBBBBBBBBBBB...BB                   |\\n            // | deployer          | 000000...0000AAAAAAAAAAAAAAAAAAA...AA                                     |\\n            // | 0xFF              |            FF                                                             |\\n            // |-------------------|---------------------------------------------------------------------------|\\n            // | memory            | 000000...00FFAAAAAAAAAAAAAAAAAAA...AABBBBBBBBBBBBB...BBCCCCCCCCCCCCC...CC |\\n            // | keccak(start, 85) |            \\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191\\u2191 |\\n\\n            mstore(add(ptr, 0x40), bytecodeHash)\\n            mstore(add(ptr, 0x20), salt)\\n            mstore(ptr, deployer) // Right-aligned with 12 preceding garbage bytes\\n            let start := add(ptr, 0x0b) // The hashed data starts at the final garbage byte which we will set to 0xff\\n            mstore8(start, 0xff)\\n            addr := keccak256(start, 85)\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x6e00f269073ffc4350e56b7e8153c9092d5f70bfba423299990514183101ef89\",\"license\":\"MIT\"},\"contracts/Create2Factory.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-or-later\\npragma solidity ^0.8.0;\\n\\nimport { Create2 } from \\\"@openzeppelin/contracts/utils/Create2.sol\\\";\\nimport { Lockable } from \\\"./Lockable.sol\\\";\\n\\n/**\\n * @title Create2Factory\\n * @notice Deploys a new contract via create2 at a deterministic address and then atomically initializes the contract\\n * @dev Contracts designed to be deployed at deterministic addresses should initialize via a non-constructor\\n * initializer to maintain bytecode across different chains.\\n * @custom:security-contact bugs@across.to\\n */\\ncontract Create2Factory is Lockable {\\n    /// @notice Emitted when the initialization to a newly deployed contract fails\\n    error InitializationFailed();\\n\\n    /**\\n     * @notice Deploys a new contract via create2 at a deterministic address and then atomically initializes the contract\\n     * @param amount The amount of ETH to send with the deployment. If this is not zero then the contract must have a payable constructor\\n     * @param salt The salt to use for the create2 deployment. Must not have been used before for the bytecode\\n     * @param bytecode The bytecode of the contract to deploy\\n     * @param initializationCode The initialization code to call on the deployed contract\\n     */\\n    function deploy(\\n        uint256 amount,\\n        bytes32 salt,\\n        bytes calldata bytecode,\\n        bytes calldata initializationCode\\n    ) external nonReentrant returns (address) {\\n        address deployedAddress = Create2.deploy(amount, salt, bytecode);\\n        (bool success, ) = deployedAddress.call(initializationCode);\\n        if (!success) revert InitializationFailed();\\n        return deployedAddress;\\n    }\\n}\\n\",\"keccak256\":\"0x1e6314c30e4c4933268d41003a0fa28569e5aa7119368ac452a907d6905d9e75\",\"license\":\"GPL-3.0-or-later\"},\"contracts/Lockable.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/**\\n * @title A contract that provides modifiers to prevent reentrancy to state-changing and view-only methods. This contract\\n * is inspired by https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol\\n * and https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol.\\n * @dev The reason why we use this local contract instead of importing from uma/contracts is because of the addition\\n * of the internal method `functionCallStackOriginatesFromOutsideThisContract` which doesn't exist in the one exported\\n * by uma/contracts.\\n * @custom:security-contact bugs@across.to\\n */\\ncontract Lockable {\\n    bool internal _notEntered;\\n\\n    constructor() {\\n        // Storing an initial non-zero value makes deployment a bit more expensive, but in exchange the refund on every\\n        // call to nonReentrant will be lower in amount. Since refunds are capped to a percentage of the total\\n        // transaction's gas, it is best to keep them low in cases like this one, to increase the likelihood of the full\\n        // refund coming into effect.\\n        _notEntered = true;\\n    }\\n\\n    /**\\n     * @dev Prevents a contract from calling itself, directly or indirectly.\\n     * Calling a nonReentrant function from another nonReentrant function is not supported. It is possible to\\n     * prevent this from happening by making the nonReentrant function external, and making it call a private\\n     * function that does the actual state modification.\\n     */\\n    modifier nonReentrant() {\\n        _preEntranceCheck();\\n        _preEntranceSet();\\n        _;\\n        _postEntranceReset();\\n    }\\n\\n    /**\\n     * @dev Designed to prevent a view-only method from being re-entered during a call to a nonReentrant() state-changing method.\\n     */\\n    modifier nonReentrantView() {\\n        _preEntranceCheck();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns true if the contract is currently in a non-entered state, meaning that the origination of the call\\n     * came from outside the contract. This is relevant with fallback/receive methods to see if the call came from ETH\\n     * being dropped onto the contract externally or due to ETH dropped on the contract from within a method in this\\n     * contract, such as unwrapping WETH to ETH within the contract.\\n     */\\n    function functionCallStackOriginatesFromOutsideThisContract() internal view returns (bool) {\\n        return _notEntered;\\n    }\\n\\n    // Internal methods are used to avoid copying the require statement's bytecode to every nonReentrant() method.\\n    // On entry into a function, _preEntranceCheck() should always be called to check if the function is being\\n    // re-entered. Then, if the function modifies state, it should call _postEntranceSet(), perform its logic, and\\n    // then call _postEntranceReset().\\n    // View-only methods can simply call _preEntranceCheck() to make sure that it is not being re-entered.\\n    function _preEntranceCheck() internal view {\\n        // On the first call to nonReentrant, _notEntered will be true\\n        require(_notEntered, \\\"ReentrancyGuard: reentrant call\\\");\\n    }\\n\\n    function _preEntranceSet() internal {\\n        // Any calls to nonReentrant after this point will fail\\n        _notEntered = false;\\n    }\\n\\n    function _postEntranceReset() internal {\\n        // By storing the original value once again, a refund is triggered (see\\n        // https://eips.ethereum.org/EIPS/eip-2200)\\n        _notEntered = true;\\n    }\\n}\\n\",\"keccak256\":\"0x8f1a93e030b8a610f941935fa5d7433530c3a0a047d617a839996d23889e9666\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x6080806040523461002157600160ff195f5416175f556102b990816100268239f35b5f80fdfe60806040526004361015610011575f80fd5b5f3560e01c63b796412614610024575f80fd5b346101a65760807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a65760043567ffffffffffffffff6044358181116101a6576100779036906004016101aa565b9290916064359081116101a6576100929036906004016101aa565b9190925f549460ff8616156101a6577fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff008096165f556100d86100d382610249565b6101d8565b90808252602082019236828201116101a657815f926020928637830101528247106101a657519081156101a65760243592f59173ffffffffffffffffffffffffffffffffffffffff83169283156101a657825f80949381946040519384928337810182815203925af13d156101a1573d6101546100d382610249565b9081525f60203d92013e5b156101775760016020925f5416175f55604051908152f35b60046040517f19b991a8000000000000000000000000000000000000000000000000000000008152fd5b61015f565b5f80fd5b9181601f840112156101a65782359167ffffffffffffffff83116101a657602083818601950101116101a657565b907fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f604051930116820182811067ffffffffffffffff82111761021c57604052565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b67ffffffffffffffff811161021c57601f017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0166020019056fea264697066735822122067c4727292088afc39217149572aaedf4204d277e1cecca69df4a902c071beeb64736f6c63430008170033",
+  "deployedBytecode": "0x60806040526004361015610011575f80fd5b5f3560e01c63b796412614610024575f80fd5b346101a65760807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a65760043567ffffffffffffffff6044358181116101a6576100779036906004016101aa565b9290916064359081116101a6576100929036906004016101aa565b9190925f549460ff8616156101a6577fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff008096165f556100d86100d382610249565b6101d8565b90808252602082019236828201116101a657815f926020928637830101528247106101a657519081156101a65760243592f59173ffffffffffffffffffffffffffffffffffffffff83169283156101a657825f80949381946040519384928337810182815203925af13d156101a1573d6101546100d382610249565b9081525f60203d92013e5b156101775760016020925f5416175f55604051908152f35b60046040517f19b991a8000000000000000000000000000000000000000000000000000000008152fd5b61015f565b5f80fd5b9181601f840112156101a65782359167ffffffffffffffff83116101a657602083818601950101116101a657565b907fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f604051930116820182811067ffffffffffffffff82111761021c57604052565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b67ffffffffffffffff811161021c57601f017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0166020019056fea264697066735822122067c4727292088afc39217149572aaedf4204d277e1cecca69df4a902c071beeb64736f6c63430008170033",
+  "devdoc": {
+    "custom:security-contact": "bugs@across.to",
+    "details": "Contracts designed to be deployed at deterministic addresses should initialize via a non-constructor initializer to maintain bytecode across different chains.",
+    "kind": "dev",
+    "methods": {
+      "deploy(uint256,bytes32,bytes,bytes)": {
+        "params": {
+          "amount": "The amount of ETH to send with the deployment. If this is not zero then the contract must have a payable constructor",
+          "bytecode": "The bytecode of the contract to deploy",
+          "initializationCode": "The initialization code to call on the deployed contract",
+          "salt": "The salt to use for the create2 deployment. Must not have been used before for the bytecode"
+        }
+      }
+    },
+    "title": "Create2Factory",
+    "version": 1
+  },
+  "userdoc": {
+    "errors": {
+      "InitializationFailed()": [
+        {
+          "notice": "Emitted when the initialization to a newly deployed contract fails"
+        }
+      ]
+    },
+    "kind": "user",
+    "methods": {
+      "deploy(uint256,bytes32,bytes,bytes)": {
+        "notice": "Deploys a new contract via create2 at a deterministic address and then atomically initializes the contract"
+      }
+    },
+    "notice": "Deploys a new contract via create2 at a deterministic address and then atomically initializes the contract",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 18591,
+        "contract": "contracts/Create2Factory.sol:Create2Factory",
+        "label": "_notEntered",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_bool"
+      }
+    ],
+    "types": {
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      }
+    }
+  }
+}
