@@ -51,7 +51,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     salt,
     ethers.utils.keccak256(peripheryArtifact.bytecode)
   );
-  await (await create2Factory.deploy(ethAmount, salt, peripheryArtifact.bytecode, initializationCode.data)).wait();
+  const deployCalldata = await create2Factory.populateTransaction.deploy(
+    ethAmount,
+    salt,
+    peripheryArtifact.bytecode,
+    initializationCode.data
+  );
+  const pendingTransaction = await signer.sendTransaction(deployCalldata);
+  await pendingTransaction.wait();
 
   await hre.run("verify:verify", { address: expectedPeripheryAddress });
 };

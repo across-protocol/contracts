@@ -38,6 +38,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0", // TODO: Not deployed yet!
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.SEPOLIA]: {
@@ -150,10 +151,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
   },
   [CHAIN_IDs.BLAST]: {
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
@@ -162,6 +165,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.POLYGON_AMOY]: {
@@ -180,7 +184,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-    spokePoolPeripheryProxy: "0xcbDEb6C19804370f4FAF8Ce6401235A39a50C6cD",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
   },
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
@@ -194,6 +198,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
   },
   [CHAIN_IDs.BASE_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
@@ -218,10 +223,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.WORLD_CHAIN]: {
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
   },
   [CHAIN_IDs.ZORA]: {
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
   },
   1442: {
     // Custom WETH for testing because there is no "official" WETH
