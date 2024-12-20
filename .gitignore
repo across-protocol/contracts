@@ -32,3 +32,4 @@ target
 **/*.rs.bk
 test-ledger
 idls
+src/svm/assets 
