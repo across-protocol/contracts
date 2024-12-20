@@ -1,5 +1,4 @@
-import { Idl, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { getSolanaChainId, isSolanaDevnet } from "../../scripts/svm/utils/helpers";
+import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
 import { getDeployedAddress } from "../DeploymentUtils";
 import { SupportedNetworks } from "../types/svm";
 import {
@@ -12,6 +11,7 @@ import {
   TokenMessengerMinterAnchor,
   TokenMessengerMinterIdl,
 } from "./assets";
+import { getSolanaChainId, isSolanaDevnet } from "./helpers";
 
 type ProgramOptions = { network?: SupportedNetworks; programId?: string };
 
