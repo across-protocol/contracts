@@ -1,4 +1,4 @@
-import { BN } from "@coral-xyz/anchor";
+import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 
@@ -72,4 +72,27 @@ export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => 
 
   // Convert the buffer to a hex string and prepend '0x'
   return `0x${addressBuffer.toString("hex")}`;
+};
+
+/**
+ * Converts a base58 string to a bytes32 string.
+ */
+export const fromBase58ToBytes32 = (input: string): string => {
+  const decodedBytes = anchorUtils.bytes.bs58.decode(input);
+  return "0x" + Buffer.from(decodedBytes).toString("hex");
+};
+
+/**
+ * Converts a bytes32 string to an EVM address.
+ */
+export const fromBytes32ToAddress = (input: string): string => {
+  const hexString = input.startsWith("0x") ? input.slice(2) : input;
+
+  if (hexString.length !== 64) {
+    throw new Error("Invalid bytes32 string");
+  }
+
+  const address = hexString.slice(-40);
+
+  return "0x" + address;
 };
