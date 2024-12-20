@@ -159,14 +159,6 @@ export const getMessages = async (
     const response = await fetch(`${irisApiUrl}/messages/${srcDomain}/${txHash}`);
     attestationResponse = await response.json();
 
-    // Validate the response structure
-    try {
-      AttestationResponseStruct.assert(attestationResponse);
-    } catch (error) {
-      console.error("Invalid attestation response structure:", error);
-      throw new Error("Invalid attestation response structure");
-    }
-
     // Wait 2 seconds to avoid getting rate limited
     if (
       attestationResponse.error ||
@@ -175,6 +167,14 @@ export const getMessages = async (
     ) {
       await new Promise((r) => setTimeout(r, 2000));
     }
+  }
+
+  // Validate the response structure
+  try {
+    AttestationResponseStruct.assert(attestationResponse);
+  } catch (error) {
+    console.error("Invalid attestation response structure:", error);
+    throw new Error("Invalid attestation response structure");
   }
 
   return attestationResponse;
