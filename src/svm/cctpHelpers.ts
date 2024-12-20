@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { array, object, optional, string, Struct } from "superstruct";
 import { readUInt256BE } from "../../src/svm";
 
 // Index positions to decode Message Header from
@@ -115,11 +116,39 @@ export const encodeMessageHeader = (header: MessageHeader): Buffer => {
 };
 
 /**
- * Fetches attestation from attestation service given the txHash.
- * This is copied from CCTP example scripts, but would require proper type checking in production.
- * TODO: Add type checking in response from attestation service.
+ * Type for the attestation response from the attestation service.
  */
-export const getMessages = async (txHash: string, srcDomain: number, irisApiUrl: string) => {
+type AttestationResponse = {
+  error?: string;
+  messages: {
+    attestation: string;
+    message: string;
+    eventNonce: string;
+  }[];
+};
+
+/**
+ * Structure for the attestation response from the attestation service.
+ */
+const AttestationResponseStruct: Struct<AttestationResponse, any> = object({
+  error: optional(string()),
+  messages: array(
+    object({
+      attestation: string(),
+      message: string(),
+      eventNonce: string(),
+    })
+  ),
+});
+
+/**
+ * Fetches attestation from attestation service given the txHash.
+ */
+export const getMessages = async (
+  txHash: string,
+  srcDomain: number,
+  irisApiUrl: string
+): Promise<AttestationResponse> => {
   console.log("Fetching attestations and messages for tx...", txHash);
   let attestationResponse: any = {};
   while (
@@ -129,6 +158,15 @@ export const getMessages = async (txHash: string, srcDomain: number, irisApiUrl:
   ) {
     const response = await fetch(`${irisApiUrl}/messages/${srcDomain}/${txHash}`);
     attestationResponse = await response.json();
+
+    // Validate the response structure
+    try {
+      AttestationResponseStruct.assert(attestationResponse);
+    } catch (error) {
+      console.error("Invalid attestation response structure:", error);
+      throw new Error("Invalid attestation response structure");
+    }
+
     // Wait 2 seconds to avoid getting rate limited
     if (
       attestationResponse.error ||
