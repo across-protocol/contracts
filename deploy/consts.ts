@@ -176,6 +176,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.ZK_SYNC]: {
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
+    spokePoolPeripheryProxy: "0x2604C295565e4cd82CB8aa07c3ab5ed611E34f0E",
+    permit2: "0x0000000000225e31d15943971f47ad3022f714fa",
   },
   [CHAIN_IDs.OPTIMISM]: {
     cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",

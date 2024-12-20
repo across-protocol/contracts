@@ -16,7 +16,6 @@ import contractDeployments from "../deployments/deployments.json";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "SpokePoolV3Periphery";
-  const { deployer } = await hre.getNamedAccounts();
   const { network, deployments } = hre;
   const chainId = parseInt(await hre.getChainId());
 
@@ -27,16 +26,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const signer = zk.Wallet.fromMnemonic(getMnemonic());
   const deployer = new zkDeployer(hre, signer);
 
-  const ethAmount = 0;
-  const salt = "0x0000000000000000000000000000000000000000000000000000012345678910";
-
   // We know we are on ZkSync.
-  const create2FactoryAddress = L2_ADDRESS_MAP[chainId].create2Factory;
   const permit2 = L2_ADDRESS_MAP[chainId].permit2;
   const peripheryProxy = L2_ADDRESS_MAP[chainId].spokePoolPeripheryProxy;
 
   const peripheryArtifact = await deployer.loadArtifact(contractName);
-  const periphery = new Contract(create2FactoryAddress, peripheryArtifact.abi, deployer); // Address does not matter since we are just using the abi to encode function data.
+  const periphery = new Contract(spokePoolAddress, peripheryArtifact.abi, deployer.ethWallet); // Address does not matter since we are just using the abi to encode function data.
   const initializationCode = await periphery.populateTransaction.initialize(
     spokePoolAddress,
     WETH[chainId],
@@ -52,7 +47,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ...extendedArtifact,
   };
   await deployments.save(contractName, deployment);
-  console.log(deployer);
 
   await hre.run("verify:verify", { address: peripheryAddress });
 };
