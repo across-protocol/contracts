@@ -5,30 +5,30 @@
 
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import { getNodeUrl } from "@uma/common";
 // eslint-disable-next-line camelcase
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
-  evmAddressToPublicKey,
-  getMessageTransmitterProgram,
-  getSpokePoolProgram,
-  getTokenMessengerMinterProgram,
-} from "../../src/svm";
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
-// eslint-disable-next-line camelcase
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
-import { HubPool__factory } from "../../typechain";
-import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  evmAddressToPublicKey,
+  getMessages,
+  getMessageTransmitterProgram,
+  getSolanaChainId,
+  getSpokePoolProgram,
+  getTokenMessengerMinterProgram,
+  isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "./utils/constants";
-import { getSolanaChainId, isSolanaDevnet, requireEnv } from "./utils/helpers";
+} from "../../src/svm";
+import { HubPool__factory } from "../../typechain";
+import { requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 
 // Set up Solana provider.

@@ -7,9 +7,9 @@ import {
   PublicKey,
   SignaturesForAddressOptions,
 } from "@solana/web3.js";
+import { deserialize } from "borsh";
 import { EventType } from "../types/svm";
 import { publicKeyToEvmAddress } from "./conversionUtils";
-import { deserialize } from "borsh";
 
 /**
  * Finds a program address with a given label and optional extra seeds.

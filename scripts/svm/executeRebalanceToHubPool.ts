@@ -47,26 +47,30 @@ import { CHAIN_IDs } from "../../utils/constants";
 // eslint-disable-next-line camelcase
 import { HubPool__factory } from "../../typechain";
 import {
-  CIRCLE_IRIS_API_URL_DEVNET,
-  CIRCLE_IRIS_API_URL_MAINNET,
-  SOLANA_SPOKE_STATE_SEED,
-  SOLANA_USDC_DEVNET,
-  SOLANA_USDC_MAINNET,
-} from "./utils/constants";
-import {
   constructEmptyPoolRebalanceTree,
   constructSimpleRebalanceTreeToHubPool,
   formatUsdc,
-  getSolanaChainId,
-  isSolanaDevnet,
   requireEnv,
 } from "./utils/helpers";
 
 import { getNodeUrl, MerkleTree } from "@uma/common";
-import { getMessageTransmitterProgram, getSpokePoolProgram, loadExecuteRelayerRefundLeafParams } from "../../src/svm";
-import { SvmSpokeAnchor } from "../../src/svm/assets";
+import {
+  CIRCLE_IRIS_API_URL_DEVNET,
+  CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  getMessages,
+  getMessageTransmitterProgram,
+  getSolanaChainId,
+  getSpokePoolProgram,
+  isSolanaDevnet,
+  loadExecuteRelayerRefundLeafParams,
+  SOLANA_SPOKE_STATE_SEED,
+  SOLANA_USDC_DEVNET,
+  SOLANA_USDC_MAINNET,
+  SvmSpokeAnchor,
+} from "../../src/svm";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
+
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);

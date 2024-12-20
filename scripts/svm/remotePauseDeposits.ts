@@ -10,16 +10,19 @@ import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getMessageTransmitterProgram, getSpokePoolProgram } from "../../src/svm";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
-import { CHAIN_IDs } from "../../utils/constants";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  getMessages,
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
+  isSolanaDevnet,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
-} from "./utils/constants";
-import { isSolanaDevnet, requireEnv } from "./utils/helpers";
+} from "../../src/svm";
+import { CHAIN_IDs } from "../../utils/constants";
+import { requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
