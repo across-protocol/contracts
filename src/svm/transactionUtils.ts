@@ -52,7 +52,10 @@ export async function sendTransactionWithLookupTable(
       addresses: lookupAddresses.slice(i, i + maxExtendedAccounts),
     });
 
-    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [sender]);
+    await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(extendInstruction), [sender], {
+      commitment: "confirmed",
+      skipPreflight: true,
+    });
   }
 
   // Wait for slot to advance. LUTs only active after slot advance.
