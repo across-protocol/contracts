@@ -87,6 +87,7 @@ const config: HardhatUserConfig = {
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -188,6 +189,13 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
+    },
+    ink: {
+      chainId: CHAIN_IDs.INK,
+      url: "https://rpc-gel.inkonchain.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
     },
     linea: {
       chainId: CHAIN_IDs.LINEA,
@@ -323,6 +331,7 @@ const config: HardhatUserConfig = {
       zora: "routescan",
       worldchain: "blockscout",
       alephzero: "blockscout",
+      ink: "blockscout",
     },
     customChains: [
       {
@@ -347,6 +356,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.basescan.org/api",
           browserURL: "https://sepolia.basescan.org",
+        },
+      },
+      {
+        network: "ink",
+        chainId: CHAIN_IDs.INK,
+        urls: {
+          apiURL: "https://explorer.inkonchain.com/api",
+          browserURL: "https://explorer.inkonchain.com",
         },
       },
       {
