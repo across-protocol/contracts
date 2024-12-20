@@ -20,6 +20,9 @@ const MINT_RECIPIENT_INDEX = 36;
 const AMOUNT_INDEX = 68;
 const MESSAGE_SENDER_INDEX = 100;
 
+/**
+ * Type for the body of a TokenMessenger message.
+ */
 export type TokenMessengerMessageBody = {
   version: number;
   burnToken: anchor.web3.PublicKey;
@@ -28,16 +31,9 @@ export type TokenMessengerMessageBody = {
   messageSender: anchor.web3.PublicKey;
 };
 
-export const decodeMessageSentData = (message: Buffer) => {
-  const messageHeader = decodeMessageHeader(message);
-
-  const messageBodyData = message.slice(MESSAGE_BODY_INDEX);
-
-  const messageBody = decodeTokenMessengerMessageBody(messageBodyData);
-
-  return { ...messageHeader, messageBody };
-};
-
+/**
+ * Type for the header of a CCTP message.
+ */
 export type MessageHeader = {
   version: number;
   sourceDomain: number;
@@ -49,6 +45,22 @@ export type MessageHeader = {
   messageBody: Buffer;
 };
 
+/**
+ * Decodes a CCTP message into a MessageHeader and TokenMessengerMessageBody.
+ */
+export const decodeMessageSentData = (message: Buffer) => {
+  const messageHeader = decodeMessageHeader(message);
+
+  const messageBodyData = message.slice(MESSAGE_BODY_INDEX);
+
+  const messageBody = decodeTokenMessengerMessageBody(messageBodyData);
+
+  return { ...messageHeader, messageBody };
+};
+
+/**
+ * Decodes a CCTP message header.
+ */
 export const decodeMessageHeader = (data: Buffer): MessageHeader => {
   const version = data.readUInt32BE(HEADER_VERSION_INDEX);
   const sourceDomain = data.readUInt32BE(SOURCE_DOMAIN_INDEX);
@@ -72,6 +84,9 @@ export const decodeMessageHeader = (data: Buffer): MessageHeader => {
   };
 };
 
+/**
+ * Decodes a TokenMessenger message body.
+ */
 export const decodeTokenMessengerMessageBody = (data: Buffer): TokenMessengerMessageBody => {
   const version = data.readUInt32BE(BODY_VERSION_INDEX);
   const burnToken = new anchor.web3.PublicKey(data.slice(BURN_TOKEN_INDEX, BURN_TOKEN_INDEX + 32));
@@ -81,6 +96,9 @@ export const decodeTokenMessengerMessageBody = (data: Buffer): TokenMessengerMes
   return { version, burnToken, mintRecipient, amount, messageSender };
 };
 
+/**
+ * Encodes a MessageHeader into a Buffer.
+ */
 export const encodeMessageHeader = (header: MessageHeader): Buffer => {
   const message = Buffer.alloc(MESSAGE_BODY_INDEX + header.messageBody.length);
 
@@ -96,8 +114,11 @@ export const encodeMessageHeader = (header: MessageHeader): Buffer => {
   return message;
 };
 
-// Fetches attestation from attestation service given the txHash.
-// This is copied from CCTP example scripts, but would require proper type checking in production.
+/**
+ * Fetches attestation from attestation service given the txHash.
+ * This is copied from CCTP example scripts, but would require proper type checking in production.
+ * TODO: Add type checking in response from attestation service.
+ */
 export const getMessages = async (txHash: string, srcDomain: number, irisApiUrl: string) => {
   console.log("Fetching attestations and messages for tx...", txHash);
   let attestationResponse: any = {};

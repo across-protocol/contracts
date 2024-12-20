@@ -6,17 +6,22 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
+import { getNodeUrl } from "@uma/common";
 import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getNodeUrl } from "@uma/common";
+import {
+  CIRCLE_IRIS_API_URL_DEVNET,
+  CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  getMessages,
+  isSolanaDevnet,
+} from "../../src/svm";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import { HubPool__factory } from "../../typechain";
-import { CIRCLE_IRIS_API_URL_DEVNET, CIRCLE_IRIS_API_URL_MAINNET } from "./utils/constants";
-import { isSolanaDevnet, requireEnv } from "./utils/helpers";
+import { requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();

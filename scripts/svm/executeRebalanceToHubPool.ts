@@ -49,25 +49,26 @@ import { CHAIN_IDs } from "../../utils/constants";
 // eslint-disable-next-line camelcase
 import { HubPool__factory } from "../../typechain";
 import {
-  CIRCLE_IRIS_API_URL_DEVNET,
-  CIRCLE_IRIS_API_URL_MAINNET,
-  SOLANA_SPOKE_STATE_SEED,
-  SOLANA_USDC_DEVNET,
-  SOLANA_USDC_MAINNET,
-} from "./utils/constants";
-import {
   constructEmptyPoolRebalanceTree,
   constructSimpleRebalanceTreeToHubPool,
   formatUsdc,
-  getSolanaChainId,
   requireEnv,
-  isSolanaDevnet,
 } from "./utils/helpers";
 
 import { getNodeUrl, MerkleTree } from "@uma/common";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
+import {
+  CIRCLE_IRIS_API_URL_DEVNET,
+  CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  getMessages,
+  getSolanaChainId,
+  isSolanaDevnet,
+  loadExecuteRelayerRefundLeafParams,
+  SOLANA_SPOKE_STATE_SEED,
+  SOLANA_USDC_DEVNET,
+  SOLANA_USDC_MAINNET,
+} from "../../src/svm";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { loadExecuteRelayerRefundLeafParams } from "../../src/svm";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
