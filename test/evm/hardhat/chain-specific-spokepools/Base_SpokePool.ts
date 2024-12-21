@@ -8,7 +8,6 @@ let hubPool: Contract, spokePool: Contract, weth: Contract, usdc: Contract;
 let owner: SignerWithAddress;
 let cctpTokenMessenger: FakeContract;
 
-// ABI for CCTP Token Messenger
 const tokenMessengerAbi = [
   {
     inputs: [],
@@ -25,12 +24,10 @@ describe("Base Spoke Pool", function () {
     ({ weth, usdc, hubPool } = await hubPoolFixture());
 
     cctpTokenMessenger = await smock.fake(tokenMessengerAbi);
-    cctpTokenMessenger.localToken.returns(usdc.address);
 
-    // Deploy Base SpokePool
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Base_SpokePool", owner),
-      [0, hubPool.address, hubPool.address],
+      [0, owner.address, hubPool.address],
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
@@ -40,21 +37,26 @@ describe("Base Spoke Pool", function () {
   });
 
   describe("Initialization", function () {
-    it("Should initialize with correct parameters", async function () {
-      expect(await spokePool._l2Usdc).to.equal(usdc.address);
+    it("Should initialize with correct constructor parameters", async function () {
+      expect(await spokePool.wrappedNativeToken()).to.equal(weth.address);
+      expect(await spokePool.usdcToken()).to.equal(usdc.address);
       expect(await spokePool.cctpTokenMessenger()).to.equal(cctpTokenMessenger.address);
     });
 
-    it("Should start with deposit ID 0", async function () {
+    it("Should initialize with correct proxy parameters", async function () {
       expect(await spokePool.numberOfDeposits()).to.equal(0);
+      expect(await spokePool.crossDomainAdmin()).to.equal(owner.address);
+      expect(await spokePool.withdrawalRecipient()).to.equal(hubPool.address);
+    });
+
+    it("Should initialize with correct OVM_ETH", async function () {
+      expect(await spokePool.l2Eth()).to.equal("0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000");
     });
   });
 
   describe("Error cases", function () {
-    it("Should revert if trying to initialize twice", async function () {
-      await expect(spokePool.initialize(0, hubPool.address, hubPool.address)).to.be.revertedWith(
-        "Initializable: contract is already initialized"
-      );
+    it("Should revert on reinitialization", async function () {
+      await expect(spokePool.connect(owner).initialize(0, owner.address, hubPool.address)).to.be.reverted;
     });
   });
 });
