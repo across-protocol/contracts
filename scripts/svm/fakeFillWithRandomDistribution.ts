@@ -220,7 +220,7 @@ async function fillV3RelayToRandom(): Promise<void> {
     .instruction();
 
   // Fill using the ALT.
-  const { txSignature } = await sendTransactionWithLookupTable(
+  const txSignature = await sendTransactionWithLookupTable(
     provider.connection,
     [approveInstruction, fillInstruction],
     signer

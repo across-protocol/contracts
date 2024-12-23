@@ -1,8 +1,9 @@
-import { Keypair, TransactionInstruction, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
+import { Keypair, TransactionInstruction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
 import { Program, BN } from "@coral-xyz/anchor";
 import { RelayData, SlowFillLeaf, RelayerRefundLeafSolana } from "../types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { LargeAccountsCoder } from "./coders";
+import { createTransactionWithComputeBudget } from "./transactionUtils";
 
 /**
  * Loads execute relayer refund leaf parameters.
@@ -43,7 +44,11 @@ export async function loadExecuteRelayerRefundLeafParams(
 /**
  * Closes the instruction parameters account.
  */
-export async function closeInstructionParams(program: Program<SvmSpoke>, signer: Keypair) {
+export async function closeInstructionParams(
+  program: Program<SvmSpoke>,
+  signer: Keypair,
+  priorityFeePrice?: number | bigint
+) {
   const [instructionParams] = PublicKey.findProgramAddressSync(
     [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
     program.programId
@@ -51,7 +56,14 @@ export async function closeInstructionParams(program: Program<SvmSpoke>, signer:
   const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
   if (accountInfo !== null) {
     const closeIx = await program.methods.closeInstructionParams().accounts({ signer: signer.publicKey }).instruction();
-    await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(closeIx), [signer]);
+    await sendAndConfirmTransaction(
+      program.provider.connection,
+      createTransactionWithComputeBudget([closeIx], priorityFeePrice),
+      [signer],
+      {
+        commitment: "confirmed",
+      }
+    );
   }
 }
 
@@ -99,10 +111,11 @@ export async function loadFillV3RelayParams(
   signer: Keypair,
   relayData: RelayData,
   repaymentChainId: BN,
-  repaymentAddress: PublicKey
+  repaymentAddress: PublicKey,
+  priorityFeePrice?: number | bigint
 ) {
   // Close the instruction params account if the caller has used it before.
-  await closeInstructionParams(program, signer);
+  await closeInstructionParams(program, signer, priorityFeePrice);
 
   // Execute load instructions sequentially.
   const { loadInstructions } = await createFillV3RelayParamsInstructions(
@@ -113,16 +126,28 @@ export async function loadFillV3RelayParams(
     repaymentAddress
   );
   for (let i = 0; i < loadInstructions.length; i += 1) {
-    await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(loadInstructions[i]), [signer]);
+    await sendAndConfirmTransaction(
+      program.provider.connection,
+      createTransactionWithComputeBudget([loadInstructions[i]], priorityFeePrice),
+      [signer],
+      {
+        commitment: "confirmed",
+      }
+    );
   }
 }
 
 /**
  * Loads requestV3 slow fill parameters.
  */
-export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
+export async function loadRequestV3SlowFillParams(
+  program: Program<SvmSpoke>,
+  signer: Keypair,
+  relayData: RelayData,
+  priorityFeePrice?: number | bigint
+) {
   // Close the instruction params account if the caller has used it before.
-  await closeInstructionParams(program, signer);
+  await closeInstructionParams(program, signer, priorityFeePrice);
 
   // Execute load instructions sequentially.
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
@@ -159,10 +184,11 @@ export async function loadExecuteV3SlowRelayLeafParams(
   signer: Keypair,
   slowFillLeaf: SlowFillLeaf,
   rootBundleId: number,
-  proof: number[][]
+  proof: number[][],
+  priorityFeePrice?: number | bigint
 ) {
   // Close the instruction params account if the caller has used it before.
-  await closeInstructionParams(program, signer);
+  await closeInstructionParams(program, signer, priorityFeePrice);
 
   // Execute load instructions sequentially.
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
