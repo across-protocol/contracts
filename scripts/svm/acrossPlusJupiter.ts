@@ -10,8 +10,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { formatUsdc, getSolanaChainId, isSolanaDevnet, parseUsdc } from "./utils/helpers";
-import { SOLANA_SPOKE_STATE_SEED, SOLANA_USDC_MAINNET } from "./utils/constants";
+import { formatUsdc, parseUsdc } from "./utils/helpers";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   createApproveCheckedInstruction,
@@ -31,6 +30,10 @@ import {
   MulticallHandlerCoder,
   prependComputeBudget,
   sendTransactionWithLookupTable,
+  getSolanaChainId,
+  isSolanaDevnet,
+  SOLANA_SPOKE_STATE_SEED,
+  SOLANA_USDC_MAINNET,
 } from "../../src/svm";
 import { CHAIN_IDs } from "../../utils/constants";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
