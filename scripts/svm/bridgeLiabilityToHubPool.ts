@@ -34,20 +34,21 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
+  getMessages,
+  isSolanaDevnet,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "./utils/constants";
+} from "../../src/svm";
 
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { getMessages } from "../../test/svm/cctpHelpers";
 import { BondToken__factory } from "../../typechain";
-import { formatUsdc, requireEnv, isSolanaDevnet } from "./utils/helpers";
+import { formatUsdc, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
