@@ -4,45 +4,22 @@ pragma solidity ^0.8.0;
 import { SpokePoolV3PeripheryInterface } from "../interfaces/SpokePoolV3PeripheryInterface.sol";
 
 library PeripherySigningLib {
-    bytes internal constant EIP712_FEES_TYPE = abi.encodePacked("Fees(", "uint256 amount", "address recipient)");
-    // Typed structured data for the structs to sign against in the periphery.
-    bytes internal constant EIP712_BASE_DEPOSIT_DATA_TYPE =
-        abi.encodePacked(
-            "BaseDepositData(",
-            "address inputToken",
-            "address outputToken",
-            "uint256 outputAmount",
-            "address depositor",
-            "address recipient",
-            "uint256 destinationChainId",
-            "address exclusiveRelayer",
-            "uint32 quoteTimestamp",
-            "uint32 fillDeadline",
-            "uint32 exclusivityParameter",
-            "bytes message)"
-        );
-    bytes internal constant EIP712_DEPOSIT_DATA_TYPE =
-        abi.encodePacked("DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount)");
-    bytes internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
-        abi.encodePacked(
-            "SwapAndDepositData(",
-            "Fees submissionFees",
-            "BaseDepositData depositData",
-            "address swapToken",
-            "address exchange",
-            "TransferType transferType",
-            "uint256 swapTokenAmount",
-            "uint256 minExpectedInputTokenAmount",
-            "bytes routerCalldata)"
-        );
+    string internal constant EIP712_FEES_TYPE = "Fees(uint256 amount,address recipient)";
+    string internal constant EIP712_BASE_DEPOSIT_DATA_TYPE =
+        "BaseDepositData(address inputToken,address outputToken,uint256 outputAmount,address depositor,address recipient,uint256 destinationChainId,address exclusiveRelayer,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes message)";
+    string internal constant EIP712_DEPOSIT_DATA_TYPE =
+        "DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount)";
+    string internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
+        "SwapAndDepositData(Fees submissionFees,BaseDepositData depositData,address swapToken,address exchange,TransferType transferType,uint256 swapTokenAmount,uint256 minExpectedInputTokenAmount,bytes routerCalldata)";
 
     // EIP712 Type hashes.
-    bytes32 internal constant EIP712_FEES_TYPEHASH = keccak256(EIP712_FEES_TYPE);
-    bytes32 internal constant EIP712_BASE_DEPOSIT_DATA_TYPEHASH = keccak256(EIP712_BASE_DEPOSIT_DATA_TYPE);
+    bytes32 internal constant EIP712_FEES_TYPEHASH = keccak256(abi.encodePacked(EIP712_FEES_TYPE));
+    bytes32 internal constant EIP712_BASE_DEPOSIT_DATA_TYPEHASH =
+        keccak256(abi.encodePacked(EIP712_BASE_DEPOSIT_DATA_TYPE));
     bytes32 internal constant EIP712_DEPOSIT_DATA_TYPEHASH =
-        keccak256(abi.encode(EIP712_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE));
+        keccak256(abi.encodePacked(EIP712_DEPOSIT_DATA_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE));
     bytes32 internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPEHASH =
-        keccak256(abi.encode(EIP712_SWAP_AND_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE));
+        keccak256(abi.encodePacked(EIP712_SWAP_AND_DEPOSIT_DATA_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE));
 
     // EIP712 Type strings.
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
@@ -50,8 +27,8 @@ library PeripherySigningLib {
         string(
             abi.encodePacked(
                 "SwapAndDepositData witness)",
-                EIP712_FEES_TYPE,
                 EIP712_BASE_DEPOSIT_DATA_TYPE,
+                EIP712_FEES_TYPE,
                 EIP712_SWAP_AND_DEPOSIT_DATA_TYPE,
                 TOKEN_PERMISSIONS_TYPE
             )
@@ -60,9 +37,9 @@ library PeripherySigningLib {
         string(
             abi.encodePacked(
                 "DepositData witness)",
-                EIP712_FEES_TYPE,
                 EIP712_BASE_DEPOSIT_DATA_TYPE,
                 EIP712_DEPOSIT_DATA_TYPE,
+                EIP712_FEES_TYPE,
                 TOKEN_PERMISSIONS_TYPE
             )
         );
