@@ -24,11 +24,13 @@ remappings = [
 ]
 via_ir = true
 optimizer_runs = 1_000_000
-solc_version = "0.8.25"
+solc_version = "0.8.23"
 revert_strings = "strip"
 
-solc = "0.8.25"
-evm_version = "shanghai"
+solc = "0.8.23"
+
+[profile.default.zksync]
+zksolc = "1.5.2"
 
 [rpc_endpoints]
 ethereum = "${NODE_URL_1}"

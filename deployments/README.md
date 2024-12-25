@@ -51,8 +51,8 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 | Contract Name    | Address                                                                                                                     |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| zkSync_SpokePool | [0xE0B015E54d54fc84a6cB9B666099c46adE9335FF](https://explorer.zksync.io/address/0xE0B015E54d54fc84a6cB9B666099c46adE9335FF) |
-| MulticallHandler | [0x863859ef502F0Ee9676626ED5B418037252eFeb2](https://explorer.zksync.io/address/0x863859ef502F0Ee9676626ED5B418037252eFeb2) |
+| zkSync_SpokePool | [0xE0B015E54d54fc84a6cB9B666099c46adE9335FF](https://era.zksync.network/address/0xE0B015E54d54fc84a6cB9B666099c46adE9335FF) |
+| MulticallHandler | [0x863859ef502F0Ee9676626ED5B418037252eFeb2](https://era.zksync.network/address/0x863859ef502F0Ee9676626ED5B418037252eFeb2) |
 
 ## Arbitrum mainnet (42161)
 
@@ -133,7 +133,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Ink mainnet (57073)
 
-| Contract Name | Address                                                                                                                          |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Ink_SpokePool | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
-| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name    | Address                                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Ink_SpokePool    | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
