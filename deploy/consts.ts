@@ -151,7 +151,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
+    spokePoolPeripheryProxy: "0x2d5E44b66bD40267fb816c9537E026545bEbbAC8",
   },
   [CHAIN_IDs.BLAST]: {
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
@@ -186,7 +186,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
+    spokePoolPeripheryProxy: "0x2d5E44b66bD40267fb816c9537E026545bEbbAC8",
   },
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
@@ -200,7 +200,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     create2Factory: "0x22dAe400e0F6a330610F3060Be894ab33f9caED0",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-    spokePoolPeripheryProxy: "0x1E52502C5d559b81E3b5Afb901764f576830f5d6",
+    spokePoolPeripheryProxy: "0x2d5E44b66bD40267fb816c9537E026545bEbbAC8",
   },
   [CHAIN_IDs.BASE_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
