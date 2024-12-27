@@ -11,6 +11,7 @@ describe("AlephZero Spoke Pool", function () {
   let usdc: Contract;
   let owner: SignerWithAddress;
   let cctpTokenMessenger: FakeContract;
+  let mockL2Gateway: FakeContract;
 
   const depositQuoteTimeBuffer = 60 * 60;
   const fillDeadlineBuffer = 9 * 60 * 60;
@@ -25,14 +26,36 @@ describe("AlephZero Spoke Pool", function () {
     },
   ];
 
+  const l2GatewayAbi = [
+    {
+      inputs: [
+        { name: "_l1Token", type: "address" },
+        { name: "_to", type: "address" },
+        { name: "_amount", type: "uint256" },
+        { name: "_data", type: "bytes" },
+      ],
+      name: "outboundTransfer",
+      outputs: [{ name: "", type: "bytes" }],
+      stateMutability: "payable",
+      type: "function",
+    },
+  ];
+
   beforeEach(async function () {
     [owner] = await ethers.getSigners();
     ({ weth, usdc, hubPool } = await hubPoolFixture());
+
     cctpTokenMessenger = await smock.fake(tokenMessengerAbi);
+    mockL2Gateway = await smock.fake(l2GatewayAbi);
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("AlephZero_SpokePool", owner),
-      [0, owner.address, hubPool.address],
+      [
+        0, // _initialDepositId
+        mockL2Gateway.address, // _l2GatewayRouter
+        owner.address, // _crossDomainAdmin
+        hubPool.address, // _withdrawalRecipient
+      ],
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
