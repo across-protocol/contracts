@@ -29,8 +29,6 @@ export async function deploySpokePool(
   destErc20: Contract;
   erc1271: Contract;
 }> {
-  // Silence the `unsafeDelegatecall` warning.
-  hre.upgrades.silenceWarnings();
   const [deployerWallet, crossChainAdmin, hubPool] = await ethers.getSigners();
 
   // Create tokens:

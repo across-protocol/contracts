@@ -9,8 +9,6 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
 });
 
 export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool") {
-  // Suppress `unsafeDelegatecall` warnings from the spoke pool.
-  hre.upgrades.silenceWarnings();
   const [signer, crossChainAdmin] = await ethers.getSigners();
 
   // This fixture is dependent on the UMA ecosystem fixture. Run it first and grab the output. This is used in the
