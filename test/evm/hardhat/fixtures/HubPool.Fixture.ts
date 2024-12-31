@@ -8,8 +8,10 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   return await deployHubPool(ethers);
 });
 
+// Silence warnings from openzeppelin/hardhat-upgrades for this fixture.
+hre.upgrades.silenceWarnings();
+
 export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool") {
-  hre.upgrades.silenceWarnings();
   const [signer, crossChainAdmin] = await ethers.getSigners();
 
   // This fixture is dependent on the UMA ecosystem fixture. Run it first and grab the output. This is used in the
