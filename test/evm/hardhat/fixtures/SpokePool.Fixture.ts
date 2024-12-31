@@ -15,6 +15,7 @@ import { RelayerRefundLeaf } from "../MerkleLib.utils";
 export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers }) => {
   return await deploySpokePool(ethers);
 });
+hre.upgrades.silenceWarnings();
 
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
