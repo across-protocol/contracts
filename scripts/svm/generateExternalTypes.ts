@@ -1,4 +1,3 @@
-/* eslint-disable no-process-exit */
 import * as anchor from "@coral-xyz/anchor";
 import { exec } from "child_process";
 import * as fs from "fs";

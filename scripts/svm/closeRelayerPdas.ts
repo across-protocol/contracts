@@ -1,5 +1,3 @@
-/* eslint-disable node/no-missing-require */
-/* eslint-disable node/no-missing-import */
 // This script closes all Relayer PDAs associated with tracking fill Status. Relayers should do this periodically to
 // reclaim the lamports within these tracking accounts. Fill Status PDAs can be closed on the deposit has expired.
 import * as anchor from "@coral-xyz/anchor";

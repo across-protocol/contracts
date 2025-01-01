@@ -1,5 +1,3 @@
-/* eslint-disable node/no-missing-require */
-/* eslint-disable node/no-missing-import */
 /* eslint-disable camelcase */
 /**
  * Script: Bridge USDC Liability to Hub Pool

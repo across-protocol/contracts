@@ -13,6 +13,13 @@ module.exports = {
   },
   rules: {
     "node/no-unsupported-features/es-syntax": ["error", { ignores: ["modules"] }],
+    "node/no-missing-import": [
+      "error",
+      {
+        tryExtensions: [".js", ".ts"],
+        resolvePaths: ["."],
+      },
+    ],
     "mocha/no-exclusive-tests": "error",
     "@typescript-eslint/no-var-requires": 0,
   },
