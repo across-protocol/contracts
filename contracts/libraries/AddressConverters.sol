@@ -8,7 +8,7 @@ library Bytes32ToAddress {
     error InvalidBytes32();
 
     function toAddress(bytes32 _bytes32) internal pure returns (address) {
-        if (uint256(_bytes32) >> 192 != 0) {
+        if (uint256(_bytes32) >> 160 != 0) {
             revert InvalidBytes32();
         }
         return address(uint160(uint256(_bytes32)));
