@@ -43,8 +43,6 @@ import {
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import { CHAIN_IDs } from "../../utils/constants";
 // eslint-disable-next-line camelcase
 import { HubPool__factory } from "../../typechain";
@@ -61,12 +59,15 @@ import {
   CIRCLE_IRIS_API_URL_MAINNET,
   decodeMessageHeader,
   getMessages,
+  getMessageTransmitterProgram,
   getSolanaChainId,
+  getSpokePoolProgram,
   isSolanaDevnet,
   loadExecuteRelayerRefundLeafParams,
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
+  SvmSpokeAnchor,
 } from "../../src/svm";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
@@ -75,10 +76,9 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+
+const svmSpokeProgram = getSpokePoolProgram(provider);
+const messageTransmitterProgram = getMessageTransmitterProgram(provider);
 
 const [messageTransmitterState] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter")],
@@ -340,7 +340,7 @@ async function executeRootBalanceOnHubPool(solanaChainId: BigNumber) {
 
 async function executeRelayerRefundLeaf(
   signer: anchor.Wallet,
-  program: Program<SvmSpoke>,
+  program: Program<SvmSpokeAnchor>,
   statePda: PublicKey,
   rootBundle: PublicKey,
   relayerRefundLeaf: RelayerRefundLeafSolana,
