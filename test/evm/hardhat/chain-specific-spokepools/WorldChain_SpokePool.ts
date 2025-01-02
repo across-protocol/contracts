@@ -1,7 +1,16 @@
-import { ethers, expect, Contract, FakeContract, SignerWithAddress, getContractFactory } from "../../../../utils/utils";
+import {
+  ethers,
+  expect,
+  Contract,
+  FakeContract,
+  SignerWithAddress,
+  getContractFactory,
+  createFakeFromABI,
+} from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { smock } from "@defi-wonderland/smock";
+import { CCTPTokenMessengerInterface, IOpUSDCBridgeAdapterAbi } from "../../../../utils/abis";
 
 describe("WorldChain Spoke Pool", function () {
   let hubPool: Contract, spokePool: Contract, weth: Contract, usdc: Contract;
@@ -11,36 +20,12 @@ describe("WorldChain Spoke Pool", function () {
 
   const USDC_BRIDGE = "0xbD80b06d3dbD0801132c6689429aC09Ca6D27f82";
 
-  const tokenMessengerAbi = [
-    {
-      inputs: [],
-      name: "localToken",
-      outputs: [{ internalType: "address", name: "", type: "address" }],
-      stateMutability: "view",
-      type: "function",
-    },
-  ];
-
-  const usdcBridgeAdapterAbi = [
-    {
-      inputs: [
-        { internalType: "address", name: "_to", type: "address" },
-        { internalType: "uint256", name: "_amount", type: "uint256" },
-        { internalType: "uint32", name: "_minGasLimit", type: "uint32" },
-      ],
-      name: "sendMessage",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-  ];
-
   beforeEach(async function () {
     [owner] = await ethers.getSigners();
     ({ weth, usdc, hubPool } = await hubPoolFixture());
 
-    cctpTokenMessenger = await smock.fake(tokenMessengerAbi);
-    usdcBridgeAdapter = await smock.fake(usdcBridgeAdapterAbi, { address: USDC_BRIDGE });
+    cctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    usdcBridgeAdapter = await createFakeFromABI(IOpUSDCBridgeAdapterAbi, USDC_BRIDGE);
 
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("WorldChain_SpokePool", owner),
@@ -72,7 +57,7 @@ describe("WorldChain Spoke Pool", function () {
   });
 
   describe("USDC Bridging", function () {
-    const amountToReturn = ethers.utils.parseUnits("1000", 6); // 1000 USDC
+    const amountToReturn = ethers.utils.parseUnits("1000", 6);
 
     beforeEach(async function () {
       // Mint USDC to SpokePool
@@ -80,17 +65,17 @@ describe("WorldChain Spoke Pool", function () {
     });
 
     it("Should use USDC bridge when CCTP is not enabled", async function () {
-      console.log(spokePool);
-      // Mock that CCTP is not enabled
-      await spokePool.setCCTPEnabled(false);
+      // Use the existing tokenBridges function to check CCTP status
+      const usdcBridgeAddress = await spokePool.tokenBridges(usdc.address);
 
-      // Call internal function through a test helper or event
-      await spokePool.testBridgeTokensToHubPool(amountToReturn, usdc.address);
+      // Set the bridge if needed
+      if (usdcBridgeAddress !== USDC_BRIDGE) {
+        await spokePool.setTokenBridge(usdc.address, USDC_BRIDGE);
+      }
 
-      // Verify USDC allowance was increased
+      await spokePool._bridgeTokensToHubPool(amountToReturn, usdc.address);
+
       expect(await usdc.allowance(spokePool.address, USDC_BRIDGE)).to.equal(amountToReturn);
-
-      // Verify bridge adapter was called with correct parameters
       expect(usdcBridgeAdapter.sendMessage).to.have.been.calledWith(
         hubPool.address,
         amountToReturn,
@@ -99,14 +84,14 @@ describe("WorldChain Spoke Pool", function () {
     });
 
     it("Should use CCTP when enabled", async function () {
-      // Mock that CCTP is enabled
-      await spokePool.setCCTPEnabled(true);
+      // Instead of setting CCTP enabled/disabled directly,
+      // we can use the token bridge configuration
+      await spokePool.setTokenBridge(usdc.address, cctpTokenMessenger.address);
 
-      await spokePool.testBridgeTokensToHubPool(amountToReturn, usdc.address);
+      await spokePool._bridgeTokensToHubPool(amountToReturn, usdc.address);
 
-      // Verify CCTP messenger was used instead of USDC bridge
       expect(usdcBridgeAdapter.sendMessage).to.not.have.been.called;
-      // Add assertions for CCTP messenger calls based on parent contract implementation
+      // Add assertions for CCTP messenger calls
     });
 
     it("Should use standard bridge for non-USDC tokens", async function () {
@@ -114,7 +99,9 @@ describe("WorldChain Spoke Pool", function () {
       await weth.deposit({ value: wethAmount });
       await weth.transfer(spokePool.address, wethAmount);
 
-      await spokePool.testBridgeTokensToHubPool(wethAmount, weth.address);
+      // This will use the standard bridge
+      // Use the existing bridging function
+      await spokePool._bridgeTokensToHubPool(wethAmount, weth.address);
 
       expect(usdcBridgeAdapter.sendMessage).to.not.have.been.called;
     });
