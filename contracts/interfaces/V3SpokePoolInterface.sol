@@ -259,6 +259,8 @@ interface V3SpokePoolInterface {
         bytes32[] calldata proof
     ) external;
 
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external;
+
     /**************************************
      *              ERRORS                *
      **************************************/
