@@ -12,15 +12,15 @@ import {
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { SlowFillLeaf } from "../../src/types/svm";
 import {
-  intToU8Array32,
-  slowFillHashFn,
-  SlowFillLeaf,
-  readProgramEvents,
   calculateRelayHashUint8Array,
-  testAcrossPlusMessage,
-} from "./utils";
-import { hashNonEmptyMessage } from "../../src/SvmUtils";
+  hashNonEmptyMessage,
+  intToU8Array32,
+  readEventsUntilFound,
+  slowFillHashFn,
+} from "../../src/svm";
+import { testAcrossPlusMessage } from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
 const { recipient, setCurrentTime, assertSE, assert } = common;
@@ -197,11 +197,14 @@ describe("svm_spoke.slow_fill", () => {
     // Set the contract time to be after the exclusivityDeadline
     await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
-    await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+    const tx = await program.methods
+      .requestV3SlowFill(relayHash, relayData)
+      .accounts(requestAccounts)
+      .signers([relayer])
+      .rpc();
 
     // Fetch and verify the RequestedV3SlowFill event
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "requestedV3SlowFill")?.data;
     assert.isNotNull(event, "RequestedV3SlowFill event should be emitted");
 
@@ -353,7 +356,9 @@ describe("svm_spoke.slow_fill", () => {
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
     const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
-    await sendAndConfirmTransaction(connection, new Transaction().add(computeBudgetInstruction, ix), [payer]);
+    const tx = await sendAndConfirmTransaction(connection, new Transaction().add(computeBudgetInstruction, ix), [
+      payer,
+    ]);
 
     // Verify the results
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -371,8 +376,7 @@ describe("svm_spoke.slow_fill", () => {
     );
 
     // Fetch and verify the FilledV3Relay event
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(event, "FilledV3Relay event should be emitted");
 
@@ -632,7 +636,7 @@ describe("svm_spoke.slow_fill", () => {
     );
 
     // Request V3 slow fill
-    await program.methods
+    const tx1 = await program.methods
       .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
@@ -651,20 +655,21 @@ describe("svm_spoke.slow_fill", () => {
       recipientTokenAccount: recipientTA,
       program: program.programId,
     };
-    await program.methods
+    const tx2 = await program.methods
       .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .rpc();
 
     // Fetch and verify message hash in the RequestedV3SlowFill and FilledV3Relay events
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
-    const requestEvent = events.find((event) => event.name === "requestedV3SlowFill")?.data;
-    const fillEvent = events.find((event) => event.name === "filledV3Relay")?.data;
+    const requestEvents = await readEventsUntilFound(connection, tx1, [program]);
+    const requestEvent = requestEvents.find((event) => event.name === "requestedV3SlowFill")?.data;
     assert.isNotNull(requestEvent, "RequestedV3SlowFill event should be emitted");
-    assert.isNotNull(fillEvent, "FilledV3Relay event should be emitted");
     assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
+
+    const fillEvents = await readEventsUntilFound(connection, tx2, [program]);
+    const fillEvent = fillEvents.find((event) => event.name === "filledV3Relay")?.data;
+    assert.isNotNull(fillEvent, "FilledV3Relay event should be emitted");
     assertSE(fillEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
     assertSE(
       fillEvent.relayExecutionInfo.updatedMessageHash,

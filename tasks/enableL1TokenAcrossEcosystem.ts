@@ -1,46 +1,8 @@
 import { task } from "hardhat/config";
 import assert from "assert";
-import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
-
-type TokenSymbol = keyof typeof TOKEN_SYMBOLS_MAP;
-
-/**
- * Given a token symbol, determine whether it is a valid key for the TOKEN_SYMBOLS_MAP object.
- */
-function isTokenSymbol(symbol: unknown): symbol is TokenSymbol {
-  return TOKEN_SYMBOLS_MAP[symbol as TokenSymbol] !== undefined;
-}
-
-/**
- * Given a token symbol from the HubPool chain and a remote chain ID, resolve the relevant token symbol and address.
- */
-function resolveTokenOnChain(
-  mainnetSymbol: string,
-  chainId: number
-): { symbol: TokenSymbol; address: string } | undefined {
-  assert(isTokenSymbol(mainnetSymbol), `Unrecognised token symbol (${mainnetSymbol})`);
-  let symbol = mainnetSymbol as TokenSymbol;
-
-  // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
-  if (mainnetSymbol === "USDC") {
-    const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as TokenSymbol[];
-    const tokenSymbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol]?.addresses[chainId]);
-    if (!isTokenSymbol(tokenSymbol)) {
-      return;
-    }
-    symbol = tokenSymbol;
-  } else if (symbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
-    symbol = "USDB";
-  }
-
-  const address = TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
-  if (!address) {
-    return;
-  }
-
-  return { symbol, address };
-}
+import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
+import { TokenSymbol } from "./types";
 
 const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
 const NO_SYMBOL = "----";
