@@ -11,6 +11,7 @@ import {
   Contract,
   BigNumber,
   ethers,
+  randomBytes32,
 } from "../../../utils/utils";
 import { V3RelayData, V3SlowFill } from "../../../test-utils";
 
@@ -113,15 +114,15 @@ describe("MerkleLib Proofs", async function () {
     const numDistributions = 101; // Create 101 and remove the last to use as the "invalid" one.
     for (let i = 0; i < numDistributions; i++) {
       const relayData: V3RelayData = {
-        depositor: randomAddress(),
-        recipient: randomAddress(),
-        exclusiveRelayer: randomAddress(),
-        inputToken: randomAddress(),
-        outputToken: randomAddress(),
+        depositor: randomBytes32(),
+        recipient: randomBytes32(),
+        exclusiveRelayer: randomBytes32(),
+        inputToken: randomBytes32(),
+        outputToken: randomBytes32(),
         inputAmount: randomBigNumber(),
         outputAmount: randomBigNumber(),
         originChainId: randomBigNumber(2).toNumber(),
-        depositId: BigNumber.from(i).toNumber(),
+        depositId: BigNumber.from(i),
         fillDeadline: randomBigNumber(2).toNumber(),
         exclusivityDeadline: randomBigNumber(2).toNumber(),
         message: ethers.utils.hexlify(ethers.utils.randomBytes(1024)),

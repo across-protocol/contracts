@@ -133,7 +133,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Ink mainnet (57073)
 
-| Contract Name | Address                                                                                                                          |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Ink_SpokePool | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
-| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name    | Address                                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Ink_SpokePool    | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
