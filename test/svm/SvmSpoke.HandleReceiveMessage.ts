@@ -1,14 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
-import * as crypto from "crypto";
-import { BN, web3, workspace, Program, AnchorProvider, AnchorError } from "@coral-xyz/anchor";
+import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
+import * as crypto from "crypto";
 import { ethers } from "ethers";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { evmAddressToPublicKey } from "../../src/SvmUtils";
-import { encodeMessageHeader } from "./cctpHelpers";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";
 
 const { createRoutePda, getVaultAta, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
