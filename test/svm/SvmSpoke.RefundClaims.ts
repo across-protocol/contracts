@@ -5,13 +5,8 @@ import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import {
-  loadExecuteRelayerRefundLeafParams,
-  relayerRefundHashFn,
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
-  readProgramEvents,
-} from "./utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { loadExecuteRelayerRefundLeafParams, readEventsUntilFound, relayerRefundHashFn } from "../../src/svm";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
@@ -174,7 +169,10 @@ describe("svm_spoke.refund_claims", () => {
     const iRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
 
     // Claim refund for the relayer.
-    await program.methods.claimRelayerRefundFor(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+    const tx = await program.methods
+      .claimRelayerRefundFor(relayer.publicKey)
+      .accounts(claimRelayerRefundAccounts)
+      .rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -183,8 +181,7 @@ describe("svm_spoke.refund_claims", () => {
     assertSE(BigInt(fRelayerBal) - BigInt(iRelayerBal), relayerRefund, "Relayer balance");
 
     // Verify the ClaimedRelayerRefund event
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "claimedRelayerRefund")?.data;
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");
@@ -370,7 +367,7 @@ describe("svm_spoke.refund_claims", () => {
     claimRelayerRefundAccounts.signer = relayer.publicKey; // Only relayer itself should be able to do this.
 
     // Relayer can claim refund to custom token account.
-    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).signers([relayer]).rpc();
+    const tx = await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).signers([relayer]).rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -379,8 +376,7 @@ describe("svm_spoke.refund_claims", () => {
     assertSE(BigInt(fRelayerBal) - BigInt(iRelayerBal), relayerRefund, "Relayer balance");
 
     // Verify the ClaimedRelayerRefund event
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for event processing
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "claimedRelayerRefund")?.data;
     assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
     assertSE(event.claimAmount, relayerRefund, "Relayer refund amount should match");

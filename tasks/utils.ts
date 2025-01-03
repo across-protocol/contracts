@@ -1,5 +1,9 @@
+import assert from "assert";
 import { ethers } from "ethers";
 import readline from "readline";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { TokenSymbol } from "./types";
+
 export const zeroAddress = ethers.constants.AddressZero;
 
 export const minimalSpokePoolInterface = [
@@ -159,4 +163,41 @@ export async function askYesNoQuestion(query: string): Promise<boolean> {
   if (ans.toLowerCase() === "y") return true;
   if (ans.toLowerCase() === "n") return false;
   return askYesNoQuestion(query);
+}
+
+/**
+ * Given a token symbol from the HubPool chain and a remote chain ID, resolve the relevant token symbol and address.
+ */
+export function resolveTokenOnChain(
+  mainnetSymbol: string,
+  chainId: number
+): { symbol: TokenSymbol; address: string } | undefined {
+  assert(isTokenSymbol(mainnetSymbol), `Unrecognised token symbol (${mainnetSymbol})`);
+  let symbol = mainnetSymbol as TokenSymbol;
+
+  // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
+  if (mainnetSymbol === "USDC") {
+    const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as TokenSymbol[];
+    const tokenSymbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol]?.addresses[chainId]);
+    if (!isTokenSymbol(tokenSymbol)) {
+      return;
+    }
+    symbol = tokenSymbol;
+  } else if (symbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
+    symbol = "USDB";
+  }
+
+  const address = TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
+  if (!address) {
+    return;
+  }
+
+  return { symbol, address };
+}
+
+/**
+ * Given a token symbol, determine whether it is a valid key for the TOKEN_SYMBOLS_MAP object.
+ */
+export function isTokenSymbol(symbol: unknown): symbol is TokenSymbol {
+  return TOKEN_SYMBOLS_MAP[symbol as TokenSymbol] !== undefined;
 }
