@@ -1020,6 +1020,39 @@ abstract contract SpokePool is
         _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
+    // Exposes the same function as fillV3Relay but with a legacy V3RelayData struct that takes in address types. Inner
+    // function fillV3Relay() applies reentrancy & non-paused checks.
+    function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) public override {
+        // Convert V3RelayDataLegacy to V3RelayData using the .toBytes32() method
+        V3RelayData memory convertedRelayData = V3RelayData({
+            depositor: relayData.depositor.toBytes32(),
+            recipient: relayData.recipient.toBytes32(),
+            exclusiveRelayer: relayData.exclusiveRelayer.toBytes32(),
+            inputToken: relayData.inputToken.toBytes32(),
+            outputToken: relayData.outputToken.toBytes32(),
+            inputAmount: relayData.inputAmount,
+            outputAmount: relayData.outputAmount,
+            originChainId: relayData.originChainId,
+            depositId: relayData.depositId,
+            fillDeadline: relayData.fillDeadline,
+            exclusivityDeadline: relayData.exclusivityDeadline,
+            message: relayData.message
+        });
+
+        // Call the existing fillV3Relay function
+        (bool success, bytes memory data) = address(this).delegatecall(
+            abi.encodeWithSignature(
+                "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+                convertedRelayData,
+                repaymentChainId,
+                msg.sender.toBytes32()
+            )
+        );
+        if (!success) {
+            revert LowLevelCallFailed(data);
+        }
+    }
+
     /**
      * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
@@ -1149,9 +1182,11 @@ abstract contract SpokePool is
 
         // Must do a delegatecall because the function requires the inputs to be calldata.
         (bool success, bytes memory data) = address(this).delegatecall(
-            abi.encodeCall(
-                V3SpokePoolInterface.fillV3Relay,
-                (relayData, destinationFillerData.repaymentChainId, msg.sender.toBytes32())
+            abi.encode(
+                "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+                relayData,
+                destinationFillerData.repaymentChainId,
+                msg.sender.toBytes32()
             )
         );
         if (!success) {
