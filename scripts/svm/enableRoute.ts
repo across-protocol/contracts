@@ -14,6 +14,7 @@ anchor.setProvider(provider);
 const idl = require("../../target/idl/svm_spoke.json");
 const program = new Program<SvmSpoke>(idl, provider);
 const programId = program.programId;
+console.log("SVM-Spoke Program ID:", programId.toString());
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
@@ -37,7 +38,12 @@ async function enableRoute(): Promise<void> {
 
   // Define the route account PDA
   const [routePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), originToken.toBytes(), statePda.toBytes(), chainId.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from("route"),
+      originToken.toBytes(),
+      seed.toArrayLike(Buffer, "le", 8),
+      chainId.toArrayLike(Buffer, "le", 8),
+    ],
     programId
   );
 

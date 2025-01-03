@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@across-protocol/constants@^3.1.20":
-  version "3.1.20"
-  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.20.tgz#305bd41f5644b7db5d9fd12a6a6b4bbbbe2fd016"
-  integrity sha512-B5RsvuOQsZdFgLk0WcFZGmoivm6g6gv95a+YKVBydcxZkNxAsyP065UQEDAmvRXvPhqGyehhd52515Xa/3bzyg==
+"@across-protocol/constants@^3.1.24":
+  version "3.1.24"
+  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.24.tgz#01fe49330bb467dd01813387ddbac741bc74a035"
+  integrity sha512-guKtvIbif//vsmSZbwGubTWVtfkWiyWenr2sVyo63U/68GOW89ceJRLu4efLjeLVGiSrNAJtFUCv9dTwrrosWA==
 
 "@across-protocol/contracts@^0.1.4":
   version "0.1.4"
@@ -14431,7 +14431,7 @@ secp256k1@3.7.1, secp256k1@3.8.1, secp256k1@^3.0.1:
     nan "^2.14.0"
     safe-buffer "^5.1.2"
 
-secp256k1@4.0.4, secp256k1@5.0.1:
+secp256k1@4.0.3, secp256k1@5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/secp256k1/-/secp256k1-5.0.1.tgz#dc2c86187d48ff2da756f0f7e96417ee03c414b1"
   integrity sha512-lDFs9AAIaWP9UCdtWrotXWWF9t8PWgQDcxqgAnpM9rMqxb3Oaq2J0thzPVSxBwdJgyQtkU/sYtFtbM1RSt/iYA==
