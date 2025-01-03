@@ -1265,7 +1265,7 @@ abstract contract SpokePool is
     function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public {
         uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
-        relayerRefund[l2TokenAddress.toAddress()][refundAddress.toAddress()] = 0;
+        relayerRefund[l2TokenAddress.toAddress()][msg.sender] = 0;
         IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
 
         emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
