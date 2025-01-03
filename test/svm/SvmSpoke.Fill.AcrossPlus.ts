@@ -22,16 +22,17 @@ import {
   Transaction,
   ComputeBudgetProgram,
 } from "@solana/web3.js";
-import { intToU8Array32 } from "./utils";
 import {
   calculateRelayHashUint8Array,
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
   sendTransactionWithLookupTable,
-} from "../../src/SvmUtils";
+  loadFillV3RelayParams,
+  intToU8Array32,
+} from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { FillDataParams, FillDataValues, common } from "./SvmSpoke.common";
-import { loadFillV3RelayParams } from "./utils";
+import { common } from "./SvmSpoke.common";
+import { FillDataParams, FillDataValues } from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { initializeState, assertSE } = common;
 
@@ -255,7 +256,7 @@ describe("svm_spoke.fill.across_plus", () => {
       await sendTransactionWithLookupTable(connection, [computeBudgetIx, approveIx, fillIx], relayer);
 
       // Verify relayer's balance after the fill
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfers get processed.
       const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
       assertSE(
         fRelayerBal,
