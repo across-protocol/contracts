@@ -1,8 +1,7 @@
 import * as dotenv from "dotenv";
-
 import { HardhatUserConfig } from "hardhat/config";
 import { getNodeUrl, getMnemonic } from "@uma/common";
-import { CHAIN_IDs } from "./utils/constants";
+import { CHAIN_IDs, PUBLIC_NETWORKS, MAINNET_CHAIN_IDs } from "./utils/constants";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -62,6 +61,33 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   },
 };
 
+const networks = Object.fromEntries(
+  Object.values(CHAIN_IDs)
+    .filter((chainId) => PUBLIC_NETWORKS[chainId] !== undefined)
+    .map((chainId) => {
+      const network = PUBLIC_NETWORKS[chainId];
+      const name = network.name.replace(" ", "").toLowerCase();
+      const hubChainId = Object.values(MAINNET_CHAIN_IDs).includes(chainId) ? CHAIN_IDs.MAINNET : CHAIN_IDs.SEPOLIA;
+      const chainDef = {
+        url: network.publicRPC,
+        accounts: { mnemonic },
+        saveDeployments: true,
+        chainId: hubChainId,
+        companionNetworks: { l1: hubChainId === CHAIN_IDs.MAINNET ? "mainnet" : "sepolia" },
+      };
+
+      // zkSync is a special snowflake.
+      if ([CHAIN_IDs.ZK_SYNC, CHAIN_IDs.ZK_SYNC_SEPOLIA].includes(chainId)) {
+        (chainDef as Record<string, any>)["ethNetwork"] = chainDef.companionNetworks.l1;
+        (chainDef as Record<string, any>)["zksync"] = true;
+        (chainDef as Record<string, any>)["verifyURL"] =
+          "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
+      }
+
+      return [name, chainDef];
+    })
+);
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
@@ -104,204 +130,7 @@ const config: HardhatUserConfig = {
       zksync: compileZk,
       allowUnlimitedContractSize: true,
     },
-    mainnet: {
-      url: getNodeUrl("mainnet", true, 1),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.MAINNET,
-      companionNetworks: { l1: "mainnet" },
-    },
-    zksync: {
-      chainId: CHAIN_IDs.ZK_SYNC,
-      url: "https://mainnet.era.zksync.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      ethNetwork: "mainnet",
-      companionNetworks: { l1: "mainnet" },
-      zksync: true,
-      verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
-    },
-    optimism: {
-      url: getNodeUrl("optimism-mainnet", true, CHAIN_IDs.OPTIMISM),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.OPTIMISM,
-      companionNetworks: { l1: "mainnet" },
-    },
-    "optimism-sepolia": {
-      url: getNodeUrl("optimism-sepolia", true, CHAIN_IDs.OPTIMISM_SEPOLIA),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
-      companionNetworks: { l1: "sepolia" },
-    },
-    arbitrum: {
-      chainId: CHAIN_IDs.ARBITRUM,
-      url: getNodeUrl("arbitrum-mainnet", true, CHAIN_IDs.ARBITRUM),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "arbitrum-sepolia": {
-      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
-      url: getNodeUrl("arbitrum-sepolia", true, CHAIN_IDs.ARBITRUM_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.SEPOLIA,
-      companionNetworks: { l1: "sepolia" },
-    },
-    polygon: {
-      chainId: CHAIN_IDs.POLYGON,
-      url: getNodeUrl("polygon-mainnet", true, CHAIN_IDs.POLYGON),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    boba: {
-      chainId: CHAIN_IDs.BOBA,
-      url: getNodeUrl("boba", true, CHAIN_IDs.BOBA),
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "polygon-amoy": {
-      chainId: CHAIN_IDs.POLYGON_AMOY,
-      url: "https://rpc-amoy.polygon.technology",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    base: {
-      chainId: CHAIN_IDs.BASE,
-      url: "https://mainnet.base.org",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "base-sepolia": {
-      chainId: CHAIN_IDs.BASE_SEPOLIA,
-      url: `https://base-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    ink: {
-      chainId: CHAIN_IDs.INK,
-      url: "https://rpc-gel.inkonchain.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    linea: {
-      chainId: CHAIN_IDs.LINEA,
-      url: `https://linea-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    scroll: {
-      chainId: CHAIN_IDs.SCROLL,
-      url: "https://rpc.scroll.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "scroll-sepolia": {
-      chainId: CHAIN_IDs.SCROLL_SEPOLIA,
-      url: "https://sepolia-rpc.scroll.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    "polygon-zk-evm": {
-      chainId: 1101,
-      url: "https://zkevm-rpc.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "polygon-zk-evm-testnet": {
-      chainId: 1442,
-      url: "https://rpc.public.zkevm-test.net",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "goerli" },
-    },
-    mode: {
-      chainId: CHAIN_IDs.MODE,
-      url: "https://mainnet.mode.network",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "mode-sepolia": {
-      chainId: CHAIN_IDs.MODE_SEPOLIA,
-      url: "https://sepolia.mode.network",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    lisk: {
-      chainId: CHAIN_IDs.LISK,
-      url: "https://rpc.api.lisk.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "lisk-sepolia": {
-      chainId: CHAIN_IDs.LISK_SEPOLIA,
-      url: "https://rpc.sepolia-api.lisk.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    redstone: {
-      chainId: CHAIN_IDs.REDSTONE,
-      url: "https://rpc.redstonechain.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    blast: {
-      chainId: CHAIN_IDs.BLAST,
-      url: "https://rpc.blast.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "blast-sepolia": {
-      chainId: CHAIN_IDs.BLAST_SEPOLIA,
-      url: "https://sepolia.blast.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    worldchain: {
-      chainId: CHAIN_IDs.WORLD_CHAIN,
-      url: "https://worldchain-mainnet.g.alchemy.com/public",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    zora: {
-      chainId: CHAIN_IDs.ZORA,
-      url: "https://rpc.zora.energy",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    alephzero: {
-      chainId: CHAIN_IDs.ALEPH_ZERO,
-      url: "https://rpc.alephzero.raas.gelato.cloud",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
+    ...networks, // autogenerated
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
