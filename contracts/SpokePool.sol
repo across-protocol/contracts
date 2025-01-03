@@ -1262,7 +1262,7 @@ abstract contract SpokePool is
      * @param l2TokenAddress Address of the L2 token to claim refunds for.
      * @param refundAddress Address to send the refund to.
      */
-    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public {
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external {
         uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
         relayerRefund[l2TokenAddress.toAddress()][refundAddress.toAddress()] = 0;
