@@ -24,24 +24,22 @@ import {
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
   sendTransactionWithLookupTable,
-  readProgramEvents,
+  readEventsUntilFound,
   calculateRelayEventHashUint8Array,
-} from "../../src/SvmUtils";
+  slowFillHashFn,
+  loadRequestV3SlowFillParams,
+  loadExecuteV3SlowRelayLeafParams,
+  intToU8Array32,
+} from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
+import { common } from "./SvmSpoke.common";
 import {
   ExecuteV3SlowRelayLeafDataParams,
   ExecuteV3SlowRelayLeafDataValues,
   RequestV3SlowFillDataParams,
   RequestV3SlowFillDataValues,
-  common,
-} from "./SvmSpoke.common";
-import {
   SlowFillLeaf,
-  intToU8Array32,
-  loadExecuteV3SlowRelayLeafParams,
-  loadRequestV3SlowFillParams,
-  slowFillHashFn,
-} from "./utils";
+} from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, setCurrentTime } = common;
 const { initializeState, assertSE, assert } = common;
 
@@ -459,7 +457,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
 
     // We don't close ALT here as that would require ~4 minutes between deactivation and closing, but we demonstrate
     // being able to close the fill status PDA using only event data.
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, txSignature, [program]);
     const eventData = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(eventData, "FilledV3Relay event should be emitted");
 

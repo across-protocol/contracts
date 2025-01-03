@@ -1,27 +1,33 @@
 // This script bridges remote call to pause deposits on Solana Spoke Pool. Required environment:
-// - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
-// - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
+// - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 // - HUB_POOL_ADDRESS: Hub Pool address
 
-import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { getNodeUrl } from "@uma/common";
+import "dotenv/config";
+import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
-import { HubPool__factory } from "../../typechain";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  fromBase58ToBytes32,
+  fromBytes32ToAddress,
+  getMessages,
+  isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "./utils/constants";
-import { fromBase58ToBytes32, fromBytes32ToAddress } from "./utils/helpers";
+} from "../../src/svm";
+import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { SvmSpoke } from "../../target/types/svm_spoke";
+import { HubPool__factory } from "../../typechain";
+import { CHAIN_IDs } from "../../utils/constants";
+import { requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -43,27 +49,13 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   const seed = new BN(0);
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
 
-  // Set up Ethereum provider.
-  if (!process.env.ETHERS_PROVIDER_URL) {
-    throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
-  }
-  const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
-  if (!process.env.ETHERS_MNEMONIC) {
-    throw new Error("Environment variable ETHERS_MNEMONIC is not set");
-  }
-  const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
+  // Set up Ethereum provider and signer.
+  const isDevnet = isSolanaDevnet(provider);
+  const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+  const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
+  const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
-  if (!process.env.HUB_POOL_ADDRESS) {
-    throw new Error("Environment variable HUB_POOL_ADDRESS is not set");
-  }
-  const hubPoolAddress = process.env.HUB_POOL_ADDRESS;
-
-  let cluster: "devnet" | "mainnet";
-  const rpcEndpoint = provider.connection.rpcEndpoint;
-  if (rpcEndpoint.includes("devnet")) cluster = "devnet";
-  else if (rpcEndpoint.includes("mainnet")) cluster = "mainnet";
-  else throw new Error(`Unsupported cluster endpoint: ${rpcEndpoint}`);
-  const isDevnet = cluster == "devnet";
+  const hubPoolAddress = requireEnv("HUB_POOL_ADDRESS");
 
   const usdcProgramId = isDevnet ? SOLANA_USDC_DEVNET : SOLANA_USDC_MAINNET;
   const originToken = new PublicKey(usdcProgramId);
@@ -115,10 +107,11 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
 
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
 
-  const supportedChainId = isDevnet ? 11155111 : 1; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
-  const chainId = (await ethersProvider.getNetwork()).chainId;
-  if (chainId !== supportedChainId) {
-    throw new Error(`Chain ID ${chainId} does not match expected Solana cluster ${cluster}`);
+  const solanaCluster = isDevnet ? "devnet" : "mainnet";
+  const supportedEvmChainId = isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
+  const evmChainId = (await ethersProvider.getNetwork()).chainId;
+  if (evmChainId !== supportedEvmChainId) {
+    throw new Error(`Chain ID ${evmChainId} does not match expected Solana cluster ${solanaCluster}`);
   }
 
   const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
@@ -126,7 +119,7 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   console.log("Remotely configuring deposit route...");
   console.table([
     { Property: "seed", Value: seed.toString() },
-    { Property: "chainId", Value: (chainId as any).toString() },
+    { Property: "evmChainId", Value: evmChainId.toString() },
     { Property: "originChainId", Value: originChainId },
     { Property: "destinationChainId", Value: destinationChainId },
     { Property: "depositsEnabled", Value: depositsEnabled },

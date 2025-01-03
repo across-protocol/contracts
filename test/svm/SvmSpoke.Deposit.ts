@@ -15,8 +15,9 @@ import {
   ExtensionType,
 } from "@solana/spl-token";
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
-import { common, DepositDataValues } from "./SvmSpoke.common";
-import { readProgramEvents, intToU8Array32, u8Array32ToInt } from "./utils";
+import { common } from "./SvmSpoke.common";
+import { DepositDataValues } from "../../src/types/svm";
+import { intToU8Array32, readEventsUntilFound } from "../../src/svm";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
@@ -121,7 +122,8 @@ describe("svm_spoke.deposit", () => {
       .accounts(calledDepositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
-    await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
+    return tx;
   };
 
   beforeEach(async () => {
@@ -183,10 +185,9 @@ describe("svm_spoke.deposit", () => {
 
     // Execute the first deposit_v3 call
     let depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx = await approvedDepositV3(depositDataValues);
 
-    let events = await readProgramEvents(connection, program);
+    let events = await readEventsUntilFound(connection, tx, [program]);
     let event = events[0].data; // 0th event is the latest event
     const expectedValues1 = { ...depositData, depositId: intToU8Array32(1) }; // Verify the event props emitted match the depositData.
     for (let [key, value] of Object.entries(expectedValues1)) {
@@ -195,9 +196,8 @@ describe("svm_spoke.deposit", () => {
     }
 
     // Execute the second deposit_v3 call
-    await approvedDepositV3(depositDataValues);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    events = await readProgramEvents(connection, program);
+    const tx2 = await approvedDepositV3(depositDataValues);
+    events = await readEventsUntilFound(connection, tx2, [program]);
     event = events[0].data; // 0th event is the latest event.
 
     const expectedValues2 = { ...expectedValues1, depositId: intToU8Array32(2) }; // Verify the event props emitted match the depositData.
@@ -364,8 +364,6 @@ describe("svm_spoke.deposit", () => {
 
     await program.methods.setEnableRoute(inputToken, fakeRouteChainId, true).accounts(fakeSetEnableRouteAccounts).rpc();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
     const fakeDepositAccounts = {
       state: fakeState.state,
       route: fakeRoutePda,
@@ -382,11 +380,9 @@ describe("svm_spoke.deposit", () => {
       ...depositData,
       destinationChainId: fakeRouteChainId,
     }) as DepositDataValues;
-    await approvedDepositV3(depositDataValues, fakeDepositAccounts);
+    const tx = await approvedDepositV3(depositDataValues, fakeDepositAccounts);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    let events = await readProgramEvents(connection, program);
+    let events = await readEventsUntilFound(connection, tx, [program]);
     let event = events[0].data; // 0th event is the latest event.
     const expectedValues = {
       ...{ ...depositData, destinationChainId: fakeRouteChainId },
@@ -457,11 +453,9 @@ describe("svm_spoke.deposit", () => {
       .accounts(depositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
-    await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event.
 
     // Verify the event props emitted match the expected values
@@ -526,10 +520,9 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = maxExclusivityOffsetSeconds;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    const tx = await approvedDepositV3(depositDataValues);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event
     assertSE(
       event.exclusivityDeadline,
@@ -547,10 +540,9 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = exclusivityDeadlineTimestamp;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    const tx = await approvedDepositV3(depositDataValues);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event;
 
     assertSE(event.exclusivityDeadline, exclusivityDeadlineTimestamp, "exclusivityDeadline should be passed in time");
@@ -565,10 +557,9 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = zeroExclusivity;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    const tx = await approvedDepositV3(depositDataValues);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event;
 
     assertSE(event.exclusivityDeadline, zeroExclusivity, "Exclusivity deadline should always be 0");
@@ -629,13 +620,12 @@ describe("svm_spoke.deposit", () => {
       .instruction();
 
     const unsafeDepositTx = new Transaction().add(approveIx, unsafeDepositIx);
-    await sendAndConfirmTransaction(connection, unsafeDepositTx, [payer, depositor]);
+    const tx = await sendAndConfirmTransaction(connection, unsafeDepositTx, [payer, depositor]);
 
     // Wait for a short period to ensure the event is emitted
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Read and verify the event
-    const events = await readProgramEvents(connection, program);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // Assuming the latest event is the one we want
 
     const expectedValues = { ...depositData, depositId: expectedDepositIdArray };
