@@ -28,19 +28,12 @@ describe("WorldChain Spoke Pool", function () {
     [owner, relayer] = await ethers.getSigners();
     ({ weth, usdc, hubPool } = await hubPoolFixture());
 
-    // Create fake for cross domain messenger
-    crossDomainMessenger = await createFakeFromABI(["function xDomainMessageSender() external view returns (address)"]);
-
-    // Set up and fund the cross domain messenger account
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [CROSS_DOMAIN_MESSENGER],
-    });
-    messengerSigner = await ethers.getSigner(CROSS_DOMAIN_MESSENGER);
-    await owner.sendTransaction({
-      to: CROSS_DOMAIN_MESSENGER,
-      value: toWei("1"),
-    });
+    // Fake Contract for cross domain messenger at CROSS_DOMAIN_MESSENGER
+    crossDomainMessenger = await createFakeFromABI(
+      ["function xDomainMessageSender() external view returns (address)"],
+      CROSS_DOMAIN_MESSENGER
+    );
+    crossDomainMessenger.xDomainMessageSender.returns(owner.address); // Set the owner as the xDomainMessageSender
 
     cctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
     usdcBridgeAdapter = await createFakeFromABI(IOpUSDCBridgeAdapterAbi, USDC_BRIDGE);
@@ -55,13 +48,16 @@ describe("WorldChain Spoke Pool", function () {
         constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, usdc.address, cctpTokenMessenger.address],
       }
     );
-    // Mock the cross domain messenger to return the admin address
+
+    // Set up and fund the cross domain messenger account
     await hre.network.provider.request({
-      method: "hardhat_setCode",
-      params: [
-        CROSS_DOMAIN_MESSENGER,
-        crossDomainMessenger.interface.encodeFunctionResult("xDomainMessageSender", [owner.address]),
-      ],
+      method: "hardhat_impersonateAccount",
+      params: [CROSS_DOMAIN_MESSENGER],
+    });
+    messengerSigner = await ethers.getSigner(CROSS_DOMAIN_MESSENGER); // Signer for the cross domain messenger
+    await owner.sendTransaction({
+      to: CROSS_DOMAIN_MESSENGER,
+      value: toWei("1"),
     });
   });
 
@@ -84,17 +80,8 @@ describe("WorldChain Spoke Pool", function () {
   });
 
   describe("Token Bridging", function () {
-    beforeEach(async function () {
-      // Mint tokens to SpokePool
-      await usdc.mint(spokePool.address, amountToReturn);
-      await weth.deposit({ value: amountToReturn });
-      await weth.transfer(spokePool.address, amountToReturn);
-      // Set up cross domain call
-      crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    });
-
     it("Should use USDC bridge when CCTP is not enabled", async function () {
-      // Deploy with CCTP disabled
+      // Deploy with CCTP disabled.
       spokePool = await hre.upgrades.deployProxy(
         await getContractFactory("WorldChain_SpokePool", owner),
         [0, owner.address, hubPool.address],
@@ -108,13 +95,6 @@ describe("WorldChain Spoke Pool", function () {
       await usdc.mint(spokePool.address, amountToReturn);
 
       const { leaves, tree } = await constructSingleRelayerRefundTree(usdc.address, await spokePool.chainId());
-      await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [CROSS_DOMAIN_MESSENGER],
-      });
-      console.log("Cross Domain Admin:", await spokePool.crossDomainAdmin());
-      console.log("Owner Address:", owner.address);
-      console.log("Messenger Address:", crossDomainMessenger.address);
 
       // Call as cross domain messenger
       await spokePool.connect(messengerSigner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
@@ -130,6 +110,8 @@ describe("WorldChain Spoke Pool", function () {
     });
 
     it("Should use CCTP when enabled", async function () {
+      await usdc.mint(spokePool.address, amountToReturn);
+
       const { leaves, tree } = await constructSingleRelayerRefundTree(usdc.address, await spokePool.chainId());
 
       // Call as cross domain messenger
@@ -142,6 +124,9 @@ describe("WorldChain Spoke Pool", function () {
     });
 
     it("Should use standard bridge for non-USDC tokens", async function () {
+      await weth.deposit({ value: amountToReturn });
+      await weth.transfer(spokePool.address, amountToReturn);
+
       const { leaves, tree } = await constructSingleRelayerRefundTree(weth.address, await spokePool.chainId());
 
       // Call as cross domain messenger
