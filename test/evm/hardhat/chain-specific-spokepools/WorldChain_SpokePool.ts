@@ -10,7 +10,7 @@ import {
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
-import { CCTPTokenMessengerInterface, IOpUSDCBridgeAdapterAbi } from "../../../../utils/abis";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface, IOpUSDCBridgeAdapterAbi } from "../../../../utils/abis";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { mockTreeRoot, amountToReturn } from "../constants";
 
@@ -18,6 +18,7 @@ describe("WorldChain Spoke Pool", function () {
   let hubPool: Contract, spokePool: Contract, weth: Contract, usdc: Contract;
   let owner: SignerWithAddress, relayer: SignerWithAddress;
   let cctpTokenMessenger: FakeContract;
+  let cctpMinter: FakeContract;
   let usdcBridgeAdapter: FakeContract;
   let crossDomainMessenger: FakeContract;
   let messengerSigner: SignerWithAddress;
@@ -37,6 +38,10 @@ describe("WorldChain Spoke Pool", function () {
 
     cctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
     usdcBridgeAdapter = await createFakeFromABI(IOpUSDCBridgeAdapterAbi, USDC_BRIDGE);
+    cctpMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    cctpTokenMessenger.localMinter.returns(cctpMinter.address);
+    cctpMinter.burnLimitsPerMessage.returns(usdc.address);
+    cctpTokenMessenger.depositForBurn.returns(1);
 
     // Deploy spoke pool
     spokePool = await hre.upgrades.deployProxy(
@@ -120,6 +125,7 @@ describe("WorldChain Spoke Pool", function () {
       await spokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
       expect(await usdc.allowance(spokePool.address, cctpTokenMessenger.address)).to.equal(amountToReturn);
+
       expect(usdcBridgeAdapter.sendMessage).to.not.have.been.called;
     });
 
