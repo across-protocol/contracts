@@ -19,11 +19,14 @@ describe("WorldChain Spoke Pool", function () {
   let owner: SignerWithAddress, relayer: SignerWithAddress;
   let cctpTokenMessenger: FakeContract;
   let cctpMinter: FakeContract;
+  let l2StandardBridge: FakeContract;
+
   let usdcBridgeAdapter: FakeContract;
   let crossDomainMessenger: FakeContract;
   let messengerSigner: SignerWithAddress;
   const USDC_BRIDGE = "0xbD80b06d3dbD0801132c6689429aC09Ca6D27f82";
   const CROSS_DOMAIN_MESSENGER = "0x4200000000000000000000000000000000000007";
+  const L2_STANDARD_BRIDGE = "0x4200000000000000000000000000000000000010";
 
   beforeEach(async function () {
     [owner, relayer] = await ethers.getSigners();
@@ -42,6 +45,11 @@ describe("WorldChain Spoke Pool", function () {
     cctpTokenMessenger.localMinter.returns(cctpMinter.address);
     cctpMinter.burnLimitsPerMessage.returns(usdc.address);
     cctpTokenMessenger.depositForBurn.returns(1);
+
+    l2StandardBridge = await createFakeFromABI(
+      ["function withdrawTo(address,address,uint256,uint256,bytes) external payable"],
+      L2_STANDARD_BRIDGE
+    );
 
     // Deploy spoke pool
     spokePool = await hre.upgrades.deployProxy(
