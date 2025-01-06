@@ -125,7 +125,16 @@ describe("svm_spoke.ownership", () => {
   it("Transfers ownership", async () => {
     // Transfer ownership to newOwner
     const transferOwnershipAccounts = { state, signer: owner };
-    await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
+    const tx = await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
+
+    // Verify the TransferredOwnership event
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
+    let transferredOwnershipEvents = events.filter((event) => event.name === "transferredOwnership");
+    assert.equal(
+      transferredOwnershipEvents[0].data.newOwner.toString(),
+      newOwner.publicKey.toString(),
+      "TransferredOwnership event should indicate the new owner"
+    );
 
     // Verify the new owner
     let stateAccountData = await program.account.state.fetch(state);
