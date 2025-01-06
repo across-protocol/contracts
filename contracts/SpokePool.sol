@@ -1294,7 +1294,7 @@ abstract contract SpokePool is
     /**
      * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
      * in unsafeDepositV3 and is provided as a convenience.
-     * @dev msg Sender and depositor are both used as inputs to allow passthrough depositors to create unique
+     * @dev msgSender and depositor are both used as inputs to allow passthrough depositors to create unique
      * deposit hash spaces for unique depositors.
      * @param msgSender The caller of the transaction used as input to produce the deposit ID.
      * @param depositor The depositor address used as input to produce the deposit ID.
