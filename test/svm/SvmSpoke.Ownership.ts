@@ -124,7 +124,7 @@ describe("svm_spoke.ownership", () => {
 
   it("Transfers ownership", async () => {
     // Transfer ownership to newOwner
-    const transferOwnershipAccounts = { state, signer: owner };
+    const transferOwnershipAccounts = { state, signer: owner, program: program.programId };
     const tx = await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
 
     // Verify the TransferredOwnership event
@@ -142,7 +142,7 @@ describe("svm_spoke.ownership", () => {
 
     // Try to transfer ownership as non-owner
     try {
-      const transferOwnershipAccounts = { state, signer: nonOwner.publicKey };
+      const transferOwnershipAccounts = { state, signer: nonOwner.publicKey, program: program.programId };
       await program.methods
         .transferOwnership(nonOwner.publicKey)
         .accounts(transferOwnershipAccounts)
