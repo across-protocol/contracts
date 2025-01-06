@@ -146,15 +146,9 @@
     },
     {
       "contract": "contracts/Redstone_SpokePool.sol:Redstone_SpokePool",
-      "label": "relayerRefund",
-      "offset": 0,
-      "slot": "2163"
-    },
-    {
-      "contract": "contracts/Redstone_SpokePool.sol:Redstone_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2164"
+      "slot": "2163"
     },
     {
       "contract": "contracts/Redstone_SpokePool.sol:Redstone_SpokePool",
