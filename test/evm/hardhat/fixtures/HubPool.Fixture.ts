@@ -8,6 +8,9 @@ export const hubPoolFixture = hre.deployments.createFixture(async ({ ethers }) =
   return await deployHubPool(ethers);
 });
 
+// Silence warnings from openzeppelin/hardhat-upgrades for this fixture.
+hre.upgrades.silenceWarnings();
+
 export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool") {
   const [signer, crossChainAdmin] = await ethers.getSigners();
 
