@@ -65,15 +65,13 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
     pub chain_id: u64,
-    #[max_len(0)]
     pub refund_amounts: Vec<u64>,
     pub leaf_id: u32,
     pub mint_public_key: Pubkey,
-    #[max_len(0)]
     pub refund_addresses: Vec<Pubkey>,
 }
 
