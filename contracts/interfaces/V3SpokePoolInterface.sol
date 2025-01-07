@@ -62,7 +62,8 @@ interface V3SpokePoolInterface {
         bytes message;
     }
 
-    // Same as V3RelayData but using addresses instead of bytes32. Will be deprecated in favor of V3RelayData in the future.
+    // Same as V3RelayData but using addresses instead of bytes32 & depositId is uint32.
+    // Will be deprecated in favor of V3RelayData in the future.
     struct V3RelayDataLegacy {
         address depositor;
         address recipient;
@@ -72,7 +73,7 @@ interface V3SpokePoolInterface {
         uint256 inputAmount;
         uint256 outputAmount;
         uint256 originChainId;
-        uint256 depositId;
+        uint32 depositId;
         uint32 fillDeadline;
         uint32 exclusivityDeadline;
         bytes message;
@@ -198,7 +199,7 @@ interface V3SpokePoolInterface {
      *              FUNCTIONS             *
      **************************************/
 
-    function depositV3(
+    function depositV3Bytes32(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
@@ -228,7 +229,7 @@ interface V3SpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function depositV3Now(
+    function depositV3NowBytes32(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
@@ -242,7 +243,53 @@ interface V3SpokePoolInterface {
         bytes calldata message
     ) external payable;
 
-    function speedUpV3Deposit(
+    function depositV3Now(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint32 fillDeadlineOffset,
+        uint32 exclusivityDeadline,
+        bytes calldata message
+    ) external payable;
+
+    function unsafeDepositV3Bytes32(
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        bytes32 exclusiveRelayer,
+        uint256 depositNonce,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityParameter,
+        bytes calldata message
+    ) external payable;
+
+    function unsafeDepositV3(
+        address depositor,
+        address recipient,
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        address exclusiveRelayer,
+        uint256 depositNonce,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityParameter,
+        bytes calldata message
+    ) external payable;
+
+    function speedUpV3DepositBytes32(
         bytes32 depositor,
         uint256 depositId,
         uint256 updatedOutputAmount,
@@ -251,7 +298,16 @@ interface V3SpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function fillV3Relay(
+    function speedUpV3Deposit(
+        address depositor,
+        uint256 depositId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
+    ) external;
+
+    function fillV3RelayBytes32(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress

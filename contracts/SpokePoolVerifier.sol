@@ -58,7 +58,7 @@ contract SpokePoolVerifier {
         if (msg.value != inputAmount) revert InvalidMsgValue();
         if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
-        spokePool.depositV3{ value: msg.value }(
+        spokePool.depositV3Bytes32{ value: msg.value }(
             msg.sender.toBytes32(),
             recipient,
             inputToken,

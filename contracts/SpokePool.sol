@@ -504,7 +504,7 @@ abstract contract SpokePool is
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
-    function depositV3(
+    function depositV3Bytes32(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
@@ -596,7 +596,7 @@ abstract contract SpokePool is
         uint32 exclusivityParameter,
         bytes calldata message
     ) public payable override {
-        depositV3(
+        depositV3Bytes32(
             depositor.toBytes32(),
             recipient.toBytes32(),
             inputToken.toBytes32(),
@@ -633,8 +633,8 @@ abstract contract SpokePool is
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes calldata message
-    ) public payable {
-        unsafeDepositV3(
+    ) public payable override {
+        unsafeDepositV3Bytes32(
             depositor.toBytes32(),
             recipient.toBytes32(),
             inputToken.toBytes32(),
@@ -683,7 +683,7 @@ abstract contract SpokePool is
      * @param exclusivityParameter See identically named parameter in depositV3() comments.
      * @param message See identically named parameter in depositV3() comments.
      */
-    function unsafeDepositV3(
+    function unsafeDepositV3Bytes32(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
@@ -754,7 +754,7 @@ abstract contract SpokePool is
      * @param message The message to send to the recipient on the destination chain if the recipient is a contract.
      * If the message is not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
      */
-    function depositV3Now(
+    function depositV3NowBytes32(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
@@ -766,8 +766,8 @@ abstract contract SpokePool is
         uint32 fillDeadlineOffset,
         uint32 exclusivityPeriod,
         bytes calldata message
-    ) external payable {
-        depositV3(
+    ) external payable override {
+        depositV3Bytes32(
             depositor,
             recipient,
             inputToken,
@@ -827,7 +827,7 @@ abstract contract SpokePool is
         uint32 fillDeadlineOffset,
         uint32 exclusivityPeriod,
         bytes calldata message
-    ) external payable {
+    ) external payable override {
         depositV3(
             depositor,
             recipient,
@@ -862,7 +862,7 @@ abstract contract SpokePool is
      * account. If depositor is a contract, then should implement EIP1271 to sign as a contract. See
      * _verifyUpdateV3DepositMessage() for more details about how this signature should be constructed.
      */
-    function speedUpV3Deposit(
+    function speedUpV3DepositBytes32(
         bytes32 depositor,
         uint256 depositId,
         uint256 updatedOutputAmount,
@@ -994,7 +994,7 @@ abstract contract SpokePool is
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
-    function fillV3Relay(
+    function fillV3RelayBytes32(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress
@@ -1042,7 +1042,7 @@ abstract contract SpokePool is
         // Call the existing fillV3Relay function
         (bool success, bytes memory data) = address(this).delegatecall(
             abi.encodeWithSignature(
-                "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+                "fillV3RelayBytes32((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
                 convertedRelayData,
                 repaymentChainId,
                 msg.sender.toBytes32()

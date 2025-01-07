@@ -337,11 +337,11 @@ describe("Polygon Spoke Pool", function () {
     };
     const fillData = [
       polygonSpokePool.interface.encodeFunctionData(
-        "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+        "fillV3RelayBytes32((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
         [relayData, repaymentChainId, addressToBytes(relayer.address)]
       ),
       polygonSpokePool.interface.encodeFunctionData(
-        "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+        "fillV3RelayBytes32((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
         [{ ...relayData, depositId: 1 }, repaymentChainId, addressToBytes(relayer.address)]
       ),
     ];

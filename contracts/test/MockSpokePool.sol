@@ -85,7 +85,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         _verifyDepositorSignature(depositor, expectedTypedDataV4Hash, depositorSignature);
     }
 
-    function verifyUpdateV3DepositMessage(
+    function verifyUpdateV3DepositMessageBytes32(
         bytes32 depositor,
         uint256 depositId,
         uint256 originChainId,
