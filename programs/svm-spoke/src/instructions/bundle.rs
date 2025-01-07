@@ -18,7 +18,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
     pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>, // Contains all leaf & proof information.
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
