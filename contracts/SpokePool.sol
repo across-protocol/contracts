@@ -1020,7 +1020,7 @@ abstract contract SpokePool is
         _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
-    // Exposes the same function as fillV3Relay but with a legacy V3RelayData struct that takes in address types. Inner
+    // Exposes the same function as fillV3RelayBytes32 but with a legacy V3RelayData struct that takes in address types. Inner
     // function fillV3Relay() applies reentrancy & non-paused checks.
     function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) public override {
         // Convert V3RelayDataLegacy to V3RelayData using the .toBytes32() method
