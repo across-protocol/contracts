@@ -72,6 +72,8 @@ pub enum SvmError {
     NonZeroRefundClaim,
     #[msg("Invalid claim initializer!")]
     InvalidClaimInitializer,
+    #[msg("Invalid refund token account!")]
+    InvalidRefundTokenAccount,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
