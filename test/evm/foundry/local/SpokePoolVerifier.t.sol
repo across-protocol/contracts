@@ -78,7 +78,7 @@ contract SpokePoolVerifierTest is Test {
 
         // Reverts if inputToken is WETH and msg.value is not equal to inputAmount
         vm.expectRevert(SpokePoolVerifier.InvalidMsgValue.selector);
-        spokePoolVerifier.deposit{ value: 0 }(
+        spokePoolVerifier.depositBytes32{ value: 0 }(
             ethereumSpokePool, // spokePool
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
@@ -94,7 +94,7 @@ contract SpokePoolVerifierTest is Test {
 
         // Reverts if msg.value matches inputAmount but inputToken is not WETH
         vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
-        spokePoolVerifier.deposit{ value: depositAmount }(
+        spokePoolVerifier.depositBytes32{ value: depositAmount }(
             ethereumSpokePool, // spokePool
             depositor.toBytes32(), // recipient
             address(mockERC20).toBytes32(), // inputToken
@@ -116,7 +116,7 @@ contract SpokePoolVerifierTest is Test {
 
         // Reverts if spokePool is not a contract
         vm.expectRevert(SpokePoolVerifier.InvalidSpokePool.selector);
-        spokePoolVerifier.deposit{ value: depositAmount }(
+        spokePoolVerifier.depositBytes32{ value: depositAmount }(
             V3SpokePoolInterface(address(0)), // spokePool
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
@@ -141,7 +141,7 @@ contract SpokePoolVerifierTest is Test {
             address(ethereumSpokePool), // callee
             depositAmount, // value
             abi.encodeCall( // data
-                EthereumSpokePoolOnlyAddressInterface.depositV3,
+                EthereumSpokePoolOnlyAddressInterface.depositV3Bytes32,
                 (
                     depositor.toBytes32(),
                     depositor.toBytes32(),
@@ -158,7 +158,7 @@ contract SpokePoolVerifierTest is Test {
                 )
             )
         );
-        spokePoolVerifier.deposit{ value: depositAmount }(
+        spokePoolVerifier.depositBytes32{ value: depositAmount }(
             ethereumSpokePool, // spokePool
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
