@@ -7,10 +7,10 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { AccountMeta, ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
-import { ethers, Transaction } from "ethers";
+import { ethers } from "ethers";
 import {
   loadExecuteRelayerRefundLeafParams,
   readEventsUntilFound,
