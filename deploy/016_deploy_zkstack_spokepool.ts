@@ -38,7 +38,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     newAddress = _deployment.address;
     console.log(`New ${contractName} implementation deployed @ ${newAddress}`);
   } else {
-    console.log(constructorArgs);
     const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
       initializer: "initialize",
       kind: "uups",
