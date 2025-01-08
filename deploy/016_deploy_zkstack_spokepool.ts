@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const artifact = await deployer.loadArtifact(contractName);
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
-    L2_ADDRESS_MAP[spokeChainId].zkErc20Bridge,
+    L2_ADDRESS_MAP.zkErc20Bridge,
     hubPool.address,
     hubPool.address,
   ];
@@ -38,6 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     newAddress = _deployment.address;
     console.log(`New ${contractName} implementation deployed @ ${newAddress}`);
   } else {
+    console.log(constructorArgs);
     const proxy = await zkUpgrades.deployProxy(deployer.zkWallet, artifact, initArgs, {
       initializer: "initialize",
       kind: "uups",
@@ -64,4 +65,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["ZkSyncSpokePool", "zksync"];
+func.tags = ["ZkStackSpokePool", "zksync"];
