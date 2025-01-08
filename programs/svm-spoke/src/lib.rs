@@ -280,6 +280,7 @@ pub mod svm_spoke {
     }
 
     // Equivalent to deposit_v3 except quote_timestamp is set to the current time.
+    // The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
     pub fn deposit_v3_now(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
