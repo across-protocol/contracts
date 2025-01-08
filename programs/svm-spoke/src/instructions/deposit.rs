@@ -1,3 +1,9 @@
+// Note: The `svm-spoke` does not support `speedUpV3Deposit` and `fillV3RelayWithUpdatedDeposit` due to cryptographic
+// incompatibilities between Solana (Ed25519) and Ethereum (ECDSA secp256k1). Specifically, Solana wallets cannot
+// generate ECDSA signatures required for Ethereum verification.
+// As a result, speed-up functionality on Solana is not implemented.
+// For more details, refer to the documentation: https://docs.across.to/.
+
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
