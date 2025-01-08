@@ -78,6 +78,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
     }
 
     function _destinationSettler(uint256 chainId) internal view override returns (address) {
+        if (destinationSettlers[chainId] == address(0)) revert NoDestinationSettlerForChain(chainId);
         return destinationSettlers[chainId];
     }
 }

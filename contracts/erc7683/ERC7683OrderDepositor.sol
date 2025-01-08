@@ -192,10 +192,6 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             revert WrongExclusiveRelayer();
         }
 
-        if (_destinationSettler(acrossOrderData.destinationChainId) == address(0)) {
-            revert NoDestinationSettlerForChain(acrossOrderData.destinationChainId);
-        }
-
         Output[] memory maxSpent = new Output[](1);
         maxSpent[0] = Output({
             token: _toBytes32(acrossOrderData.outputToken),
@@ -259,10 +255,6 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
 
         // Extract Across-specific params.
         acrossOrderData = abi.decode(order.orderData, (AcrossOrderData));
-
-        if (_destinationSettler(acrossOrderData.destinationChainId) == address(0)) {
-            revert NoDestinationSettlerForChain(acrossOrderData.destinationChainId);
-        }
 
         Output[] memory maxSpent = new Output[](1);
         maxSpent[0] = Output({
