@@ -1015,7 +1015,7 @@ describe("svm_spoke.bundle", () => {
         } else if (!testConfig.deferredRefunds && testConfig.atomicAccountCreation) {
           refundAccounts.push(tokenAccount);
         } else {
-          await program.methods.initializeClaimAccount(mint, tokenOwner).rpc();
+          await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: tokenOwner }).rpc();
           refundAccounts.push(claimAccount);
         }
 
@@ -1397,8 +1397,8 @@ describe("svm_spoke.bundle", () => {
           [Buffer.from("claim_account"), mint.toBuffer(), relayerB.publicKey.toBuffer()],
           program.programId
         );
-        await program.methods.initializeClaimAccount(mint, relayerA.publicKey).rpc();
-        await program.methods.initializeClaimAccount(mint, relayerB.publicKey).rpc();
+        await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: relayerA.publicKey }).rpc();
+        await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: relayerB.publicKey }).rpc();
       }
 
       // Prepare leaf using token accounts.
@@ -1762,7 +1762,9 @@ describe("svm_spoke.bundle", () => {
         );
 
         // Create instruction to initialize claim account.
-        initializeInstructions.push(await program.methods.initializeClaimAccount(mint, tokenOwner).instruction());
+        initializeInstructions.push(
+          await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: tokenOwner }).instruction()
+        );
         claimAccounts.push(claimAccount);
 
         refundAmounts.push(new BN(randomBigInt(2).toString()));
@@ -1775,12 +1777,13 @@ describe("svm_spoke.bundle", () => {
           vault,
           mint,
           tokenAccount,
+          refundAddress: tokenOwner,
           claimAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
           program: program.programId,
         };
         claimInstructions.push(
-          await program.methods.claimRelayerRefundFor(tokenOwner).accounts(claimRelayerRefundAccounts).instruction()
+          await program.methods.claimRelayerRefundFor().accounts(claimRelayerRefundAccounts).instruction()
         );
       }
 
@@ -1923,13 +1926,13 @@ describe("svm_spoke.bundle", () => {
 
     it("Execute Max multiple refunds with claims in one legacy transaction", async () => {
       // Larger amount would hit transaction message size limit.
-      const solanaDistributions = 3;
+      const solanaDistributions = 5;
       await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: false });
     });
 
     it("Execute Max multiple refunds with claims in one versioned transaction", async () => {
-      // Larger amount would hit transaction message size limit.
-      const solanaDistributions = 7;
+      // Larger amount would hit maximum instruction trace length limit.
+      const solanaDistributions = 12;
       await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true, separatePhases: false });
     });
 
@@ -1940,8 +1943,8 @@ describe("svm_spoke.bundle", () => {
     });
 
     it("Execute Max multiple refunds with claims in separate phase versioned transactions", async () => {
-      // Larger amount would hit transaction message size limit.
-      const solanaDistributions = 13;
+      // Larger amount would hit maximum instruction trace length limit.
+      const solanaDistributions = 21;
       await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true, separatePhases: true });
     });
   });

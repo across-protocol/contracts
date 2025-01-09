@@ -9,16 +9,21 @@ use crate::{
 };
 
 #[derive(Accounts)]
-#[instruction(mint: Pubkey, refund_address: Pubkey)]
 pub struct InitializeClaimAccount<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub mint: UncheckedAccount<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
 
     #[account(
         init,
         payer = signer,
         space = DISCRIMINATOR_SIZE + ClaimAccount::INIT_SPACE,
-        seeds = [b"claim_account", mint.as_ref(), refund_address.as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.key().as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -107,7 +112,6 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(refund_address: Pubkey)]
 pub struct ClaimRelayerRefundFor<'info> {
     pub signer: Signer<'info>,
 
@@ -130,6 +134,9 @@ pub struct ClaimRelayerRefundFor<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
+
     #[account(
         mut,
         associated_token::mint = mint,
@@ -141,7 +148,7 @@ pub struct ClaimRelayerRefundFor<'info> {
     #[account(
         mut,
         close = initializer,
-        seeds = [b"claim_account", mint.key().as_ref(), refund_address.as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.key().as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -149,7 +156,7 @@ pub struct ClaimRelayerRefundFor<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_address: Pubkey) -> Result<()> {
+pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>) -> Result<()> {
     // Ensure the claim account holds a non-zero amount.
     let claim_amount = ctx.accounts.claim_account.amount;
     if claim_amount == 0 {
@@ -172,7 +179,11 @@ pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_addr
         CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
-    emit_cpi!(ClaimedRelayerRefund { l2_token_address: ctx.accounts.mint.key(), claim_amount, refund_address });
+    emit_cpi!(ClaimedRelayerRefund {
+        l2_token_address: ctx.accounts.mint.key(),
+        claim_amount,
+        refund_address: ctx.accounts.refund_address.key(),
+    });
 
     Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
 }
@@ -181,10 +192,15 @@ pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_addr
 // relayer refunds were executed with ATA after initializing the claim account. In such cases, the initializer should be
 // able to close the claim account manually.
 #[derive(Accounts)]
-#[instruction(mint: Pubkey, refund_address: Pubkey)]
 pub struct CloseClaimAccount<'info> {
     #[account(mut, address = claim_account.initializer @ SvmError::InvalidClaimInitializer)]
     pub signer: Signer<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub mint: UncheckedAccount<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
 
     #[account(
         mut,
