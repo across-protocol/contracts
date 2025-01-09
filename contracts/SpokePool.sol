@@ -993,6 +993,7 @@ abstract contract SpokePool is
      * handleV3AcrossMessage() public function
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
+     * @param repaymentAddress Address the relayer wants to be receive their refund at.
      */
     function fillV3Relay(
         V3RelayData calldata relayData,
@@ -1031,6 +1032,7 @@ abstract contract SpokePool is
      * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. See fillV3Relay().
+     * @param repaymentAddress Address the relayer wants to be receive their refund at.
      * @param updatedOutputAmount New output amount to use for this deposit.
      * @param updatedRecipient New recipient to use for this deposit.
      * @param updatedMessage New message to use for this deposit.
