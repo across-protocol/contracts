@@ -455,15 +455,13 @@ pub mod svm_spoke {
     /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - vault (InterfaceAccount): The ATA for the refunded mint. Authority must be the state.
     /// - mint (InterfaceAccount): The mint account for the token being refunded.
-    /// - token_account (InterfaceAccount): The receiving token account for the refund. When refund_address is provided,
-    ///   this must match its ATA.
+    /// - refund_address: token account authority receiving the refund.
+    /// - token_account (InterfaceAccount): The receiving token account for the refund. When refund_address is different
+    ///   from the signer, this must match its ATA.
     /// - claim_account (Account): The claim account PDA. Seed: ["claim_account",mint,refund_address].
     /// - token_program (Interface): The token program.
-    ///
-    /// ### Parameters:
-    /// - refund_address: Optional token account authority receiving the refund. If None, the signer is used.
-    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>, refund_address: Option<Pubkey>) -> Result<()> {
-        instructions::claim_relayer_refund(ctx, refund_address)
+    pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
+        instructions::claim_relayer_refund(ctx)
     }
 
     /// Creates token accounts in batch for a set of addresses.

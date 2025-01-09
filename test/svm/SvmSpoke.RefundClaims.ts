@@ -38,6 +38,7 @@ describe("svm_spoke.refund_claims", () => {
     state: PublicKey;
     vault: PublicKey;
     mint: PublicKey;
+    refundAddress: PublicKey;
     tokenAccount: PublicKey;
     claimAccount: PublicKey;
     tokenProgram: PublicKey;
@@ -149,6 +150,7 @@ describe("svm_spoke.refund_claims", () => {
       state,
       vault,
       mint,
+      refundAddress: relayer.publicKey,
       tokenAccount,
       claimAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
@@ -176,7 +178,7 @@ describe("svm_spoke.refund_claims", () => {
     const iRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
 
     // Claim refund for the relayer.
-    const tx = await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+    const tx = await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -198,11 +200,11 @@ describe("svm_spoke.refund_claims", () => {
     await executeRelayerRefundToClaim(relayerRefund);
 
     // Claim refund for the relayer.
-    await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
 
     // The claim account should have been automatically closed, so repeated claim should fail.
     try {
-      await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund from closed account should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -216,7 +218,7 @@ describe("svm_spoke.refund_claims", () => {
     // After reinitalizing the claim account, the repeated claim should still fail.
     await initializeClaimAccount();
     try {
-      await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund from reinitalized account should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -235,7 +237,7 @@ describe("svm_spoke.refund_claims", () => {
     const iRelayerBal = (await connection.getTokenAccountBalance(tokenAccount)).value.amount;
 
     // Claim refund for the relayer.
-    await await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+    await await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
 
     // The relayer should have received both refunds.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -260,7 +262,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Claiming with default initializer should fail.
     try {
-      await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
       assert.strictEqual(
@@ -272,7 +274,7 @@ describe("svm_spoke.refund_claims", () => {
 
     // Claim refund for the relayer passing the correct initializer account.
     claimRelayerRefundAccounts.initializer = anotherInitializer.publicKey;
-    await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+    await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -344,7 +346,7 @@ describe("svm_spoke.refund_claims", () => {
     claimRelayerRefundAccounts.tokenAccount = wrongTokenAccount;
 
     try {
-      await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund to custom token account should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -369,7 +371,7 @@ describe("svm_spoke.refund_claims", () => {
     await setAuthority(connection, payer, wrongTokenAccount, wrongOwner, AuthorityType.AccountOwner, relayer.publicKey);
 
     try {
-      await program.methods.claimRelayerRefund(relayer.publicKey).accounts(claimRelayerRefundAccounts).rpc();
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund to custom token account should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -396,11 +398,7 @@ describe("svm_spoke.refund_claims", () => {
     claimRelayerRefundAccounts.signer = relayer.publicKey; // Only relayer itself should be able to do this.
 
     // Relayer can claim refund to custom token account.
-    const tx = await program.methods
-      .claimRelayerRefund(null)
-      .accounts(claimRelayerRefundAccounts)
-      .signers([relayer])
-      .rpc();
+    const tx = await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).signers([relayer]).rpc();
 
     // The relayer should have received funds from the vault.
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
@@ -422,8 +420,9 @@ describe("svm_spoke.refund_claims", () => {
     await executeRelayerRefundToClaim(relayerRefund);
 
     // Claim refund for the relayer with the default signer should fail as relayer address is part of claim account derivation.
+    claimRelayerRefundAccounts.refundAddress = owner;
     try {
-      await program.methods.claimRelayerRefund(null).accounts(claimRelayerRefundAccounts).rpc();
+      await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).rpc();
       assert.fail("Claiming refund with wrong signer should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);

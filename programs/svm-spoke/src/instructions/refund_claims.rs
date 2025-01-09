@@ -36,7 +36,6 @@ pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(refund_address: Option<Pubkey>)]
 pub struct ClaimRelayerRefund<'info> {
     pub signer: Signer<'info>,
 
@@ -59,14 +58,17 @@ pub struct ClaimRelayerRefund<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    // If refund_address is not provided this method allows relayer to claim refunds on any custom token account.
+    /// CHECK: This is used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
+
+    // If refund_address is the same as signer this method allows relayer to claim refunds on any custom token account.
     // Otherwise this must be the associated token account of the provided refund_address.
     #[account(
         mut,
         token::mint = mint,
         token::token_program = token_program,
-        constraint = refund_address.is_none()
-            || is_valid_associated_token_account(&token_account, &mint, &token_program, &refund_address.unwrap())
+        constraint = refund_address.key().eq(&signer.key())
+            || is_valid_associated_token_account(&token_account, &mint, &token_program, &refund_address.key())
             @ SvmError::InvalidRefundTokenAccount
     )]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
@@ -74,7 +76,7 @@ pub struct ClaimRelayerRefund<'info> {
     #[account(
         mut,
         close = initializer,
-        seeds = [b"claim_account", mint.key().as_ref(), refund_address.unwrap_or_else(|| signer.key()).as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.key().as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -82,7 +84,7 @@ pub struct ClaimRelayerRefund<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>, refund_address: Option<Pubkey>) -> Result<()> {
+pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
     // Ensure the claim account holds a non-zero amount.
     let claim_amount = ctx.accounts.claim_account.amount;
     if claim_amount == 0 {
@@ -108,7 +110,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>, refund_address: Op
     emit_cpi!(ClaimedRelayerRefund {
         l2_token_address: ctx.accounts.mint.key(),
         claim_amount,
-        refund_address: refund_address.unwrap_or_else(|| ctx.accounts.signer.key()),
+        refund_address: ctx.accounts.refund_address.key(),
     });
 
     Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
