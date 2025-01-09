@@ -1137,7 +1137,7 @@ abstract contract SpokePool is
         // Must do a delegatecall because the function requires the inputs to be calldata.
         (bool success, bytes memory data) = address(this).delegatecall(
             abi.encode(
-                "fillV3Relay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
+                "fillRelay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
                 relayData,
                 destinationFillerData.repaymentChainId,
                 msg.sender.toBytes32()
