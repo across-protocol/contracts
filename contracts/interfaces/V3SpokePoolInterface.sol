@@ -130,7 +130,7 @@ interface V3SpokePoolInterface {
      *              EVENTS                *
      **************************************/
 
-    event V3FundsDeposited(
+    event FundsDeposited(
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 inputAmount,
@@ -146,7 +146,7 @@ interface V3SpokePoolInterface {
         bytes message
     );
 
-    event RequestedSpeedUpV3Deposit(
+    event RequestedSpeedUpDeposit(
         uint256 updatedOutputAmount,
         uint256 indexed depositId,
         bytes32 indexed depositor,
@@ -155,7 +155,7 @@ interface V3SpokePoolInterface {
         bytes depositorSignature
     );
 
-    event FilledV3Relay(
+    event FilledRelay(
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 inputAmount,
@@ -173,7 +173,7 @@ interface V3SpokePoolInterface {
         V3RelayExecutionEventInfo relayExecutionInfo
     );
 
-    event RequestedV3SlowFill(
+    event RequestedSlowFill(
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 inputAmount,
@@ -340,4 +340,67 @@ interface V3SpokePoolInterface {
     error LowLevelCallFailed(bytes data);
     error InsufficientSpokePoolBalanceToExecuteLeaf();
     error NoRelayerRefundToClaim();
+
+    /**************************************
+     *             LEGACY EVENTS          *
+     **************************************/
+
+    // Note: these events are unused, but included in the ABI for ease of migration.
+    event V3FundsDeposited(
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 indexed destinationChainId,
+        uint32 indexed depositId,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        address indexed depositor,
+        address recipient,
+        address exclusiveRelayer,
+        bytes message
+    );
+
+    event RequestedSpeedUpV3Deposit(
+        uint256 updatedOutputAmount,
+        uint32 indexed depositId,
+        address indexed depositor,
+        address updatedRecipient,
+        bytes updatedMessage,
+        bytes depositorSignature
+    );
+
+    event FilledV3Relay(
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 repaymentChainId,
+        uint256 indexed originChainId,
+        uint32 indexed depositId,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        address exclusiveRelayer,
+        address indexed relayer,
+        address depositor,
+        address recipient,
+        bytes message,
+        V3RelayExecutionEventInfo relayExecutionInfo
+    );
+
+    event RequestedV3SlowFill(
+        address inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 indexed originChainId,
+        uint32 indexed depositId,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        address exclusiveRelayer,
+        address depositor,
+        address recipient,
+        bytes message
+    );
 }

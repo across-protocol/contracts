@@ -848,7 +848,7 @@ abstract contract SpokePool is
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
         // from the following event to submit a fill with updated relay data.
-        emit RequestedSpeedUpV3Deposit(
+        emit RequestedSpeedUpDeposit(
             updatedOutputAmount,
             depositId,
             depositor,
@@ -902,7 +902,7 @@ abstract contract SpokePool is
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
         // from the following event to submit a fill with updated relay data.
-        emit RequestedSpeedUpV3Deposit(
+        emit RequestedSpeedUpDeposit(
             updatedOutputAmount,
             depositId,
             depositor.toBytes32(),
@@ -1106,7 +1106,7 @@ abstract contract SpokePool is
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
-        emit RequestedV3SlowFill(
+        emit RequestedSlowFill(
             relayData.inputToken,
             relayData.outputToken,
             relayData.inputAmount,
@@ -1385,7 +1385,7 @@ abstract contract SpokePool is
             );
         }
 
-        emit V3FundsDeposited(
+        emit FundsDeposited(
             params.inputToken,
             params.outputToken,
             params.inputAmount,
