@@ -1734,7 +1734,11 @@ describe("svm_spoke.bundle", () => {
   });
 
   describe("Execute Max multiple refunds with claims", async () => {
-    const executeMaxRefundClaims = async (testConfig: { solanaDistributions: number; useAddressLookup: boolean }) => {
+    const executeMaxRefundClaims = async (testConfig: {
+      solanaDistributions: number;
+      useAddressLookup: boolean;
+      separatePhases: boolean;
+    }) => {
       // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
       const evmDistributions = 100; // This would fit in 7 proof array elements.
 
@@ -1843,23 +1847,68 @@ describe("svm_spoke.bundle", () => {
         .remainingAccounts(executeRemainingAccounts)
         .instruction();
 
-      // Initialize, execute and claim (except for the first relayer) atomically depending on the chosen method.
+      // Initialize, execute and claim (except for the first relayer) depending on the chosen method.
       const instructions = [...initializeInstructions, executeInstruction, ...claimInstructions];
-      if (testConfig.useAddressLookup)
-        await sendTransactionWithLookupTable(
-          connection,
-          instructions,
-          (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-        );
-      else
-        await web3.sendAndConfirmTransaction(
-          connection,
-          new web3.Transaction().add(...instructions),
-          [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
-          {
-            commitment: "confirmed",
-          }
-        );
+      if (!testConfig.separatePhases) {
+        if (testConfig.useAddressLookup)
+          await sendTransactionWithLookupTable(
+            connection,
+            instructions,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+        else
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(...instructions),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+      } else {
+        if (testConfig.useAddressLookup) {
+          await sendTransactionWithLookupTable(
+            connection,
+            initializeInstructions,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+          await sendTransactionWithLookupTable(
+            connection,
+            [executeInstruction],
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+          await sendTransactionWithLookupTable(
+            connection,
+            claimInstructions,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+        } else {
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(...initializeInstructions),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(executeInstruction),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(...claimInstructions),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+        }
+      }
 
       // Verify all refund account balances (either token or claim accounts).
       const refundBalances = await Promise.all(
@@ -1877,16 +1926,28 @@ describe("svm_spoke.bundle", () => {
       });
     };
 
-    it("Execute Max multiple refunds with claims in legacy transaction", async () => {
+    it("Execute Max multiple refunds with claims in one legacy transaction", async () => {
       // Larger amount would hit transaction message size limit.
       const solanaDistributions = 4;
-      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false });
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: false });
     });
 
-    it("Execute Max multiple refunds with claims in a versioned transaction", async () => {
+    it("Execute Max multiple refunds with claims in one versioned transaction", async () => {
       // Larger amount would hit transaction message size limit.
       const solanaDistributions = 7;
-      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true });
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true, separatePhases: false });
+    });
+
+    it("Execute Max multiple refunds with claims in separate phase legacy transactions", async () => {
+      // Larger amount would hit transaction message size limit.
+      const solanaDistributions = 8;
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: true });
+    });
+
+    it("Execute Max multiple refunds with claims in separate phase versioned transactions", async () => {
+      // Larger amount would hit transaction message size limit.
+      const solanaDistributions = 13;
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true, separatePhases: true });
     });
   });
 });
