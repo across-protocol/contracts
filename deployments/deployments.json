@@ -157,7 +157,7 @@
     "Blast_Adapter": { "address": "0x09500Ffd743e01B4146a4BA795231Ca7Ca37819f", "blockNumber": 6233857 }
   },
   "37111": {
-    "SpokePool": { "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF", "blockNumber": 145465 },
+    "SpokePool": { "address": "0x6A0a7f39530923911832Dd60667CE5da5449967B", "blockNumber": 156275 },
     "MulticallHandler": { "address": "0x02D2B95F631E0CF6c203E77f827381B0885F7822", "blockNumber": 145561 }
   },
   "41455": {

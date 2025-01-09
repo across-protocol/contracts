@@ -4,10 +4,10 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WGRASS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const contractName = "ZkSync_SpokePool";
+  const contractName = "Lens_SpokePool";
   const { deployments, zkUpgrades } = hre;
 
   const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -20,11 +20,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const artifact = await deployer.loadArtifact(contractName);
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
-    L2_ADDRESS_MAP.zkErc20Bridge,
+    L2_ADDRESS_MAP[spokeChainId].zkErc20Bridge,
     hubPool.address,
     hubPool.address,
   ];
-  const constructorArgs = [WETH[spokeChainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
+  const constructorArgs = [WGRASS[spokeChainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
 
   let newAddress: string;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
@@ -64,4 +64,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["ZkStackSpokePool", "zksync"];
+func.tags = ["LensSpokePool", "lens"];
