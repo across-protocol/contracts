@@ -21,7 +21,7 @@ contract SpokePoolVerifier {
     error InvalidSpokePool();
 
     /**
-     * @notice Passthrough function to `depositV3Bytes32()` on the SpokePool contract.
+     * @notice Passthrough function to `deposit()` on the SpokePool contract.
      * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
@@ -42,7 +42,7 @@ contract SpokePoolVerifier {
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
      * @param fillDeadline Timestamp after which this deposit can no longer be filled.
      */
-    function depositV3Bytes32(
+    function deposit(
         V3SpokePoolInterface spokePool,
         bytes32 recipient,
         bytes32 inputToken,
@@ -58,7 +58,7 @@ contract SpokePoolVerifier {
         if (msg.value != inputAmount) revert InvalidMsgValue();
         if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
-        spokePool.depositV3Bytes32{ value: msg.value }(
+        spokePool.deposit{ value: msg.value }(
             msg.sender.toBytes32(),
             recipient,
             inputToken,

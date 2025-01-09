@@ -59,7 +59,7 @@ contract Permit2Depositor {
         uint256 amountToDeposit = order.input.amount + order.fillerCollateral.amount;
 
         IERC20(order.input.token).safeIncreaseAllowance(address(SPOKE_POOL), amountToDeposit);
-        SPOKE_POOL.depositV3Bytes32(
+        SPOKE_POOL.deposit(
             order.info.offerer.toBytes32(),
             // Note: Permit2OrderLib checks that order only has a single output.
             order.outputs[0].recipient.toBytes32(),

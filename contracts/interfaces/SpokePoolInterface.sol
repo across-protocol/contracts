@@ -52,7 +52,7 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
-    function deposit(
+    function deposit_5962092001(
         address recipient,
         address originToken,
         uint256 amount,

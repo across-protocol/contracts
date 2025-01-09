@@ -91,9 +91,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       );
 
       // Can fast fill after:
-      await spokePool
-        .connect(relayer)
-        .fillV3RelayBytes32(relayData, consts.repaymentChainId, addressToBytes(relayer.address));
+      await spokePool.connect(relayer).fillRelay(relayData, consts.repaymentChainId, addressToBytes(relayer.address));
     });
     it("cannot request if FillStatus is Filled", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);
@@ -177,7 +175,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await expect(
         spokePool
           .connect(relayer)
-          .fillV3RelayBytes32(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address))
+          .fillRelay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address))
       ).to.be.revertedWith("RelayFilled");
     });
     it("cannot be used to double send a fill", async function () {
@@ -187,7 +185,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       // Fill before executing slow fill
       await spokePool
         .connect(relayer)
-        .fillV3RelayBytes32(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address));
+        .fillRelay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address));
       await expect(
         spokePool.connect(relayer).executeV3SlowRelayLeaf(
           slowRelayLeaf,
