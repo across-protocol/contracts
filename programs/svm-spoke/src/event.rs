@@ -37,7 +37,7 @@ pub struct EmergencyDeletedRootBundle {
 
 // Deposit events
 #[event]
-pub struct FundsDeposited {
+pub struct V3FundsDeposited {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
@@ -70,7 +70,7 @@ pub struct V3RelayExecutionEventInfo {
 }
 
 #[event]
-pub struct FilledRelay {
+pub struct FilledV3Relay {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
@@ -90,7 +90,7 @@ pub struct FilledRelay {
 
 // Slow fill events
 #[event]
-pub struct RequestedSlowFill {
+pub struct RequestedV3SlowFill {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,

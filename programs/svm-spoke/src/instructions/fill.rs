@@ -9,7 +9,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    event::{FillType, FilledRelay, V3RelayExecutionEventInfo},
+    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
     state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
@@ -145,7 +145,7 @@ pub fn fill_v3_relay<'info>(
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
-    emit_cpi!(FilledRelay {
+    emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
         input_amount: relay_data.input_amount,

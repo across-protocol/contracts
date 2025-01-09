@@ -1,7 +1,7 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-use crate::event::{FillType, FilledRelay, RequestedSlowFill, V3RelayExecutionEventInfo};
+use crate::event::{FillType, FilledV3Relay, RequestedV3SlowFill, V3RelayExecutionEventInfo};
 use crate::{
     common::V3RelayData,
     constants::DISCRIMINATOR_SIZE,
@@ -70,10 +70,10 @@ pub fn request_v3_slow_fill(ctx: Context<RequestV3SlowFill>, relay_data: Option<
     fill_status_account.relayer = ctx.accounts.signer.key();
     fill_status_account.fill_deadline = relay_data.fill_deadline;
 
-    // Emit the RequestedSlowFill event. Empty message is not hashed and emits zeroed bytes32 for easier observability
+    // Emit the RequestedV3SlowFill event. Empty message is not hashed and emits zeroed bytes32 for easier observability
     let message_hash = hash_non_empty_message(&relay_data.message);
 
-    emit_cpi!(RequestedSlowFill {
+    emit_cpi!(RequestedV3SlowFill {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
         input_amount: relay_data.input_amount,
@@ -265,7 +265,7 @@ pub fn execute_v3_slow_relay_leaf<'info>(
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
-    emit_cpi!(FilledRelay {
+    emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
         input_amount: relay_data.input_amount,
