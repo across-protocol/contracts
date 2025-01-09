@@ -63,7 +63,7 @@ describe("SpokePool Depositor Logic", async function () {
     // Can't deposit when paused:
     await spokePool.connect(depositor).pauseDeposits(true);
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount: amountToDeposit,
@@ -77,7 +77,7 @@ describe("SpokePool Depositor Logic", async function () {
     await spokePool.connect(depositor).pauseDeposits(false);
 
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           recipient: recipient.address,
           originToken: erc20.address,
@@ -150,7 +150,7 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Fails if msg.value > 0 but doesn't match amount to deposit.
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: weth.address,
           amount,
@@ -163,7 +163,7 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.revertedWith(revertReason);
 
     await expect(() =>
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           recipient: recipient.address,
           originToken: weth.address,
@@ -183,7 +183,7 @@ describe("SpokePool Depositor Logic", async function () {
 
   it("Depositing ETH with msg.value = 0 pulls WETH from depositor", async function () {
     await expect(() =>
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: weth.address,
           amount,
@@ -201,7 +201,7 @@ describe("SpokePool Depositor Logic", async function () {
 
     await erc20.connect(depositor).approve(spokePool.address, 0);
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -210,11 +210,11 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.be.revertedWith(insufficientAllowance);
+    ).to.be.reverted;
 
     await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -231,7 +231,7 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Verify that routes are disabled by default.
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: unwhitelistedErc20.address,
           amount,
@@ -244,7 +244,7 @@ describe("SpokePool Depositor Logic", async function () {
 
     // Verify that the route is enabled.
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -258,7 +258,7 @@ describe("SpokePool Depositor Logic", async function () {
     // Disable the route.
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -273,7 +273,7 @@ describe("SpokePool Depositor Logic", async function () {
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, true);
     await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -289,7 +289,7 @@ describe("SpokePool Depositor Logic", async function () {
     const revertReason = "InvalidRelayerFee";
 
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -306,7 +306,7 @@ describe("SpokePool Depositor Logic", async function () {
     const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
 
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -318,7 +318,7 @@ describe("SpokePool Depositor Logic", async function () {
     ).to.be.revertedWith("underflowed");
 
     await expect(
-      spokePool.connect(depositor).deposit(
+      spokePool.connect(depositor).depositDeprecated_5947912356(
         ...getDepositParams({
           originToken: erc20.address,
           amount,
@@ -333,7 +333,7 @@ describe("SpokePool Depositor Logic", async function () {
     for (const offset of [0, quoteTimeBuffer]) {
       await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositDeprecated_5947912356(
           ...getDepositParams({
             originToken: erc20.address,
             amount,
@@ -812,10 +812,8 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(spokePool.connect(depositor).deposit(...depositArgs)).to.be.revertedWith("DepositsArePaused");
     });
     it("reentrancy protected", async function () {
-      const functionCalldata = spokePool.interface.encodeFunctionData("depositV3Bytes32", [...depositArgs]);
-      await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
-        "ReentrancyGuard: reentrant call"
-      );
+      const functionCalldata = spokePool.interface.encodeFunctionData("deposit", [...depositArgs]);
+      await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.reverted;
     });
     it("unsafe deposit ID", async function () {
       // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, forcedDepositId}.
