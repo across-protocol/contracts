@@ -99,7 +99,7 @@ interface V3SpokePoolInterface {
         uint256 repaymentChainId;
     }
 
-    // Packs together parameters emitted in FilledV3Relay because there are too many emitted otherwise.
+    // Packs together parameters emitted in FilledRelay because there are too many emitted otherwise.
     // Similar to V3RelayExecutionParams, these parameters are not used to uniquely identify the deposit being
     // filled so they don't have to be unpacked by all clients.
     struct V3RelayExecutionEventInfo {

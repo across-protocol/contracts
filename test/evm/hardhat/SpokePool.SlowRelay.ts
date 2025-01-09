@@ -66,7 +66,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await spokePool.setCurrentTime(relayData.exclusivityDeadline - 1);
       await expect(spokePool.connect(relayer).requestV3SlowFill({ ...relayData, exclusivityDeadline: 0 })).to.emit(
         spokePool,
-        "RequestedV3SlowFill"
+        "RequestedSlowFill"
       );
     });
     it("during exclusivity deadline", async function () {
@@ -80,7 +80,7 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       // FillStatus must be Unfilled:
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Unfilled);
-      expect(await spokePool.connect(relayer).requestV3SlowFill(relayData)).to.emit(spokePool, "RequestedV3SlowFill");
+      expect(await spokePool.connect(relayer).requestV3SlowFill(relayData)).to.emit(spokePool, "RequestedSlowFill");
 
       // FillStatus gets reset to RequestedSlowFill:
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.RequestedSlowFill);
@@ -295,7 +295,7 @@ describe("SpokePool Slow Relay Logic", async function () {
           tree.getHexProof(slowRelayLeaf)
         )
       )
-        .to.emit(spokePool, "FilledV3Relay")
+        .to.emit(spokePool, "FilledRelay")
         .withArgs(
           addressToBytes(relayData.inputToken),
           addressToBytes(relayData.outputToken),

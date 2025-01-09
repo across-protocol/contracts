@@ -124,7 +124,7 @@ describe("SpokePool Relayer Logic", async function () {
             false // isSlowFill
           )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -160,7 +160,7 @@ describe("SpokePool Relayer Logic", async function () {
             true // isSlowFill
           )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -195,7 +195,7 @@ describe("SpokePool Relayer Logic", async function () {
             false // isSlowFill
           )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -360,7 +360,7 @@ describe("SpokePool Relayer Logic", async function () {
       });
       it("calls _fillRelayV3 with expected params", async function () {
         await expect(spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address)))
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -395,7 +395,7 @@ describe("SpokePool Relayer Logic", async function () {
           outputToken: bytes32ToAddress(relayData.outputToken),
         };
         await expect(spokePool.connect(relayer).fillV3Relay(legacyRelayData, repaymentChainId))
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -452,7 +452,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedMessage,
               signature
             )
-        ).to.emit(spokePool, "FilledV3Relay");
+        ).to.emit(spokePool, "FilledRelay");
       });
       it("must be exclusive relayer before exclusivity deadline", async function () {
         const _relayData = {
@@ -510,7 +510,7 @@ describe("SpokePool Relayer Logic", async function () {
               signature
             )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),

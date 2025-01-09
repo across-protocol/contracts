@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use crate::{
     constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
     error::{CommonError, SvmError},
-    event::V3FundsDeposited,
+    event::FundsDeposited,
     state::{Route, State},
     utils::{get_current_time, get_unsafe_deposit_id, transfer_from},
 };
@@ -120,7 +120,7 @@ pub fn _deposit_v3(
         applied_deposit_id[..4].copy_from_slice(&state.number_of_deposits.to_le_bytes());
     }
 
-    emit_cpi!(V3FundsDeposited {
+    emit_cpi!(FundsDeposited {
         input_token,
         output_token,
         input_amount,

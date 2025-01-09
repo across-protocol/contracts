@@ -398,7 +398,7 @@ pub mod svm_spoke {
     /// - _relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit to be filled. Should match
-    ///   all the same-named parameters emitted in the origin chain V3FundsDeposited event.
+    ///   all the same-named parameters emitted in the origin chain FundsDeposited event.
     ///   - depositor: The account credited with the deposit.
     ///   - recipient: The account receiving funds on this chain.
     ///   - input_token: The token pulled from the caller's account to initiate the deposit. The equivalent of this

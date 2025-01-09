@@ -459,7 +459,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     // being able to close the fill status PDA using only event data.
     const events = await readEventsUntilFound(connection, txSignature, [program]);
     const eventData = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(eventData, "FilledV3Relay event should be emitted");
+    assert.isNotNull(eventData, "FilledRelay event should be emitted");
 
     // Recover relay hash and derived fill status from event data.
     const relayHashUint8Array = calculateRelayEventHashUint8Array(eventData, chainId);

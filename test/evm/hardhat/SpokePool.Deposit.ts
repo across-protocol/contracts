@@ -88,7 +88,7 @@ describe("SpokePool Depositor Logic", async function () {
         })
       )
     )
-      .to.emit(spokePool, "V3FundsDeposited")
+      .to.emit(spokePool, "FundsDeposited")
       .withArgs(
         addressToBytes(erc20.address),
         addressToBytes(ZERO_ADDRESS),
@@ -128,7 +128,7 @@ describe("SpokePool Depositor Logic", async function () {
         })
       )
     )
-      .to.emit(spokePool, "V3FundsDeposited")
+      .to.emit(spokePool, "FundsDeposited")
       .withArgs(
         addressToBytes(erc20.address),
         addressToBytes(ZERO_ADDRESS),
@@ -223,7 +223,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.emit(spokePool, "V3FundsDeposited");
+    ).to.emit(spokePool, "FundsDeposited");
   });
 
   it("Deposit route is disabled", async function () {
@@ -253,7 +253,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.emit(spokePool, "V3FundsDeposited");
+    ).to.emit(spokePool, "FundsDeposited");
 
     // Disable the route.
     await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
@@ -282,7 +282,7 @@ describe("SpokePool Depositor Logic", async function () {
           quoteTimestamp,
         })
       )
-    ).to.emit(spokePool, "V3FundsDeposited");
+    ).to.emit(spokePool, "FundsDeposited");
   });
 
   it("Relayer fee is invalid", async function () {
@@ -342,7 +342,7 @@ describe("SpokePool Depositor Logic", async function () {
             quoteTimestamp: quoteTimestamp - offset,
           })
         )
-      ).to.emit(spokePool, "V3FundsDeposited");
+      ).to.emit(spokePool, "FundsDeposited");
     }
   });
 
@@ -549,7 +549,7 @@ describe("SpokePool Depositor Logic", async function () {
           )
         )
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           relayData.inputToken,
           relayData.outputToken,
@@ -584,7 +584,7 @@ describe("SpokePool Depositor Logic", async function () {
           )
         )
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           relayData.inputToken,
           relayData.outputToken,
@@ -619,7 +619,7 @@ describe("SpokePool Depositor Logic", async function () {
           )
         )
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           relayData.inputToken,
           relayData.outputToken,
@@ -701,7 +701,7 @@ describe("SpokePool Depositor Logic", async function () {
             relayData.message
           )
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           addressToBytes(relayData.inputToken),
           addressToBytes(relayData.outputToken),
@@ -740,7 +740,7 @@ describe("SpokePool Depositor Logic", async function () {
             relayData.message
           )
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           addressToBytes(relayData.inputToken),
           addressToBytes(relayData.outputToken),
@@ -758,9 +758,9 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.message
         );
     });
-    it("emits V3FundsDeposited event with correct deposit ID", async function () {
+    it("emits FundsDeposited event with correct deposit ID", async function () {
       await expect(spokePool.connect(depositor).deposit(...depositArgs))
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           addressToBytes(relayData.inputToken),
           addressToBytes(relayData.outputToken),
@@ -788,7 +788,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.connect(depositor).deposit(...getDepositArgsFromRelayData({ ...relayData, depositor: newDepositor }))
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           addressToBytes(relayData.inputToken),
           addressToBytes(relayData.outputToken),
@@ -838,7 +838,7 @@ describe("SpokePool Depositor Logic", async function () {
             ...getUnsafeDepositArgsFromRelayData({ ...relayData, depositor: recipient.address }, forcedDepositId)
           )
       )
-        .to.emit(spokePool, "V3FundsDeposited")
+        .to.emit(spokePool, "FundsDeposited")
         .withArgs(
           relayData.inputToken,
           relayData.outputToken,
@@ -937,7 +937,7 @@ describe("SpokePool Depositor Logic", async function () {
             expectedSignature
           )
       )
-        .to.emit(spokePool, "RequestedSpeedUpV3Deposit")
+        .to.emit(spokePool, "RequestedSpeedUpDeposit")
         .withArgs(
           updatedOutputAmount,
           depositId,
@@ -1020,7 +1020,7 @@ describe("SpokePool Depositor Logic", async function () {
             signature
           )
       )
-        .to.emit(spokePool, "RequestedSpeedUpV3Deposit")
+        .to.emit(spokePool, "RequestedSpeedUpDeposit")
         .withArgs(
           updatedOutputAmount,
           depositId,

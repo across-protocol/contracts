@@ -61,7 +61,7 @@ abstract contract SpokePool is
     uint32 private DEPRECATED_depositQuoteTimeBuffer;
 
     // `numberOfDeposits` acts as a counter to generate unique deposit identifiers for this spoke pool.
-    // It is a uint32 that increments with each `depositV3` call. In the `V3FundsDeposited` event, it is
+    // It is a uint32 that increments with each `depositV3` call. In the `FundsDeposited` event, it is
     // implicitly cast to uint256 by setting its most significant bits to 0, reducing the risk of ID collisions
     // with unsafe deposits. However, this variable's name could be improved (e.g., `depositNonceCounter`)
     // since it does not accurately reflect the total number of deposits, as `unsafeDepositV3` can bypass this increment.
@@ -377,7 +377,7 @@ abstract contract SpokePool is
      * @notice The originToken => destinationChainId must be enabled.
      * @notice This method is payable because the caller is able to deposit native token if the originToken is
      * wrappedNativeToken and this function will handle wrapping the native token to wrappedNativeToken.
-     * @dev Produces a V3FundsDeposited event with an infinite expiry, meaning that this deposit can never expire.
+     * @dev Produces a FundsDeposited event with an infinite expiry, meaning that this deposit can never expire.
      * Moreover, the event's outputToken is set to 0x0 meaning that this deposit can always be slow filled.
      * @param recipient Address to receive funds at on destination chain.
      * @param originToken Token to lock into this contract to initiate deposit.
@@ -623,7 +623,7 @@ abstract contract SpokePool is
      * could be useful for filling a deposit faster and avoiding any risk of a relay hash unexpectedly changing
      * due to another deposit front-running this one and incrementing the global deposit ID counter.
      * @dev This is labeled "unsafe" because there is no guarantee that the depositId emitted in the resultant
-     * V3FundsDeposited event is unique which means that the
+     * FundsDeposited event is unique which means that the
      * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
      * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
      * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
@@ -812,7 +812,7 @@ abstract contract SpokePool is
     /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
      * and/or message.
-     * @dev the depositor and depositId must match the params in a V3FundsDeposited event that the depositor
+     * @dev the depositor and depositId must match the params in a FundsDeposited event that the depositor
      * wants to speed up. The relayer has the option but not the obligation to use this updated information
      * when filling the deposit via fillV3RelayWithUpdatedDeposit().
      * @param depositor Depositor that must sign the depositorSignature and was the original depositor.
@@ -864,7 +864,7 @@ abstract contract SpokePool is
      * when filling a deposit. This can be useful when the deposit needs to be modified after the original transaction has
      * been mined.
      *
-     * @dev The `depositor` and `depositId` must match the parameters in a `V3FundsDeposited` event that the depositor wants to speed up.
+     * @dev The `depositor` and `depositId` must match the parameters in a `FundsDeposited` event that the depositor wants to speed up.
      * The relayer is not obligated but has the option to use this updated information when filling the deposit using
      * `fillV3RelayWithUpdatedDeposit()`. This version uses `address` types for compatibility with systems relying on
      * `address`-based implementations.
@@ -932,7 +932,7 @@ abstract contract SpokePool is
      * origin SpokePool therefore the relayer should not modify any params in relayData.
      * @dev Cannot fill more than once. Partial fills are not supported.
      * @param relayData struct containing all the data needed to identify the deposit to be filled. Should match
-     * all the same-named parameters emitted in the origin chain V3FundsDeposited event.
+     * all the same-named parameters emitted in the origin chain FundsDeposited event.
      * - depositor: The account credited with the deposit who can request to "speed up" this deposit by modifying
      * the output amount, recipient, and message.
      * - recipient The account receiving funds on this chain. Can be an EOA or a contract. If
@@ -1443,7 +1443,7 @@ abstract contract SpokePool is
             IERC20Upgradeable(originToken).safeTransferFrom(msg.sender, address(this), amount);
         }
 
-        emit V3FundsDeposited(
+        emit FundsDeposited(
             originToken.toBytes32(), // inputToken
             bytes32(0), // outputToken. Setting this to 0x0 means that the outputToken should be assumed to be the
             // canonical token for the destination chain matching the inputToken. Therefore, this deposit
@@ -1685,7 +1685,7 @@ abstract contract SpokePool is
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-        // is trivially true. We'll emit this value in the FilledV3Relay
+        // is trivially true. We'll emit this value in the FilledRelay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
         FillType fillType = isSlowFill
@@ -1699,7 +1699,7 @@ abstract contract SpokePool is
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
-        // we can include a bool in the FilledV3Relay event making it easy for the dataworker to compute if this
+        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
@@ -1707,7 +1707,7 @@ abstract contract SpokePool is
 
         // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
         // successful.
-        emit FilledV3Relay(
+        emit FilledRelay(
             relayData.inputToken,
             relayData.outputToken,
             relayData.inputAmount,
