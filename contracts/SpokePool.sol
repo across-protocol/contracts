@@ -613,7 +613,7 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice An overloaded version of `unsafeDepositV3` that accepts `address` types for backward compatibility.     *
+     * @notice An overloaded version of `unsafeDepositV3` that accepts `address` types for backward compatibility.
      * @dev This version mirrors the original `unsafeDepositV3` function, but uses `address` types for `depositor`, `recipient`,
      * `inputToken`, `outputToken`, and `exclusiveRelayer` for compatibility with contracts using the `address` type.
      *
@@ -1296,7 +1296,7 @@ abstract contract SpokePool is
     /**
      * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
      * in unsafeDepositV3 and is provided as a convenience.
-     * @dev msgSenderand depositor are both used as inputs to allow passthrough depositors to create unique
+     * @dev msgSender and depositor are both used as inputs to allow passthrough depositors to create unique
      * deposit hash spaces for unique depositors.
      * @param msgSender The caller of the transaction used as input to produce the deposit ID.
      * @param depositor The depositor address used as input to produce the deposit ID.
@@ -1501,7 +1501,7 @@ abstract contract SpokePool is
                     bool success = _noRevertTransfer(l2TokenAddress, refundAddresses[i], refundAmounts[i]);
 
                     // If the transfer failed then track a deferred transfer for the relayer. Given this function would
-                    // have revered if there was insufficient balance, this will only happen if the transfer call
+                    // have reverted if there was insufficient balance, this will only happen if the transfer call
                     // reverts. This will only occur if the underlying transfer method on the l2Token reverts due to
                     // recipient blacklisting or other related modifications to the l2Token.transfer method.
                     if (!success) {
