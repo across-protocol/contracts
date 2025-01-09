@@ -1779,11 +1779,9 @@ describe("svm_spoke.bundle", () => {
           tokenProgram: TOKEN_PROGRAM_ID,
           program: program.programId,
         };
-        // Will not claim for the first relayer as if its token account was blacklisted.
-        if (i > 0)
-          claimInstructions.push(
-            await program.methods.claimRelayerRefundFor(tokenOwner).accounts(claimRelayerRefundAccounts).instruction()
-          );
+        claimInstructions.push(
+          await program.methods.claimRelayerRefundFor(tokenOwner).accounts(claimRelayerRefundAccounts).instruction()
+        );
       }
 
       const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
@@ -1847,9 +1845,10 @@ describe("svm_spoke.bundle", () => {
         .remainingAccounts(executeRemainingAccounts)
         .instruction();
 
-      // Initialize, execute and claim (except for the first relayer) depending on the chosen method.
+      // Initialize, execute and claim depending on the chosen method.
       const instructions = [...initializeInstructions, executeInstruction, ...claimInstructions];
       if (!testConfig.separatePhases) {
+        // Pack all instructions in one transaction.
         if (testConfig.useAddressLookup)
           await sendTransactionWithLookupTable(
             connection,
@@ -1866,6 +1865,7 @@ describe("svm_spoke.bundle", () => {
             }
           );
       } else {
+        // Send claim account initialization, execution and claim in separate transactions.
         if (testConfig.useAddressLookup) {
           await sendTransactionWithLookupTable(
             connection,
@@ -1910,15 +1910,10 @@ describe("svm_spoke.bundle", () => {
         }
       }
 
-      // Verify all refund account balances (either token or claim accounts).
+      // Verify all refund token account balances.
       const refundBalances = await Promise.all(
-        tokenAccounts.map(async (account, i) => {
-          // The first relayer will not have its tokens claimed.
-          if (i > 0) {
-            return (await connection.getTokenAccountBalance(account)).value.amount;
-          } else {
-            return (await program.account.claimAccount.fetch(claimAccounts[i])).amount.toString();
-          }
+        tokenAccounts.map(async (account) => {
+          return (await connection.getTokenAccountBalance(account)).value.amount;
         })
       );
       refundBalances.forEach((balance, i) => {
@@ -1928,7 +1923,7 @@ describe("svm_spoke.bundle", () => {
 
     it("Execute Max multiple refunds with claims in one legacy transaction", async () => {
       // Larger amount would hit transaction message size limit.
-      const solanaDistributions = 4;
+      const solanaDistributions = 3;
       await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: false });
     });
 
@@ -1940,7 +1935,7 @@ describe("svm_spoke.bundle", () => {
 
     it("Execute Max multiple refunds with claims in separate phase legacy transactions", async () => {
       // Larger amount would hit transaction message size limit.
-      const solanaDistributions = 8;
+      const solanaDistributions = 7;
       await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: true });
     });
 
