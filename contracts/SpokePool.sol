@@ -960,7 +960,7 @@ abstract contract SpokePool is
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
     function fillRelay(
-        V3RelayData calldata relayData,
+        V3RelayData memory relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress
     ) public override nonReentrant unpausedFills {
@@ -1004,18 +1004,7 @@ abstract contract SpokePool is
             message: relayData.message
         });
 
-        // Call the existing fillV3Relay function
-        (bool success, bytes memory data) = address(this).delegatecall(
-            abi.encodeWithSignature(
-                "fillRelay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
-                convertedRelayData,
-                repaymentChainId,
-                msg.sender.toBytes32()
-            )
-        );
-        if (!success) {
-            revert LowLevelCallFailed(data);
-        }
+        fillRelay(convertedRelayData, repaymentChainId, msg.sender.toBytes32());
     }
 
     /**
