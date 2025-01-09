@@ -389,7 +389,7 @@ abstract contract SpokePool is
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
      */
-    function deposit_5962092001(
+    function depositDeprecated_5947912356(
         address recipient,
         address originToken,
         uint256 amount,
