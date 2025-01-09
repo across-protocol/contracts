@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "./Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "./libraries/AddressConverters.sol";
 
 /**
  * @title SwapAndBridgeBase
@@ -18,6 +19,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  */
 abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
     // surface and we should whitelist which function selectors are allowed to be called on the exchange.
@@ -182,14 +184,14 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     ) internal {
         _acrossInputToken.safeIncreaseAllowance(address(spokePool), _acrossInputAmount);
         spokePool.depositV3(
-            depositData.depositor,
-            depositData.recipient,
-            address(_acrossInputToken), // input token
-            depositData.outputToken, // output token
+            depositData.depositor.toBytes32(),
+            depositData.recipient.toBytes32(),
+            address(_acrossInputToken).toBytes32(), // input token
+            depositData.outputToken.toBytes32(), // output token
             _acrossInputAmount, // input amount.
             depositData.outputAmount, // output amount
             depositData.destinationChainid,
-            depositData.exclusiveRelayer,
+            depositData.exclusiveRelayer.toBytes32(),
             depositData.quoteTimestamp,
             depositData.fillDeadline,
             depositData.exclusivityDeadline,

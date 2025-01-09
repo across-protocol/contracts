@@ -520,34 +520,34 @@ describe("svm_spoke.handle_receive_message", () => {
       messageBody,
     });
 
-    // Remaining accounts specific to EmergencyDeleteRootBundle.
+    // Remaining accounts specific to EmergencyDeletedRootBundle.
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const emergencyDeleteRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
-    // closer in self-invoked EmergencyDeleteRootBundle.
+    // closer in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: true,
       isWritable: true,
       pubkey: provider.wallet.publicKey,
     });
-    // state in self-invoked EmergencyDeleteRootBundle.
+    // state in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: state,
     });
-    // root_bundle in self-invoked EmergencyDeleteRootBundle.
+    // root_bundle in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: true,
       pubkey: rootBundle,
     });
-    // event_authority in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    // event_authority in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: eventAuthority,
     });
-    // program in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    // program in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,

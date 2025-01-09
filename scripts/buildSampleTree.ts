@@ -142,7 +142,7 @@ async function main() {
           originChainId: SPOKE_POOL_CHAIN_ID,
           fillDeadline: Math.floor(Date.now() / 1000) + 14400, // 4 hours from now
           exclusivityDeadline: 0,
-          depositId: i,
+          depositId: toBN(i),
           message: "0x",
         },
         updatedOutputAmount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS),
