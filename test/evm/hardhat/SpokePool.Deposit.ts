@@ -345,7 +345,7 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.emit(spokePool, "FundsDeposited");
     }
   });
-  it.only("should call legacy deposit through overloaded interface", async function () {
+  it("should call legacy deposit through overloaded interface", async function () {
     // Define the deprecated interface
     const DeprecatedSpokePoolInterface = new ethers.utils.Interface([
       "function deposit(address recipient, address originToken, uint256 amount, uint256 destinationChainId, int64 relayerFeePct, uint32 quoteTimestamp, bytes memory message, uint256 maxCount) external payable",
