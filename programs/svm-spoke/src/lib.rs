@@ -11,7 +11,7 @@ security_txt! {
     policy: "https://docs.across.to/resources/bug-bounty",
     preferred_languages: "en",
     source_code: "https://github.com/across-protocol/contracts/tree/master/programs/svm-spoke",
-    auditors: "TBD"
+    auditors: "OpenZeppelin"
 }
 
 declare_id!("D1WcTLKRyN4TuqnfMBGPvc16nACHfNhFPbgWNExb1aur");

@@ -17,7 +17,7 @@ security_txt! {
     policy: "https://docs.across.to/resources/bug-bounty",
     preferred_languages: "en",
     source_code: "https://github.com/across-protocol/contracts/tree/master/programs/multicall-handler",
-    auditors: "TBD"
+    auditors: "OpenZeppelin",
 }
 
 declare_id!("71cJqNV4vkmxsbk422c2KpST3aSwuvKsQ4kpLD8RBHZ5");
