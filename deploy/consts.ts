@@ -9,11 +9,16 @@ export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
 export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
+export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
 export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
 export const AZERO_GAS_PRICE = "240000000000";
+
+export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
+export const ZK_L2_GAS_LIMIT = 2000000;
+export const ZK_MAX_GASPRICE = "10000000000000"; // 10k gwei
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
@@ -52,6 +57,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
+    donationBox: "0x74f00724075443Cbbf55129F17CbAB0F77bA0722",
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
     polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
@@ -59,6 +65,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
     polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
+
+    zkBridgeHub: "0x236D1c3Ff32Bd0Ca26b72Af287E895627c0478cE",
   },
 };
 
@@ -190,6 +198,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
+  },
+  [CHAIN_IDs.LENS_SEPOLIA]: {
+    zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
   },
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
