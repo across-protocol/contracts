@@ -246,6 +246,16 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    "lens-sepolia": {
+      chainId: CHAIN_IDs.LENS_SEPOLIA,
+      url: "https://rpc.testnet.lens.dev",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+      ethNetwork: "sepolia",
+      verifyURL: "https://block-explorer-verify.testnet.lens.dev/contract_verification",
+      zksync: true,
+    },
     lisk: {
       chainId: CHAIN_IDs.LISK,
       url: "https://rpc.api.lisk.com",
