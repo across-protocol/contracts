@@ -58,6 +58,9 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
         mockWETH.deposit{ value: depositAmount }();
         mockWETH.approve(address(spokePool), depositAmount);
         vm.stopPrank();
+
+        // Assert that the spokePool balance is zero at the start
+        assertEq(mockWETH.balanceOf(address(spokePool)), 0, "SpokePool balance should be zero at setup");
     }
 
     function testDeprecatedDeposit() public {
@@ -65,6 +68,7 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
         // theory, collide with the function selector depositDeprecated_5947912356, thereby calling the legacy deposit
         // method on the spoke pool, while using the old old deposit function signature.
         vm.startPrank(depositor);
+
         DeprecatedSpokePoolInterface(address(spokePool)).deposit(
             depositor, // recipient
             address(mockWETH), // originToken
@@ -75,6 +79,8 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
             bytes(""), // message
             0 // maxCount
         );
+
+        assertEq(mockWETH.balanceOf(address(spokePool)), depositAmount, "SpokePool balance should increase");
 
         // Test depositing native ETH directly
         DeprecatedSpokePoolInterface(address(spokePool)).deposit{ value: depositAmount }(
@@ -88,10 +94,13 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
             0 // maxCount
         );
         vm.stopPrank();
+
+        assertEq(mockWETH.balanceOf(address(spokePool)), depositAmount * 2, "SpokePool balance should increase");
     }
 
     function testBytes32Deposit() public {
         vm.prank(depositor);
+
         // Show the bytes32 variant of the new deposit method works.
         spokePool.deposit(
             address(depositor).toBytes32(), // depositor
@@ -107,6 +116,8 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
             0, // exclusivityParameter
             bytes("") // message
         );
+
+        assertEq(mockWETH.balanceOf(address(spokePool)), depositAmount, "SpokePool balance should increase");
     }
 
     function testAddressDeposit() public {
@@ -126,5 +137,7 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
             0, // exclusivityParameter
             bytes("") // message
         );
+
+        assertEq(mockWETH.balanceOf(address(spokePool)), depositAmount, "SpokePool balance should increase");
     }
 }

@@ -345,6 +345,44 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.emit(spokePool, "FundsDeposited");
     }
   });
+  it.only("should call legacy deposit through overloaded interface", async function () {
+    // Define the deprecated interface
+    const DeprecatedSpokePoolInterface = new ethers.utils.Interface([
+      "function deposit(address recipient, address originToken, uint256 amount, uint256 destinationChainId, int64 relayerFeePct, uint32 quoteTimestamp, bytes memory message, uint256 maxCount) external payable",
+    ]);
+
+    // Create a new instance of the SpokePool with the deprecated interface
+    const deprecatedSpokePool = new ethers.Contract(spokePool.address, DeprecatedSpokePoolInterface, depositor);
+
+    // Call the deprecated deposit method
+    await expect(
+      await deprecatedSpokePool.deposit(
+        depositor.address, // recipient
+        erc20.address, // originToken
+        amountToDeposit, // amount
+        destinationChainId, // destinationChainId
+        0, // relayerFeePct
+        quoteTimestamp, // quoteTimestamp
+        "0x", // message
+        0 // maxCount
+      )
+    ).to.emit(spokePool, "FundsDeposited");
+
+    // Test depositing native ETH directly
+    await expect(
+      deprecatedSpokePool.deposit(
+        depositor.address, // recipient
+        weth.address, // originToken - still WETH address for native deposits
+        amountToDeposit, // amount
+        destinationChainId, // destinationChainId
+        0, // relayerFeePct
+        quoteTimestamp, // quoteTimestamp
+        "0x", // message
+        0, // maxCount
+        { value: amountToDeposit } // Send ETH
+      )
+    ).to.emit(spokePool, "FundsDeposited");
+  });
 
   describe("deposit V3", function () {
     let relayData: V3RelayData, depositArgs: any[];
