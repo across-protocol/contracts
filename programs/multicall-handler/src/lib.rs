@@ -17,10 +17,10 @@ security_txt! {
     policy: "https://docs.across.to/resources/bug-bounty",
     preferred_languages: "en",
     source_code: "https://github.com/across-protocol/contracts/tree/master/programs/multicall-handler",
-    auditors: "OpenZeppelin",
+    auditors: "OpenZeppelin"
 }
 
-declare_id!("71cJqNV4vkmxsbk422c2KpST3aSwuvKsQ4kpLD8RBHZ5");
+declare_id!("27dua7HMuaZrAc6PRfxmvshHChypFLzZVSpKKaDAPjsq");
 
 #[program]
 pub mod multicall_handler {
