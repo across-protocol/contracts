@@ -19,10 +19,10 @@ import {
   AcrossPlusMessageCoder,
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
+  loadFillV3RelayParams,
   sendTransactionWithLookupTable,
-} from "../../src/SvmUtils";
-import { FillDataParams, FillDataValues } from "../../test/svm/SvmSpoke.common";
-import { loadFillV3RelayParams } from "../../test/svm/utils";
+} from "../../src/svm";
+import { FillDataParams, FillDataValues } from "../../src/types/svm";
 
 // Set up the provider and signer.
 const provider = AnchorProvider.env();
