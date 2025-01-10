@@ -958,6 +958,7 @@ abstract contract SpokePool is
      * handleV3AcrossMessage() public function
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
+     * @param repaymentAddress Address the relayer wants to be receive their refund at.
      */
     function fillRelay(
         V3RelayData memory relayData,
@@ -1018,6 +1019,7 @@ abstract contract SpokePool is
      * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. See fillV3Relay().
+     * @param repaymentAddress Address the relayer wants to be receive their refund at.
      * @param updatedOutputAmount New output amount to use for this deposit.
      * @param updatedRecipient New recipient to use for this deposit.
      * @param updatedMessage New message to use for this deposit.
@@ -1251,10 +1253,10 @@ abstract contract SpokePool is
      * @param l2TokenAddress Address of the L2 token to claim refunds for.
      * @param refundAddress Address to send the refund to.
      */
-    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) public {
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external {
         uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
-        relayerRefund[l2TokenAddress.toAddress()][refundAddress.toAddress()] = 0;
+        relayerRefund[l2TokenAddress.toAddress()][msg.sender] = 0;
         IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
 
         emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
@@ -1283,7 +1285,7 @@ abstract contract SpokePool is
     /**
      * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
      * in unsafeDepositV3 and is provided as a convenience.
-     * @dev msgSenderand depositor are both used as inputs to allow passthrough depositors to create unique
+     * @dev msgSender and depositor are both used as inputs to allow passthrough depositors to create unique
      * deposit hash spaces for unique depositors.
      * @param msgSender The caller of the transaction used as input to produce the deposit ID.
      * @param depositor The depositor address used as input to produce the deposit ID.
@@ -1488,7 +1490,7 @@ abstract contract SpokePool is
                     bool success = _noRevertTransfer(l2TokenAddress, refundAddresses[i], refundAmounts[i]);
 
                     // If the transfer failed then track a deferred transfer for the relayer. Given this function would
-                    // have revered if there was insufficient balance, this will only happen if the transfer call
+                    // have reverted if there was insufficient balance, this will only happen if the transfer call
                     // reverts. This will only occur if the underlying transfer method on the l2Token reverts due to
                     // recipient blacklisting or other related modifications to the l2Token.transfer method.
                     if (!success) {
