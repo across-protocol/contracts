@@ -94,6 +94,11 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0x88ff1e5b602916615391f55854588efcbb7663f0",
       L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
     },
+    [CHAIN_IDs.CHER]: {
+      L1CrossDomainMessenger: "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
+      L1StandardBridge: "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
+      L1OpUSDCBridgeAdapter: "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb",
+    },
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
       L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
