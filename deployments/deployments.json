@@ -173,5 +173,10 @@
   "1868": {
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 1709997 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1711482 }
+  },
+  "1810017368444177321": {
+    "SvmSpoke": { "address": "YVMQN27RnCNt23NRxzJPumXRd8iovEfKtzkqyMc5vDt", "blockNumber": 0 },
+    "MessageTransmitter": { "address": "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd", "blockNumber": 0 },
+    "TokenMessengerMinter": { "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3", "blockNumber": 0 }
   }
 }
