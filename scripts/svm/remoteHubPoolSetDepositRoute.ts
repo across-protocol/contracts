@@ -4,7 +4,7 @@
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import { getNodeUrl } from "@uma/common";
@@ -19,12 +19,12 @@ import {
   fromBase58ToBytes32,
   fromBytes32ToAddress,
   getMessages,
-  getMessageTransmitterProgram,
-  getSpokePoolProgram,
   isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
 } from "../../src/svm";
+import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 import { HubPool__factory } from "../../typechain";
 import { CHAIN_IDs } from "../../utils/constants";
 import { requireEnv } from "./utils/helpers";
@@ -65,7 +65,8 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
   const remoteDomain = 0; // Ethereum
 
   // Get Solana programs and accounts.
-  const svmSpokeProgram = getSpokePoolProgram(provider);
+  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
+  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
@@ -88,7 +89,8 @@ async function remoteHubPoolSetDepositRoute(): Promise<void> {
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
+  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
+  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId
