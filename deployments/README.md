@@ -31,6 +31,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Cher Adapter        | [0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2](https://etherscan.io/address/0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2) |
 
 ## Optimism mainnet (10)
 
@@ -137,3 +138,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Ink_SpokePool    | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Cher mainnet (1868)
+
+| Contract Name    | Address                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Cher_SpokePool   | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://etherscan.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

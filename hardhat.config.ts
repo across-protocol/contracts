@@ -88,6 +88,7 @@ const config: HardhatUserConfig = {
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -312,6 +313,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    cher: {
+      chainId: CHAIN_IDs.CHER,
+      url: getNodeUrl("cher", true, CHAIN_IDs.CHER),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -342,6 +350,7 @@ const config: HardhatUserConfig = {
       worldchain: "blockscout",
       alephzero: "blockscout",
       ink: "blockscout",
+      cher: "blockscout",
     },
     customChains: [
       {
@@ -374,6 +383,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.inkonchain.com/api",
           browserURL: "https://explorer.inkonchain.com",
+        },
+      },
+      {
+        network: "cher",
+        chainId: CHAIN_IDs.CHER,
+        urls: {
+          apiURL: "https://blockscout.com/api",
+          browserURL: "https://blockscout.com",
         },
       },
       {
