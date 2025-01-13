@@ -131,8 +131,3 @@ export interface EventType {
   blockTime: number;
   signature: string;
 }
-
-/**
- * Supported Networks
- */
-export type SupportedNetworks = "mainnet" | "devnet";
