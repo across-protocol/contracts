@@ -214,7 +214,7 @@ async function fillV3RelayToRandom(): Promise<void> {
     ...multicallHandlerCoder.compiledKeyMetas,
   ];
   const fillInstruction = await program.methods
-    .fillV3Relay(...fillV3RelayParams)
+    .fillRelay(...fillV3RelayParams)
     .accounts(fillAccounts)
     .remainingAccounts(remainingAccounts)
     .instruction();

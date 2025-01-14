@@ -711,7 +711,7 @@ pub mod svm_spoke {
     ///
     /// Executing a slow fill leaf is equivalent to filling the relayData, so this function cannot be used to
     /// double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-    /// like any other fill sent through fillV3Relay(). There is no relayer credited with filling this relay since funds
+    /// like any other fill sent through fillRelay(). There is no relayer credited with filling this relay since funds
     /// are sent directly out of this program's vault.
     ///
     /// ### Required Accounts:

@@ -109,7 +109,7 @@ describe("svm_spoke.fill.across_plus", () => {
       ? [fillV3RelayValues[0], null, null, null]
       : fillV3RelayValues;
     const fillIx = await program.methods
-      .fillV3Relay(...fillV3RelayParams)
+      .fillRelay(...fillV3RelayParams)
       .accounts(accounts)
       .remainingAccounts(remainingAccounts)
       .instruction();

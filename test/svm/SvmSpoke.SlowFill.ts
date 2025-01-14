@@ -229,7 +229,7 @@ describe("svm_spoke.slow_fill", () => {
       tokenDecimals
     );
     const fillIx = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
+      .fillRelay(relayHash, relayData, new BN(1), relayer.publicKey)
       .accounts(fillAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
