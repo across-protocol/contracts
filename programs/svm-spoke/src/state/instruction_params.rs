@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{RelayerRefundLeaf, V3RelayData, V3SlowFill};
+use crate::{RelayData, RelayerRefundLeaf, SlowFill};
 
 #[account]
 #[derive(InitSpace)]
@@ -13,22 +13,22 @@ pub struct ExecuteRelayerRefundLeafParams {
 
 #[account]
 #[derive(InitSpace)]
-pub struct FillV3RelayParams {
-    pub relay_data: V3RelayData,
+pub struct FillRelayParams {
+    pub relay_data: RelayData,
     pub repayment_chain_id: u64,
     pub repayment_address: Pubkey,
 }
 
 #[account]
 #[derive(InitSpace)]
-pub struct RequestV3SlowFillParams {
-    pub relay_data: V3RelayData,
+pub struct RequestSlowFillParams {
+    pub relay_data: RelayData,
 }
 
 #[account]
 #[derive(InitSpace)]
-pub struct ExecuteV3SlowRelayLeafParams {
-    pub slow_fill_leaf: V3SlowFill,
+pub struct ExecuteSlowRelayLeafParams {
+    pub slow_fill_leaf: SlowFill,
     pub root_bundle_id: u32,
     #[max_len(0)]
     pub proof: Vec<[u8; 32]>,

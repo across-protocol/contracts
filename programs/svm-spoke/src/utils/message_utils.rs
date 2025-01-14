@@ -49,7 +49,7 @@ pub fn invoke_handler<'info>(
         }
 
         // Writable accounts must be passed first. This enforces the same write permissions as set in the message. Note
-        // that this would fail if any of mutable FillV3Relay / ExecuteV3SlowRelayLeaf accounts are passed as read-only
+        // that this would fail if any of mutable FillRelay / ExecuteSlowRelayLeaf accounts are passed as read-only
         // in the bridged message as the calling client deduplicates the accounts and applies maximum required
         // privileges. Though it is unlikely that any practical application would require this.
         // We also explicitly disable all signer privileges for all the accounts to protect the relayer from being

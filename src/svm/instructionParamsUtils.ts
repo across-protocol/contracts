@@ -56,9 +56,9 @@ export async function closeInstructionParams(program: Program<SvmSpoke>, signer:
 }
 
 /**
- * Creates instructions to load fillV3 relay parameters.
+ * Creates instructions to load fill relay parameters.
  */
-export async function createFillV3RelayParamsInstructions(
+export async function createFillRelayParamsInstructions(
   program: Program<SvmSpoke>,
   signer: PublicKey,
   relayData: RelayData,
@@ -68,7 +68,7 @@ export async function createFillV3RelayParamsInstructions(
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("fillV3RelayParams", {
+  const instructionParamsBytes = await accountCoder.encode("fillRelayParams", {
     relayData,
     repaymentChainId,
     repaymentAddress,
@@ -92,9 +92,9 @@ export async function createFillV3RelayParamsInstructions(
 }
 
 /**
- * Loads fillV3 relay parameters.
+ * Loads fill relay parameters.
  */
-export async function loadFillV3RelayParams(
+export async function loadFillRelayParams(
   program: Program<SvmSpoke>,
   signer: Keypair,
   relayData: RelayData,
@@ -105,7 +105,7 @@ export async function loadFillV3RelayParams(
   await closeInstructionParams(program, signer);
 
   // Execute load instructions sequentially.
-  const { loadInstructions } = await createFillV3RelayParamsInstructions(
+  const { loadInstructions } = await createFillRelayParamsInstructions(
     program,
     signer.publicKey,
     relayData,
@@ -118,9 +118,9 @@ export async function loadFillV3RelayParams(
 }
 
 /**
- * Loads requestV3 slow fill parameters.
+ * Loads request slow fill parameters.
  */
-export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
+export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
   // Close the instruction params account if the caller has used it before.
   await closeInstructionParams(program, signer);
 
@@ -128,7 +128,7 @@ export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, si
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("requestV3SlowFillParams", { relayData });
+  const instructionParamsBytes = await accountCoder.encode("RequestSlowFillParams", { relayData });
 
   const loadInstructions: TransactionInstruction[] = [];
   loadInstructions.push(
@@ -152,9 +152,9 @@ export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, si
 }
 
 /**
- * Loads executeV3 slow relay leaf parameters.
+ * Loads execute slow relay leaf parameters.
  */
-export async function loadExecuteV3SlowRelayLeafParams(
+export async function loadExecuteSlowRelayLeafParams(
   program: Program<SvmSpoke>,
   signer: Keypair,
   slowFillLeaf: SlowFillLeaf,
@@ -168,7 +168,7 @@ export async function loadExecuteV3SlowRelayLeafParams(
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("executeV3SlowRelayLeafParams", {
+  const instructionParamsBytes = await accountCoder.encode("executeSlowRelayLeafParams", {
     slowFillLeaf,
     rootBundleId,
     proof,
