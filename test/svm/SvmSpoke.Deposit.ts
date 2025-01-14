@@ -180,7 +180,7 @@ describe("svm_spoke.deposit", () => {
     );
   });
 
-  it("Verifies V3FundsDeposited after deposits", async () => {
+  it("Verifies FundsDeposited after deposits", async () => {
     depositData.inputAmount = depositData.inputAmount.add(new BN(69));
 
     // Execute the first deposit call
@@ -416,11 +416,11 @@ describe("svm_spoke.deposit", () => {
     assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
   });
 
-  it("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
+  it("depositNow behaves as deposit but forces the quote timestamp as expected", async () => {
     // Set up initial deposit data. Note that this method has a slightly different interface to deposit, using
     // fillDeadlineOffset rather than fillDeadline. current chain time is added to fillDeadlineOffset to set the
     // fillDeadline for the deposit. exclusivityPeriod operates the same as in standard deposit.
-    // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
+    // Equally, depositNow does not have `quoteTimestamp`. this is set to the current time from the program.
     const fillDeadlineOffset = 60; // 60 seconds offset
 
     // Delegate state PDA to pull depositor tokens.
@@ -599,7 +599,7 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    // Create the transaction for unsafeDepositV3
+    // Create the transaction for unsafeDeposit
     const unsafeDepositIx = await program.methods
       .unsafeDeposit(
         depositData.depositor!,

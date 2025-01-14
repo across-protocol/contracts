@@ -27,7 +27,7 @@ import {
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
   sendTransactionWithLookupTable,
-  loadFillV3RelayParams,
+  loadFillRelayParams,
   intToU8Array32,
 } from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
@@ -97,19 +97,17 @@ describe("svm_spoke.fill.across_plus", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Prepare fill instruction.
-    const fillV3RelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
+    const fillRelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
     if (bufferParams) {
-      await loadFillV3RelayParams(program, relayer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+      await loadFillRelayParams(program, relayer, fillRelayValues[1], fillRelayValues[2], fillRelayValues[3]);
       [accounts.instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
         program.programId
       );
     }
-    const fillV3RelayParams: FillDataParams = bufferParams
-      ? [fillV3RelayValues[0], null, null, null]
-      : fillV3RelayValues;
+    const fillRelayParams: FillDataParams = bufferParams ? [fillRelayValues[0], null, null, null] : fillRelayValues;
     const fillIx = await program.methods
-      .fillRelay(...fillV3RelayParams)
+      .fillRelay(...fillRelayParams)
       .accounts(accounts)
       .remainingAccounts(remainingAccounts)
       .instruction();

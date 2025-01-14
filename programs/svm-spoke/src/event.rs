@@ -37,7 +37,7 @@ pub struct EmergencyDeletedRootBundle {
 
 // Deposit events
 #[event]
-pub struct V3FundsDeposited {
+pub struct FundsDeposited {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
@@ -62,7 +62,7 @@ pub enum FillType {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3RelayExecutionEventInfo {
+pub struct RelayExecutionEventInfo {
     pub updated_recipient: Pubkey,
     pub updated_message_hash: [u8; 32],
     pub updated_output_amount: u64,
@@ -70,7 +70,7 @@ pub struct V3RelayExecutionEventInfo {
 }
 
 #[event]
-pub struct FilledV3Relay {
+pub struct FilledRelay {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
@@ -84,14 +84,13 @@ pub struct FilledV3Relay {
     pub relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    // TODO: update EVM implementation to use message_hash in all fill related events.
     pub message_hash: [u8; 32],
-    pub relay_execution_info: V3RelayExecutionEventInfo,
+    pub relay_execution_info: RelayExecutionEventInfo,
 }
 
 // Slow fill events
 #[event]
-pub struct RequestedV3SlowFill {
+pub struct RequestedSlowFill {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,

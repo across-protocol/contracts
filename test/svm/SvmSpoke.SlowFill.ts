@@ -183,12 +183,12 @@ describe("svm_spoke.slow_fill", () => {
     await updateRelayData(initialRelayData);
   });
 
-  it("Requests a V3 slow fill, verify the event & state change", async () => {
+  it("Requests slow fill, verify the event & state change", async () => {
     // Attempt to request a slow fill before the exclusivityDeadline
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods.requestSlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to exclusivity deadline not passed");
     } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
@@ -198,15 +198,15 @@ describe("svm_spoke.slow_fill", () => {
     await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
     const tx = await program.methods
-      .requestV3SlowFill(relayHash, relayData)
+      .requestSlowFill(relayHash, relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Fetch and verify the RequestedV3SlowFill event
+    // Fetch and verify the RequestedSlowFill event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "requestedV3SlowFill")?.data;
-    assert.isNotNull(event, "RequestedV3SlowFill event should be emitted");
+    const event = events.find((event) => event.name === "requestedSlowFill")?.data;
+    assert.isNotNull(event, "RequestedSlowFill event should be emitted");
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
@@ -216,7 +216,7 @@ describe("svm_spoke.slow_fill", () => {
     });
   });
 
-  it("Fails to request a V3 slow fill if the relay has already been filled", async () => {
+  it("Fails to request slow fill if the relay has already been filled", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Fill the relay first
@@ -237,7 +237,7 @@ describe("svm_spoke.slow_fill", () => {
     await sendAndConfirmTransaction(connection, fillTx, [relayer]);
 
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods.requestSlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to being within exclusivity window");
     } catch (err: any) {
       assert.include(err.toString(), "NoSlowFillsInExclusivityWindow", "Expected NoSlowFillsInExclusivityWindow error");
@@ -248,34 +248,34 @@ describe("svm_spoke.slow_fill", () => {
 
     // Attempt to request a slow fill after the relay has been filled.
     try {
-      await program.methods.requestV3SlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      await program.methods.requestSlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
       assert.fail("Request should have failed due to relay already being filled");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidSlowFillRequest", "Expected InvalidSlowFillRequest error");
     }
   });
 
-  it("Fetches FillStatusAccount before and after requestV3SlowFill", async () => {
+  it("Fetches FillStatusAccount before and after requestSlowFill", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash], program.programId);
 
-    // Fetch FillStatusAccount before requestV3SlowFill
+    // Fetch FillStatusAccount before requestSlowFill
     let fillStatusAccount = await program.account.fillStatusAccount.fetchNullable(fillStatusPDA);
-    assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before requestV3SlowFill");
+    assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before requestSlowFill");
 
     // Set the contract time to be after the exclusivityDeadline
     await setCurrentTime(program, state, relayer, new BN(relayData.exclusivityDeadline + 1));
 
     // Request a slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), relayData)
+      .requestSlowFill(Array.from(relayHash), relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Fetch FillStatusAccount after requestV3SlowFill
+    // Fetch FillStatusAccount after requestSlowFill
     fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
-    assert.isNotNull(fillStatusAccount, "FillStatusAccount should be initialized after requestV3SlowFill");
+    assert.isNotNull(fillStatusAccount, "FillStatusAccount should be initialized after requestSlowFill");
     assert.equal(
       JSON.stringify(fillStatusAccount.status),
       `{\"requestedSlowFill\":{}}`,
@@ -284,7 +284,7 @@ describe("svm_spoke.slow_fill", () => {
     assert.equal(fillStatusAccount.relayer.toString(), relayer.publicKey.toString(), "Caller should be set as relayer");
   });
 
-  it("Fails to request a V3 slow fill multiple times for the same fill", async () => {
+  it("Fails to request a slow fill multiple times for the same fill", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
     // Set the contract time to be after the exclusivityDeadline
@@ -292,7 +292,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Request a slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), relayData)
+      .requestSlowFill(Array.from(relayHash), relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -300,7 +300,7 @@ describe("svm_spoke.slow_fill", () => {
     // Attempt to request a slow fill again for the same relay
     try {
       await program.methods
-        .requestV3SlowFill(Array.from(relayHash), relayData)
+        .requestSlowFill(Array.from(relayHash), relayData)
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -310,14 +310,14 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Executes V3 slow relay leaf, verify the event & state change", async () => {
+  it("Executes slow relay leaf, verify the event & state change", async () => {
     // Relay root bundle with slow fill leaf.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
 
     const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
     const iRecipientBal = (await connection.getTokenAccountBalance(recipientTA)).value.amount;
 
-    // Attempt to execute V3 slow relay leaf before requesting slow fill. This should fail before requested,
+    // Attempt to execute slow relay leaf before requesting slow fill. This should fail before requested,
     // even if there is a valid proof.
     const executeSlowRelayLeafAccounts = {
       state: state,
@@ -333,7 +333,7 @@ describe("svm_spoke.slow_fill", () => {
     };
     try {
       await program.methods
-        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
+        .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -342,16 +342,16 @@ describe("svm_spoke.slow_fill", () => {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
     }
 
-    // Request V3 slow fill
+    // Request slow fill
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
+      .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Execute V3 slow relay leaf after requesting slow fill
+    // Execute slow relay leaf after requesting slow fill
     const ix = await program.methods
-      .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
+      .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -375,10 +375,10 @@ describe("svm_spoke.slow_fill", () => {
       "Recipient balance should be increased by relay amount"
     );
 
-    // Fetch and verify the FilledV3Relay event
+    // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "filledRelay")?.data;
+    assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
@@ -400,7 +400,7 @@ describe("svm_spoke.slow_fill", () => {
     assertSE(event.relayer, PublicKey.default, "Repayment address should be 0");
   });
 
-  it("Fails to request a V3 slow fill when fills are paused", async () => {
+  it("Fails to request a slow fill when fills are paused", async () => {
     // Pause fills
     const pauseFillsAccounts = {
       state: state,
@@ -415,7 +415,7 @@ describe("svm_spoke.slow_fill", () => {
     try {
       const relayHash = calculateRelayHashUint8Array(relayData, chainId);
       await program.methods
-        .requestV3SlowFill(Array.from(relayHash), relayData)
+        .requestSlowFill(Array.from(relayHash), relayData)
         .accounts(requestAccounts)
         .signers([relayer])
         .rpc();
@@ -426,16 +426,16 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Fails to execute V3 slow relay leaf to wrong recipient", async () => {
-    // Request V3 slow fill.
+  it("Fails to execute slow relay leaf to wrong recipient", async () => {
+    // Request slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
+      .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Try to execute V3 slow relay leaf with wrong recipient token account should fail.
+    // Try to execute slow relay leaf with wrong recipient token account should fail.
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
     try {
@@ -452,7 +452,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
+        .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -463,8 +463,8 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Cannot replay execute V3 slow relay leaf against wrong fill status account", async () => {
-    // Request V3 slow fill for the first recipient.
+  it("Cannot replay execute slow relay leaf against wrong fill status account", async () => {
+    // Request slow fill for the first recipient.
     const firstRecipient = Keypair.generate().publicKey;
     const {
       relayHash: firstRelayHash,
@@ -474,27 +474,27 @@ describe("svm_spoke.slow_fill", () => {
       rootBundle: firstRootBundle,
     } = await relaySlowFillRootBundle(firstRecipient);
     await program.methods
-      .requestV3SlowFill(Array.from(firstRelayHash), firstLeaf.relayData)
+      .requestSlowFill(Array.from(firstRelayHash), firstLeaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
     const firstRecipientTA = recipientTA; // Global recipientTA will get updated when passing the second relayData.
     const firstFillStatus = fillStatus; // Global fillStatus will get updated when passing the second relayData.
 
-    // Request V3 slow fill for the second recipient.
+    // Request slow fill for the second recipient.
     // Note: we could also had generated single slow relay root for both recipients, but having them relayed in separate
     // root bundles makes it easier to reuse existing test code.
     const secondRecipient = Keypair.generate().publicKey;
     const { relayHash: secondRelayHash, leaf: secondLeaf } = await relaySlowFillRootBundle(secondRecipient);
     await program.methods
-      .requestV3SlowFill(Array.from(secondRelayHash), secondLeaf.relayData)
+      .requestSlowFill(Array.from(secondRelayHash), secondLeaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
     const secondFillStatus = fillStatus; // Global fillStatus got updated with the second relayData.
 
     const iFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
-    // Execute V3 slow relay leaf for the first recipient.
+    // Execute slow relay leaf for the first recipient.
     const executeSlowRelayLeafAccounts = {
       state,
       rootBundle: firstRootBundle,
@@ -508,7 +508,7 @@ describe("svm_spoke.slow_fill", () => {
       program: program.programId,
     };
     await program.methods
-      .executeV3SlowRelayLeaf(Array.from(firstRelayHash), firstLeaf, firstRootBundleId, firstProofAsNumbers)
+      .executeSlowRelayLeaf(Array.from(firstRelayHash), firstLeaf, firstRootBundleId, firstProofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .rpc();
@@ -519,7 +519,7 @@ describe("svm_spoke.slow_fill", () => {
       "First recipient balance should be increased by its relay amount"
     );
 
-    // Try to replay execute V3 slow relay leaf for the first recipient using the fill status account that is derived
+    // Try to replay execute slow relay leaf for the first recipient using the fill status account that is derived
     // from the second relay hash. This should fail due to mismatching relay hash.
     try {
       const executeSlowRelayLeafAccounts = {
@@ -535,7 +535,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(Array.from(secondRelayHash), firstLeaf, firstRootBundleId, firstProofAsNumbers)
+        .executeSlowRelayLeaf(Array.from(secondRelayHash), firstLeaf, firstRootBundleId, firstProofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -546,11 +546,11 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Fails to execute V3 slow relay leaf for mint inconsistent output_token", async () => {
-    // Request V3 slow fill.
+  it("Fails to execute slow relay leaf for mint inconsistent output_token", async () => {
+    // Request slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
+      .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
@@ -561,7 +561,7 @@ describe("svm_spoke.slow_fill", () => {
     const wrongVault = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, state, true)).address;
     await mintTo(connection, payer, wrongMint, wrongVault, provider.publicKey, initialMintAmount);
 
-    // Try to execute V3 slow relay leaf with inconsistent mint should fail.
+    // Try to execute slow relay leaf with inconsistent mint should fail.
     try {
       const executeSlowRelayLeafAccounts = {
         state,
@@ -576,7 +576,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
+        .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -587,20 +587,20 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Cannot execute V3 slow relay leaf targeted at another chain", async () => {
-    // Request V3 slow fill for another chain.
+  it("Cannot execute slow relay leaf targeted at another chain", async () => {
+    // Request slow fill for another chain.
     const anotherChainId = new BN(Math.floor(Math.random() * 1000000));
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
       undefined,
       anotherChainId
     );
     await program.methods
-      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
+      .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Trying to execute V3 slow relay leaf for another chain should fail as the program overrides chain_id that should
+    // Trying to execute slow relay leaf for another chain should fail as the program overrides chain_id that should
     // invalidate the proofs.
     try {
       const executeSlowRelayLeafAccounts = {
@@ -616,7 +616,7 @@ describe("svm_spoke.slow_fill", () => {
         program: program.programId,
       };
       await program.methods
-        .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
+        .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
         .accounts(executeSlowRelayLeafAccounts)
         .remainingAccounts(fillRemainingAccounts)
         .rpc();
@@ -635,14 +635,14 @@ describe("svm_spoke.slow_fill", () => {
       Buffer.alloc(0)
     );
 
-    // Request V3 slow fill
+    // Request slow fill
     const tx1 = await program.methods
-      .requestV3SlowFill(Array.from(relayHash), leaf.relayData)
+      .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Execute V3 slow relay leaf after requesting slow fill
+    // Execute slow relay leaf after requesting slow fill
     const executeSlowRelayLeafAccounts = {
       state,
       rootBundle,
@@ -656,20 +656,20 @@ describe("svm_spoke.slow_fill", () => {
       program: program.programId,
     };
     const tx2 = await program.methods
-      .executeV3SlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
+      .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .rpc();
 
-    // Fetch and verify message hash in the RequestedV3SlowFill and FilledV3Relay events
+    // Fetch and verify message hash in the RequestedSlowFill and FilledRelay events
     const requestEvents = await readEventsUntilFound(connection, tx1, [program]);
-    const requestEvent = requestEvents.find((event) => event.name === "requestedV3SlowFill")?.data;
-    assert.isNotNull(requestEvent, "RequestedV3SlowFill event should be emitted");
+    const requestEvent = requestEvents.find((event) => event.name === "requestedSlowFill")?.data;
+    assert.isNotNull(requestEvent, "RequestedSlowFill event should be emitted");
     assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
 
     const fillEvents = await readEventsUntilFound(connection, tx2, [program]);
-    const fillEvent = fillEvents.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(fillEvent, "FilledV3Relay event should be emitted");
+    const fillEvent = fillEvents.find((event) => event.name === "filledRelay")?.data;
+    assert.isNotNull(fillEvent, "FilledRelay event should be emitted");
     assertSE(fillEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
     assertSE(
       fillEvent.relayExecutionInfo.updatedMessageHash,

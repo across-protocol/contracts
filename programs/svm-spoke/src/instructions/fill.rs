@@ -5,25 +5,25 @@ use anchor_spl::{
 };
 
 use crate::{
-    common::V3RelayData,
+    common::RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
-    state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
+    event::{FillType, FilledRelay, RelayExecutionEventInfo},
+    state::{FillRelayParams, FillStatus, FillStatusAccount, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: Option<V3RelayData>)]
-pub struct FillV3Relay<'info> {
+#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
+pub struct FillRelay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
     // This is required as fallback when None instruction params are passed in arguments.
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
-    pub instruction_params: Option<Account<'info, FillV3RelayParams>>,
+    pub instruction_params: Option<Account<'info, FillRelayParams>>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -80,17 +80,13 @@ pub struct FillV3Relay<'info> {
 }
 
 pub fn fill_relay<'info>(
-    ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
-    relay_data: Option<V3RelayData>,
+    ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
+    relay_data: Option<RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
-    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_relay_params(
-        relay_data,
-        repayment_chain_id,
-        repayment_address,
-        &ctx.accounts.instruction_params,
-    );
+    let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
+        unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
@@ -145,7 +141,7 @@ pub fn fill_relay<'info>(
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
-    emit_cpi!(FilledV3Relay {
+    emit_cpi!(FilledRelay {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
         input_amount: relay_data.input_amount,
@@ -160,7 +156,7 @@ pub fn fill_relay<'info>(
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
         message_hash,
-        relay_execution_info: V3RelayExecutionEventInfo {
+        relay_execution_info: RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
             updated_message_hash: message_hash,
             updated_output_amount: relay_data.output_amount,
@@ -173,18 +169,18 @@ pub fn fill_relay<'info>(
 
 // Helper to unwrap optional instruction params with fallback loading from buffer account.
 fn unwrap_fill_relay_params(
-    relay_data: Option<V3RelayData>,
+    relay_data: Option<RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
-    account: &Option<Account<FillV3RelayParams>>,
-) -> FillV3RelayParams {
+    account: &Option<Account<FillRelayParams>>,
+) -> FillRelayParams {
     match (relay_data, repayment_chain_id, repayment_address) {
         (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
-            FillV3RelayParams { relay_data, repayment_chain_id, repayment_address }
+            FillRelayParams { relay_data, repayment_chain_id, repayment_address }
         }
         _ => account
             .as_ref()
-            .map(|account| FillV3RelayParams {
+            .map(|account| FillRelayParams {
                 relay_data: account.relay_data.clone(),
                 repayment_chain_id: account.repayment_chain_id,
                 repayment_address: account.repayment_address,
