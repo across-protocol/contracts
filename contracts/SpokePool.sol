@@ -64,7 +64,7 @@ abstract contract SpokePool is
     // It is a uint32 that increments with each `depositV3` call. In the `FundsDeposited` event, it is
     // implicitly cast to uint256 by setting its most significant bits to 0, reducing the risk of ID collisions
     // with unsafe deposits. However, this variable's name could be improved (e.g., `depositNonceCounter`)
-    // since it does not accurately reflect the total number of deposits, as `unsafeDepositV3` can bypass this increment.
+    // since it does not accurately reflect the total number of deposits, as `unsafeDeposit` can bypass this increment.
     uint32 public numberOfDeposits;
 
     // Whether deposits and fills are disabled.
@@ -926,8 +926,8 @@ abstract contract SpokePool is
      * window in the HubPool, and a system fee charged to relayers.
      * @dev The hash of the relayData will be used to uniquely identify the deposit to fill, so
      * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
-     * all parameters passed to depositV3() on the origin chain along with that chain's chainId(). This chain's
-     * chainId() must therefore match the destinationChainId passed into depositV3.
+     * all parameters passed to deposit() on the origin chain along with that chain's chainId(). This chain's
+     * chainId() must therefore match the destinationChainId passed into deposit.
      * Relayers are only refunded for filling deposits with deposit hashes that map exactly to the one emitted by the
      * origin SpokePool therefore the relayer should not modify any params in relayData.
      * @dev Cannot fill more than once. Partial fills are not supported.
@@ -951,9 +951,9 @@ abstract contract SpokePool is
      * - fillDeadline The deadline for the caller to fill the deposit. After this timestamp,
      * the fill will revert on the destination chain.
      * - exclusivityDeadline: The deadline for the exclusive relayer to fill the deposit. After this
-     * timestamp, anyone can fill this deposit. Note that if this value was set in depositV3 by adding an offset
+     * timestamp, anyone can fill this deposit. Note that if this value was set in deposit by adding an offset
      * to the deposit's block.timestamp, there is re-org risk for the caller of this method because the event's
-     * block.timestamp can change. Read the comments in `depositV3` about the `exclusivityParameter` for more details.
+     * block.timestamp can change. Read the comments in `deposit` about the `exclusivityParameter` for more details.
      * - message The message to send to the recipient if the recipient is a contract that implements a
      * handleV3AcrossMessage() public function
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
@@ -1284,7 +1284,7 @@ abstract contract SpokePool is
 
     /**
      * @notice Returns the deposit ID for an unsafe deposit. This function is used to compute the deposit ID
-     * in unsafeDepositV3 and is provided as a convenience.
+     * in unsafeDeposit and is provided as a convenience.
      * @dev msgSender and depositor are both used as inputs to allow passthrough depositors to create unique
      * deposit hash spaces for unique depositors.
      * @param msgSender The caller of the transaction used as input to produce the deposit ID.
