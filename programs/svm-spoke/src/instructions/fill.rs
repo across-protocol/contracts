@@ -79,13 +79,13 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn fill_v3_relay<'info>(
+pub fn fill_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
     relay_data: Option<V3RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
-    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_v3_relay_params(
+    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_relay_params(
         relay_data,
         repayment_chain_id,
         repayment_address,
@@ -172,7 +172,7 @@ pub fn fill_v3_relay<'info>(
 }
 
 // Helper to unwrap optional instruction params with fallback loading from buffer account.
-fn unwrap_fill_v3_relay_params(
+fn unwrap_fill_relay_params(
     relay_data: Option<V3RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,

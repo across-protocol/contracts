@@ -63,7 +63,7 @@ pub struct DepositV3<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn _deposit_v3(
+pub fn _deposit(
     ctx: Context<DepositV3>,
     depositor: Pubkey,
     recipient: Pubkey,
@@ -139,7 +139,7 @@ pub fn _deposit_v3(
     Ok(())
 }
 
-pub fn deposit_v3(
+pub fn deposit(
     ctx: Context<DepositV3>,
     depositor: Pubkey,
     recipient: Pubkey,
@@ -154,7 +154,7 @@ pub fn deposit_v3(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> Result<()> {
-    _deposit_v3(
+    _deposit(
         ctx,
         depositor,
         recipient,
@@ -174,7 +174,7 @@ pub fn deposit_v3(
     Ok(())
 }
 
-pub fn deposit_v3_now(
+pub fn deposit_now(
     ctx: Context<DepositV3>,
     depositor: Pubkey,
     recipient: Pubkey,
@@ -190,7 +190,7 @@ pub fn deposit_v3_now(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
-    deposit_v3(
+    deposit(
         ctx,
         depositor,
         recipient,
@@ -209,7 +209,7 @@ pub fn deposit_v3_now(
     Ok(())
 }
 
-pub fn unsafe_deposit_v3(
+pub fn unsafe_deposit(
     ctx: Context<DepositV3>,
     depositor: Pubkey,
     recipient: Pubkey,
@@ -227,7 +227,7 @@ pub fn unsafe_deposit_v3(
 ) -> Result<()> {
     // Calculate the unsafe deposit ID as a [u8; 32]
     let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
-    _deposit_v3(
+    _deposit(
         ctx,
         depositor,
         recipient,

@@ -102,7 +102,7 @@ async function testBundleLogic(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
   const depositIx = await (
-    program.methods.depositV3(
+    program.methods.deposit(
       signer.publicKey,
       signer.publicKey, // recipient is the signer for this example
       inputToken,

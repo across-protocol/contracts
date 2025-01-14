@@ -247,7 +247,7 @@ pub mod svm_spoke {
     ///   3. Otherwise, uses this value as the exclusivity deadline timestamp.
     /// - message: The message to send to the recipient on the destination chain if the recipient is a contract.
     ///   If not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
-    pub fn deposit_v3(
+    pub fn deposit(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
         recipient: Pubkey,
@@ -262,7 +262,7 @@ pub mod svm_spoke {
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
-        instructions::deposit_v3(
+        instructions::deposit(
             ctx,
             depositor,
             recipient,
@@ -279,8 +279,8 @@ pub mod svm_spoke {
         )
     }
 
-    // Equivalent to deposit_v3 except quote_timestamp is set to the current time.
-    pub fn deposit_v3_now(
+    // Equivalent to deposit except quote_timestamp is set to the current time.
+    pub fn deposit_now(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
         recipient: Pubkey,
@@ -294,7 +294,7 @@ pub mod svm_spoke {
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
-        instructions::deposit_v3_now(
+        instructions::deposit_now(
             ctx,
             depositor,
             recipient,
@@ -310,10 +310,10 @@ pub mod svm_spoke {
         )
     }
 
-    /// Equivalent to deposit_v3 except the deposit_nonce is not used to derive the deposit_id for the depositor. This
+    /// Equivalent to deposit except the deposit_nonce is not used to derive the deposit_id for the depositor. This
     /// Lets the caller influence the deposit ID to make it deterministic for the depositor. The computed depositID is
     /// the keccak256 hash of [signer, depositor, deposit_nonce].
-    pub fn unsafe_deposit_v3(
+    pub fn unsafe_deposit(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
         recipient: Pubkey,
@@ -329,7 +329,7 @@ pub mod svm_spoke {
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
-        instructions::unsafe_deposit_v3(
+        instructions::unsafe_deposit(
             ctx,
             depositor,
             recipient,
@@ -372,7 +372,7 @@ pub mod svm_spoke {
     /// Relayer & system fee is captured in the spread between input and output amounts. This fee accounts for tx costs,
     /// relayer's capital opportunity cost, and a system fee. The relay_data hash uniquely identifies the deposit to
     /// fill, ensuring relayers are refunded only for deposits matching the original hash from the origin SpokePool.
-    /// This hash includes all parameters from deposit_v3() and must match the destination_chain_id. Note the relayer
+    /// This hash includes all parameters from deposit() and must match the destination_chain_id. Note the relayer
     /// creates an ATA in calling this method to store the fill_status. This should be closed once the deposit has
     /// expired to let the relayer re-claim their rent. Cannot fill more than once. Partial fills are not supported.
     ///
@@ -420,14 +420,14 @@ pub mod svm_spoke {
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.
     /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters. If None for any of these
     /// is passed, the caller must load them via the instruction_params account.
-    pub fn fill_v3_relay<'info>(
+    pub fn fill_relay<'info>(
         ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
         _relay_hash: [u8; 32],
         relay_data: Option<V3RelayData>,
         repayment_chain_id: Option<u64>,
         repayment_address: Option<Pubkey>,
     ) -> Result<()> {
-        instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
+        instructions::fill_relay(ctx, relay_data, repayment_chain_id, repayment_address)
     }
 
     /// Closes the FillStatusAccount PDA to reclaim relayer rent.
@@ -696,7 +696,7 @@ pub mod svm_spoke {
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit that should be slow filled. If any
     ///   of the params are missing or different from the origin chain deposit, then Across will not include a slow
-    ///   fill for the intended deposit. See fill_v3_relay & V3RelayData struct for more details.
+    ///   fill for the intended deposit. See fill_relay & V3RelayData struct for more details.
     /// Note: relay_data is optional parameter. If None for it is passed, the caller must load it via the
     /// instruction_params account.
     pub fn request_v3_slow_fill(
@@ -733,7 +733,7 @@ pub mod svm_spoke {
     /// - _relay_hash: The hash identifying the deposit to be filled. Used to identify the deposit to be filled.
     /// - slow_fill_leaf: Contains all data necessary to uniquely verify the slow fill. This struct contains:
     ///     - relayData: Struct containing all the data needed to identify the original deposit to be slow filled. Same
-    ///       as the relay_data struct in fill_v3_relay().
+    ///       as the relay_data struct in fill_relay().
     ///     - chainId: Chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
     ///       chainId, then this function will revert.
     ///     - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
