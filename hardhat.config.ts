@@ -313,9 +313,9 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    cher: {
-      chainId: CHAIN_IDs.CHER,
-      url: getNodeUrl("cher", true, CHAIN_IDs.CHER),
+    soneium: {
+      chainId: CHAIN_IDs.SONEIUM,
+      url: "https://soneium.blockscout.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -350,7 +350,7 @@ const config: HardhatUserConfig = {
       worldchain: "blockscout",
       alephzero: "blockscout",
       ink: "blockscout",
-      cher: "blockscout",
+      soneium: "blockscout",
     },
     customChains: [
       {
@@ -386,11 +386,11 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "cher",
-        chainId: CHAIN_IDs.CHER,
+        network: "soneium",
+        chainId: CHAIN_IDs.SONEIUM,
         urls: {
-          apiURL: "https://blockscout.com/api",
-          browserURL: "https://blockscout.com",
+          apiURL: "https://soneium.blockscout.com/api",
+          browserURL: "https://soneium.blockscout.com",
         },
       },
       {

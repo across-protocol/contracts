@@ -94,11 +94,6 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0x88ff1e5b602916615391f55854588efcbb7663f0",
       L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
     },
-    [CHAIN_IDs.CHER]: {
-      L1CrossDomainMessenger: "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
-      L1StandardBridge: "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
-      L1OpUSDCBridgeAdapter: "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb",
-    },
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
       L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
@@ -114,6 +109,11 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.REDSTONE]: {
       L1CrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
       L1StandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
+    },
+    [CHAIN_IDs.SONEIUM]: {
+      L1CrossDomainMessenger: "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
+      L1StandardBridge: "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
+      L1OpUSDCBridgeAdapter: "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb",
     },
     [CHAIN_IDs.WORLD_CHAIN]: {
       L1CrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
