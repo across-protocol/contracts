@@ -384,29 +384,29 @@ describe("SpokePool Depositor Logic", async function () {
       depositArgs = getDepositArgsFromRelayData(relayData);
     });
     it("placeholder: gas test", async function () {
-      await spokePool.connect(depositor).deposit(...depositArgs);
+      await spokePool.connect(depositor).depositV3(...depositArgs);
     });
     it("route disabled", async function () {
       // Verify that routes are disabled by default for a new route
       const _depositArgs = getDepositArgsFromRelayData(relayData, 999);
-      await expect(spokePool.connect(depositor).deposit(..._depositArgs)).to.be.revertedWith("DisabledRoute");
+      await expect(spokePool.connect(depositor).depositV3(..._depositArgs)).to.be.revertedWith("DisabledRoute");
 
       // Enable the route:
       await spokePool.connect(depositor).setEnableRoute(erc20.address, 999, true);
-      await expect(spokePool.connect(depositor).deposit(..._depositArgs)).to.not.be.reverted;
+      await expect(spokePool.connect(depositor).depositV3(..._depositArgs)).to.not.be.reverted;
     });
     it("invalid quoteTimestamp", async function () {
       const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
       const currentTime = await spokePool.getCurrentTime();
 
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           // quoteTimestamp too far into past (i.e. beyond the buffer)
           ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer).sub(1))
         )
       ).to.be.revertedWith("InvalidQuoteTimestamp");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           // quoteTimestamp right at the buffer is OK
           ...getDepositArgsFromRelayData(relayData, destinationChainId, currentTime.sub(quoteTimeBuffer))
         )
@@ -417,19 +417,19 @@ describe("SpokePool Depositor Logic", async function () {
       const currentTime = await spokePool.getCurrentTime();
 
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           // fillDeadline too far into future (i.e. beyond the buffer)
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer).add(1) })
         )
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           // fillDeadline in past
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.sub(1) })
         )
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           // fillDeadline right at the buffer is OK
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
         )
@@ -440,7 +440,7 @@ describe("SpokePool Depositor Logic", async function () {
 
       // If exclusive deadline is not zero, then exclusive relayer must be set.
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
@@ -449,7 +449,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.be.revertedWith("InvalidExclusiveRelayer");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
@@ -458,7 +458,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.be.revertedWith("InvalidExclusiveRelayer");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
@@ -467,7 +467,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.be.revertedWith("InvalidExclusiveRelayer");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
@@ -476,7 +476,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.be.revertedWith("InvalidExclusiveRelayer");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
@@ -485,7 +485,7 @@ describe("SpokePool Depositor Logic", async function () {
         )
       ).to.be.revertedWith("InvalidExclusiveRelayer");
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData({
             ...relayData,
             exclusiveRelayer: zeroAddress,
@@ -499,7 +499,7 @@ describe("SpokePool Depositor Logic", async function () {
       const fillDeadlineOffset = 1000;
       const exclusivityDeadlineOffset = MAX_EXCLUSIVITY_OFFSET_SECONDS;
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData(
             {
               ...relayData,
@@ -534,7 +534,7 @@ describe("SpokePool Depositor Logic", async function () {
       const fillDeadlineOffset = 1000;
       const exclusivityDeadlineTimestamp = MAX_EXCLUSIVITY_OFFSET_SECONDS + 1;
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData(
             {
               ...relayData,
@@ -569,7 +569,7 @@ describe("SpokePool Depositor Logic", async function () {
       const fillDeadlineOffset = 1000;
       const zeroExclusivity = 0;
       await expect(
-        spokePool.connect(depositor).deposit(
+        spokePool.connect(depositor).depositV3(
           ...getDepositArgsFromRelayData(
             {
               ...relayData,
@@ -603,14 +603,14 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool
           .connect(depositor)
-          .deposit(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 1 })
+          .depositV3(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 1 })
       ).to.be.revertedWith("MsgValueDoesNotMatchInputAmount");
 
       // Pulls ETH from depositor and deposits it into WETH via the wrapped contract.
       await expect(() =>
         spokePool
           .connect(depositor)
-          .deposit(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), {
+          .depositV3(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), {
             value: amountToDeposit,
           })
       ).to.changeEtherBalances([depositor, weth], [amountToDeposit.mul(toBN("-1")), amountToDeposit]); // ETH should transfer from depositor to WETH contract.
@@ -620,18 +620,18 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("if input token is not WETH then msg.value must be 0", async function () {
       await expect(
-        spokePool.connect(depositor).deposit(...getDepositArgsFromRelayData(relayData), { value: 1 })
+        spokePool.connect(depositor).depositV3(...getDepositArgsFromRelayData(relayData), { value: 1 })
       ).to.be.revertedWith("MsgValueDoesNotMatchInputAmount");
     });
     it("if input token is WETH and msg.value = 0, pulls ERC20 from depositor", async function () {
       await expect(() =>
         spokePool
           .connect(depositor)
-          .deposit(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 0 })
+          .depositV3(...getDepositArgsFromRelayData({ ...relayData, inputToken: weth.address }), { value: 0 })
       ).to.changeTokenBalances(weth, [depositor, spokePool], [amountToDeposit.mul(toBN("-1")), amountToDeposit]);
     });
     it("pulls input token from caller", async function () {
-      await expect(() => spokePool.connect(depositor).deposit(...depositArgs)).to.changeTokenBalances(
+      await expect(() => spokePool.connect(depositor).depositV3(...depositArgs)).to.changeTokenBalances(
         erc20,
         [depositor, spokePool],
         [amountToDeposit.mul(toBN("-1")), amountToDeposit]
@@ -677,7 +677,7 @@ describe("SpokePool Depositor Logic", async function () {
         );
     });
     it("emits V3FundsDeposited event with correct deposit ID", async function () {
-      await expect(spokePool.connect(depositor).deposit(...depositArgs))
+      await expect(spokePool.connect(depositor).depositV3(...depositArgs))
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
           relayData.inputToken,
@@ -697,7 +697,7 @@ describe("SpokePool Depositor Logic", async function () {
         );
     });
     it("deposit ID state variable incremented", async function () {
-      await spokePool.connect(depositor).deposit(...depositArgs);
+      await spokePool.connect(depositor).depositV3(...depositArgs);
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
@@ -706,7 +706,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool
           .connect(depositor)
-          .deposit(...getDepositArgsFromRelayData({ ...relayData, depositor: newDepositor }))
+          .depositV3(...getDepositArgsFromRelayData({ ...relayData, depositor: newDepositor }))
       )
         .to.emit(spokePool, "V3FundsDeposited")
         .withArgs(
@@ -729,7 +729,7 @@ describe("SpokePool Depositor Logic", async function () {
     });
     it("deposits are not paused", async function () {
       await spokePool.pauseDeposits(true);
-      await expect(spokePool.connect(depositor).deposit(...depositArgs)).to.be.revertedWith("DepositsArePaused");
+      await expect(spokePool.connect(depositor).depositV3(...depositArgs)).to.be.revertedWith("DepositsArePaused");
     });
     it("reentrancy protected", async function () {
       const functionCalldata = spokePool.interface.encodeFunctionData("depositV3", [...depositArgs]);
