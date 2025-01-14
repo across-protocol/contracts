@@ -177,14 +177,14 @@ describe("svm_spoke.fill", () => {
     assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
   });
 
-  it("Verifies FilledV3Relay event after filling a relay", async () => {
+  it("Verifies FilledRelay event after filling a relay", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     const tx = await approvedFillRelay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
 
-    // Fetch and verify the FilledV3Relay event
+    // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "FilledRelay")?.data;
+    assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
@@ -658,10 +658,10 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     const tx = await approvedFillRelay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
 
-    // Fetch and verify the FilledV3Relay event
+    // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "FilledRelay")?.data;
+    assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data has zeroed message hash.
     assertSE(event.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);

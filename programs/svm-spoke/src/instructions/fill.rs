@@ -9,7 +9,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
+    event::{FillType, FilledRelay, V3RelayExecutionEventInfo},
     state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
@@ -85,12 +85,8 @@ pub fn fill_relay<'info>(
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
-    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_relay_params(
-        relay_data,
-        repayment_chain_id,
-        repayment_address,
-        &ctx.accounts.instruction_params,
-    );
+    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } =
+        unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
@@ -145,7 +141,7 @@ pub fn fill_relay<'info>(
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
-    emit_cpi!(FilledV3Relay {
+    emit_cpi!(FilledRelay {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
         input_amount: relay_data.input_amount,

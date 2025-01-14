@@ -375,10 +375,10 @@ describe("svm_spoke.slow_fill", () => {
       "Recipient balance should be increased by relay amount"
     );
 
-    // Fetch and verify the FilledV3Relay event
+    // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "FilledRelay")?.data;
+    assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
@@ -661,15 +661,15 @@ describe("svm_spoke.slow_fill", () => {
       .remainingAccounts(fillRemainingAccounts)
       .rpc();
 
-    // Fetch and verify message hash in the RequestedV3SlowFill and FilledV3Relay events
+    // Fetch and verify message hash in the RequestedV3SlowFill and FilledRelay events
     const requestEvents = await readEventsUntilFound(connection, tx1, [program]);
     const requestEvent = requestEvents.find((event) => event.name === "requestedV3SlowFill")?.data;
     assert.isNotNull(requestEvent, "RequestedV3SlowFill event should be emitted");
     assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
 
     const fillEvents = await readEventsUntilFound(connection, tx2, [program]);
-    const fillEvent = fillEvents.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(fillEvent, "FilledV3Relay event should be emitted");
+    const fillEvent = fillEvents.find((event) => event.name === "FilledRelay")?.data;
+    assert.isNotNull(fillEvent, "FilledRelay event should be emitted");
     assertSE(fillEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
     assertSE(
       fillEvent.relayExecutionInfo.updatedMessageHash,
