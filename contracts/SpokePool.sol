@@ -1075,14 +1075,14 @@ abstract contract SpokePool is
      * @dev Slow fills are created by inserting slow fill objects into a merkle tree that is included
      * in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool
      * will relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed,
-     * the slow fill can be executed by anyone who calls executeV3SlowRelayLeaf().
+     * the slow fill can be executed by anyone who calls executeSlowRelayLeaf().
      * @dev Cannot request a slow fill if the fill deadline has passed.
      * @dev Cannot request a slow fill if the relay has already been filled or a slow fill has already been requested.
      * @param relayData struct containing all the data needed to identify the deposit that should be
      * slow filled. If any of the params are missing or different from the origin chain deposit,
      * then Across will not include a slow fill for the intended deposit.
      */
-    function requestV3SlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+    function requestSlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
         uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
@@ -1171,7 +1171,7 @@ abstract contract SpokePool is
      * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
      */
-    function executeV3SlowRelayLeaf(
+    function executeSlowRelayLeaf(
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof

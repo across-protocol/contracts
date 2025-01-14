@@ -36,7 +36,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     await destErc20.connect(relayer).approve(spokePool.address, consts.maxUint256);
   });
 
-  describe("requestV3SlowFill", function () {
+  describe("requestSlowFill", function () {
     let relayData: V3RelayData;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
@@ -59,19 +59,19 @@ describe("SpokePool Slow Relay Logic", async function () {
     });
     it("fill deadline is expired", async function () {
       relayData.fillDeadline = (await spokePool.getCurrentTime()).sub(1);
-      await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
+      await expect(spokePool.connect(relayer).requestSlowFill(relayData)).to.be.revertedWith("ExpiredFillDeadline");
     });
     it("in absence of exclusivity", async function () {
       // Clock drift between spokes can mean exclusivityDeadline is in future even when no exclusivity was applied.
       await spokePool.setCurrentTime(relayData.exclusivityDeadline - 1);
-      await expect(spokePool.connect(relayer).requestV3SlowFill({ ...relayData, exclusivityDeadline: 0 })).to.emit(
+      await expect(spokePool.connect(relayer).requestSlowFill({ ...relayData, exclusivityDeadline: 0 })).to.emit(
         spokePool,
         "RequestedSlowFill"
       );
     });
     it("during exclusivity deadline", async function () {
       await spokePool.setCurrentTime(relayData.exclusivityDeadline);
-      await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith(
+      await expect(spokePool.connect(relayer).requestSlowFill(relayData)).to.be.revertedWith(
         "NoSlowFillsInExclusivityWindow"
       );
     });
@@ -80,15 +80,13 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       // FillStatus must be Unfilled:
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Unfilled);
-      expect(await spokePool.connect(relayer).requestV3SlowFill(relayData)).to.emit(spokePool, "RequestedSlowFill");
+      expect(await spokePool.connect(relayer).requestSlowFill(relayData)).to.emit(spokePool, "RequestedSlowFill");
 
       // FillStatus gets reset to RequestedSlowFill:
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.RequestedSlowFill);
 
       // Can't request slow fill again:
-      await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith(
-        "InvalidSlowFillRequest"
-      );
+      await expect(spokePool.connect(relayer).requestSlowFill(relayData)).to.be.revertedWith("InvalidSlowFillRequest");
 
       // Can fast fill after:
       await spokePool.connect(relayer).fillRelay(relayData, consts.repaymentChainId, addressToBytes(relayer.address));
@@ -97,24 +95,22 @@ describe("SpokePool Slow Relay Logic", async function () {
       const relayHash = getV3RelayHash(relayData, consts.destinationChainId);
       await spokePool.setFillStatus(relayHash, FillStatus.Filled);
       expect(await spokePool.fillStatuses(relayHash)).to.equal(FillStatus.Filled);
-      await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith(
-        "InvalidSlowFillRequest"
-      );
+      await expect(spokePool.connect(relayer).requestSlowFill(relayData)).to.be.revertedWith("InvalidSlowFillRequest");
     });
     it("fills are not paused", async function () {
       await spokePool.pauseFills(true);
-      await expect(spokePool.connect(relayer).requestV3SlowFill(relayData)).to.be.revertedWith("FillsArePaused");
+      await expect(spokePool.connect(relayer).requestSlowFill(relayData)).to.be.revertedWith("FillsArePaused");
     });
     it("reentrancy protected", async function () {
       // In this test we create a reentrancy attempt by sending a fill with a recipient contract that calls back into
       // the spoke pool via the tested function.
-      const functionCalldata = spokePool.interface.encodeFunctionData("requestV3SlowFill", [relayData]);
+      const functionCalldata = spokePool.interface.encodeFunctionData("requestSlowFill", [relayData]);
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.revertedWith(
         "ReentrancyGuard: reentrant call"
       );
     });
   });
-  describe("executeV3SlowRelayLeaf", function () {
+  describe("executeSlowRelayLeaf", function () {
     let relayData: V3RelayData, slowRelayLeaf: V3SlowFill;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
@@ -144,7 +140,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       const tree = await buildV3SlowRelayTree([slowRelayLeaf]);
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
       await expect(() =>
-        spokePool.connect(recipient).executeV3SlowRelayLeaf(
+        spokePool.connect(recipient).executeSlowRelayLeaf(
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
@@ -158,13 +154,13 @@ describe("SpokePool Slow Relay Logic", async function () {
     it("cannot double execute leaf", async function () {
       const tree = await buildV3SlowRelayTree([slowRelayLeaf]);
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
-      await spokePool.connect(relayer).executeV3SlowRelayLeaf(
+      await spokePool.connect(relayer).executeSlowRelayLeaf(
         slowRelayLeaf,
         0, // rootBundleId
         tree.getHexProof(slowRelayLeaf)
       );
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
@@ -187,7 +183,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         .connect(relayer)
         .fillRelay(slowRelayLeaf.relayData, consts.repaymentChainId, addressToBytes(relayer.address));
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
@@ -196,7 +192,7 @@ describe("SpokePool Slow Relay Logic", async function () {
     });
     it("cannot re-enter", async function () {
       const tree = await buildV3SlowRelayTree([slowRelayLeaf]);
-      const functionCalldata = spokePool.interface.encodeFunctionData("executeV3SlowRelayLeaf", [
+      const functionCalldata = spokePool.interface.encodeFunctionData("executeSlowRelayLeaf", [
         slowRelayLeaf,
         0, // rootBundleId
         tree.getHexProof(slowRelayLeaf),
@@ -210,7 +206,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       const tree = await buildV3SlowRelayTree([slowRelayLeaf]);
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
@@ -221,7 +217,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       const tree = await buildV3SlowRelayTree([slowRelayLeaf]);
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
@@ -242,7 +238,7 @@ describe("SpokePool Slow Relay Logic", async function () {
         .connect(depositor)
         .relayRootBundle(consts.mockTreeRoot, treeWithWrongDestinationChain.getHexRoot());
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeafWithWrongDestinationChain,
           0, // rootBundleId
           treeWithWrongDestinationChain.getHexProof(slowRelayLeafWithWrongDestinationChain)
@@ -261,7 +257,7 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       // Incorrect root bundle ID
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           1, // rootBundleId should be 0
           tree.getHexProof(slowRelayLeaf)
@@ -270,7 +266,7 @@ describe("SpokePool Slow Relay Logic", async function () {
 
       // Invalid proof
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           0,
           tree.getHexProof(leafWithDifferentUpdatedOutputAmount) // Invalid proof
@@ -281,7 +277,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await expect(
         spokePool
           .connect(relayer)
-          .executeV3SlowRelayLeaf(leafWithDifferentUpdatedOutputAmount, 0, tree.getHexProof(slowRelayLeaf))
+          .executeSlowRelayLeaf(leafWithDifferentUpdatedOutputAmount, 0, tree.getHexProof(slowRelayLeaf))
       ).to.revertedWith("InvalidMerkleProof");
     });
     it("calls _fillRelay with expected params", async function () {

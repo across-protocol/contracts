@@ -309,9 +309,9 @@ interface V3SpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function requestV3SlowFill(V3RelayData calldata relayData) external;
+    function requestSlowFill(V3RelayData calldata relayData) external;
 
-    function executeV3SlowRelayLeaf(
+    function executeSlowRelayLeaf(
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
