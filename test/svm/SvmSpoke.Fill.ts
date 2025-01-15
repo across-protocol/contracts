@@ -183,7 +183,7 @@ describe("svm_spoke.fill", () => {
 
     // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "FilledRelay")?.data;
+    const event = events.find((event) => event.name === "filledRelay")?.data;
     assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data matches the relay data.
@@ -660,7 +660,7 @@ describe("svm_spoke.fill", () => {
 
     // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "FilledRelay")?.data;
+    const event = events.find((event) => event.name === "filledRelay")?.data;
     assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data has zeroed message hash.

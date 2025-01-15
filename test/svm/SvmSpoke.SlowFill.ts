@@ -377,7 +377,7 @@ describe("svm_spoke.slow_fill", () => {
 
     // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "FilledRelay")?.data;
+    const event = events.find((event) => event.name === "filledRelay")?.data;
     assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data matches the relay data.
@@ -668,7 +668,7 @@ describe("svm_spoke.slow_fill", () => {
     assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
 
     const fillEvents = await readEventsUntilFound(connection, tx2, [program]);
-    const fillEvent = fillEvents.find((event) => event.name === "FilledRelay")?.data;
+    const fillEvent = fillEvents.find((event) => event.name === "filledRelay")?.data;
     assert.isNotNull(fillEvent, "FilledRelay event should be emitted");
     assertSE(fillEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
     assertSE(
