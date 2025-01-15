@@ -137,12 +137,12 @@ abstract contract SpokePool is
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
-    bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
+    bytes32 public constant UPDATE_BYTES32_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
 
-    bytes32 public constant UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH =
+    bytes32 public constant UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
         );
@@ -843,7 +843,7 @@ abstract contract SpokePool is
             updatedRecipient,
             updatedMessage,
             depositorSignature,
-            UPDATE_DEPOSIT_DETAILS_HASH
+            UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -897,7 +897,7 @@ abstract contract SpokePool is
             updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature,
-            UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
+            UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -1061,7 +1061,7 @@ abstract contract SpokePool is
             updatedRecipient,
             updatedMessage,
             depositorSignature,
-            UPDATE_DEPOSIT_DETAILS_HASH
+            UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
         );
 
         _fillRelayV3(relayExecution, repaymentAddress, false);
