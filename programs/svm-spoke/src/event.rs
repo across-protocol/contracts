@@ -91,7 +91,7 @@ pub struct FilledRelay {
 
 // Slow fill events
 #[event]
-pub struct RequestedV3SlowFill {
+pub struct RequestedSlowFill {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
