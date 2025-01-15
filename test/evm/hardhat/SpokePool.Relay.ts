@@ -421,7 +421,7 @@ describe("SpokePool Relayer Logic", async function () {
           );
       });
     });
-    describe("fillV3RelayWithUpdatedDeposit", function () {
+    describe("fillRelayWithUpdatedDeposit", function () {
       let updatedOutputAmount: BigNumber, updatedRecipient: string, updatedMessage: string, signature: string;
       beforeEach(async function () {
         updatedOutputAmount = relayData.outputAmount.add(1);
@@ -443,7 +443,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, exclusivityDeadline: 0 },
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -464,7 +464,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               _relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -477,7 +477,7 @@ describe("SpokePool Relayer Logic", async function () {
 
         // Even if not exclusive relayer, can send it after exclusivity deadline
         await expect(
-          spokePool.connect(relayer).fillV3RelayWithUpdatedDeposit(
+          spokePool.connect(relayer).fillRelayWithUpdatedDeposit(
             {
               ..._relayData,
               exclusivityDeadline: 0,
@@ -500,7 +500,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -545,7 +545,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositor: addressToBytes(relayer.address) },
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -568,7 +568,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -583,7 +583,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, originChainId: relayData.originChainId + 1 },
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -598,7 +598,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositId: relayData.depositId.add(toBN(1)) },
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -613,7 +613,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -628,7 +628,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -643,7 +643,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -668,7 +668,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositor: addressToBytes(erc1271.address) },
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -681,7 +681,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositor: addressToBytes(erc1271.address) },
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -697,7 +697,7 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
               repaymentChainId,
               addressToBytes(relayer.address),
@@ -711,7 +711,7 @@ describe("SpokePool Relayer Logic", async function () {
       it("cannot send updated fill after slow fill", async function () {
         await spokePool
           .connect(relayer)
-          .fillV3RelayWithUpdatedDeposit(
+          .fillRelayWithUpdatedDeposit(
             relayData,
             repaymentChainId,
             addressToBytes(relayer.address),

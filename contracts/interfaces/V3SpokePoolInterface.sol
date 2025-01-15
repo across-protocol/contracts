@@ -299,7 +299,7 @@ interface V3SpokePoolInterface {
 
     function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) external;
 
-    function fillV3RelayWithUpdatedDeposit(
+    function fillRelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress,

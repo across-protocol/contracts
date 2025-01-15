@@ -137,7 +137,7 @@ abstract contract SpokePool is
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
-    bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
+    bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
@@ -814,7 +814,7 @@ abstract contract SpokePool is
      * and/or message.
      * @dev the depositor and depositId must match the params in a FundsDeposited event that the depositor
      * wants to speed up. The relayer has the option but not the obligation to use this updated information
-     * when filling the deposit via fillV3RelayWithUpdatedDeposit().
+     * when filling the deposit via fillRelayWithUpdatedDeposit().
      * @param depositor Depositor that must sign the depositorSignature and was the original depositor.
      * @param depositId Deposit ID to speed up.
      * @param updatedOutputAmount New output amount to use for this deposit. Should be lower than previous value
@@ -843,7 +843,7 @@ abstract contract SpokePool is
             updatedRecipient,
             updatedMessage,
             depositorSignature,
-            UPDATE_V3_DEPOSIT_DETAILS_HASH
+            UPDATE_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -866,7 +866,7 @@ abstract contract SpokePool is
      *
      * @dev The `depositor` and `depositId` must match the parameters in a `FundsDeposited` event that the depositor wants to speed up.
      * The relayer is not obligated but has the option to use this updated information when filling the deposit using
-     * `fillV3RelayWithUpdatedDeposit()`. This version uses `address` types for compatibility with systems relying on
+     * `fillRelayWithUpdatedDeposit()`. This version uses `address` types for compatibility with systems relying on
      * `address`-based implementations.
      *
      * @param depositor The depositor that must sign the `depositorSignature` and was the original depositor.
@@ -1026,7 +1026,7 @@ abstract contract SpokePool is
      * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
      * account.
      */
-    function fillV3RelayWithUpdatedDeposit(
+    function fillRelayWithUpdatedDeposit(
         V3RelayData calldata relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress,
@@ -1061,7 +1061,7 @@ abstract contract SpokePool is
             updatedRecipient,
             updatedMessage,
             depositorSignature,
-            UPDATE_V3_DEPOSIT_DETAILS_HASH
+            UPDATE_DEPOSIT_DETAILS_HASH
         );
 
         _fillRelayV3(relayExecution, repaymentAddress, false);
@@ -1158,7 +1158,7 @@ abstract contract SpokePool is
      * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
      * @dev Executing a slow fill leaf is equivalent to filling the relayData so this function cannot be used to
      * double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-     * like any other fill sent through fillV3Relay().
+     * like any other fill sent through a fill method.
      * @dev There is no relayer credited with filling this relay since funds are sent directly out of this contract.
      * @param slowFillLeaf Contains all data necessary to uniquely identify a relay for this chain. This struct is
      * hashed and included in a merkle root that is relayed to all spoke pools.
