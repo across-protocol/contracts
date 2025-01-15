@@ -285,7 +285,7 @@ describe("SpokePool Slow Relay Logic", async function () {
       await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
 
       await expect(
-        spokePool.connect(relayer).executeV3SlowRelayLeaf(
+        spokePool.connect(relayer).executeSlowRelayLeaf(
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
