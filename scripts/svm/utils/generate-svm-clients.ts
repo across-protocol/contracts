@@ -3,12 +3,13 @@ import { rootNodeFromAnchor, AnchorIdl } from "@codama/nodes-from-anchor";
 import { renderVisitor as renderJavaScriptVisitor } from "@codama/renderers-js";
 import { SvmSpokeIdl, MulticallHandlerIdl } from "../../../src/svm/assets";
 import path from "path";
-
-let codama = createFromRoot(rootNodeFromAnchor(SvmSpokeIdl as AnchorIdl));
 export const clientsPath = path.join(__dirname, "..", "..", "..", "src", "svm", "clients");
 
+// Generate SvmSpoke clients
+let codama = createFromRoot(rootNodeFromAnchor(SvmSpokeIdl as AnchorIdl));
 codama.accept(renderJavaScriptVisitor(path.join(clientsPath, "SvmSpoke")));
 
+// Generate MulticallHandler clients
 codama = createFromRoot(rootNodeFromAnchor(MulticallHandlerIdl as AnchorIdl));
 codama.accept(renderJavaScriptVisitor(path.join(clientsPath, "MulticallHandler")));
 

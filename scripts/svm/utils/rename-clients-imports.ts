@@ -1,7 +1,7 @@
-import { clientsPath } from "./generate-svm-clients";
-
 const fs = require("fs");
 const path = require("path");
+
+const clientsPath = path.join(__dirname, "..", "..", "..", "src", "svm", "clients");
 
 function replaceInFiles(dir: string): void {
   const files = fs.readdirSync(dir);
