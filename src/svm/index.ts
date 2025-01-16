@@ -9,3 +9,4 @@ export * from "./assets";
 export * from "./constants";
 export * from "./helpers";
 export * from "./cctpHelpers";
+export * from "./clients";

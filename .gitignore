@@ -33,3 +33,5 @@ target
 test-ledger
 idls
 src/svm/assets 
+src/svm/clients/*
+!src/svm/clients/index.ts
