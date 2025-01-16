@@ -8,7 +8,7 @@ import {
   SignaturesForAddressOptions,
 } from "@solana/web3.js";
 import { deserialize } from "borsh";
-import { EventType } from "../types/svm";
+import { EventType } from "../../types/svm";
 import { publicKeyToEvmAddress } from "./conversionUtils";
 
 /**
