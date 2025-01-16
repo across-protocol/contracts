@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { array, object, optional, string, Struct } from "superstruct";
-import { readUInt256BE } from "../../src/svm";
+import { readUInt256BE } from "./relayHashUtils";
 
 // Index positions to decode Message Header from
 // https://developers.circle.com/stablecoins/docs/message-format#message-header
