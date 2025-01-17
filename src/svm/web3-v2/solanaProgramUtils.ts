@@ -2,7 +2,9 @@ import { BorshEventCoder, Idl, utils } from "@coral-xyz/anchor";
 import web3, {
   Address,
   Commitment,
+  GetSignaturesForAddressApi,
   GetTransactionApi,
+  RpcTransport,
   Signature,
   Slot,
   TransactionError,
@@ -11,13 +13,7 @@ import web3, {
 
 type GetTransactionReturnType = ReturnType<GetTransactionApi["getTransaction"]>;
 
-type GetSignaturesForAddressConfig = Readonly<{
-  before?: Signature;
-  commitment?: Exclude<Commitment, "processed">;
-  limit?: number;
-  minContextSlot?: Slot;
-  until?: Signature;
-}>;
+type GetSignaturesForAddressConfig = Parameters<GetSignaturesForAddressApi["getSignaturesForAddress"]>[1];
 
 type GetSignaturesForAddressTransaction = {
   blockTime: UnixTimestamp | null;
@@ -31,8 +27,8 @@ type GetSignaturesForAddressTransaction = {
 /**
  * Reads all events for a specific program.
  */
-export async function readProgramEvents(
-  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<any>>,
+export async function readProgramEventsV2(
+  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
   program: Address,
   anchorIdl: Idl,
   finality: Commitment = "confirmed",
@@ -56,7 +52,7 @@ export async function readProgramEvents(
   // Fetch events for all signatures in parallel
   const eventsWithSlots = await Promise.all(
     allSignatures.map(async (signatureTransaction) => {
-      const events = await readEvents(rpc, signatureTransaction.signature, program, anchorIdl, finality);
+      const events = await readEventsV2(rpc, signatureTransaction.signature, program, anchorIdl, finality);
 
       return events.map((event) => ({
         ...event,
@@ -74,8 +70,8 @@ export async function readProgramEvents(
 /**
  * Reads events from a transaction.
  */
-export async function readEvents(
-  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<any>>,
+export async function readEventsV2(
+  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
   txSignature: Signature,
   programId: Address,
   programIdl: Idl,
@@ -102,7 +98,12 @@ async function processEventFromTx(
   const [pda] = await web3.getProgramDerivedAddress({ programAddress: programId, seeds: ["__event_authority"] });
   eventAuthorities.set(programId, pda);
 
-  const messageAccountKeys = txResult.transaction.message.accountKeys;
+  const accountKeys = txResult.transaction.message.accountKeys;
+  const messageAccountKeys = [...accountKeys];
+  // Order matters here. writable accounts must be processed before readonly accounts.
+  // See https://docs.anza.xyz/proposals/versioned-transactions#new-transaction-format
+  messageAccountKeys.push(...(txResult?.meta?.loadedAddresses?.writable ?? []));
+  messageAccountKeys.push(...(txResult?.meta?.loadedAddresses?.readonly ?? []));
 
   for (const ixBlock of txResult.meta?.innerInstructions ?? []) {
     for (const ix of ixBlock.instructions) {
