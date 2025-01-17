@@ -6,23 +6,13 @@ import web3, {
   GetTransactionApi,
   RpcTransport,
   Signature,
-  Slot,
-  TransactionError,
-  UnixTimestamp,
 } from "@solana/web3-v2.js";
 
 type GetTransactionReturnType = ReturnType<GetTransactionApi["getTransaction"]>;
 
 type GetSignaturesForAddressConfig = Parameters<GetSignaturesForAddressApi["getSignaturesForAddress"]>[1];
 
-type GetSignaturesForAddressTransaction = {
-  blockTime: UnixTimestamp | null;
-  confirmationStatus: Commitment | null;
-  err: TransactionError | null;
-  memo: string | null;
-  signature: Signature;
-  slot: Slot;
-};
+type GetSignaturesForAddressTransaction = ReturnType<GetSignaturesForAddressApi["getSignaturesForAddress"]>[number];
 
 /**
  * Reads all events for a specific program.
