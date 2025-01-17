@@ -239,7 +239,7 @@ export function stringifyCpiEvent(obj: any): any {
     return obj.toString();
   } else if (BN.isBN(obj)) {
     return obj.toString();
-  } else if (typeof obj === "bigint" && obj !== 0n) {
+  } else if (typeof obj === "bigint") {
     return obj.toString();
   } else if (Array.isArray(obj) && obj.length == 32) {
     return Buffer.from(obj).toString("hex"); // Hex representation for fixed-length arrays
