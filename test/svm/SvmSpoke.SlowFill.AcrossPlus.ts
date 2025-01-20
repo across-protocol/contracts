@@ -34,10 +34,10 @@ import {
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 import {
-  ExecuteSlowRelayLeafDataParams,
-  ExecuteSlowRelayLeafDataValues,
-  RequestSlowFillDataParams,
-  RequestSlowFillDataValues,
+  ExecuteV3SlowRelayLeafDataParams,
+  ExecuteV3SlowRelayLeafDataValues,
+  RequestV3SlowFillDataParams,
+  RequestV3SlowFillDataValues,
   SlowFillLeaf,
 } from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, setCurrentTime } = common;
@@ -136,7 +136,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     // Relay root bundle with slow fill leaf.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
 
-    const requestSlowFillValues: RequestSlowFillDataValues = [Array.from(relayHash), leaf.relayData];
+    const requestSlowFillValues: RequestV3SlowFillDataValues = [Array.from(relayHash), leaf.relayData];
     let loadRequestParamsInstructions: TransactionInstruction[] = [];
     if (bufferParams) {
       loadRequestParamsInstructions = await loadRequestSlowFillParams(program, relayer, requestSlowFillValues[1]);
@@ -145,7 +145,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         program.programId
       );
     }
-    const requestSlowFillParams: RequestSlowFillDataParams = bufferParams
+    const requestSlowFillParams: RequestV3SlowFillDataParams = bufferParams
       ? [requestSlowFillValues[0], null]
       : requestSlowFillValues;
     const requestIx = await program.methods
@@ -169,7 +169,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
       ...multicallHandlerCoder.compiledKeyMetas,
     ];
-    const executeSlowRelayLeafValues: ExecuteSlowRelayLeafDataValues = [
+    const executeSlowRelayLeafValues: ExecuteV3SlowRelayLeafDataValues = [
       Array.from(relayHash),
       leaf,
       rootBundleId,
@@ -189,7 +189,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         program.programId
       );
     }
-    const executeSlowRelayLeafParams: ExecuteSlowRelayLeafDataParams = bufferParams
+    const executeSlowRelayLeafParams: ExecuteV3SlowRelayLeafDataParams = bufferParams
       ? [executeSlowRelayLeafValues[0], null, null, null]
       : executeSlowRelayLeafValues;
     const executeIx = await program.methods
