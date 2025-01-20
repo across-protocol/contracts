@@ -311,9 +311,12 @@ pub mod svm_spoke {
         )
     }
 
-    /// Equivalent to deposit_v3 except the deposit_nonce is not used to derive the deposit_id for the depositor. This
-    /// Lets the caller influence the deposit ID to make it deterministic for the depositor. The computed depositID is
-    /// the keccak256 hash of [signer, depositor, deposit_nonce].
+    /// Equivalent to deposit_v3, except that it doesn't use the global `number_of_deposits` counter as the deposit
+    /// nonce. Instead, it allows the caller to pass a `deposit_nonce`. This function is designed for anyone who
+    /// wants to pre-compute their resultant deposit ID, which can be useful for filling a deposit faster and
+    /// avoiding the risk of a deposit ID unexpectedly changing due to another deposit front-running this one and
+    /// incrementing the global deposit ID counter. This enables the caller to influence the deposit ID, making it
+    /// deterministic for the depositor. The computed `depositID` is the keccak256 hash of [signer, depositor, deposit_nonce].
     pub fn unsafe_deposit_v3(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -484,7 +487,7 @@ pub mod svm_spoke {
     ///           BUNDLE FUNCTIONS           *
     /// *************************************
 
-    /// Executes relayer refund leaf. Only callable by owner.
+    /// Executes relayer refund leaf.
     ///
     /// Processes a relayer refund leaf, verifying its inclusion in a previous Merkle root and that it was not
     /// previously executed. Function has two modes of operation: a) transfers all relayer refunds directly to
@@ -492,7 +495,8 @@ pub mod svm_spoke {
     /// refund. In the happy path, (a) should be used. (b) should only be used if there is a relayer within the bundle
     /// who can't receive the transfer for some reason, such as failed token transfers due to blacklisting. Executing
     /// relayer refunds requires the caller to create a LUT and load the execution params into it. This is needed to
-    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the UMIP.
+    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Accross
+    /// UMIP: https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-179.md
     ///
     /// instruction_params Parameters:
     /// - root_bundle_id: The ID of the root bundle containing the relayer refund root.
