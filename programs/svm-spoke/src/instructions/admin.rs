@@ -10,7 +10,7 @@ use crate::{
     error::SvmError,
     event::{
         EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle,
-        SetXDomainAdmin,
+        SetXDomainAdmin, TransferredOwnership,
     },
     state::{RootBundle, Route, State},
     utils::{initialize_current_time, set_seed},
@@ -98,6 +98,7 @@ pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct TransferOwnership<'info> {
     #[account(address = state.owner @ SvmError::NotOwner)]
@@ -110,6 +111,8 @@ pub struct TransferOwnership<'info> {
 pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_owner: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = new_owner;
+
+    emit_cpi!(TransferredOwnership { new_owner });
 
     Ok(())
 }

@@ -88,7 +88,6 @@ pub fn invoke_handler<'info>(
 
     let instruction = Instruction { program_id: message.handler, accounts, data };
 
-    // TODO: consider if the message handler requires signed invocation.
     invoke(&instruction, account_infos)?;
 
     Ok(())

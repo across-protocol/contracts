@@ -7,7 +7,7 @@ use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    state::{ExecuteSlowRelayLeafParams, FillStatus, FillStatusAccount, RequestSlowFillParams, RootBundle, State},
+    state::{ExecuteV3SlowRelayLeafParams, FillStatus, FillStatusAccount, RequestV3SlowFillParams, RootBundle, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
 
@@ -20,7 +20,7 @@ pub struct RequestSlowFill<'info> {
 
     // This is required as fallback when None instruction params are passed in arguments.
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
-    pub instruction_params: Option<Account<'info, RequestSlowFillParams>>,
+    pub instruction_params: Option<Account<'info, RequestV3SlowFillParams>>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -45,7 +45,7 @@ pub struct RequestSlowFill<'info> {
 }
 
 pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<V3RelayData>) -> Result<()> {
-    let RequestSlowFillParams { relay_data } =
+    let RequestV3SlowFillParams { relay_data } =
         unwrap_request_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
 
     let state = &ctx.accounts.state;
@@ -94,18 +94,18 @@ pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<V3Rel
 // Helper to unwrap optional instruction params with fallback loading from buffer account.
 fn unwrap_request_slow_fill_params(
     relay_data: Option<V3RelayData>,
-    account: &Option<Account<RequestSlowFillParams>>,
-) -> RequestSlowFillParams {
+    account: &Option<Account<RequestV3SlowFillParams>>,
+) -> RequestV3SlowFillParams {
     match relay_data {
-        Some(relay_data) => RequestSlowFillParams { relay_data },
+        Some(relay_data) => RequestV3SlowFillParams { relay_data },
         _ => account
             .as_ref()
-            .map(|account| RequestSlowFillParams { relay_data: account.relay_data.clone() })
+            .map(|account| RequestV3SlowFillParams { relay_data: account.relay_data.clone() })
             .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V3SlowFill {
     pub relay_data: V3RelayData,
     pub chain_id: u64,
@@ -139,7 +139,7 @@ pub struct ExecuteSlowRelayLeaf<'info> {
 
     // This is required as fallback when None instruction params are passed in arguments.
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
-    pub instruction_params: Option<Account<'info, ExecuteSlowRelayLeafParams>>,
+    pub instruction_params: Option<Account<'info, ExecuteV3SlowRelayLeafParams>>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
@@ -211,7 +211,7 @@ pub fn execute_slow_relay_leaf<'info>(
     slow_fill_leaf: Option<V3SlowFill>,
     proof: Option<Vec<[u8; 32]>>,
 ) -> Result<()> {
-    let ExecuteSlowRelayLeafParams { slow_fill_leaf, proof, .. } =
+    let ExecuteV3SlowRelayLeafParams { slow_fill_leaf, proof, .. } =
         unwrap_execute_slow_relay_leaf_params(slow_fill_leaf, proof, &ctx.accounts.instruction_params);
 
     let current_time = get_current_time(&ctx.accounts.state)?;
@@ -295,17 +295,17 @@ pub fn execute_slow_relay_leaf<'info>(
 fn unwrap_execute_slow_relay_leaf_params(
     slow_fill_leaf: Option<V3SlowFill>,
     proof: Option<Vec<[u8; 32]>>,
-    account: &Option<Account<ExecuteSlowRelayLeafParams>>,
-) -> ExecuteSlowRelayLeafParams {
+    account: &Option<Account<ExecuteV3SlowRelayLeafParams>>,
+) -> ExecuteV3SlowRelayLeafParams {
     match (slow_fill_leaf, proof) {
-        (Some(slow_fill_leaf), Some(proof)) => ExecuteSlowRelayLeafParams {
+        (Some(slow_fill_leaf), Some(proof)) => ExecuteV3SlowRelayLeafParams {
             slow_fill_leaf,
             root_bundle_id: 0, // This is not used in the caller.
             proof,
         },
         _ => account
             .as_ref()
-            .map(|account| ExecuteSlowRelayLeafParams {
+            .map(|account| ExecuteV3SlowRelayLeafParams {
                 slow_fill_leaf: account.slow_fill_leaf.clone(),
                 root_bundle_id: account.root_bundle_id,
                 proof: account.proof.clone(),

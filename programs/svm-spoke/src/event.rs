@@ -7,6 +7,11 @@ pub struct SetXDomainAdmin {
 }
 
 #[event]
+pub struct TransferredOwnership {
+    pub new_owner: Pubkey,
+}
+
+#[event]
 pub struct PausedDeposits {
     pub is_paused: bool,
 }
@@ -84,7 +89,6 @@ pub struct FilledRelay {
     pub relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    // TODO: update EVM implementation to use message_hash in all fill related events.
     pub message_hash: [u8; 32],
     pub relay_execution_info: V3RelayExecutionEventInfo,
 }
