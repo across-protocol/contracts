@@ -279,7 +279,7 @@ abstract contract SpokePool is
     /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
-     * @dev Affects `deposit()` but not `speedUpV3Deposit()`, so that existing deposits can be sped up and still
+     * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
      * relayed.
      * @param pause true if the call is meant to pause the system, false if the call is meant to unpause it.
      */
@@ -989,7 +989,7 @@ abstract contract SpokePool is
     // Exposes the same function as fillRelay but with a legacy V3RelayData struct that takes in address types. Inner
     // function fillV3Relay() applies reentrancy & non-paused checks.
     function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) public override {
-        // Convert V3RelayDataLegacy to V3RelayData using the .toBytes32() method
+        // Convert V3RelayDataLegacy to V3RelayData using the .toBytes32() method.
         V3RelayData memory convertedRelayData = V3RelayData({
             depositor: relayData.depositor.toBytes32(),
             recipient: relayData.recipient.toBytes32(),
@@ -1138,11 +1138,9 @@ abstract contract SpokePool is
 
         // Must do a delegatecall because the function requires the inputs to be calldata.
         (bool success, bytes memory data) = address(this).delegatecall(
-            abi.encode(
-                "fillRelay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint32,uint32,bytes),uint256,bytes32)",
-                relayData,
-                destinationFillerData.repaymentChainId,
-                msg.sender.toBytes32()
+            abi.encodeCall(
+                V3SpokePoolInterface.fillRelay,
+                (relayData, destinationFillerData.repaymentChainId, msg.sender.toBytes32())
             )
         );
         if (!success) {
