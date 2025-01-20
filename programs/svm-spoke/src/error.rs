@@ -42,14 +42,10 @@ pub enum CommonError {
 pub enum SvmError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
-    #[msg("Invalid route PDA!")]
-    InvalidRoutePDA,
     #[msg("Invalid relay hash!")]
     InvalidRelayHash,
     #[msg("The fill deadline has not passed!")]
     CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
-    #[msg("The fill status is not filled!")]
-    NotFilled,
     #[msg("The caller is not the relayer!")]
     NotRelayer,
     #[msg("Cannot set time if not in test mode!")]
@@ -93,8 +89,6 @@ pub enum CallDataError {
     InvalidUint32,
     #[msg("Invalid solidity uint64 argument")]
     InvalidUint64,
-    #[msg("Invalid solidity uint128 argument")]
-    InvalidUint128,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
 }
