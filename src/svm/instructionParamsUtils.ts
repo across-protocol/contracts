@@ -120,7 +120,7 @@ export async function loadFillV3RelayParams(
 /**
  * Loads requestV3 slow fill parameters.
  */
-export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
+export async function loadRequestV3SlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
   // Close the instruction params account if the caller has used it before.
   await closeInstructionParams(program, signer);
 
@@ -128,7 +128,7 @@ export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, sign
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("requestSlowFillParams", { relayData });
+  const instructionParamsBytes = await accountCoder.encode("requestV3SlowFillParams", { relayData });
 
   const loadInstructions: TransactionInstruction[] = [];
   loadInstructions.push(
@@ -154,7 +154,7 @@ export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, sign
 /**
  * Loads executeV3 slow relay leaf parameters.
  */
-export async function loadExecuteSlowRelayLeafParams(
+export async function loadExecuteV3SlowRelayLeafParams(
   program: Program<SvmSpoke>,
   signer: Keypair,
   slowFillLeaf: SlowFillLeaf,
@@ -168,7 +168,7 @@ export async function loadExecuteSlowRelayLeafParams(
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("executeSlowRelayLeafParams", {
+  const instructionParamsBytes = await accountCoder.encode("executeV3SlowRelayLeafParams", {
     slowFillLeaf,
     rootBundleId,
     proof,
