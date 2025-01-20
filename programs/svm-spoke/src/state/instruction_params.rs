@@ -21,13 +21,13 @@ pub struct FillV3RelayParams {
 
 #[account]
 #[derive(InitSpace)]
-pub struct RequestV3SlowFillParams {
+pub struct RequestSlowFillParams {
     pub relay_data: V3RelayData,
 }
 
 #[account]
 #[derive(InitSpace)]
-pub struct ExecuteV3SlowRelayLeafParams {
+pub struct ExecuteSlowRelayLeafParams {
     pub slow_fill_leaf: V3SlowFill,
     pub root_bundle_id: u32,
     #[max_len(0)]

@@ -678,7 +678,7 @@ pub mod svm_spoke {
     /// token via PoolRebalanceRoutes. Slow fills are created by inserting slow fill objects into a Merkle tree that is
     /// included in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool will
     /// relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed, the slow fill can be
-    /// executed by anyone who calls executeV3SlowRelayLeaf(). Cant request a slow fill if the fill deadline has
+    /// executed by anyone who calls executeSlowRelayLeaf(). Cant request a slow fill if the fill deadline has
     /// passed. Cant request a slow fill if the relay has already been filled or a slow fill has already been requested.
     ///
     /// ### Required Accounts:
@@ -699,12 +699,12 @@ pub mod svm_spoke {
     ///   fill for the intended deposit. See fill_relay & V3RelayData struct for more details.
     /// Note: relay_data is optional parameter. If None for it is passed, the caller must load it via the
     /// instruction_params account.
-    pub fn request_v3_slow_fill(
-        ctx: Context<RequestV3SlowFill>,
+    pub fn request_slow_fill(
+        ctx: Context<RequestSlowFill>,
         _relay_hash: [u8; 32],
         relay_data: Option<V3RelayData>,
     ) -> Result<()> {
-        instructions::request_v3_slow_fill(ctx, relay_data)
+        instructions::request_slow_fill(ctx, relay_data)
     }
 
     /// Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
@@ -743,14 +743,14 @@ pub mod svm_spoke {
     /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
     /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters. If None for any of these is passed,
     /// the caller must load them via the instruction_params account.
-    pub fn execute_v3_slow_relay_leaf<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
+    pub fn execute_slow_relay_leaf<'info>(
+        ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
         slow_fill_leaf: Option<V3SlowFill>,
         _root_bundle_id: Option<u32>,
         proof: Option<Vec<[u8; 32]>>,
     ) -> Result<()> {
-        instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
+        instructions::execute_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
 
     /// **************************************
