@@ -280,6 +280,7 @@ pub mod svm_spoke {
     }
 
     // Equivalent to deposit_v3 except quote_timestamp is set to the current time.
+    // The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
     pub fn deposit_v3_now(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -290,7 +291,7 @@ pub mod svm_spoke {
         output_amount: u64,
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
-        fill_deadline: u32,
+        fill_deadline_offset: u32,
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
@@ -304,7 +305,7 @@ pub mod svm_spoke {
             output_amount,
             destination_chain_id,
             exclusive_relayer,
-            fill_deadline,
+            fill_deadline_offset,
             exclusivity_parameter,
             message,
         )
