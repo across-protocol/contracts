@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
+use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
+    constraints::is_valid_associated_token_account,
     error::SvmError,
     event::ClaimedRelayerRefund,
-    state::{ClaimAccount, State},
+    state::{ ClaimAccount, State },
 };
 
 #[derive(Accounts)]
@@ -57,15 +58,25 @@ pub struct ClaimRelayerRefund<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    // This method allows relayer to claim refunds on any custom token account.
-    #[account(mut, token::mint = mint, token::token_program = token_program)]
+    /// CHECK: This is used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
+
+    // If refund_address is the same as signer this method allows relayer to claim refunds on any custom token account.
+    // Otherwise this must be the associated token account of the provided refund_address.
+    #[account(
+        mut,
+        token::mint = mint,
+        token::token_program = token_program,
+        constraint = refund_address.key().eq(&signer.key())
+            || is_valid_associated_token_account(&token_account, &mint, &token_program, &refund_address.key())
+            @ SvmError::InvalidRefundTokenAccount
+    )]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
 
-    // Only relayer can claim the refund with this method as the claim account is derived from the relayer's address.
     #[account(
         mut,
         close = initializer,
-        seeds = [b"claim_account", mint.key().as_ref(), signer.key().as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.key().as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -92,87 +103,18 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         to: ctx.accounts.token_account.to_account_info(),
         authority: ctx.accounts.state.to_account_info(),
     };
-    let cpi_context =
-        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
+    let cpi_context = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        transfer_accounts,
+        signer_seeds
+    );
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
     emit_cpi!(ClaimedRelayerRefund {
         l2_token_address: ctx.accounts.mint.key(),
         claim_amount,
-        refund_address: ctx.accounts.signer.key(),
+        refund_address: ctx.accounts.refund_address.key(),
     });
-
-    Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
-}
-
-#[event_cpi]
-#[derive(Accounts)]
-#[instruction(refund_address: Pubkey)]
-pub struct ClaimRelayerRefundFor<'info> {
-    pub signer: Signer<'info>,
-
-    /// CHECK: We don't need any additional checks as long as this is the same account that initialized the claim account.
-    #[account(mut, address = claim_account.initializer @ SvmError::InvalidClaimInitializer)]
-    pub initializer: UncheckedAccount<'info>,
-
-    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
-    pub state: Account<'info, State>,
-
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = state,
-        associated_token::token_program = token_program
-    )]
-    pub vault: InterfaceAccount<'info, TokenAccount>,
-
-    // Mint address has been checked when executing the relayer refund leaf and it is part of claim account derivation.
-    #[account(mint::token_program = token_program)]
-    pub mint: InterfaceAccount<'info, Mint>,
-
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = refund_address,
-        associated_token::token_program = token_program
-    )]
-    pub token_account: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        close = initializer,
-        seeds = [b"claim_account", mint.key().as_ref(), refund_address.as_ref()],
-        bump
-    )]
-    pub claim_account: Account<'info, ClaimAccount>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-}
-
-pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_address: Pubkey) -> Result<()> {
-    // Ensure the claim account holds a non-zero amount.
-    let claim_amount = ctx.accounts.claim_account.amount;
-    if claim_amount == 0 {
-        return err!(SvmError::ZeroRefundClaim);
-    }
-
-    // Derive the signer seeds for the state required for the transfer form vault.
-    let state_seed_bytes = ctx.accounts.state.seed.to_le_bytes();
-    let seeds = &[b"state", state_seed_bytes.as_ref(), &[ctx.bumps.state]];
-    let signer_seeds = &[&seeds[..]];
-
-    // Transfer the claim amount from the vault to the relayer token account.
-    let transfer_accounts = TransferChecked {
-        from: ctx.accounts.vault.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        to: ctx.accounts.token_account.to_account_info(),
-        authority: ctx.accounts.state.to_account_info(),
-    };
-    let cpi_context =
-        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
-    transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
-
-    emit_cpi!(ClaimedRelayerRefund { l2_token_address: ctx.accounts.mint.key(), claim_amount, refund_address });
 
     Ok(()) // There is no need to reset the claim amount as the account will be closed at the end of instruction.
 }

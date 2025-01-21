@@ -114,6 +114,7 @@ const config: HardhatUserConfig = {
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -161,6 +162,7 @@ const config: HardhatUserConfig = {
       worldchain: "blockscout",
       alephzero: "blockscout",
       ink: "blockscout",
+      soneium: "blockscout",
     },
     customChains: [
       {
@@ -193,6 +195,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.inkonchain.com/api",
           browserURL: "https://explorer.inkonchain.com",
+        },
+      },
+      {
+        network: "soneium",
+        chainId: CHAIN_IDs.SONEIUM,
+        urls: {
+          apiURL: "https://soneium.blockscout.com/api",
+          browserURL: "https://soneium.blockscout.com",
         },
       },
       {
