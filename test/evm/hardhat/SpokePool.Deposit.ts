@@ -467,6 +467,12 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.be.revertedWith("InvalidFillDeadline");
       await expect(
         spokePool.connect(depositor)[SpokePoolFuncs.depositV3Bytes](
+          // fillDeadline in past
+          ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.sub(1) })
+        )
+      ).to.not.be.reverted;
+      await expect(
+        spokePool.connect(depositor)[SpokePoolFuncs.depositV3Bytes](
           // fillDeadline right at the buffer is OK
           ...getDepositArgsFromRelayData({ ...relayData, fillDeadline: currentTime.add(fillDeadlineBuffer) })
         )
