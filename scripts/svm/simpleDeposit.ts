@@ -9,7 +9,7 @@ import {
   getAssociatedTokenAddressSync,
   getMint,
 } from "@solana/spl-token";
-import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { PublicKey, Transaction, sendAndConfirmTransaction, TransactionInstruction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getSpokePoolProgram } from "../../src/svm";
@@ -29,7 +29,8 @@ const argv = yargs(hideBin(process.argv))
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
   .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
-  .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" }).argv;
+  .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" })
+  .option("integratorId", { type: "string", demandOption: false, describe: "integrator ID" }).argv;
 
 async function depositV3(): Promise<void> {
   const resolvedArgv = await argv;
@@ -45,7 +46,8 @@ async function depositV3(): Promise<void> {
   const fillDeadline = quoteTimestamp + 3600; // 1 hour from now
   const exclusivityDeadline = 0;
   const message = Buffer.from([]); // Convert to Buffer
-
+  console.log("integratorId", resolvedArgv.integratorId);
+  const integratorId = resolvedArgv.integratorId || "";
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
@@ -87,6 +89,8 @@ async function depositV3(): Promise<void> {
     { property: "quoteTimestamp", value: quoteTimestamp.toString() },
     { property: "fillDeadline", value: fillDeadline.toString() },
     { property: "exclusivityDeadline", value: exclusivityDeadline.toString() },
+    { property: "message", value: message.toString("hex") },
+    { property: "integratorId", value: integratorId },
     { property: "programId", value: programId.toString() },
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
@@ -136,7 +140,20 @@ async function depositV3(): Promise<void> {
       mint: inputToken,
     })
     .instruction();
+  // Create a custom instruction with arbitrary data
+
   const depositTx = new Transaction().add(approveIx, depositIx);
+
+  if (integratorId !== "") {
+    const MemoIx = new TransactionInstruction({
+      keys: [{ pubkey: signer.publicKey, isSigner: true, isWritable: true }],
+      data: Buffer.from(integratorId, "utf-8"),
+      programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+    });
+    depositTx.add(MemoIx);
+  }
+
+  // const depositTx = new Transaction().add(approveIx, depositIx);
   const tx = await sendAndConfirmTransaction(provider.connection, depositTx, [signer]);
 
   console.log("Transaction signature:", tx);
