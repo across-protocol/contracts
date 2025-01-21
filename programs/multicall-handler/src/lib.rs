@@ -14,7 +14,7 @@ pub mod multicall_handler {
 
     // Handler to receive Across message formatted as serialized message compiled instructions. When deserialized,
     // these are matched with the passed accounts and executed as CPIs.
-    pub fn handle_across_message(ctx: Context<HandleAcrossMessage>, message: Vec<u8>) -> Result<()> {
+    pub fn handle_v3_across_message(ctx: Context<HandleAcrossMessage>, message: Vec<u8>) -> Result<()> {
         // Some instructions might require being signed by handler PDA.
         let (handler_signer, bump) = Pubkey::find_program_address(&[b"handler_signer"], &crate::ID);
 
