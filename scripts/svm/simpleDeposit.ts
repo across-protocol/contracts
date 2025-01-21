@@ -148,7 +148,7 @@ async function depositV3(): Promise<void> {
     const MemoIx = new TransactionInstruction({
       keys: [{ pubkey: signer.publicKey, isSigner: true, isWritable: true }],
       data: Buffer.from(integratorId, "utf-8"),
-      programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+      programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"), // Memo program ID
     });
     depositTx.add(MemoIx);
   }
