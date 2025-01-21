@@ -488,8 +488,8 @@ abstract contract SpokePool is
      *  This must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime]
      * where currentTime is block.timestamp on this chain or this transaction will revert.
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp,
-     * the fill will revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer]
-     * where currentTime is block.timestamp on this chain or this transaction will revert.
+     * the fill will revert on the destination chain. Must be set before currentTime + fillDeadlineBuffer, where
+     * currentTime is block.timestamp on this chain or this transaction will revert.
      * @param exclusivityParameter This value is used to set the exclusivity deadline timestamp in the emitted deposit
      * event. Before this destination chain timestamp, only the exclusiveRelayer (if set to a non-zero address),
      * can fill this deposit. There are three ways to use this parameter:
@@ -566,8 +566,8 @@ abstract contract SpokePool is
      * @param quoteTimestamp The HubPool timestamp that determines the system fee paid by the depositor. This must be set
      * between [currentTime - depositQuoteTimeBuffer, currentTime] where currentTime is block.timestamp on this chain.
      * @param fillDeadline The deadline for the relayer to fill the deposit. After this destination chain timestamp, the fill will
-     * revert on the destination chain. Must be set between [currentTime, currentTime + fillDeadlineBuffer] where currentTime
-     * is block.timestamp on this chain.
+     * revert on the destination chain. Must be set before currentTime + fillDeadlineBuffer, where currentTime is block.timestamp
+     * on this chain.
      * @param exclusivityParameter This value is used to set the exclusivity deadline timestamp in the emitted deposit
      * event. Before this destination chain timestamp, only the exclusiveRelayer (if set to a non-zero address),
      * can fill this deposit. There are three ways to use this parameter:
@@ -1339,12 +1339,7 @@ abstract contract SpokePool is
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
         // This limits the maximum required lookback for dataworker and relayer instances.
-        // Also, don't allow fillDeadline to be in the past. This poses a potential UX issue if the destination
-        // chain time keeping and this chain's time keeping are out of sync but is not really a practical hurdle
-        // unless they are significantly out of sync or the depositor is setting very short fill deadlines. This latter
-        // situation won't be a problem for honest users.
-        if (params.fillDeadline < currentTime || params.fillDeadline > currentTime + fillDeadlineBuffer)
-            revert InvalidFillDeadline();
+        if (params.fillDeadline > currentTime + fillDeadlineBuffer) revert InvalidFillDeadline();
 
         // There are three cases for setting the exclusivity deadline using the exclusivity parameter:
         // 1. If this parameter is 0, then there is no exclusivity period and emit 0 for the deadline. This
