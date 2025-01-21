@@ -60,7 +60,7 @@ pub struct BridgeTokensToHubPool<'info> {
     #[account(mut)]
     pub local_token: UncheckedAccount<'info>,
 
-    /// CHECK: EventAuthority is checked in CCTP. Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter
+    /// CHECK: EventAuthority is checked in CCTP. Seeds must be \["_event_authority"\] (CCTP Token Messenger Minter
     /// program).
     pub cctp_event_authority: UncheckedAccount<'info>,
 

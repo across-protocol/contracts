@@ -246,9 +246,9 @@ pub mod svm_spoke {
     ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.
     ///   3. Otherwise, uses this value as the exclusivity deadline timestamp.
     /// - message: The message to send to the recipient on the destination chain if the recipient is a contract.
-    ///   If not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
+    ///   If not empty, the recipient contract must implement handleAcrossMessage() or the fill will revert.
     pub fn deposit(
-        ctx: Context<DepositV3>,
+        ctx: Context<Deposit>,
         depositor: Pubkey,
         recipient: Pubkey,
         input_token: Pubkey,
@@ -282,7 +282,7 @@ pub mod svm_spoke {
     // Equivalent to deposit except quote_timestamp is set to the current time.
     // The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
     pub fn deposit_now(
-        ctx: Context<DepositV3>,
+        ctx: Context<Deposit>,
         depositor: Pubkey,
         recipient: Pubkey,
         input_token: Pubkey,
@@ -318,7 +318,7 @@ pub mod svm_spoke {
     /// incrementing the global deposit ID counter. This enables the caller to influence the deposit ID, making it
     /// deterministic for the depositor. The computed `depositID` is the keccak256 hash of [signer, depositor, deposit_nonce].
     pub fn unsafe_deposit(
-        ctx: Context<DepositV3>,
+        ctx: Context<Deposit>,
         depositor: Pubkey,
         recipient: Pubkey,
         input_token: Pubkey,
@@ -418,16 +418,16 @@ pub mod svm_spoke {
     ///   - exclusivity_deadline: The deadline for the exclusive relayer to fill the deposit. After this timestamp,
     ///     anyone can fill this deposit.
     ///   - message: The message to send to the recipient if the recipient is a contract that implements a
-    ///     handle_v3_across_message() public function.
+    ///     handle_across_message() public function.
     /// - repayment_chain_id: Chain of SpokePool where relayer wants to be refunded after the challenge window has
     ///     passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.
     /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters. If None for any of these
     /// is passed, the caller must load them via the instruction_params account.
     pub fn fill_relay<'info>(
-        ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
+        ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
         _relay_hash: [u8; 32],
-        relay_data: Option<V3RelayData>,
+        relay_data: Option<RelayData>,
         repayment_chain_id: Option<u64>,
         repayment_address: Option<Pubkey>,
     ) -> Result<()> {
@@ -698,13 +698,13 @@ pub mod svm_spoke {
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit that should be slow filled. If any
     ///   of the params are missing or different from the origin chain deposit, then Across will not include a slow
-    ///   fill for the intended deposit. See fill_relay & V3RelayData struct for more details.
+    ///   fill for the intended deposit. See fill_relay & RelayData struct for more details.
     /// Note: relay_data is optional parameter. If None for it is passed, the caller must load it via the
     /// instruction_params account.
     pub fn request_slow_fill(
         ctx: Context<RequestSlowFill>,
         _relay_hash: [u8; 32],
-        relay_data: Option<V3RelayData>,
+        relay_data: Option<RelayData>,
     ) -> Result<()> {
         instructions::request_slow_fill(ctx, relay_data)
     }
@@ -748,7 +748,7 @@ pub mod svm_spoke {
     pub fn execute_slow_relay_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
-        slow_fill_leaf: Option<V3SlowFill>,
+        slow_fill_leaf: Option<SlowFill>,
         _root_bundle_id: Option<u32>,
         proof: Option<Vec<[u8; 32]>>,
     ) -> Result<()> {
