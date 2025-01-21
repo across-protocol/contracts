@@ -153,9 +153,7 @@ async function depositV3(): Promise<void> {
     depositTx.add(MemoIx);
   }
 
-  // const depositTx = new Transaction().add(approveIx, depositIx);
   const tx = await sendAndConfirmTransaction(provider.connection, depositTx, [signer]);
-
   console.log("Transaction signature:", tx);
 }
 
