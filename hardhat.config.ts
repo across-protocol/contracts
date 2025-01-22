@@ -80,11 +80,23 @@ const networks = Object.fromEntries(
       };
 
       // zkSync is a special snowflake.
-      if ([CHAIN_IDs.ZK_SYNC, CHAIN_IDs.ZK_SYNC_SEPOLIA].includes(chainId)) {
+      if ([CHAIN_IDs.LENS_SEPOLIA, CHAIN_IDs.ZK_SYNC, CHAIN_IDs.ZK_SYNC_SEPOLIA].includes(chainId)) {
         (chainDef as Record<string, any>)["ethNetwork"] = chainDef.companionNetworks.l1;
         (chainDef as Record<string, any>)["zksync"] = true;
-        (chainDef as Record<string, any>)["verifyURL"] =
-          "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
+
+        let verifyURL: string;
+        switch (chainId) {
+          case CHAIN_IDs.ZK_SYNC:
+            verifyURL = "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
+            break;
+          case CHAIN_IDs.LENS_SEPOLIA:
+            verifyURL = "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
+            break;
+          default:
+            throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
+        }
+
+        (chainDef as Record<string, any>)["verifyURL"] = verifyURL;
       }
 
       return [chainId, chainDef];
