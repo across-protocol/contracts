@@ -61,6 +61,12 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   },
 };
 
+const ZK_SYNC_VERIFY_URLS: { [chainId: number]: string } = {
+  [CHAIN_IDs.ZK_SYNC]: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
+  [CHAIN_IDs.LENS_SEPOLIA]: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
+  [CHAIN_IDs.ZK_SYNC_SEPOLIA]: "https://explorer.sepolia.era.zksync.dev/contract_verification",
+};
+
 const networks = Object.fromEntries(
   Object.values(CHAIN_IDs)
     .filter((chainId) => PUBLIC_NETWORKS[chainId] !== undefined)
@@ -79,24 +85,14 @@ const networks = Object.fromEntries(
         companionNetworks: { l1: hubChainId === CHAIN_IDs.MAINNET ? "mainnet" : "sepolia" },
       };
 
-      // zkSync is a special snowflake.
-      if ([CHAIN_IDs.LENS_SEPOLIA, CHAIN_IDs.ZK_SYNC, CHAIN_IDs.ZK_SYNC_SEPOLIA].includes(chainId)) {
+      // zkSync is a special snowflake. This block requires weird type mangling on `chainId` - why?
+      if (Object.keys(ZK_SYNC_VERIFY_URLS).includes(String(chainId))) {
         (chainDef as Record<string, any>)["ethNetwork"] = chainDef.companionNetworks.l1;
         (chainDef as Record<string, any>)["zksync"] = true;
 
-        let verifyURL: string;
-        switch (chainId) {
-          case CHAIN_IDs.ZK_SYNC:
-            verifyURL = "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
-            break;
-          case CHAIN_IDs.LENS_SEPOLIA:
-            verifyURL = "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
-            break;
-          case CHAIN_IDs.ZK_SYNC_SEPOLIA:
-            verifyURL = "https://explorer.sepolia.era.zksync.dev/contract_verification";
-            break;
-          default:
-            throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
+        const verifyURL = ZK_SYNC_VERIFY_URLS[Number(chainId)];
+        if (!verifyURL) {
+          throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
         }
 
         (chainDef as Record<string, any>)["verifyURL"] = verifyURL;
