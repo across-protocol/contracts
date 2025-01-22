@@ -49,8 +49,8 @@ describe("SpokePool Depositor Logic", async function () {
     await seedWallet(depositor, [erc20], weth, amountToSeedWallets);
 
     // Approve spokepool to spend tokens
-    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
-    await weth.connect(depositor).approve(spokePool.address, amountToDeposit);
+    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit.mul(10));
+    await weth.connect(depositor).approve(spokePool.address, amountToDeposit.mul(10));
 
     // Whitelist origin token => destination chain ID routes:
     await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
