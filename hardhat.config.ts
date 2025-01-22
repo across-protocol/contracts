@@ -87,15 +87,14 @@ const networks = Object.fromEntries(
 
       // zkSync is a special snowflake. This block requires weird type mangling on `chainId` - why?
       if (Object.keys(ZK_SYNC_VERIFY_URLS).includes(String(chainId))) {
-        (chainDef as Record<string, any>)["ethNetwork"] = chainDef.companionNetworks.l1;
-        (chainDef as Record<string, any>)["zksync"] = true;
-
         const verifyURL = ZK_SYNC_VERIFY_URLS[Number(chainId)];
         if (!verifyURL) {
           throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
         }
 
+        (chainDef as Record<string, any>)["zksync"] = true;
         (chainDef as Record<string, any>)["verifyURL"] = verifyURL;
+        (chainDef as Record<string, any>)["ethNetwork"] = chainDef.companionNetworks.l1;
       }
 
       return [chainId, chainDef];
