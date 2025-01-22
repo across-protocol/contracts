@@ -61,7 +61,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   },
 };
 
-const ZK_SYNC_VERIFY_URLS: { [chainId: number]: string } = {
+const ZK_STACK_VERIFY_URLS: { [chainId: number]: string } = {
   [CHAIN_IDs.ZK_SYNC]: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
   [CHAIN_IDs.LENS_SEPOLIA]: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
   [CHAIN_IDs.ZK_SYNC_SEPOLIA]: "https://explorer.sepolia.era.zksync.dev/contract_verification",
@@ -86,8 +86,9 @@ const networks = Object.fromEntries(
       };
 
       // zkSync is a special snowflake. This block requires weird type mangling on `chainId` - why?
-      if (Object.keys(ZK_SYNC_VERIFY_URLS).includes(String(chainId))) {
-        const verifyURL = ZK_SYNC_VERIFY_URLS[Number(chainId)];
+      if (Object.keys(ZK_STACK_VERIFY_URLS).includes(String(chainId))) {
+        const verifyURL = ZK_STACK_VERIFY_URLS[Number(chainId)];
+
         if (!verifyURL) {
           throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
         }
