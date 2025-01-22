@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
-import { getNodeUrl, getMnemonic } from "@uma/common";
-import { CHAIN_IDs, PUBLIC_NETWORKS, MAINNET_CHAIN_IDs } from "./utils/constants";
+import { getMnemonic } from "@uma/common";
+import { ChainFamily, CHAIN_IDs, PUBLIC_NETWORKS, MAINNET_CHAIN_IDs } from "./utils/constants";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -85,10 +85,10 @@ const networks = Object.fromEntries(
         companionNetworks: { l1: hubChainId === CHAIN_IDs.MAINNET ? "mainnet" : "sepolia" },
       };
 
-      // zkSync is a special snowflake. This block requires weird type mangling on `chainId` - why?
-      if (Object.keys(ZK_STACK_VERIFY_URLS).includes(String(chainId))) {
+      // zk stack chains are special snowflakes.
+      // This block requires weird type mangling on `chainId` - why?
+      if (PUBLIC_NETWORKS[chainId].family === ChainFamily.ZK_STACK) {
         const verifyURL = ZK_STACK_VERIFY_URLS[Number(chainId)];
-
         if (!verifyURL) {
           throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
         }
