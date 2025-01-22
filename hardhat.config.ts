@@ -66,10 +66,13 @@ const networks = Object.fromEntries(
     .filter((chainId) => PUBLIC_NETWORKS[chainId] !== undefined)
     .map((chainId) => {
       const network = PUBLIC_NETWORKS[chainId];
-      const name = network.name.replace(" ", "").toLowerCase();
       const hubChainId = Object.values(MAINNET_CHAIN_IDs).includes(chainId) ? CHAIN_IDs.MAINNET : CHAIN_IDs.SEPOLIA;
+      const url =
+        process.env[`NODE_URL_${chainId}`] ??
+        network.publicRPC ??
+        `error: no chain ${chainId} provider defined (set NODE_URL_${chainId})`;
       const chainDef = {
-        url: network.publicRPC,
+        url,
         accounts: { mnemonic },
         saveDeployments: true,
         chainId: hubChainId,
@@ -84,7 +87,7 @@ const networks = Object.fromEntries(
           "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
       }
 
-      return [name, chainDef];
+      return [chainId, chainDef];
     })
 );
 
