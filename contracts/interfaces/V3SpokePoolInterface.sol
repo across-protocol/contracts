@@ -373,6 +373,13 @@ interface V3SpokePoolInterface {
         bytes depositorSignature
     );
 
+    struct LegacyV3RelayExecutionEventInfo {
+        address updatedRecipient;
+        bytes32 updatedMessageHash;
+        uint256 updatedOutputAmount;
+        FillType fillType;
+    }
+
     event FilledV3Relay(
         address inputToken,
         address outputToken,
