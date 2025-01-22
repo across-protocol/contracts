@@ -1,10 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::get_associated_token_address_with_program_id,
-    token_interface::{ Mint, TokenAccount, TokenInterface },
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{ state::State, utils::{ get_self_authority_pda, get_v3_relay_hash }, V3RelayData };
+use crate::{
+    state::State,
+    utils::{get_self_authority_pda, get_v3_relay_hash},
+    V3RelayData,
+};
 
 pub fn is_local_or_remote_owner(signer: &Signer, state: &Account<State>) -> bool {
     signer.key() == state.owner || signer.key() == get_self_authority_pda()
@@ -21,9 +25,9 @@ pub fn is_valid_associated_token_account(
     token_account: &InterfaceAccount<TokenAccount>,
     mint: &InterfaceAccount<Mint>,
     token_program: &Interface<TokenInterface>,
-    authority: &Pubkey
+    authority: &Pubkey,
 ) -> bool {
-    &token_account.owner == authority &&
-        token_account.key() ==
-            get_associated_token_address_with_program_id(authority, &mint.key(), &token_program.key())
+    &token_account.owner == authority
+        && token_account.key()
+            == get_associated_token_address_with_program_id(authority, &mint.key(), &token_program.key())
 }

@@ -1,9 +1,9 @@
 use anchor_lang::{
     prelude::*,
-    solana_program::{ instruction::Instruction, keccak, program::invoke, system_instruction },
+    solana_program::{instruction::Instruction, keccak, program::invoke, system_instruction},
 };
 
-use crate::{ constants::DISCRIMINATOR_SIZE, error::AcrossPlusError };
+use crate::{constants::DISCRIMINATOR_SIZE, error::AcrossPlusError};
 
 // Sha256(global:handle_v3_across_message)[..8];
 const HANDLE_V3_ACROSS_MESSAGE_DISCRIMINATOR: [u8; 8] = (0x838d3447103bc45c_u64).to_be_bytes();
@@ -20,11 +20,10 @@ pub struct AcrossPlusMessage {
 pub fn invoke_handler<'info>(
     relayer: &AccountInfo<'info>,
     remaining_accounts: &[AccountInfo<'info>],
-    message: &Vec<u8>
+    message: &Vec<u8>,
 ) -> Result<()> {
-    let message = AcrossPlusMessage::deserialize(&mut &message[..]).map_err(
-        |_| AcrossPlusError::MessageDidNotDeserialize
-    )?;
+    let message =
+        AcrossPlusMessage::deserialize(&mut &message[..]).map_err(|_| AcrossPlusError::MessageDidNotDeserialize)?;
 
     // First remaining account is the handler and the rest are accounts to be passed to the message handler.
     let message_accounts_len = message.accounts.len();
@@ -45,12 +44,8 @@ pub fn invoke_handler<'info>(
     let mut accounts = Vec::with_capacity(message_accounts_len);
     for (i, message_account_key) in message.accounts.into_iter().enumerate() {
         if account_infos[i].key() != message_account_key {
-            return Err(
-                Error::from(AcrossPlusError::InvalidMessageAccountKey).with_pubkeys((
-                    account_infos[i].key(),
-                    message_account_key,
-                ))
-            );
+            return Err(Error::from(AcrossPlusError::InvalidMessageAccountKey)
+                .with_pubkeys((account_infos[i].key(), message_account_key)));
         }
 
         // Writable accounts must be passed first. This enforces the same write permissions as set in the message. Note
@@ -62,21 +57,15 @@ pub fn invoke_handler<'info>(
         match i < message_accounts_len - (message.read_only_len as usize) {
             true => {
                 if !account_infos[i].is_writable {
-                    return Err(
-                        Error::from(AcrossPlusError::NotWritableMessageAccountKey).with_account_name(
-                            format!("{}", message_account_key)
-                        )
-                    );
+                    return Err(Error::from(AcrossPlusError::NotWritableMessageAccountKey)
+                        .with_account_name(format!("{}", message_account_key)));
                 }
                 accounts.push(AccountMeta::new(message_account_key, false));
             }
             false => {
                 if account_infos[i].is_writable {
-                    return Err(
-                        Error::from(AcrossPlusError::NotReadOnlyMessageAccountKey).with_account_name(
-                            format!("{}", message_account_key)
-                        )
-                    );
+                    return Err(Error::from(AcrossPlusError::NotReadOnlyMessageAccountKey)
+                        .with_account_name(format!("{}", message_account_key)));
                 }
                 accounts.push(AccountMeta::new_readonly(message_account_key, false));
             }

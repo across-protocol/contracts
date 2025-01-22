@@ -1,12 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked };
+use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_valid_associated_token_account,
     error::SvmError,
     event::ClaimedRelayerRefund,
-    state::{ ClaimAccount, State },
+    state::{ClaimAccount, State},
 };
 
 #[derive(Accounts)]
@@ -103,11 +103,8 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         to: ctx.accounts.token_account.to_account_info(),
         authority: ctx.accounts.state.to_account_info(),
     };
-    let cpi_context = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_accounts,
-        signer_seeds
-    );
+    let cpi_context =
+        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
     emit_cpi!(ClaimedRelayerRefund {

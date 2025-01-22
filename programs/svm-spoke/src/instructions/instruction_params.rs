@@ -1,4 +1,4 @@
-use anchor_lang::{ prelude::*, solana_program::system_program };
+use anchor_lang::{prelude::*, solana_program::system_program};
 
 use crate::error::SvmError;
 
@@ -35,7 +35,7 @@ pub struct WriteInstructionParamsFragment<'info> {
 pub fn write_instruction_params_fragment(
     ctx: Context<WriteInstructionParamsFragment<'_>>,
     offset: u32,
-    fragment: Vec<u8>
+    fragment: Vec<u8>,
 ) -> Result<()> {
     let account_info = ctx.accounts.instruction_params.to_account_info();
 

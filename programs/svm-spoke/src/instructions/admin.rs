@@ -1,21 +1,19 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{ associated_token::AssociatedToken, token_interface::{ Mint, TokenAccount, TokenInterface } };
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     constraints::is_local_or_remote_owner,
     error::SvmError,
     event::{
-        EmergencyDeletedRootBundle,
-        EnabledDepositRoute,
-        PausedDeposits,
-        PausedFills,
-        RelayedRootBundle,
-        SetXDomainAdmin,
-        TransferredOwnership,
+        EmergencyDeletedRootBundle, EnabledDepositRoute, PausedDeposits, PausedFills, RelayedRootBundle,
+        SetXDomainAdmin, TransferredOwnership,
     },
-    state::{ RootBundle, Route, State },
-    utils::{ initialize_current_time, set_seed },
+    state::{RootBundle, Route, State},
+    utils::{initialize_current_time, set_seed},
 };
 
 #[derive(Accounts)]
@@ -38,13 +36,13 @@ pub struct Initialize<'info> {
 
 pub fn initialize(
     ctx: Context<Initialize>,
-    seed: u64, // Seed used to derive a new state to enable testing to reset between runs.
+    seed: u64,                       // Seed used to derive a new state to enable testing to reset between runs.
     initial_number_of_deposits: u32, // Starting number of deposits to offset deposit_id.
-    chain_id: u64, // Across definition of chainId for Solana.
-    remote_domain: u32, // CCTP domain for Mainnet Ethereum.
-    cross_domain_admin: Pubkey, // HubPool on Mainnet Ethereum.
-    deposit_quote_time_buffer: u32, // Deposit quote times can't be set more than this amount into the past/future.
-    fill_deadline_buffer: u32 // Fill deadlines can't be set more than this amount into the future.
+    chain_id: u64,                   // Across definition of chainId for Solana.
+    remote_domain: u32,              // CCTP domain for Mainnet Ethereum.
+    cross_domain_admin: Pubkey,      // HubPool on Mainnet Ethereum.
+    deposit_quote_time_buffer: u32,  // Deposit quote times can't be set more than this amount into the past/future.
+    fill_deadline_buffer: u32,       // Fill deadlines can't be set more than this amount into the future.
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     state.owner = *ctx.accounts.signer.key;
@@ -190,7 +188,7 @@ pub fn set_enable_route(
     ctx: Context<SetEnableRoute>,
     origin_token: Pubkey,
     destination_chain_id: u64,
-    enabled: bool
+    enabled: bool,
 ) -> Result<()> {
     ctx.accounts.route.enabled = enabled;
 
@@ -226,7 +224,7 @@ pub struct RelayRootBundle<'info> {
 pub fn relay_root_bundle(
     ctx: Context<RelayRootBundle>,
     relayer_refund_root: [u8; 32],
-    slow_relay_root: [u8; 32]
+    slow_relay_root: [u8; 32],
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let root_bundle = &mut ctx.accounts.root_bundle;
