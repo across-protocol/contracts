@@ -376,7 +376,7 @@ interface V3SpokePoolInterface {
     // Legacy struct only used to preserve the FilledV3Relay event definition.
     struct LegacyV3RelayExecutionEventInfo {
         address updatedRecipient;
-        bytes32 updatedMessageHash;
+        bytes updatedMessage;
         uint256 updatedOutputAmount;
         FillType fillType;
     }
