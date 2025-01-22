@@ -92,6 +92,9 @@ const networks = Object.fromEntries(
           case CHAIN_IDs.LENS_SEPOLIA:
             verifyURL = "https://zksync2-mainnet-explorer.zksync.io/contract_verification";
             break;
+          case CHAIN_IDs.ZK_SYNC_SEPOLIA:
+            verifyURL = "https://explorer.sepolia.era.zksync.dev/contract_verification";
+            break;
           default:
             throw new Error(`No verifyURL defined for ZK stack chainId ${chainId}`);
         }
