@@ -7,7 +7,7 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Keypair, PublicKey } from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
@@ -241,12 +241,22 @@ describe("svm_spoke.bundle", () => {
       program: program.programId,
     };
     const proofAsNumbers = proof.map((p) => Array.from(p));
-    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+    const instructionParams = await loadExecuteRelayerRefundLeafParams(
+      program,
+      owner,
+      stateAccountData.rootBundleId,
+      leaf,
+      proofAsNumbers
+    );
     const tx = await program.methods
       .executeRelayerRefundLeaf()
       .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
+
+    // Verify the instruction params account has been automatically closed.
+    const instructionParamsInfo = await program.provider.connection.getAccountInfo(instructionParams);
+    assert.isNull(instructionParamsInfo, "Instruction params account should be closed");
 
     // Verify the ExecutedRelayerRefundRoot event
     let events = await readEventsUntilFound(connection, tx, [program]);
@@ -1015,7 +1025,7 @@ describe("svm_spoke.bundle", () => {
         } else if (!testConfig.deferredRefunds && testConfig.atomicAccountCreation) {
           refundAccounts.push(tokenAccount);
         } else {
-          await program.methods.initializeClaimAccount(mint, tokenOwner).rpc();
+          await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: tokenOwner }).rpc();
           refundAccounts.push(claimAccount);
         }
 
@@ -1397,8 +1407,8 @@ describe("svm_spoke.bundle", () => {
           [Buffer.from("claim_account"), mint.toBuffer(), relayerB.publicKey.toBuffer()],
           program.programId
         );
-        await program.methods.initializeClaimAccount(mint, relayerA.publicKey).rpc();
-        await program.methods.initializeClaimAccount(mint, relayerB.publicKey).rpc();
+        await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: relayerA.publicKey }).rpc();
+        await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: relayerB.publicKey }).rpc();
       }
 
       // Prepare leaf using token accounts.
@@ -1731,5 +1741,221 @@ describe("svm_spoke.bundle", () => {
     } catch (err: any) {
       assert.include(err.toString(), "Invalid Merkle proof", "Expected merkle verification to fail");
     }
+  });
+
+  describe("Execute Max multiple refunds with claims", async () => {
+    const executeMaxRefundClaims = async (testConfig: {
+      solanaDistributions: number;
+      useAddressLookup: boolean;
+      separatePhases: boolean;
+    }) => {
+      // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
+      const evmDistributions = 100; // This would fit in 7 proof array elements.
+
+      const refundAddresses: web3.PublicKey[] = []; // These are relayer authority addresses used in leaf building.
+      const claimAccounts: web3.PublicKey[] = [];
+      const tokenAccounts: web3.PublicKey[] = [];
+      const refundAmounts: BN[] = [];
+      const initializeInstructions: TransactionInstruction[] = [];
+      const claimInstructions: TransactionInstruction[] = [];
+
+      for (let i = 0; i < testConfig.solanaDistributions; i++) {
+        // Create the token account.
+        const tokenOwner = Keypair.generate().publicKey;
+        const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, tokenOwner)).address;
+        refundAddresses.push(tokenOwner);
+        tokenAccounts.push(tokenAccount);
+
+        const [claimAccount] = PublicKey.findProgramAddressSync(
+          [Buffer.from("claim_account"), mint.toBuffer(), tokenOwner.toBuffer()],
+          program.programId
+        );
+
+        // Create instruction to initialize claim account.
+        initializeInstructions.push(
+          await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: tokenOwner }).instruction()
+        );
+        claimAccounts.push(claimAccount);
+
+        refundAmounts.push(new BN(randomBigInt(2).toString()));
+
+        // Create instruction to claim refund to the token account.
+        const claimRelayerRefundAccounts = {
+          signer: owner,
+          initializer: owner,
+          state,
+          vault,
+          mint,
+          tokenAccount,
+          refundAddress: tokenOwner,
+          claimAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          program: program.programId,
+        };
+        claimInstructions.push(
+          await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).instruction()
+        );
+      }
+
+      const { relayerRefundLeaves, merkleTree } = buildRelayerRefundMerkleTree({
+        totalEvmDistributions: evmDistributions,
+        totalSolanaDistributions: testConfig.solanaDistributions,
+        mixLeaves: false,
+        chainId: chainId.toNumber(),
+        mint,
+        svmRelayers: refundAddresses,
+        svmRefundAmounts: refundAmounts,
+      });
+
+      const root = merkleTree.getRoot();
+      const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+      const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+
+      const stateAccountData = await program.account.state.fetch(state);
+      const rootBundleId = stateAccountData.rootBundleId;
+
+      const rootBundleIdBuffer = Buffer.alloc(4);
+      rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+      const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
+      const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+
+      // Relay root bundle
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+
+      // Verify valid leaf
+      const proofAsNumbers = proof.map((p) => Array.from(p));
+
+      const [instructionParams] = PublicKey.findProgramAddressSync(
+        [Buffer.from("instruction_params"), owner.toBuffer()],
+        program.programId
+      );
+
+      const executeAccounts = {
+        instructionParams,
+        state,
+        rootBundle: rootBundle,
+        signer: owner,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
+        transferLiability,
+        program: program.programId,
+      };
+
+      const executeRemainingAccounts = claimAccounts.map((account) => ({
+        pubkey: account,
+        isWritable: true,
+        isSigner: false,
+      }));
+
+      // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
+      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+
+      const executeInstruction = await program.methods
+        .executeRelayerRefundLeafDeferred()
+        .accounts(executeAccounts)
+        .remainingAccounts(executeRemainingAccounts)
+        .instruction();
+
+      // Initialize, execute and claim depending on the chosen method.
+      const instructions = [...initializeInstructions, executeInstruction, ...claimInstructions];
+      if (!testConfig.separatePhases) {
+        // Pack all instructions in one transaction.
+        if (testConfig.useAddressLookup)
+          await sendTransactionWithLookupTable(
+            connection,
+            instructions,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+        else
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(...instructions),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+      } else {
+        // Send claim account initialization, execution and claim in separate transactions.
+        if (testConfig.useAddressLookup) {
+          await sendTransactionWithLookupTable(
+            connection,
+            initializeInstructions,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+          await sendTransactionWithLookupTable(
+            connection,
+            [executeInstruction],
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+          await sendTransactionWithLookupTable(
+            connection,
+            claimInstructions,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+          );
+        } else {
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(...initializeInstructions),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(executeInstruction),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+          await web3.sendAndConfirmTransaction(
+            connection,
+            new web3.Transaction().add(...claimInstructions),
+            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            {
+              commitment: "confirmed",
+            }
+          );
+        }
+      }
+
+      // Verify all refund token account balances.
+      const refundBalances = await Promise.all(
+        tokenAccounts.map(async (account) => {
+          return (await connection.getTokenAccountBalance(account)).value.amount;
+        })
+      );
+      refundBalances.forEach((balance, i) => {
+        assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
+      });
+    };
+
+    it("Execute Max multiple refunds with claims in one legacy transaction", async () => {
+      // Larger amount would hit transaction message size limit.
+      const solanaDistributions = 5;
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: false });
+    });
+
+    it("Execute Max multiple refunds with claims in one versioned transaction", async () => {
+      // Larger amount would hit maximum instruction trace length limit.
+      const solanaDistributions = 12;
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true, separatePhases: false });
+    });
+
+    it("Execute Max multiple refunds with claims in separate phase legacy transactions", async () => {
+      // Larger amount would hit transaction message size limit.
+      const solanaDistributions = 7;
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: false, separatePhases: true });
+    });
+
+    it("Execute Max multiple refunds with claims in separate phase versioned transactions", async () => {
+      // Larger amount would hit maximum instruction trace length limit.
+      const solanaDistributions = 21;
+      await executeMaxRefundClaims({ solanaDistributions, useAddressLookup: true, separatePhases: true });
+    });
   });
 });
