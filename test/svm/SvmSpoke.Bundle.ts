@@ -1793,7 +1793,7 @@ describe("svm_spoke.bundle", () => {
           program: program.programId,
         };
         claimInstructions.push(
-          await program.methods.claimRelayerRefundFor().accounts(claimRelayerRefundAccounts).instruction()
+          await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).instruction()
         );
       }
 
