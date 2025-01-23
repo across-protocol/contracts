@@ -37,7 +37,7 @@ import {
   ExecuteSlowRelayLeafDataParams,
   ExecuteSlowRelayLeafDataValues,
   RequestSlowFillDataParams,
-  RequestV3SlowFillDataValues,
+  RequestSlowFillDataValues,
   SlowFillLeaf,
 } from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, setCurrentTime } = common;
@@ -136,7 +136,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     // Relay root bundle with slow fill leaf.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
 
-    const requestSlowFillValues: RequestV3SlowFillDataValues = [Array.from(relayHash), leaf.relayData];
+    const requestSlowFillValues: RequestSlowFillDataValues = [Array.from(relayHash), leaf.relayData];
     let loadRequestParamsInstructions: TransactionInstruction[] = [];
     if (bufferParams) {
       loadRequestParamsInstructions = await loadRequestSlowFillParams(program, relayer, requestSlowFillValues[1]);

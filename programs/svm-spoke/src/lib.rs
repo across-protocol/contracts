@@ -246,7 +246,7 @@ pub mod svm_spoke {
     ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.
     ///   3. Otherwise, uses this value as the exclusivity deadline timestamp.
     /// - message: The message to send to the recipient on the destination chain if the recipient is a contract.
-    ///   If not empty, the recipient contract must implement handleAcrossMessage() or the fill will revert.
+    ///   If not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
     pub fn deposit(
         ctx: Context<Deposit>,
         depositor: Pubkey,
