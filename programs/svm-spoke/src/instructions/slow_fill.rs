@@ -105,7 +105,7 @@ fn unwrap_request_v3_slow_fill_params(
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V3SlowFill {
     pub relay_data: V3RelayData,
     pub chain_id: u64,

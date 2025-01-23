@@ -7,7 +7,7 @@ import { ethers } from "ethers";
  */
 export const getSolanaChainId = (cluster: "devnet" | "mainnet"): BigNumber => {
   return BigNumber.from(
-    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFFFFFF")
+    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFF")
   );
 };
 
