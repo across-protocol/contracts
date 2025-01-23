@@ -373,6 +373,14 @@ interface V3SpokePoolInterface {
         bytes depositorSignature
     );
 
+    // Legacy struct only used to preserve the FilledV3Relay event definition.
+    struct LegacyV3RelayExecutionEventInfo {
+        address updatedRecipient;
+        bytes updatedMessage;
+        uint256 updatedOutputAmount;
+        FillType fillType;
+    }
+
     event FilledV3Relay(
         address inputToken,
         address outputToken,
@@ -388,7 +396,7 @@ interface V3SpokePoolInterface {
         address depositor,
         address recipient,
         bytes message,
-        V3RelayExecutionEventInfo relayExecutionInfo
+        LegacyV3RelayExecutionEventInfo relayExecutionInfo
     );
 
     event RequestedV3SlowFill(
