@@ -109,15 +109,6 @@ interface V3SpokePoolInterface {
         FillType fillType;
     }
 
-    // Same as V3RelayExecutionEventInfo but using addresses instead of bytes32. Currently retained for historical
-    // reference. Will be deprecated in favor of V3RelayExecutionEventInfo in the future.
-    struct V3RelayExecutionEventInfoLegacy {
-        address updatedRecipient;
-        address updatedMessageHash;
-        uint256 updatedOutputAmount;
-        FillType fillType;
-    }
-
     // Represents the parameters required for a V3 deposit operation in the SpokePool.
     struct DepositV3Params {
         bytes32 depositor;
@@ -397,7 +388,7 @@ interface V3SpokePoolInterface {
         address depositor,
         address recipient,
         bytes message,
-        V3RelayExecutionEventInfoLegacy relayExecutionInfo
+        V3RelayExecutionEventInfo relayExecutionInfo
     );
 
     event RequestedV3SlowFill(
