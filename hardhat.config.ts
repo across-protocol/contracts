@@ -88,6 +88,7 @@ const config: HardhatUserConfig = {
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -246,6 +247,16 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    "lens-sepolia": {
+      chainId: CHAIN_IDs.LENS_SEPOLIA,
+      url: "https://rpc.testnet.lens.dev",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+      ethNetwork: "sepolia",
+      verifyURL: "https://block-explorer-verify.testnet.lens.dev/contract_verification",
+      zksync: true,
+    },
     lisk: {
       chainId: CHAIN_IDs.LISK,
       url: "https://rpc.api.lisk.com",
@@ -302,6 +313,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    soneium: {
+      chainId: CHAIN_IDs.SONEIUM,
+      url: "https://soneium.blockscout.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -332,6 +350,7 @@ const config: HardhatUserConfig = {
       worldchain: "blockscout",
       alephzero: "blockscout",
       ink: "blockscout",
+      soneium: "blockscout",
     },
     customChains: [
       {
@@ -364,6 +383,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.inkonchain.com/api",
           browserURL: "https://explorer.inkonchain.com",
+        },
+      },
+      {
+        network: "soneium",
+        chainId: CHAIN_IDs.SONEIUM,
+        urls: {
+          apiURL: "https://soneium.blockscout.com/api",
+          browserURL: "https://soneium.blockscout.com",
         },
       },
       {

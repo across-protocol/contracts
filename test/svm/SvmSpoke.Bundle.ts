@@ -241,12 +241,22 @@ describe("svm_spoke.bundle", () => {
       program: program.programId,
     };
     const proofAsNumbers = proof.map((p) => Array.from(p));
-    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
+    const instructionParams = await loadExecuteRelayerRefundLeafParams(
+      program,
+      owner,
+      stateAccountData.rootBundleId,
+      leaf,
+      proofAsNumbers
+    );
     const tx = await program.methods
       .executeRelayerRefundLeaf()
       .accounts(executeRelayerRefundLeafAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
+
+    // Verify the instruction params account has been automatically closed.
+    const instructionParamsInfo = await program.provider.connection.getAccountInfo(instructionParams);
+    assert.isNull(instructionParamsInfo, "Instruction params account should be closed");
 
     // Verify the ExecutedRelayerRefundRoot event
     let events = await readEventsUntilFound(connection, tx, [program]);

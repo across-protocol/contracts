@@ -280,6 +280,7 @@ pub mod svm_spoke {
     }
 
     // Equivalent to deposit_v3 except quote_timestamp is set to the current time.
+    // The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
     pub fn deposit_v3_now(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -290,7 +291,7 @@ pub mod svm_spoke {
         output_amount: u64,
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
-        fill_deadline: u32,
+        fill_deadline_offset: u32,
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
@@ -304,15 +305,18 @@ pub mod svm_spoke {
             output_amount,
             destination_chain_id,
             exclusive_relayer,
-            fill_deadline,
+            fill_deadline_offset,
             exclusivity_parameter,
             message,
         )
     }
 
-    /// Equivalent to deposit_v3 except the deposit_nonce is not used to derive the deposit_id for the depositor. This
-    /// Lets the caller influence the deposit ID to make it deterministic for the depositor. The computed depositID is
-    /// the keccak256 hash of [signer, depositor, deposit_nonce].
+    /// Equivalent to deposit_v3, except that it doesn't use the global `number_of_deposits` counter as the deposit
+    /// nonce. Instead, it allows the caller to pass a `deposit_nonce`. This function is designed for anyone who
+    /// wants to pre-compute their resultant deposit ID, which can be useful for filling a deposit faster and
+    /// avoiding the risk of a deposit ID unexpectedly changing due to another deposit front-running this one and
+    /// incrementing the global deposit ID counter. This enables the caller to influence the deposit ID, making it
+    /// deterministic for the depositor. The computed `depositID` is the keccak256 hash of [signer, depositor, deposit_nonce].
     pub fn unsafe_deposit_v3(
         ctx: Context<DepositV3>,
         depositor: Pubkey,
@@ -455,16 +459,13 @@ pub mod svm_spoke {
     /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - vault (InterfaceAccount): The ATA for the refunded mint. Authority must be the state.
     /// - mint (InterfaceAccount): The mint account for the token being refunded.
-    /// - token_account (InterfaceAccount): The ATA for the token being refunded to.
+    /// - refund_address: token account authority receiving the refund.
+    /// - token_account (InterfaceAccount): The receiving token account for the refund. When refund_address is different
+    ///   from the signer, this must match its ATA.
     /// - claim_account (Account): The claim account PDA. Seed: ["claim_account",mint,refund_address].
     /// - token_program (Interface): The token program.
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         instructions::claim_relayer_refund(ctx)
-    }
-
-    /// Functionally identical to claim_relayer_refund() except the refund is sent to a specified refund address.
-    pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>) -> Result<()> {
-        instructions::claim_relayer_refund_for(ctx)
     }
 
     /// Creates token accounts in batch for a set of addresses.
@@ -486,7 +487,7 @@ pub mod svm_spoke {
     ///           BUNDLE FUNCTIONS           *
     /// *************************************
 
-    /// Executes relayer refund leaf. Only callable by owner.
+    /// Executes relayer refund leaf.
     ///
     /// Processes a relayer refund leaf, verifying its inclusion in a previous Merkle root and that it was not
     /// previously executed. Function has two modes of operation: a) transfers all relayer refunds directly to
@@ -494,7 +495,8 @@ pub mod svm_spoke {
     /// refund. In the happy path, (a) should be used. (b) should only be used if there is a relayer within the bundle
     /// who can't receive the transfer for some reason, such as failed token transfers due to blacklisting. Executing
     /// relayer refunds requires the caller to create a LUT and load the execution params into it. This is needed to
-    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the UMIP.
+    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Accross
+    /// UMIP: https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-179.md
     ///
     /// instruction_params Parameters:
     /// - root_bundle_id: The ID of the root bundle containing the relayer refund root.
