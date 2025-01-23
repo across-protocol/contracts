@@ -853,6 +853,15 @@ describe("SpokePool Depositor Logic", async function () {
       const functionCalldata = spokePool.interface.encodeFunctionData("deposit", [...depositArgs]);
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.reverted;
     });
+    it("depositor must be valid evm address", async function () {
+      const functionCalldata = spokePool.interface.encodeFunctionData("deposit", [
+        ...getDepositArgsFromRelayData({
+          ...relayData,
+          depositor: "0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d",
+        }),
+      ]);
+      await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.reverted;
+    });
     it("unsafe deposit ID", async function () {
       // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, forcedDepositId}.
       const forcedDepositId = "99";

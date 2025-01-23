@@ -1307,6 +1307,9 @@ abstract contract SpokePool is
      **************************************/
 
     function _depositV3(DepositV3Params memory params) internal {
+        // Verify depositor is a valid EVM address.
+        params.depositor.checkAddress();
+
         // Check that deposit route is enabled for the input token. There are no checks required for the output token
         // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
         if (!enabledDepositRoutes[params.inputToken.toAddress()][params.destinationChainId]) revert DisabledRoute();
