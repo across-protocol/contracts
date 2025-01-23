@@ -95,18 +95,18 @@ export type FillDataValues = [number[], RelayData, BN, PublicKey];
 export type FillDataParams = [number[], RelayData | null, BN | null, PublicKey | null];
 
 /**
- * Request V3 Slow Fill Data Interfaces
+ * Request Slow Fill Data Interfaces
  */
-export type RequestV3SlowFillDataValues = [number[], RelayData];
+export type RequestSlowFillDataValues = [number[], RelayData];
 
-export type RequestV3SlowFillDataParams = [number[], RelayData | null];
+export type RequestSlowFillDataParams = [number[], RelayData | null];
 
 /**
- * Execute V3 Slow Relay Leaf Data Interfaces
+ * Execute Slow Relay Leaf Data Interfaces
  */
-export type ExecuteV3SlowRelayLeafDataValues = [number[], SlowFillLeaf, number, number[][]];
+export type ExecuteSlowRelayLeafDataValues = [number[], SlowFillLeaf, number, number[][]];
 
-export type ExecuteV3SlowRelayLeafDataParams = [number[], SlowFillLeaf | null, number | null, number[][] | null];
+export type ExecuteSlowRelayLeafDataParams = [number[], SlowFillLeaf | null, number | null, number[][] | null];
 
 /**
  * Across+ Message Interface

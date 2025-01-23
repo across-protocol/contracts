@@ -1,26 +1,26 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-use crate::event::{FillType, FilledRelay, RequestedSlowFill, V3RelayExecutionEventInfo};
+use crate::event::{FillType, FilledRelay, RelayExecutionEventInfo, RequestedSlowFill};
 use crate::{
-    common::V3RelayData,
+    common::RelayData,
     constants::DISCRIMINATOR_SIZE,
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
-    state::{ExecuteV3SlowRelayLeafParams, FillStatus, FillStatusAccount, RequestV3SlowFillParams, RootBundle, State},
+    state::{ExecuteSlowRelayLeafParams, FillStatus, FillStatusAccount, RequestSlowFillParams, RootBundle, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
 };
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: Option<V3RelayData>)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
 pub struct RequestSlowFill<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
     // This is required as fallback when None instruction params are passed in arguments.
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
-    pub instruction_params: Option<Account<'info, RequestV3SlowFillParams>>,
+    pub instruction_params: Option<Account<'info, RequestSlowFillParams>>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -44,8 +44,8 @@ pub struct RequestSlowFill<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<V3RelayData>) -> Result<()> {
-    let RequestV3SlowFillParams { relay_data } =
+pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<RelayData>) -> Result<()> {
+    let RequestSlowFillParams { relay_data } =
         unwrap_request_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
 
     let state = &ctx.accounts.state;
@@ -93,26 +93,26 @@ pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<V3Rel
 
 // Helper to unwrap optional instruction params with fallback loading from buffer account.
 fn unwrap_request_slow_fill_params(
-    relay_data: Option<V3RelayData>,
-    account: &Option<Account<RequestV3SlowFillParams>>,
-) -> RequestV3SlowFillParams {
+    relay_data: Option<RelayData>,
+    account: &Option<Account<RequestSlowFillParams>>,
+) -> RequestSlowFillParams {
     match relay_data {
-        Some(relay_data) => RequestV3SlowFillParams { relay_data },
+        Some(relay_data) => RequestSlowFillParams { relay_data },
         _ => account
             .as_ref()
-            .map(|account| RequestV3SlowFillParams { relay_data: account.relay_data.clone() })
+            .map(|account| RequestSlowFillParams { relay_data: account.relay_data.clone() })
             .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3SlowFill {
-    pub relay_data: V3RelayData,
+pub struct SlowFill {
+    pub relay_data: RelayData,
     pub chain_id: u64,
     pub updated_output_amount: u64,
 }
 
-impl V3SlowFill {
+impl SlowFill {
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -133,13 +133,13 @@ impl V3SlowFill {
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], slow_fill_leaf: Option<V3SlowFill>, root_bundle_id: Option<u32>)]
+#[instruction(relay_hash: [u8; 32], slow_fill_leaf: Option<SlowFill>, root_bundle_id: Option<u32>)]
 pub struct ExecuteSlowRelayLeaf<'info> {
     pub signer: Signer<'info>,
 
     // This is required as fallback when None instruction params are passed in arguments.
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
-    pub instruction_params: Option<Account<'info, ExecuteV3SlowRelayLeafParams>>,
+    pub instruction_params: Option<Account<'info, ExecuteSlowRelayLeafParams>>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
@@ -208,17 +208,17 @@ pub struct ExecuteSlowRelayLeaf<'info> {
 
 pub fn execute_slow_relay_leaf<'info>(
     ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
-    slow_fill_leaf: Option<V3SlowFill>,
+    slow_fill_leaf: Option<SlowFill>,
     proof: Option<Vec<[u8; 32]>>,
 ) -> Result<()> {
-    let ExecuteV3SlowRelayLeafParams { slow_fill_leaf, proof, .. } =
+    let ExecuteSlowRelayLeafParams { slow_fill_leaf, proof, .. } =
         unwrap_execute_slow_relay_leaf_params(slow_fill_leaf, proof, &ctx.accounts.instruction_params);
 
     let current_time = get_current_time(&ctx.accounts.state)?;
 
     let relay_data = slow_fill_leaf.relay_data;
 
-    let slow_fill = V3SlowFill {
+    let slow_fill = SlowFill {
         relay_data: relay_data.clone(),        // Clone relay_data to avoid move
         chain_id: ctx.accounts.state.chain_id, // This overrides caller provided chain_id, same as in EVM SpokePool.
         updated_output_amount: slow_fill_leaf.updated_output_amount,
@@ -280,7 +280,7 @@ pub fn execute_slow_relay_leaf<'info>(
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
         message_hash,
-        relay_execution_info: V3RelayExecutionEventInfo {
+        relay_execution_info: RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
             updated_message_hash: message_hash,
             updated_output_amount: slow_fill_leaf.updated_output_amount,
@@ -293,19 +293,19 @@ pub fn execute_slow_relay_leaf<'info>(
 
 // Helper to unwrap optional instruction params with fallback loading from buffer account.
 fn unwrap_execute_slow_relay_leaf_params(
-    slow_fill_leaf: Option<V3SlowFill>,
+    slow_fill_leaf: Option<SlowFill>,
     proof: Option<Vec<[u8; 32]>>,
-    account: &Option<Account<ExecuteV3SlowRelayLeafParams>>,
-) -> ExecuteV3SlowRelayLeafParams {
+    account: &Option<Account<ExecuteSlowRelayLeafParams>>,
+) -> ExecuteSlowRelayLeafParams {
     match (slow_fill_leaf, proof) {
-        (Some(slow_fill_leaf), Some(proof)) => ExecuteV3SlowRelayLeafParams {
+        (Some(slow_fill_leaf), Some(proof)) => ExecuteSlowRelayLeafParams {
             slow_fill_leaf,
             root_bundle_id: 0, // This is not used in the caller.
             proof,
         },
         _ => account
             .as_ref()
-            .map(|account| ExecuteV3SlowRelayLeafParams {
+            .map(|account| ExecuteSlowRelayLeafParams {
                 slow_fill_leaf: account.slow_fill_leaf.clone(),
                 root_bundle_id: account.root_bundle_id,
                 proof: account.proof.clone(),

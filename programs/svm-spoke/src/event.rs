@@ -67,7 +67,7 @@ pub enum FillType {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3RelayExecutionEventInfo {
+pub struct RelayExecutionEventInfo {
     pub updated_recipient: Pubkey,
     pub updated_message_hash: [u8; 32],
     pub updated_output_amount: u64,
@@ -90,7 +90,7 @@ pub struct FilledRelay {
     pub depositor: Pubkey,
     pub recipient: Pubkey,
     pub message_hash: [u8; 32],
-    pub relay_execution_info: V3RelayExecutionEventInfo,
+    pub relay_execution_info: RelayExecutionEventInfo,
 }
 
 // Slow fill events

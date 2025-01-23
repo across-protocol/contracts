@@ -20,7 +20,7 @@ use crate::{
     output_amount: u64,
     destination_chain_id: u64,
 )]
-pub struct DepositV3<'info> {
+pub struct Deposit<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
@@ -64,7 +64,7 @@ pub struct DepositV3<'info> {
 }
 
 pub fn _deposit(
-    ctx: Context<DepositV3>,
+    ctx: Context<Deposit>,
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -140,7 +140,7 @@ pub fn _deposit(
 }
 
 pub fn deposit(
-    ctx: Context<DepositV3>,
+    ctx: Context<Deposit>,
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -175,7 +175,7 @@ pub fn deposit(
 }
 
 pub fn deposit_now(
-    ctx: Context<DepositV3>,
+    ctx: Context<Deposit>,
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -210,7 +210,7 @@ pub fn deposit_now(
 }
 
 pub fn unsafe_deposit(
-    ctx: Context<DepositV3>,
+    ctx: Context<Deposit>,
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,

@@ -19,7 +19,7 @@ import {
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
   getSpokePoolProgram,
-  loadFillV3RelayParams,
+  loadFillRelayParams,
   sendTransactionWithLookupTable,
 } from "../../src/svm";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
@@ -185,7 +185,7 @@ async function fillV3RelayToRandom(): Promise<void> {
   // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
   const fillV3RelayValues: FillDataValues = [relayHash, relayData, repaymentChain, repaymentAddress];
   if (bufferParams) {
-    await loadFillV3RelayParams(program, signer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+    await loadFillRelayParams(program, signer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
   }
   const fillV3RelayParams: FillDataParams = bufferParams ? [fillV3RelayValues[0], null, null, null] : fillV3RelayValues;
   const [instructionParams] = bufferParams
