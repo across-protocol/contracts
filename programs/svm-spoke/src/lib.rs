@@ -634,18 +634,12 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that pays for the transaction and initializes the claim account.
+    /// - mint: The mint associated with the claim account.
+    /// - refund_address: The refund address associated with the claim account.
     /// - claim_account (Writable): The newly created claim account PDA to store claim data for this associated mint.
     ///   Seed: ["claim_account",mint,refund_address].
     /// - system_program: The system program required for account creation.
-    ///
-    /// ### Parameters:
-    /// - _mint: The public key of the mint associated with the claim account.
-    /// - _refund_address: The public key of the refund address associated with the claim account.
-    pub fn initialize_claim_account(
-        ctx: Context<InitializeClaimAccount>,
-        _mint: Pubkey,
-        _refund_address: Pubkey,
-    ) -> Result<()> {
+    pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
 
@@ -657,16 +651,10 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure. Must be the initializer of the claim account.
+    /// - mint: The mint associated with the claim account.
+    /// - refund_address: The refund address associated with the claim account.
     /// - claim_account (Writable): The claim account PDA to be closed. Seed: ["claim_account",mint,refund_address].
-    ///
-    /// ### Parameters:
-    /// - _mint: The public key of the mint associated with the claim account.
-    /// - _refund_address: The public key of the refund address associated with the claim account.
-    pub fn close_claim_account(
-        ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey,           // Only used in account constraints.
-        _refund_address: Pubkey, // Only used in account constraints.
-    ) -> Result<()> {
+    pub fn close_claim_account(ctx: Context<CloseClaimAccount>) -> Result<()> {
         instructions::close_claim_account(ctx)
     }
 

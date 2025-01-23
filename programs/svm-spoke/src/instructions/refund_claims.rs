@@ -10,16 +10,21 @@ use crate::{
 };
 
 #[derive(Accounts)]
-#[instruction(mint: Pubkey, refund_address: Pubkey)]
 pub struct InitializeClaimAccount<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub mint: UncheckedAccount<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
 
     #[account(
         init,
         payer = signer,
         space = DISCRIMINATOR_SIZE + ClaimAccount::INIT_SPACE,
-        seeds = [b"claim_account", mint.as_ref(), refund_address.as_ref()],
+        seeds = [b"claim_account", mint.key().as_ref(), refund_address.key().as_ref()],
         bump
     )]
     pub claim_account: Account<'info, ClaimAccount>,
@@ -120,10 +125,15 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
 // relayer refunds were executed with ATA after initializing the claim account. In such cases, the initializer should be
 // able to close the claim account manually.
 #[derive(Accounts)]
-#[instruction(mint: Pubkey, refund_address: Pubkey)]
 pub struct CloseClaimAccount<'info> {
     #[account(mut, address = claim_account.initializer @ SvmError::InvalidClaimInitializer)]
     pub signer: Signer<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub mint: UncheckedAccount<'info>,
+
+    /// CHECK: This is only used for claim_account PDA derivation and it is up to the caller to ensure it is valid.
+    pub refund_address: UncheckedAccount<'info>,
 
     #[account(
         mut,
