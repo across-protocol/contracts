@@ -6,6 +6,8 @@ use anchor_lang::{
     },
 };
 
+// If changing the program ID, make sure to check that the resulting handler_signer PDA has the highest bump of 255 so
+// to minimize the compute cost when finding the PDA.
 declare_id!("6kqWTz3A3ZYMV2FMU24ke8rHzT82SaBz7GkBKTd7Z9BH");
 
 #[program]
@@ -17,11 +19,13 @@ pub mod multicall_handler {
     pub fn handle_v3_across_message(ctx: Context<HandleV3AcrossMessage>, message: Vec<u8>) -> Result<()> {
         // Some instructions might require being signed by handler PDA.
         let (handler_signer, bump) = Pubkey::find_program_address(&[b"handler_signer"], &crate::ID);
-        let mut use_handler_signer = false;
 
         let compiled_ixs: Vec<CompiledIx> = AnchorDeserialize::deserialize(&mut &message[..])?;
 
         for compiled_ix in compiled_ixs {
+            // Will only sign with handler PDA if it is included in this instruction's accounts (checked below).
+            let mut use_handler_signer = false;
+
             let mut accounts = Vec::with_capacity(compiled_ix.account_key_indexes.len());
             let mut account_infos = Vec::with_capacity(compiled_ix.account_key_indexes.len());
 
