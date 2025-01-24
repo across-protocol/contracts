@@ -1,3 +1,3 @@
-pub mod v3_relay_data;
+pub mod relay_data;
 
-pub use v3_relay_data::*;
+pub use relay_data::*;
