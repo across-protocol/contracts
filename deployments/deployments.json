@@ -173,5 +173,9 @@
   "1868": {
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 1709997 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1711482 }
+  },
+  "133268194659241": {
+    "SvmSpoke": { "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq", "blockNumber": 356313770 },
+    "MulticallHandler": { "address": "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h", "blockNumber": 356321050 }
   }
 }
