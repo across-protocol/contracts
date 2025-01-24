@@ -1,6 +1,20 @@
 use anchor_lang::prelude::*;
 
-declare_id!("DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn");
+#[cfg(not(feature = "no-entrypoint"))]
+use ::solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Across",
+    project_url: "https://across.to",
+    contacts: "email:bugs@across.to",
+    policy: "https://docs.across.to/resources/bug-bounty",
+    preferred_languages: "en",
+    source_code: "https://github.com/across-protocol/contracts/tree/master/programs/svm-spoke",
+    auditors: "OpenZeppelin"
+}
+
+declare_id!("D1WcTLKRyN4TuqnfMBGPvc16nACHfNhFPbgWNExb1aur");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter);
@@ -32,9 +46,9 @@ use utils::*;
 pub mod svm_spoke {
     use super::*;
 
-    /// **************************************
-    ///            ADMIN FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //            ADMIN FUNCTIONS           *
+    // *************************************
 
     /// Initializes the state for the SVM Spoke Pool. Only callable once.
     ///
@@ -194,16 +208,16 @@ pub mod svm_spoke {
         instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
     }
 
-    /// **************************************
-    ///          DEPOSIT FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //          DEPOSIT FUNCTIONS           *
+    // *************************************
 
     /// Request to bridge input_token to a target chain and receive output_token.
     ///
     /// The fee paid to relayers and the system is captured in the spread between the input and output amounts,
     /// denominated in the input token. A relayer on the destination chain will send `output_amount` of `output_token`
     /// to the recipient and receive `input_token` on a repayment chain of their choice. The fee accounts for:
-    /// Destination transaction costs, relayer's opportunity cost of capital while waiting for a refund during the
+    /// destination transaction costs, relayer's opportunity cost of capital while waiting for a refund during the
     /// optimistic challenge window in the HubPool, and the system fee charged to the relayer.
     ///
     /// On the destination chain, a unique hash of the deposit data is used to identify this deposit. Modifying any
@@ -225,7 +239,7 @@ pub mod svm_spoke {
     /// ### Parameters
     /// - depositor: The account credited with the deposit. Can be different from the signer.
     /// - recipient: The account receiving funds on the destination chain. Depending on the output chain can be an ETH
-    ///     address or a contract address or any other address type encoded as a bytes32 field.
+    ///   address or a contract address or any other address type encoded as a bytes32 field.
     /// - input_token: The token pulled from the caller's account and locked into this program's vault on deposit.
     /// - output_token: The token that the relayer will send to the recipient on the destination chain.
     /// - input_amount: The amount of input tokens to pull from the caller's account and lock into the vault. This
@@ -279,8 +293,8 @@ pub mod svm_spoke {
         )
     }
 
-    // Equivalent to deposit except quote_timestamp is set to the current time.
-    // The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
+    /// Equivalent to deposit except quote_timestamp is set to the current time.
+    /// The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
     pub fn deposit_now(
         ctx: Context<Deposit>,
         depositor: Pubkey,
@@ -367,9 +381,9 @@ pub mod svm_spoke {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
-    /// **************************************
-    ///          RELAYER FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //          RELAYER FUNCTIONS           *
+    // *************************************
 
     /// Fulfill request to bridge cross chain by sending specified output tokens to recipient.
     ///
@@ -420,7 +434,7 @@ pub mod svm_spoke {
     ///   - message: The message to send to the recipient if the recipient is a contract that implements a
     ///     handle_across_message() public function.
     /// - repayment_chain_id: Chain of SpokePool where relayer wants to be refunded after the challenge window has
-    ///     passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
+    ///   passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.
     /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters. If None for any of these
     /// is passed, the caller must load them via the instruction_params account.
@@ -483,9 +497,9 @@ pub mod svm_spoke {
         instructions::create_token_accounts(ctx)
     }
 
-    /// **************************************
-    ///           BUNDLE FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //           BUNDLE FUNCTIONS           *
+    // *************************************
 
     /// Executes relayer refund leaf.
     ///
@@ -522,8 +536,7 @@ pub mod svm_spoke {
     /// - token_program: The token program.
     /// - system_program: The system program required for account creation.
     ///
-    /// execute_relayer_refund_leaf executes in mode (a) where refunds are sent to ATA directly.
-    /// execute_relayer_refund_leaf_deferred executes in mode (b) where refunds are allocated to the claim_account PDA.
+    /// execute_relayer_refund_leaf executes in mode where refunds are sent to ATA directly.
     pub fn execute_relayer_refund_leaf<'c, 'info>(
         ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
@@ -533,6 +546,7 @@ pub mod svm_spoke {
         instructions::execute_relayer_refund_leaf(ctx, false)
     }
 
+    /// Similar to execute_relayer_refund_leaf, but executes in mode where refunds are allocated to claim_account PDAs.
     pub fn execute_relayer_refund_leaf_deferred<'c, 'info>(
         ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
@@ -634,18 +648,12 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that pays for the transaction and initializes the claim account.
+    /// - mint: The mint associated with the claim account.
+    /// - refund_address: The refund address associated with the claim account.
     /// - claim_account (Writable): The newly created claim account PDA to store claim data for this associated mint.
     ///   Seed: ["claim_account",mint,refund_address].
     /// - system_program: The system program required for account creation.
-    ///
-    /// ### Parameters:
-    /// - _mint: The public key of the mint associated with the claim account.
-    /// - _refund_address: The public key of the refund address associated with the claim account.
-    pub fn initialize_claim_account(
-        ctx: Context<InitializeClaimAccount>,
-        _mint: Pubkey,
-        _refund_address: Pubkey,
-    ) -> Result<()> {
+    pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
 
@@ -657,22 +665,16 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure. Must be the initializer of the claim account.
+    /// - mint: The mint associated with the claim account.
+    /// - refund_address: The refund address associated with the claim account.
     /// - claim_account (Writable): The claim account PDA to be closed. Seed: ["claim_account",mint,refund_address].
-    ///
-    /// ### Parameters:
-    /// - _mint: The public key of the mint associated with the claim account.
-    /// - _refund_address: The public key of the refund address associated with the claim account.
-    pub fn close_claim_account(
-        ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey,           // Only used in account constraints.
-        _refund_address: Pubkey, // Only used in account constraints.
-    ) -> Result<()> {
+    pub fn close_claim_account(ctx: Context<CloseClaimAccount>) -> Result<()> {
         instructions::close_claim_account(ctx)
     }
 
-    /// **************************************
-    ///         SLOW FILL FUNCTIONS          *
-    /// *************************************
+    // **************************************
+    //         SLOW FILL FUNCTIONS          *
+    // *************************************
 
     /// Requests Across to send LP funds to this program to fulfill a slow fill.
     ///
@@ -755,9 +757,9 @@ pub mod svm_spoke {
         instructions::execute_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
 
-    /// **************************************
-    ///       CCTP FUNCTIONS FUNCTIONS       *
-    /// *************************************
+    // **************************************
+    //       CCTP FUNCTIONS FUNCTIONS       *
+    // *************************************
 
     /// Handles cross-chain messages received from L1 Ethereum over CCTP.
     ///

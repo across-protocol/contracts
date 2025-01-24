@@ -50,8 +50,8 @@ describe("svm_spoke.refund_claims", () => {
 
   const initializeClaimAccount = async (initializer = claimInitializer) => {
     const initializeClaimAccountIx = await program.methods
-      .initializeClaimAccount(mint, relayer.publicKey)
-      .accounts({ signer: initializer.publicKey })
+      .initializeClaimAccount()
+      .accounts({ signer: initializer.publicKey, mint, refundAddress: relayer.publicKey })
       .instruction();
     await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(initializeClaimAccountIx), [
       initializer,
@@ -289,7 +289,10 @@ describe("svm_spoke.refund_claims", () => {
 
     // Should not be able to close the claim account from default wallet as the initializer was different.
     try {
-      await program.methods.closeClaimAccount(mint, relayer.publicKey).accounts({ signer: payer.publicKey }).rpc();
+      await program.methods
+        .closeClaimAccount()
+        .accounts({ signer: payer.publicKey, mint, refundAddress: relayer.publicKey })
+        .rpc();
       assert.fail("Closing claim account from different initializer should fail");
     } catch (error: any) {
       assert.instanceOf(error, AnchorError);
@@ -302,8 +305,8 @@ describe("svm_spoke.refund_claims", () => {
 
     // Close the claim account from initializer before executing relayer refunds.
     await program.methods
-      .closeClaimAccount(mint, relayer.publicKey)
-      .accounts({ signer: claimInitializer.publicKey })
+      .closeClaimAccount()
+      .accounts({ signer: claimInitializer.publicKey, mint, refundAddress: relayer.publicKey })
       .signers([claimInitializer])
       .rpc();
 
@@ -324,8 +327,8 @@ describe("svm_spoke.refund_claims", () => {
     // It should be not possible to close the claim account with non-zero refund liability.
     try {
       await program.methods
-        .closeClaimAccount(mint, relayer.publicKey)
-        .accounts({ signer: claimInitializer.publicKey })
+        .closeClaimAccount()
+        .accounts({ signer: claimInitializer.publicKey, mint, refundAddress: relayer.publicKey })
         .signers([claimInitializer])
         .rpc();
       assert.fail("Closing claim account with non-zero refund liability should fail");
