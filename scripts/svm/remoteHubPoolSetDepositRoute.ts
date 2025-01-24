@@ -24,7 +24,7 @@ import {
   isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { HubPool__factory } from "../../typechain";
 import { CHAIN_IDs } from "../../utils/constants";
 import { requireEnv } from "./utils/helpers";

@@ -16,7 +16,7 @@ import {
   readEventsUntilFound,
   relayerRefundHashFn,
   sendTransactionWithLookupTable,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 import { MerkleTree } from "../../utils";
 import { common } from "./SvmSpoke.common";

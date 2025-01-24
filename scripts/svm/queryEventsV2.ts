@@ -1,9 +1,11 @@
 // This script queries the events of the spoke pool and prints them in a human readable format.
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { address, createSolanaRpc } from "@solana/web3-v2.js";
+import { stringifyCpiEvent } from "../../src/svm/web3-v1";
+import { SvmSpokeIdl } from "../../src/svm";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEventsV2, stringifyCpiEvent, SvmSpokeIdl } from "../../src/svm";
+import { readProgramEvents } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -41,9 +43,9 @@ async function queryEvents(): Promise<void> {
   const eventName = argv.eventName || "any";
   const programId = argv.programId;
   const rpc = createSolanaRpc(provider.connection.rpcEndpoint);
-  const events = await readProgramEventsV2(rpc, address(programId), SvmSpokeIdl, "confirmed");
-  const filteredEvents = events.filter((event) => (eventName == "any" ? true : event.name == eventName));
-  const formattedEvents = filteredEvents.map((event) => stringifyCpiEvent(event));
+  const events = await readProgramEvents(rpc, address(programId), SvmSpokeIdl, "confirmed");
+  const filteredEvents = events.filter((event: any) => (eventName == "any" ? true : event.name == eventName));
+  const formattedEvents = filteredEvents.map((event: any) => stringifyCpiEvent(event));
 
   console.log(JSON.stringify(formattedEvents, null, 2));
 }

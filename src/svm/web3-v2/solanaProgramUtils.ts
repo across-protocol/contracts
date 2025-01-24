@@ -17,7 +17,7 @@ type GetSignaturesForAddressTransaction = ReturnType<GetSignaturesForAddressApi[
 /**
  * Reads all events for a specific program.
  */
-export async function readProgramEventsV2(
+export async function readProgramEvents(
   rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
   program: Address,
   anchorIdl: Idl,
@@ -42,7 +42,7 @@ export async function readProgramEventsV2(
   // Fetch events for all signatures in parallel
   const eventsWithSlots = await Promise.all(
     allSignatures.map(async (signatureTransaction) => {
-      const events = await readEventsV2(rpc, signatureTransaction.signature, program, anchorIdl, finality);
+      const events = await readEvents(rpc, signatureTransaction.signature, program, anchorIdl, finality);
 
       return events.map((event) => ({
         ...event,
@@ -60,7 +60,7 @@ export async function readProgramEventsV2(
 /**
  * Reads events from a transaction.
  */
-export async function readEventsV2(
+export async function readEvents(
   rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
   txSignature: Signature,
   programId: Address,

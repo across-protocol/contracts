@@ -12,7 +12,7 @@ import {
   readEvents,
   readProgramEvents,
   relayerRefundHashFn,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 
 import { MerkleTree } from "@uma/common";
 import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
