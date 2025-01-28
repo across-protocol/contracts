@@ -209,7 +209,7 @@ describe("SpokePool Relayer Logic", async function () {
           );
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
-      it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {
+      it("transfers funds even when msg.sender is recipient", async function () {
         const _relayData = {
           ...relayData,
           // Set recipient == relayer
@@ -222,7 +222,7 @@ describe("SpokePool Relayer Logic", async function () {
             relayer.address,
             false // isSlowFill
           )
-        ).to.not.emit(destErc20, "Transfer");
+        ).to.emit(destErc20, "Transfer");
       });
       it("sends updatedOutputAmount to updatedRecipient", async function () {
         const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
