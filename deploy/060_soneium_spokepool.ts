@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
   ];
-  await deployNewProxy("Cher_SpokePool", constructorArgs, initArgs);
+  await deployNewProxy("Soneium_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
-func.tags = ["CherSpokePool", "cher"];
+func.tags = ["SoneiumSpokePool", "cher"];
