@@ -1320,19 +1320,10 @@ abstract contract SpokePool is
             })
         );
 
-        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
-        // net movement of funds.
-        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
-        // way (no need to have funds on the destination).
-        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
-        // since there is no "relayer".
-        address recipientToSend = relayExecution.updatedRecipient;
-
-        if (msg.sender == recipientToSend && !isSlowFill) return;
-
         // If relay token is wrappedNativeToken then unwrap and send native token.
         address outputToken = relayData.outputToken;
         uint256 amountToSend = relayExecution.updatedOutputAmount;
+        address recipientToSend = relayExecution.updatedRecipient;
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
