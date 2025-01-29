@@ -32,7 +32,7 @@ async function closeExpiredRelays(): Promise<void> {
   try {
     const events = await readProgramEvents(provider.connection, program);
     const fillEvents = events.filter(
-      (event) => event.name === "filledV3Relay" && new PublicKey(event.data.relayer).equals(relayer)
+      (event) => event.name === "filledRelay" && new PublicKey(event.data.relayer).equals(relayer)
     );
 
     console.log(`Number of fill events found: ${fillEvents.length}`);
