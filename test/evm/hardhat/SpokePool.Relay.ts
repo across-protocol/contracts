@@ -349,6 +349,26 @@ describe("SpokePool Relayer Logic", async function () {
           )
         ).to.not.be.reverted;
       });
+      it("if no exclusive relayer is set, exclusivity deadline can be in future", async function () {
+        const _relayData = {
+          ...relayData,
+          // Overwrite exclusivity deadline
+          exclusivityDeadline: relayData.fillDeadline,
+        };
+
+        // Can send it after exclusivity deadline
+        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+      });
+      it("can have empty exclusive relayer before exclusivity deadline", async function () {
+        const _relayData = {
+          ...relayData,
+          // Overwrite exclusivity deadline
+          exclusivityDeadline: relayData.fillDeadline,
+        };
+
+        // Can send it before exclusivity deadline if exclusive relayer is empty
+        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+      });
       it("calls _fillRelayV3 with  expected params", async function () {
         await expect(spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId))
           .to.emit(spokePool, "FilledV3Relay")
@@ -400,7 +420,7 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillV3RelayWithUpdatedDeposit(
             {
               ...relayData,
-              exclusivityDeadline: 0,
+              exclusiveRelayer: consts.zeroAddress,
             },
             consts.repaymentChainId,
             updatedOutputAmount,
