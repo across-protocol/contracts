@@ -191,6 +191,20 @@ export function getV3RelayHash(relayData: V3RelayData, destinationChainId: numbe
   );
 }
 
+// @todo we likely don't need to keep this function around for too long but its useful for making sure that the new relay hash is identical to the
+// legacy one.
+export function getLegacyV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
+  return ethers.utils.keccak256(
+    defaultAbiCoder.encode(
+      [
+        "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "uint256 destinationChainId",
+      ],
+      [relayData, destinationChainId]
+    )
+  );
+}
+
 export function getDepositParams(args: {
   recipient?: string;
   originToken: string;
