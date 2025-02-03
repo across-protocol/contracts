@@ -30,7 +30,7 @@ import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSolanaChainId, SOLANA_USDC_DEVNET, SOLANA_USDC_MAINNET } from "../../src/svm";
+import { getSolanaChainId, SOLANA_USDC_DEVNET, SOLANA_USDC_MAINNET } from "../../src/svm/web3-v1";
 import { BondToken__factory, HubPool__factory } from "../../typechain";
 import { CHAIN_IDs } from "../../utils/constants";
 import {

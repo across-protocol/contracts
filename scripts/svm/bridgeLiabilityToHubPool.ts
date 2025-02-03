@@ -38,12 +38,16 @@ import {
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
-import { getMessageTransmitterProgram, getSpokePoolProgram, getTokenMessengerMinterProgram } from "../../src/svm";
+import {
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
+  getTokenMessengerMinterProgram,
+} from "../../src/svm/web3-v1";
 import { BondToken__factory } from "../../typechain";
 import { formatUsdc, requireEnv } from "./utils/helpers";
 

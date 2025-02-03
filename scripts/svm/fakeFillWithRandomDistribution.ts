@@ -21,7 +21,7 @@ import {
   getSpokePoolProgram,
   loadFillV3RelayParams,
   sendTransactionWithLookupTable,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
 
 // Set up the provider and signer.

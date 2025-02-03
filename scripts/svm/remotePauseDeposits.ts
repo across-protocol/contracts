@@ -20,7 +20,7 @@ import {
   isSolanaDevnet,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { CHAIN_IDs } from "../../utils/constants";
 import { requireEnv } from "./utils/helpers";
 

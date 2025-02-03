@@ -17,7 +17,7 @@ import {
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { DepositDataValues } from "../../src/types/svm";
-import { intToU8Array32, readEventsUntilFound, u8Array32ToInt, u8Array32ToBigNumber } from "../../src/svm";
+import { intToU8Array32, readEventsUntilFound, u8Array32ToInt, u8Array32ToBigNumber } from "../../src/svm/web3-v1";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
