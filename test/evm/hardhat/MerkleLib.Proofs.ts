@@ -13,6 +13,7 @@ import {
   ethers,
   randomBytes32,
   bytes32ToAddress,
+  addressToBytes,
 } from "../../../utils/utils";
 import { V3RelayData, V3SlowFill } from "../../../test-utils";
 import { ParamType } from "ethers/lib/utils";
@@ -154,11 +155,11 @@ describe("MerkleLib Proofs", async function () {
   it("Legacy V3SlowFill produces the same MerkleLeaf", async function () {
     const chainId = randomBigNumber(2).toNumber();
     const relayData: V3RelayData = {
-      depositor: randomBytes32(),
-      recipient: randomBytes32(),
-      exclusiveRelayer: randomBytes32(),
-      inputToken: randomBytes32(),
-      outputToken: randomBytes32(),
+      depositor: addressToBytes(randomAddress()),
+      recipient: addressToBytes(randomAddress()),
+      exclusiveRelayer: addressToBytes(randomAddress()),
+      inputToken: addressToBytes(randomAddress()),
+      outputToken: addressToBytes(randomAddress()),
       inputAmount: randomBigNumber(),
       outputAmount: randomBigNumber(),
       originChainId: randomBigNumber(2).toNumber(),
