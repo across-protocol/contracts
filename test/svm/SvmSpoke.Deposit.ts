@@ -1,40 +1,76 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
+import { BigNumber, ethers } from "ethers";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
   getAccount,
+  createApproveCheckedInstruction,
+  createEnableCpiGuardInstruction,
+  createReallocateInstruction,
+  ExtensionType,
 } from "@solana/spl-token";
-import { PublicKey, Keypair } from "@solana/web3.js";
-import { common, DepositDataValues } from "./SvmSpoke.common";
-import { readProgramEvents } from "./utils";
+import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { common } from "./SvmSpoke.common";
+import { DepositDataValues } from "../../src/types/svm";
+import { intToU8Array32, readEventsUntilFound, u8Array32ToInt, u8Array32ToBigNumber } from "../../src/svm/web3-v1";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
+
+const maxExclusivityOffsetSeconds = new BN(365 * 24 * 60 * 60); // 1 year in seconds
 
 describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
   const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
-  let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey;
-  let depositAccounts: any; // Re-used between tests to simplify props.
+  const tokenDecimals = 6;
+
+  let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey, tokenProgram: PublicKey;
+  let seed: BN;
+
+  // Re-used between tests to simplify props.
+  type DepositAccounts = {
+    state: PublicKey;
+    route: PublicKey;
+    signer: PublicKey;
+    depositorTokenAccount: PublicKey;
+    vault: PublicKey;
+    mint: PublicKey;
+    tokenProgram: PublicKey;
+    program: PublicKey;
+  };
+  let depositAccounts: DepositAccounts;
+
   let setEnableRouteAccounts: any; // Common variable for setEnableRoute accounts
 
   const setupInputToken = async () => {
-    inputToken = await createMint(connection, payer, owner, owner, 6);
+    inputToken = await createMint(connection, payer, owner, owner, tokenDecimals, undefined, undefined, tokenProgram);
 
-    depositorTA = (await getOrCreateAssociatedTokenAccount(connection, payer, inputToken, depositor.publicKey)).address;
-    await mintTo(connection, payer, inputToken, depositorTA, owner, seedBalance);
+    depositorTA = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        payer,
+        inputToken,
+        depositor.publicKey,
+        undefined,
+        undefined,
+        undefined,
+        tokenProgram
+      )
+    ).address;
+    await mintTo(connection, payer, inputToken, depositorTA, owner, seedBalance, undefined, undefined, tokenProgram);
   };
 
   const enableRoute = async () => {
     const routeChainId = new BN(1);
-    const route = createRoutePda(inputToken, state, routeChainId);
-    vault = getVaultAta(inputToken, state);
+    const route = createRoutePda(inputToken, seed, routeChainId);
+    vault = await getVaultAta(inputToken, state);
 
     setEnableRouteAccounts = {
       signer: owner,
@@ -43,7 +79,7 @@ describe("svm_spoke.deposit", () => {
       route,
       vault,
       originTokenMint: inputToken, // Note the Sol expects this to be named originTokenMint.
-      tokenProgram: TOKEN_PROGRAM_ID,
+      tokenProgram: tokenProgram ?? TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
@@ -61,16 +97,40 @@ describe("svm_spoke.deposit", () => {
       depositorTokenAccount: depositorTA,
       vault,
       mint: inputToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      tokenProgram: tokenProgram ?? TOKEN_PROGRAM_ID,
+      program: program.programId,
     };
   };
 
-  before("Creates token mint and associated token accounts", async () => {
-    await setupInputToken();
-  });
+  const approvedDepositV3 = async (
+    depositDataValues: DepositDataValues,
+    calledDepositAccounts: DepositAccounts = depositAccounts
+  ) => {
+    // Delegate state PDA to pull depositor tokens.
+    const approveIx = await createApproveCheckedInstruction(
+      calledDepositAccounts.depositorTokenAccount,
+      calledDepositAccounts.mint,
+      calledDepositAccounts.state,
+      depositor.publicKey,
+      BigInt(depositData.inputAmount.toString()),
+      tokenDecimals,
+      undefined,
+      tokenProgram
+    );
+    const depositIx = await program.methods
+      .depositV3(...depositDataValues)
+      .accounts(calledDepositAccounts)
+      .instruction();
+    const depositTx = new Transaction().add(approveIx, depositIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
+    return tx;
+  };
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
+
+    tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
+    await setupInputToken();
 
     await enableRoute();
   });
@@ -81,11 +141,7 @@ describe("svm_spoke.deposit", () => {
 
     // Execute the deposit_v3 call
     let depositDataValues = Object.values(depositData) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+    await approvedDepositV3(depositDataValues);
 
     // Verify tokens leave the depositor's account
     let depositorAccount = await getAccount(connection, depositorTA);
@@ -105,11 +161,7 @@ describe("svm_spoke.deposit", () => {
     // Execute the second deposit_v3 call
 
     depositDataValues = Object.values({ ...depositData, inputAmount: secondInputAmount }) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+    await approvedDepositV3(depositDataValues);
 
     // Verify tokens leave the depositor's account again
     depositorAccount = await getAccount(connection, depositorTA);
@@ -133,43 +185,34 @@ describe("svm_spoke.deposit", () => {
 
     // Execute the first deposit_v3 call
     let depositDataValues = Object.values(depositData) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx = await approvedDepositV3(depositDataValues);
 
-    // Fetch and verify the depositEvent
-    let events = await readProgramEvents(connection, program);
-    let event = events.find((event) => event.name === "v3FundsDeposited").data;
-    const currentTime = await getCurrentTime(program, state);
-    const { exclusivityPeriod, ...restOfDepositData } = depositData; // Strip exclusivityPeriod from depositData
-    const expectedValues1 = {
-      ...restOfDepositData,
-      depositId: "1",
-      exclusivityDeadline: currentTime + exclusivityPeriod.toNumber(),
-    }; // Verify the event props emitted match the depositData.
-    for (const [key, value] of Object.entries(expectedValues1)) {
+    let events = await readEventsUntilFound(connection, tx, [program]);
+    let event = events[0].data; // 0th event is the latest event
+    const expectedValues1 = { ...depositData, depositId: intToU8Array32(1) }; // Verify the event props emitted match the depositData.
+    for (let [key, value] of Object.entries(expectedValues1)) {
+      if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
     }
+
+    // Test the id recovery with the conversion utils
+    assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
+    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
 
     // Execute the second deposit_v3 call
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx2 = await approvedDepositV3(depositDataValues);
+    events = await readEventsUntilFound(connection, tx2, [program]);
+    event = events[0].data; // 0th event is the latest event.
 
-    // Fetch and verify the depositEvent for the second deposit
-    events = await readProgramEvents(connection, program);
-    event = events.find((event) => event.name === "v3FundsDeposited" && event.data.depositId.toString() === "2").data;
-
-    const expectedValues2 = { ...expectedValues1, depositId: "2" }; // Verify the event props emitted match the depositData.
-    for (const [key, value] of Object.entries(expectedValues2)) {
+    const expectedValues2 = { ...expectedValues1, depositId: intToU8Array32(2) }; // Verify the event props emitted match the depositData.
+    for (let [key, value] of Object.entries(expectedValues2)) {
+      if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
     }
+
+    // Test the id recovery with the conversion utils
+    assertSE(u8Array32ToInt(event.depositId), 2, `depositId should recover to 2`);
+    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), `depositId should recover to 2`);
   });
 
   it("Fails to deposit tokens to a route that is uninitalized", async () => {
@@ -177,7 +220,7 @@ describe("svm_spoke.deposit", () => {
     if (!depositData.inputToken) {
       throw new Error("Input token is null");
     }
-    const differentRoutePda = createRoutePda(depositData.inputToken, state, differentChainId);
+    const differentRoutePda = createRoutePda(depositData.inputToken, seed, differentChainId);
     depositAccounts.route = differentRoutePda;
 
     try {
@@ -185,11 +228,7 @@ describe("svm_spoke.deposit", () => {
         ...depositData,
         destinationChainId: differentChainId,
       }) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Deposit should have failed for a route that is not initialized");
     } catch (err: any) {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
@@ -205,11 +244,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Deposit should have failed for a route that is explicitly disabled");
     } catch (err: any) {
       assert.include(err.toString(), "DisabledRoute", "Expected DisabledRoute error");
@@ -226,15 +261,10 @@ describe("svm_spoke.deposit", () => {
     // Try to deposit. This should fail because deposits are paused.
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Should not be able to process deposit when deposits are paused");
     } catch (err: any) {
-      assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "DepositsArePaused", "Expected error code DepositsArePaused");
+      assert.include(err.toString(), "Error Code: DepositsArePaused", "Expected DepositsArePaused error");
     }
   });
 
@@ -246,11 +276,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
@@ -265,11 +291,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
@@ -286,11 +308,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidFillDeadline (past deadline)");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for past deadline");
@@ -302,11 +320,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(depositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidFillDeadline (future deadline)");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for future deadline");
@@ -327,31 +341,26 @@ describe("svm_spoke.deposit", () => {
     const malformedDepositAccounts = { ...depositAccounts, route: firstDepositAccounts.route };
     try {
       const depositDataValues = Object.values(malformedDepositData) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts(malformedDepositAccounts)
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues, malformedDepositAccounts);
       assert.fail("Should not be able to process deposit for inconsistent mint");
     } catch (err: any) {
-      assert.instanceOf(err, anchor.AnchorError);
-      assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
+      assert.include(err.toString(), "Error Code: InvalidMint", "Expected InvalidMint error");
     }
   });
 
   it("Tests deposit with a fake route PDA", async () => {
     // Create fake program state
     const fakeState = await initializeState();
-    const fakeVault = getVaultAta(inputToken, fakeState);
+    const fakeVault = await getVaultAta(inputToken, fakeState.state);
 
     const fakeRouteChainId = new BN(3);
-    const fakeRoutePda = createRoutePda(inputToken, fakeState, fakeRouteChainId);
+    const fakeRoutePda = createRoutePda(inputToken, fakeState.seed, fakeRouteChainId);
 
     // A seeds constraint was violated.
     const fakeSetEnableRouteAccounts = {
       signer: owner,
       payer: owner,
-      state: fakeState,
+      state: fakeState.state,
       route: fakeRoutePda,
       vault: fakeVault,
       originTokenMint: inputToken,
@@ -363,10 +372,8 @@ describe("svm_spoke.deposit", () => {
 
     await program.methods.setEnableRoute(inputToken, fakeRouteChainId, true).accounts(fakeSetEnableRouteAccounts).rpc();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
     const fakeDepositAccounts = {
-      state: fakeState,
+      state: fakeState.state,
       route: fakeRoutePda,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -381,20 +388,16 @@ describe("svm_spoke.deposit", () => {
       ...depositData,
       destinationChainId: fakeRouteChainId,
     }) as DepositDataValues;
-    await program.methods
-      .depositV3(...depositDataValues)
-      .accounts(fakeDepositAccounts)
-      .signers([depositor])
-      .rpc();
+    const tx = await approvedDepositV3(depositDataValues, fakeDepositAccounts);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Fetch and verify the depositEvent
-    let events = await readProgramEvents(connection, program);
-    let event = events.find((event) => event.name === "v3FundsDeposited").data;
-    const { exclusivityPeriod, ...restOfDepositData } = depositData; // Strip exclusivityPeriod from depositData
-    const expectedValues = { ...{ ...restOfDepositData, destinationChainId: fakeRouteChainId }, depositId: "1" }; // Verify the event props emitted match the depositData.
-    for (const [key, value] of Object.entries(expectedValues)) {
+    let events = await readEventsUntilFound(connection, tx, [program]);
+    let event = events[0].data; // 0th event is the latest event.
+    const expectedValues = {
+      ...{ ...depositData, destinationChainId: fakeRouteChainId },
+      depositId: intToU8Array32(1),
+    }; // Verify the event props emitted match the depositData.
+    for (let [key, value] of Object.entries(expectedValues)) {
+      if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
     }
 
@@ -411,11 +414,7 @@ describe("svm_spoke.deposit", () => {
       const depositDataValues = Object.values({
         ...{ ...depositData, destinationChainId: fakeRouteChainId },
       }) as DepositDataValues;
-      await program.methods
-        .depositV3(...depositDataValues)
-        .accounts({ ...depositAccounts, route: fakeRoutePda })
-        .signers([depositor])
-        .rpc();
+      await approvedDepositV3(depositDataValues, { ...depositAccounts, route: fakeRoutePda });
       assert.fail("Deposit should have failed for a fake route PDA");
     } catch (err: any) {
       assert.include(err.toString(), "A seeds constraint was violated");
@@ -432,9 +431,20 @@ describe("svm_spoke.deposit", () => {
     // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
     const fillDeadlineOffset = 60; // 60 seconds offset
 
-    // Execute the deposit_v3_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
+    // Delegate state PDA to pull depositor tokens.
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(depositData.inputAmount.toString()),
+      tokenDecimals,
+      undefined,
+      tokenProgram
+    );
 
-    await program.methods
+    // Execute the deposit_v3_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
+    const depositIx = await program.methods
       .depositV3Now(
         depositData.depositor!,
         depositData.recipient!,
@@ -445,32 +455,241 @@ describe("svm_spoke.deposit", () => {
         depositData.destinationChainId,
         depositData.exclusiveRelayer!,
         fillDeadlineOffset,
-        depositData.exclusivityPeriod.toNumber(),
+        0,
         depositData.message
       )
       .accounts(depositAccounts)
-      .signers([depositor])
-      .rpc();
+      .instruction();
+    const depositTx = new Transaction().add(approveIx, depositIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Fetch and verify the depositEvent
-    const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "v3FundsDeposited").data;
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events[0].data; // 0th event is the latest event.
 
     // Verify the event props emitted match the expected values
     const currentTime = await getCurrentTime(program, state);
-    const { exclusivityPeriod, ...restOfDepositData } = depositData; // Strip exclusivityPeriod from depositData
     const expectedValues = {
-      ...restOfDepositData,
+      ...depositData,
       quoteTimestamp: currentTime,
       fillDeadline: currentTime + fillDeadlineOffset,
-      exclusivityDeadline: currentTime + exclusivityPeriod.toNumber(),
-      depositId: "1",
+      depositId: intToU8Array32(1),
     };
 
-    for (const [key, value] of Object.entries(expectedValues)) {
+    for (let [key, value] of Object.entries(expectedValues)) {
+      if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
       assertSE(event[key], value, `${key} should match`);
+    }
+  });
+
+  it("Fails with invalid exclusivity params", async () => {
+    const currentTime = new BN(await getCurrentTime(program, state));
+    depositData.quoteTimestamp = currentTime;
+    // If exclusivityParameter is not zero, then exclusiveRelayer must be set.
+    depositData.exclusiveRelayer = new PublicKey("11111111111111111111111111111111");
+    depositData.exclusivityParameter = new BN(1);
+    try {
+      const depositDataValues = Object.values(depositData) as DepositDataValues;
+      await approvedDepositV3(depositDataValues);
+      assert.fail("Should have failed due to InvalidExclusiveRelayer");
+    } catch (err: any) {
+      assert.include(err.toString(), "InvalidExclusiveRelayer");
+    }
+
+    // Test with other invalid exclusivityDeadline values
+    const invalidExclusivityDeadlines = [
+      maxExclusivityOffsetSeconds,
+      maxExclusivityOffsetSeconds.add(new BN(1)),
+      currentTime.sub(new BN(1)),
+      currentTime.add(new BN(1)),
+    ];
+
+    for (const exclusivityDeadline of invalidExclusivityDeadlines) {
+      depositData.exclusivityParameter = exclusivityDeadline;
+      try {
+        const depositDataValues = Object.values(depositData) as DepositDataValues;
+        await approvedDepositV3(depositDataValues);
+        assert.fail("Should have failed due to InvalidExclusiveRelayer");
+      } catch (err: any) {
+        assert.include(err.toString(), "InvalidExclusiveRelayer");
+      }
+    }
+
+    // Test with exclusivityDeadline set to 0
+    depositData.exclusivityParameter = new BN(0);
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    await approvedDepositV3(depositDataValues);
+  });
+
+  it("Exclusivity param is used as an offset", async () => {
+    const currentTime = new BN(await getCurrentTime(program, state));
+    depositData.quoteTimestamp = currentTime;
+
+    depositData.exclusiveRelayer = depositor.publicKey;
+    depositData.exclusivityParameter = maxExclusivityOffsetSeconds;
+
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    const tx = await approvedDepositV3(depositDataValues);
+
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events[0].data; // 0th event is the latest event
+    assertSE(
+      event.exclusivityDeadline,
+      currentTime.add(maxExclusivityOffsetSeconds),
+      "exclusivityDeadline should be current time + offset"
+    );
+  });
+
+  it("Exclusivity param is used as a timestamp", async () => {
+    const currentTime = new BN(await getCurrentTime(program, state));
+    depositData.quoteTimestamp = currentTime;
+    const exclusivityDeadlineTimestamp = maxExclusivityOffsetSeconds.add(new BN(1)); // 1 year + 1 second
+
+    depositData.exclusiveRelayer = depositor.publicKey;
+    depositData.exclusivityParameter = exclusivityDeadlineTimestamp;
+
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    const tx = await approvedDepositV3(depositDataValues);
+
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events[0].data; // 0th event is the latest event;
+
+    assertSE(event.exclusivityDeadline, exclusivityDeadlineTimestamp, "exclusivityDeadline should be passed in time");
+  });
+
+  it("Exclusivity param is set to 0", async () => {
+    const currentTime = new BN(await getCurrentTime(program, state));
+    depositData.quoteTimestamp = currentTime;
+    const zeroExclusivity = new BN(0);
+
+    depositData.exclusiveRelayer = depositor.publicKey;
+    depositData.exclusivityParameter = zeroExclusivity;
+
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    const tx = await approvedDepositV3(depositDataValues);
+
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events[0].data; // 0th event is the latest event;
+
+    assertSE(event.exclusivityDeadline, zeroExclusivity, "Exclusivity deadline should always be 0");
+  });
+  it("unsafe deposit ID", async () => {
+    const forcedDepositId = new BN(99);
+
+    // Convert the inputs to byte arrays
+    const msgSenderBytes = ethers.utils.arrayify(depositAccounts.signer.toBytes());
+    const depositorBytes = ethers.utils.arrayify(depositData.depositor!.toBytes());
+    const depositNonceBytes = ethers.utils.zeroPad(forcedDepositId.toArrayLike(Buffer, "le", 8), 8);
+
+    const data = ethers.utils.concat([msgSenderBytes, depositorBytes, depositNonceBytes]); // Concatenate the byte arrays
+    const expectedDepositId = ethers.utils.keccak256(data); // Hash the concatenated data using keccak256
+    const expectedDepositIdArray = ethers.utils.arrayify(expectedDepositId);
+
+    // Call the method to get the unsafe deposit ID
+    const unsafeDepositIdTx = await program.methods
+      .getUnsafeDepositId(depositAccounts.signer, depositData.depositor!, forcedDepositId)
+      .view();
+
+    assert.strictEqual(
+      expectedDepositIdArray.toString(),
+      unsafeDepositIdTx.toString(),
+      "Deposit ID should match the expected hash"
+    );
+
+    // Delegate state PDA to pull depositor tokens.
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(depositData.inputAmount.toString()),
+      tokenDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    // Create the transaction for unsafeDepositV3
+    const unsafeDepositIx = await program.methods
+      .unsafeDepositV3(
+        depositData.depositor!,
+        depositData.recipient!,
+        depositData.inputToken!,
+        depositData.outputToken!,
+        depositData.inputAmount!,
+        depositData.outputAmount!,
+        depositData.destinationChainId!,
+        depositData.exclusiveRelayer!,
+        forcedDepositId, // deposit nonce
+        depositData.quoteTimestamp.toNumber(),
+        depositData.fillDeadline.toNumber(),
+        depositData.exclusivityParameter.toNumber(),
+        depositData.message!
+      )
+      .accounts(depositAccounts) // Assuming depositAccounts is already set up correctly
+      .instruction();
+
+    const unsafeDepositTx = new Transaction().add(approveIx, unsafeDepositIx);
+    const tx = await sendAndConfirmTransaction(connection, unsafeDepositTx, [payer, depositor]);
+
+    // Wait for a short period to ensure the event is emitted
+
+    // Read and verify the event
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events[0].data; // Assuming the latest event is the one we want
+
+    const expectedValues = { ...depositData, depositId: expectedDepositIdArray };
+
+    for (let [key, value] of Object.entries(expectedValues)) {
+      if (key === "exclusivityParameter") key = "exclusivityDeadline"; // Adjust for any key differences
+      assertSE(event[key], value, `${key} should match`);
+    }
+  });
+
+  it("Deposit with enabled CPI-guard", async () => {
+    // CPI-guard is available only for the 2022 token program.
+    tokenProgram = TOKEN_2022_PROGRAM_ID;
+    await setupInputToken();
+    await enableRoute();
+
+    // Enable CPI-guard for the depositor (requires TA reallocation).
+    const enableCpiGuardTx = new Transaction().add(
+      createReallocateInstruction(depositorTA, payer.publicKey, [ExtensionType.CpiGuard], depositor.publicKey),
+      createEnableCpiGuardInstruction(depositorTA, depositor.publicKey)
+    );
+    await sendAndConfirmTransaction(connection, enableCpiGuardTx, [payer, depositor]);
+
+    // Verify vault balance is zero before the deposit
+    let vaultAccount = await getAccount(connection, vault, undefined, tokenProgram);
+    assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
+
+    // Execute the deposit_v3 call
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    await approvedDepositV3(depositDataValues);
+
+    // Verify tokens leave the depositor's account
+    const depositorAccount = await getAccount(connection, depositorTA, undefined, tokenProgram);
+    assertSE(
+      depositorAccount.amount,
+      seedBalance - depositData.inputAmount.toNumber(),
+      "Depositor's balance should be reduced by the deposited amount"
+    );
+
+    // Verify tokens are credited into the vault
+    vaultAccount = await getAccount(connection, vault, undefined, tokenProgram);
+    assertSE(vaultAccount.amount, depositData.inputAmount, "Vault balance should be increased by the deposited amount");
+  });
+
+  it("Deposit without approval fails", async () => {
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+
+    try {
+      await program.methods
+        .depositV3(...depositDataValues)
+        .accounts(depositAccounts)
+        .signers([depositor])
+        .rpc();
+      assert.fail("Deposit should have failed due to missing approval");
+    } catch (err: any) {
+      assert.include(err.toString(), "owner does not match");
     }
   });
 });

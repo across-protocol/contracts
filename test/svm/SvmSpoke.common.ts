@@ -1,11 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import { PublicKey, Keypair } from "@solana/web3.js";
-import { ethers } from "ethers";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
-import { evmAddressToPublicKey } from "../../src/SvmUtils";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
+import { randomBytes } from "crypto";
+import { ethers } from "ethers";
+import { evmAddressToPublicKey } from "../../src/svm/web3-v1";
+import { DepositData } from "../../src/types/svm";
+import { SvmSpoke } from "../../target/types/svm_spoke";
 
 const provider = anchor.AnchorProvider.env();
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
@@ -24,7 +26,7 @@ const inputAmount = new BN(500000);
 const outputAmount = inputAmount;
 const quoteTimestamp = new BN(Math.floor(Date.now() / 1000) - 60); // 60 seconds ago.
 const fillDeadline = new BN(Math.floor(Date.now() / 1000) + 600); // 600 seconds from now.
-const exclusivityPeriod = new BN(300); // 300 seconds.
+const exclusivityParameter = new BN(0); // 0 means no exclusivity and disables this. Set to special values in tests.
 const message = Buffer.from("Test message");
 const depositQuoteTimeBuffer = new BN(3600); // 1 hour.
 const fillDeadlineBuffer = new BN(3600 * 4); // 4 hours.
@@ -40,7 +42,7 @@ const initializeState = async (
     fillDeadlineBuffer: BN;
   }
 ) => {
-  const actualSeed = seed || new BN(Math.floor(Math.random() * 1000000));
+  const actualSeed = seed || new BN(randomBytes(8).toString("hex"), 16); // Generate a random u64
   const seeds = [Buffer.from("state"), actualSeed.toArrayLike(Buffer, "le", 8)];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
   if (!initialState) {
@@ -66,18 +68,25 @@ const initializeState = async (
     )
     .accounts(initializeAccounts)
     .rpc();
-  return state;
+  return { state, seed: actualSeed };
 };
 
-const createRoutePda = (originToken: PublicKey, state: PublicKey, routeChainId: BN) => {
+const createRoutePda = (originToken: PublicKey, seed: BN, routeChainId: BN) => {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), originToken.toBytes(), state.toBytes(), routeChainId.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from("route"),
+      originToken.toBytes(),
+      seed.toArrayLike(Buffer, "le", 8),
+      routeChainId.toArrayLike(Buffer, "le", 8),
+    ],
     program.programId
   )[0];
 };
 
-const getVaultAta = (tokenMint: PublicKey, state: PublicKey) => {
-  return getAssociatedTokenAddressSync(tokenMint, state, true, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+const getVaultAta = async (tokenMint: PublicKey, state: PublicKey) => {
+  const tokenMintAccount = await provider.connection.getAccountInfo(tokenMint);
+  if (tokenMintAccount === null) throw new Error("Token Mint account not found");
+  return getAssociatedTokenAddressSync(tokenMint, state, true, tokenMintAccount.owner, ASSOCIATED_TOKEN_PROGRAM_ID);
 };
 
 async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: anchor.web3.Keypair, newTime: BN) {
@@ -91,41 +100,11 @@ async function getCurrentTime(program: Program<SvmSpoke>, state: any) {
 
 function assertSE(a: any, b: any, errorMessage: string) {
   if (a === undefined || b === undefined) {
-    throw new Error("Undefined value" + errorMessage);
+    throw new Error("Undefined value " + errorMessage);
   } else {
     assert.strictEqual(a.toString(), b.toString(), errorMessage);
   }
 }
-
-interface DepositData {
-  depositor: PublicKey | null; // Adjust type as necessary
-  recipient: PublicKey;
-  inputToken: PublicKey | null; // Adjust type as necessary
-  outputToken: PublicKey;
-  inputAmount: BN;
-  outputAmount: BN;
-  destinationChainId: BN;
-  exclusiveRelayer: PublicKey;
-  quoteTimestamp: BN;
-  fillDeadline: BN;
-  exclusivityPeriod: BN;
-  message: Buffer;
-}
-
-export type DepositDataValues = [
-  PublicKey,
-  PublicKey,
-  PublicKey,
-  PublicKey,
-  BN,
-  BN,
-  BN,
-  PublicKey,
-  number,
-  number,
-  number,
-  Buffer
-];
 
 export const common = {
   provider,
@@ -145,7 +124,7 @@ export const common = {
   outputAmount,
   quoteTimestamp,
   fillDeadline,
-  exclusivityPeriod,
+  exclusivityParameter,
   message,
   depositQuoteTimeBuffer,
   fillDeadlineBuffer,
@@ -167,7 +146,7 @@ export const common = {
     exclusiveRelayer,
     quoteTimestamp,
     fillDeadline,
-    exclusivityPeriod,
+    exclusivityParameter,
     message,
   } as DepositData,
 };

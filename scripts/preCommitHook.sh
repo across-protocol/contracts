@@ -19,7 +19,7 @@ fi
 echo "Running rustfmt on staged files ..."
 
 if [ -n "$STAGED_RUST_FILES" ]; then
-    echo "$STAGED_RUST_FILES" | xargs -I {} rustfmt {}
+    echo "$STAGED_RUST_FILES" | xargs -I {} rustfmt +nightly {}
     RUSTFMT_EXIT=$?
     if [ $RUSTFMT_EXIT -ne 0 ]; then
         echo "rustfmt encountered an error. Aborting the hook."

@@ -1,21 +1,23 @@
-import { BN, Program } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
+import { BN, Program, workspace } from "@coral-xyz/anchor";
+import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { BigNumber, ethers } from "ethers";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import {
-  readEvents,
-  readProgramEvents,
+  AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
   findProgramAddress,
-  LargeAccountsCoder,
-} from "../../src/SvmUtils";
-import { MerkleTree } from "@uma/common";
-import { getParamType, keccak256 } from "../../test-utils";
-import { ParamType } from "ethers/lib/utils";
+  MulticallHandlerCoder,
+  readEvents,
+  readProgramEvents,
+  relayerRefundHashFn,
+} from "../../src/svm/web3-v1";
 
-export { readEvents, readProgramEvents, calculateRelayHashUint8Array, findProgramAddress };
+import { MerkleTree } from "@uma/common";
+import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
+
+export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
 export async function printLogs(connection: any, program: any, tx: any) {
   const latestBlockHash = await connection.getLatestBlockhash();
@@ -49,32 +51,6 @@ export function randomBigInt(bytes = 8, signed = false) {
   const sign = signed && Math.random() < 0.5 ? "-" : "";
   const byteString = "0x" + Buffer.from(crypto.randomBytes(bytes)).toString("hex");
   return BigInt(sign + byteString);
-}
-
-export interface RelayerRefundLeaf {
-  isSolana: boolean;
-  amountToReturn: BigNumber;
-  chainId: BigNumber;
-  refundAmounts: BigNumber[];
-  leafId: BigNumber;
-  l2TokenAddress: string;
-  refundAddresses: string[];
-}
-
-export interface RelayerRefundLeafSolana {
-  isSolana: boolean;
-  amountToReturn: BN;
-  chainId: BN;
-  refundAmounts: BN[];
-  leafId: BN;
-  mintPublicKey: PublicKey;
-  refundAddresses: PublicKey[];
-}
-
-export type RelayerRefundLeafType = RelayerRefundLeaf | RelayerRefundLeafSolana;
-
-export function convertLeafIdToNumber(leaf: RelayerRefundLeafSolana) {
-  return { ...leaf, leafId: leaf.leafId.toNumber() };
 }
 
 export function buildRelayerRefundMerkleTree({
@@ -150,124 +126,22 @@ export function buildRelayerRefundMerkleTree({
   return { relayerRefundLeaves, merkleTree };
 }
 
-export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefundLeafSolana): string {
-  const refundAmountsBuffer = Buffer.concat(
-    relayData.refundAmounts.map((amount) => {
-      const buf = Buffer.alloc(8);
-      amount.toArrayLike(Buffer, "le", 8).copy(buf);
-      return buf;
-    })
-  );
-
-  const refundAddressesBuffer = Buffer.concat(relayData.refundAddresses.map((address) => address.toBuffer()));
-
-  const contentToHash = Buffer.concat([
-    relayData.amountToReturn.toArrayLike(Buffer, "le", 8),
-    relayData.chainId.toArrayLike(Buffer, "le", 8),
-    refundAmountsBuffer,
-    relayData.leafId.toArrayLike(Buffer, "le", 4),
-    relayData.mintPublicKey.toBuffer(),
-    refundAddressesBuffer,
-  ]);
-
-  const relayHash = ethers.utils.keccak256(contentToHash);
-  return relayHash;
-}
-
-export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeafSolana) => {
-  if (!input.isSolana) {
-    const abiCoder = new ethers.utils.AbiCoder();
-    const encodedData = abiCoder.encode(
-      [
-        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
-      ],
-      [
-        {
-          leafId: input.leafId,
-          chainId: input.chainId,
-          amountToReturn: input.amountToReturn,
-          l2TokenAddress: (input as RelayerRefundLeaf).l2TokenAddress, // Type assertion
-          refundAddresses: (input as RelayerRefundLeaf).refundAddresses, // Type assertion
-          refundAmounts: (input as RelayerRefundLeaf).refundAmounts, // Type assertion
-        },
-      ]
-    );
-    return ethers.utils.keccak256(encodedData);
-  } else {
-    return calculateRelayerRefundLeafHashUint8Array(input as RelayerRefundLeafSolana);
-  }
-};
-
-export interface SlowFillLeaf {
-  relayData: {
-    depositor: PublicKey;
-    recipient: PublicKey;
-    exclusiveRelayer: PublicKey;
-    inputToken: PublicKey;
-    outputToken: PublicKey;
-    inputAmount: BN;
-    outputAmount: BN;
-    originChainId: BN;
-    depositId: BN;
-    fillDeadline: BN;
-    exclusivityDeadline: BN;
-    message: Buffer;
-  };
-  chainId: BN;
-  updatedOutputAmount: BN;
-}
-
-export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
-  const contentToHash = Buffer.concat([
-    slowFillLeaf.relayData.depositor.toBuffer(),
-    slowFillLeaf.relayData.recipient.toBuffer(),
-    slowFillLeaf.relayData.exclusiveRelayer.toBuffer(),
-    slowFillLeaf.relayData.inputToken.toBuffer(),
-    slowFillLeaf.relayData.outputToken.toBuffer(),
-    slowFillLeaf.relayData.inputAmount.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.outputAmount.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.relayData.depositId.toArrayLike(Buffer, "le", 4),
-    slowFillLeaf.relayData.fillDeadline.toArrayLike(Buffer, "le", 4),
-    slowFillLeaf.relayData.exclusivityDeadline.toArrayLike(Buffer, "le", 4),
-    slowFillLeaf.relayData.message,
-    slowFillLeaf.chainId.toArrayLike(Buffer, "le", 8),
-    slowFillLeaf.updatedOutputAmount.toArrayLike(Buffer, "le", 8),
-  ]);
-
-  const slowFillHash = ethers.utils.keccak256(contentToHash);
-  return slowFillHash;
-}
-
-export async function loadExecuteRelayerRefundLeafParams(
-  program: Program<SvmSpoke>,
-  caller: PublicKey,
-  rootBundleId: number,
-  relayerRefundLeaf: RelayerRefundLeafSolana,
-  proof: number[][]
-) {
-  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
-
-  // Close the instruction params account if the caller has used it before.
-  const [instructionParams] = PublicKey.findProgramAddressSync(
-    [Buffer.from("instruction_params"), caller.toBuffer()],
-    program.programId
-  );
-  const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
-  if (accountInfo !== null) await program.methods.closeInstructionParams().rpc();
-
-  const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("executeRelayerRefundLeafParams", {
-    rootBundleId,
-    relayerRefundLeaf,
-    proof,
+// Encodes empty list of multicall handler instructions to be used as a test message field for fills.
+export function testAcrossPlusMessage() {
+  const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
+  const multicallHandlerCoder = new MulticallHandlerCoder([]);
+  const handlerMessage = multicallHandlerCoder.encode();
+  const message = new AcrossPlusMessageCoder({
+    handler: handlerProgram.programId,
+    readOnlyLen: multicallHandlerCoder.readOnlyLen,
+    valueAmount: new BN(0),
+    accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+    handlerMessage,
   });
-
-  await program.methods.initializeInstructionParams(instructionParamsBytes.length).rpc();
-
-  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
-    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
-    await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
-  }
-  return instructionParams;
+  const encodedMessage = message.encode();
+  const fillRemainingAccounts: AccountMeta[] = [
+    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+    ...multicallHandlerCoder.compiledKeyMetas,
+  ];
+  return { encodedMessage, fillRemainingAccounts };
 }

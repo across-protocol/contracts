@@ -33,6 +33,8 @@ pub enum CommonError {
     FillsArePaused,
     #[msg("Insufficient spoke pool balance to execute leaf")]
     InsufficientSpokePoolBalanceToExecuteLeaf,
+    #[msg("Invalid exclusive relayer!")]
+    InvalidExclusiveRelayer,
 }
 
 // SVM specific errors.
@@ -40,14 +42,10 @@ pub enum CommonError {
 pub enum SvmError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
-    #[msg("Invalid route PDA!")]
-    InvalidRoutePDA,
     #[msg("Invalid relay hash!")]
     InvalidRelayHash,
     #[msg("The fill deadline has not passed!")]
     CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
-    #[msg("The fill status is not filled!")]
-    NotFilled,
     #[msg("The caller is not the relayer!")]
     NotRelayer,
     #[msg("Cannot set time if not in test mode!")]
@@ -70,13 +68,15 @@ pub enum SvmError {
     NonZeroRefundClaim,
     #[msg("Invalid claim initializer!")]
     InvalidClaimInitializer,
+    #[msg("Invalid refund token account!")]
+    InvalidRefundTokenAccount,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
 }
 
-// Errors to handle the CCTP interactions.
+// CCTP specific errors.
 #[error_code]
 pub enum CallDataError {
     #[msg("Invalid solidity selector")]
@@ -91,8 +91,27 @@ pub enum CallDataError {
     InvalidUint32,
     #[msg("Invalid solidity uint64 argument")]
     InvalidUint64,
-    #[msg("Invalid solidity uint128 argument")]
-    InvalidUint128,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
+}
+
+// Across+ specific errors.
+#[error_code]
+pub enum AcrossPlusError {
+    #[msg("Message did not deserialize")]
+    MessageDidNotDeserialize,
+    #[msg("Invalid handle message key length")]
+    InvalidMessageKeyLength,
+    #[msg("Invalid handle message read-only key length")]
+    InvalidReadOnlyKeyLength,
+    #[msg("Invalid message handler key")]
+    InvalidMessageHandler,
+    #[msg("Invalid message account key")]
+    InvalidMessageAccountKey,
+    #[msg("Not read-only message account key")]
+    NotReadOnlyMessageAccountKey,
+    #[msg("Not writable message account key")]
+    NotWritableMessageAccountKey,
+    #[msg("Missing value recipient key")]
+    MissingValueRecipientKey,
 }

@@ -40,28 +40,28 @@ pub struct BridgeTokensToHubPool<'info> {
     pub token_messenger_minter_sender_authority: UncheckedAccount<'info>,
 
     /// CHECK: MessageTransmitter is checked in CCTP. Seeds must be \["message_transmitter"\] (CCTP Message Transmitter
-    /// program).
+    // program).
     #[account(mut)]
     pub message_transmitter: UncheckedAccount<'info>,
 
     /// CHECK: TokenMessenger is checked in CCTP. Seeds must be \["token_messenger"\] (CCTP Token Messenger Minter
-    /// program).
+    // program).
     pub token_messenger: UncheckedAccount<'info>,
 
     /// CHECK: RemoteTokenMessenger is checked in CCTP. Seeds must be \["remote_token_messenger"\,
-    /// remote_domain.to_string()] (CCTP Token Messenger Minter program).
+    // remote_domain.to_string()] (CCTP Token Messenger Minter program).
     pub remote_token_messenger: UncheckedAccount<'info>,
 
     /// CHECK: TokenMinter is checked in CCTP. Seeds must be \["token_minter"\] (CCTP Token Messenger Minter program).
     pub token_minter: UncheckedAccount<'info>,
 
     /// CHECK: LocalToken is checked in CCTP. Seeds must be \["local_token", mint\] (CCTP Token Messenger Minter
-    /// program).
+    // program).
     #[account(mut)]
     pub local_token: UncheckedAccount<'info>,
 
     /// CHECK: EventAuthority is checked in CCTP. Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter
-    /// program).
+    // program).
     pub cctp_event_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -113,10 +113,7 @@ pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u6
     };
     token_messenger_minter::cpi::deposit_for_burn(cpi_ctx, params)?;
 
-    emit_cpi!(BridgedToHubPool {
-        amount,
-        mint: ctx.accounts.mint.key(),
-    });
+    emit_cpi!(BridgedToHubPool { amount, mint: ctx.accounts.mint.key() });
 
     Ok(())
 }

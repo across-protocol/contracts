@@ -13,7 +13,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | HubPool             | [0xc186fA914353c44b2E33eBE05f21846F1048bEda](https://etherscan.io/address/0xc186fA914353c44b2E33eBE05f21846F1048bEda) |
 | Optimism_Adapter    | [0xAd1b0a86c98703fd5F4E56fff04F6b2D9b9f246F](https://etherscan.io/address/0xAd1b0a86c98703fd5F4E56fff04F6b2D9b9f246F) |
 | Boba_Adapter        | [0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3](https://etherscan.io/address/0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3) |
-| Arbitrum_Adapter    | [0x937958992799bF4A9a656E6596FD10d7Da5c2216](https://etherscan.io/address/0x937958992799bF4A9a656E6596FD10d7Da5c2216) |
+| Arbitrum_Adapter    | [0x100EDfCf3af2B4625Fca4EaF6C533703e71F7210](https://etherscan.io/address/0x100EDfCf3af2B4625Fca4EaF6C533703e71F7210) |
 | Ethereum_Adapter    | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
 | Ethereum_SpokePool  | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://etherscan.io/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
@@ -31,6 +31,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Cher Adapter        | [0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2](https://etherscan.io/address/0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2) |
 
 ## Optimism mainnet (10)
 
@@ -112,10 +113,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Zora mainnet (7777777)
 
-| Contract Name    | Address                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name    | Address                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)         |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://zorascan.xyz/address/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
 ## World Chain mainnet (480)
 
@@ -130,3 +131,17 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | AlephZero_SpokePool | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://evm-explorer.alephzero.org/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://evm-explorer.alephzero.org/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Ink mainnet (57073)
+
+| Contract Name    | Address                                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Ink_SpokePool    | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Soneium mainnet (1868)
+
+| Contract Name     | Address                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Soneium_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler  | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://soneium.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

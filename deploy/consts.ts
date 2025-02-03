@@ -1,6 +1,7 @@
-export { ZERO_ADDRESS } from "@uma/common";
-
+import { ZERO_ADDRESS } from "@uma/common";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+
+export { ZERO_ADDRESS } from "@uma/common";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
@@ -8,11 +9,16 @@ export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
 export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
+export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
 export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
 export const AZERO_GAS_PRICE = "240000000000";
+
+export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
+export const ZK_L2_GAS_LIMIT = 2000000;
+export const ZK_MAX_GASPRICE = "10000000000000"; // 10k gwei
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
@@ -51,6 +57,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
+    donationBox: "0x74f00724075443Cbbf55129F17CbAB0F77bA0722",
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
     polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
@@ -58,6 +65,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
     polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
+
+    zkBridgeHub: "0x236D1c3Ff32Bd0Ca26b72Af287E895627c0478cE",
   },
 };
 
@@ -80,6 +89,11 @@ export const OP_STACK_ADDRESS_MAP: {
       L1CrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     },
+    [CHAIN_IDs.INK]: {
+      L1CrossDomainMessenger: "0x69d3cf86b2bf1a9e99875b7e2d9b6a84426c171f",
+      L1StandardBridge: "0x88ff1e5b602916615391f55854588efcbb7663f0",
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
+    },
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
       L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
@@ -95,6 +109,11 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.REDSTONE]: {
       L1CrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
       L1StandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
+    },
+    [CHAIN_IDs.SONEIUM]: {
+      L1CrossDomainMessenger: "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
+      L1StandardBridge: "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
+      L1OpUSDCBridgeAdapter: "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb",
     },
     [CHAIN_IDs.WORLD_CHAIN]: {
       L1CrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
@@ -184,6 +203,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
+  },
+  [CHAIN_IDs.LENS_SEPOLIA]: {
+    zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
   },
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",

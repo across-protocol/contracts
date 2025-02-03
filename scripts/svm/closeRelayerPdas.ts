@@ -1,19 +1,16 @@
 // This script closes all Relayer PDAs associated with tracking fill Status. Relayers should do this periodically to
 // reclaim the lamports within these tracking accounts. Fill Status PDAs can be closed on the deposit has expired.
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEvents } from "../../src/SvmUtils";
-import { calculateRelayHashUint8Array } from "../../src/SvmUtils";
+import { calculateRelayEventHashUint8Array, getSpokePoolProgram, readProgramEvents } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments
@@ -62,7 +59,7 @@ async function closeExpiredRelays(): Promise<void> {
 
 async function closeFillPda(eventData: any, seed: BN): Promise<void> {
   // Accept seed as a parameter
-  const relayData = {
+  const relayEventData = {
     depositor: new PublicKey(eventData.depositor),
     recipient: new PublicKey(eventData.recipient),
     exclusiveRelayer: new PublicKey(eventData.exclusiveRelayer),
@@ -74,7 +71,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
     depositId: eventData.depositId,
     fillDeadline: eventData.fillDeadline,
     exclusivityDeadline: eventData.exclusivityDeadline,
-    message: Buffer.from(eventData.message),
+    messageHash: eventData.messageHash,
   };
 
   const [statePda] = PublicKey.findProgramAddressSync(
@@ -86,7 +83,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
   const state = await program.account.state.fetch(statePda);
   const chainId = new BN(state.chainId);
 
-  const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+  const relayHashUint8Array = calculateRelayEventHashUint8Array(relayEventData, chainId);
 
   const [fillStatusPda] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHashUint8Array], programId);
 
@@ -100,9 +97,9 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
       return;
     }
     // Display additional information in a table
-    console.log("Found a relay to close. Relay Data:");
+    console.log("Found a relay to close. Relay event data:");
     console.table(
-      Object.entries(relayData).map(([key, value]) => ({
+      Object.entries(relayEventData).map(([key, value]) => ({
         key,
         value: value.toString(),
       }))
@@ -113,7 +110,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
       { Property: "Relay Hash", Value: Buffer.from(relayHashUint8Array).toString("hex") },
     ]);
 
-    const tx = await (program.methods.closeFillPda(Array.from(relayHashUint8Array), relayData) as any)
+    const tx = await (program.methods.closeFillPda() as any)
       .accounts({
         state: statePda,
         signer: provider.wallet.publicKey,

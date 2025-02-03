@@ -4,7 +4,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint, getAccount }
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
-import { readProgramEvents } from "./utils";
+import { readEventsUntilFound } from "../../src/svm/web3-v1";
 
 const { provider, program, owner, initializeState, createRoutePda, getVaultAta } = common;
 
@@ -12,20 +12,20 @@ describe("svm_spoke.routes", () => {
   anchor.setProvider(provider);
 
   const nonOwner = Keypair.generate();
-  let state: PublicKey, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
+  let state: PublicKey, seed: BN, tokenMint: PublicKey, routePda: PublicKey, vault: PublicKey;
   let routeChainId: BN;
   let setEnableRouteAccounts: any;
 
   beforeEach(async () => {
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     tokenMint = await createMint(provider.connection, (provider.wallet as anchor.Wallet).payer, owner, owner, 6);
 
     // Create a PDA for the route
     routeChainId = new BN(1);
-    routePda = createRoutePda(tokenMint, state, routeChainId);
+    routePda = createRoutePda(tokenMint, seed, routeChainId);
 
     // Create ATA for the origin token to be stored by state (vault).
-    vault = getVaultAta(tokenMint, state);
+    vault = await getVaultAta(tokenMint, state);
 
     // Common accounts object
     setEnableRouteAccounts = {
@@ -43,34 +43,34 @@ describe("svm_spoke.routes", () => {
 
   it("Sets, retrieves, and controls access to route enablement", async () => {
     // Enable the route as owner
-    await program.methods.setEnableRoute(tokenMint, routeChainId, true).accounts(setEnableRouteAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx = await program.methods
+      .setEnableRoute(tokenMint, routeChainId, true)
+      .accounts(setEnableRouteAccounts)
+      .rpc();
 
     // Retrieve and verify the route is enabled
     let routeAccount = await program.account.route.fetch(routePda);
     assert.isTrue(routeAccount.enabled, "Route should be enabled");
 
     // Verify the enabledDepositRoute event
-    let events = (await readProgramEvents(provider.connection, program)).filter(
-      (event) => event.name === "enabledDepositRoute"
-    );
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
     let event = events[0].data;
     assert.strictEqual(event.originToken.toString(), tokenMint.toString(), "originToken event match");
     assert.strictEqual(event.destinationChainId.toString(), routeChainId.toString(), "destinationChainId should match");
     assert.isTrue(event.enabled, "enabledDepositRoute enabled");
 
     // Disable the route as owner
-    await program.methods.setEnableRoute(tokenMint, routeChainId, false).accounts(setEnableRouteAccounts).rpc();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const tx2 = await program.methods
+      .setEnableRoute(tokenMint, routeChainId, false)
+      .accounts(setEnableRouteAccounts)
+      .rpc();
 
     // Retrieve and verify the route is disabled
     routeAccount = await program.account.route.fetch(routePda);
     assert.isFalse(routeAccount.enabled, "Route should be disabled");
 
     // Verify the enabledDepositRoute event
-    events = (await readProgramEvents(provider.connection, program)).filter(
-      (event) => event.name === "enabledDepositRoute"
-    );
+    events = await readEventsUntilFound(provider.connection, tx2, [program]);
     event = events[0].data; // take most recent event, index 0.
     assert.strictEqual(event.originToken.toString(), tokenMint.toString(), "originToken event match");
     assert.strictEqual(event.destinationChainId.toString(), routeChainId.toString(), "destinationChainId should match");
@@ -103,7 +103,7 @@ describe("svm_spoke.routes", () => {
 
   it("Cannot misconfigure route with wrong origin token", async () => {
     const wrongOriginToken = Keypair.generate().publicKey;
-    const wrongRoutePda = createRoutePda(wrongOriginToken, state, routeChainId);
+    const wrongRoutePda = createRoutePda(wrongOriginToken, seed, routeChainId);
 
     try {
       await program.methods

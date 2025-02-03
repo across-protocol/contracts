@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
 use crate::{
@@ -10,16 +10,20 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     event::{FillType, FilledV3Relay, V3RelayExecutionEventInfo},
-    get_current_time,
-    state::{FillStatus, FillStatusAccount, State},
+    state::{FillStatus, FillStatusAccount, FillV3RelayParams, State},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<V3RelayData>)]
 pub struct FillV3Relay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    // This is required as fallback when None instruction params are passed in arguments.
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
+    pub instruction_params: Option<Account<'info, FillV3RelayParams>>,
 
     #[account(
         seeds = [b"state", state.seed.to_le_bytes().as_ref()],
@@ -30,13 +34,16 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mint::token_program = token_program,
-        address = relay_data.output_token @ SvmError::InvalidMint
+        address = relay_data
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
+            .output_token @ SvmError::InvalidMint
     )]
-    pub mint_account: InterfaceAccount<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        token::mint = mint_account,
+        token::mint = mint,
         token::authority = signer,
         token::token_program = token_program
     )]
@@ -44,8 +51,12 @@ pub struct FillV3Relay<'info> {
 
     #[account(
         mut,
-        associated_token::mint = mint_account,
-        associated_token::authority = relay_data.recipient,
+        associated_token::mint = mint,
+        // Ensures tokens go to ATA owned by the recipient.
+        associated_token::authority = relay_data
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
+            .recipient,
         associated_token::token_program = token_program
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
@@ -54,10 +65,12 @@ pub struct FillV3Relay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()], // TODO: can we calculate the relay_hash from the state and relay_data?
+        seeds = [b"fills", relay_hash.as_ref()],
         bump,
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
+        constraint = is_relay_hash_valid(
+            &relay_hash,
+            &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
+            &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
@@ -66,12 +79,19 @@ pub struct FillV3Relay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn fill_v3_relay(
-    ctx: Context<FillV3Relay>,
-    relay_data: V3RelayData,
-    repayment_chain_id: u64,
-    repayment_address: Pubkey,
+pub fn fill_v3_relay<'info>(
+    ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
+    relay_data: Option<V3RelayData>,
+    repayment_chain_id: Option<u64>,
+    repayment_address: Option<Pubkey>,
 ) -> Result<()> {
+    let FillV3RelayParams { relay_data, repayment_chain_id, repayment_address } = unwrap_fill_v3_relay_params(
+        relay_data,
+        repayment_chain_id,
+        repayment_address,
+        &ctx.accounts.instruction_params,
+    );
+
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
@@ -101,27 +121,29 @@ pub fn fill_v3_relay(
     // If relayer and receiver are the same, there is no need to do the transfer. This might be a case when relayers
     // intentionally self-relay in a capital efficient way (no need to have funds on the destination).
     if ctx.accounts.relayer_token_account.key() != ctx.accounts.recipient_token_account.key() {
-        let transfer_accounts = TransferChecked {
-            from: ctx.accounts.relayer_token_account.to_account_info(),
-            mint: ctx.accounts.mint_account.to_account_info(),
-            to: ctx.accounts.recipient_token_account.to_account_info(),
-            authority: ctx.accounts.signer.to_account_info(),
-        };
-        let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_accounts);
-        transfer_checked(
-            cpi_context,
+        // Relayer must have delegated output_amount to the state PDA (but only if not self-relaying)
+        transfer_from(
+            &ctx.accounts.relayer_token_account,
+            &ctx.accounts.recipient_token_account,
             relay_data.output_amount,
-            ctx.accounts.mint_account.decimals,
+            state,
+            ctx.bumps.state,
+            &ctx.accounts.mint,
+            &ctx.accounts.token_program,
         )?;
     }
 
-    // Update the fill status to Filled and set the relayer
+    // Update the fill status to Filled, set the relayer and fill deadline
     fill_status_account.status = FillStatus::Filled;
     fill_status_account.relayer = *ctx.accounts.signer.key;
+    fill_status_account.fill_deadline = relay_data.fill_deadline;
 
-    // TODO: there might be a better way to do this
-    // Emit the FilledV3Relay event
-    let message_clone = relay_data.message.clone(); // Clone the message before it is moved
+    if !relay_data.message.is_empty() {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
+    }
+
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
 
     emit_cpi!(FilledV3Relay {
         input_token: relay_data.input_token,
@@ -137,10 +159,10 @@ pub fn fill_v3_relay(
         relayer: repayment_address,
         depositor: relay_data.depositor,
         recipient: relay_data.recipient,
-        message: relay_data.message,
+        message_hash,
         relay_execution_info: V3RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message: message_clone,
+            updated_message_hash: message_hash,
             updated_output_amount: relay_data.output_amount,
             fill_type,
         },
@@ -149,8 +171,29 @@ pub fn fill_v3_relay(
     Ok(())
 }
 
+// Helper to unwrap optional instruction params with fallback loading from buffer account.
+fn unwrap_fill_v3_relay_params(
+    relay_data: Option<V3RelayData>,
+    repayment_chain_id: Option<u64>,
+    repayment_address: Option<Pubkey>,
+    account: &Option<Account<FillV3RelayParams>>,
+) -> FillV3RelayParams {
+    match (relay_data, repayment_chain_id, repayment_address) {
+        (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
+            FillV3RelayParams { relay_data, repayment_chain_id, repayment_address }
+        }
+        _ => account
+            .as_ref()
+            .map(|account| FillV3RelayParams {
+                relay_data: account.relay_data.clone(),
+                repayment_chain_id: account.repayment_chain_id,
+                repayment_address: account.repayment_address,
+            })
+            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+    }
+}
+
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: V3RelayData)]
 pub struct CloseFillPda<'info> {
     #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
     pub signer: Signer<'info>,
@@ -158,23 +201,17 @@ pub struct CloseFillPda<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
-    #[account(
-        mut,
-        seeds = [b"fills", relay_hash.as_ref()],
-        bump,
-        close = signer, // TODO: check if this is correct party to receive refund.
-        // Make sure caller provided relay_hash used in PDA seeds is valid.
-        constraint = is_relay_hash_valid(&relay_hash, &relay_data, &state) @ SvmError::InvalidRelayHash
-    )]
+    // No need to check seed derivation as this method only evaluates fill deadline that is recorded in this account.
+    #[account(mut, close = signer)]
     pub fill_status: Account<'info, FillStatusAccount>,
 }
 
-pub fn close_fill_pda(ctx: Context<CloseFillPda>, relay_data: V3RelayData) -> Result<()> {
+pub fn close_fill_pda(ctx: Context<CloseFillPda>) -> Result<()> {
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     // Check if the deposit has expired
-    if current_time <= relay_data.fill_deadline {
+    if current_time <= ctx.accounts.fill_status.fill_deadline {
         return err!(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed);
     }
 
