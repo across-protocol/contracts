@@ -151,9 +151,9 @@ export function randomBytes32() {
   return ethers.utils.hexlify(ethers.utils.randomBytes(32));
 }
 
-export async function getParamType(contractName: string, functionName: string, paramName: string) {
+export async function getParamType(contractName: string, fragmentName: string, paramName: string) {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
+  const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === fragmentName);
   return fragment!.inputs.find((input) => input.name === paramName) || "";
 }
 

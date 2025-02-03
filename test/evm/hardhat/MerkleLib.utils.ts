@@ -156,3 +156,12 @@ export async function buildV3SlowRelayTree(slowFills: V3SlowFill[]) {
   };
   return new MerkleTree<V3SlowFill>(slowFills, hashFn);
 }
+
+export async function buildV3SlowRelayTreeLegacy(slowFills: V3SlowFill[]) {
+  const paramType = await getParamType("MerkleLibTest", "V3SlowFillLegacyEvent", "slowFillLegacy");
+
+  const hashFn = (input: V3SlowFill) => {
+    return keccak256(defaultAbiCoder.encode([paramType!], [input]));
+  };
+  return new MerkleTree<V3SlowFill>(slowFills, hashFn);
+}

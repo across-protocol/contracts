@@ -15,6 +15,15 @@ contract MerkleLibTest {
 
     uint256 public claimedBitMap1D;
 
+    struct V3SlowFillLegacy {
+        V3SpokePoolInterface.V3RelayDataLegacy relayData;
+        uint256 chainId;
+        uint256 updatedOutputAmount;
+    }
+
+    // For convenience, we add an event for the V3SlowFillLegacy struct so that use the V3SlowFillLegacy struct in tests.
+    event V3SlowFillLegacyEvent(V3SlowFillLegacy slowFillLegacy);
+
     function verifyPoolRebalance(
         bytes32 root,
         HubPoolInterface.PoolRebalanceLeaf memory rebalance,

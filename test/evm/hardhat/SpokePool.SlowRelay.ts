@@ -10,7 +10,7 @@ import {
   hashNonEmptyMessage,
 } from "../../../utils/utils";
 import { spokePoolFixture, V3RelayData, getV3RelayHash, V3SlowFill, FillType } from "./fixtures/SpokePool.Fixture";
-import { buildV3SlowRelayTree } from "./MerkleLib.utils";
+import { buildV3SlowRelayTree, buildV3SlowRelayTreeLegacy } from "./MerkleLib.utils";
 import * as consts from "./constants";
 import { FillStatus } from "../../../utils/constants";
 
@@ -111,7 +111,10 @@ describe("SpokePool Slow Relay Logic", async function () {
     });
   });
   describe("executeSlowRelayLeaf", function () {
-    let relayData: V3RelayData, slowRelayLeaf: V3SlowFill;
+    let relayData: V3RelayData,
+      relayDataLegacy: V3RelayData,
+      slowRelayLeaf: V3SlowFill,
+      slowRelayLeafLegacy: V3SlowFill;
     beforeEach(async function () {
       const fillDeadline = (await spokePool.getCurrentTime()).toNumber() + 1000;
       relayData = {
@@ -128,12 +131,31 @@ describe("SpokePool Slow Relay Logic", async function () {
         exclusivityDeadline: fillDeadline - 500,
         message: "0x",
       };
+      relayDataLegacy = {
+        depositor: depositor.address,
+        recipient: recipient.address,
+        exclusiveRelayer: relayer.address,
+        inputToken: erc20.address,
+        outputToken: destErc20.address,
+        inputAmount: consts.amountToDeposit,
+        outputAmount: fullRelayAmountPostFees,
+        originChainId: consts.originChainId,
+        depositId: consts.firstDepositId,
+        fillDeadline: fillDeadline,
+        exclusivityDeadline: fillDeadline - 500,
+        message: "0x",
+      };
       slowRelayLeaf = {
         relayData,
         chainId: consts.destinationChainId,
         // Make updated output amount different to test whether it is used instead of
         // outputAmount when calling _verifyV3SlowFill.
         updatedOutputAmount: relayData.outputAmount.add(1),
+      };
+      slowRelayLeafLegacy = {
+        relayData: relayDataLegacy,
+        chainId: consts.destinationChainId,
+        updatedOutputAmount: relayDataLegacy.outputAmount.add(1),
       };
     });
     it("Happy case: recipient can send ERC20 with correct proof out of contract balance", async function () {
@@ -144,6 +166,22 @@ describe("SpokePool Slow Relay Logic", async function () {
           slowRelayLeaf,
           0, // rootBundleId
           tree.getHexProof(slowRelayLeaf)
+        )
+      ).to.changeTokenBalances(
+        destErc20,
+        [spokePool, recipient],
+        [slowRelayLeaf.updatedOutputAmount.mul(-1), slowRelayLeaf.updatedOutputAmount]
+      );
+    });
+
+    it("should execute a legacy slow fill using a legacy proof and new leaf data successfully", async function () {
+      const tree = await buildV3SlowRelayTreeLegacy([slowRelayLeafLegacy]);
+      await spokePool.connect(depositor).relayRootBundle(consts.mockTreeRoot, tree.getHexRoot());
+      await expect(() =>
+        spokePool.connect(recipient).executeSlowRelayLeaf(
+          slowRelayLeaf,
+          0, // rootBundleId
+          tree.getHexProof(slowRelayLeafLegacy)
         )
       ).to.changeTokenBalances(
         destErc20,
