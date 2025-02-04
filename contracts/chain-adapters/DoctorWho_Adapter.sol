@@ -16,7 +16,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Base. This is a modified version of the Optimism adapter
+ * @notice Contract containing logic to send messages from L1 to Doctor Who. This is a modified version of the Optimism adapter
  * that excludes the custom bridging logic.
  * @custom:security-contact bugs@across.to
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
@@ -37,7 +37,7 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
-     * @param _crossDomainMessenger XDomainMessenger Base system contract.
+     * @param _crossDomainMessenger XDomainMessenger Doctor Who system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
@@ -57,8 +57,8 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
     }
 
     /**
-     * @notice Send cross-chain message to target on Base.
-     * @param target Contract on Base that will receive message.
+     * @notice Send cross-chain message to target on Doctor Who.
+     * @param target Contract on Doctor Who that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -67,7 +67,7 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
     }
 
     /**
-     * @notice Bridge tokens to Base.
+     * @notice Bridge tokens to Doctor Who.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
