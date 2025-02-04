@@ -976,7 +976,7 @@ abstract contract SpokePool is
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
-            relayHash: _getV3RelayHash(relayData),
+            relayHash: getV3RelayHash(relayData),
             updatedOutputAmount: relayData.outputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
@@ -1046,7 +1046,7 @@ abstract contract SpokePool is
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
-            relayHash: _getV3RelayHash(relayData),
+            relayHash: getV3RelayHash(relayData),
             updatedOutputAmount: updatedOutputAmount,
             updatedRecipient: updatedRecipient,
             updatedMessage: updatedMessage,
@@ -1093,7 +1093,7 @@ abstract contract SpokePool is
         }
         if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
 
-        bytes32 relayHash = _getV3RelayHash(relayData);
+        bytes32 relayHash = getV3RelayHash(relayData);
         if (fillStatuses[relayHash] != uint256(FillStatus.Unfilled)) revert InvalidSlowFillRequest();
         fillStatuses[relayHash] = uint256(FillStatus.RequestedSlowFill);
 
@@ -1182,7 +1182,7 @@ abstract contract SpokePool is
         // deposit params like outputAmount, message and recipient.
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
-            relayHash: _getV3RelayHash(relayData),
+            relayHash: getV3RelayHash(relayData),
             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
             updatedRecipient: relayData.recipient,
             updatedMessage: relayData.message,
@@ -1300,6 +1300,10 @@ abstract contract SpokePool is
 
     function getRelayerRefund(address l2TokenAddress, address refundAddress) public view returns (uint256) {
         return relayerRefund[l2TokenAddress][refundAddress];
+    }
+
+    function getV3RelayHash(V3RelayData memory relayData) public view returns (bytes32) {
+        return keccak256(abi.encode(relayData, chainId()));
     }
 
     /**************************************
@@ -1625,27 +1629,6 @@ abstract contract SpokePool is
 
     function _computeAmountPostFees(uint256 amount, int256 feesPct) private pure returns (uint256) {
         return (amount * uint256(int256(1e18) - feesPct)) / 1e18;
-    }
-
-    function _getV3RelayHash(V3RelayData memory relayData) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    relayData.depositor,
-                    relayData.recipient,
-                    relayData.exclusiveRelayer,
-                    relayData.inputToken,
-                    relayData.outputToken,
-                    relayData.inputAmount,
-                    relayData.outputAmount,
-                    relayData.originChainId,
-                    relayData.depositId,
-                    relayData.fillDeadline,
-                    relayData.exclusivityDeadline,
-                    _hashNonEmptyMessage(relayData.message),
-                    chainId()
-                )
-            );
     }
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
