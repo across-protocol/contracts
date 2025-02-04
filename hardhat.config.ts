@@ -89,6 +89,7 @@ const config: HardhatUserConfig = {
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -320,6 +321,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    doctorwho: {
+      chainId: CHAIN_IDs.DOCTOR_WHO,
+      url: "https://doctor-who-mainnet.g.alchemy.com/public",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -351,6 +359,7 @@ const config: HardhatUserConfig = {
       alephzero: "blockscout",
       ink: "blockscout",
       soneium: "blockscout",
+      doctorwho: "blockscout",
     },
     customChains: [
       {
@@ -535,6 +544,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
           browserURL: "https://zorascan.xyz",
+        },
+      },
+      {
+        network: "doctorwho",
+        chainId: CHAIN_IDs.DOCTOR_WHO,
+        urls: {
+          apiURL: "https://doctor-who.blockscout.com/api",
+          browserURL: "https://doctorwho.blockscout.com",
         },
       },
     ],
