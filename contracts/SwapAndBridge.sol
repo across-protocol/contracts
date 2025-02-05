@@ -175,8 +175,8 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
         uint256 _acrossInputAmount,
         DepositData calldata depositData
     ) internal {
-        _acrossInputToken.safeIncreaseAllowance(address(spokePool), _acrossInputAmount);
-        spokePool.deposit(
+        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), _acrossInputAmount);
+        SPOKE_POOL.deposit(
             depositData.depositor.toBytes32(),
             depositData.recipient.toBytes32(),
             address(_acrossInputToken).toBytes32(), // input token

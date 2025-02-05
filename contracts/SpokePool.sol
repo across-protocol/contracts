@@ -1700,7 +1700,7 @@ abstract contract SpokePool is
         // If relay token is wrappedNativeToken then unwrap and send native token.
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
-        address recipientToSend = relayExecution.updatedRecipient;
+        address recipientToSend = relayExecution.updatedRecipient.toAddress();
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
