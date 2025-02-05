@@ -26,6 +26,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
     error WrongChainId();
     error WrongOrderDataType();
     error WrongExclusiveRelayer();
+    error NoDestinationSettlerForChain(uint256 chainId);
 
     // Permit2 contract for this network.
     IPermit2 public immutable PERMIT2;
