@@ -30,7 +30,7 @@
     "WorldChain_Adapter": { "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32", "blockNumber": 20963234 },
     "AlephZero_Adapter": { "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af", "blockNumber": 21131132 },
     "Ink_Adapter": { "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2", "blockNumber": 21438590 },
-    "Cher_Adapter": { "address": "0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2", "blockNumber": 21597341 }
+    "Soneium_Adapter": { "address": "0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2", "blockNumber": 21597341 }
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
