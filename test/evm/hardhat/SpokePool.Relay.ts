@@ -91,8 +91,8 @@ describe("SpokePool Relayer Logic", async function () {
         const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Unfilled);
       });
-       // @todo we can remove this after the new spoke pool is upgraded
-       it("relay hash is same pre and post address -> bytes32 upgrade", async function () {
+      // @todo we can remove this after the new spoke pool is upgraded
+      it("relay hash is same pre and post address -> bytes32 upgrade", async function () {
         const newBytes32Keys = ["depositor", "recipient", "exclusiveRelayer", "inputToken", "outputToken"];
         const relayDataCopy = { ...relayData, message: randomBytes32() };
         const legacyRelayData = {
@@ -113,8 +113,8 @@ describe("SpokePool Relayer Logic", async function () {
             (key) => ethers.utils.hexDataLength(relayDataCopy[key as keyof typeof relayDataCopy] as string) === 32
           )
         ).to.be.true;
-        const newRelayHash = getV3RelayHash(relayDataCopy, consts.destinationChainId);
-        const oldRelayHash = getLegacyV3RelayHash(legacyRelayData, consts.destinationChainId);
+        const newRelayHash = getV3RelayHash(relayDataCopy, destinationChainId);
+        const oldRelayHash = getLegacyV3RelayHash(legacyRelayData, destinationChainId);
         expect(newRelayHash).to.equal(oldRelayHash);
       });
       it("expired fill deadline reverts", async function () {
