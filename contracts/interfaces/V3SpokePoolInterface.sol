@@ -326,7 +326,7 @@ interface V3SpokePoolInterface {
     error DisabledRoute();
     error InvalidQuoteTimestamp();
     error InvalidFillDeadline();
-    error InvalidExclusivityDeadline();
+    error InvalidExclusiveRelayer();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
     error NoSlowFillsInExclusivityWindow();
