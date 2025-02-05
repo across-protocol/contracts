@@ -85,7 +85,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         _verifyDepositorSignature(depositor, expectedTypedDataV4Hash, depositorSignature);
     }
 
-    function verifyUpdateV3DepositMessage(
+    function verifyUpdateV3DepositMessageBytes32(
         bytes32 depositor,
         uint256 depositId,
         uint256 originChainId,
@@ -103,7 +103,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 updatedRecipient,
                 updatedMessage,
                 depositorSignature,
-                UPDATE_V3_DEPOSIT_DETAILS_HASH
+                UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
             );
     }
 
@@ -125,7 +125,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 updatedRecipient.toBytes32(),
                 updatedMessage,
                 depositorSignature,
-                UPDATE_V3_DEPOSIT_ADDRESS_OVERLOAD_DETAILS_HASH
+                UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH
             );
     }
 

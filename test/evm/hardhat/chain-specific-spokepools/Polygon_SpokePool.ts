@@ -336,12 +336,12 @@ describe("Polygon Spoke Pool", function () {
       message: "0x1234",
     };
     const fillData = [
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+      polygonSpokePool.interface.encodeFunctionData("fillRelay", [
         relayData,
         repaymentChainId,
         addressToBytes(relayer.address),
       ]),
-      polygonSpokePool.interface.encodeFunctionData("fillV3Relay", [
+      polygonSpokePool.interface.encodeFunctionData("fillRelay", [
         { ...relayData, depositId: 1 },
         repaymentChainId,
         addressToBytes(relayer.address),
