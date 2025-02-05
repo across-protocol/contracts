@@ -27,7 +27,6 @@ import {
   amountReceived,
   MAX_UINT32,
   originChainId,
-  MAX_EXCLUSIVITY_OFFSET_SECONDS,
   zeroAddress,
 } from "./constants";
 
@@ -821,6 +820,7 @@ describe("SpokePool Depositor Logic", async function () {
       expect(await spokePool.numberOfDeposits()).to.equal(1);
     });
     it("tokens are always pulled from caller, even if different from specified depositor", async function () {
+      const currentTime = (await spokePool.getCurrentTime()).toNumber();
       const balanceBefore = await erc20.balanceOf(depositor.address);
       const newDepositor = randomAddress();
       await expect(
@@ -836,7 +836,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          0,
+          currentTime,
           // New depositor
           addressToBytes(newDepositor),
           addressToBytes(relayData.recipient),

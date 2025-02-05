@@ -1,33 +1,16 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
  */
 export function intToU8Array32(num: number | BN): number[] {
-  let bigIntValue: bigint;
+  const bigIntValue = BigInt(num instanceof BN ? num.toString() : num);
+  if (bigIntValue < 0) throw new Error("Input must be a non-negative integer or BN");
 
-  if (typeof num === "number") {
-    if (!Number.isInteger(num) || num < 0) {
-      throw new Error("Input must be a non-negative integer");
-    }
-    bigIntValue = BigInt(num);
-  } else if (BN.isBN(num)) {
-    if (num.isNeg()) {
-      throw new Error("Input must be a non-negative BN");
-    }
-    bigIntValue = BigInt(num.toString());
-  } else {
-    throw new Error("Input must be a non-negative integer or BN");
-  }
-
-  const u8Array = new Array(32).fill(0);
-  let i = 0;
-  while (bigIntValue > 0 && i < 32) {
-    u8Array[i++] = Number(bigIntValue & 0xffn); // Get least significant byte
-    bigIntValue >>= 8n; // Shift right by 8 bits
-  }
+  const hexString = bigIntValue.toString(16).padStart(64, "0"); // 32 bytes = 64 hex chars
+  const u8Array = Array.from(Buffer.from(hexString, "hex"));
 
   return u8Array;
 }
@@ -39,7 +22,20 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
   const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
 
   if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
-    return Array.from(u8Array).reduce<bigint>((num, byte, i) => num | (BigInt(byte) << BigInt(i * 8)), 0n);
+    return Array.from(u8Array).reduce<bigint>((num, byte) => (num << 8n) | BigInt(byte), 0n);
+  }
+
+  throw new Error("Input must be a Uint8Array or an array of 32 numbers.");
+}
+
+/**
+ * Converts a 32-byte Uint8Array to a BigNumber.
+ */
+export function u8Array32ToBigNumber(u8Array: Uint8Array | number[]): BigNumber {
+  const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
+  if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
+    const hexString = "0x" + Buffer.from(u8Array).toString("hex");
+    return BigNumber.from(hexString);
   }
 
   throw new Error("Input must be a Uint8Array or an array of 32 numbers.");

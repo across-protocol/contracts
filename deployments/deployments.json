@@ -29,7 +29,9 @@
     "Zora_Adapter": { "address": "0x024f2fc31cbdd8de17194b1892c834f98ef5169b", "blockNumber": 20512287 },
     "WorldChain_Adapter": { "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32", "blockNumber": 20963234 },
     "AlephZero_Adapter": { "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af", "blockNumber": 21131132 },
-    "Ink_Adapter": { "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2", "blockNumber": 21438590 }
+    "Ink_Adapter": { "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2", "blockNumber": 21438590 },
+    "Cher_Adapter": { "address": "0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2", "blockNumber": 21597341 },
+    "DoctorWho_Adapter": { "address": "0xFADcC43096756e1527306FD92982FEbBe3c629Fa", "blockNumber": 21773451 }
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
@@ -168,5 +170,13 @@
     "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 1139240 },
     "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 1152853 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1145284 }
+  },
+  "1868": {
+    "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 1709997 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1711482 }
+  },
+  "130": {
+    "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 7915488 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 7930191 }
   }
 }

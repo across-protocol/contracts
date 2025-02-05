@@ -1,38 +1,36 @@
 // This script executes a fake relayer repayment with a generated leaf. Useful for testing.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import {
-  PublicKey,
-  SystemProgram,
-  Keypair,
-  ComputeBudgetProgram,
-  AddressLookupTableProgram,
-  VersionedTransaction,
-  TransactionMessage,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccount,
-  getMint,
   createApproveCheckedInstruction,
+  createAssociatedTokenAccount,
+  getAssociatedTokenAddressSync,
+  getMint,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import {
+  AddressLookupTableProgram,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { getSpokePoolProgram, loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments

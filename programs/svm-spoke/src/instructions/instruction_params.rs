@@ -22,7 +22,6 @@ pub struct InitializeInstructionParams<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(offset: u32, fragment: Vec<u8>)]
 pub struct WriteInstructionParamsFragment<'info> {
     pub signer: Signer<'info>,
 

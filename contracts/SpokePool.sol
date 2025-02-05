@@ -160,10 +160,6 @@ abstract contract SpokePool is
     // token for the input token. By using this magic value, off-chain validators do not have to keep
     // this event in their lookback window when querying for expired deposits.
     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
-
-    // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
-    // exclusivityDeadline in a deposit event will be set to the current time plus this value.
-    uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -454,8 +450,9 @@ abstract contract SpokePool is
     /**
      * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
      * as exact timestamp on the destination chain before which only the exclusiveRelayer could fill the deposit. Now,
-     * the caller is expected to pass in a number that will be interpreted either as an offset or a fixed
-     * timestamp depending on its value.
+     * the caller is expected to pass in an exclusivityPeriod which is the number of seconds to be added to the
+     * block.timestamp to produce the exclusivityDeadline. This allows the caller to ignore any latency associated
+     * with this transaction being mined and propagating this transaction to the miner.
      * @notice Request to bridge input token cross chain to a destination chain and receive a specified amount
      * of output tokens. The fee paid to relayers and the system should be captured in the spread between output
      * amount and input amount when adjusted to be denominated in the input token. A relayer on the destination
@@ -597,7 +594,7 @@ abstract contract SpokePool is
         address exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityParameter,
+        uint32 exclusivityPeriod,
         bytes calldata message
     ) public payable override {
         deposit(
@@ -611,7 +608,10 @@ abstract contract SpokePool is
             exclusiveRelayer.toBytes32(),
             quoteTimestamp,
             fillDeadline,
-            exclusivityParameter,
+            uint32(currentTime) + exclusivityPeriod,
+            depositor,
+            recipient,
+            exclusiveRelayer,
             message
         );
     }
@@ -1088,7 +1088,7 @@ abstract contract SpokePool is
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
         // this deadline, not slow filled. As a simplifying assumption, we will not allow slow fills to be requested
         // during this exclusivity period.
-        if (_fillIsExclusive(relayData.exclusivityDeadline, currentTime)) {
+        if (_fillIsExclusive(relayData.exclusiveRelayer, relayData.exclusivityDeadline, currentTime)) {
             revert NoSlowFillsInExclusivityWindow();
         }
         if (relayData.fillDeadline < currentTime) revert ExpiredFillDeadline();
@@ -1700,19 +1700,10 @@ abstract contract SpokePool is
             })
         );
 
-        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
-        // net movement of funds.
-        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
-        // way (no need to have funds on the destination).
-        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
-        // since there is no "relayer".
-        address recipientToSend = relayExecution.updatedRecipient.toAddress();
-
-        if (msg.sender == recipientToSend && !isSlowFill) return;
-
         // If relay token is wrappedNativeToken then unwrap and send native token.
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
+        address recipientToSend = relayExecution.updatedRecipient;
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
@@ -1739,9 +1730,13 @@ abstract contract SpokePool is
         }
     }
 
-    // Determine whether the exclusivityDeadline implies active exclusivity.
-    function _fillIsExclusive(uint32 exclusivityDeadline, uint32 currentTime) internal pure returns (bool) {
-        return exclusivityDeadline >= currentTime;
+    // Determine whether the combination of exlcusiveRelayer and exclusivityDeadline implies active exclusivity.
+    function _fillIsExclusive(
+        address exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        uint32 currentTime
+    ) internal pure returns (bool) {
+        return exclusivityDeadline >= currentTime && exclusiveRelayer != address(0);
     }
 
     // Helper for emitting message hash. For easier easier human readability we return bytes32(0) for empty message.

@@ -5,7 +5,7 @@ import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
-import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm";
+import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm/web3-v1";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";

@@ -13,7 +13,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 // eslint-disable-next-line camelcase
-import { getSolanaChainId } from "../../src/svm";
+import { getSolanaChainId } from "../../src/svm/web3-v1";
 import { BondToken__factory, HubPool__factory } from "../../typechain";
 import { requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";

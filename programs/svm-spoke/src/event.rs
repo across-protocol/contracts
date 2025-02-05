@@ -7,6 +7,11 @@ pub struct SetXDomainAdmin {
 }
 
 #[event]
+pub struct TransferredOwnership {
+    pub new_owner: Pubkey,
+}
+
+#[event]
 pub struct PausedDeposits {
     pub is_paused: bool,
 }
