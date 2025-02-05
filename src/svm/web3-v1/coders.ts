@@ -13,7 +13,7 @@ import {
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import { Layout } from "buffer-layout";
-import { AcrossPlusMessage } from "../types/svm";
+import { AcrossPlusMessage } from "../../types/svm";
 
 /**
  * Extended Anchor accounts coder to handle large account data.

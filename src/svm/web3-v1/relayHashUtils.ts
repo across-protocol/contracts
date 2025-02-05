@@ -1,6 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
 import { ethers } from "ethers";
-import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../types/svm";
+import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../../types/svm";
 import { serialize } from "borsh";
 
 /**

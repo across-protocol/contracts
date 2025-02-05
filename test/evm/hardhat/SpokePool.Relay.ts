@@ -209,7 +209,7 @@ describe("SpokePool Relayer Logic", async function () {
           );
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
-      it("does not transfer funds if msg.sender is recipient unless its a slow fill", async function () {
+      it("transfers funds even when msg.sender is recipient", async function () {
         const _relayData = {
           ...relayData,
           // Set recipient == relayer
@@ -222,7 +222,7 @@ describe("SpokePool Relayer Logic", async function () {
             relayer.address,
             false // isSlowFill
           )
-        ).to.not.emit(destErc20, "Transfer");
+        ).to.emit(destErc20, "Transfer");
       });
       it("sends updatedOutputAmount to updatedRecipient", async function () {
         const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
@@ -349,6 +349,26 @@ describe("SpokePool Relayer Logic", async function () {
           )
         ).to.not.be.reverted;
       });
+      it("if no exclusive relayer is set, exclusivity deadline can be in future", async function () {
+        const _relayData = {
+          ...relayData,
+          // Overwrite exclusivity deadline
+          exclusivityDeadline: relayData.fillDeadline,
+        };
+
+        // Can send it after exclusivity deadline
+        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+      });
+      it("can have empty exclusive relayer before exclusivity deadline", async function () {
+        const _relayData = {
+          ...relayData,
+          // Overwrite exclusivity deadline
+          exclusivityDeadline: relayData.fillDeadline,
+        };
+
+        // Can send it before exclusivity deadline if exclusive relayer is empty
+        await expect(spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId)).to.not.be.reverted;
+      });
       it("calls _fillRelayV3 with  expected params", async function () {
         await expect(spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId))
           .to.emit(spokePool, "FilledV3Relay")
@@ -400,7 +420,7 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillV3RelayWithUpdatedDeposit(
             {
               ...relayData,
-              exclusivityDeadline: 0,
+              exclusiveRelayer: consts.zeroAddress,
             },
             consts.repaymentChainId,
             updatedOutputAmount,

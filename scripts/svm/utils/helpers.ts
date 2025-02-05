@@ -2,7 +2,7 @@ import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
-import { relayerRefundHashFn } from "../../../src/svm";
+import { relayerRefundHashFn } from "../../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";
 
 export const requireEnv = (name: string): string => {

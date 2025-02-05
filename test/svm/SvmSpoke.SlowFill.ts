@@ -19,7 +19,7 @@ import {
   intToU8Array32,
   readEventsUntilFound,
   slowFillHashFn,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { testAcrossPlusMessage } from "./utils";
 
 const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
