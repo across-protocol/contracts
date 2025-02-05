@@ -75,15 +75,15 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
                 message
             );
         } else {
-            SPOKE_POOL.unsafeDepositV3(
-                depositor,
-                recipient,
-                inputToken,
-                outputToken,
+            SPOKE_POOL.unsafeDeposit(
+                depositor.toBytes32(),
+                recipient.toBytes32(),
+                inputToken.toBytes32(),
+                outputToken.toBytes32(),
                 inputAmount,
                 outputAmount,
                 destinationChainId,
-                exclusiveRelayer,
+                exclusiveRelayer.toBytes32(),
                 depositNonce,
                 quoteTimestamp,
                 fillDeadline,

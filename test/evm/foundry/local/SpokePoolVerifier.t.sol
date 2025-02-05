@@ -12,7 +12,7 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 interface EthereumSpokePoolOnlyAddressInterface {
-    function depositV3(
+    function deposit(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
@@ -141,7 +141,7 @@ contract SpokePoolVerifierTest is Test {
             address(ethereumSpokePool), // callee
             depositAmount, // value
             abi.encodeCall( // data
-                EthereumSpokePoolOnlyAddressInterface.depositV3,
+                EthereumSpokePoolOnlyAddressInterface.deposit,
                 (
                     depositor.toBytes32(),
                     depositor.toBytes32(),

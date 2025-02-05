@@ -109,22 +109,3 @@ export const sampleRateModel = {
   R1: toWei(0.07).toString(),
   R2: toWei(0.75).toString(),
 };
-
-export const SpokePoolFuncs = {
-  unsafeDepositV3Bytes:
-    "unsafeDepositV3(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint256,uint32,uint32,uint32,bytes)",
-  depositV3Bytes:
-    "depositV3(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint32,bytes)",
-  depositV3Address:
-    "depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)",
-  depositV3NowBytes:
-    "depositV3Now(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,bytes)",
-  depositV3NowAddress:
-    "depositV3Now(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,bytes)",
-  speedUpV3DepositBytes: "speedUpV3Deposit(bytes32,uint256,uint256,bytes32,bytes,bytes)",
-  speedUpV3DepositAddress: "speedUpV3Deposit(address,uint256,uint256,address,bytes,bytes)",
-  verifyUpdateV3DepositMessageBytes:
-    "verifyUpdateV3DepositMessage(bytes32,uint256,uint256,uint256,bytes32,bytes,bytes)",
-  verifyUpdateV3DepositMessageAddress:
-    "verifyUpdateV3DepositMessage(address,uint256,uint256,uint256,address,bytes,bytes)",
-};

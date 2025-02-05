@@ -22,7 +22,14 @@ import {
   getUpdatedV3DepositSignature,
   getV3RelayHash,
 } from "./fixtures/SpokePool.Fixture";
-import * as consts from "./constants";
+import {
+  repaymentChainId,
+  amountToSeedWallets,
+  amountToDeposit,
+  originChainId,
+  firstDepositId,
+  destinationChainId,
+} from "./constants";
 
 let spokePool: Contract, weth: Contract, erc20: Contract, destErc20: Contract, erc1271: Contract;
 let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerWithAddress;
@@ -39,7 +46,7 @@ async function getRelayExecutionParams(
     updatedOutputAmount: _relayData.outputAmount,
     updatedRecipient: _relayData.recipient,
     updatedMessage: _relayData.message,
-    repaymentChainId: consts.repaymentChainId,
+    repaymentChainId: repaymentChainId,
   };
 }
 
@@ -49,14 +56,14 @@ describe("SpokePool Relayer Logic", async function () {
     ({ weth, erc20, spokePool, destErc20, erc1271 } = await spokePoolFixture());
 
     // mint some fresh tokens and deposit ETH for weth for depositor and relayer.
-    await seedWallet(depositor, [erc20], weth, consts.amountToSeedWallets);
-    await seedWallet(relayer, [destErc20], weth, consts.amountToSeedWallets);
+    await seedWallet(depositor, [erc20], weth, amountToSeedWallets);
+    await seedWallet(relayer, [destErc20], weth, amountToSeedWallets);
 
     // Approve spokepool to spend tokens
-    await erc20.connect(depositor).approve(spokePool.address, consts.amountToDeposit);
-    await weth.connect(depositor).approve(spokePool.address, consts.amountToDeposit);
-    await destErc20.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
-    await weth.connect(relayer).approve(spokePool.address, consts.amountToDeposit);
+    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
+    await weth.connect(depositor).approve(spokePool.address, amountToDeposit);
+    await destErc20.connect(relayer).approve(spokePool.address, amountToDeposit);
+    await weth.connect(relayer).approve(spokePool.address, amountToDeposit);
   });
   describe("fill V3", function () {
     let relayData: V3RelayData;
@@ -68,10 +75,10 @@ describe("SpokePool Relayer Logic", async function () {
         exclusiveRelayer: addressToBytes(relayer.address),
         inputToken: addressToBytes(erc20.address),
         outputToken: addressToBytes(destErc20.address),
-        inputAmount: consts.amountToDeposit,
-        outputAmount: consts.amountToDeposit,
-        originChainId: consts.originChainId,
-        depositId: consts.firstDepositId,
+        inputAmount: amountToDeposit,
+        outputAmount: amountToDeposit,
+        originChainId: originChainId,
+        depositId: firstDepositId,
         fillDeadline: fillDeadline,
         exclusivityDeadline: fillDeadline - 500,
         message: "0x",
@@ -79,7 +86,7 @@ describe("SpokePool Relayer Logic", async function () {
     });
     describe("_fillRelay internal logic", function () {
       it("default status is unfilled", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Unfilled);
       });
       it("expired fill deadline reverts", async function () {
@@ -87,7 +94,7 @@ describe("SpokePool Relayer Logic", async function () {
           ...relayData,
           fillDeadline: 0, // Will always be less than SpokePool.currentTime so should expire.
         };
-        const relayExecution = await getRelayExecutionParams(_relay, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(_relay, destinationChainId);
         await expect(
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
@@ -97,7 +104,7 @@ describe("SpokePool Relayer Logic", async function () {
         ).to.be.revertedWith("ExpiredFillDeadline");
       });
       it("relay hash already marked filled", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         await spokePool.setFillStatus(relayExecution.relayHash, FillStatus.Filled);
         await expect(
           spokePool.connect(relayer).fillRelayV3Internal(
@@ -108,7 +115,7 @@ describe("SpokePool Relayer Logic", async function () {
         ).to.be.revertedWith("RelayFilled");
       });
       it("fast fill replacing speed up request emits correct FillType", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         await spokePool.setFillStatus(relayExecution.relayHash, FillStatus.RequestedSlowFill);
         await expect(
           spokePool.connect(relayer).fillRelayV3Internal(
@@ -117,7 +124,7 @@ describe("SpokePool Relayer Logic", async function () {
             false // isSlowFill
           )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -144,7 +151,7 @@ describe("SpokePool Relayer Logic", async function () {
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("slow fill emits correct FillType", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         await destErc20.connect(relayer).transfer(spokePool.address, relayExecution.updatedOutputAmount);
         await expect(
           spokePool.connect(relayer).fillRelayV3Internal(
@@ -153,7 +160,7 @@ describe("SpokePool Relayer Logic", async function () {
             true // isSlowFill
           )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -180,7 +187,7 @@ describe("SpokePool Relayer Logic", async function () {
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("fast fill emits correct FillType", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         await expect(
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
@@ -188,7 +195,7 @@ describe("SpokePool Relayer Logic", async function () {
             false // isSlowFill
           )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
@@ -219,7 +226,7 @@ describe("SpokePool Relayer Logic", async function () {
           // Set recipient == relayer
           recipient: addressToBytes(relayer.address),
         };
-        const relayExecution = await getRelayExecutionParams(_relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(_relayData, destinationChainId);
         await expect(
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
@@ -229,11 +236,11 @@ describe("SpokePool Relayer Logic", async function () {
         ).to.not.emit(destErc20, "Transfer");
       });
       it("sends updatedOutputAmount to updatedRecipient", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         const _relayExecution = {
           ...relayExecution,
           // Overwrite amount to send to be double the original amount
-          updatedOutputAmount: consts.amountToDeposit.mul(2),
+          updatedOutputAmount: amountToDeposit.mul(2),
           // Overwrite recipient to depositor which is not the same as the original recipient
           updatedRecipient: addressToBytes(depositor.address),
         };
@@ -246,14 +253,14 @@ describe("SpokePool Relayer Logic", async function () {
             addressToBytes(relayer.address),
             false // isSlowFill
           )
-        ).to.changeTokenBalance(destErc20, depositor, consts.amountToDeposit.mul(2));
+        ).to.changeTokenBalance(destErc20, depositor, amountToDeposit.mul(2));
       });
       it("unwraps native token if sending to EOA", async function () {
         const _relayData = {
           ...relayData,
           outputToken: addressToBytes(weth.address),
         };
-        const relayExecution = await getRelayExecutionParams(_relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(_relayData, destinationChainId);
         await expect(() =>
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
@@ -267,7 +274,7 @@ describe("SpokePool Relayer Logic", async function () {
           ...relayData,
           outputToken: addressToBytes(weth.address),
         };
-        const relayExecution = await getRelayExecutionParams(_relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(_relayData, destinationChainId);
         await weth.connect(relayer).transfer(spokePool.address, relayExecution.updatedOutputAmount);
         const initialSpokeBalance = await weth.balanceOf(spokePool.address);
         await expect(() =>
@@ -281,7 +288,7 @@ describe("SpokePool Relayer Logic", async function () {
         expect(spokeBalance).to.equal(initialSpokeBalance.sub(relayExecution.updatedOutputAmount));
       });
       it("slow fills send non-native token out of spoke pool balance", async function () {
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         await destErc20.connect(relayer).transfer(spokePool.address, relayExecution.updatedOutputAmount);
         await expect(() =>
           spokePool.connect(relayer).fillRelayV3Internal(
@@ -299,7 +306,7 @@ describe("SpokePool Relayer Logic", async function () {
           recipient: addressToBytes(acrossMessageHandler.address),
           message: "0x1234",
         };
-        const relayExecution = await getRelayExecutionParams(_relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(_relayData, destinationChainId);
 
         // Handler is called with expected params.
         await spokePool.connect(relayer).fillRelayV3Internal(
@@ -320,13 +327,13 @@ describe("SpokePool Relayer Logic", async function () {
       it("fills are not paused", async function () {
         await spokePool.pauseFills(true);
         await expect(
-          spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address))
+          spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address))
         ).to.be.revertedWith("FillsArePaused");
       });
       it("reentrancy protected", async function () {
-        const functionCalldata = spokePool.interface.encodeFunctionData("fillV3Relay", [
+        const functionCalldata = spokePool.interface.encodeFunctionData("fillRelay", [
           relayData,
-          consts.repaymentChainId,
+          repaymentChainId,
           addressToBytes(relayer.address),
         ]);
         await expect(spokePool.connect(relayer).callback(functionCalldata)).to.be.revertedWith(
@@ -341,31 +348,60 @@ describe("SpokePool Relayer Logic", async function () {
           exclusivityDeadline: relayData.fillDeadline,
         };
         await expect(
-          spokePool.connect(relayer).fillV3Relay(_relayData, consts.repaymentChainId, addressToBytes(relayer.address))
+          spokePool.connect(relayer).fillRelay(_relayData, repaymentChainId, addressToBytes(relayer.address))
         ).to.be.revertedWith("NotExclusiveRelayer");
 
         // Can send it after exclusivity deadline
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3Relay(
-              { ..._relayData, exclusivityDeadline: 0 },
-              consts.repaymentChainId,
-              addressToBytes(relayer.address)
-            )
+            .fillRelay({ ..._relayData, exclusivityDeadline: 0 }, repaymentChainId, addressToBytes(relayer.address))
         ).to.not.be.reverted;
       });
-      it("calls _fillRelayV3 with  expected params", async function () {
-        await expect(
-          spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address))
-        )
-          .to.emit(spokePool, "FilledV3Relay")
+      it("calls _fillRelayV3 with expected params", async function () {
+        await expect(spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address)))
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
             relayData.inputAmount,
             relayData.outputAmount,
-            consts.repaymentChainId, // Should be passed-in repayment chain ID
+            repaymentChainId, // Should be passed-in repayment chain ID
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            addressToBytes(relayData.exclusiveRelayer),
+            addressToBytes(relayer.address), // Should be equal to msg.sender of fillRelayV3
+            addressToBytes(relayData.depositor),
+            addressToBytes(relayData.recipient),
+            hashNonEmptyMessage(relayData.message),
+            [
+              addressToBytes(relayData.recipient), // updatedRecipient should be equal to recipient
+              hashNonEmptyMessage(relayData.message), // updatedMessageHash should be equal to message hash
+              relayData.outputAmount, // updatedOutputAmount should be equal to outputAmount
+              // Should be FastFill
+              FillType.FastFill,
+            ]
+          );
+      });
+      it("calls legacy (address) fillRelayV3 with expected params", async function () {
+        const legacyRelayData = {
+          ...relayData,
+          depositor: bytes32ToAddress(relayData.depositor),
+          recipient: bytes32ToAddress(relayData.recipient),
+          exclusiveRelayer: bytes32ToAddress(relayData.exclusiveRelayer),
+          inputToken: bytes32ToAddress(relayData.inputToken),
+          outputToken: bytes32ToAddress(relayData.outputToken),
+        };
+        await expect(spokePool.connect(relayer).fillV3Relay(legacyRelayData, repaymentChainId))
+          .to.emit(spokePool, "FilledRelay")
+          .withArgs(
+            addressToBytes(relayData.inputToken),
+            addressToBytes(relayData.outputToken),
+            relayData.inputAmount,
+            relayData.outputAmount,
+            repaymentChainId, // Should be passed-in repayment chain ID
             relayData.originChainId,
             relayData.depositId,
             relayData.fillDeadline,
@@ -385,7 +421,7 @@ describe("SpokePool Relayer Logic", async function () {
           );
       });
     });
-    describe("fillV3RelayWithUpdatedDeposit", function () {
+    describe("fillRelayWithUpdatedDeposit", function () {
       let updatedOutputAmount: BigNumber, updatedRecipient: string, updatedMessage: string, signature: string;
       beforeEach(async function () {
         updatedOutputAmount = relayData.outputAmount.add(1);
@@ -407,16 +443,16 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, exclusivityDeadline: 0 },
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
               signature
             )
-        ).to.emit(spokePool, "FilledV3Relay");
+        ).to.emit(spokePool, "FilledRelay");
       });
       it("must be exclusive relayer before exclusivity deadline", async function () {
         const _relayData = {
@@ -428,9 +464,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               _relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -441,12 +477,12 @@ describe("SpokePool Relayer Logic", async function () {
 
         // Even if not exclusive relayer, can send it after exclusivity deadline
         await expect(
-          spokePool.connect(relayer).fillV3RelayWithUpdatedDeposit(
+          spokePool.connect(relayer).fillRelayWithUpdatedDeposit(
             {
               ..._relayData,
               exclusivityDeadline: 0,
             },
-            consts.repaymentChainId,
+            repaymentChainId,
             addressToBytes(relayer.address),
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
@@ -464,9 +500,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -474,13 +510,13 @@ describe("SpokePool Relayer Logic", async function () {
               signature
             )
         )
-          .to.emit(spokePool, "FilledV3Relay")
+          .to.emit(spokePool, "FilledRelay")
           .withArgs(
             addressToBytes(relayData.inputToken),
             addressToBytes(relayData.outputToken),
             relayData.inputAmount,
             relayData.outputAmount,
-            consts.repaymentChainId, // Should be passed-in repayment chain ID
+            repaymentChainId, // Should be passed-in repayment chain ID
             relayData.originChainId,
             relayData.depositId,
             relayData.fillDeadline,
@@ -501,7 +537,7 @@ describe("SpokePool Relayer Logic", async function () {
           );
 
         // Check fill status mapping is updated
-        const relayExecution = await getRelayExecutionParams(relayData, consts.destinationChainId);
+        const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
       it("validates depositor signature", async function () {
@@ -509,9 +545,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositor: addressToBytes(relayer.address) },
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -532,9 +568,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -547,9 +583,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, originChainId: relayData.originChainId + 1 },
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -562,9 +598,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositId: relayData.depositId.add(toBN(1)) },
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -577,9 +613,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount.sub(1),
               addressToBytes(updatedRecipient),
@@ -592,9 +628,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(randomAddress()),
@@ -607,9 +643,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -632,9 +668,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositor: addressToBytes(erc1271.address) },
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -645,9 +681,9 @@ describe("SpokePool Relayer Logic", async function () {
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               { ...relayData, depositor: addressToBytes(erc1271.address) },
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -657,15 +693,13 @@ describe("SpokePool Relayer Logic", async function () {
         ).to.not.be.reverted;
       });
       it("cannot send updated fill after original fill", async function () {
-        await spokePool
-          .connect(relayer)
-          .fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address));
+        await spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address));
         await expect(
           spokePool
             .connect(relayer)
-            .fillV3RelayWithUpdatedDeposit(
+            .fillRelayWithUpdatedDeposit(
               relayData,
-              consts.repaymentChainId,
+              repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
@@ -677,9 +711,9 @@ describe("SpokePool Relayer Logic", async function () {
       it("cannot send updated fill after slow fill", async function () {
         await spokePool
           .connect(relayer)
-          .fillV3RelayWithUpdatedDeposit(
+          .fillRelayWithUpdatedDeposit(
             relayData,
-            consts.repaymentChainId,
+            repaymentChainId,
             addressToBytes(relayer.address),
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
@@ -687,7 +721,7 @@ describe("SpokePool Relayer Logic", async function () {
             signature
           );
         await expect(
-          spokePool.connect(relayer).fillV3Relay(relayData, consts.repaymentChainId, addressToBytes(relayer.address))
+          spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address))
         ).to.be.revertedWith("RelayFilled");
       });
     });

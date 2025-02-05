@@ -16,6 +16,9 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   return await deploySpokePool(ethers);
 });
 
+// Silence warnings from openzeppelin/hardhat-upgrades for this fixture.
+hre.upgrades.silenceWarnings();
+
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
 export async function deploySpokePool(
@@ -177,39 +180,13 @@ export function getRelayHash(
 }
 
 export function getV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
-  const messageHash = relayData.message == "0x" ? ethers.constants.HashZero : ethers.utils.keccak256(relayData.message);
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
-        "bytes32", // depositor
-        "bytes32", // recipient
-        "bytes32", // exclusiveRelayer
-        "bytes32", // inputToken
-        "bytes32", // outputToken
-        "uint256", // inputAmount
-        "uint256", // outputAmount
-        "uint256", // originChainId
-        "uint256", // depositId
-        "uint32", // fillDeadline
-        "uint32", // exclusivityDeadline
-        "bytes32", // messageHash
-        "uint256", // destinationChainId
+        "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "uint256 destinationChainId",
       ],
-      [
-        relayData.depositor,
-        relayData.recipient,
-        relayData.exclusiveRelayer,
-        relayData.inputToken,
-        relayData.outputToken,
-        relayData.inputAmount,
-        relayData.outputAmount,
-        relayData.originChainId,
-        relayData.depositId,
-        relayData.fillDeadline,
-        relayData.exclusivityDeadline,
-        messageHash,
-        destinationChainId,
-      ]
+      [relayData, destinationChainId]
     )
   );
 }
