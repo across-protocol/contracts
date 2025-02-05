@@ -91,7 +91,8 @@ describe("SpokePool Relayer Logic", async function () {
         const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Unfilled);
       });
-      it("relay hash is same pre and post address -> bytes32 upgrade", async function () {
+       // @todo we can remove this after the new spoke pool is upgraded
+       it("relay hash is same pre and post address -> bytes32 upgrade", async function () {
         const newBytes32Keys = ["depositor", "recipient", "exclusiveRelayer", "inputToken", "outputToken"];
         const relayDataCopy = { ...relayData, message: randomBytes32() };
         const legacyRelayData = {
