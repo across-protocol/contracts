@@ -12,6 +12,7 @@ import {
   bytes32ToAddress,
   hashNonEmptyMessage,
   toBN,
+  randomBytes32,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -21,6 +22,7 @@ import {
   FillType,
   getUpdatedV3DepositSignature,
   getV3RelayHash,
+  getLegacyV3RelayHash,
 } from "./fixtures/SpokePool.Fixture";
 import {
   repaymentChainId,
@@ -88,6 +90,32 @@ describe("SpokePool Relayer Logic", async function () {
       it("default status is unfilled", async function () {
         const relayExecution = await getRelayExecutionParams(relayData, destinationChainId);
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Unfilled);
+      });
+      // @todo we can remove this after the new spoke pool is upgraded
+      it("relay hash is same pre and post address -> bytes32 upgrade", async function () {
+        const newBytes32Keys = ["depositor", "recipient", "exclusiveRelayer", "inputToken", "outputToken"];
+        const relayDataCopy = { ...relayData, message: randomBytes32() };
+        const legacyRelayData = {
+          ...relayDataCopy,
+          depositor: bytes32ToAddress(relayData.depositor),
+          recipient: bytes32ToAddress(relayData.recipient),
+          exclusiveRelayer: bytes32ToAddress(relayData.exclusiveRelayer),
+          inputToken: bytes32ToAddress(relayData.inputToken),
+          outputToken: bytes32ToAddress(relayData.outputToken),
+        };
+        expect(
+          newBytes32Keys.every(
+            (key) => ethers.utils.hexDataLength(legacyRelayData[key as keyof typeof legacyRelayData] as string) === 20
+          )
+        ).to.be.true;
+        expect(
+          newBytes32Keys.every(
+            (key) => ethers.utils.hexDataLength(relayDataCopy[key as keyof typeof relayDataCopy] as string) === 32
+          )
+        ).to.be.true;
+        const newRelayHash = getV3RelayHash(relayDataCopy, destinationChainId);
+        const oldRelayHash = getLegacyV3RelayHash(legacyRelayData, destinationChainId);
+        expect(newRelayHash).to.equal(oldRelayHash);
       });
       it("expired fill deadline reverts", async function () {
         const _relay = {

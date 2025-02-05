@@ -12,8 +12,11 @@ import {
   BigNumber,
   ethers,
   randomBytes32,
+  bytes32ToAddress,
+  addressToBytes,
 } from "../../../utils/utils";
 import { V3RelayData, V3SlowFill } from "../../../test-utils";
+import { ParamType } from "ethers/lib/utils";
 
 let merkleLibTest: Contract;
 
@@ -148,5 +151,64 @@ describe("MerkleLib Proofs", async function () {
     // Verify that the excluded element fails to generate a proof and fails verification using the proof generated above.
     expect(() => merkleTree.getHexProof(invalidLeaf)).to.throw();
     expect(await merkleLibTest.verifyV3SlowRelayFulfillment(root, invalidLeaf, proof)).to.equal(false);
+  });
+  // @todo we can remove this after the new spoke pool is upgraded
+  it("Legacy V3SlowFill produces the same MerkleLeaf", async function () {
+    const chainId = randomBigNumber(2).toNumber();
+    const relayData: V3RelayData = {
+      depositor: addressToBytes(randomAddress()),
+      recipient: addressToBytes(randomAddress()),
+      exclusiveRelayer: addressToBytes(randomAddress()),
+      inputToken: addressToBytes(randomAddress()),
+      outputToken: addressToBytes(randomAddress()),
+      inputAmount: randomBigNumber(),
+      outputAmount: randomBigNumber(),
+      originChainId: randomBigNumber(2).toNumber(),
+      depositId: randomBigNumber(2),
+      fillDeadline: randomBigNumber(2).toNumber(),
+      exclusivityDeadline: randomBigNumber(2).toNumber(),
+      message: ethers.utils.hexlify(ethers.utils.randomBytes(1024)),
+    };
+    const slowLeaf: V3SlowFill = {
+      relayData,
+      chainId,
+      updatedOutputAmount: relayData.outputAmount,
+    };
+    const legacyRelayData: V3RelayData = {
+      ...relayData,
+      depositor: bytes32ToAddress(relayData.depositor),
+      recipient: bytes32ToAddress(relayData.recipient),
+      exclusiveRelayer: bytes32ToAddress(relayData.exclusiveRelayer),
+      inputToken: bytes32ToAddress(relayData.inputToken),
+      outputToken: bytes32ToAddress(relayData.outputToken),
+    };
+    const legacySlowLeaf: V3SlowFill = {
+      relayData: legacyRelayData,
+      chainId: slowLeaf.chainId,
+      updatedOutputAmount: slowLeaf.updatedOutputAmount,
+    };
+
+    const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
+    const hashFn = (input: V3SlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const merkleTree = new MerkleTree<V3SlowFill>([slowLeaf], hashFn);
+    const root = merkleTree.getHexRoot();
+
+    const legacyHashFn = (input: V3SlowFill) =>
+      keccak256(
+        defaultAbiCoder.encode(
+          [
+            "tuple(" +
+              "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message) relayData," +
+              "uint256 chainId," +
+              "uint256 updatedOutputAmount" +
+              ")",
+          ],
+          [input]
+        )
+      );
+    const merkleTreeLegacy = new MerkleTree<V3SlowFill>([legacySlowLeaf], legacyHashFn);
+    const legacyRoot = merkleTreeLegacy.getHexRoot();
+
+    expect(legacyRoot).to.equal(root);
   });
 });
