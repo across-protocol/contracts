@@ -1697,11 +1697,11 @@ abstract contract SpokePool is
             })
         );
 
-        // If relay token is wrappedNativeToken then unwrap and send native token.
-        address outputToken = relayData.outputToken.toAddress();
-        uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
-        if (outputToken == address(wrappedNativeToken)) {
+        // If relay token is wrappedNativeToken then unwrap and send native token.
+        if (relayData.outputToken.toAddress() == address(wrappedNativeToken)) {
+            address outputToken = relayData.outputToken.toAddress();
+            uint256 amountToSend = relayExecution.updatedOutputAmount;
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
@@ -1711,6 +1711,8 @@ abstract contract SpokePool is
             _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
+            address outputToken = relayData.outputToken.toAddress();
+            uint256 amountToSend = relayExecution.updatedOutputAmount;
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
             else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
@@ -1719,8 +1721,8 @@ abstract contract SpokePool is
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (updatedMessage.length > 0 && recipientToSend.isContract()) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
-                outputToken,
-                amountToSend,
+                relayData.outputToken.toAddress(),
+                relayExecution.updatedOutputAmount,
                 msg.sender,
                 updatedMessage
             );
