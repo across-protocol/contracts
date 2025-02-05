@@ -28,6 +28,7 @@ import {
   MAX_UINT32,
   originChainId,
   zeroAddress,
+  MAX_EXCLUSIVITY_OFFSET_SECONDS,
 } from "./constants";
 
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -836,7 +837,7 @@ describe("SpokePool Depositor Logic", async function () {
           0,
           quoteTimestamp,
           relayData.fillDeadline,
-          currentTime,
+          0,
           // New depositor
           addressToBytes(newDepositor),
           addressToBytes(relayData.recipient),
