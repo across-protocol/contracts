@@ -152,6 +152,7 @@ describe("MerkleLib Proofs", async function () {
     expect(() => merkleTree.getHexProof(invalidLeaf)).to.throw();
     expect(await merkleLibTest.verifyV3SlowRelayFulfillment(root, invalidLeaf, proof)).to.equal(false);
   });
+  // @todo we can remove this after the new spoke pool is upgraded
   it("Legacy V3SlowFill produces the same MerkleLeaf", async function () {
     const chainId = randomBigNumber(2).toNumber();
     const relayData: V3RelayData = {
