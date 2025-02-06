@@ -15,6 +15,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  */
 contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     event SetDestinationSettler(
         uint256 indexed chainId,
@@ -50,6 +51,7 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
+        uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityDeadline,
@@ -57,27 +59,49 @@ contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiC
     ) internal override {
         IERC20(inputToken).forceApprove(address(SPOKE_POOL), inputAmount);
 
-        SPOKE_POOL.depositV3(
-            depositor,
-            recipient,
-            inputToken,
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityDeadline,
-            message
-        );
+        if (depositNonce == 0) {
+            SPOKE_POOL.depositV3(
+                depositor,
+                recipient,
+                inputToken,
+                outputToken,
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayer,
+                quoteTimestamp,
+                fillDeadline,
+                exclusivityDeadline,
+                message
+            );
+        } else {
+            SPOKE_POOL.unsafeDeposit(
+                depositor.toBytes32(),
+                recipient.toBytes32(),
+                inputToken.toBytes32(),
+                outputToken.toBytes32(),
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayer.toBytes32(),
+                depositNonce,
+                quoteTimestamp,
+                fillDeadline,
+                exclusivityDeadline,
+                message
+            );
+        }
     }
 
-    function _currentDepositId() internal view override returns (uint32) {
-        return SPOKE_POOL.numberOfDeposits();
+    function computeDepositId(uint256 depositNonce, address depositor) public view override returns (uint256) {
+        return
+            depositNonce == 0
+                ? SPOKE_POOL.numberOfDeposits()
+                : SPOKE_POOL.getUnsafeDepositId(address(this), depositor.toBytes32(), depositNonce);
     }
 
     function _destinationSettler(uint256 chainId) internal view override returns (address) {
+        if (destinationSettlers[chainId] == address(0)) revert NoDestinationSettlerForChain(chainId);
         return destinationSettlers[chainId];
     }
 }

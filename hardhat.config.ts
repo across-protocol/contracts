@@ -47,9 +47,9 @@ const mnemonic = getMnemonic();
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 1000 },
+    optimizer: { enabled: true, runs: 800 },
     viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -58,7 +58,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 
@@ -68,7 +68,7 @@ const config: HardhatUserConfig = {
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Linea_SpokePool.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        ...LARGE_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",

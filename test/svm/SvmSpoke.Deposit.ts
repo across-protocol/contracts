@@ -18,11 +18,12 @@ import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@sol
 import { common } from "./SvmSpoke.common";
 import { DepositDataValues } from "../../src/types/svm";
 import { intToU8Array32, readEventsUntilFound, u8Array32ToInt, u8Array32ToBigNumber } from "../../src/svm/web3-v1";
+import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
 
-const maxExclusivityOffsetSeconds = new BN(365 * 24 * 60 * 60); // 1 year in seconds
+const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
 
 describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);

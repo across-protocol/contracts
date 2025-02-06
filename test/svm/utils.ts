@@ -3,7 +3,6 @@ import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-
 import {
   AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
@@ -12,8 +11,7 @@ import {
   readEvents,
   readProgramEvents,
   relayerRefundHashFn,
-} from "../../src/svm/web3-v1";
-
+} from "../../src/svm";
 import { MerkleTree } from "@uma/common";
 import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
 

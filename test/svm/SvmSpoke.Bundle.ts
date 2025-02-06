@@ -274,6 +274,7 @@ describe("svm_spoke.bundle", () => {
     assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
+    // Verify the tokensBridged event
     event = events.find((event) => event.name === "tokensBridged")?.data;
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
     assertSE(event.chainId, chainId, "chainId should match");
