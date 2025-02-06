@@ -79,6 +79,8 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -347,11 +349,11 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      mode: process.env.MODE_ETHERSCAN_API_KEY!,
-      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
-      lisk: process.env.LISK_ETHERSCAN_API_KEY!,
-      "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
-      redstone: process.env.REDSTONE_ETHERSCAN_API_KEY!,
+      mode: "blockscout",
+      "mode-sepolia": "blockscout",
+      lisk: "blockscout",
+      "lisk-sepolia": "blockscout",
+      redstone: "blockscout",
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
@@ -407,7 +409,7 @@ const config: HardhatUserConfig = {
         chainId: CHAIN_IDs.LINEA,
         urls: {
           apiURL: "https://api.lineascan.build/api",
-          browserURL: "https://lineascan.org",
+          browserURL: "https://lineascan.build",
         },
       },
       {
@@ -423,7 +425,7 @@ const config: HardhatUserConfig = {
         chainId: CHAIN_IDs.SCROLL,
         urls: {
           apiURL: "https://api.scrollscan.com/api",
-          browserURL: "https://api.scrollscan.com",
+          browserURL: "https://scrollscan.com",
         },
       },
       {
