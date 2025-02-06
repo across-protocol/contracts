@@ -7,10 +7,10 @@ import "./external/interfaces/CCTPInterfaces.sol";
 import { IOpUSDCBridgeAdapter } from "./external/interfaces/IOpUSDCBridgeAdapter.sol";
 
 /**
- * @notice Cher SpokePool.
+ * @notice Soneium SpokePool.
  * @custom:security-contact bugs@across.to
  */
-contract Cher_SpokePool is Ovm_SpokePool {
+contract Soneium_SpokePool is Ovm_SpokePool {
     using SafeERC20 for IERC20;
 
     // Address of the custom L2 USDC bridge.
@@ -34,7 +34,7 @@ contract Cher_SpokePool is Ovm_SpokePool {
     {} // solhint-disable-line no-empty-blocks
 
     /**
-     * @notice Construct the OVM Cher SpokePool.
+     * @notice Construct the OVM Soneium SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
@@ -49,7 +49,7 @@ contract Cher_SpokePool is Ovm_SpokePool {
     }
 
     /**
-     * @notice Cher-specific logic to bridge tokens back to the hub pool contract on L1.
+     * @notice Soneium-specific logic to bridge tokens back to the hub pool contract on L1.
      * @param amountToReturn Amount of the token to bridge back.
      * @param l2TokenAddress Address of the l2 Token to bridge back. This token will either be bridged back to the token defined in the mapping `remoteL1Tokens`,
      * or via the canonical mapping defined in the bridge contract retrieved from `tokenBridges`.
@@ -59,7 +59,7 @@ contract Cher_SpokePool is Ovm_SpokePool {
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
         // Handle custom USDC bridge which doesn't conform to the standard bridge interface. In the future, CCTP may be used to bridge USDC to mainnet, in which
         // case bridging logic is handled by the Ovm_SpokePool code. In the meantime, if CCTP is not enabled, then use the USDC bridge. Once CCTP is activated on
-        // Cher, this block of code will be unused.
+        // Soneium, this block of code will be unused.
         if (l2TokenAddress == address(usdcToken) && !_isCCTPEnabled()) {
             usdcToken.safeIncreaseAllowance(USDC_BRIDGE, amountToReturn);
             IOpUSDCBridgeAdapter(USDC_BRIDGE).sendMessage(
