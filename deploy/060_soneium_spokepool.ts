@@ -28,4 +28,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deployNewProxy("Soneium_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
-func.tags = ["SoneiumSpokePool", "cher"];
+func.tags = ["SoneiumSpokePool", "soneium"];
