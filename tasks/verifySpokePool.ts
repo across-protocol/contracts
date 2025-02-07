@@ -40,7 +40,7 @@ task("verify-spokepool", "Verify the configuration of a deployed SpokePool")
       "depositQuoteTimeBuffer",
       "fillDeadlineBuffer",
       "wrappedNativeToken",
-      // "withdrawalRecipient",
+      "withdrawalRecipient",
       "crossDomainAdmin",
     ] as const;
     const multicall = await spokePool.callStatic.multicall(
@@ -71,9 +71,9 @@ task("verify-spokepool", "Verify the configuration of a deployed SpokePool")
     assert(wrappedNative === expectedWrappedNative, `wrappedNativeToken: ${wrappedNative} != ${expectedWrappedNative}`);
     console.log("SpokePool.wrappedNativeToken()".padEnd(TEXT_PADDING) + ": " + wrappedNative);
 
-    //    const withdrawalRecipient = bytes32ToAddress(results.withdrawalRecipient);
-    //    console.log("SpokePool.withdrawalRecipient()".padEnd(TEXT_PADDING) + ": " + withdrawalRecipient);
-    //    assert(withdrawalRecipient === hubAddress, `withdrawalRecipient: ${withdrawalRecipient} != ${hubAddress}`);
+    const withdrawalRecipient = bytes32ToAddress(results.withdrawalRecipient);
+    console.log("SpokePool.withdrawalRecipient()".padEnd(TEXT_PADDING) + ": " + withdrawalRecipient);
+    assert(withdrawalRecipient === hubAddress, `withdrawalRecipient: ${withdrawalRecipient} != ${hubAddress}`);
 
     const crossDomainAdmin = bytes32ToAddress(results.crossDomainAdmin);
     console.log("SpokePool.crossDomainAdmin()".padEnd(TEXT_PADDING) + ": " + crossDomainAdmin);
