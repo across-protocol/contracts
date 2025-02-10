@@ -254,7 +254,7 @@ pub mod svm_spoke {
     /// - quote_timestamp: The HubPool timestamp that is used to determine the system fee paid by the depositor. This
     ///   must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime].
     /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp, the
-    ///   fill will revert on the destination chain. Must be set between [currentTime,currentTime+fillDeadlineBuffer].
+    ///   fill will revert on the destination chain. Must be set before currentTime + fillDeadlineBuffer.
     /// - exclusivity_parameter: Sets the exclusivity deadline timestamp for the exclusiveRelayer to fill the deposit.
     ///   1. If 0, no exclusivity period.
     ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.

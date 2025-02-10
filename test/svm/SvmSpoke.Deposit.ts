@@ -216,6 +216,23 @@ describe("svm_spoke.deposit", () => {
     assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), `depositId should recover to 2`);
   });
 
+  it("Deposit with deadline before current time succeeds", async () => {
+    const currentTime = await getCurrentTime(program, state);
+
+    // Fill deadline is before current time on the contract
+    let fillDeadline = currentTime - 1; // 1 second before current time on the contract.
+    depositData.fillDeadline = new BN(fillDeadline);
+    depositData.quoteTimestamp = new BN(currentTime - 1); // 1 second before current time on the contract to reset.
+
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    const tx = await approvedDepositV3(depositDataValues);
+
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events[0].data; // 0th event is the latest event.
+
+    assertSE(event.fillDeadline, fillDeadline, "Fill deadline should match");
+  });
+
   it("Fails to deposit tokens to a route that is uninitalized", async () => {
     const differentChainId = new BN(2); // Different chain ID
     if (!depositData.inputToken) {
@@ -302,21 +319,8 @@ describe("svm_spoke.deposit", () => {
   it("Fails to deposit tokens with InvalidFillDeadline when fill deadline is invalid", async () => {
     const currentTime = await getCurrentTime(program, state);
 
-    // Case 1: Fill deadline is older than the current time on the contract
-    let invalidFillDeadline = currentTime - 1; // 1 second before current time on the contract.
-    depositData.fillDeadline = new BN(invalidFillDeadline);
-    depositData.quoteTimestamp = new BN(currentTime - 1); // 1 second before current time on the contract to reset.
-
-    try {
-      const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
-      assert.fail("Deposit should have failed due to InvalidFillDeadline (past deadline)");
-    } catch (err: any) {
-      assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for past deadline");
-    }
-
-    // Case 2: Fill deadline is too far ahead (longer than fill_deadline_buffer + currentTime)
-    invalidFillDeadline = currentTime + fillDeadlineBuffer.toNumber() + 1; // 1 seconds beyond the buffer
+    // Fill deadline is too far ahead (longer than fill_deadline_buffer + currentTime)
+    const invalidFillDeadline = currentTime + fillDeadlineBuffer.toNumber() + 1; // 1 seconds beyond the buffer
     depositData.fillDeadline = new BN(invalidFillDeadline);
 
     try {
