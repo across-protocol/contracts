@@ -322,6 +322,7 @@ describe("svm_spoke.deposit", () => {
     // Fill deadline is too far ahead (longer than fill_deadline_buffer + currentTime)
     const invalidFillDeadline = currentTime + fillDeadlineBuffer.toNumber() + 1; // 1 seconds beyond the buffer
     depositData.fillDeadline = new BN(invalidFillDeadline);
+    depositData.quoteTimestamp = new BN(currentTime);
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
