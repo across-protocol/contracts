@@ -145,3 +145,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Soneium_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | MulticallHandler  | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://soneium.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Unichain mainnet (130)
+
+| Contract Name      | Address                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Unichain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://unichain.blockscout.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://unichain.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
