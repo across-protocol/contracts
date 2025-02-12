@@ -74,10 +74,10 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: BN) {
  * Gets the relay hash from a transaction response, from the `fill_v3_relay` or `execute_v3_slow_relay_leaf` instructions.
  */
 export function getRelayHashFromTx(txRes: VersionedTransactionResponse, svmSpokeId: PublicKey) {
-  const compiledInstructions = txRes!.transaction.message.compiledInstructions;
+  const compiledInstructions = txRes.transaction.message.compiledInstructions;
 
-  const messageAccountKeys = txRes!.transaction.message.getAccountKeys({
-    accountKeysFromLookups: txRes!.meta?.loadedAddresses,
+  const messageAccountKeys = txRes.transaction.message.getAccountKeys({
+    accountKeysFromLookups: txRes.meta?.loadedAddresses,
   });
 
   let relayHash: Uint8Array | null = null;
