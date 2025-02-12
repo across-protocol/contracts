@@ -1,56 +1,101 @@
-import { BN } from "@coral-xyz/anchor";
+import { BN, BorshInstructionCoder } from "@coral-xyz/anchor";
+import { PublicKey, VersionedTransactionResponse } from "@solana/web3.js";
+import { serialize } from "borsh";
 import { ethers } from "ethers";
 import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../../types/svm";
-import { serialize } from "borsh";
+import { SvmSpokeIdl } from "../assets";
+
+/**
+ * Class for V3 relay data.
+ */
+class V3RelayData {
+  constructor(properties: any) {
+    Object.assign(this, properties);
+  }
+}
+
+/**
+ * Schema for V3 relay data.
+ */
+const V3RelayDataSchema = new Map([
+  [
+    V3RelayData,
+    {
+      kind: "struct",
+      fields: [
+        ["depositor", [32]],
+        ["recipient", [32]],
+        ["exclusiveRelayer", [32]],
+        ["inputToken", [32]],
+        ["outputToken", [32]],
+        ["inputAmount", "u64"],
+        ["outputAmount", "u64"],
+        ["originChainId", "u64"],
+        ["depositId", [32]],
+        ["fillDeadline", "u32"],
+        ["exclusivityDeadline", "u32"],
+        ["message", ["u8"]],
+      ],
+    },
+  ],
+]);
 
 /**
  * Calculates the relay hash from relay data and chain ID.
  */
-export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8Array {
-  const contentToHash = Buffer.concat([
-    relayData.depositor.toBuffer(),
-    relayData.recipient.toBuffer(),
-    relayData.exclusiveRelayer.toBuffer(),
-    relayData.inputToken.toBuffer(),
-    relayData.outputToken.toBuffer(),
-    relayData.inputAmount.toArrayLike(Buffer, "le", 8),
-    relayData.outputAmount.toArrayLike(Buffer, "le", 8),
-    relayData.originChainId.toArrayLike(Buffer, "le", 8),
-    Buffer.from(relayData.depositId),
-    new BN(relayData.fillDeadline).toArrayLike(Buffer, "le", 4),
-    new BN(relayData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
-    hashNonEmptyMessage(relayData.message), // Replace with hash of message, so that relay hash can be recovered from event.
-    chainId.toArrayLike(Buffer, "le", 8),
-  ]);
+export function calculateRelayHashUint8Array(relayData: any, chainId: BN) {
+  const serializedRelayData = Buffer.from(
+    serialize(
+      V3RelayDataSchema,
+      new V3RelayData({
+        depositor: relayData.depositor.toBuffer(),
+        recipient: relayData.recipient.toBuffer(),
+        exclusiveRelayer: relayData.exclusiveRelayer.toBuffer(),
+        inputToken: relayData.inputToken.toBuffer(),
+        outputToken: relayData.outputToken.toBuffer(),
+        inputAmount: relayData.inputAmount,
+        outputAmount: relayData.outputAmount,
+        originChainId: relayData.originChainId,
+        depositId: relayData.depositId,
+        fillDeadline: relayData.fillDeadline,
+        exclusivityDeadline: relayData.exclusivityDeadline,
+        message: relayData.message,
+      })
+    )
+  );
+
+  const contentToHash = Buffer.concat([serializedRelayData, chainId.toArrayLike(Buffer, "le", 8)]);
 
   const relayHash = ethers.utils.keccak256(contentToHash);
-  const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
-  return new Uint8Array(relayHashBuffer);
+  return Uint8Array.from(Buffer.from(relayHash.slice(2), "hex"));
 }
 
 /**
- * Calculates the relay event hash from relay event data and chain ID.
+ * Gets the relay hash from a transaction response, from the `fill_v3_relay` or `execute_v3_slow_relay_leaf` instructions.
  */
-export function calculateRelayEventHashUint8Array(relayEventData: any, chainId: BN): Uint8Array {
-  const contentToHash = Buffer.concat([
-    relayEventData.depositor.toBuffer(),
-    relayEventData.recipient.toBuffer(),
-    relayEventData.exclusiveRelayer.toBuffer(),
-    relayEventData.inputToken.toBuffer(),
-    relayEventData.outputToken.toBuffer(),
-    relayEventData.inputAmount.toArrayLike(Buffer, "le", 8),
-    relayEventData.outputAmount.toArrayLike(Buffer, "le", 8),
-    relayEventData.originChainId.toArrayLike(Buffer, "le", 8),
-    Buffer.from(relayEventData.depositId),
-    new BN(relayEventData.fillDeadline).toArrayLike(Buffer, "le", 4),
-    new BN(relayEventData.exclusivityDeadline).toArrayLike(Buffer, "le", 4),
-    Buffer.from(relayEventData.messageHash), // Renamed to messageHash in the event data.
-    chainId.toArrayLike(Buffer, "le", 8),
-  ]);
+export function getRelayHashFromTx(txRes: VersionedTransactionResponse, svmSpokeId: PublicKey) {
+  const compiledInstructions = txRes.transaction.message.compiledInstructions;
 
-  const relayHash = ethers.utils.keccak256(contentToHash);
-  const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
-  return new Uint8Array(relayHashBuffer);
+  const messageAccountKeys = txRes.transaction.message.getAccountKeys({
+    accountKeysFromLookups: txRes.meta?.loadedAddresses,
+  });
+
+  let relayHash: Uint8Array | null = null;
+  for (let ix of compiledInstructions) {
+    const ixProgramId = messageAccountKeys.get(ix.programIdIndex);
+    if (ixProgramId && ixProgramId.equals(svmSpokeId)) {
+      const data = Buffer.from(ix.data);
+      try {
+        const decodedIx = new BorshInstructionCoder(SvmSpokeIdl).decode(data);
+        if (decodedIx && ["execute_v3_slow_relay_leaf", "fill_v3_relay"].includes(decodedIx.name)) {
+          relayHash = (decodedIx.data as any)["_relay_hash"];
+          break;
+        }
+      } catch (error) {}
+    }
+  }
+
+  return relayHash;
 }
 
 /**

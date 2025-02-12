@@ -1,38 +1,36 @@
 import * as anchor from "@coral-xyz/anchor";
-import * as crypto from "crypto";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID,
   createMint,
+  createTransferCheckedInstruction,
+  getAccount,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  getAccount,
-  createTransferCheckedInstruction,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
-  PublicKey,
-  Keypair,
   AccountMeta,
-  TransactionInstruction,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
   sendAndConfirmTransaction,
   Transaction,
-  ComputeBudgetProgram,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import * as crypto from "crypto";
 import {
-  calculateRelayHashUint8Array,
-  MulticallHandlerCoder,
   AcrossPlusMessageCoder,
-  sendTransactionWithLookupTable,
-  readEventsUntilFound,
-  calculateRelayEventHashUint8Array,
-  slowFillHashFn,
-  loadRequestV3SlowFillParams,
-  loadExecuteV3SlowRelayLeafParams,
+  calculateRelayHashUint8Array,
+  getRelayHashFromTx,
   intToU8Array32,
+  loadExecuteV3SlowRelayLeafParams,
+  loadRequestV3SlowFillParams,
+  MulticallHandlerCoder,
+  readEventsUntilFound,
+  sendTransactionWithLookupTable,
+  slowFillHashFn,
 } from "../../src/svm/web3-v1";
-import { MulticallHandler } from "../../target/types/multicall_handler";
-import { common } from "./SvmSpoke.common";
 import {
   ExecuteV3SlowRelayLeafDataParams,
   ExecuteV3SlowRelayLeafDataValues,
@@ -40,6 +38,8 @@ import {
   RequestV3SlowFillDataValues,
   SlowFillLeaf,
 } from "../../src/types/svm";
+import { MulticallHandler } from "../../target/types/multicall_handler";
+import { common } from "./SvmSpoke.common";
 const { provider, connection, program, owner, chainId, setCurrentTime } = common;
 const { initializeState, assertSE, assert } = common;
 
@@ -461,8 +461,18 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     const eventData = events.find((event) => event.name === "filledV3Relay")?.data;
     assert.isNotNull(eventData, "FilledV3Relay event should be emitted");
 
-    // Recover relay hash and derived fill status from event data.
-    const relayHashUint8Array = calculateRelayEventHashUint8Array(eventData, chainId);
+    const txRes = await connection.getTransaction(txSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!txRes) {
+      throw new Error("filledV3Relay transaction not found");
+    }
+    const relayHashUint8Array = getRelayHashFromTx(txRes, program.programId);
+    if (!relayHashUint8Array) {
+      throw new Error("Relay hash not found");
+    }
+
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("fills"), relayHashUint8Array],
       program.programId

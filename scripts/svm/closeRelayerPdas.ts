@@ -5,7 +5,7 @@ import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayEventHashUint8Array, getSpokePoolProgram, readProgramEvents } from "../../src/svm/web3-v1";
+import { getRelayHashFromTx, getSpokePoolProgram, readProgramEvents } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -79,11 +79,18 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
     programId
   );
 
-  // Fetch the state to get the chainId
-  const state = await program.account.state.fetch(statePda);
-  const chainId = new BN(state.chainId);
+  const txRes = await provider.connection.getTransaction(eventData.signature, {
+    commitment: "confirmed",
+    maxSupportedTransactionVersion: 0,
+  });
+  if (!txRes) {
+    throw new Error("Transaction not found");
+  }
 
-  const relayHashUint8Array = calculateRelayEventHashUint8Array(relayEventData, chainId);
+  const relayHashUint8Array = getRelayHashFromTx(txRes, programId);
+  if (!relayHashUint8Array) {
+    throw new Error("Relay hash not found");
+  }
 
   const [fillStatusPda] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHashUint8Array], programId);
 
