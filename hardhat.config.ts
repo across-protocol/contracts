@@ -323,9 +323,9 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    doctorwho: {
-      chainId: CHAIN_IDs.DOCTOR_WHO,
-      url: "https://doctor-who-mainnet.g.alchemy.com/public",
+    unichain: {
+      chainId: CHAIN_IDs.UNICHAIN,
+      url: "https://mainnet.unichain.org",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -361,7 +361,7 @@ const config: HardhatUserConfig = {
       alephzero: "blockscout",
       ink: "blockscout",
       soneium: "blockscout",
-      doctorwho: "blockscout",
+      unichain: process.env.UNISCAN_API_KEY!,
     },
     customChains: [
       {
@@ -549,11 +549,11 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "doctorwho",
-        chainId: CHAIN_IDs.DOCTOR_WHO,
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
         urls: {
-          apiURL: "https://doctor-who.blockscout.com/api",
-          browserURL: "https://doctorwho.blockscout.com",
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
         },
       },
     ],

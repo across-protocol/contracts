@@ -89,7 +89,7 @@ export const OP_STACK_ADDRESS_MAP: {
       L1CrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     },
-    [CHAIN_IDs.DOCTOR_WHO]: {
+    [CHAIN_IDs.UNICHAIN]: {
       L1CrossDomainMessenger: "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
       L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
     },
@@ -231,7 +231,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
-  [CHAIN_IDs.DOCTOR_WHO]: {
+  [CHAIN_IDs.UNICHAIN]: {
     cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
     cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
   },

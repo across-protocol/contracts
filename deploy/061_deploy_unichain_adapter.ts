@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CHAIN_IDs } from "../utils";
 import { L1_ADDRESS_MAP, OP_STACK_ADDRESS_MAP, USDC, WETH } from "./consts";
 
-const SPOKE_CHAIN_ID = CHAIN_IDs.DOCTOR_WHO;
+const SPOKE_CHAIN_ID = CHAIN_IDs.UNICHAIN;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
