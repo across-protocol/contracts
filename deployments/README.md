@@ -113,10 +113,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Zora mainnet (7777777)
 
-| Contract Name    | Address                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name    | Address                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)         |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://zorascan.xyz/address/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
 ## World Chain mainnet (480)
 
@@ -141,7 +141,14 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Soneium mainnet (1868)
 
-| Contract Name    | Address                                                                                                               |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Cher_SpokePool   | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://etherscan.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name     | Address                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Soneium_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler  | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://soneium.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Unichain mainnet (130)
+
+| Contract Name      | Address                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Unichain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://unichain.blockscout.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://unichain.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |

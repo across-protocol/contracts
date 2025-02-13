@@ -47,9 +47,9 @@ const mnemonic = getMnemonic();
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 1000 },
+    optimizer: { enabled: true, runs: 800 },
     viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -58,7 +58,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 
@@ -68,7 +68,7 @@ const config: HardhatUserConfig = {
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Linea_SpokePool.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        ...LARGE_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
@@ -79,6 +79,8 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -89,6 +91,7 @@ const config: HardhatUserConfig = {
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -320,6 +323,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    doctorwho: {
+      chainId: CHAIN_IDs.DOCTOR_WHO,
+      url: "https://doctor-who-mainnet.g.alchemy.com/public",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -339,11 +349,11 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      mode: process.env.MODE_ETHERSCAN_API_KEY!,
-      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
-      lisk: process.env.LISK_ETHERSCAN_API_KEY!,
-      "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
-      redstone: process.env.REDSTONE_ETHERSCAN_API_KEY!,
+      mode: "blockscout",
+      "mode-sepolia": "blockscout",
+      lisk: "blockscout",
+      "lisk-sepolia": "blockscout",
+      redstone: "blockscout",
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
@@ -351,6 +361,7 @@ const config: HardhatUserConfig = {
       alephzero: "blockscout",
       ink: "blockscout",
       soneium: "blockscout",
+      doctorwho: "blockscout",
     },
     customChains: [
       {
@@ -398,7 +409,7 @@ const config: HardhatUserConfig = {
         chainId: CHAIN_IDs.LINEA,
         urls: {
           apiURL: "https://api.lineascan.build/api",
-          browserURL: "https://lineascan.org",
+          browserURL: "https://lineascan.build",
         },
       },
       {
@@ -414,7 +425,7 @@ const config: HardhatUserConfig = {
         chainId: CHAIN_IDs.SCROLL,
         urls: {
           apiURL: "https://api.scrollscan.com/api",
-          browserURL: "https://api.scrollscan.com",
+          browserURL: "https://scrollscan.com",
         },
       },
       {
@@ -535,6 +546,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
           browserURL: "https://zorascan.xyz",
+        },
+      },
+      {
+        network: "doctorwho",
+        chainId: CHAIN_IDs.DOCTOR_WHO,
+        urls: {
+          apiURL: "https://doctor-who.blockscout.com/api",
+          browserURL: "https://doctorwho.blockscout.com",
         },
       },
     ],

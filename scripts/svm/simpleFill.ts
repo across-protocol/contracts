@@ -14,7 +14,7 @@ import {
 import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayHashUint8Array, getSpokePoolProgram, intToU8Array32 } from "../../src/svm";
+import { calculateRelayHashUint8Array, getSpokePoolProgram, intToU8Array32 } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();

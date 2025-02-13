@@ -19,7 +19,7 @@ import {
   getMessageTransmitterProgram,
   getSpokePoolProgram,
   isSolanaDevnet,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { HubPool__factory } from "../../typechain";
 import { requireEnv } from "./utils/helpers";
 

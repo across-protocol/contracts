@@ -24,7 +24,7 @@ import {
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram, loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm";
+import { getSpokePoolProgram, loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
 // Set up the provider

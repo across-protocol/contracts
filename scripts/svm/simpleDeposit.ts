@@ -12,7 +12,7 @@ import {
 import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram } from "../../src/svm";
+import { getSpokePoolProgram } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();

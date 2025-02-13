@@ -1,7 +1,7 @@
 import { Keypair, TransactionInstruction, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
 import { Program, BN } from "@coral-xyz/anchor";
-import { RelayData, SlowFillLeaf, RelayerRefundLeafSolana } from "../types/svm";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { RelayData, SlowFillLeaf, RelayerRefundLeafSolana } from "../../types/svm";
+import { SvmSpoke } from "../../../target/types/svm_spoke";
 import { LargeAccountsCoder } from "./coders";
 
 /**

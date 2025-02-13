@@ -16,7 +16,7 @@ import {
   readEventsUntilFound,
   relayerRefundHashFn,
   sendTransactionWithLookupTable,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 import { MerkleTree } from "../../utils";
 import { common } from "./SvmSpoke.common";
@@ -274,6 +274,7 @@ describe("svm_spoke.bundle", () => {
     assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
+    // Verify the tokensBridged event
     event = events.find((event) => event.name === "tokensBridged")?.data;
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
     assertSE(event.chainId, chainId, "chainId should match");

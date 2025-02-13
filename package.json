@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "3.0.25",
+  "version": "4.0.0",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -26,7 +26,8 @@
     "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo +nightly fmt  --all && cargo clippy",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
-    "generate-svm-assets": "sh ./scripts/generate-svm-assets.sh",
+    "generate-svm-assets": "sh ./scripts/generate-svm-assets.sh && yarn generate-svm-clients",
+    "generate-svm-clients": "yarn ts-node ./scripts/svm/utils/generate-svm-clients.ts && yarn ts-node ./scripts/svm/utils/rename-clients-imports.ts",
     "build-evm": "hardhat compile",
     "build-svm": "echo 'Generating IDLs...' && anchor build > /dev/null 2>&1 || true && anchor run generateExternalTypes && anchor build",
     "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
@@ -41,7 +42,7 @@
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.30",
+    "@across-protocol/constants": "^3.1.32",
     "@coral-xyz/anchor": "^0.30.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
@@ -53,6 +54,7 @@
     "@scroll-tech/contracts": "^0.1.0",
     "@solana-developers/helpers": "^2.4.0",
     "@solana/spl-token": "^0.4.6",
+    "@solana/web3-v2.js": "npm:@solana/web3.js@2",
     "@solana/web3.js": "^1.31.0",
     "@types/yargs": "^17.0.33",
     "@uma/common": "^2.37.3",
@@ -65,6 +67,8 @@
     "zksync-web3": "^0.14.3"
   },
   "devDependencies": {
+    "@codama/nodes-from-anchor": "^1.1.0",
+    "@codama/renderers-js": "^1.1.1",
     "@consensys/linea-sdk": "^0.1.6",
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
     "@matterlabs/hardhat-zksync-solc": "^1.1.4",
@@ -85,6 +89,7 @@
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.3.7",
+    "codama": "^1.2.0",
     "dotenv": "^10.0.0",
     "eslint": "^7.29.0",
     "eslint-config-prettier": "^8.3.0",
