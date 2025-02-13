@@ -323,12 +323,19 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    doctorwho: {
-      chainId: CHAIN_IDs.DOCTOR_WHO,
-      url: "https://doctor-who-mainnet.g.alchemy.com/public",
+    unichain: {
+      chainId: CHAIN_IDs.UNICHAIN,
+      url: "https://mainnet.unichain.org",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
+    },
+    "unichain-sepolia": {
+      chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
+      url: "https://sepolia.unichain.org",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
     },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
@@ -361,7 +368,8 @@ const config: HardhatUserConfig = {
       alephzero: "blockscout",
       ink: "blockscout",
       soneium: "blockscout",
-      doctorwho: "blockscout",
+      unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
+      "unichain-sepolia": process.env.UNICHAIN_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -549,11 +557,19 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "doctorwho",
-        chainId: CHAIN_IDs.DOCTOR_WHO,
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
         urls: {
-          apiURL: "https://doctor-who.blockscout.com/api",
-          browserURL: "https://doctorwho.blockscout.com",
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
+        },
+      },
+      {
+        network: "unichain-sepolia",
+        chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
+        urls: {
+          apiURL: "https://api-sepolia.uniscan.xyz/api",
+          browserURL: "https://sepolia.uniscan.xyz",
         },
       },
     ],

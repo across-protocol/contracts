@@ -89,10 +89,6 @@ export const OP_STACK_ADDRESS_MAP: {
       L1CrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     },
-    [CHAIN_IDs.DOCTOR_WHO]: {
-      L1CrossDomainMessenger: "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
-      L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
-    },
     [CHAIN_IDs.INK]: {
       L1CrossDomainMessenger: "0x69d3cf86b2bf1a9e99875b7e2d9b6a84426c171f",
       L1StandardBridge: "0x88ff1e5b602916615391f55854588efcbb7663f0",
@@ -118,6 +114,10 @@ export const OP_STACK_ADDRESS_MAP: {
       L1CrossDomainMessenger: "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
       L1StandardBridge: "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
       L1OpUSDCBridgeAdapter: "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb",
+    },
+    [CHAIN_IDs.UNICHAIN]: {
+      L1CrossDomainMessenger: "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
+      L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
     },
     [CHAIN_IDs.WORLD_CHAIN]: {
       L1CrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
@@ -150,6 +150,10 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
       L1CrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
       L1StandardBridge: "0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1",
+    },
+    [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
+      L1CrossDomainMessenger: "0x448A37330A60494E666F6DD60aD48d930AEbA381",
+      L1StandardBridge: "0xea58fcA6849d79EAd1f26608855c2D6407d54Ce2",
     },
   },
 };
@@ -231,9 +235,13 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
-  [CHAIN_IDs.DOCTOR_WHO]: {
+  [CHAIN_IDs.UNICHAIN]: {
     cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
     cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+  },
+  [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
+    cctpTokenMessenger: "0x8ed94B8dAd2Dc5453862ea5e316A8e71AAed9782",
+    cctpMessageTransmitter: "0xbc498c326533d675cf571B90A2Ced265ACb7d086",
   },
 };
 
@@ -253,10 +261,12 @@ export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
   [CHAIN_IDs.ARBITRUM]: 3,
   [CHAIN_IDs.BASE]: 6,
   [CHAIN_IDs.POLYGON]: 7,
+  [CHAIN_IDs.UNICHAIN]: 10,
   // Testnet
   [CHAIN_IDs.SEPOLIA]: 0,
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: 2,
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 3,
   [CHAIN_IDs.BASE_SEPOLIA]: 6,
   [CHAIN_IDs.POLYGON_AMOY]: 7,
+  [CHAIN_IDs.UNICHAIN_SEPOLIA]: 10,
 };
