@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3RelayData {
+pub struct RelayData {
     pub depositor: Pubkey,
     pub recipient: Pubkey,
     pub exclusive_relayer: Pubkey,
