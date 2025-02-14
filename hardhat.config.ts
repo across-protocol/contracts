@@ -330,6 +330,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    "unichain-sepolia": {
+      chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
+      url: "https://sepolia.unichain.org",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -361,7 +368,8 @@ const config: HardhatUserConfig = {
       alephzero: "blockscout",
       ink: "blockscout",
       soneium: "blockscout",
-      unichain: process.env.UNISCAN_API_KEY!,
+      unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
+      "unichain-sepolia": process.env.UNICHAIN_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -554,6 +562,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.uniscan.xyz/api",
           browserURL: "https://uniscan.xyz",
+        },
+      },
+      {
+        network: "unichain-sepolia",
+        chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
+        urls: {
+          apiURL: "https://api-sepolia.uniscan.xyz/api",
+          browserURL: "https://sepolia.uniscan.xyz",
         },
       },
     ],
