@@ -1,5 +1,5 @@
 import { ZERO_ADDRESS } from "@uma/common";
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export { ZERO_ADDRESS } from "@uma/common";
 
@@ -255,18 +255,6 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
  * and is an internal mappinng maintained by Circle.
  * @link https://developers.circle.com/stablecoins/docs/supported-domains
  */
-export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
-  [CHAIN_IDs.MAINNET]: 0,
-  [CHAIN_IDs.OPTIMISM]: 2,
-  [CHAIN_IDs.ARBITRUM]: 3,
-  [CHAIN_IDs.BASE]: 6,
-  [CHAIN_IDs.POLYGON]: 7,
-  [CHAIN_IDs.UNICHAIN]: 10,
-  // Testnet
-  [CHAIN_IDs.SEPOLIA]: 0,
-  [CHAIN_IDs.OPTIMISM_SEPOLIA]: 2,
-  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 3,
-  [CHAIN_IDs.BASE_SEPOLIA]: 6,
-  [CHAIN_IDs.POLYGON_AMOY]: 7,
-  [CHAIN_IDs.UNICHAIN_SEPOLIA]: 10,
-};
+export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
+  Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
+);
