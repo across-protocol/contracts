@@ -1,4 +1,10 @@
-export { CHAIN_IDs, MAINNET_CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
+export {
+  CHAIN_IDs,
+  MAINNET_CHAIN_IDs,
+  PRODUCTION_NETWORKS,
+  PUBLIC_NETWORKS,
+  TOKEN_SYMBOLS_MAP,
+} from "@across-protocol/constants";
 
 export const FillStatus = {
   Unfilled: 0,
