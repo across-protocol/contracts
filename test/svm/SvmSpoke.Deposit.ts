@@ -103,7 +103,7 @@ describe("svm_spoke.deposit", () => {
     };
   };
 
-  const approvedDepositV3 = async (
+  const approvedDeposit = async (
     depositDataValues: DepositDataValues,
     calledDepositAccounts: DepositAccounts = depositAccounts
   ) => {
@@ -119,7 +119,7 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
     const depositIx = await program.methods
-      .depositV3(...depositDataValues)
+      .deposit(...depositDataValues)
       .accounts(calledDepositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
@@ -135,14 +135,14 @@ describe("svm_spoke.deposit", () => {
 
     await enableRoute();
   });
-  it("Deposits tokens via deposit_v3 function and checks balances", async () => {
+  it("Deposits tokens via deposit function and checks balances", async () => {
     // Verify vault balance is zero before the deposit
     let vaultAccount = await getAccount(connection, vault);
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
 
-    // Execute the deposit_v3 call
+    // Execute the deposit call
     let depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    await approvedDeposit(depositDataValues);
 
     // Verify tokens leave the depositor's account
     let depositorAccount = await getAccount(connection, depositorTA);
@@ -159,10 +159,10 @@ describe("svm_spoke.deposit", () => {
     // Modify depositData for the second deposit
     const secondInputAmount = new BN(300000);
 
-    // Execute the second deposit_v3 call
+    // Execute the second deposit call
 
     depositDataValues = Object.values({ ...depositData, inputAmount: secondInputAmount }) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    await approvedDeposit(depositDataValues);
 
     // Verify tokens leave the depositor's account again
     depositorAccount = await getAccount(connection, depositorTA);
@@ -181,12 +181,12 @@ describe("svm_spoke.deposit", () => {
     );
   });
 
-  it("Verifies V3FundsDeposited after deposits", async () => {
+  it("Verifies FundsDeposited after deposits", async () => {
     depositData.inputAmount = depositData.inputAmount.add(new BN(69));
 
-    // Execute the first deposit_v3 call
+    // Execute the first deposit call
     let depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDepositV3(depositDataValues);
+    const tx = await approvedDeposit(depositDataValues);
 
     let events = await readEventsUntilFound(connection, tx, [program]);
     let event = events[0].data; // 0th event is the latest event
@@ -201,7 +201,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
 
     // Execute the second deposit_v3 call
-    const tx2 = await approvedDepositV3(depositDataValues);
+    const tx2 = await approvedDeposit(depositDataValues);
     events = await readEventsUntilFound(connection, tx2, [program]);
     event = events[0].data; // 0th event is the latest event.
 
@@ -229,7 +229,7 @@ describe("svm_spoke.deposit", () => {
         ...depositData,
         destinationChainId: differentChainId,
       }) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Deposit should have failed for a route that is not initialized");
     } catch (err: any) {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
@@ -245,7 +245,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Deposit should have failed for a route that is explicitly disabled");
     } catch (err: any) {
       assert.include(err.toString(), "DisabledRoute", "Expected DisabledRoute error");
@@ -262,7 +262,7 @@ describe("svm_spoke.deposit", () => {
     // Try to deposit. This should fail because deposits are paused.
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Should not be able to process deposit when deposits are paused");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: DepositsArePaused", "Expected DepositsArePaused error");
@@ -277,7 +277,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
@@ -292,7 +292,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
@@ -309,7 +309,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidFillDeadline (past deadline)");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for past deadline");
@@ -321,7 +321,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Deposit should have failed due to InvalidFillDeadline (future deadline)");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for future deadline");
@@ -336,13 +336,13 @@ describe("svm_spoke.deposit", () => {
     await setupInputToken();
     await enableRoute();
 
-    // Try to execute the deposit_v3 call with malformed inputs where the first input token and its derived route is
+    // Try to execute the deposit call with malformed inputs where the first input token and its derived route is
     // passed combined with mint, vault and user token account from the second input token.
     const malformedDepositData = { ...depositData, inputToken: firstInputToken };
     const malformedDepositAccounts = { ...depositAccounts, route: firstDepositAccounts.route };
     try {
       const depositDataValues = Object.values(malformedDepositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues, malformedDepositAccounts);
+      await approvedDeposit(depositDataValues, malformedDepositAccounts);
       assert.fail("Should not be able to process deposit for inconsistent mint");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidMint", "Expected InvalidMint error");
@@ -389,7 +389,7 @@ describe("svm_spoke.deposit", () => {
       ...depositData,
       destinationChainId: fakeRouteChainId,
     }) as DepositDataValues;
-    const tx = await approvedDepositV3(depositDataValues, fakeDepositAccounts);
+    const tx = await approvedDeposit(depositDataValues, fakeDepositAccounts);
 
     let events = await readEventsUntilFound(connection, tx, [program]);
     let event = events[0].data; // 0th event is the latest event.
@@ -415,7 +415,7 @@ describe("svm_spoke.deposit", () => {
       const depositDataValues = Object.values({
         ...{ ...depositData, destinationChainId: fakeRouteChainId },
       }) as DepositDataValues;
-      await approvedDepositV3(depositDataValues, { ...depositAccounts, route: fakeRoutePda });
+      await approvedDeposit(depositDataValues, { ...depositAccounts, route: fakeRoutePda });
       assert.fail("Deposit should have failed for a fake route PDA");
     } catch (err: any) {
       assert.include(err.toString(), "A seeds constraint was violated");
@@ -444,9 +444,9 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    // Execute the deposit_v3_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
+    // Execute the deposit_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
     const depositIx = await program.methods
-      .depositV3Now(
+      .depositNow(
         depositData.depositor!,
         depositData.recipient!,
         depositData.inputToken!,
@@ -490,7 +490,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = new BN(1);
     try {
       const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDepositV3(depositDataValues);
+      await approvedDeposit(depositDataValues);
       assert.fail("Should have failed due to InvalidExclusiveRelayer");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidExclusiveRelayer");
@@ -508,7 +508,7 @@ describe("svm_spoke.deposit", () => {
       depositData.exclusivityParameter = exclusivityDeadline;
       try {
         const depositDataValues = Object.values(depositData) as DepositDataValues;
-        await approvedDepositV3(depositDataValues);
+        await approvedDeposit(depositDataValues);
         assert.fail("Should have failed due to InvalidExclusiveRelayer");
       } catch (err: any) {
         assert.include(err.toString(), "InvalidExclusiveRelayer");
@@ -518,7 +518,7 @@ describe("svm_spoke.deposit", () => {
     // Test with exclusivityDeadline set to 0
     depositData.exclusivityParameter = new BN(0);
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    await approvedDeposit(depositDataValues);
   });
 
   it("Exclusivity param is used as an offset", async () => {
@@ -529,7 +529,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = maxExclusivityOffsetSeconds;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDepositV3(depositDataValues);
+    const tx = await approvedDeposit(depositDataValues);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event
@@ -549,7 +549,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = exclusivityDeadlineTimestamp;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDepositV3(depositDataValues);
+    const tx = await approvedDeposit(depositDataValues);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event;
@@ -566,7 +566,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusivityParameter = zeroExclusivity;
 
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDepositV3(depositDataValues);
+    const tx = await approvedDeposit(depositDataValues);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event;
@@ -610,7 +610,7 @@ describe("svm_spoke.deposit", () => {
 
     // Create the transaction for unsafeDepositV3
     const unsafeDepositIx = await program.methods
-      .unsafeDepositV3(
+      .unsafeDeposit(
         depositData.depositor!,
         depositData.recipient!,
         depositData.inputToken!,
@@ -662,9 +662,9 @@ describe("svm_spoke.deposit", () => {
     let vaultAccount = await getAccount(connection, vault, undefined, tokenProgram);
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
 
-    // Execute the deposit_v3 call
+    // Execute the deposit call
     const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDepositV3(depositDataValues);
+    await approvedDeposit(depositDataValues);
 
     // Verify tokens leave the depositor's account
     const depositorAccount = await getAccount(connection, depositorTA, undefined, tokenProgram);
@@ -684,7 +684,7 @@ describe("svm_spoke.deposit", () => {
 
     try {
       await program.methods
-        .depositV3(...depositDataValues)
+        .deposit(...depositDataValues)
         .accounts(depositAccounts)
         .signers([depositor])
         .rpc();

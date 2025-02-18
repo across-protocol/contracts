@@ -30,7 +30,7 @@ const argvPromise = yargs(hideBin(process.argv)).option("eventName", {
     "pausedFills",
     "setXDomainAdmin",
     "emergencyDeletedRootBundle",
-    "requestedV3SlowFill",
+    "RequestedSlowFill",
     "claimedRelayerRefund",
     "tokensBridged",
   ],
